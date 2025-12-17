@@ -136,14 +136,56 @@ export function OnboardingFlow() {
     systemName: "",
   });
   const [isGenerating, setIsGenerating] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const extractInfoFromResponse = (response: string, currentData: OnboardingData): Partial<OnboardingData> => {
+    const extracted: Partial<OnboardingData> = {};
+    const lower = response.toLowerCase();
+    
+    const wakeMatch = response.match(/(?:wake|get up|up at|morning at|start my day at)\s*(?:at\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (wakeMatch && !currentData.wakeTime) {
+      extracted.wakeTime = wakeMatch[1];
+    }
+    
+    const sleepMatch = response.match(/(?:sleep|bed|asleep|go to bed)\s*(?:at\s*|around\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (sleepMatch && !currentData.sleepTime) {
+      extracted.sleepTime = sleepMatch[1];
+    }
+    
+    const workMatch = response.match(/(?:work|job|office)\s*(?:from\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:to|-)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (workMatch && !currentData.workSchedule) {
+      extracted.workSchedule = response;
+    }
+    
+    if (!currentData.freeTimeHours) {
+      if (lower.includes("less than 1") || lower.includes("under an hour") || lower.includes("30 min") || lower.includes("no free time")) {
+        extracted.freeTimeHours = "less than 1 hour";
+      } else if (lower.includes("1-2 hour") || lower.includes("couple hour") || lower.includes("one to two")) {
+        extracted.freeTimeHours = "1-2 hours";
+      } else if (lower.includes("2-4 hour") || lower.includes("few hour") || lower.includes("several hour")) {
+        extracted.freeTimeHours = "2-4 hours";
+      } else if (lower.includes("4+ hour") || lower.includes("more than 4") || lower.includes("lot of free time")) {
+        extracted.freeTimeHours = "more than 4 hours";
+      }
+    }
+    
+    return extracted;
+  };
+
+  const findNextUnansweredStage = (currentStage: number, currentData: OnboardingData): number => {
+    for (let i = currentStage + 1; i < ONBOARDING_STAGES.length; i++) {
+      const field = ONBOARDING_STAGES[i].field as keyof OnboardingData;
+      if (!currentData[field]) {
+        return i;
+      }
+    }
+    return ONBOARDING_STAGES.length - 1;
+  };
 
   const submitMutation = useMutation({
     mutationFn: async (onboardingData: OnboardingData) => {
@@ -236,12 +278,14 @@ export function OnboardingFlow() {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     
     const currentField = ONBOARDING_STAGES[stage].field as keyof OnboardingData;
-    setData((prev) => ({ ...prev, [currentField]: userMessage }));
+    const extractedData = extractInfoFromResponse(userMessage, data);
+    const updatedData = { ...data, [currentField]: userMessage, ...extractedData };
+    setData(updatedData);
     setInput("");
 
     if (stage < ONBOARDING_STAGES.length - 1) {
       setTimeout(() => {
-        const nextStage = stage + 1;
+        const nextStage = findNextUnansweredStage(stage, updatedData);
         setStage(nextStage);
         setMessages((prev) => [
           ...prev,
@@ -250,7 +294,7 @@ export function OnboardingFlow() {
       }, 500);
     } else {
       setIsGenerating(true);
-      const finalData = { ...data, [currentField]: userMessage };
+      const finalData = updatedData;
       
       setTimeout(() => {
         setMessages((prev) => [
@@ -290,7 +334,7 @@ export function OnboardingFlow() {
         </div>
 
         <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -319,6 +363,7 @@ export function OnboardingFlow() {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
