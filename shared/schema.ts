@@ -6,7 +6,8 @@ import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
+  username: text("username"),
   password: text("password").notNull(),
   systemName: text("system_name"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
@@ -30,6 +31,10 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   freeTimeHours: text("free_time_hours"),
   peakMotivationTime: text("peak_motivation_time"),
   wellnessFocus: text("wellness_focus").array(),
+  lifeAreaDetails: jsonb("life_area_details"),
+  shortTermGoals: text("short_term_goals"),
+  longTermGoals: text("long_term_goals"),
+  relationshipGoals: text("relationship_goals"),
 });
 
 export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({
@@ -161,7 +166,7 @@ export const scheduleBlocksRelations = relations(scheduleBlocks, ({ one }) => ({
 }));
 
 export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
+  email: true,
   password: true,
 });
 

@@ -14,14 +14,15 @@ import { ThemeToggle } from "@/components/theme-toggle";
 export function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [loginData, setLoginData] = useState({ username: "", password: "" });
-  const [registerData, setRegisterData] = useState({ username: "", password: "", confirmPassword: "" });
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "" });
 
   const loginMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
-      return apiRequest("POST", "/api/auth/login", data);
+    mutationFn: async (data: { email: string; password: string }) => {
+      const res = await apiRequest("POST", "/api/auth/login", data);
+      return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
-    onSuccess: async (response: { user: { onboardingCompleted: boolean } }) => {
+    onSuccess: async (response) => {
       queryClient.invalidateQueries();
       toast({ title: "Welcome back!" });
       if (response.user.onboardingCompleted) {
@@ -40,8 +41,9 @@ export function LoginPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string }) => {
-      return apiRequest("POST", "/api/auth/register", data);
+    mutationFn: async (data: { email: string; password: string }) => {
+      const res = await apiRequest("POST", "/api/auth/register", data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
@@ -51,7 +53,7 @@ export function LoginPage() {
     onError: () => {
       toast({
         title: "Registration failed",
-        description: "Username may already be taken. Please try another.",
+        description: "Email may already be registered. Please try another.",
         variant: "destructive",
       });
     },
@@ -72,8 +74,16 @@ export function LoginPage() {
       });
       return;
     }
+    if (registerData.password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
     registerMutation.mutate({
-      username: registerData.username,
+      email: registerData.email,
       password: registerData.password,
     });
   };
@@ -110,15 +120,15 @@ export function LoginPage() {
               <TabsContent value="login" className="mt-6">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-username">Username</Label>
+                    <Label htmlFor="login-email">Email</Label>
                     <Input
-                      id="login-username"
-                      type="text"
-                      value={loginData.username}
-                      onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                      placeholder="Enter your username"
+                      id="login-email"
+                      type="email"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                      placeholder="Enter your email"
                       required
-                      data-testid="input-login-username"
+                      data-testid="input-login-email"
                     />
                   </div>
                   <div className="space-y-2">
@@ -147,15 +157,15 @@ export function LoginPage() {
               <TabsContent value="register" className="mt-6">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-username">Username</Label>
+                    <Label htmlFor="register-email">Email</Label>
                     <Input
-                      id="register-username"
-                      type="text"
-                      value={registerData.username}
-                      onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                      placeholder="Choose a username"
+                      id="register-email"
+                      type="email"
+                      value={registerData.email}
+                      onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                      placeholder="Enter your email"
                       required
-                      data-testid="input-register-username"
+                      data-testid="input-register-email"
                     />
                   </div>
                   <div className="space-y-2">
@@ -165,7 +175,7 @@ export function LoginPage() {
                       type="password"
                       value={registerData.password}
                       onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      placeholder="Choose a password"
+                      placeholder="Choose a password (min 6 characters)"
                       required
                       data-testid="input-register-password"
                     />

@@ -48,14 +48,14 @@ export async function registerRoutes(
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = insertUserSchema.parse(req.body);
-      const existing = await storage.getUserByUsername(data.username);
+      const existing = await storage.getUserByEmail(data.email);
       if (existing) {
-        return res.status(400).json({ error: "Username already taken" });
+        return res.status(400).json({ error: "Email already registered" });
       }
       const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
       const user = await storage.createUser({ ...data, password: hashedPassword });
       req.session.userId = user.id;
-      res.json({ user: { id: user.id, username: user.username, onboardingCompleted: user.onboardingCompleted } });
+      res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
@@ -66,8 +66,8 @@ export async function registerRoutes(
 
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { username, password } = req.body;
-      const user = await storage.getUserByUsername(username);
+      const { email, password } = req.body;
+      const user = await storage.getUserByEmail(email);
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -76,7 +76,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       req.session.userId = user.id;
-      res.json({ user: { id: user.id, username: user.username, onboardingCompleted: user.onboardingCompleted } });
+      res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
     }
@@ -93,35 +93,47 @@ export async function registerRoutes(
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: user.id, username: user.username, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
+    res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
   });
 
   app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { responsibilities, otherResponsibility, priorities, otherPriority, freeTimeHours, peakMotivationTime, wellnessFocus, systemName } = req.body;
-
-      const allResponsibilities = [...responsibilities];
-      if (otherResponsibility) allResponsibilities.push(otherResponsibility);
-
-      const allPriorities = [...priorities];
-      if (otherPriority) allPriorities.push(otherPriority);
+      const { 
+        responsibilities, 
+        priorities, 
+        freeTimeHours, 
+        peakMotivationTime, 
+        wellnessFocus, 
+        systemName,
+        lifeAreaDetails,
+        shortTermGoals,
+        longTermGoals,
+        relationshipGoals 
+      } = req.body;
 
       await storage.createOnboardingProfile({
         userId,
-        responsibilities: allResponsibilities,
-        priorities: allPriorities,
+        responsibilities: responsibilities || [],
+        priorities: priorities || [],
         freeTimeHours,
         peakMotivationTime,
-        wellnessFocus,
+        wellnessFocus: wellnessFocus || [],
+        lifeAreaDetails: lifeAreaDetails || {},
+        shortTermGoals: shortTermGoals || "",
+        longTermGoals: longTermGoals || "",
+        relationshipGoals: relationshipGoals || "",
       });
 
       const recommendations = await generateLifeSystemRecommendations({
-        responsibilities: allResponsibilities,
-        priorities: allPriorities,
+        responsibilities: responsibilities || [],
+        priorities: priorities || [],
         freeTimeHours,
         peakMotivationTime,
-        wellnessFocus,
+        wellnessFocus: wellnessFocus || [],
+        lifeAreaDetails,
+        shortTermGoals,
+        longTermGoals,
       });
 
       await storage.createLifeSystem({

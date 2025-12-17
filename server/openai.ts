@@ -63,18 +63,33 @@ export async function generateLifeSystemRecommendations(profile: {
   freeTimeHours: string;
   peakMotivationTime: string;
   wellnessFocus: string[];
+  lifeAreaDetails?: Record<string, { goals?: string; schedule?: string; challenges?: string }>;
+  shortTermGoals?: string;
+  longTermGoals?: string;
 }): Promise<{
   suggestedHabits: { title: string; description: string; frequency: string }[];
   suggestedGoals: { title: string; description: string; wellnessDimension: string }[];
   weeklyScheduleSuggestions: string[];
 }> {
+  const lifeAreasInfo = profile.lifeAreaDetails 
+    ? Object.entries(profile.lifeAreaDetails)
+        .map(([area, details]) => `${area}: Goals - ${details.goals || 'not specified'}, Schedule - ${details.schedule || 'not specified'}`)
+        .join('\n')
+    : 'No specific life areas provided';
+
   const prompt = `Based on this user profile, generate personalized wellness recommendations:
 
-Responsibilities: ${profile.responsibilities.join(", ")}
+Life Areas: ${profile.responsibilities.join(", ")}
 Personal priorities: ${profile.priorities.join(", ")}
 Daily free time: ${profile.freeTimeHours}
 Peak motivation time: ${profile.peakMotivationTime}
 Wellness focus areas: ${profile.wellnessFocus.join(", ")}
+
+Life Area Details:
+${lifeAreasInfo}
+
+Short-term goals: ${profile.shortTermGoals || 'Not specified'}
+Long-term goals: ${profile.longTermGoals || 'Not specified'}
 
 Please provide JSON with:
 1. suggestedHabits: array of 3-5 habits with title, description, and frequency (daily/weekly)
