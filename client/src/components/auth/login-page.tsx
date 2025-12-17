@@ -22,14 +22,10 @@ export function LoginPage() {
       const res = await apiRequest("POST", "/api/auth/login", data);
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
-    onSuccess: async (response) => {
+    onSuccess: async () => {
       queryClient.invalidateQueries();
       toast({ title: "Welcome back!" });
-      if (response.user.onboardingCompleted) {
-        setLocation("/dashboard");
-      } else {
-        setLocation("/onboarding");
-      }
+      setLocation("/app");
     },
     onError: () => {
       toast({
@@ -48,7 +44,7 @@ export function LoginPage() {
     onSuccess: () => {
       queryClient.invalidateQueries();
       toast({ title: "Account created successfully!" });
-      setLocation("/onboarding");
+      setLocation("/app");
     },
     onError: () => {
       toast({

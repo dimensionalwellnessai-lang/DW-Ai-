@@ -179,6 +179,34 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/chat", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { message, context, conversationHistory } = req.body;
+      
+      const user = await storage.getUser(userId);
+      const lifeSystem = await storage.getLifeSystem(userId);
+      const profile = await storage.getOnboardingProfile(userId);
+      
+      const enhancedContext = {
+        systemName: user?.systemName || lifeSystem?.name,
+        wellnessFocus: profile?.wellnessFocus || [],
+        peakMotivationTime: profile?.peakMotivationTime || undefined,
+      };
+      
+      const response = await generateChatResponse(
+        message,
+        conversationHistory || [],
+        enhancedContext
+      );
+      
+      res.json({ response, updatedCategory: null });
+    } catch (error) {
+      console.error("Chat error:", error);
+      res.status(500).json({ error: "Failed to get response" });
+    }
+  });
+
   app.get("/api/dashboard", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;

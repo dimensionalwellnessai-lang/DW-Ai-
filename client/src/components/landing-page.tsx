@@ -83,7 +83,7 @@ export function LandingPage() {
             <Link href="/login">
               <Button variant="ghost" data-testid="link-login">Log In</Button>
             </Link>
-            <Link href="/onboarding">
+            <Link href="/login">
               <Button data-testid="link-get-started">Get Started</Button>
             </Link>
           </div>
@@ -102,7 +102,7 @@ export function LandingPage() {
               Not just the ideal you. AI-powered wellness guidance that fits your real responsibilities, available time, and unique goals.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
-              <Link href="/onboarding">
+              <Link href="/login">
                 <Button size="lg" className="rounded-full px-8 text-lg" data-testid="button-hero-cta">
                   Start Your Journey
                   <ArrowRight className="ml-2 h-5 w-5" />
