@@ -35,6 +35,7 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   shortTermGoals: text("short_term_goals"),
   longTermGoals: text("long_term_goals"),
   relationshipGoals: text("relationship_goals"),
+  conversationData: jsonb("conversation_data"),
 });
 
 export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({
@@ -51,6 +52,8 @@ export const lifeSystems = pgTable("life_systems", {
   weeklySchedule: jsonb("weekly_schedule"),
   suggestedHabits: jsonb("suggested_habits"),
   suggestedTools: text("suggested_tools").array(),
+  scheduleBlocks: jsonb("schedule_blocks"),
+  mealSuggestions: jsonb("meal_suggestions"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

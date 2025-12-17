@@ -1,114 +1,221 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, ArrowLeft, ArrowRight, Check, Target, Briefcase, GraduationCap, Heart, DollarSign, Palette, Users, Book, Home, Calendar } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const LIFE_AREAS = [
-  { id: "work", label: "Work", icon: Briefcase, description: "Deliverables, deadlines, meetings, goals" },
-  { id: "school", label: "School", icon: GraduationCap, description: "Assignments, projects, schedule" },
-  { id: "health", label: "Health", icon: Heart, description: "Goals, appointments, wellness" },
-  { id: "financial", label: "Financial", icon: DollarSign, description: "Budget, goals, planning" },
-  { id: "hobbies", label: "Hobbies", icon: Palette, description: "Creative pursuits, things to try" },
-  { id: "relationships", label: "Relationships", icon: Users, description: "Family, friends, connections" },
-  { id: "home", label: "Home", icon: Home, description: "Chores, household management" },
-  { id: "reading", label: "Reading/Learning", icon: Book, description: "Books, courses, interests" },
-];
-
-const GOAL_TIMEFRAMES = [
-  { id: "short", label: "Short-term (weeks)", description: "Goals to achieve in the next few weeks" },
-  { id: "medium", label: "Medium-term (months)", description: "Goals for the next 3-6 months" },
-  { id: "long", label: "Long-term (years)", description: "Big picture goals for the future" },
-];
-
-const FREE_TIME_OPTIONS = [
-  { id: "less-1", label: "Less than 1 hour" },
-  { id: "1-2", label: "1-2 hours" },
-  { id: "2-4", label: "2-4 hours" },
-  { id: "4-plus", label: "4+ hours" },
-];
-
-const MOTIVATION_TIME = [
-  { id: "morning", label: "Morning" },
-  { id: "afternoon", label: "Afternoon" },
-  { id: "evening", label: "Evening" },
-  { id: "varies", label: "It varies" },
-];
-
-const WELLNESS_FOCUS = [
-  { id: "energy", label: "Physical energy" },
-  { id: "emotional", label: "Emotional clarity" },
-  { id: "sleep", label: "Better sleep" },
-  { id: "focus", label: "Focus & productivity" },
-  { id: "purpose", label: "Purpose & motivation" },
-  { id: "financial", label: "Financial wellness" },
-  { id: "creative", label: "Creative expression" },
-  { id: "connection", label: "Social connection" },
-  { id: "balance", label: "Work-life balance" },
-];
-
-interface LifeAreaData {
-  goals: string;
-  schedule: string;
-  challenges: string;
+interface ChatMessage {
+  role: "assistant" | "user";
+  content: string;
 }
 
 interface OnboardingData {
-  selectedAreas: string[];
-  lifeAreaDetails: Record<string, LifeAreaData>;
-  shortTermGoals: string;
-  longTermGoals: string;
+  currentSchedule: string;
+  wakeTime: string;
+  sleepTime: string;
+  workSchedule: string;
+  commitments: string;
   freeTimeHours: string;
-  peakMotivationTime: string;
-  wellnessFocus: string[];
-  relationshipGoals: string;
+  physicalGoals: string;
+  mentalGoals: string;
+  emotionalGoals: string;
+  spiritualGoals: string;
+  socialGoals: string;
+  financialGoals: string;
+  dietaryNeeds: string;
+  mealPreferences: string;
   systemName: string;
 }
+
+const ONBOARDING_STAGES = [
+  {
+    id: "welcome",
+    question: "Welcome! I'm here to help you create your personalized life system. Let's start by understanding your current routine. What does a typical day look like for you?",
+    field: "currentSchedule",
+  },
+  {
+    id: "wake_time",
+    question: "Great! What time do you usually wake up in the morning?",
+    field: "wakeTime",
+  },
+  {
+    id: "sleep_time",
+    question: "And what time do you typically go to bed?",
+    field: "sleepTime",
+  },
+  {
+    id: "work",
+    question: "Tell me about your work or main commitments. What hours do you work? Do you have any recurring meetings or responsibilities throughout the week?",
+    field: "workSchedule",
+  },
+  {
+    id: "commitments",
+    question: "What other regular commitments do you have? This could include family time, social activities, hobbies, workouts, or anything else that's part of your weekly rhythm.",
+    field: "commitments",
+  },
+  {
+    id: "free_time",
+    question: "How much free time do you typically have each day for personal wellness activities? (For example: less than 1 hour, 1-2 hours, 2-4 hours, or more than 4 hours)",
+    field: "freeTimeHours",
+  },
+  {
+    id: "physical",
+    question: "Now let's talk about your wellness goals. Starting with physical health - what are your goals for your body? Think about energy, fitness, movement, or any health improvements you'd like to make.",
+    field: "physicalGoals",
+  },
+  {
+    id: "mental",
+    question: "What about mental wellness? What goals do you have for focus, productivity, learning, or mental clarity?",
+    field: "mentalGoals",
+  },
+  {
+    id: "emotional",
+    question: "For emotional wellness - what would you like to improve? This could include stress management, emotional regulation, self-awareness, or finding more joy and peace.",
+    field: "emotionalGoals",
+  },
+  {
+    id: "spiritual",
+    question: "What about spiritual or purpose-driven goals? This might include mindfulness, meditation, connecting with something greater, or finding deeper meaning in your daily life.",
+    field: "spiritualGoals",
+  },
+  {
+    id: "social",
+    question: "Let's talk about your social life. What are your goals for relationships - whether with family, friends, romantic partners, or building new connections?",
+    field: "socialGoals",
+  },
+  {
+    id: "financial",
+    question: "What financial goals would you like to work toward? This could include budgeting, saving, building a business, or creating more financial freedom.",
+    field: "financialGoals",
+  },
+  {
+    id: "dietary",
+    question: "Now for nutrition. Do you have any dietary needs, restrictions, or preferences I should know about? (vegetarian, allergies, health conditions, etc.)",
+    field: "dietaryNeeds",
+  },
+  {
+    id: "meals",
+    question: "What are your meal preferences and goals? How do you feel about meal prepping? What types of foods energize you, and what would you like to eat more or less of?",
+    field: "mealPreferences",
+  },
+  {
+    id: "system_name",
+    question: "Wonderful! I have a great picture of who you are and what you want to achieve. One last thing - let's give your life system a name. This could be something personal like 'The [Your Name] Method' or something aspirational. What would you like to call it?",
+    field: "systemName",
+  },
+];
 
 export function OnboardingFlow() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState(0);
+  const [stage, setStage] = useState(0);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: "assistant", content: ONBOARDING_STAGES[0].question },
+  ]);
   const [data, setData] = useState<OnboardingData>({
-    selectedAreas: [],
-    lifeAreaDetails: {},
-    shortTermGoals: "",
-    longTermGoals: "",
+    currentSchedule: "",
+    wakeTime: "",
+    sleepTime: "",
+    workSchedule: "",
+    commitments: "",
     freeTimeHours: "",
-    peakMotivationTime: "",
-    wellnessFocus: [],
-    relationshipGoals: "",
+    physicalGoals: "",
+    mentalGoals: "",
+    emotionalGoals: "",
+    spiritualGoals: "",
+    socialGoals: "",
+    financialGoals: "",
+    dietaryNeeds: "",
+    mealPreferences: "",
     systemName: "",
   });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const totalSteps = 7;
-  const progress = ((step + 1) / totalSteps) * 100;
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const submitMutation = useMutation({
     mutationFn: async (onboardingData: OnboardingData) => {
+      const responsibilities: string[] = [];
+      if (onboardingData.workSchedule) responsibilities.push("work");
+      if (onboardingData.physicalGoals) responsibilities.push("health");
+      if (onboardingData.socialGoals) responsibilities.push("relationships");
+      if (onboardingData.financialGoals) responsibilities.push("financial");
+      
+      const commitmentsLower = onboardingData.commitments?.toLowerCase() || "";
+      if (commitmentsLower.includes("hobby") || commitmentsLower.includes("creative") || commitmentsLower.includes("art") || commitmentsLower.includes("music") || commitmentsLower.includes("sport")) {
+        responsibilities.push("hobbies");
+      }
+      if (commitmentsLower.includes("home") || commitmentsLower.includes("house") || commitmentsLower.includes("chore") || commitmentsLower.includes("clean")) {
+        responsibilities.push("home");
+      }
+      if (commitmentsLower.includes("family") || commitmentsLower.includes("kid") || commitmentsLower.includes("child") || commitmentsLower.includes("parent")) {
+        responsibilities.push("family");
+      }
+
+      const wellnessFocus: string[] = [];
+      if (onboardingData.physicalGoals) wellnessFocus.push("energy");
+      if (onboardingData.mentalGoals) wellnessFocus.push("focus");
+      if (onboardingData.emotionalGoals) wellnessFocus.push("emotional");
+      if (onboardingData.spiritualGoals) wellnessFocus.push("purpose");
+      if (onboardingData.socialGoals) wellnessFocus.push("connection");
+
+      const peakTime = onboardingData.wakeTime?.toLowerCase() || "";
+      const peakMotivationTime = peakTime.includes("5") || peakTime.includes("6") || peakTime.includes("early") 
+        ? "morning" 
+        : peakTime.includes("7") || peakTime.includes("8") 
+          ? "morning" 
+          : "varies";
+
+      const freeTimeLower = onboardingData.freeTimeHours?.toLowerCase() || "";
+      let freeTimeEnum = "2-4";
+      if (freeTimeLower.includes("less than") || freeTimeLower.includes("30 min") || freeTimeLower.includes("under 1") || freeTimeLower.includes("no time")) {
+        freeTimeEnum = "less-1";
+      } else if (freeTimeLower.includes("1-2") || freeTimeLower.includes("one to two") || freeTimeLower.includes("couple") || freeTimeLower.includes("1 hour") || freeTimeLower.includes("an hour")) {
+        freeTimeEnum = "1-2";
+      } else if (freeTimeLower.includes("2-4") || freeTimeLower.includes("two to four") || freeTimeLower.includes("few hours") || freeTimeLower.includes("2 hour") || freeTimeLower.includes("3 hour")) {
+        freeTimeEnum = "2-4";
+      } else if (freeTimeLower.includes("4+") || freeTimeLower.includes("more than 4") || freeTimeLower.includes("lot of") || freeTimeLower.includes("plenty") || freeTimeLower.includes("5") || freeTimeLower.includes("6")) {
+        freeTimeEnum = "4-plus";
+      }
+
       return apiRequest("POST", "/api/onboarding/complete", {
-        responsibilities: onboardingData.selectedAreas,
-        priorities: onboardingData.wellnessFocus,
-        freeTimeHours: onboardingData.freeTimeHours,
-        peakMotivationTime: onboardingData.peakMotivationTime,
-        wellnessFocus: onboardingData.wellnessFocus,
-        systemName: onboardingData.systemName,
-        lifeAreaDetails: onboardingData.lifeAreaDetails,
-        shortTermGoals: onboardingData.shortTermGoals,
-        longTermGoals: onboardingData.longTermGoals,
-        relationshipGoals: onboardingData.relationshipGoals,
+        responsibilities,
+        priorities: wellnessFocus,
+        freeTimeHours: freeTimeEnum,
+        peakMotivationTime,
+        wellnessFocus,
+        systemName: onboardingData.systemName || "My Life System",
+        lifeAreaDetails: {
+          schedule: { goals: onboardingData.currentSchedule, schedule: onboardingData.currentSchedule, challenges: "" },
+          work: { goals: onboardingData.workSchedule, schedule: onboardingData.workSchedule, challenges: "" },
+          health: { goals: onboardingData.physicalGoals, schedule: `Wake: ${onboardingData.wakeTime}, Sleep: ${onboardingData.sleepTime}`, challenges: "" },
+          relationships: { goals: onboardingData.socialGoals, schedule: onboardingData.commitments, challenges: "" },
+          financial: { goals: onboardingData.financialGoals, schedule: "", challenges: "" },
+          nutrition: { goals: onboardingData.dietaryNeeds, schedule: onboardingData.mealPreferences, challenges: "" },
+          commitments: { goals: onboardingData.commitments, schedule: onboardingData.freeTimeHours, challenges: "" },
+        },
+        shortTermGoals: `Current routine: ${onboardingData.currentSchedule}. Physical: ${onboardingData.physicalGoals}. Mental: ${onboardingData.mentalGoals}. Emotional: ${onboardingData.emotionalGoals}`,
+        longTermGoals: `Spiritual: ${onboardingData.spiritualGoals}. Social: ${onboardingData.socialGoals}. Financial: ${onboardingData.financialGoals}`,
+        relationshipGoals: onboardingData.socialGoals,
+        conversationData: onboardingData,
       });
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to your wellness journey!",
-        description: "Your personalized life system is ready.",
+        title: "Your life system is ready!",
+        description: "Let's start building your best life.",
       });
       setLocation("/dashboard");
     },
@@ -118,443 +225,132 @@ export function OnboardingFlow() {
         description: "Please try again.",
         variant: "destructive",
       });
+      setIsGenerating(false);
     },
   });
 
-  const toggleArea = (areaId: string) => {
-    if (data.selectedAreas.includes(areaId)) {
-      setData({ 
-        ...data, 
-        selectedAreas: data.selectedAreas.filter((a) => a !== areaId),
-        lifeAreaDetails: Object.fromEntries(
-          Object.entries(data.lifeAreaDetails).filter(([key]) => key !== areaId)
-        )
-      });
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    const userMessage = input.trim();
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    
+    const currentField = ONBOARDING_STAGES[stage].field as keyof OnboardingData;
+    setData((prev) => ({ ...prev, [currentField]: userMessage }));
+    setInput("");
+
+    if (stage < ONBOARDING_STAGES.length - 1) {
+      setTimeout(() => {
+        const nextStage = stage + 1;
+        setStage(nextStage);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: ONBOARDING_STAGES[nextStage].question },
+        ]);
+      }, 500);
     } else {
-      setData({ 
-        ...data, 
-        selectedAreas: [...data.selectedAreas, areaId],
-        lifeAreaDetails: {
-          ...data.lifeAreaDetails,
-          [areaId]: { goals: "", schedule: "", challenges: "" }
-        }
-      });
+      setIsGenerating(true);
+      const finalData = { ...data, [currentField]: userMessage };
+      
+      setTimeout(() => {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `Perfect! I'm now creating "${finalData.systemName || "Your Life System"}" - a personalized routine with your schedule, wellness goals, and meal planning built in. This will include morning rituals, work blocks, evening wind-down, meal prep times, and activities aligned with all your goals. Let me put it all together for you...`,
+          },
+        ]);
+        
+        setTimeout(() => {
+          submitMutation.mutate(finalData);
+        }, 1500);
+      }, 500);
     }
   };
 
-  const updateAreaDetail = (areaId: string, field: keyof LifeAreaData, value: string) => {
-    setData({
-      ...data,
-      lifeAreaDetails: {
-        ...data.lifeAreaDetails,
-        [areaId]: {
-          ...data.lifeAreaDetails[areaId],
-          [field]: value,
-        },
-      },
-    });
-  };
-
-  const toggleWellnessFocus = (value: string) => {
-    if (data.wellnessFocus.includes(value)) {
-      setData({ ...data, wellnessFocus: data.wellnessFocus.filter((v) => v !== value) });
-    } else if (data.wellnessFocus.length < 3) {
-      setData({ ...data, wellnessFocus: [...data.wellnessFocus, value] });
-    }
-  };
-
-  const canProceed = () => {
-    switch (step) {
-      case 0: return true;
-      case 1: return data.selectedAreas.length > 0;
-      case 2: return true;
-      case 3: return data.shortTermGoals.trim() !== "" || data.longTermGoals.trim() !== "";
-      case 4: return data.freeTimeHours !== "" && data.peakMotivationTime !== "";
-      case 5: return data.wellnessFocus.length > 0;
-      case 6: return true;
-      default: return false;
-    }
-  };
-
-  const handleNext = () => {
-    if (step < totalSteps - 1) {
-      setStep(step + 1);
-    } else {
-      submitMutation.mutate(data);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 0) {
-      setStep(step - 1);
-    }
-  };
-
-  const renderStep = () => {
-    switch (step) {
-      case 0:
-        return (
-          <div className="text-center space-y-8">
-            <div className="w-16 h-16 rounded-full bg-chart-1/10 flex items-center justify-center mx-auto">
-              <Sparkles className="h-8 w-8 text-chart-1" />
-            </div>
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4" data-testid="text-onboarding-welcome">
-                Let's build your life system
-              </h2>
-              <p className="text-xl text-muted-foreground font-serif leading-relaxed max-w-lg mx-auto" data-testid="text-onboarding-intro">
-                I'm going to help you organize every area of your life - work, health, relationships, and more. 
-                Let's start by understanding what matters to you.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-              {[Target, Briefcase, Heart, Calendar].map((Icon, i) => (
-                <div key={i} className="p-4 rounded-md bg-muted/50 flex flex-col items-center gap-2">
-                  <Icon className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {["Goals", "Work", "Wellness", "Schedule"][i]}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 1:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-1-title">
-                What areas of life do you want to organize?
-              </h2>
-              <p className="text-muted-foreground">Select all that apply to your life right now</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {LIFE_AREAS.map((area) => {
-                const Icon = area.icon;
-                return (
-                  <button
-                    key={area.id}
-                    onClick={() => toggleArea(area.id)}
-                    className={`p-4 rounded-md text-left border transition-all hover-elevate ${
-                      data.selectedAreas.includes(area.id)
-                        ? "border-chart-1 bg-chart-1/10"
-                        : "border-border"
-                    }`}
-                    data-testid={`button-area-${area.id}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-md flex items-center justify-center ${
-                        data.selectedAreas.includes(area.id)
-                          ? "bg-chart-1 text-primary-foreground"
-                          : "bg-muted"
-                      }`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{area.label}</span>
-                          {data.selectedAreas.includes(area.id) && (
-                            <Check className="h-4 w-4 text-chart-1" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{area.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-2-title">
-                Tell me more about each area
-              </h2>
-              <p className="text-muted-foreground">What are your goals and current challenges?</p>
-            </div>
-            <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2">
-              {data.selectedAreas.map((areaId) => {
-                const area = LIFE_AREAS.find((a) => a.id === areaId);
-                const Icon = area?.icon || Target;
-                return (
-                  <div key={areaId} className="p-4 rounded-md border border-border space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-5 w-5 text-chart-1" />
-                      <span className="font-semibold">{area?.label}</span>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-sm text-muted-foreground mb-1 block">
-                          What are your goals here?
-                        </label>
-                        <Textarea
-                          placeholder={`e.g., ${area?.id === "work" ? "Complete project X, get promotion" : area?.id === "health" ? "Exercise 3x/week, better sleep" : "Your goals..."}`}
-                          value={data.lifeAreaDetails[areaId]?.goals || ""}
-                          onChange={(e) => updateAreaDetail(areaId, "goals", e.target.value)}
-                          className="resize-none"
-                          rows={2}
-                          data-testid={`input-${areaId}-goals`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground mb-1 block">
-                          Current schedule or commitments?
-                        </label>
-                        <Input
-                          placeholder={`e.g., ${area?.id === "work" ? "Mon-Fri 9-5" : area?.id === "school" ? "Classes MWF" : "When do you focus on this?"}`}
-                          value={data.lifeAreaDetails[areaId]?.schedule || ""}
-                          onChange={(e) => updateAreaDetail(areaId, "schedule", e.target.value)}
-                          data-testid={`input-${areaId}-schedule`}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {data.selectedAreas.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  Go back and select at least one life area to continue.
-                </p>
-              )}
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-3-title">
-                What goals do you want to accomplish?
-              </h2>
-              <p className="text-muted-foreground">Think about both immediate and long-term aspirations</p>
-            </div>
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-5 w-5 text-chart-2" />
-                  <label className="font-medium">Short-term goals (next few weeks/months)</label>
-                </div>
-                <Textarea
-                  placeholder="What do you want to achieve soon? List your immediate priorities..."
-                  value={data.shortTermGoals}
-                  onChange={(e) => setData({ ...data, shortTermGoals: e.target.value })}
-                  className="resize-none"
-                  rows={4}
-                  data-testid="input-short-term-goals"
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="h-5 w-5 text-chart-1" />
-                  <label className="font-medium">Long-term goals (this year and beyond)</label>
-                </div>
-                <Textarea
-                  placeholder="What's your bigger picture? Where do you want to be in 1-5 years?"
-                  value={data.longTermGoals}
-                  onChange={(e) => setData({ ...data, longTermGoals: e.target.value })}
-                  className="resize-none"
-                  rows={4}
-                  data-testid="input-long-term-goals"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-4-title">
-                Let's understand your time and energy
-              </h2>
-              <p className="text-muted-foreground">This helps me suggest the best schedule for you</p>
-            </div>
-            <div>
-              <p className="font-medium mb-4">How much free time do you usually have each day?</p>
-              <div className="grid grid-cols-2 gap-4">
-                {FREE_TIME_OPTIONS.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setData({ ...data, freeTimeHours: item.id })}
-                    className={`p-4 rounded-md text-center border transition-all hover-elevate ${
-                      data.freeTimeHours === item.id
-                        ? "border-chart-1 bg-chart-1/10"
-                        : "border-border"
-                    }`}
-                    data-testid={`button-freetime-${item.id}`}
-                  >
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="font-medium mb-4">When do you feel most motivated and productive?</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {MOTIVATION_TIME.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setData({ ...data, peakMotivationTime: item.id })}
-                    className={`p-4 rounded-md text-center border transition-all hover-elevate ${
-                      data.peakMotivationTime === item.id
-                        ? "border-chart-1 bg-chart-1/10"
-                        : "border-border"
-                    }`}
-                    data-testid={`button-motivation-${item.id}`}
-                  >
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-5-title">
-                What would you like to improve or feel more of?
-              </h2>
-              <p className="text-muted-foreground">Choose up to 3 wellness focus areas</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {WELLNESS_FOCUS.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => toggleWellnessFocus(item.id)}
-                  disabled={data.wellnessFocus.length >= 3 && !data.wellnessFocus.includes(item.id)}
-                  className={`p-4 rounded-md text-center border transition-all hover-elevate ${
-                    data.wellnessFocus.includes(item.id)
-                      ? "border-chart-1 bg-chart-1/10"
-                      : "border-border"
-                  } ${data.wellnessFocus.length >= 3 && !data.wellnessFocus.includes(item.id) ? "opacity-50 cursor-not-allowed" : ""}`}
-                  data-testid={`button-focus-${item.id}`}
-                >
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-center text-sm text-muted-foreground">
-              {data.wellnessFocus.length}/3 selected
-            </p>
-          </div>
-        );
-
-      case 6:
-        return (
-          <div className="space-y-8">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-chart-2/10 flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="h-8 w-8 text-chart-2" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-semibold mb-2" data-testid="text-step-6-title">
-                Name your life system
-              </h2>
-              <p className="text-muted-foreground mb-6">Give it a name that inspires you</p>
-            </div>
-            <div className="max-w-md mx-auto">
-              <Input
-                placeholder="e.g., My Life Blueprint, Flow State, Balance Mode..."
-                value={data.systemName}
-                onChange={(e) => setData({ ...data, systemName: e.target.value })}
-                className="text-center text-lg py-6"
-                data-testid="input-system-name"
-              />
-              <div className="flex flex-wrap gap-2 justify-center mt-4">
-                {["Life Blueprint", "Balance Mode", "Growth Journey", "Flow State"].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setData({ ...data, systemName: suggestion })}
-                    className="px-3 py-1 text-sm rounded-full border border-border hover-elevate"
-                    data-testid={`button-suggestion-${suggestion.toLowerCase().replace(/ /g, "-")}`}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-8 p-4 rounded-md bg-muted/50">
-              <p className="text-center text-sm text-muted-foreground">
-                Based on your responses, I'll create a personalized daily planner, suggest habits, 
-                and help you track progress across all your life areas.
-              </p>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+  const progress = ((stage + 1) / ONBOARDING_STAGES.length) * 100;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-chart-1" />
-              <span className="font-semibold">Wellness Lifestyle AI</span>
-            </div>
-            <span className="text-sm text-muted-foreground" data-testid="text-step-indicator">
-              Step {step + 1} of {totalSteps}
-            </span>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl h-[80vh] flex flex-col">
+        <div className="p-4 border-b flex items-center gap-3">
+          <div className="p-2 rounded-full bg-chart-1/10">
+            <Sparkles className="w-5 h-5 text-chart-1" />
           </div>
-          <Progress value={progress} className="h-2" data-testid="progress-onboarding" />
+          <div className="flex-1">
+            <h2 className="font-semibold" data-testid="text-onboarding-title">Creating Your Life System</h2>
+            <p className="text-sm text-muted-foreground">Step {stage + 1} of {ONBOARDING_STAGES.length}</p>
+          </div>
+          <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-chart-1 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
-      </header>
 
-      <main className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-2xl">
-          <CardContent className="p-8">
-            {renderStep()}
-          </CardContent>
-        </Card>
-      </main>
+        <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+            <div className="space-y-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] p-4 rounded-2xl ${
+                      message.role === "user"
+                        ? "bg-chart-1 text-primary-foreground"
+                        : "bg-muted"
+                    }`}
+                    data-testid={`message-onboarding-${index}`}
+                  >
+                    <p className={message.role === "assistant" ? "font-serif leading-relaxed" : ""}>
+                      {message.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {isGenerating && (
+                <div className="flex justify-start">
+                  <div className="bg-muted p-4 rounded-2xl flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-muted-foreground">Building your life system...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
 
-      <footer className="p-6">
-        <div className="max-w-2xl mx-auto flex justify-between gap-4">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={step === 0}
-            className="rounded-full"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!canProceed() || submitMutation.isPending}
-            className="rounded-full"
-            data-testid="button-next"
-          >
-            {submitMutation.isPending ? (
-              "Creating your system..."
-            ) : step === totalSteps - 1 ? (
-              <>
-                Complete Setup
-                <Check className="ml-2 h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </div>
-      </footer>
+          <div className="p-4 border-t">
+            <div className="flex gap-2">
+              <Textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your response..."
+                className="resize-none min-h-[44px] max-h-32"
+                disabled={isGenerating}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                data-testid="input-onboarding-message"
+              />
+              <Button
+                size="icon"
+                onClick={handleSend}
+                disabled={!input.trim() || isGenerating}
+                data-testid="button-send-onboarding"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

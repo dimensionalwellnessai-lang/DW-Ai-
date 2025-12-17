@@ -72,35 +72,58 @@ export async function generateLifeSystemRecommendations(profile: {
   lifeAreaDetails?: Record<string, { goals?: string; schedule?: string; challenges?: string }>;
   shortTermGoals?: string;
   longTermGoals?: string;
+  conversationData?: {
+    currentSchedule?: string;
+    wakeTime?: string;
+    workSchedule?: string;
+    commitments?: string;
+    physicalGoals?: string;
+    mentalGoals?: string;
+    emotionalGoals?: string;
+    spiritualGoals?: string;
+    socialGoals?: string;
+    financialGoals?: string;
+    dietaryNeeds?: string;
+    mealPreferences?: string;
+  };
 }): Promise<{
   suggestedHabits: { title: string; description: string; frequency: string }[];
   suggestedGoals: { title: string; description: string; wellnessDimension: string }[];
   weeklyScheduleSuggestions: string[];
+  scheduleBlocks?: { time: string; activity: string; category: string }[];
+  mealSuggestions?: string[];
 }> {
-  const lifeAreasInfo = profile.lifeAreaDetails 
-    ? Object.entries(profile.lifeAreaDetails)
-        .map(([area, details]) => `${area}: Goals - ${details.goals || 'not specified'}, Schedule - ${details.schedule || 'not specified'}`)
-        .join('\n')
-    : 'No specific life areas provided';
+  const conv = profile.conversationData || {};
+  
+  const prompt = `Based on this comprehensive user profile, generate a personalized life system:
 
-  const prompt = `Based on this user profile, generate personalized wellness recommendations:
+CURRENT ROUTINE:
+${conv.currentSchedule || 'Not specified'}
 
-Life Areas: ${profile.responsibilities.join(", ")}
-Personal priorities: ${profile.priorities.join(", ")}
-Daily free time: ${profile.freeTimeHours}
-Peak motivation time: ${profile.peakMotivationTime}
-Wellness focus areas: ${profile.wellnessFocus.join(", ")}
+SLEEP/WAKE: ${conv.wakeTime || 'Not specified'}
+WORK SCHEDULE: ${conv.workSchedule || 'Not specified'}
+OTHER COMMITMENTS: ${conv.commitments || 'Not specified'}
 
-Life Area Details:
-${lifeAreasInfo}
+WELLNESS GOALS:
+- Physical: ${conv.physicalGoals || profile.shortTermGoals || 'Not specified'}
+- Mental: ${conv.mentalGoals || 'Not specified'}
+- Emotional: ${conv.emotionalGoals || 'Not specified'}
+- Spiritual: ${conv.spiritualGoals || 'Not specified'}
+- Social: ${conv.socialGoals || profile.longTermGoals || 'Not specified'}
+- Financial: ${conv.financialGoals || 'Not specified'}
 
-Short-term goals: ${profile.shortTermGoals || 'Not specified'}
-Long-term goals: ${profile.longTermGoals || 'Not specified'}
+DIETARY INFO:
+- Needs/Restrictions: ${conv.dietaryNeeds || 'None specified'}
+- Meal Preferences: ${conv.mealPreferences || 'Not specified'}
 
-Please provide JSON with:
-1. suggestedHabits: array of 3-5 habits with title, description, and frequency (daily/weekly)
-2. suggestedGoals: array of 3-5 goals with title, description, and wellnessDimension
-3. weeklyScheduleSuggestions: array of 3-5 scheduling tips
+WELLNESS FOCUS: ${profile.wellnessFocus?.join(", ") || 'General wellness'}
+
+Generate a comprehensive life system with:
+1. suggestedHabits: 5-7 daily/weekly habits with title, description, frequency
+2. suggestedGoals: 5-7 goals covering all wellness dimensions (physical, mental, emotional, spiritual, social, financial) with title, description, wellnessDimension
+3. weeklyScheduleSuggestions: 5-7 specific scheduling recommendations
+4. scheduleBlocks: 8-10 time blocks for an ideal day (e.g., "6:00 AM - Morning Ritual", "7:00 AM - Workout") with time, activity, and category (morning, work, wellness, evening)
+5. mealSuggestions: 3-5 meal prep or nutrition suggestions based on their dietary needs
 
 Respond with valid JSON only.`;
 
@@ -123,18 +146,43 @@ Respond with valid JSON only.`;
     console.error("Failed to generate recommendations:", error);
     return {
       suggestedHabits: [
-        { title: "Morning Mindfulness", description: "Start each day with 5 minutes of breathing exercises", frequency: "daily" },
-        { title: "Hydration Check", description: "Drink 8 glasses of water throughout the day", frequency: "daily" },
-        { title: "Evening Reflection", description: "Journal about your day before bed", frequency: "daily" },
+        { title: "Morning Ritual: Center & Breathe", description: "Start each day with 5-10 minutes of breathing and centering", frequency: "daily" },
+        { title: "Movement / Body Activation", description: "45-minute workout or body activation session", frequency: "daily" },
+        { title: "Protein-Rich Breakfast", description: "Fuel your body with a nourishing breakfast", frequency: "daily" },
+        { title: "Evening Ritual: Ground & Release", description: "Wind down with grounding practices", frequency: "daily" },
+        { title: "Meal Prep & Review", description: "Prepare meals and review tomorrow's schedule", frequency: "daily" },
+        { title: "Wind Down: No Screens", description: "Screen-free time before bed", frequency: "daily" },
       ],
       suggestedGoals: [
-        { title: "Build a consistent morning routine", description: "Create a sustainable way to start each day", wellnessDimension: "mental" },
-        { title: "Improve energy levels", description: "Feel more energized throughout the day", wellnessDimension: "physical" },
+        { title: "Build consistent morning routine", description: "Create a sustainable way to start each day", wellnessDimension: "mental" },
+        { title: "Improve physical energy", description: "Feel more energized through movement and nutrition", wellnessDimension: "physical" },
+        { title: "Emotional clarity", description: "Develop emotional awareness and regulation", wellnessDimension: "emotional" },
+        { title: "Spiritual connection", description: "Deepen spiritual practice and reflection", wellnessDimension: "spiritual" },
+        { title: "Strengthen relationships", description: "Nurture meaningful connections", wellnessDimension: "social" },
+        { title: "Financial wellness", description: "Build healthy financial habits", wellnessDimension: "financial" },
       ],
       weeklyScheduleSuggestions: [
         "Schedule your most important wellness activities during your peak energy hours",
         "Block off transition time between responsibilities",
         "Include at least one full rest day per week",
+        "Dedicate weekend time for social connections and nature",
+        "Plan a weekly spiritual deep dive and reflection session",
+      ],
+      scheduleBlocks: [
+        { time: "6:00 AM", activity: "Morning Ritual: Center & Breathe", category: "morning" },
+        { time: "7:00 AM", activity: "Workout / Body Activation", category: "wellness" },
+        { time: "8:00 AM", activity: "Breakfast / Protein Fuel", category: "morning" },
+        { time: "9:00 AM", activity: "Work Block", category: "work" },
+        { time: "8:00 PM", activity: "Evening Ritual: Ground & Release", category: "evening" },
+        { time: "9:00 PM", activity: "Meal Prep / Review Next Day", category: "evening" },
+        { time: "10:00 PM", activity: "Wind Down + No Screens", category: "evening" },
+        { time: "11:00 PM", activity: "Bedtime Target", category: "evening" },
+      ],
+      mealSuggestions: [
+        "Prep protein-rich breakfasts on Sunday for the week",
+        "Keep healthy snacks readily available for energy dips",
+        "Batch cook grains and vegetables for easy meal assembly",
+        "Stay hydrated with 8+ glasses of water daily",
       ],
     };
   }

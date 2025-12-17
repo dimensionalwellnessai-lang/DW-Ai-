@@ -18,11 +18,66 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Calendar, Plus, Trash2, Clock } from "lucide-react";
+import { Calendar, Plus, Trash2, Clock, Download } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { ScheduleBlock, InsertScheduleBlock } from "@shared/schema";
+import type { ScheduleBlock, InsertScheduleBlock, LifeSystem } from "@shared/schema";
+
+function generateICS(blocks: ScheduleBlock[], systemName: string): string {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  
+  let icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:${systemName}
+`;
+
+  blocks.forEach((block) => {
+    const blockDate = new Date(startOfWeek);
+    blockDate.setDate(startOfWeek.getDate() + (block.dayOfWeek || 0));
+    
+    const [startHour, startMin] = (block.startTime || "09:00").split(":").map(Number);
+    const [endHour, endMin] = (block.endTime || "10:00").split(":").map(Number);
+    
+    const startDate = new Date(blockDate);
+    startDate.setHours(startHour, startMin, 0, 0);
+    
+    const endDate = new Date(blockDate);
+    endDate.setHours(endHour, endMin, 0, 0);
+    
+    const formatDate = (d: Date) => {
+      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    };
+
+    icsContent += `BEGIN:VEVENT
+DTSTART:${formatDate(startDate)}
+DTEND:${formatDate(endDate)}
+RRULE:FREQ=WEEKLY;BYDAY=${["SU", "MO", "TU", "WE", "TH", "FR", "SA"][block.dayOfWeek || 0]}
+SUMMARY:${block.title}
+DESCRIPTION:Category: ${block.category || "general"}
+END:VEVENT
+`;
+  });
+
+  icsContent += "END:VCALENDAR";
+  return icsContent;
+}
+
+function downloadICS(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 const DAYS = [
   { value: 0, label: "Sunday" },
@@ -47,6 +102,11 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
   return `${hour}:00`;
 });
 
+interface DashboardData {
+  systemName: string;
+  lifeSystem: LifeSystem | null;
+}
+
 export function SchedulePage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -61,6 +121,10 @@ export function SchedulePage() {
 
   const { data: scheduleBlocks = [], isLoading } = useQuery<ScheduleBlock[]>({
     queryKey: ["/api/schedule"],
+  });
+
+  const { data: dashboardData } = useQuery<DashboardData>({
+    queryKey: ["/api/dashboard"],
   });
 
   const createMutation = useMutation({
@@ -128,15 +192,32 @@ export function SchedulePage() {
           <h1 className="text-3xl font-bold" data-testid="text-schedule-title">Schedule</h1>
           <p className="text-muted-foreground">Plan your week with intentional time blocks</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setFormData((prev) => ({ ...prev, dayOfWeek: selectedDay }));
-            }} data-testid="button-add-block">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Time Block
+        <div className="flex gap-2 flex-wrap">
+          {scheduleBlocks.length > 0 && (
+            <Button 
+              variant="outline"
+              onClick={() => {
+                const systemName = dashboardData?.systemName || "Life Wellness Calendar";
+                const safeName = systemName.replace(/[^a-zA-Z0-9]/g, "_");
+                const ics = generateICS(scheduleBlocks, systemName);
+                downloadICS(ics, `${safeName}_Calendar.ics`);
+                toast({ title: "Calendar exported!", description: "Import the .ics file into your calendar app" });
+              }}
+              data-testid="button-export-calendar"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export Calendar
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setFormData((prev) => ({ ...prev, dayOfWeek: selectedDay }));
+              }} data-testid="button-add-block">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Time Block
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Time Block</DialogTitle>
@@ -239,7 +320,8 @@ export function SchedulePage() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">

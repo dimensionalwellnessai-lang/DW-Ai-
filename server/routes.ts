@@ -112,6 +112,8 @@ export async function registerRoutes(
         relationshipGoals 
       } = req.body;
 
+      const { conversationData } = req.body;
+      
       await storage.createOnboardingProfile({
         userId,
         responsibilities: responsibilities || [],
@@ -123,6 +125,7 @@ export async function registerRoutes(
         shortTermGoals: shortTermGoals || "",
         longTermGoals: longTermGoals || "",
         relationshipGoals: relationshipGoals || "",
+        conversationData: conversationData || null,
       });
 
       const recommendations = await generateLifeSystemRecommendations({
@@ -134,6 +137,7 @@ export async function registerRoutes(
         lifeAreaDetails,
         shortTermGoals,
         longTermGoals,
+        conversationData,
       });
 
       await storage.createLifeSystem({
@@ -142,6 +146,8 @@ export async function registerRoutes(
         weeklySchedule: recommendations.weeklyScheduleSuggestions,
         suggestedHabits: recommendations.suggestedHabits,
         suggestedTools: [],
+        scheduleBlocks: recommendations.scheduleBlocks || [],
+        mealSuggestions: recommendations.mealSuggestions || [],
       });
 
       for (const habit of recommendations.suggestedHabits) {
