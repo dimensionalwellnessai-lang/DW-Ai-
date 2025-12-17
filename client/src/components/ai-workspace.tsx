@@ -21,9 +21,7 @@ import {
   DollarSign,
   X,
   ChevronRight,
-  LogOut,
 } from "lucide-react";
-import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -171,14 +169,7 @@ export function AIWorkspace() {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" asChild data-testid="button-logout">
-              <Link href="/">
-                <LogOut className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+          <ThemeToggle />
         </header>
 
         <div className="flex-1 flex flex-col overflow-hidden p-4">

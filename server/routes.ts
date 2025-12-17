@@ -179,25 +179,14 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat", requireAuth, async (req, res) => {
+  app.post("/api/chat", async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const { message, context, conversationHistory } = req.body;
-      
-      const user = await storage.getUser(userId);
-      const lifeSystem = await storage.getLifeSystem(userId);
-      const profile = await storage.getOnboardingProfile(userId);
-      
-      const enhancedContext = {
-        systemName: user?.systemName || lifeSystem?.name,
-        wellnessFocus: profile?.wellnessFocus || [],
-        peakMotivationTime: profile?.peakMotivationTime || undefined,
-      };
+      const { message, conversationHistory } = req.body;
       
       const response = await generateChatResponse(
         message,
         conversationHistory || [],
-        enhancedContext
+        {}
       );
       
       res.json({ response, updatedCategory: null });
@@ -374,33 +363,6 @@ export async function registerRoutes(
     res.json(checkIns);
   });
 
-  app.post("/api/chat", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const { message, messages } = req.body;
-
-      const user = await storage.getUser(userId);
-      const profile = await storage.getOnboardingProfile(userId);
-
-      const reply = await generateChatResponse(message, messages || [], {
-        systemName: user?.systemName || undefined,
-        wellnessFocus: profile?.wellnessFocus || undefined,
-        peakMotivationTime: profile?.peakMotivationTime || undefined,
-      });
-
-      await storage.createCheckIn({
-        userId,
-        type: "chat",
-        messages: [...(messages || []), { role: "user", content: message }, { role: "assistant", content: reply }],
-        aiResponse: reply,
-      });
-
-      res.json({ reply });
-    } catch (error) {
-      console.error("Chat error:", error);
-      res.status(500).json({ error: "Failed to get AI response" });
-    }
-  });
 
   app.get("/api/progress", requireAuth, async (req, res) => {
     try {
