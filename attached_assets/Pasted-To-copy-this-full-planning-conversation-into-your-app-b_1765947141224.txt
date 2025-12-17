@@ -1,0 +1,115 @@
+To copy this full planning conversation into your app builder, developer workspace, or onboarding setup, you have a couple of good options:
+
+⸻
+
+🔹 OPTION 1: Download & Open the File
+
+You can download the .docx version I made for you here:
+📄 Download CoreSync Wellness AI Conversation￼
+	•	Open it in Microsoft Word, Google Docs, or any text editor.
+	•	Copy and paste individual sections (like the onboarding prompts or flow logic) directly into your builder or app planning tool.
+
+⸻
+
+🔹 OPTION 2: Pasteable Text Summary (Start Here if You Need a Quick Copy)
+
+Here’s a condensed, ready-to-copy version of your enhanced onboarding flow:
+
+⸻
+
+🧠 AI-Powered Life System Flow for CoreSync (Copy Version)
+
+🟦 Intro Message
+“Let’s build a life system that supports the real you — not just the ideal you.
+I just need to understand how your life works right now.”
+
+⸻
+
+🟦 Step 1: Get to Know Their Life
+Prompt: What are your current responsibilities or obligations?
+(check all that apply)
+	•	Full-time work
+	•	Part-time work
+	•	School/classes
+	•	Parenting/caregiving
+	•	Health/medical appointments
+	•	Household management
+	•	Other: [free entry]
+
+Prompt: What’s important to you that isn’t an obligation?
+(wellness priorities, free response + tapable choices)
+	•	My fitness or energy
+	•	My mindset or emotions
+	•	Time to create or dream
+	•	Healing or rebuilding
+	•	Financial clarity
+	•	Relationships / connection
+	•	Self-worth
+	•	Other: [free entry]
+
+Prompt: How much free time do you usually have in a day?
+	•	Less than 1 hr
+	•	1–2 hrs
+	•	2–4 hrs
+	•	4+ hrs
+
+Prompt: When do you usually feel most clear or motivated?
+	•	Morning
+	•	Afternoon
+	•	Evening
+	•	It changes
+	•	I haven’t felt clear in a while
+
+⸻
+
+🟦 Step 2: Wellness Focus Discovery
+“What would you like to improve, build, or feel more of right now?”
+
+Users pick up to 3:
+	•	Physical energy & strength
+	•	Emotional clarity
+	•	Better sleep
+	•	Focus/productivity
+	•	Purpose or motivation
+	•	Financial flow
+	•	Creative spark
+	•	Connection or social energy
+	•	Just feeling more like myself again
+
+⸻
+
+🟦 Step 3: AI Generates the Life System
+🧠 AI outputs:
+	•	Weekly schedule with recommended blocks
+	•	3–5 active goals aligned to wellness dimensions
+	•	Suggested habits/micro-routines
+	•	Trackers for mood, energy, and clarity
+	•	Optional tools: meal prep, journaling, budget, sleep routine
+
+“Here’s your personalized life system — built to fit your real life, right now.”
+
+⸻
+
+🟦 Step 4: Personalize & Name It
+“Would you like to name your system?”
+Examples: Reset Mode, Elevate Blueprint, My Flow, Vision Life
+
+⸻
+
+🟦 Ongoing AI Support
+Daily:
+	•	“How’s your energy today?”
+	•	“Want to review your habits?”
+
+Weekly:
+	•	“What worked for you this week?”
+	•	“Anything you want to change or reset?”
+
+⸻
+
+Let me know if you’d like this converted into:
+	•	A PDF
+	•	A copy-paste Notion board
+	•	A developer-ready file (JSON or .txt format)
+
+Or if you want help with the “Start Building” step you saw earlier (e.g., Glide, FlutterFlow, or Bubble), I can guide that too.
