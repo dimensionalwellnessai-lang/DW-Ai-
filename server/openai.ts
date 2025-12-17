@@ -118,3 +118,162 @@ Respond with valid JSON only.`;
     };
   }
 }
+
+export async function generateDashboardInsight(userData: {
+  moodLogs: { energyLevel: number; moodLevel: number; clarityLevel: number | null; createdAt: Date | null }[];
+  habits: { title: string; streak: number }[];
+  goals: { title: string; progress: number | null }[];
+  peakMotivationTime?: string;
+  wellnessFocus?: string[];
+}): Promise<string> {
+  if (userData.moodLogs.length === 0 && userData.habits.length === 0) {
+    return "Start tracking your wellness journey! Log your mood and complete habits to get personalized insights based on your patterns.";
+  }
+
+  const avgEnergy = userData.moodLogs.length > 0 
+    ? (userData.moodLogs.reduce((sum, m) => sum + m.energyLevel, 0) / userData.moodLogs.length).toFixed(1)
+    : null;
+  
+  const avgMood = userData.moodLogs.length > 0
+    ? (userData.moodLogs.reduce((sum, m) => sum + m.moodLevel, 0) / userData.moodLogs.length).toFixed(1)
+    : null;
+
+  const topStreakHabit = userData.habits.length > 0
+    ? userData.habits.reduce((max, h) => (h.streak || 0) > (max.streak || 0) ? h : max, userData.habits[0])
+    : null;
+
+  const prompt = `You are a wellness AI providing a brief, personalized insight for a user's dashboard.
+
+User data:
+- Recent mood logs (last 7 days): ${userData.moodLogs.length} entries
+- Average energy level: ${avgEnergy ?? 'No data'}
+- Average mood level: ${avgMood ?? 'No data'}
+- Number of habits: ${userData.habits.length}
+${topStreakHabit ? `- Best habit streak: "${topStreakHabit.title}" with ${topStreakHabit.streak} day streak` : ''}
+- Number of goals: ${userData.goals.length}
+${userData.peakMotivationTime ? `- Peak motivation time: ${userData.peakMotivationTime}` : ''}
+${userData.wellnessFocus?.length ? `- Wellness focus: ${userData.wellnessFocus.join(', ')}` : ''}
+
+Provide ONE brief, actionable insight (2-3 sentences max) that:
+1. References specific data from their patterns
+2. Gives a practical tip or encouragement
+3. Uses a warm, supportive tone
+
+Respond with just the insight text, no quotes or formatting.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      max_completion_tokens: 150,
+    });
+
+    return response.choices[0]?.message?.content || "Keep up your wellness journey! Check back after logging more data for personalized insights.";
+  } catch (error) {
+    console.error("Failed to generate insight:", error);
+    return "Your wellness journey is unique. Continue logging your mood and habits to unlock personalized AI insights tailored to your patterns.";
+  }
+}
+
+export async function generateFullAnalysis(userData: {
+  moodLogs: { energyLevel: number; moodLevel: number; clarityLevel: number | null; createdAt: Date | null }[];
+  habits: { title: string; streak: number }[];
+  goals: { title: string; progress: number | null; wellnessDimension: string | null }[];
+  peakMotivationTime?: string;
+  wellnessFocus?: string[];
+}): Promise<{
+  summary: string;
+  patterns: string[];
+  recommendations: string[];
+  strengths: string[];
+  areasToImprove: string[];
+}> {
+  if (userData.moodLogs.length === 0 && userData.habits.length === 0 && userData.goals.length === 0) {
+    return {
+      summary: "Start your wellness journey by tracking your mood, building habits, and setting goals. I'll analyze your patterns once you have more data.",
+      patterns: [],
+      recommendations: ["Log your mood daily to track energy patterns", "Create 2-3 simple habits to start building consistency", "Set one meaningful goal for each wellness area you care about"],
+      strengths: [],
+      areasToImprove: [],
+    };
+  }
+
+  const avgEnergy = userData.moodLogs.length > 0 
+    ? (userData.moodLogs.reduce((sum, m) => sum + m.energyLevel, 0) / userData.moodLogs.length).toFixed(1)
+    : null;
+  
+  const avgMood = userData.moodLogs.length > 0
+    ? (userData.moodLogs.reduce((sum, m) => sum + m.moodLevel, 0) / userData.moodLogs.length).toFixed(1)
+    : null;
+
+  const topHabits = userData.habits
+    .filter(h => (h.streak || 0) > 0)
+    .sort((a, b) => (b.streak || 0) - (a.streak || 0))
+    .slice(0, 3);
+
+  const completedGoals = userData.goals.filter(g => (g.progress || 0) >= 100);
+  const inProgressGoals = userData.goals.filter(g => (g.progress || 0) > 0 && (g.progress || 0) < 100);
+
+  const prompt = `You are a wellness AI analyst. Analyze this user's wellness data and provide comprehensive insights.
+
+User data:
+- Total mood logs: ${userData.moodLogs.length} entries
+- Average energy level: ${avgEnergy ?? 'No data yet'}
+- Average mood level: ${avgMood ?? 'No data yet'}
+- Total habits tracked: ${userData.habits.length}
+- Habits with active streaks: ${topHabits.map(h => `"${h.title}" (${h.streak} days)`).join(', ') || 'None yet'}
+- Total goals: ${userData.goals.length}
+- Completed goals: ${completedGoals.length}
+- In-progress goals: ${inProgressGoals.length}
+${userData.peakMotivationTime ? `- Peak motivation time: ${userData.peakMotivationTime}` : ''}
+${userData.wellnessFocus?.length ? `- Wellness focus areas: ${userData.wellnessFocus.join(', ')}` : ''}
+
+Provide a JSON response with:
+1. "summary": A 2-3 sentence personalized summary of their wellness journey
+2. "patterns": Array of 3-5 patterns you notice in their data
+3. "recommendations": Array of 3-5 actionable recommendations
+4. "strengths": Array of 2-4 things they're doing well
+5. "areasToImprove": Array of 2-4 areas that need attention
+
+Be specific, reference their actual data, and be encouraging but honest.
+Respond with valid JSON only.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No response from AI");
+    }
+
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Failed to generate analysis:", error);
+    return {
+      summary: "I've reviewed your wellness data. You're building good foundations with your tracking. Keep going!",
+      patterns: [
+        "Regular mood tracking helps identify trends",
+        "Habit consistency is key to long-term wellness",
+        "Goal setting provides direction and motivation"
+      ],
+      recommendations: [
+        "Log your mood at the same time each day for better pattern detection",
+        "Focus on maintaining your current habit streaks before adding new ones",
+        "Review your goals weekly to stay on track"
+      ],
+      strengths: [
+        "You're actively tracking your wellness",
+        "You're using tools to support your journey"
+      ],
+      areasToImprove: [
+        "Consider logging more consistently to get deeper insights",
+        "Connect your habits to your wellness goals"
+      ],
+    };
+  }
+}

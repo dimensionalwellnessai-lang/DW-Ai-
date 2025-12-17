@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
-import { generateChatResponse, generateLifeSystemRecommendations } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis } from "./openai";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -366,6 +366,75 @@ export async function registerRoutes(
       res.json({ moodLogs, goals, habits });
     } catch (error) {
       res.status(500).json({ error: "Failed to load progress data" });
+    }
+  });
+
+  app.get("/api/insight", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const moodLogs = await storage.getMoodLogs(userId);
+      const habits = await storage.getHabits(userId);
+      const goals = await storage.getGoals(userId);
+      const profile = await storage.getOnboardingProfile(userId);
+
+      const insight = await generateDashboardInsight({
+        moodLogs: moodLogs.slice(0, 7).map(m => ({
+          energyLevel: m.energyLevel,
+          moodLevel: m.moodLevel,
+          clarityLevel: m.clarityLevel,
+          createdAt: m.createdAt,
+        })),
+        habits: habits.map(h => ({
+          title: h.title,
+          streak: h.streak || 0,
+        })),
+        goals: goals.map(g => ({
+          title: g.title,
+          progress: g.progress,
+        })),
+        peakMotivationTime: profile?.peakMotivationTime || undefined,
+        wellnessFocus: profile?.wellnessFocus || undefined,
+      });
+
+      res.json({ insight });
+    } catch (error) {
+      console.error("Insight error:", error);
+      res.status(500).json({ error: "Failed to generate insight" });
+    }
+  });
+
+  app.post("/api/insights/analyze", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const moodLogs = await storage.getMoodLogs(userId);
+      const habits = await storage.getHabits(userId);
+      const goals = await storage.getGoals(userId);
+      const profile = await storage.getOnboardingProfile(userId);
+
+      const analysis = await generateFullAnalysis({
+        moodLogs: moodLogs.map(m => ({
+          energyLevel: m.energyLevel,
+          moodLevel: m.moodLevel,
+          clarityLevel: m.clarityLevel,
+          createdAt: m.createdAt,
+        })),
+        habits: habits.map(h => ({
+          title: h.title,
+          streak: h.streak || 0,
+        })),
+        goals: goals.map(g => ({
+          title: g.title,
+          progress: g.progress,
+          wellnessDimension: g.wellnessDimension,
+        })),
+        peakMotivationTime: profile?.peakMotivationTime || undefined,
+        wellnessFocus: profile?.wellnessFocus || undefined,
+      });
+
+      res.json(analysis);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      res.status(500).json({ error: "Failed to generate analysis" });
     }
   });
 

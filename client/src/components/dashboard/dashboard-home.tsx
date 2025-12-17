@@ -26,9 +26,18 @@ interface DashboardData {
   systemName: string;
 }
 
+interface InsightData {
+  insight: string;
+}
+
 export function DashboardHome() {
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
+  });
+
+  const { data: insightData, isLoading: insightLoading } = useQuery<InsightData>({
+    queryKey: ["/api/insight"],
+    staleTime: 1000 * 60 * 5,
   });
 
   if (isLoading) {
@@ -237,9 +246,13 @@ export function DashboardHome() {
             </div>
             <div>
               <h3 className="font-semibold text-lg mb-1">AI Insight</h3>
-              <p className="text-muted-foreground font-serif leading-relaxed">
-                Based on your patterns, your energy peaks in the morning. Consider scheduling important tasks during this time for maximum productivity.
-              </p>
+              {insightLoading ? (
+                <Skeleton className="h-12 w-full" />
+              ) : (
+                <p className="text-muted-foreground font-serif leading-relaxed" data-testid="text-ai-insight">
+                  {insightData?.insight || "Start tracking your wellness journey to receive personalized insights!"}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

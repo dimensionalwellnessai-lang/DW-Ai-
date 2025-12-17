@@ -14,6 +14,7 @@ import { HabitsPage } from "@/components/dashboard/habits-page";
 import { SchedulePage } from "@/components/dashboard/schedule-page";
 import { CheckInPage } from "@/components/dashboard/checkin-page";
 import { ProgressPage } from "@/components/dashboard/progress-page";
+import { InsightsPage } from "@/components/dashboard/insights-page";
 import NotFound from "@/pages/not-found";
 
 function DashboardRoutes() {
@@ -26,6 +27,7 @@ function DashboardRoutes() {
         <Route path="/dashboard/schedule" component={SchedulePage} />
         <Route path="/dashboard/checkin" component={CheckInPage} />
         <Route path="/dashboard/progress" component={ProgressPage} />
+        <Route path="/dashboard/insights" component={InsightsPage} />
         <Route component={DashboardHome} />
       </Switch>
     </DashboardLayout>

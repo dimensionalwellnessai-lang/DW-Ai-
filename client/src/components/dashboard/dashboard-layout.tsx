@@ -35,6 +35,7 @@ const menuItems = [
   { title: "Schedule", url: "/dashboard/schedule", icon: Calendar },
   { title: "Check-in", url: "/dashboard/checkin", icon: MessageSquare },
   { title: "Progress", url: "/dashboard/progress", icon: TrendingUp },
+  { title: "Insights", url: "/dashboard/insights", icon: Sparkles },
 ];
 
 interface DashboardLayoutProps {
