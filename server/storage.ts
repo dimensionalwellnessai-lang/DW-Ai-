@@ -8,6 +8,7 @@ import {
   moodLogs,
   checkIns,
   scheduleBlocks,
+  categoryEntries,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -26,6 +27,8 @@ import {
   type InsertCheckIn,
   type ScheduleBlock,
   type InsertScheduleBlock,
+  type CategoryEntry,
+  type InsertCategoryEntry,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -70,6 +73,10 @@ export interface IStorage {
   createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, data: Partial<ScheduleBlock>): Promise<ScheduleBlock | undefined>;
   deleteScheduleBlock(id: string): Promise<void>;
+
+  getCategoryEntries(userId: string, category?: string): Promise<CategoryEntry[]>;
+  createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry>;
+  deleteCategoryEntry(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +232,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteScheduleBlock(id: string): Promise<void> {
     await db.delete(scheduleBlocks).where(eq(scheduleBlocks.id, id));
+  }
+
+  async getCategoryEntries(userId: string, category?: string): Promise<CategoryEntry[]> {
+    if (category) {
+      return db.select().from(categoryEntries)
+        .where(and(eq(categoryEntries.userId, userId), eq(categoryEntries.category, category)))
+        .orderBy(desc(categoryEntries.createdAt));
+    }
+    return db.select().from(categoryEntries)
+      .where(eq(categoryEntries.userId, userId))
+      .orderBy(desc(categoryEntries.createdAt));
+  }
+
+  async createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry> {
+    const [created] = await db.insert(categoryEntries).values(entry).returning();
+    return created;
+  }
+
+  async deleteCategoryEntry(id: string): Promise<void> {
+    await db.delete(categoryEntries).where(eq(categoryEntries.id, id));
   }
 }
 

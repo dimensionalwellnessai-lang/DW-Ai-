@@ -28,6 +28,108 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+interface ExtractedCategoryData {
+  category: string;
+  title: string;
+  content?: string;
+  date?: string;
+  metadata?: Record<string, unknown>;
+}
+
+function extractCategoryData(userMessage: string, aiResponse: string, context?: string): ExtractedCategoryData[] {
+  const results: ExtractedCategoryData[] = [];
+  const combined = `${userMessage} ${aiResponse}`.toLowerCase();
+  
+  const calendarPatterns = [
+    /(?:schedule|plan|appointment|meeting|event)\s+(?:for|on|at)?\s*([a-zA-Z]+day|\d{1,2}(?:\/|-)\d{1,2})/gi,
+    /(?:tomorrow|today|next\s+week|this\s+week)/gi,
+  ];
+  
+  const mealPatterns = [
+    /(?:breakfast|lunch|dinner|meal|recipe|cook|eat)\s+([^.!?]+)/gi,
+    /(?:meal\s+prep|food\s+plan)/gi,
+  ];
+  
+  const goalPatterns = [
+    /(?:goal|want\s+to|aim\s+to|plan\s+to)\s+([^.!?]+)/gi,
+    /(?:achieve|accomplish|complete)\s+([^.!?]+)/gi,
+  ];
+  
+  const financialPatterns = [
+    /(?:budget|save|spend|money|invest|payment|expense)\s+([^.!?]+)/gi,
+    /\$\d+/gi,
+  ];
+  
+  const diaryPatterns = [
+    /(?:feeling|felt|i\s+feel|today\s+i|journal)\s+([^.!?]+)/gi,
+  ];
+  
+  if (context === "calendar" || calendarPatterns.some(p => p.test(combined))) {
+    const eventMatch = userMessage.match(/(?:schedule|plan|add|create|set)\s+(?:a\s+)?([^.!?]+)/i);
+    if (eventMatch) {
+      results.push({
+        category: "calendar",
+        title: eventMatch[1].trim().slice(0, 100),
+        content: userMessage,
+        date: new Date().toISOString().split('T')[0],
+      });
+    }
+  }
+  
+  if (context === "meals" || mealPatterns.some(p => p.test(combined))) {
+    const mealMatch = userMessage.match(/(?:make|cook|prepare|eat|try)\s+([^.!?]+)/i);
+    if (mealMatch) {
+      results.push({
+        category: "meals",
+        title: mealMatch[1].trim().slice(0, 100),
+        content: aiResponse,
+      });
+    }
+  }
+  
+  if (context === "goals" || goalPatterns.some(p => p.test(combined))) {
+    const goalMatch = userMessage.match(/(?:goal|want\s+to|plan\s+to)\s+([^.!?]+)/i);
+    if (goalMatch) {
+      results.push({
+        category: "goals",
+        title: goalMatch[1].trim().slice(0, 100),
+        content: aiResponse,
+      });
+    }
+  }
+  
+  if (context === "financial" || financialPatterns.some(p => p.test(combined))) {
+    const finMatch = userMessage.match(/(?:budget|save|spend)\s+([^.!?]+)/i);
+    if (finMatch) {
+      results.push({
+        category: "financial",
+        title: finMatch[1].trim().slice(0, 100),
+        content: aiResponse,
+      });
+    }
+  }
+  
+  if (context === "diary" || diaryPatterns.some(p => p.test(combined))) {
+    results.push({
+      category: "diary",
+      title: `Entry - ${new Date().toLocaleDateString()}`,
+      content: userMessage,
+      date: new Date().toISOString().split('T')[0],
+    });
+  }
+  
+  if (context && results.length === 0 && userMessage.length > 20) {
+    results.push({
+      category: context,
+      title: userMessage.slice(0, 50) + (userMessage.length > 50 ? "..." : ""),
+      content: aiResponse,
+      date: new Date().toISOString().split('T')[0],
+    });
+  }
+  
+  return results;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -181,18 +283,76 @@ export async function registerRoutes(
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message, conversationHistory } = req.body;
+      const { message, conversationHistory, context } = req.body;
+      let userId = req.session.userId;
+      
+      if (!userId) {
+        let devUser = await storage.getUserByEmail("dev@wellness.local");
+        if (!devUser) {
+          devUser = await storage.createUser({
+            email: "dev@wellness.local",
+            password: "devpassword123",
+          });
+        }
+        userId = devUser.id;
+        req.session.userId = userId;
+      }
       
       const response = await generateChatResponse(
         message,
         conversationHistory || [],
-        {}
+        { category: context }
       );
       
-      res.json({ response, updatedCategory: null });
+      let updatedCategories: string[] = [];
+      
+      const extractedData = extractCategoryData(message, response, context);
+      
+      for (const item of extractedData) {
+        try {
+          await storage.createCategoryEntry({
+            userId,
+            category: item.category,
+            title: item.title,
+            content: item.content,
+            date: item.date,
+            metadata: item.metadata,
+          });
+          if (!updatedCategories.includes(item.category)) {
+            updatedCategories.push(item.category);
+          }
+        } catch (err) {
+          console.error("Failed to create category entry:", err);
+        }
+      }
+      
+      res.json({ response, updatedCategories });
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to get response" });
+    }
+  });
+
+  app.get("/api/category-entries", async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.json([]);
+      }
+      const category = req.query.category as string | undefined;
+      const entries = await storage.getCategoryEntries(userId, category);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get category entries" });
+    }
+  });
+
+  app.delete("/api/category-entries/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteCategoryEntry(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete entry" });
     }
   });
 

@@ -21,6 +21,8 @@ import {
   DollarSign,
   X,
   Menu,
+  Paperclip,
+  Image,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -30,6 +32,7 @@ interface ChatMessage {
   role: "assistant" | "user";
   content: string;
   category?: string;
+  attachments?: { name: string; type: string; url: string }[];
 }
 
 interface Category {
@@ -58,6 +61,7 @@ export function AIWorkspace() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<{ name: string; type: string; url: string }[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -67,6 +71,8 @@ export function AIWorkspace() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -78,6 +84,7 @@ export function AIWorkspace() {
         message,
         context: activeCategory,
         conversationHistory: messages.slice(-10),
+        attachments,
       });
       return response.json();
     },
@@ -88,8 +95,12 @@ export function AIWorkspace() {
       ]);
       setIsTyping(false);
 
-      if (data.updatedCategory) {
-        queryClient.invalidateQueries({ queryKey: ["/api/life-system"] });
+      if (data.updatedCategories && data.updatedCategories.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/category-entries"] });
+        toast({
+          title: "Saved to categories",
+          description: `Added to: ${data.updatedCategories.join(", ")}`,
+        });
       }
     },
     onError: () => {
@@ -108,11 +119,37 @@ export function AIWorkspace() {
     const userMessage = input.trim();
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: userMessage, category: activeCategory || undefined },
+      { role: "user", content: userMessage, category: activeCategory || undefined, attachments: attachments.length > 0 ? [...attachments] : undefined },
     ]);
     setInput("");
+    setAttachments([]);
     setIsTyping(true);
     chatMutation.mutate(userMessage);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "file" | "image") => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachments((prev) => [
+          ...prev,
+          {
+            name: file.name,
+            type: file.type,
+            url: reader.result as string,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCategoryClick = (categoryId: string) => {
@@ -202,6 +239,20 @@ export function AIWorkspace() {
                           {CATEGORIES.find((c) => c.id === message.category)?.name}
                         </Badge>
                       )}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.attachments.map((att, i) => (
+                            <div key={i} className="flex items-center gap-1 bg-background/50 rounded-full px-2 py-1 text-xs">
+                              {att.type.startsWith("image/") ? (
+                                <Image className="w-3 h-3" />
+                              ) : (
+                                <Paperclip className="w-3 h-3" />
+                              )}
+                              {att.name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <p className={`${message.role === "assistant" ? "font-serif leading-relaxed" : ""} whitespace-pre-line`}>
                         {message.content}
                       </p>
@@ -221,13 +272,69 @@ export function AIWorkspace() {
             </ScrollArea>
 
             <div className="p-4 border-t">
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
+                  {attachments.map((att, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-muted rounded-full px-3 py-1">
+                      {att.type.startsWith("image/") ? (
+                        <Image className="w-4 h-4" />
+                      ) : (
+                        <Paperclip className="w-4 h-4" />
+                      )}
+                      <span className="text-sm truncate max-w-[150px]">{att.name}</span>
+                      <button
+                        onClick={() => removeAttachment(i)}
+                        className="text-muted-foreground hover:text-foreground"
+                        data-testid={`button-remove-attachment-${i}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex gap-2 max-w-3xl mx-auto">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleFileSelect(e, "file")}
+                  multiple
+                  data-testid="input-file-upload"
+                />
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileSelect(e, "image")}
+                  multiple
+                  data-testid="input-image-upload"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isTyping}
+                  data-testid="button-attach-file"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={isTyping}
+                  data-testid="button-attach-image"
+                >
+                  <Image className="w-4 h-4" />
+                </Button>
                 <Textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "What's on your mind?"}
-                  className="resize-none min-h-[44px] max-h-32"
+                  className="resize-none min-h-[44px] max-h-32 rounded-2xl"
                   disabled={isTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -274,7 +381,7 @@ export function AIWorkspace() {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-xl text-center transition-colors ${
+                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-colors ${
                       isActive ? "bg-chart-1/10 border-2 border-chart-1/30" : "bg-muted hover-elevate"
                     }`}
                     data-testid={`button-category-${category.id}`}

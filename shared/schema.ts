@@ -168,6 +168,40 @@ export const scheduleBlocksRelations = relations(scheduleBlocks, ({ one }) => ({
   }),
 }));
 
+export const categoryEntries = pgTable("category_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  content: text("content"),
+  metadata: jsonb("metadata"),
+  date: text("date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const categoryEntriesRelations = relations(categoryEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [categoryEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const chatAttachments = pgTable("chat_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const chatAttachmentsRelations = relations(chatAttachments, ({ one }) => ({
+  user: one(users, {
+    fields: [chatAttachments.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -211,6 +245,16 @@ export const insertScheduleBlockSchema = createInsertSchema(scheduleBlocks).omit
   id: true,
 });
 
+export const insertCategoryEntrySchema = createInsertSchema(categoryEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChatAttachmentSchema = createInsertSchema(chatAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -229,3 +273,7 @@ export type CheckIn = typeof checkIns.$inferSelect;
 export type InsertCheckIn = z.infer<typeof insertCheckInSchema>;
 export type ScheduleBlock = typeof scheduleBlocks.$inferSelect;
 export type InsertScheduleBlock = z.infer<typeof insertScheduleBlockSchema>;
+export type CategoryEntry = typeof categoryEntries.$inferSelect;
+export type InsertCategoryEntry = z.infer<typeof insertCategoryEntrySchema>;
+export type ChatAttachment = typeof chatAttachments.$inferSelect;
+export type InsertChatAttachment = z.infer<typeof insertChatAttachmentSchema>;
