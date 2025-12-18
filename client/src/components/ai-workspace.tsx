@@ -157,13 +157,49 @@ export function AIWorkspace() {
 
   return (
     <div className="flex h-screen w-full bg-background">
+      <div className="w-64 border-r bg-muted/30 flex flex-col">
+        <div className="p-4 border-b">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-chart-1" />
+            <span className="font-semibold" data-testid="text-brand">Wellness AI</span>
+          </div>
+        </div>
+        <ScrollArea className="flex-1 p-2">
+          <div className="space-y-1">
+            {CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              const isActive = activeCategory === category.id;
+              
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                    isActive ? "bg-chart-1/10 border border-chart-1/30" : "hover-elevate"
+                  }`}
+                  data-testid={`button-category-${category.id}`}
+                >
+                  <Icon className={`w-5 h-5 ${category.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{category.name}</p>
+                  </div>
+                  {isActive ? (
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+
       <div className="flex-1 flex flex-col">
         <header className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-chart-1" />
-            <span className="font-semibold text-lg" data-testid="text-brand">Wellness AI</span>
             {activeCategoryData && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary">
                 <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
                 {activeCategoryData.name}
               </Badge>
@@ -243,44 +279,6 @@ export function AIWorkspace() {
             </CardContent>
           </Card>
         </div>
-      </div>
-
-      <div className="w-64 border-l bg-muted/30 flex flex-col">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-            Categories
-          </h3>
-        </div>
-        <ScrollArea className="flex-1 p-2">
-          <div className="space-y-1">
-            {CATEGORIES.map((category) => {
-              const Icon = category.icon;
-              const isActive = activeCategory === category.id;
-              
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
-                    isActive ? "bg-chart-1/10 border border-chart-1/30" : "hover-elevate"
-                  }`}
-                  data-testid={`button-category-${category.id}`}
-                >
-                  <Icon className={`w-5 h-5 ${category.color}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{category.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{category.description}</p>
-                  </div>
-                  {isActive ? (
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </ScrollArea>
       </div>
     </div>
   );
