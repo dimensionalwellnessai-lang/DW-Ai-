@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +20,9 @@ import {
   Smile,
   DollarSign,
   X,
-  ChevronRight,
+  Menu,
 } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -55,21 +55,18 @@ const CATEGORIES: Category[] = [
 
 export function AIWorkspace() {
   const { toast } = useToast();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your wellness companion. I'm here to help you build a balanced, fulfilling life. You can chat with me about anything, or click on the categories on the right to explore specific areas like your calendar, goals, meal planning, and more. What's on your mind today?",
+      content: "Hello! I'm your wellness companion. I'm here to help you build a balanced, fulfilling life. You can chat with me about anything, or tap the menu to explore categories like your calendar, goals, meal planning, and more. What's on your mind today?",
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const { data: lifeSystem } = useQuery({
-    queryKey: ["/api/life-system"],
-  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -119,6 +116,7 @@ export function AIWorkspace() {
   };
 
   const handleCategoryClick = (categoryId: string) => {
+    setMenuOpen(false);
     if (activeCategory === categoryId) {
       setActiveCategory(null);
     } else {
@@ -156,130 +154,143 @@ export function AIWorkspace() {
   const activeCategoryData = CATEGORIES.find((c) => c.id === activeCategory);
 
   return (
-    <div className="flex h-screen w-full bg-background">
-      <div className="w-64 border-r bg-muted/30 flex flex-col">
-        <div className="p-4 border-b">
+    <div className="flex flex-col h-screen w-full bg-background">
+      <header className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMenuOpen(true)}
+            data-testid="button-open-menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-chart-1" />
             <span className="font-semibold" data-testid="text-brand">Wellness AI</span>
           </div>
+          {activeCategoryData && (
+            <Badge variant="secondary">
+              <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
+              {activeCategoryData.name}
+            </Badge>
+          )}
         </div>
-        <ScrollArea className="flex-1 p-2">
-          <div className="space-y-1">
-            {CATEGORIES.map((category) => {
-              const Icon = category.icon;
-              const isActive = activeCategory === category.id;
-              
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
-                    isActive ? "bg-chart-1/10 border border-chart-1/30" : "hover-elevate"
-                  }`}
-                  data-testid={`button-category-${category.id}`}
-                >
-                  <Icon className={`w-5 h-5 ${category.color}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{category.name}</p>
-                  </div>
-                  {isActive ? (
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
+        <ThemeToggle />
+      </header>
 
-      <div className="flex-1 flex flex-col">
-        <header className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
-          <div className="flex items-center gap-2">
-            {activeCategoryData && (
-              <Badge variant="secondary">
-                <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
-                {activeCategoryData.name}
-              </Badge>
-            )}
-          </div>
-          <ThemeToggle />
-        </header>
-
-        <div className="flex-1 flex flex-col overflow-hidden p-4">
-          <Card className="flex-1 flex flex-col overflow-hidden">
-            <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4 max-w-3xl mx-auto">
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[85%] p-4 rounded-2xl ${
-                          message.role === "user"
-                            ? "bg-chart-1 text-primary-foreground"
-                            : "bg-muted"
-                        }`}
-                        data-testid={`message-chat-${index}`}
-                      >
-                        {message.category && message.role === "assistant" && (
-                          <Badge variant="outline" className="mb-2 text-xs">
-                            {CATEGORIES.find((c) => c.id === message.category)?.name}
-                          </Badge>
-                        )}
-                        <p className={`${message.role === "assistant" ? "font-serif leading-relaxed" : ""} whitespace-pre-line`}>
-                          {message.content}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex justify-start">
-                      <div className="bg-muted p-4 rounded-2xl flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-muted-foreground">Thinking...</span>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
-
-              <div className="p-4 border-t">
-                <div className="flex gap-2 max-w-3xl mx-auto">
-                  <Textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "What's on your mind?"}
-                    className="resize-none min-h-[44px] max-h-32"
-                    disabled={isTyping}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
-                    data-testid="input-chat-message"
-                  />
-                  <Button
-                    size="icon"
-                    onClick={handleSend}
-                    disabled={!input.trim() || isTyping}
-                    data-testid="button-send-message"
+      <div className="flex-1 flex flex-col overflow-hidden p-4">
+        <Card className="flex-1 flex flex-col overflow-hidden">
+          <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4 max-w-3xl mx-auto">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
+                    <div
+                      className={`max-w-[85%] p-4 rounded-2xl ${
+                        message.role === "user"
+                          ? "bg-chart-1 text-primary-foreground"
+                          : "bg-muted"
+                      }`}
+                      data-testid={`message-chat-${index}`}
+                    >
+                      {message.category && message.role === "assistant" && (
+                        <Badge variant="outline" className="mb-2 text-xs">
+                          {CATEGORIES.find((c) => c.id === message.category)?.name}
+                        </Badge>
+                      )}
+                      <p className={`${message.role === "assistant" ? "font-serif leading-relaxed" : ""} whitespace-pre-line`}>
+                        {message.content}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted p-4 rounded-2xl flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-muted-foreground">Thinking...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </ScrollArea>
+
+            <div className="p-4 border-t">
+              <div className="flex gap-2 max-w-3xl mx-auto">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "What's on your mind?"}
+                  className="resize-none min-h-[44px] max-h-32"
+                  disabled={isTyping}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  data-testid="input-chat-message"
+                />
+                <Button
+                  size="icon"
+                  onClick={handleSend}
+                  disabled={!input.trim() || isTyping}
+                  data-testid="button-send-message"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <header className="flex items-center justify-between gap-4 p-4 border-b">
+            <h2 className="text-xl font-semibold">Categories</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(false)}
+              data-testid="button-close-menu"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </header>
+          <ScrollArea className="flex-1 p-4">
+            <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
+              {CATEGORIES.map((category) => {
+                const Icon = category.icon;
+                const isActive = activeCategory === category.id;
+                
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => handleCategoryClick(category.id)}
+                    className={`flex flex-col items-center gap-3 p-6 rounded-xl text-center transition-colors ${
+                      isActive ? "bg-chart-1/10 border-2 border-chart-1/30" : "bg-muted hover-elevate"
+                    }`}
+                    data-testid={`button-category-${category.id}`}
+                  >
+                    <Icon className={`w-10 h-10 ${category.color}`} />
+                    <div>
+                      <p className="font-semibold">{category.name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
     </div>
   );
 }
