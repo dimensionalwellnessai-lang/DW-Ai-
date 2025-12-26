@@ -298,10 +298,46 @@ export async function registerRoutes(
         req.session.userId = userId;
       }
       
+      const [user, goals, habits, recentEntries, moodLogs] = await Promise.all([
+        storage.getUser(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+        storage.getCategoryEntries(userId),
+        storage.getMoodLogs(userId),
+      ]);
+      
+      const userContext = {
+        category: context,
+        systemName: user?.systemName || undefined,
+        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
+          title: g.title, 
+          progress: g.progress || 0 
+        })),
+        habits: habits.filter(h => h.isActive).map(h => ({ 
+          title: h.title, 
+          streak: h.streak || 0 
+        })),
+        upcomingEvents: recentEntries
+          .filter(e => e.category === 'calendar' && e.date)
+          .slice(0, 5)
+          .map(e => ({ title: e.title, date: e.date! })),
+        recentMoods: moodLogs.slice(0, 5).map(m => ({
+          energy: m.energyLevel,
+          mood: m.moodLevel,
+          date: m.createdAt?.toISOString().split('T')[0] || ''
+        })),
+        categoryEntries: recentEntries.slice(0, 10).map(e => ({
+          category: e.category,
+          title: e.title,
+          content: e.content || '',
+          date: e.date || undefined
+        }))
+      };
+      
       const response = await generateChatResponse(
         message,
         conversationHistory || [],
-        { category: context }
+        userContext
       );
       
       let updatedCategories: string[] = [];
