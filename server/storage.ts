@@ -18,6 +18,9 @@ import {
   routines,
   routineLogs,
   tasks,
+  projects,
+  projectChats,
+  calendarEvents,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -56,6 +59,12 @@ import {
   type InsertRoutineLog,
   type Task,
   type InsertTask,
+  type Project,
+  type InsertProject,
+  type ProjectChat,
+  type InsertProjectChat,
+  type CalendarEvent,
+  type InsertCalendarEvent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -145,6 +154,21 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, data: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<void>;
+
+  getProjects(userId: string): Promise<Project[]>;
+  getProjectForUser(id: string, userId: string): Promise<Project | undefined>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProjectForUser(id: string, userId: string, data: Partial<Project>): Promise<Project | undefined>;
+  deleteProjectForUser(id: string, userId: string): Promise<boolean>;
+
+  getProjectChatsForUser(projectId: string, userId: string): Promise<ProjectChat[]>;
+  createProjectChatForUser(chat: InsertProjectChat, userId: string): Promise<ProjectChat | undefined>;
+
+  getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
+  getCalendarEventForUser(id: string, userId: string): Promise<CalendarEvent | undefined>;
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
+  deleteCalendarEventForUser(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -493,6 +517,84 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTask(id: string): Promise<void> {
     await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async getProjects(userId: string): Promise<Project[]> {
+    return db.select().from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(desc(projects.createdAt));
+  }
+
+  async getProjectForUser(id: string, userId: string): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
+    return project || undefined;
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [created] = await db.insert(projects).values(project).returning();
+    return created;
+  }
+
+  async updateProjectForUser(id: string, userId: string, data: Partial<Project>): Promise<Project | undefined> {
+    const [updated] = await db.update(projects).set(data)
+      .where(and(eq(projects.id, id), eq(projects.userId, userId))).returning();
+    return updated || undefined;
+  }
+
+  async deleteProjectForUser(id: string, userId: string): Promise<boolean> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, id), eq(projects.userId, userId)));
+    if (!project) return false;
+    await db.delete(projectChats).where(eq(projectChats.projectId, id));
+    await db.delete(projects).where(and(eq(projects.id, id), eq(projects.userId, userId)));
+    return true;
+  }
+
+  async getProjectChatsForUser(projectId: string, userId: string): Promise<ProjectChat[]> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return [];
+    return db.select().from(projectChats)
+      .where(eq(projectChats.projectId, projectId))
+      .orderBy(desc(projectChats.createdAt));
+  }
+
+  async createProjectChatForUser(chat: InsertProjectChat, userId: string): Promise<ProjectChat | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, chat.projectId), eq(projects.userId, userId)));
+    if (!project) return undefined;
+    const [created] = await db.insert(projectChats).values(chat).returning();
+    return created;
+  }
+
+  async getCalendarEvents(userId: string): Promise<CalendarEvent[]> {
+    return db.select().from(calendarEvents)
+      .where(eq(calendarEvents.userId, userId))
+      .orderBy(desc(calendarEvents.startTime));
+  }
+
+  async getCalendarEventForUser(id: string, userId: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents)
+      .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    return event || undefined;
+  }
+
+  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [created] = await db.insert(calendarEvents).values(event).returning();
+    return created;
+  }
+
+  async updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
+    const [updated] = await db.update(calendarEvents).set(data)
+      .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId))).returning();
+    return updated || undefined;
+  }
+
+  async deleteCalendarEventForUser(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(calendarEvents)
+      .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    return true;
   }
 }
 

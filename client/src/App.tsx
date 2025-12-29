@@ -11,15 +11,16 @@ import { AIWorkspace } from "@/components/ai-workspace";
 import { ModulesHome } from "@/pages/modules-home";
 import { SchedulePage } from "@/components/dashboard/schedule-page";
 import { GoalsPage } from "@/components/dashboard/goals-page";
-import { HabitsPage } from "@/components/dashboard/habits-page";
-import { InsightsPage } from "@/components/dashboard/insights-page";
-import { ProgressPage } from "@/components/dashboard/progress-page";
 import { CheckInPage } from "@/components/dashboard/checkin-page";
 
 import { MealsPage } from "@/pages/meals";
 import { MeditationPage } from "@/pages/meditation";
 import { RoutinesPage } from "@/pages/routines";
 import { BlueprintPage } from "@/pages/blueprint";
+import { ProjectsPage } from "@/pages/projects";
+import { TasksPage } from "@/pages/tasks";
+import { WorkoutsPage } from "@/pages/workouts";
+import { InsightsPage } from "@/pages/insights";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,16 +31,17 @@ function Router() {
       <Route path="/assistant" component={AIWorkspace} />
       
       <Route path="/calendar" component={SchedulePage} />
+      <Route path="/tasks" component={TasksPage} />
       <Route path="/goals" component={GoalsPage} />
-      <Route path="/workouts" component={HabitsPage} />
-      <Route path="/insights" component={InsightsPage} />
-      <Route path="/progress" component={ProgressPage} />
-      <Route path="/checkin" component={CheckInPage} />
-      
+      <Route path="/routines" component={RoutinesPage} />
       <Route path="/meals" component={MealsPage} />
       <Route path="/meditation" component={MeditationPage} />
-      <Route path="/routines" component={RoutinesPage} />
+      <Route path="/workouts" component={WorkoutsPage} />
+      <Route path="/insights" component={InsightsPage} />
+      
+      <Route path="/projects" component={ProjectsPage} />
       <Route path="/blueprint" component={BlueprintPage} />
+      <Route path="/checkin" component={CheckInPage} />
       
       <Route path="/login" component={LoginPage} />
       <Route component={NotFound} />

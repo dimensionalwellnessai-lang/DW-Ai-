@@ -327,6 +327,37 @@ export const recoveryReflectionsRelations = relations(recoveryReflections, ({ on
   }),
 }));
 
+export const projects = pgTable("projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  dimensionTags: text("dimension_tags").array(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const projectsRelations = relations(projects, ({ one }) => ({
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
+}));
+
+export const projectChats = pgTable("project_chats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id),
+  messages: jsonb("messages"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const projectChatsRelations = relations(projectChats, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectChats.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export const routines = pgTable("routines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -335,6 +366,8 @@ export const routines = pgTable("routines", {
   steps: jsonb("steps"),
   totalDurationMinutes: integer("total_duration_minutes"),
   scheduleOptions: jsonb("schedule_options"),
+  mode: text("mode").default("guided"),
+  projectId: varchar("project_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -365,12 +398,41 @@ export const tasks = pgTable("tasks", {
   userId: varchar("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
+  status: text("status").default("todo"),
   isCompleted: boolean("is_completed").default(false),
   dueDate: text("due_date"),
+  scheduledStart: text("scheduled_start"),
+  scheduledEnd: text("scheduled_end"),
+  projectId: varchar("project_id"),
+  goalId: varchar("goal_id"),
+  routineId: varchar("routine_id"),
   blueprintActionId: varchar("blueprint_action_id"),
   dimensionTags: text("dimension_tags").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  eventType: text("event_type").default("event"),
+  dimensionTags: text("dimension_tags").array(),
+  projectId: varchar("project_id"),
+  routineId: varchar("routine_id"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceRule: text("recurrence_rule"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [calendarEvents.userId],
+    references: [users.id],
+  }),
+}));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {
@@ -480,6 +542,21 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   createdAt: true,
 });
 
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProjectChatSchema = createInsertSchema(projectChats).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -522,3 +599,9 @@ export type RoutineLog = typeof routineLogs.$inferSelect;
 export type InsertRoutineLog = z.infer<typeof insertRoutineLogSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type ProjectChat = typeof projectChats.$inferSelect;
+export type InsertProjectChat = z.infer<typeof insertProjectChatSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;

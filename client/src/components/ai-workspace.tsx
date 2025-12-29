@@ -36,6 +36,8 @@ import {
   Play,
   ExternalLink,
   Shield,
+  ArrowLeft,
+  History,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -81,22 +83,30 @@ interface Category {
   description: string;
 }
 
-const CATEGORIES: Category[] = [
-  { id: "calendar", name: "Calendar", icon: Calendar, color: "text-blue-500", description: "Your schedule and routines" },
-  { id: "physical", name: "Physical", icon: Heart, color: "text-red-500", description: "Exercise, sleep, and health" },
-  { id: "emotional", name: "Emotional", icon: Smile, color: "text-pink-500", description: "Feelings and self-care" },
-  { id: "social", name: "Social", icon: Users, color: "text-purple-500", description: "Relationships and connections" },
-  { id: "mental", name: "Intellectual", icon: Brain, color: "text-indigo-500", description: "Learning and growth" },
-  { id: "spiritual", name: "Spiritual", icon: Sun, color: "text-amber-500", description: "Purpose and inner peace" },
-  { id: "occupational", name: "Occupational", icon: Briefcase, color: "text-sky-500", description: "Work and career growth" },
-  { id: "environmental", name: "Environmental", icon: Leaf, color: "text-teal-500", description: "Your space and nature" },
-  { id: "financial", name: "Financial", icon: DollarSign, color: "text-emerald-500", description: "Money and security" },
-  { id: "meals", name: "Meal Prep", icon: Utensils, color: "text-orange-500", description: "Nutrition and recipes" },
-  { id: "diary", name: "Diary", icon: BookOpen, color: "text-cyan-500", description: "Journal your thoughts" },
-  { id: "goals", name: "Goals", icon: Target, color: "text-green-500", description: "Dreams and milestones" },
+const DIMENSION_TAGS = [
+  { id: "physical", name: "Physical", icon: Heart, color: "text-red-500" },
+  { id: "emotional", name: "Emotional", icon: Smile, color: "text-pink-500" },
+  { id: "social", name: "Social", icon: Users, color: "text-purple-500" },
+  { id: "intellectual", name: "Intellectual", icon: Brain, color: "text-indigo-500" },
+  { id: "spiritual", name: "Spiritual", icon: Sun, color: "text-amber-500" },
+  { id: "occupational", name: "Occupational", icon: Briefcase, color: "text-sky-500" },
+  { id: "environmental", name: "Environmental", icon: Leaf, color: "text-teal-500" },
+  { id: "financial", name: "Financial", icon: DollarSign, color: "text-emerald-500" },
 ];
 
-const DEFAULT_WELCOME = "Hello. I'm here when you need me.\n\nWe can explore whatever feels relevant - your energy, your days, your goals, or just how you're arriving right now. There's no agenda here.\n\nHow are you today?";
+const STARTER_SUGGESTIONS = [
+  { text: "Plan my day", icon: Calendar },
+  { text: "Build a routine", icon: Target },
+  { text: "Make a meal plan", icon: Utensils },
+  { text: "Just ground me", icon: Sun },
+];
+
+const CATEGORIES: Category[] = DIMENSION_TAGS.map(d => ({
+  ...d,
+  description: `Filter by ${d.name.toLowerCase()} wellness`,
+}));
+
+const DEFAULT_WELCOME = "";
 
 export function AIWorkspace() {
   const { toast } = useToast();
@@ -116,7 +126,7 @@ export function AIWorkspace() {
         attachments: m.attachments,
       }));
     }
-    return [{ role: "assistant", content: DEFAULT_WELCOME }];
+    return [];
   });
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -340,14 +350,15 @@ export function AIWorkspace() {
     >
       <header className="flex items-center justify-between gap-4 p-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMenuOpen(true)}
-            data-testid="button-open-menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="icon"
+              data-testid="button-back-home"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
           <button 
             onClick={() => setMoodPickerOpen(true)}
             className="flex items-center gap-2 group"
@@ -416,6 +427,45 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
           <div className="space-y-6 max-w-3xl mx-auto py-4">
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 space-y-8 animate-fade-in-up">
+                <div className="text-center space-y-3">
+                  <div 
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto energy-ring"
+                    style={{ 
+                      background: currentMood 
+                        ? `linear-gradient(135deg, ${currentMood.color}, ${currentMood.color}80)` 
+                        : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))'
+                    }}
+                  >
+                    <Sparkles className="h-8 w-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-display font-bold">How can I help today?</h2>
+                  <p className="text-muted-foreground font-body max-w-md">
+                    I'm here to help you plan, organize, and feel grounded. Ask me anything or try one of these:
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+                  {STARTER_SUGGESTIONS.map((suggestion, idx) => {
+                    const Icon = suggestion.icon;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setInput(suggestion.text);
+                          inputRef.current?.focus();
+                        }}
+                        className="flex items-center gap-3 p-4 rounded-2xl bg-card/60 hover-elevate transition-all text-left floating-surface"
+                        data-testid={`button-suggestion-${idx}`}
+                      >
+                        <Icon className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-body text-sm">{suggestion.text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {messages.map((message, index) => (
               <div
                 key={index}

@@ -11,6 +11,8 @@ import {
   ListChecks,
   MessageSquareText,
   BarChart3,
+  CheckSquare,
+  FolderOpen,
   Shield,
 } from "lucide-react";
 
@@ -22,28 +24,10 @@ const MODULES = [
     icon: CalendarDays,
   },
   {
-    title: "Meals",
-    desc: "Meal ideas + filters + weekly plan + grocery list.",
-    href: "/meals",
-    icon: Utensils,
-  },
-  {
-    title: "Meditation",
-    desc: "Search meditations + mood-based suggestions + schedule.",
-    href: "/meditation",
-    icon: Flower2,
-  },
-  {
-    title: "Workouts",
-    desc: "Plans + library + player/links. Schedule sessions.",
-    href: "/workouts",
-    icon: Dumbbell,
-  },
-  {
-    title: "Goals",
-    desc: "Goals to milestones to tasks. Track progress.",
-    href: "/goals",
-    icon: Target,
+    title: "Tasks & Goals",
+    desc: "Track tasks and progress toward your goals.",
+    href: "/tasks",
+    icon: CheckSquare,
   },
   {
     title: "Routines",
@@ -52,14 +36,47 @@ const MODULES = [
     icon: ListChecks,
   },
   {
+    title: "Meals",
+    desc: "Meal ideas + filters + weekly plan + grocery list.",
+    href: "/meals",
+    icon: Utensils,
+  },
+  {
+    title: "Meditation",
+    desc: "Browse meditations by mood + intention + duration.",
+    href: "/meditation",
+    icon: Flower2,
+  },
+  {
+    title: "Workouts",
+    desc: "Plans + library + schedule sessions.",
+    href: "/workouts",
+    icon: Dumbbell,
+  },
+  {
     title: "Insights",
     desc: "Patterns across your wellness dimensions.",
     href: "/insights",
     icon: BarChart3,
   },
+];
+
+const SECONDARY_MODULES = [
+  {
+    title: "Projects",
+    desc: "Organize goals, routines, and plans by life area.",
+    href: "/projects",
+    icon: FolderOpen,
+  },
+  {
+    title: "Goals",
+    desc: "Set intentions and track milestones.",
+    href: "/goals",
+    icon: Target,
+  },
   {
     title: "Blueprint",
-    desc: "Your personal wellness framework and recovery tools.",
+    desc: "Your personal wellness framework.",
     href: "/blueprint",
     icon: Shield,
   },
@@ -83,7 +100,7 @@ export function ModulesHome() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link href="/assistant">
-            <Button variant="secondary" className="gap-2">
+            <Button variant="secondary" className="gap-2" data-testid="button-ai-chat">
               <MessageSquareText className="h-4 w-4" />
               AI Chat
             </Button>
@@ -91,13 +108,13 @@ export function ModulesHome() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 pb-24">
+      <main className="max-w-6xl mx-auto px-4 pb-24 space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MODULES.map((m) => {
             const Icon = m.icon;
             return (
               <Link key={m.href} href={m.href}>
-                <Card className="hover-elevate transition-shadow rounded-2xl cursor-pointer h-full" data-testid={`card-module-${m.title.toLowerCase()}`}>
+                <Card className="hover-elevate transition-shadow rounded-2xl cursor-pointer h-full" data-testid={`card-module-${m.title.toLowerCase().replace(/\s+/g, '-')}`}>
                   <CardHeader>
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-2xl bg-muted flex items-center justify-center">
@@ -116,12 +133,42 @@ export function ModulesHome() {
             );
           })}
         </div>
+
+        <div>
+          <h2 className="text-sm font-display font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            More Tools
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {SECONDARY_MODULES.map((m) => {
+              const Icon = m.icon;
+              return (
+                <Link key={m.href} href={m.href}>
+                  <Card className="hover-elevate transition-shadow rounded-2xl cursor-pointer h-full" data-testid={`card-module-${m.title.toLowerCase()}`}>
+                    <CardHeader className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-xl bg-muted flex items-center justify-center">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{m.title}</CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            {m.desc}
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </main>
 
       <Link href="/assistant">
         <Button 
           className="fixed bottom-5 right-5 rounded-full h-14 px-5 shadow-lg gap-2"
-          data-testid="button-coach-ai"
+          data-testid="button-coach-ai-floating"
         >
           <MessageSquareText className="h-5 w-5" />
           Coach AI

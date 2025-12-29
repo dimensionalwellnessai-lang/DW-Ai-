@@ -18,6 +18,9 @@ import {
   insertRecoveryReflectionSchema,
   insertRoutineSchema,
   insertTaskSchema,
+  insertProjectSchema,
+  insertProjectChatSchema,
+  insertCalendarEventSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1031,6 +1034,147 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  app.get("/api/projects", requireAuth, async (req, res) => {
+    try {
+      const projects = await storage.getProjects(req.session.userId!);
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load projects" });
+    }
+  });
+
+  app.get("/api/projects/:id", requireAuth, async (req, res) => {
+    try {
+      const project = await storage.getProjectForUser(req.params.id, req.session.userId!);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load project" });
+    }
+  });
+
+  app.post("/api/projects", requireAuth, async (req, res) => {
+    try {
+      const data = insertProjectSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createProject(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create project" });
+    }
+  });
+
+  app.patch("/api/projects/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateProjectForUser(req.params.id, req.session.userId!, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update project" });
+    }
+  });
+
+  app.delete("/api/projects/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteProjectForUser(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
+  app.get("/api/projects/:id/chats", requireAuth, async (req, res) => {
+    try {
+      const chats = await storage.getProjectChatsForUser(req.params.id, req.session.userId!);
+      res.json(chats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load project chats" });
+    }
+  });
+
+  app.post("/api/projects/:id/chats", requireAuth, async (req, res) => {
+    try {
+      const data = insertProjectChatSchema.parse({ ...req.body, projectId: req.params.id });
+      const created = await storage.createProjectChatForUser(data, req.session.userId!);
+      if (!created) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create project chat" });
+    }
+  });
+
+  app.get("/api/calendar", requireAuth, async (req, res) => {
+    try {
+      const events = await storage.getCalendarEvents(req.session.userId!);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load calendar events" });
+    }
+  });
+
+  app.get("/api/calendar/:id", requireAuth, async (req, res) => {
+    try {
+      const event = await storage.getCalendarEventForUser(req.params.id, req.session.userId!);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load event" });
+    }
+  });
+
+  app.post("/api/calendar", requireAuth, async (req, res) => {
+    try {
+      const data = insertCalendarEventSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createCalendarEvent(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create event" });
+    }
+  });
+
+  app.patch("/api/calendar/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateCalendarEventForUser(req.params.id, req.session.userId!, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update event" });
+    }
+  });
+
+  app.delete("/api/calendar/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteCalendarEventForUser(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete event" });
     }
   });
 
