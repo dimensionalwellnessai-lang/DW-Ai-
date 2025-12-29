@@ -1,8 +1,8 @@
-# Wellness Lifestyle AI
+# Dimensional Wellness AI (DWAI)
 
 ## Overview
 
-Wellness Lifestyle AI is a personalized wellness and life management application that helps users build sustainable routines, track habits, and achieve holistic wellness goals. The app uses AI-powered insights to create customized life systems based on each user's unique responsibilities, priorities, and available time. Core features include an onboarding flow that understands user context, goal and habit tracking, mood/energy logging, smart scheduling, and AI-powered daily check-ins.
+Dimensional Wellness AI (DWAI) is a personalized wellness and life management application that helps users build sustainable routines, track habits, and achieve holistic wellness goals. The app uses AI-powered insights to create customized life systems based on each user's unique responsibilities, priorities, and available time. Core features include an onboarding flow that understands user context, goal and habit tracking, mood/energy logging, smart scheduling, and AI-powered daily check-ins.
 
 ## User Preferences
 

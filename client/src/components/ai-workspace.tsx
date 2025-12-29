@@ -76,7 +76,7 @@ export function AIWorkspace() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hey there! I'm CoreSync, your personal AI assistant. Think of me like Siri, but I actually understand your life. I can help you manage your calendar, plan meals, track goals, handle finances, journal your thoughts, and so much more. Just talk to me naturally - I'm here to make your life easier. What can I help you with today?",
+      content: "Hey there! I'm DWAI - your Dimensional Wellness AI. Think of me like Siri, but I actually understand your whole life across all dimensions of wellness. I can help you with physical health, emotional wellbeing, social connections, intellectual growth, spiritual practice, work-life balance, your environment, finances, meals, journaling, and goals. Just talk to me naturally - I'm here to help you thrive. What can I help you with today?",
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -288,7 +288,7 @@ export function AIWorkspace() {
             >
               <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-lg" data-testid="text-brand">CoreSync</span>
+            <span className="font-bold text-lg" data-testid="text-brand">DWAI</span>
           </div>
           {activeCategoryData && (
             <Badge variant="secondary" className="bg-primary/10 border-primary/20">
