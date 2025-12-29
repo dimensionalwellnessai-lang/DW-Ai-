@@ -1,3 +1,4 @@
+// client/src/App.tsx
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,39 +9,42 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
 
+// NEW: Home + module pages
 import { ModulesHome } from "@/pages/modules-home";
 import { SchedulePage } from "@/components/dashboard/schedule-page";
 import { GoalsPage } from "@/components/dashboard/goals-page";
 import { HabitsPage } from "@/components/dashboard/habits-page";
 import { InsightsPage } from "@/components/dashboard/insights-page";
 import { ProgressPage } from "@/components/dashboard/progress-page";
-import { CheckInPage } from "@/components/dashboard/checkin-page";
+import { CheckinPage } from "@/components/dashboard/checkin-page";
 
 import { MealsPage } from "@/pages/meals";
 import { MeditationPage } from "@/pages/meditation";
 import { RoutinesPage } from "@/pages/routines";
-import { BlueprintPage } from "@/pages/blueprint";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
+      {/* NEW HOME */}
       <Route path="/" component={ModulesHome} />
-      
+
+      {/* AI CHAT SEPARATE */}
       <Route path="/assistant" component={AIWorkspace} />
-      
+
+      {/* EXISTING DASHBOARD PAGES AS MODULES */}
       <Route path="/calendar" component={SchedulePage} />
       <Route path="/goals" component={GoalsPage} />
       <Route path="/workouts" component={HabitsPage} />
       <Route path="/insights" component={InsightsPage} />
       <Route path="/progress" component={ProgressPage} />
-      <Route path="/checkin" component={CheckInPage} />
-      
+      <Route path="/checkin" component={CheckinPage} />
+
+      {/* NEW STUB MODULES (YOU BUILD NEXT) */}
       <Route path="/meals" component={MealsPage} />
       <Route path="/meditation" component={MeditationPage} />
       <Route path="/routines" component={RoutinesPage} />
-      <Route path="/blueprint" component={BlueprintPage} />
-      
+
       <Route path="/login" component={LoginPage} />
       <Route component={NotFound} />
     </Switch>
