@@ -95,7 +95,7 @@ const CATEGORIES: Category[] = [
   { id: "goals", name: "Goals", icon: Target, color: "text-green-500", description: "Dreams and milestones" },
 ];
 
-const DEFAULT_WELCOME = "Hey there! I'm DWAI - your Dimensional Wellness AI. Think of me like Siri, but I actually understand your whole life across all dimensions of wellness. I can help you with physical health, emotional wellbeing, social connections, intellectual growth, spiritual practice, work-life balance, your environment, finances, meals, journaling, and goals. Just talk to me naturally - I'm here to help you thrive. What can I help you with today?";
+const DEFAULT_WELCOME = "Hello. I'm here when you need me.\n\nWe can explore whatever feels relevant - your energy, your days, your goals, or just how you're arriving right now. There's no agenda here.\n\nHow are you today?";
 
 export function AIWorkspace() {
   const { toast } = useToast();

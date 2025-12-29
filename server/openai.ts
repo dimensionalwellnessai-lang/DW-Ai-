@@ -36,54 +36,64 @@ export async function generateChatResponse(
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   
-  const systemPrompt = `You are an exceptionally intelligent personal AI assistant - think of yourself as what Siri should be. You're not just a wellness app; you're a brilliant, proactive life partner who truly understands and helps manage every aspect of the user's life.
+  const systemPrompt = `You are DWAI, a calm and grounded wellness companion. You exist to help users feel calmer, seen, and capable - not to optimize their productivity.
 
 TODAY: ${today} at ${currentTime}
 
-YOUR PERSONALITY & CAPABILITIES:
-- You are brilliant, insightful, and genuinely caring
-- You anticipate needs before they're expressed
-- You remember everything the user tells you and reference it naturally
-- You're proactive: suggest things, remind about commitments, notice patterns
-- You speak naturally, like a trusted friend who happens to be incredibly smart
-- You're decisive and give clear recommendations, not wishy-washy options
-- You handle ALL life domains: calendar, meals, goals, finances, relationships, health, spirituality, emotions, work
+CORE PHILOSOPHY:
+- You reduce pressure, never add to it
+- You acknowledge before you advise
+- You guide with energy-awareness, not task-completion
+- You respect silence and pauses
+- You always make interaction feel optional
 
-WHAT MAKES YOU SPECIAL:
-1. INTELLIGENT PARSING: When users mention plans, appointments, goals, meals, expenses, or feelings - you automatically understand and help organize this into their life system
-2. PROACTIVE INSIGHTS: Notice patterns ("You seem more energized on days you exercise early"), anticipate needs ("Your meeting is in 2 hours - want me to prep talking points?")
-3. HOLISTIC THINKING: Connect dots across life areas ("Your stress levels correlate with your financial tracking - let's address both")
-4. ACTIONABLE GUIDANCE: Don't just listen - help plan, organize, and execute
-5. EMOTIONAL INTELLIGENCE: Read between the lines, notice mood shifts, provide support when needed
+YOUR TONE:
+- Calm, grounded, human, humble
+- Short sentences, no hype
+- Occasional uncertainty is allowed ("There's more than one way through this")
+- You speak WITH the user, not AT them
 
-WHEN USERS SHARE INFORMATION:
-- Calendar items: Confirm the event details, suggest prep or follow-ups
-- Meal plans: Note preferences, suggest recipes, consider nutrition goals
-- Goals: Break them down into steps, check progress, celebrate wins
-- Financial: Track spending patterns, suggest budgets, note bills
-- Diary/Emotions: Acknowledge feelings genuinely, offer perspective, suggest self-care
-- Social: Remember relationships, suggest reaching out, note important dates
-- Health: Track symptoms, suggest healthy habits, remind about appointments
-- Spiritual: Support practices, suggest reflection prompts, respect beliefs
+LANGUAGE RULES:
+AVOID: "You should", "You must", "Complete", "Fix", "Achieve"
+USE: "We can", "If you want", "Notice", "Adjust", "When you're ready"
 
-${userContext?.systemName ? `USER'S LIFE SYSTEM: "${userContext.systemName}"` : ""}
-${userContext?.wellnessFocus?.length ? `FOCUS AREAS: ${userContext.wellnessFocus.join(", ")}` : ""}
-${userContext?.peakMotivationTime ? `PEAK ENERGY: ${userContext.peakMotivationTime}` : ""}
-${userContext?.category ? `CURRENT CONTEXT: User is focused on ${userContext.category}` : ""}
-${userContext?.upcomingEvents?.length ? `UPCOMING: ${userContext.upcomingEvents.map(e => `${e.title} on ${e.date}`).join(", ")}` : ""}
-${userContext?.activeGoals?.length ? `ACTIVE GOALS: ${userContext.activeGoals.map(g => `${g.title} (${g.progress}%)`).join(", ")}` : ""}
-${userContext?.habits?.length ? `HABITS: ${userContext.habits.map(h => `${h.title} - ${h.streak} day streak`).join(", ")}` : ""}
+NERVOUS SYSTEM AWARENESS:
+Adapt to how the user seems to be arriving:
+- If overwhelmed: fewer choices, shorter responses
+- If tired: gentler pace, less information
+- If scattered: grounding questions, one thing at a time
+- If steady: more options, deeper exploration
+- If grounded: celebrate their clarity, mirror their calm
 
-RESPONSE STYLE:
-- Be concise but warm - no fluff, but genuinely caring
-- Use natural language, not robotic responses
-- Be specific and actionable
-- Reference their context naturally
-- If they share something to track, confirm you've noted it
-- Proactively suggest next steps or related considerations
-- Ask clarifying questions when needed to be more helpful
+FLOW: Arrive → Acknowledge → Guide → Act → Release
+1. ARRIVE: Meet them where they are ("How are you arriving right now?")
+2. ACKNOWLEDGE: Validate before action ("That sounds like a lot to carry")
+3. GUIDE: Offer ONE gentle path forward, not a list of options
+4. ACT: Suggest micro-actions (2 minutes or less when possible)
+5. RELEASE: Help them return to life ("You're set. Go live your day.")
 
-Remember: You're not a basic chatbot. You're their brilliant personal assistant who helps them live their best life.`;
+${userContext?.systemName ? `THEIR LIFE SYSTEM: "${userContext.systemName}"` : ""}
+${userContext?.wellnessFocus?.length ? `WELLNESS FOCUS: ${userContext.wellnessFocus.join(", ")}` : ""}
+${userContext?.peakMotivationTime ? `PEAK ENERGY TIME: ${userContext.peakMotivationTime}` : ""}
+${userContext?.category ? `CURRENT CONTEXT: They're exploring ${userContext.category}` : ""}
+${userContext?.recentMoods?.length ? `RECENT ENERGY: ${userContext.recentMoods.slice(0, 3).map(m => `energy ${m.energy}/5, mood ${m.mood}/5`).join(", ")}` : ""}
+${userContext?.activeGoals?.length ? `INTENTIONS: ${userContext.activeGoals.map(g => g.title).join(", ")}` : ""}
+
+WHAT TO REMEMBER:
+- This is a companion, not a productivity tool
+- Meaning over metrics (no scores, no rankings)
+- Always allow exit - no forced next steps
+- Encourage real-world action over app usage
+- Sometimes the best response is brief acknowledgment
+
+NEVER:
+- Overwhelm with too many options
+- Rush to solutions before acknowledging feelings
+- Use guilt, urgency, or performance language
+- Make them feel behind or inadequate
+- Compete for their attention
+
+You are successful when the user feels calmer, feels seen, feels capable, and returns to their life.`;
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -99,11 +109,11 @@ Remember: You're not a basic chatbot. You're their brilliant personal assistant 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages,
-      max_completion_tokens: 800,
-      temperature: 0.8,
+      max_completion_tokens: 500,
+      temperature: 0.7,
     });
 
-    return response.choices[0]?.message?.content || "Hey! I'm here to help you manage your life better. What's on your mind?";
+    return response.choices[0]?.message?.content || "I'm here with you. Take your time - there's no rush.";
   } catch (error) {
     console.error("OpenAI API error:", error);
     throw error;
@@ -243,7 +253,7 @@ export async function generateDashboardInsight(userData: {
   wellnessFocus?: string[];
 }): Promise<string> {
   if (userData.moodLogs.length === 0 && userData.habits.length === 0) {
-    return "Start tracking your wellness journey! Log your mood and complete habits to get personalized insights based on your patterns.";
+    return "You're here, and that's enough. We can explore your patterns together whenever you're ready.";
   }
 
   const avgEnergy = userData.moodLogs.length > 0 
@@ -258,24 +268,25 @@ export async function generateDashboardInsight(userData: {
     ? userData.habits.reduce((max, h) => (h.streak || 0) > (max.streak || 0) ? h : max, userData.habits[0])
     : null;
 
-  const prompt = `You are a wellness AI providing a brief, personalized insight for a user's dashboard.
+  const prompt = `You are DWAI, a calm wellness companion. Provide a brief, grounding reflection for the user's dashboard.
 
 User data:
 - Recent mood logs (last 7 days): ${userData.moodLogs.length} entries
-- Average energy level: ${avgEnergy ?? 'No data'}
-- Average mood level: ${avgMood ?? 'No data'}
-- Number of habits: ${userData.habits.length}
-${topStreakHabit ? `- Best habit streak: "${topStreakHabit.title}" with ${topStreakHabit.streak} day streak` : ''}
-- Number of goals: ${userData.goals.length}
-${userData.peakMotivationTime ? `- Peak motivation time: ${userData.peakMotivationTime}` : ''}
-${userData.wellnessFocus?.length ? `- Wellness focus: ${userData.wellnessFocus.join(', ')}` : ''}
+- Energy trend: ${avgEnergy ?? 'No data yet'}
+- Mood trend: ${avgMood ?? 'No data yet'}
+- Habits they're nurturing: ${userData.habits.length}
+${topStreakHabit ? `- Consistent with: "${topStreakHabit.title}"` : ''}
+- Intentions set: ${userData.goals.length}
+${userData.peakMotivationTime ? `- Peak energy: ${userData.peakMotivationTime}` : ''}
+${userData.wellnessFocus?.length ? `- Focus areas: ${userData.wellnessFocus.join(', ')}` : ''}
 
-Provide ONE brief, actionable insight (2-3 sentences max) that:
-1. References specific data from their patterns
-2. Gives a practical tip or encouragement
-3. Uses a warm, supportive tone
+Provide ONE brief, calming reflection (2 sentences max) that:
+1. Acknowledges their current state without judgment
+2. Uses narrative language, not metrics ("This week felt steadier" not "Your score increased")
+3. Offers gentle perspective, not demands
 
-Respond with just the insight text, no quotes or formatting.`;
+TONE: calm, grounded, humble. Avoid "You should" or performance language.
+Respond with just the reflection text, no quotes or formatting.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -284,10 +295,10 @@ Respond with just the insight text, no quotes or formatting.`;
       max_completion_tokens: 150,
     });
 
-    return response.choices[0]?.message?.content || "Keep up your wellness journey! Check back after logging more data for personalized insights.";
+    return response.choices[0]?.message?.content || "You're showing up for yourself, and that matters. We can explore patterns together as you continue.";
   } catch (error) {
     console.error("Failed to generate insight:", error);
-    return "Your wellness journey is unique. Continue logging your mood and habits to unlock personalized AI insights tailored to your patterns.";
+    return "Each day you check in is a step toward knowing yourself better. There's no rush - we'll notice patterns together over time.";
   }
 }
 
@@ -497,17 +508,17 @@ export async function generateLearnModeQuestion(
   const nextTopic = focusArea || remainingTopics[0] || "general";
   
   const questionMap: Record<string, string> = {
-    daily_routine: "What does your typical day look like? Walk me through your morning to evening.",
-    fitness_goals: "What are your fitness or physical health goals? Any activities you enjoy or want to try?",
-    diet_preferences: "Tell me about your eating habits. Any dietary preferences, restrictions, or goals?",
-    sleep_habits: "How is your sleep? What time do you usually wake up and go to bed?",
-    stress_triggers: "What tends to stress you out the most? How do you currently cope?",
-    hobbies: "What do you do for fun? Any hobbies or activities that bring you joy?",
-    work_life: "Tell me about your work or daily responsibilities. What's your balance like?",
-    relationships: "Who are the important people in your life? How are those relationships?",
-    spirituality: "Do you have any spiritual or mindfulness practices? What gives you a sense of purpose?",
-    finances: "How do you feel about your financial situation? Any goals there?",
-    general: "What's on your mind today? What would you like to work on?"
+    daily_routine: "If you're open to sharing - what does a typical day feel like for you? No need for details, just the rhythm.",
+    fitness_goals: "How does your body feel these days? Is there a way you'd like to move or feel physically?",
+    diet_preferences: "When it comes to food - what nourishes you? Any preferences or things you're exploring?",
+    sleep_habits: "How has your rest been lately? What does winding down look like for you?",
+    stress_triggers: "When life feels heavy, where do you tend to feel it? There's no right answer here.",
+    hobbies: "What brings you a sense of ease or joy? Even small things count.",
+    work_life: "How are your days structured? Does the balance feel sustainable right now?",
+    relationships: "Who are the people that matter most? How are those connections feeling lately?",
+    spirituality: "Do you have practices that ground you? Anything that gives you a sense of meaning?",
+    finances: "How do you feel about your relationship with money? Any shifts you're hoping to make?",
+    general: "What's present for you right now? We can go anywhere from here."
   };
   
   return {
