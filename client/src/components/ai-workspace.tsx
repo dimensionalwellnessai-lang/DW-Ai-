@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -268,10 +267,9 @@ export function AIWorkspace() {
 
   return (
     <div 
-      className="flex flex-col h-screen w-full transition-colors duration-500"
-      style={backgroundStyle || { background: 'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--background)) 80%, hsl(var(--primary) / 0.05) 100%)' }}
+      className="flex flex-col h-screen w-full bg-background transition-colors duration-500"
     >
-      <header className="flex items-center justify-between gap-4 p-4 border-b border-border/50 backdrop-blur-sm bg-background/80 flex-wrap">
+      <header className="flex items-center justify-between gap-4 p-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -291,7 +289,7 @@ export function AIWorkspace() {
             <span className="font-bold text-lg" data-testid="text-brand">DWAI</span>
           </div>
           {activeCategoryData && (
-            <Badge variant="secondary" className="bg-primary/10 border-primary/20">
+            <Badge variant="secondary" className="bg-primary/10">
               <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
               {activeCategoryData.name}
             </Badge>
@@ -319,62 +317,60 @@ export function AIWorkspace() {
       
       {moodPickerOpen && <MoodPicker onClose={() => setMoodPickerOpen(false)} />}
 
-      <div className="flex-1 flex flex-col overflow-hidden p-4">
-        <Card className="flex-1 flex flex-col overflow-hidden">
-          <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4 max-w-3xl mx-auto">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${
-                        message.role === "user"
-                          ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
-                          : "bg-card border border-border/50"
-                      }`}
-                      data-testid={`message-chat-${index}`}
-                    >
-                      {message.category && message.role === "assistant" && (
-                        <Badge variant="outline" className="mb-2 text-xs">
-                          {CATEGORIES.find((c) => c.id === message.category)?.name}
-                        </Badge>
-                      )}
-                      {message.attachments && message.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {message.attachments.map((att, i) => (
-                            <div key={i} className="flex items-center gap-1 bg-background/50 rounded-full px-2 py-1 text-xs">
-                              {att.type.startsWith("image/") ? (
-                                <Image className="w-3 h-3" />
-                              ) : (
-                                <Paperclip className="w-3 h-3" />
-                              )}
-                              {att.name}
-                            </div>
-                          ))}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <ScrollArea className="flex-1 px-4">
+          <div className="space-y-6 max-w-3xl mx-auto py-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground px-4 py-3 rounded-3xl"
+                      : ""
+                  }`}
+                  data-testid={`message-chat-${index}`}
+                >
+                  {message.category && message.role === "assistant" && (
+                    <Badge variant="secondary" className="mb-2 text-xs bg-muted">
+                      {CATEGORIES.find((c) => c.id === message.category)?.name}
+                    </Badge>
+                  )}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {message.attachments.map((att, i) => (
+                        <div key={i} className="flex items-center gap-1 bg-muted rounded-full px-2 py-1 text-xs">
+                          {att.type.startsWith("image/") ? (
+                            <Image className="w-3 h-3" />
+                          ) : (
+                            <Paperclip className="w-3 h-3" />
+                          )}
+                          {att.name}
                         </div>
-                      )}
-                      <p className={`${message.role === "assistant" ? "font-serif leading-relaxed" : ""} whitespace-pre-line`}>
-                        {message.content}
-                      </p>
+                      ))}
                     </div>
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted p-4 rounded-2xl flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-muted-foreground">Thinking...</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
+                  )}
+                  <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground" : ""} whitespace-pre-line`}>
+                    {message.content}
+                  </p>
+                </div>
               </div>
-            </ScrollArea>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Thinking...</span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
 
-            <div className="p-4 border-t">
+        <div className="p-4">
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
                   {attachments.map((att, i) => (
@@ -446,8 +442,8 @@ export function AIWorkspace() {
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={isListening ? "Listening..." : (activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "Talk to me naturally...")}
-                  className="resize-none min-h-[44px] max-h-32 rounded-2xl bg-muted/50 border-primary/20 focus:border-primary/50"
+                  placeholder={isListening ? "Listening..." : (activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "Ask anything...")}
+                  className="resize-none min-h-[44px] max-h-32 rounded-3xl bg-muted border-0 focus-visible:ring-1 focus-visible:ring-primary/30"
                   disabled={isTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -466,15 +462,13 @@ export function AIWorkspace() {
                 >
                   <Send className="w-4 h-4" />
                 </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-background via-background to-primary/10 flex flex-col">
-          <header className="flex items-center justify-between gap-4 p-4 border-b border-border/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <header className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
@@ -500,10 +494,10 @@ export function AIWorkspace() {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-all duration-200 ${
+                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-all duration-200 hover-elevate ${
                       isActive 
-                        ? "bg-primary/15 border-2 border-primary/40 shadow-lg shadow-primary/10" 
-                        : "bg-card border border-border/50 hover-elevate hover:shadow-md"
+                        ? "bg-primary/15" 
+                        : "bg-muted/50"
                     }`}
                     data-testid={`button-category-${category.id}`}
                   >

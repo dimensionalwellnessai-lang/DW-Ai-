@@ -73,8 +73,8 @@ export function MoodPicker({ onClose, compact = false }: MoodPickerProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md mx-4 bg-card rounded-lg border shadow-xl p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+      <div className="relative w-full max-w-md mx-4 bg-background rounded-2xl p-6">
         <Button
           variant="ghost"
           size="icon"
