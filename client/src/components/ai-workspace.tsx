@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MoodPicker } from "@/components/mood-picker";
 import { useTheme, MOOD_OPTIONS } from "@/lib/theme-provider";
+import { getGuestData, saveGuestData, initGuestData, type GuestData } from "@/lib/guest-storage";
+import { Link } from "wouter";
 import {
   Sparkles,
   Send,
@@ -29,6 +31,7 @@ import {
   Briefcase,
   Leaf,
   Palette,
+  UserPlus,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -64,6 +67,8 @@ const CATEGORIES: Category[] = [
   { id: "goals", name: "Goals", icon: Target, color: "text-green-500", description: "Dreams and milestones" },
 ];
 
+const DEFAULT_WELCOME = "Hey there! I'm DWAI - your Dimensional Wellness AI. Think of me like Siri, but I actually understand your whole life across all dimensions of wellness. I can help you with physical health, emotional wellbeing, social connections, intellectual growth, spiritual practice, work-life balance, your environment, finances, meals, journaling, and goals. Just talk to me naturally - I'm here to help you thrive. What can I help you with today?";
+
 export function AIWorkspace() {
   const { toast } = useToast();
   const { mood, themeMode } = useTheme();
@@ -72,21 +77,45 @@ export function AIWorkspace() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<{ name: string; type: string; url: string }[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: "Hey there! I'm DWAI - your Dimensional Wellness AI. Think of me like Siri, but I actually understand your whole life across all dimensions of wellness. I can help you with physical health, emotional wellbeing, social connections, intellectual growth, spiritual practice, work-life balance, your environment, finances, meals, journaling, and goals. Just talk to me naturally - I'm here to help you thrive. What can I help you with today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const guestData = getGuestData();
+    if (guestData && guestData.messages.length > 0) {
+      return guestData.messages.map(m => ({
+        role: m.role,
+        content: m.content,
+        category: m.category,
+        attachments: m.attachments,
+      }));
+    }
+    return [{ role: "assistant", content: DEFAULT_WELCOME }];
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
   
   const currentMood = MOOD_OPTIONS.find(m => m.id === mood);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    const guestData = getGuestData() || initGuestData();
+    const existingTimestamps = new Map(
+      guestData.messages.map((m, i) => [i, m.timestamp])
+    );
+    const messagesToSave = messages.map((m, i) => ({
+      ...m,
+      timestamp: existingTimestamps.get(i) || Date.now(),
+    }));
+    saveGuestData({ ...guestData, messages: messagesToSave });
+    
+    const userMessageCount = messages.filter(m => m.role === "user").length;
+    if (userMessageCount >= 3 && !showSavePrompt) {
+      setShowSavePrompt(true);
+    }
+  }, [messages]);
 
   useEffect(() => {
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -267,7 +296,7 @@ export function AIWorkspace() {
 
   return (
     <div 
-      className="flex flex-col h-screen w-full bg-background transition-colors duration-500"
+      className="flex flex-col h-screen w-full bg-background transition-colors duration-500 font-body"
     >
       <header className="flex items-center justify-between gap-4 p-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -286,7 +315,7 @@ export function AIWorkspace() {
             >
               <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-lg" data-testid="text-brand">DWAI</span>
+            <span className="font-display font-bold text-lg tracking-tight" data-testid="text-brand">DWAI</span>
           </div>
           {activeCategoryData && (
             <Badge variant="secondary" className="bg-primary/10">
@@ -312,8 +341,39 @@ export function AIWorkspace() {
             )}
           </Button>
           <ThemeToggle />
+          <Link href="/login">
+            <Button variant="default" size="sm" className="rounded-full" data-testid="button-signup">
+              <UserPlus className="w-4 h-4 mr-1" />
+              Sign up
+            </Button>
+          </Link>
         </div>
       </header>
+      
+      {showSavePrompt && (
+        <div className="px-4 pb-2">
+          <div className="max-w-3xl mx-auto bg-primary/10 rounded-2xl p-3 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm font-body">
+              Your chat is saved locally. Sign up to sync across devices and never lose your data.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSavePrompt(false)}
+                data-testid="button-dismiss-save-prompt"
+              >
+                Dismiss
+              </Button>
+              <Link href="/login">
+                <Button size="sm" className="rounded-full" data-testid="button-save-prompt-signup">
+                  Sign up free
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       
       {moodPickerOpen && <MoodPicker onClose={() => setMoodPickerOpen(false)} />}
 
@@ -352,7 +412,7 @@ export function AIWorkspace() {
                       ))}
                     </div>
                   )}
-                  <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground" : ""} whitespace-pre-line`}>
+                  <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground font-body" : "font-body"} whitespace-pre-line`}>
                     {message.content}
                   </p>
                 </div>
@@ -473,7 +533,7 @@ export function AIWorkspace() {
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
-              <h2 className="text-xl font-bold">Life Categories</h2>
+              <h2 className="text-xl font-display font-bold">Life Categories</h2>
             </div>
             <Button
               variant="ghost"
@@ -505,8 +565,8 @@ export function AIWorkspace() {
                       <Icon className={`w-7 h-7 ${category.color}`} />
                     </div>
                     <div>
-                      <p className="font-semibold">{category.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
+                      <p className="font-display font-semibold">{category.name}</p>
+                      <p className="text-sm text-muted-foreground mt-1 font-body">{category.description}</p>
                     </div>
                   </button>
                 );

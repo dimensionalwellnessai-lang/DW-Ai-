@@ -10,12 +10,15 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getGuestData, clearGuestData, getGuestMessageCount } from "@/lib/guest-storage";
 
 export function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "" });
+  
+  const guestMessageCount = getGuestMessageCount();
 
   const loginMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
@@ -43,7 +46,16 @@ export function LoginPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
-      toast({ title: "Account created successfully!" });
+      const guestData = getGuestData();
+      if (guestData && guestData.messages.length > 0) {
+        toast({ 
+          title: "Account created!", 
+          description: `Your ${guestData.messages.length} messages have been saved to your account.` 
+        });
+        clearGuestData();
+      } else {
+        toast({ title: "Account created successfully!" });
+      }
       setLocation("/app");
     },
     onError: () => {
@@ -85,12 +97,12 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col font-body">
       <header className="p-6 flex items-center justify-between">
         <Link href="/">
           <Button variant="ghost" data-testid="link-back-home">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
+            Back to Chat
           </Button>
         </Link>
         <ThemeToggle />
@@ -100,11 +112,17 @@ export function LoginPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Sparkles className="h-8 w-8 text-chart-1" />
-              <span className="font-bold text-xl">Wellness Lifestyle AI</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-display font-bold text-2xl tracking-tight">DWAI</span>
             </div>
-            <CardTitle className="text-2xl">Welcome</CardTitle>
-            <CardDescription>Sign in to your account or create a new one</CardDescription>
+            <CardTitle className="text-2xl font-display">Welcome</CardTitle>
+            <CardDescription className="font-body">
+              {guestMessageCount > 0 
+                ? `Sign up to save your ${guestMessageCount} messages and sync across devices`
+                : "Sign in to your account or create a new one"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">

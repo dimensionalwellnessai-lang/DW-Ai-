@@ -16,7 +16,12 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state management and caching
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens for theming (light/dark mode support)
-- **Typography**: Inter (primary) and Crimson Pro (for emotional/inspirational content)
+- **Typography**: Multiple lively fonts for visual variety:
+  - DM Sans (default sans-serif)
+  - Space Grotesk (display/headings via .font-display)
+  - Nunito (body text via .font-body)
+  - Crimson Pro (serif/emotional content via .font-serif)
+- **Guest Mode**: Local storage persistence for chat messages before signup
 - **Charts**: Recharts for data visualization on the progress page
 
 ### Backend Architecture

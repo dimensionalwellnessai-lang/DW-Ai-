@@ -43,7 +43,9 @@
   --chart-3: 262 83% 58%;
   --chart-4: 173 58% 39%;
   --chart-5: 12 76% 61%;
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Nunito', sans-serif;
   --font-serif: 'Crimson Pro', Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: .75rem;
@@ -447,5 +449,19 @@
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
+  }
+
+  /* Font utilities for lively typography */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  
+  .font-body {
+    font-family: var(--font-body);
+  }
+  
+  .font-serif {
+    font-family: var(--font-serif);
   }
 }
