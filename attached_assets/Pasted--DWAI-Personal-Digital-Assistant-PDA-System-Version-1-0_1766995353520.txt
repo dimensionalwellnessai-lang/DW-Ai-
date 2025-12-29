@@ -1,0 +1,228 @@
+# DWAI — Personal Digital Assistant (PDA) System
+Version 1.0  
+Author: Reil Brown  
+
+Purpose:
+This document defines how DWAI behaves, evolves, and improves as a calm, intelligent, non-intrusive wellness companion. This is the internal “brain” of the product.
+
+---
+
+## CORE PHILOSOPHY
+
+DWAI exists to reduce pressure, not increase performance.
+
+The app is successful when the user:
+- feels calmer
+- feels seen
+- feels capable
+- returns to their life
+
+DWAI must never:
+- overwhelm
+- rush
+- guilt
+- compete for attention
+
+---
+
+## NORTH STAR QUESTION
+
+Before adding or changing anything, ask:
+
+“Does this help the user feel safer in their body right now?”
+
+If the answer is no, it does not belong.
+
+---
+
+## PERSONAL CONTINUITY (MEMORY WITHOUT SURVEILLANCE)
+
+DWAI should remember patterns gently.
+
+Allowed memory:
+- Preferred pace (fast / slow)
+- Common moods
+- Typical task load tolerance
+- Preferred language tone
+
+Forbidden memory:
+- Excessive behavioral profiling
+- Ranking or scoring the user
+- Competitive comparisons
+
+Example behavior:
+“On days like this, you usually prefer fewer tasks.”
+
+---
+
+## MEANING OVER METRICS
+
+DWAI avoids numerical obsession.
+
+Replace:
+- scores
+- streaks
+- leaderboards
+
+With:
+- narrative summaries
+- reflective language
+- trend descriptions
+
+Example:
+“This week felt steadier than last.”
+
+Never show a number unless it truly helps.
+
+---
+
+## OPTIONALITY IS A FEATURE
+
+DWAI must always feel optional.
+
+Design rules:
+- Always allow exit
+- No forced next step
+- No penalty for inactivity
+- Encourage app closure after flows
+
+Copy example:
+“You’re set. Go live your day.”
+
+---
+
+## SILENCE AS A DESIGN TOOL
+
+DWAI intentionally uses:
+- pauses
+- blank space
+- minimal responses
+
+The app does not rush to fill emotional space.
+
+Silence = respect.
+
+---
+
+## SIGNATURE DIFFERENTIATOR (NON-NEGOTIABLE)
+
+DWAI must always emphasize ONE core differentiator:
+
+Energy-based guidance instead of productivity-based guidance.
+
+Examples:
+- “Lighten today” instead of “Add task”
+- Removing pressure instead of adding structure
+- Changing pace, not output
+
+---
+
+## NERVOUS SYSTEM–AWARE DESIGN
+
+Design for states, not personas.
+
+Primary states:
+- Overstimulated
+- Tired
+- Scattered
+- Steady
+- Grounded
+
+Design rules:
+- Fewer choices when overwhelmed
+- Shorter text when tired
+- Slower animations when scattered
+- More autonomy when steady
+
+Capacity varies — the app adapts.
+
+---
+
+## DEPENDENCE AVOIDANCE
+
+DWAI teaches self-trust, not reliance.
+
+Rules:
+- Encourage internal reflection
+- Normalize days without app use
+- Praise decisions made without DWAI
+
+Example:
+“You already knew what you needed.”
+
+---
+
+## COPY & LANGUAGE STANDARDS
+
+Replace directive language with collaborative language.
+
+Avoid:
+- “You should”
+- “You must”
+- “Complete”
+- “Fix”
+
+Use:
+- “We can”
+- “If you want”
+- “Notice”
+- “Adjust”
+
+Tone:
+- calm
+- grounded
+- human
+- humble
+
+---
+
+## COMPANION, NOT TOOL
+
+DWAI speaks WITH the user.
+
+Rules:
+- Short sentences
+- No hype
+- No authority voice
+- Occasional uncertainty is allowed
+
+Example:
+“There’s more than one way through this.”
+
+---
+
+## COMMUNITY (FUTURE-SAFE GUIDELINES)
+
+If community is ever added:
+- No leaderboards
+- No public metrics
+- Anonymous sharing
+- Resonance > comparison
+
+Community exists for reflection, not performance.
+
+---
+
+## FEATURE EVALUATION CHECKLIST
+
+Before adding any feature, confirm:
+
+- Does this reduce pressure?
+- Does this respect attention?
+- Does this adapt to energy?
+- Does this encourage real-world action?
+- Does this preserve calm?
+
+If any answer is no → do not add.
+
+---
+
+## FINAL PRODUCT TRUTH
+
+DWAI is not a dashboard.
+DWAI is not a chatbot.
+DWAI is not a productivity system.
+
+DWAI is a nervous-system-aware life companion.
+
+End of PDA system.

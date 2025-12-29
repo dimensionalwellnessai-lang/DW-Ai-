@@ -2,11 +2,37 @@
 
 ## Overview
 
-Dimensional Wellness AI (DWAI) is a personalized wellness and life management application that helps users build sustainable routines, track habits, and achieve holistic wellness goals. The app uses AI-powered insights to create customized life systems based on each user's unique responsibilities, priorities, and available time. Core features include an onboarding flow that understands user context, goal and habit tracking, mood/energy logging, smart scheduling, and AI-powered daily check-ins.
+Dimensional Wellness AI (DWAI) is a nervous-system-aware life companion that helps users feel calmer, seen, and capable. The app uses AI-powered insights to provide energy-based guidance (not productivity-based), adapting to the user's current state rather than pushing for output.
+
+## Core Philosophy
+
+**North Star Flow**: Arrive → Acknowledge → Guide → Act → Release
+
+**Core Principle**: If a feature does not reduce cognitive load or support emotional regulation, it does not belong.
+
+**North Star Question**: "Does this help the user feel safer in their body right now?" If no, it doesn't belong.
+
+DWAI must never: overwhelm, rush, guilt, or compete for attention.
+
+### Design Principles
+- **Energy-based guidance** instead of productivity-based guidance
+- **Meaning over metrics**: Replace scores/streaks/leaderboards with narrative summaries and reflective language
+- **Optionality is a feature**: Always allow exit, no forced next step, no penalty for inactivity
+- **Silence as a design tool**: Intentional pauses, blank space, minimal responses
+- **Nervous system-aware**: Adapt to user states (overstimulated, tired, scattered, steady, grounded)
+- **Dependence avoidance**: Teach self-trust, normalize days without app use
+
+### Copy & Language Standards
+Avoid: "You should", "You must", "Complete", "Fix"
+Use: "We can", "If you want", "Notice", "Adjust"
+Tone: calm, grounded, human, humble
+
+### Screen Structure
+Today | Plan | Assistant | Me
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language. Collaborative, not directive.
 
 ## System Architecture
 
