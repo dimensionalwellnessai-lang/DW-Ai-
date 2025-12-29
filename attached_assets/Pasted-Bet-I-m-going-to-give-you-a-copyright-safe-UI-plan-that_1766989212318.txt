@@ -1,0 +1,117 @@
+Bet. I’m going to give you a copyright-safe UI plan that feels premium like “assistant + wellness,” but is clearly your own. I’ll build it around a Signature Element System so your app has an identity nobody can confuse with anything else.
+
+Your Unique Interface Concept: “MoodSpace OS”
+
+A calm, card-based wellness dashboard + a separate assistant screen (chat is not the whole app).
+
+Signature elements (use these to make it yours)
+
+1) Energy Ring (main identity)
+	•	A circular ring at the top that shows today’s Energy + Mood
+	•	Tap to change mood manually
+	•	If watch connected: ring can auto-adjust based on sleep/HRV/stress
+
+2) Mood Gradient Backdrop
+	•	Background softly shifts based on mood (subtle gradient, not loud)
+	•	Keeps readability with a tinted overlay behind text/cards
+
+3) Orbit Cards
+	•	5 floating cards you can swipe: Body / Mind / Spirit / Social / Money
+	•	Each card shows a tiny “next action” (example: “2-min breath reset”)
+
+4) Daily Banner
+	•	One-line daily message (affirmation / focus)
+	•	Example: “Today: steady progress over perfect.”
+
+⸻
+
+Screen-by-screen layout (simple + distinct)
+
+Screen 1: Today (Home)
+
+Top area:
+	•	Energy Ring
+	•	Mood label: “Calm” + tiny icon
+	•	Button: “Edit Mood”
+
+Middle:
+	•	Orbit Cards (swipe)
+	•	Body: steps/sleep
+	•	Mind: stress/mood log
+	•	Spirit: intention/ritual
+	•	Social: outreach/check-in
+	•	Money: quick budget note
+
+Bottom:
+	•	Big button: Talk to Assistant
+	•	Small button row: “Plan my day” “Quick reset” “Journal”
+
+✅ This is NOT a chat UI. It’s a wellness dashboard.
+
+⸻
+
+Screen 2: Plan
+	•	Timeline view: Morning / Midday / Evening
+	•	Each block is a card with:
+	•	title
+	•	time
+	•	“Mark done”
+	•	“Reschedule”
+	•	Optional: sync to calendar
+
+⸻
+
+Screen 3: Assistant (Chat, but unique)
+
+Instead of classic bubbles:
+	•	Messages appear as rounded “message cards”
+	•	Each assistant message includes action chips:
+	•	“Add reminder”
+	•	“Create routine”
+	•	“Make today’s plan”
+	•	“Log mood”
+	•	Input bar includes:
+	•	mic icon (future voice)
+	•	“Quick prompts” button
+
+⸻
+
+Screen 4: Me (Profile + Settings)
+	•	Mood Theme settings:
+	•	Manual / Auto from watch
+	•	Background intensity slider
+	•	Watch connection toggle
+	•	Privacy controls
+
+⸻
+
+Mood → Color system (background + accent)
+
+You can use the mood palette we created, but the key is:
+keep it soft + readable, and apply it through theme tokens:
+	•	bgGradientStart
+	•	bgGradientEnd
+	•	cardTint
+	•	accent
+	•	textPrimary
+	•	textSecondary
+
+⸻
+
+Copy-paste dev brief (use this exactly)
+
+Feature: Mood Themes + Unique UI
+	•	Build a 4-tab app: Today, Plan, Assistant, Me.
+	•	Today screen is a dashboard with an Energy Ring at top, Orbit Cards in middle, actions at bottom.
+	•	Assistant screen uses message cards, not standard chat bubbles, and includes action chips per message.
+	•	Mood Theme system changes background gradient + accent colors across the app.
+	•	Provide Manual mood selection + optional Auto mood from watch signals (sleep/HRV/heart rate/stress where available).
+	•	Manual override always wins until next refresh.
+	•	Implement themes using global style tokens (CSS variables or theme provider) so the whole UI updates instantly.
+
+⸻
+
+If you want, I can also generate:
+	•	a Figma-style wireframe description (pixel-ish spacing, sizes, components)
+	•	a ready-to-use JSON theme file for all moods
+	•	a React/Next.js theme snippet (or Flutter/React Native—whatever you’re building on Replit)

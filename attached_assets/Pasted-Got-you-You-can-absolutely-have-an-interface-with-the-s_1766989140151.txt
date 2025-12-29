@@ -1,0 +1,103 @@
+Got you. You can absolutely have an interface with the same vibe (clean, chat-first, calm) without copying anything protected.
+
+Here’s a copy-paste design brief you can give a developer that keeps you safe from copyright issues:
+
+⸻
+
+UI Direction: “Chat-First Wellness Assistant” (Original, Non-Infringing)
+
+Goal
+
+Design a minimal, calming, chat-first wellness assistant interface that feels modern and friendly, but is visually distinct from any existing app. We will use original layout, original components, original icons, and a unique theme system.
+
+⸻
+
+Non-Infringement Rules
+	•	Do not copy any specific app’s layout, spacing, button shapes, typography pairing, color palette, or icon set.
+	•	Use different navigation (not the same placement/structure as any popular AI chat UI).
+	•	Use original component styling (cards, bubbles, input bar).
+	•	No direct cloning of screenshots. Only use “inspiration” as abstract principles: clarity, simplicity, readability.
+
+⸻
+
+Unique Look & Feel (Brand Identity)
+
+Brand vibe: calm, grounded, slightly spiritual, “life system” energy.
+Style keywords: soft, warm, airy, confident.
+
+Signature Visual Element (to make it clearly yours)
+
+Pick at least 1:
+	1.	Mood Gradient Backdrop (dynamic based on mood)
+	2.	Energy Ring (a circular “battery” showing mood/energy)
+	3.	Daily Orbit Cards (3–5 floating cards: Body / Mind / Spirit / Social / Money)
+	4.	Affirmation Banner (changes daily)
+
+⸻
+
+Layout (Distinct from ChatGPT)
+
+Home Screen
+	•	Top: “Today” header + small date
+	•	Below: Energy Ring + “How do you feel?” (tap to pick mood)
+	•	Below: Action Cards (not a chat list)
+	•	“Plan my day”
+	•	“Check-in”
+	•	“Start a routine”
+	•	“Journal”
+	•	Bottom: “Talk to Assistant” button (opens chat)
+
+Chat Screen
+	•	Chat is a separate tab/screen, not the entire app.
+	•	Messages appear in rounded cards with subtle shadows (not classic chat bubbles).
+	•	Assistant messages include quick actions:
+	•	“Add to calendar”
+	•	“Set reminder”
+	•	“Show my plan”
+	•	“Give me a 2-min reset”
+
+Navigation
+
+Use a bottom bar with icons (4 tabs):
+	•	Today
+	•	Plan
+	•	Assistant
+	•	Me
+
+This instantly makes it structurally different.
+
+⸻
+
+Theme System (Mood-Based UI)
+
+Let users pick mood → app changes:
+	•	background gradient
+	•	accent color
+	•	card tint
+
+Also support “Auto theme from watch data” with manual override.
+
+⸻
+
+Typography & Components (Make it Yours)
+	•	Choose a font pairing that is not the “usual AI chat” look.
+	•	Use your own button shape (ex: pill buttons + floating cards).
+	•	Use a consistent corner radius and spacing system.
+
+⸻
+
+Safety & Accessibility
+	•	High contrast for text
+	•	Dark mode
+	•	Reduce motion option
+	•	Clear privacy messaging for watch data
+
+⸻
+
+If you want, tell me which direction you want for the signature element:
+	1.	Energy Ring
+	2.	Mood Gradient Backdrop
+	3.	Daily Orbit Cards
+	4.	Affirmation Banner
+
+…and I’ll write a full UI spec + screen-by-screen wireframe description you can paste to your developer (and it’ll still stay non-infringing).
