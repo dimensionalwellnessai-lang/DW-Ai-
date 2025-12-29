@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { LandingPage } from "@/components/landing-page";
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
+import { BlueprintPage } from "@/pages/blueprint";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={AIWorkspace} />
       <Route path="/login" component={LoginPage} />
       <Route path="/app" component={AIWorkspace} />
+      <Route path="/blueprint" component={BlueprintPage} />
       <Route component={NotFound} />
     </Switch>
   );

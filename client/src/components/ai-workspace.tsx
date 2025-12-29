@@ -35,6 +35,7 @@ import {
   Flame,
   Play,
   ExternalLink,
+  Shield,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -681,7 +682,23 @@ export function AIWorkspace() {
             </Button>
           </header>
           <ScrollArea className="flex-1 p-6">
-            <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <Link href="/blueprint" onClick={() => setMenuOpen(false)}>
+                <button
+                  className="w-full flex items-center gap-4 p-5 rounded-3xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 shadow-lg hover-elevate transition-all duration-300 animate-fade-in-up floating-surface"
+                  data-testid="button-blueprint-link"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-display font-semibold text-lg">Wellness Blueprint</p>
+                    <p className="text-sm text-muted-foreground font-body">Your personal wellness framework</p>
+                  </div>
+                </button>
+              </Link>
+              
+              <div className="grid grid-cols-2 gap-4">
               {CATEGORIES.map((category, catIndex) => {
                 const Icon = category.icon;
                 const isActive = activeCategory === category.id;
@@ -715,6 +732,7 @@ export function AIWorkspace() {
                   </button>
                 );
               })}
+              </div>
             </div>
           </ScrollArea>
         </div>
