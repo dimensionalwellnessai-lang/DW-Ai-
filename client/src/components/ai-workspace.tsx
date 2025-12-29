@@ -31,16 +31,45 @@ import {
   Briefcase,
   Leaf,
   UserPlus,
+  Dumbbell,
+  Flame,
+  Play,
+  ExternalLink,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface WorkoutExercise {
+  name: string;
+  sets?: number;
+  reps?: string;
+  duration?: string;
+  notes?: string;
+}
+
+interface WorkoutDay {
+  day: string;
+  focus: string;
+  exercises: WorkoutExercise[];
+  restDay?: boolean;
+}
+
+interface MeditationSuggestion {
+  title: string;
+  duration: string;
+  type: string;
+  description: string;
+  youtubeUrl?: string;
+}
 
 interface ChatMessage {
   role: "assistant" | "user";
   content: string;
   category?: string;
   attachments?: { name: string; type: string; url: string }[];
+  workoutPlan?: { plan: WorkoutDay[]; summary: string };
+  meditationSuggestions?: MeditationSuggestion[];
 }
 
 interface Category {
@@ -177,7 +206,7 @@ export function AIWorkspace() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/chat", {
+      const response = await apiRequest("POST", "/api/chat/smart", {
         message,
         context: activeCategory,
         conversationHistory: messages.slice(-10),
@@ -186,10 +215,20 @@ export function AIWorkspace() {
       return response.json();
     },
     onSuccess: (data) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.response, category: activeCategory || undefined },
-      ]);
+      const newMessage: ChatMessage = {
+        role: "assistant",
+        content: data.response,
+        category: activeCategory || undefined,
+      };
+      
+      if (data.workoutPlan) {
+        newMessage.workoutPlan = data.workoutPlan;
+      }
+      if (data.meditationSuggestions) {
+        newMessage.meditationSuggestions = data.meditationSuggestions;
+      }
+      
+      setMessages((prev) => [...prev, newMessage]);
       setIsTyping(false);
 
       if (data.updatedCategories && data.updatedCategories.length > 0) {
@@ -412,6 +451,89 @@ export function AIWorkspace() {
                   <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground/90 font-body" : "font-body"} whitespace-pre-line`}>
                     {message.content}
                   </p>
+                  
+                  {message.workoutPlan && (
+                    <div className="mt-4 space-y-3" data-testid="workout-plan-display">
+                      <div className="flex items-center gap-2 text-sm font-display font-semibold text-foreground">
+                        <Dumbbell className="w-4 h-4 text-primary" />
+                        Your 7-Day Workout Plan
+                      </div>
+                      <p className="text-sm text-muted-foreground font-body">{message.workoutPlan.summary}</p>
+                      <div className="grid grid-cols-1 gap-2 mt-3">
+                        {message.workoutPlan.plan.map((day, dayIdx) => (
+                          <div
+                            key={dayIdx}
+                            className={`p-3 rounded-2xl ${day.restDay ? "bg-muted/30" : "bg-primary/5"} border border-foreground/5`}
+                            data-testid={`workout-day-${dayIdx}`}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-display font-semibold text-sm">{day.day}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {day.restDay ? "Rest" : day.focus}
+                              </Badge>
+                            </div>
+                            {!day.restDay && day.exercises.length > 0 && (
+                              <div className="space-y-1">
+                                {day.exercises.map((ex, exIdx) => (
+                                  <div key={exIdx} className="flex items-center gap-2 text-xs text-muted-foreground font-body">
+                                    <Flame className="w-3 h-3 text-orange-500" />
+                                    <span className="font-medium text-foreground">{ex.name}</span>
+                                    {ex.sets && ex.reps && <span>{ex.sets} x {ex.reps}</span>}
+                                    {ex.duration && <span>{ex.duration}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {day.restDay && (
+                              <p className="text-xs text-muted-foreground font-body">Take a break and let your body recover.</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {message.meditationSuggestions && message.meditationSuggestions.length > 0 && (
+                    <div className="mt-4 space-y-3" data-testid="meditation-suggestions-display">
+                      <div className="flex items-center gap-2 text-sm font-display font-semibold text-foreground">
+                        <Sun className="w-4 h-4 text-amber-500" />
+                        Meditation Suggestions
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {message.meditationSuggestions.map((med, medIdx) => (
+                          <div
+                            key={medIdx}
+                            className="p-3 rounded-2xl bg-amber-500/5 border border-foreground/5"
+                            data-testid={`meditation-suggestion-${medIdx}`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-display font-semibold text-sm">{med.title}</span>
+                                  <Badge variant="secondary" className="text-xs">{med.duration}</Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-body mb-2">{med.description}</p>
+                                {med.youtubeUrl && (
+                                  <a
+                                    href={med.youtubeUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-body"
+                                    data-testid={`link-meditation-youtube-${medIdx}`}
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    Watch on YouTube
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   {message.role === "assistant" && index === messages.length - 1 && !isTyping && (
                     <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-foreground/5">
                       <Button variant="ghost" size="sm" className="text-xs rounded-full bg-muted/30" data-testid="button-action-continue">

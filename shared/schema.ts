@@ -202,6 +202,22 @@ export const chatAttachmentsRelations = relations(chatAttachments, ({ one }) => 
   }),
 }));
 
+export const aiLearnings = pgTable("ai_learnings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  topic: text("topic").notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const aiLearningsRelations = relations(aiLearnings, ({ one }) => ({
+  user: one(users, {
+    fields: [aiLearnings.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -255,6 +271,12 @@ export const insertChatAttachmentSchema = createInsertSchema(chatAttachments).om
   createdAt: true,
 });
 
+export const insertAiLearningSchema = createInsertSchema(aiLearnings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -277,3 +299,5 @@ export type CategoryEntry = typeof categoryEntries.$inferSelect;
 export type InsertCategoryEntry = z.infer<typeof insertCategoryEntrySchema>;
 export type ChatAttachment = typeof chatAttachments.$inferSelect;
 export type InsertChatAttachment = z.infer<typeof insertChatAttachmentSchema>;
+export type AiLearning = typeof aiLearnings.$inferSelect;
+export type InsertAiLearning = z.infer<typeof insertAiLearningSchema>;

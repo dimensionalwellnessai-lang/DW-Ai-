@@ -1,6 +1,12 @@
 const GUEST_DATA_KEY = "dwai_guest_data";
 const GUEST_SESSION_KEY = "dwai_guest_session";
 
+export interface AiLearning {
+  topic: string;
+  details: Record<string, unknown>;
+  timestamp: number;
+}
+
 export interface GuestData {
   messages: Array<{
     role: "assistant" | "user";
@@ -13,6 +19,7 @@ export interface GuestData {
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
+  learnings: AiLearning[];
   createdAt: number;
   lastActiveAt: number;
 }
@@ -41,6 +48,9 @@ export function saveGuestData(data: GuestData): void {
 export function initGuestData(): GuestData {
   const existing = getGuestData();
   if (existing) {
+    if (!existing.learnings) {
+      existing.learnings = [];
+    }
     return existing;
   }
   
@@ -50,6 +60,7 @@ export function initGuestData(): GuestData {
     preferences: {
       themeMode: "accent-only",
     },
+    learnings: [],
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
   };
@@ -109,4 +120,23 @@ export function updateGuestPreferences(
 export function getGuestMessageCount(): number {
   const data = getGuestData();
   return data?.messages.length || 0;
+}
+
+export function addGuestLearning(topic: string, details: Record<string, unknown>): void {
+  const data = getGuestData() || initGuestData();
+  if (!data.learnings) {
+    data.learnings = [];
+  }
+  const existingIndex = data.learnings.findIndex(l => l.topic === topic);
+  if (existingIndex >= 0) {
+    data.learnings[existingIndex] = { topic, details, timestamp: Date.now() };
+  } else {
+    data.learnings.push({ topic, details, timestamp: Date.now() });
+  }
+  saveGuestData(data);
+}
+
+export function getGuestLearnings(): AiLearning[] {
+  const data = getGuestData();
+  return data?.learnings || [];
 }

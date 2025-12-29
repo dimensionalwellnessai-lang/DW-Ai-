@@ -291,6 +291,231 @@ Respond with just the insight text, no quotes or formatting.`;
   }
 }
 
+export interface WorkoutDay {
+  day: string;
+  focus: string;
+  exercises: { name: string; sets?: number; reps?: string; duration?: string; notes?: string }[];
+  restDay?: boolean;
+}
+
+export interface MeditationSuggestion {
+  title: string;
+  duration: string;
+  type: string;
+  description: string;
+  youtubeUrl?: string;
+}
+
+export async function generateWorkoutPlan(
+  userPreferences: {
+    fitnessLevel?: string;
+    goals?: string[];
+    availableDays?: number;
+    equipment?: string[];
+    injuries?: string[];
+    preferredStyle?: string;
+  }
+): Promise<{ plan: WorkoutDay[]; summary: string }> {
+  const prompt = `Generate a personalized weekly workout plan based on these preferences:
+
+FITNESS LEVEL: ${userPreferences.fitnessLevel || "beginner"}
+GOALS: ${userPreferences.goals?.join(", ") || "general fitness"}
+AVAILABLE DAYS PER WEEK: ${userPreferences.availableDays || 4}
+EQUIPMENT: ${userPreferences.equipment?.join(", ") || "minimal/bodyweight"}
+INJURIES OR LIMITATIONS: ${userPreferences.injuries?.join(", ") || "none"}
+PREFERRED STYLE: ${userPreferences.preferredStyle || "balanced"}
+
+Create a 7-day plan (some can be rest days) with:
+- Specific exercises with sets, reps, or duration
+- Progressive difficulty appropriate for the fitness level
+- Mix of strength, cardio, and flexibility based on goals
+
+Respond with valid JSON containing:
+{
+  "plan": [
+    {
+      "day": "Monday",
+      "focus": "Upper Body Strength",
+      "exercises": [
+        { "name": "Push-ups", "sets": 3, "reps": "10-12", "notes": "Modify on knees if needed" }
+      ],
+      "restDay": false
+    }
+  ],
+  "summary": "Brief 2-3 sentence overview of the plan's approach"
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("No response");
+    
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Failed to generate workout plan:", error);
+    return {
+      plan: [
+        { day: "Monday", focus: "Full Body", exercises: [
+          { name: "Bodyweight Squats", sets: 3, reps: "15" },
+          { name: "Push-ups", sets: 3, reps: "10-12" },
+          { name: "Plank", duration: "30 seconds", sets: 3 }
+        ], restDay: false },
+        { day: "Tuesday", focus: "Rest & Recovery", exercises: [], restDay: true },
+        { day: "Wednesday", focus: "Cardio & Core", exercises: [
+          { name: "Jumping Jacks", duration: "2 minutes" },
+          { name: "Mountain Climbers", sets: 3, reps: "20" },
+          { name: "Bicycle Crunches", sets: 3, reps: "15 each side" }
+        ], restDay: false },
+        { day: "Thursday", focus: "Rest & Recovery", exercises: [], restDay: true },
+        { day: "Friday", focus: "Strength Circuit", exercises: [
+          { name: "Lunges", sets: 3, reps: "12 each leg" },
+          { name: "Dips (using chair)", sets: 3, reps: "10" },
+          { name: "Glute Bridges", sets: 3, reps: "15" }
+        ], restDay: false },
+        { day: "Saturday", focus: "Active Recovery", exercises: [
+          { name: "Light Walk or Yoga", duration: "20-30 minutes" }
+        ], restDay: false },
+        { day: "Sunday", focus: "Rest", exercises: [], restDay: true }
+      ],
+      summary: "A balanced beginner-friendly plan focusing on bodyweight exercises with adequate rest days for recovery."
+    };
+  }
+}
+
+export async function generateMeditationSuggestions(
+  preferences: {
+    duration?: string;
+    focus?: string;
+    experience?: string;
+    currentMood?: string;
+  }
+): Promise<MeditationSuggestion[]> {
+  const prompt = `Suggest 5 meditation or mindfulness practices based on:
+
+PREFERRED DURATION: ${preferences.duration || "5-10 minutes"}
+FOCUS AREA: ${preferences.focus || "stress relief"}
+EXPERIENCE LEVEL: ${preferences.experience || "beginner"}
+CURRENT MOOD: ${preferences.currentMood || "neutral"}
+
+For each suggestion, include a real YouTube video link for guided meditation.
+Use popular channels like: Headspace, Calm, The Honest Guys, Michael Sealey, Jason Stephenson.
+
+Respond with valid JSON array:
+[
+  {
+    "title": "5-Minute Breathing Exercise",
+    "duration": "5 minutes",
+    "type": "breathing",
+    "description": "Simple box breathing technique for quick stress relief",
+    "youtubeUrl": "https://www.youtube.com/watch?v=..."
+  }
+]`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 800,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("No response");
+    
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? parsed : parsed.suggestions || parsed.meditations || [];
+  } catch (error) {
+    console.error("Failed to generate meditation suggestions:", error);
+    return [
+      { title: "5-Minute Morning Meditation", duration: "5 min", type: "guided", description: "Start your day with calm and intention", youtubeUrl: "https://www.youtube.com/watch?v=inpok4MKVLM" },
+      { title: "Deep Sleep Meditation", duration: "20 min", type: "sleep", description: "Relaxing guided meditation for restful sleep", youtubeUrl: "https://www.youtube.com/watch?v=1ZYbU82GVz4" },
+      { title: "Stress Relief Breathing", duration: "10 min", type: "breathing", description: "Box breathing technique for anxiety relief", youtubeUrl: "https://www.youtube.com/watch?v=tEmt1Znux58" },
+      { title: "Body Scan Relaxation", duration: "15 min", type: "body-scan", description: "Progressive muscle relaxation for tension release", youtubeUrl: "https://www.youtube.com/watch?v=QS2yDmWk0vs" },
+      { title: "Gratitude Meditation", duration: "10 min", type: "gratitude", description: "Cultivate appreciation and positive mindset", youtubeUrl: "https://www.youtube.com/watch?v=Dqn1WxO-b9I" }
+    ];
+  }
+}
+
+export async function detectIntentAndRespond(
+  userMessage: string,
+  conversationHistory: ChatMessage[],
+  userContext?: UserLifeContext
+): Promise<{
+  response: string;
+  intent: "workout" | "meditation" | "learn" | "general";
+  workoutPlan?: { plan: WorkoutDay[]; summary: string };
+  meditationSuggestions?: MeditationSuggestion[];
+  learnedFacts?: { topic: string; details: Record<string, unknown> }[];
+}> {
+  const lowerMessage = userMessage.toLowerCase();
+  
+  const workoutKeywords = ["workout", "exercise", "gym", "fitness", "training", "work out", "get fit", "build muscle", "lose weight", "cardio"];
+  const meditationKeywords = ["meditat", "mindful", "calm", "relax", "breathing", "stress relief", "anxiety", "sleep better", "peaceful"];
+  
+  const isWorkoutIntent = workoutKeywords.some(k => lowerMessage.includes(k));
+  const isMeditationIntent = meditationKeywords.some(k => lowerMessage.includes(k));
+  
+  let intent: "workout" | "meditation" | "learn" | "general" = "general";
+  let workoutPlan: { plan: WorkoutDay[]; summary: string } | undefined;
+  let meditationSuggestions: MeditationSuggestion[] | undefined;
+  
+  if (isWorkoutIntent && (lowerMessage.includes("plan") || lowerMessage.includes("want") || lowerMessage.includes("need") || lowerMessage.includes("create") || lowerMessage.includes("make"))) {
+    intent = "workout";
+    workoutPlan = await generateWorkoutPlan({});
+  } else if (isMeditationIntent) {
+    intent = "meditation";
+    meditationSuggestions = await generateMeditationSuggestions({});
+  }
+  
+  const response = await generateChatResponse(userMessage, conversationHistory, userContext);
+  
+  return {
+    response,
+    intent,
+    workoutPlan,
+    meditationSuggestions,
+  };
+}
+
+export async function generateLearnModeQuestion(
+  previousAnswers: { topic: string; answer: string }[],
+  focusArea?: string
+): Promise<{ question: string; topic: string }> {
+  const topics = [
+    "daily_routine", "fitness_goals", "diet_preferences", "sleep_habits",
+    "stress_triggers", "hobbies", "work_life", "relationships", "spirituality", "finances"
+  ];
+  
+  const askedTopics = previousAnswers.map(a => a.topic);
+  const remainingTopics = topics.filter(t => !askedTopics.includes(t));
+  const nextTopic = focusArea || remainingTopics[0] || "general";
+  
+  const questionMap: Record<string, string> = {
+    daily_routine: "What does your typical day look like? Walk me through your morning to evening.",
+    fitness_goals: "What are your fitness or physical health goals? Any activities you enjoy or want to try?",
+    diet_preferences: "Tell me about your eating habits. Any dietary preferences, restrictions, or goals?",
+    sleep_habits: "How is your sleep? What time do you usually wake up and go to bed?",
+    stress_triggers: "What tends to stress you out the most? How do you currently cope?",
+    hobbies: "What do you do for fun? Any hobbies or activities that bring you joy?",
+    work_life: "Tell me about your work or daily responsibilities. What's your balance like?",
+    relationships: "Who are the important people in your life? How are those relationships?",
+    spirituality: "Do you have any spiritual or mindfulness practices? What gives you a sense of purpose?",
+    finances: "How do you feel about your financial situation? Any goals there?",
+    general: "What's on your mind today? What would you like to work on?"
+  };
+  
+  return {
+    question: questionMap[nextTopic] || questionMap.general,
+    topic: nextTopic
+  };
+}
+
 export async function generateFullAnalysis(userData: {
   moodLogs: { energyLevel: number; moodLevel: number; clarityLevel: number | null; createdAt: Date | null }[];
   habits: { title: string; streak: number }[];

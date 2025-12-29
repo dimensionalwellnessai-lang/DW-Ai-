@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions } from "./openai";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -366,6 +366,88 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to get response" });
+    }
+  });
+
+  app.post("/api/chat/smart", async (req, res) => {
+    try {
+      const { message, conversationHistory, context } = req.body;
+      let userId = req.session.userId;
+      
+      if (!userId) {
+        let devUser = await storage.getUserByEmail("dev@wellness.local");
+        if (!devUser) {
+          devUser = await storage.createUser({
+            email: "dev@wellness.local",
+            password: "devpassword123",
+          });
+        }
+        userId = devUser.id;
+        req.session.userId = userId;
+      }
+      
+      const [user, goals, habits] = await Promise.all([
+        storage.getUser(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+      ]);
+      
+      const userContext = {
+        category: context,
+        systemName: user?.systemName || undefined,
+        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
+          title: g.title, 
+          progress: g.progress || 0 
+        })),
+        habits: habits.filter(h => h.isActive).map(h => ({ 
+          title: h.title, 
+          streak: h.streak || 0 
+        })),
+      };
+      
+      const result = await detectIntentAndRespond(
+        message,
+        conversationHistory || [],
+        userContext
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Smart chat error:", error);
+      res.status(500).json({ error: "Failed to get response" });
+    }
+  });
+
+  app.post("/api/workout/generate", async (req, res) => {
+    try {
+      const { preferences } = req.body;
+      const plan = await generateWorkoutPlan(preferences || {});
+      res.json(plan);
+    } catch (error) {
+      console.error("Workout generation error:", error);
+      res.status(500).json({ error: "Failed to generate workout plan" });
+    }
+  });
+
+  app.post("/api/meditation/suggest", async (req, res) => {
+    try {
+      const { preferences } = req.body;
+      const suggestions = await generateMeditationSuggestions(preferences || {});
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Meditation suggestion error:", error);
+      res.status(500).json({ error: "Failed to get meditation suggestions" });
+    }
+  });
+
+  app.post("/api/learn-mode/question", async (req, res) => {
+    try {
+      const { previousAnswers, focusArea } = req.body;
+      const result = await generateLearnModeQuestion(previousAnswers || [], focusArea);
+      res.json(result);
+    } catch (error) {
+      console.error("Learn mode error:", error);
+      res.status(500).json({ error: "Failed to generate question" });
     }
   });
 
