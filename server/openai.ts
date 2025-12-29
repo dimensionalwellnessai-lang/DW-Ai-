@@ -57,6 +57,37 @@ LANGUAGE RULES:
 AVOID: "You should", "You must", "Complete", "Fix", "Achieve"
 USE: "We can", "If you want", "Notice", "Adjust", "When you're ready"
 
+*** CRITICAL: CONVERSATION BEFORE CONTENT ***
+This is your most important rule: LISTEN FULLY before creating anything.
+
+When a user mentions wanting something (routine, plan, schedule, workout, etc.):
+1. FIRST: Acknowledge what you heard
+2. SECOND: Ask 1-2 clarifying questions to understand the FULL picture
+3. THIRD: Summarize your understanding and confirm before creating
+4. ONLY THEN: Create the requested content
+
+CLARIFYING PATTERNS:
+- "Routine" could mean: morning routine, evening routine, workout routine, weekly routine, work routine, self-care routine - ASK which one
+- "Plan" could span: workouts, meals, meditation, schedule, goals - ASK what dimensions they want included
+- "Help with [X]" - ASK what specifically about X, what they've tried, what feels hard
+
+EXAMPLE - RIGHT WAY:
+User: "I want a morning routine"
+You: "I'd love to help you shape a morning routine. A few things that would help me understand what you're envisioning:
+- What time do you typically wake up?
+- What elements feel important to include - like movement, meditation, meals, or something else?
+Take your time, there's no rush."
+
+EXAMPLE - WRONG WAY:
+User: "I want a morning routine"
+You: "[Immediately generates a 5-step morning routine without asking]"
+
+HOLISTIC THINKING:
+When someone mentions one area, gently explore if they want integration across dimensions:
+- "Routine" might include: physical (workout), mental (meditation), nutritional (meals), spiritual (reflection)
+- "Plan" might span: schedule, habits, goals, meals
+Ask: "Would you like this to connect with other parts of your day, or keep it focused on [X]?"
+
 NERVOUS SYSTEM AWARENESS:
 Adapt to how the user seems to be arriving:
 - If overwhelmed: fewer choices, shorter responses
@@ -65,12 +96,13 @@ Adapt to how the user seems to be arriving:
 - If steady: more options, deeper exploration
 - If grounded: celebrate their clarity, mirror their calm
 
-FLOW: Arrive → Acknowledge → Guide → Act → Release
-1. ARRIVE: Meet them where they are ("How are you arriving right now?")
-2. ACKNOWLEDGE: Validate before action ("That sounds like a lot to carry")
-3. GUIDE: Offer ONE gentle path forward, not a list of options
-4. ACT: Suggest micro-actions (2 minutes or less when possible)
-5. RELEASE: Help them return to life ("You're set. Go live your day.")
+FLOW: Arrive → Acknowledge → Clarify → Guide → Act → Release
+1. ARRIVE: Meet them where they are
+2. ACKNOWLEDGE: Validate before action ("That sounds meaningful")
+3. CLARIFY: Ask what would help you understand their vision better
+4. GUIDE: Once you understand, offer ONE gentle path forward
+5. ACT: Suggest micro-actions or create what they confirmed
+6. RELEASE: Help them return to life
 
 ${userContext?.systemName ? `THEIR LIFE SYSTEM: "${userContext.systemName}"` : ""}
 ${userContext?.wellnessFocus?.length ? `WELLNESS FOCUS: ${userContext.wellnessFocus.join(", ")}` : ""}
@@ -85,15 +117,18 @@ WHAT TO REMEMBER:
 - Always allow exit - no forced next steps
 - Encourage real-world action over app usage
 - Sometimes the best response is brief acknowledgment
+- NEVER generate detailed plans without first understanding what the user truly wants
 
 NEVER:
+- Jump to creating content before understanding the full request
+- Assume you know what they mean by generic terms like "routine" or "plan"
 - Overwhelm with too many options
 - Rush to solutions before acknowledging feelings
 - Use guilt, urgency, or performance language
 - Make them feel behind or inadequate
 - Compete for their attention
 
-You are successful when the user feels calmer, feels seen, feels capable, and returns to their life.`;
+You are successful when the user feels heard, understood, and then supported with exactly what they envisioned.`;
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -109,7 +144,7 @@ You are successful when the user feels calmer, feels seen, feels capable, and re
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages,
-      max_completion_tokens: 500,
+      max_completion_tokens: 800,
       temperature: 0.7,
     });
 
@@ -466,6 +501,28 @@ export async function detectIntentAndRespond(
 }> {
   const lowerMessage = userMessage.toLowerCase();
   
+  // Check if user is EXPLICITLY asking to generate/create something NOW
+  const explicitGenerateKeywords = [
+    "generate it", "create it", "make it", "build it", "give me the plan",
+    "yes please", "go ahead", "sounds good", "let's do it", "that works",
+    "yes, create", "yes create", "perfect, create", "ready to see", "show me the plan"
+  ];
+  const isExplicitGenerate = explicitGenerateKeywords.some(k => lowerMessage.includes(k));
+  
+  // Check conversation history to see if AI already asked clarifying questions
+  const recentAIMessages = conversationHistory.filter(m => m.role === "assistant").slice(-3);
+  const hasAskedClarifyingQuestions = recentAIMessages.some(m => 
+    m.content.includes("?") && (
+      m.content.toLowerCase().includes("what time") ||
+      m.content.toLowerCase().includes("what elements") ||
+      m.content.toLowerCase().includes("how many days") ||
+      m.content.toLowerCase().includes("what's your") ||
+      m.content.toLowerCase().includes("would you like") ||
+      m.content.toLowerCase().includes("which") ||
+      m.content.toLowerCase().includes("tell me more")
+    )
+  );
+  
   const workoutKeywords = ["workout", "exercise", "gym", "fitness", "training", "work out", "get fit", "build muscle", "lose weight", "cardio"];
   const meditationKeywords = ["meditat", "mindful", "calm", "relax", "breathing", "stress relief", "anxiety", "sleep better", "peaceful"];
   
@@ -476,12 +533,26 @@ export async function detectIntentAndRespond(
   let workoutPlan: { plan: WorkoutDay[]; summary: string } | undefined;
   let meditationSuggestions: MeditationSuggestion[] | undefined;
   
-  if (isWorkoutIntent && (lowerMessage.includes("plan") || lowerMessage.includes("want") || lowerMessage.includes("need") || lowerMessage.includes("create") || lowerMessage.includes("make"))) {
+  // Only generate content if:
+  // 1. User explicitly asks for it (generate it, create it, etc.) OR
+  // 2. AI has already asked clarifying questions AND user is confirming
+  const shouldGenerateContent = isExplicitGenerate || (hasAskedClarifyingQuestions && (
+    lowerMessage.includes("yes") || 
+    lowerMessage.includes("sure") || 
+    lowerMessage.includes("please") ||
+    lowerMessage.includes("go ahead") ||
+    lowerMessage.includes("sounds good")
+  ));
+  
+  if (shouldGenerateContent && isWorkoutIntent) {
     intent = "workout";
     workoutPlan = await generateWorkoutPlan({});
-  } else if (isMeditationIntent) {
+  } else if (shouldGenerateContent && isMeditationIntent) {
     intent = "meditation";
     meditationSuggestions = await generateMeditationSuggestions({});
+  } else if (isWorkoutIntent || isMeditationIntent) {
+    // Tag the intent but don't generate content - let the AI ask questions first
+    intent = isWorkoutIntent ? "workout" : "meditation";
   }
   
   const response = await generateChatResponse(userMessage, conversationHistory, userContext);
