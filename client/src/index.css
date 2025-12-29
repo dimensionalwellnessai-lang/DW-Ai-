@@ -48,15 +48,16 @@
   --font-body: 'Nunito', sans-serif;
   --font-serif: 'Crimson Pro', Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: .75rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(210 4% 12% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(210 4% 12% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(210 4% 12% / 0.00), 0px 1px 2px -1px hsl(210 4% 12% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(210 4% 12% / 0.00), 0px 1px 2px -1px hsl(210 4% 12% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(210 4% 12% / 0.00), 0px 2px 4px -1px hsl(210 4% 12% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(210 4% 12% / 0.00), 0px 4px 6px -1px hsl(210 4% 12% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(210 4% 12% / 0.00), 0px 8px 10px -1px hsl(210 4% 12% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(210 4% 12% / 0.00);
+  --radius: 1.25rem;
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.03);
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.04);
+  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.09);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.1);
+  --shadow-glow: 0 0 30px -5px rgba(99,102,241,0.15);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -129,14 +130,15 @@
   --chart-3: 262 83% 65%;
   --chart-4: 173 58% 50%;
   --chart-5: 12 76% 65%;
-  --shadow-2xs: 0px 2px 0px 0px hsl(210 5% 5% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(210 5% 5% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(210 5% 5% / 0.00), 0px 1px 2px -1px hsl(210 5% 5% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(210 5% 5% / 0.00), 0px 1px 2px -1px hsl(210 5% 5% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(210 5% 5% / 0.00), 0px 2px 4px -1px hsl(210 5% 5% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(210 5% 5% / 0.00), 0px 4px 6px -1px hsl(210 5% 5% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(210 5% 5% / 0.00), 0px 8px 10px -1px hsl(210 5% 5% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(210 5% 5% / 0.00);
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.1);
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.12);
+  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.15);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.18);
+  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.22);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.25);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.3);
+  --shadow-glow: 0 0 30px -5px rgba(99,102,241,0.25);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -463,5 +465,64 @@
   
   .font-serif {
     font-family: var(--font-serif);
+  }
+  
+  /* Living background animation - slow, calming drift */
+  @keyframes living-gradient {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+  
+  .living-bg {
+    background-size: 200% 200%;
+    animation: living-gradient 30s ease-in-out infinite;
+  }
+  
+  /* Subtle pulse for energy ring */
+  @keyframes gentle-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.85;
+    }
+  }
+  
+  .energy-ring {
+    animation: gentle-pulse 4s ease-in-out infinite;
+  }
+  
+  /* Fade-in-up animation for messages */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out forwards;
+  }
+  
+  /* Staggered animations */
+  .stagger-1 { animation-delay: 0ms; }
+  .stagger-2 { animation-delay: 50ms; }
+  .stagger-3 { animation-delay: 100ms; }
+  .stagger-4 { animation-delay: 150ms; }
+  
+  /* Floating surface effect */
+  .floating-surface {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 }

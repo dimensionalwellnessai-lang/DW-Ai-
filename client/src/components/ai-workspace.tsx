@@ -30,7 +30,6 @@ import {
   MicOff,
   Briefcase,
   Leaf,
-  Palette,
   UserPlus,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
@@ -289,14 +288,15 @@ export function AIWorkspace() {
   };
 
   const activeCategoryData = CATEGORIES.find((c) => c.id === activeCategory);
-  
-  const backgroundStyle = mood && themeMode === "full-background" 
-    ? { background: `linear-gradient(135deg, hsl(var(--mood-bg-start)) 0%, hsl(var(--mood-bg-end)) 100%)` }
-    : undefined;
 
   return (
     <div 
-      className="flex flex-col h-screen w-full bg-background transition-colors duration-500 font-body"
+      className="flex flex-col h-screen w-full transition-colors duration-700 font-body living-bg"
+      style={{
+        background: mood && themeMode === "full-background" 
+          ? `linear-gradient(135deg, hsl(var(--mood-bg-start)) 0%, hsl(var(--mood-bg-end)) 50%, hsl(var(--mood-bg-start)) 100%)`
+          : `linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--card)) 50%, hsl(var(--background)) 100%)`
+      }}
     >
       <header className="flex items-center justify-between gap-4 p-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -308,15 +308,26 @@ export function AIWorkspace() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setMoodPickerOpen(true)}
+            className="flex items-center gap-2 group"
+            data-testid="button-energy-ring"
+          >
             <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300"
-              style={{ background: currentMood ? `linear-gradient(135deg, ${currentMood.color}, ${currentMood.color}80)` : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 energy-ring shadow-lg cursor-pointer"
+              style={{ 
+                background: currentMood 
+                  ? `linear-gradient(135deg, ${currentMood.color}, ${currentMood.color}80)` 
+                  : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))',
+                boxShadow: currentMood 
+                  ? `0 0 20px ${currentMood.color}40` 
+                  : '0 0 20px hsl(var(--primary) / 0.3)'
+              }}
             >
-              <Sparkles className="h-4 w-4 text-white" />
+              <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <span className="font-display font-bold text-lg tracking-tight" data-testid="text-brand">DWAI</span>
-          </div>
+            <span className="font-display font-bold text-xl tracking-tight" data-testid="text-brand">DWAI</span>
+          </button>
           {activeCategoryData && (
             <Badge variant="secondary" className="bg-primary/10">
               <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
@@ -325,24 +336,9 @@ export function AIWorkspace() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMoodPickerOpen(true)}
-            className="relative"
-            data-testid="button-open-mood-picker"
-          >
-            <Palette className="h-5 w-5" />
-            {currentMood && (
-              <span 
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
-                style={{ backgroundColor: currentMood.color }}
-              />
-            )}
-          </Button>
           <ThemeToggle />
           <Link href="/login">
-            <Button variant="default" size="sm" className="rounded-full" data-testid="button-signup">
+            <Button variant="default" size="sm" className="rounded-full shadow-md" data-testid="button-signup">
               <UserPlus className="w-4 h-4 mr-1" />
               Sign up
             </Button>
@@ -383,25 +379,26 @@ export function AIWorkspace() {
             {messages.map((message, index) => (
               <div
                 key={index}
-                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex animate-fade-in-up ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                style={{ animationDelay: `${Math.min(index * 50, 200)}ms` }}
               >
                 <div
                   className={`max-w-[85%] ${
                     message.role === "user"
-                      ? "bg-primary text-primary-foreground px-4 py-3 rounded-3xl"
-                      : ""
+                      ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl shadow-md"
+                      : "bg-card/60 px-5 py-4 rounded-3xl floating-surface"
                   }`}
                   data-testid={`message-chat-${index}`}
                 >
                   {message.category && message.role === "assistant" && (
-                    <Badge variant="secondary" className="mb-2 text-xs bg-muted">
+                    <Badge variant="secondary" className="mb-2 text-xs bg-muted/50">
                       {CATEGORIES.find((c) => c.id === message.category)?.name}
                     </Badge>
                   )}
                   {message.attachments && message.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {message.attachments.map((att, i) => (
-                        <div key={i} className="flex items-center gap-1 bg-muted rounded-full px-2 py-1 text-xs">
+                        <div key={i} className="flex items-center gap-1 bg-muted/50 rounded-full px-2 py-1 text-xs">
                           {att.type.startsWith("image/") ? (
                             <Image className="w-3 h-3" />
                           ) : (
@@ -412,9 +409,19 @@ export function AIWorkspace() {
                       ))}
                     </div>
                   )}
-                  <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground font-body" : "font-body"} whitespace-pre-line`}>
+                  <p className={`${message.role === "assistant" ? "leading-relaxed text-foreground/90 font-body" : "font-body"} whitespace-pre-line`}>
                     {message.content}
                   </p>
+                  {message.role === "assistant" && index === messages.length - 1 && !isTyping && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-foreground/5">
+                      <Button variant="ghost" size="sm" className="text-xs rounded-full bg-muted/30" data-testid="button-action-continue">
+                        Tell me more
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-xs rounded-full bg-muted/30" data-testid="button-action-save">
+                        Save this
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -503,7 +510,7 @@ export function AIWorkspace() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={isListening ? "Listening..." : (activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "Ask anything...")}
-                  className="resize-none min-h-[44px] max-h-32 rounded-3xl bg-muted border-0 focus-visible:ring-1 focus-visible:ring-primary/30"
+                  className="resize-none min-h-[44px] max-h-32 rounded-3xl bg-card/60 border-0 focus-visible:ring-1 focus-visible:ring-primary/30 floating-surface shadow-sm"
                   disabled={isTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -517,7 +524,7 @@ export function AIWorkspace() {
                   size="icon"
                   onClick={handleSend}
                   disabled={!input.trim() || isTyping}
-                  className="bg-primary"
+                  className="rounded-full shadow-md"
                   data-testid="button-send-message"
                 >
                   <Send className="w-4 h-4" />
@@ -527,11 +534,18 @@ export function AIWorkspace() {
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <div 
+          className="fixed inset-0 z-50 flex flex-col living-bg"
+          style={{
+            background: mood && themeMode === "full-background" 
+              ? `linear-gradient(135deg, hsl(var(--mood-bg-start)) 0%, hsl(var(--mood-bg-end)) 50%, hsl(var(--mood-bg-start)) 100%)`
+              : `linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--card)) 50%, hsl(var(--background)) 100%)`
+          }}
+        >
           <header className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg energy-ring">
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
               <h2 className="text-xl font-display font-bold">Life Categories</h2>
             </div>
@@ -546,7 +560,7 @@ export function AIWorkspace() {
           </header>
           <ScrollArea className="flex-1 p-6">
             <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
-              {CATEGORIES.map((category) => {
+              {CATEGORIES.map((category, catIndex) => {
                 const Icon = category.icon;
                 const isActive = activeCategory === category.id;
                 
@@ -554,14 +568,22 @@ export function AIWorkspace() {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-all duration-200 hover-elevate ${
+                    className={`flex flex-col items-center gap-3 p-6 rounded-3xl text-center transition-all duration-300 hover-elevate animate-fade-in-up floating-surface ${
                       isActive 
-                        ? "bg-primary/15" 
-                        : "bg-muted/50"
+                        ? "bg-primary/15 shadow-lg" 
+                        : "bg-card/40 shadow-md"
                     }`}
+                    style={{ animationDelay: `${catIndex * 30}ms` }}
                     data-testid={`button-category-${category.id}`}
                   >
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isActive ? "bg-primary/20" : "bg-muted"}`}>
+                    <div 
+                      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${isActive ? "shadow-lg" : "shadow-md"}`}
+                      style={{ 
+                        background: isActive 
+                          ? `linear-gradient(135deg, ${category.color.replace('text-', '')}20, ${category.color.replace('text-', '')}40)` 
+                          : 'hsl(var(--muted))' 
+                      }}
+                    >
                       <Icon className={`w-7 h-7 ${category.color}`} />
                     </div>
                     <div>
