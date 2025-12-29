@@ -23,6 +23,10 @@ import {
   Menu,
   Paperclip,
   Image,
+  Mic,
+  MicOff,
+  Briefcase,
+  Leaf,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -44,16 +48,18 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
-  { id: "calendar", name: "Calendar", icon: Calendar, color: "text-blue-500", description: "View and edit your routine" },
-  { id: "inspiration", name: "Daily Inspiration", icon: Sun, color: "text-yellow-500", description: "Wellness quotes and mindfulness" },
-  { id: "meals", name: "Meal Prep", icon: Utensils, color: "text-pink-500", description: "Meal planning and recipes" },
-  { id: "goals", name: "Goals", icon: Target, color: "text-green-500", description: "Brainstorm and create plans" },
+  { id: "calendar", name: "Calendar", icon: Calendar, color: "text-blue-500", description: "Your schedule and routines" },
+  { id: "physical", name: "Physical", icon: Heart, color: "text-red-500", description: "Exercise, sleep, and health" },
+  { id: "emotional", name: "Emotional", icon: Smile, color: "text-pink-500", description: "Feelings and self-care" },
   { id: "social", name: "Social", icon: Users, color: "text-purple-500", description: "Relationships and connections" },
-  { id: "spiritual", name: "Spiritual", icon: Heart, color: "text-red-500", description: "Mindfulness and purpose" },
-  { id: "diary", name: "Diary", icon: BookOpen, color: "text-orange-500", description: "Journal your thoughts" },
-  { id: "mental", name: "Mental", icon: Brain, color: "text-indigo-500", description: "Focus and productivity" },
-  { id: "emotional", name: "Emotional", icon: Smile, color: "text-amber-500", description: "Balance and wellbeing" },
-  { id: "financial", name: "Financial", icon: DollarSign, color: "text-emerald-500", description: "Budgeting and goals" },
+  { id: "mental", name: "Intellectual", icon: Brain, color: "text-indigo-500", description: "Learning and growth" },
+  { id: "spiritual", name: "Spiritual", icon: Sun, color: "text-amber-500", description: "Purpose and inner peace" },
+  { id: "occupational", name: "Occupational", icon: Briefcase, color: "text-sky-500", description: "Work and career growth" },
+  { id: "environmental", name: "Environmental", icon: Leaf, color: "text-teal-500", description: "Your space and nature" },
+  { id: "financial", name: "Financial", icon: DollarSign, color: "text-emerald-500", description: "Money and security" },
+  { id: "meals", name: "Meal Prep", icon: Utensils, color: "text-orange-500", description: "Nutrition and recipes" },
+  { id: "diary", name: "Diary", icon: BookOpen, color: "text-cyan-500", description: "Journal your thoughts" },
+  { id: "goals", name: "Goals", icon: Target, color: "text-green-500", description: "Dreams and milestones" },
 ];
 
 export function AIWorkspace() {
@@ -65,14 +71,71 @@ export function AIWorkspace() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your wellness companion. I'm here to help you build a balanced, fulfilling life. You can chat with me about anything, or tap the menu to explore categories like your calendar, goals, meal planning, and more. What's on your mind today?",
+      content: "Hey there! I'm CoreSync, your personal AI assistant. Think of me like Siri, but I actually understand your life. I can help you manage your calendar, plan meals, track goals, handle finances, journal your thoughts, and so much more. Just talk to me naturally - I'm here to make your life easier. What can I help you with today?",
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      const recognitionInstance = new SpeechRecognitionAPI();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = "en-US";
+
+      recognitionInstance.onresult = (event: any) => {
+        let transcript = "";
+        
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        
+        setInput(transcript);
+      };
+
+      recognitionInstance.onerror = () => {
+        setIsListening(false);
+        toast({
+          title: "Voice input error",
+          description: "Couldn't hear you. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(recognitionInstance);
+    }
+  }, [toast]);
+
+  const toggleVoiceInput = () => {
+    if (!recognition) {
+      toast({
+        title: "Voice not supported",
+        description: "Your browser doesn't support voice input.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+    } else {
+      setInput("");
+      recognition.start();
+      setIsListening(true);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -174,16 +237,18 @@ export function AIWorkspace() {
 
   const getCategoryWelcome = (categoryId: string): string => {
     const welcomes: Record<string, string> = {
-      calendar: "Here you can view your schedule, create routines, and plan your days.",
-      inspiration: "Let me share some wisdom to brighten your day and shift your perspective.",
-      meals: "Let's plan nutritious meals that fuel your body and fit your lifestyle.",
-      goals: "This is where you brainstorm, set intentions, and create actionable plans.",
-      social: "Nurturing relationships is key to wellbeing. Let's focus on your connections.",
-      spiritual: "Take a moment to center yourself. We can explore mindfulness, gratitude, or purpose.",
-      diary: "Your private space to reflect, process emotions, and track your journey.",
-      mental: "Sharp mind, clear focus. Let's work on productivity and mental clarity.",
-      emotional: "Understanding and managing emotions is a skill. Let's explore together.",
-      financial: "Financial wellness reduces stress. Let's work on your money goals.",
+      calendar: "Here you can view your schedule, create routines, and plan your days. Tell me about any appointments or events you want to add.",
+      physical: "Your physical wellness is the foundation. Let's talk about exercise, sleep, nutrition, or any health goals you have.",
+      emotional: "Emotional wellness matters. I'm here to help you process feelings, practice self-care, and build resilience.",
+      social: "Relationships are everything. Let's strengthen your connections - tell me about people you want to reach out to or plans to make.",
+      mental: "Keep your mind sharp! We can explore learning goals, books, courses, or anything that sparks your curiosity.",
+      spiritual: "Find your center. Whether it's meditation, gratitude, or exploring your purpose - I'm here for this journey with you.",
+      occupational: "Your work life matters too. Let's talk about career goals, work-life balance, skill development, or job satisfaction.",
+      environmental: "Your surroundings affect your wellbeing. Let's discuss your living space, time in nature, or creating a peaceful environment.",
+      financial: "Financial peace of mind is real wellness. Let's track spending, set budgets, or work toward your money goals.",
+      meals: "Good food is self-care. Tell me about your dietary preferences and I'll help with meal plans and recipes.",
+      diary: "Your private space to reflect. Journal freely - I'll help you process thoughts and track your emotional journey.",
+      goals: "Dreams become reality with a plan. What do you want to achieve? Let's break it down into actionable steps.",
     };
     return welcomes[categoryId] || "";
   };
@@ -191,8 +256,8 @@ export function AIWorkspace() {
   const activeCategoryData = CATEGORIES.find((c) => c.id === activeCategory);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b flex-wrap">
+    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-background via-background to-primary/5">
+      <header className="flex items-center justify-between gap-4 p-4 border-b border-border/50 backdrop-blur-sm bg-background/80 flex-wrap">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -203,11 +268,13 @@ export function AIWorkspace() {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-chart-1" />
-            <span className="font-semibold" data-testid="text-brand">Wellness AI</span>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-lg" data-testid="text-brand">CoreSync</span>
           </div>
           {activeCategoryData && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="bg-primary/10 border-primary/20">
               <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
               {activeCategoryData.name}
             </Badge>
@@ -227,10 +294,10 @@ export function AIWorkspace() {
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[85%] p-4 rounded-2xl ${
+                      className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${
                         message.role === "user"
-                          ? "bg-chart-1 text-primary-foreground"
-                          : "bg-muted"
+                          ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground"
+                          : "bg-card border border-border/50"
                       }`}
                       data-testid={`message-chat-${index}`}
                     >
@@ -329,12 +396,22 @@ export function AIWorkspace() {
                 >
                   <Image className="w-4 h-4" />
                 </Button>
+                <Button
+                  variant={isListening ? "default" : "ghost"}
+                  size="icon"
+                  onClick={toggleVoiceInput}
+                  disabled={isTyping}
+                  className={isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : ""}
+                  data-testid="button-voice-input"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
                 <Textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "What's on your mind?"}
-                  className="resize-none min-h-[44px] max-h-32 rounded-2xl"
+                  placeholder={isListening ? "Listening..." : (activeCategory ? `Ask about ${activeCategoryData?.name.toLowerCase()}...` : "Talk to me naturally...")}
+                  className="resize-none min-h-[44px] max-h-32 rounded-2xl bg-muted/50 border-primary/20 focus:border-primary/50"
                   disabled={isTyping}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -348,6 +425,7 @@ export function AIWorkspace() {
                   size="icon"
                   onClick={handleSend}
                   disabled={!input.trim() || isTyping}
+                  className="bg-primary"
                   data-testid="button-send-message"
                 >
                   <Send className="w-4 h-4" />
@@ -359,9 +437,14 @@ export function AIWorkspace() {
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <header className="flex items-center justify-between gap-4 p-4 border-b">
-            <h2 className="text-xl font-semibold">Categories</h2>
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-background via-background to-primary/10 flex flex-col">
+          <header className="flex items-center justify-between gap-4 p-4 border-b border-border/50 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <h2 className="text-xl font-bold">Life Categories</h2>
+            </div>
             <Button
               variant="ghost"
               size="icon"
@@ -371,7 +454,7 @@ export function AIWorkspace() {
               <X className="h-5 w-5" />
             </Button>
           </header>
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-6">
             <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
               {CATEGORIES.map((category) => {
                 const Icon = category.icon;
@@ -381,12 +464,16 @@ export function AIWorkspace() {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category.id)}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-colors ${
-                      isActive ? "bg-chart-1/10 border-2 border-chart-1/30" : "bg-muted hover-elevate"
+                    className={`flex flex-col items-center gap-3 p-6 rounded-2xl text-center transition-all duration-200 ${
+                      isActive 
+                        ? "bg-primary/15 border-2 border-primary/40 shadow-lg shadow-primary/10" 
+                        : "bg-card border border-border/50 hover-elevate hover:shadow-md"
                     }`}
                     data-testid={`button-category-${category.id}`}
                   >
-                    <Icon className={`w-10 h-10 ${category.color}`} />
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isActive ? "bg-primary/20" : "bg-muted"}`}>
+                      <Icon className={`w-7 h-7 ${category.color}`} />
+                    </div>
                     <div>
                       <p className="font-semibold">{category.name}</p>
                       <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
