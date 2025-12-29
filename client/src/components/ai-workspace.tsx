@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { MoodPicker } from "@/components/mood-picker";
+import { useTheme, MOOD_OPTIONS } from "@/lib/theme-provider";
 import {
   Sparkles,
   Send,
@@ -27,6 +29,7 @@ import {
   MicOff,
   Briefcase,
   Leaf,
+  Palette,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -64,7 +67,9 @@ const CATEGORIES: Category[] = [
 
 export function AIWorkspace() {
   const { toast } = useToast();
+  const { mood, themeMode } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moodPickerOpen, setMoodPickerOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<{ name: string; type: string; url: string }[]>([]);
@@ -77,6 +82,8 @@ export function AIWorkspace() {
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  
+  const currentMood = MOOD_OPTIONS.find(m => m.id === mood);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -254,9 +261,16 @@ export function AIWorkspace() {
   };
 
   const activeCategoryData = CATEGORIES.find((c) => c.id === activeCategory);
+  
+  const backgroundStyle = mood && themeMode === "full-background" 
+    ? { background: `linear-gradient(135deg, hsl(var(--mood-bg-start)) 0%, hsl(var(--mood-bg-end)) 100%)` }
+    : undefined;
 
   return (
-    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-background via-background to-primary/5">
+    <div 
+      className="flex flex-col h-screen w-full transition-colors duration-500"
+      style={backgroundStyle || { background: 'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--background)) 80%, hsl(var(--primary) / 0.05) 100%)' }}
+    >
       <header className="flex items-center justify-between gap-4 p-4 border-b border-border/50 backdrop-blur-sm bg-background/80 flex-wrap">
         <div className="flex items-center gap-3">
           <Button
@@ -268,8 +282,11 @@ export function AIWorkspace() {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300"
+              style={{ background: currentMood ? `linear-gradient(135deg, ${currentMood.color}, ${currentMood.color}80)` : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))' }}
+            >
+              <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="font-bold text-lg" data-testid="text-brand">CoreSync</span>
           </div>
@@ -280,8 +297,27 @@ export function AIWorkspace() {
             </Badge>
           )}
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMoodPickerOpen(true)}
+            className="relative"
+            data-testid="button-open-mood-picker"
+          >
+            <Palette className="h-5 w-5" />
+            {currentMood && (
+              <span 
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background"
+                style={{ backgroundColor: currentMood.color }}
+              />
+            )}
+          </Button>
+          <ThemeToggle />
+        </div>
       </header>
+      
+      {moodPickerOpen && <MoodPicker onClose={() => setMoodPickerOpen(false)} />}
 
       <div className="flex-1 flex flex-col overflow-hidden p-4">
         <Card className="flex-1 flex flex-col overflow-hidden">

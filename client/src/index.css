@@ -165,6 +165,169 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* Mood Theme Variables - Light Mode */
+:root {
+  --mood-accent: 217 91% 60%;
+  --mood-bg-start: 214 32% 91%;
+  --mood-bg-end: 210 40% 96%;
+}
+
+/* Peace / Calm - Soft Blue */
+:root[data-mood="calm"], .dark[data-mood="calm"] {
+  --mood-accent: 210 40% 70%;
+}
+:root[data-mood="calm"] {
+  --mood-bg-start: 210 40% 92%;
+  --mood-bg-end: 210 45% 96%;
+}
+.dark[data-mood="calm"] {
+  --mood-bg-start: 210 30% 12%;
+  --mood-bg-end: 210 35% 16%;
+}
+
+/* Focused / Productive - Deep Blue */
+:root[data-mood="focused"], .dark[data-mood="focused"] {
+  --mood-accent: 210 60% 45%;
+}
+:root[data-mood="focused"] {
+  --mood-bg-start: 210 50% 88%;
+  --mood-bg-end: 210 40% 94%;
+}
+.dark[data-mood="focused"] {
+  --mood-bg-start: 210 45% 10%;
+  --mood-bg-end: 210 40% 14%;
+}
+
+/* Happy / Uplifted - Warm Yellow */
+:root[data-mood="happy"], .dark[data-mood="happy"] {
+  --mood-accent: 45 90% 55%;
+}
+:root[data-mood="happy"] {
+  --mood-bg-start: 45 70% 92%;
+  --mood-bg-end: 45 60% 96%;
+}
+.dark[data-mood="happy"] {
+  --mood-bg-start: 45 40% 10%;
+  --mood-bg-end: 45 35% 14%;
+}
+
+/* Grateful / Open-Heart - Rose Pink */
+:root[data-mood="grateful"], .dark[data-mood="grateful"] {
+  --mood-accent: 345 65% 70%;
+}
+:root[data-mood="grateful"] {
+  --mood-bg-start: 345 50% 94%;
+  --mood-bg-end: 345 45% 97%;
+}
+.dark[data-mood="grateful"] {
+  --mood-bg-start: 345 35% 12%;
+  --mood-bg-end: 345 30% 15%;
+}
+
+/* Confident / Powerful - Purple */
+:root[data-mood="confident"], .dark[data-mood="confident"] {
+  --mood-accent: 262 60% 55%;
+}
+:root[data-mood="confident"] {
+  --mood-bg-start: 262 45% 92%;
+  --mood-bg-end: 262 40% 96%;
+}
+.dark[data-mood="confident"] {
+  --mood-bg-start: 262 40% 12%;
+  --mood-bg-end: 262 35% 15%;
+}
+
+/* Grounded / Safe - Forest Green */
+:root[data-mood="grounded"], .dark[data-mood="grounded"] {
+  --mood-accent: 140 50% 35%;
+}
+:root[data-mood="grounded"] {
+  --mood-bg-start: 140 40% 92%;
+  --mood-bg-end: 140 35% 96%;
+}
+.dark[data-mood="grounded"] {
+  --mood-bg-start: 140 35% 10%;
+  --mood-bg-end: 140 30% 14%;
+}
+
+/* Balanced / Neutral - Warm Gray */
+:root[data-mood="balanced"], .dark[data-mood="balanced"] {
+  --mood-accent: 220 10% 55%;
+}
+:root[data-mood="balanced"] {
+  --mood-bg-start: 220 10% 92%;
+  --mood-bg-end: 220 8% 96%;
+}
+.dark[data-mood="balanced"] {
+  --mood-bg-start: 220 10% 12%;
+  --mood-bg-end: 220 8% 15%;
+}
+
+/* Sad / Low - Muted Indigo */
+:root[data-mood="sad"], .dark[data-mood="sad"] {
+  --mood-accent: 225 25% 50%;
+}
+:root[data-mood="sad"] {
+  --mood-bg-start: 225 20% 92%;
+  --mood-bg-end: 225 18% 95%;
+}
+.dark[data-mood="sad"] {
+  --mood-bg-start: 225 25% 12%;
+  --mood-bg-end: 225 20% 15%;
+}
+
+/* Stressed / Overwhelmed - Muted Red */
+:root[data-mood="stressed"], .dark[data-mood="stressed"] {
+  --mood-accent: 0 45% 58%;
+}
+:root[data-mood="stressed"] {
+  --mood-bg-start: 0 35% 94%;
+  --mood-bg-end: 0 30% 97%;
+}
+.dark[data-mood="stressed"] {
+  --mood-bg-start: 0 30% 12%;
+  --mood-bg-end: 0 25% 15%;
+}
+
+/* Anxious / Restless - Amber */
+:root[data-mood="anxious"], .dark[data-mood="anxious"] {
+  --mood-accent: 30 80% 55%;
+}
+:root[data-mood="anxious"] {
+  --mood-bg-start: 30 60% 94%;
+  --mood-bg-end: 30 50% 97%;
+}
+.dark[data-mood="anxious"] {
+  --mood-bg-start: 30 40% 11%;
+  --mood-bg-end: 30 35% 14%;
+}
+
+/* Tired / Drained - Soft Lavender */
+:root[data-mood="tired"], .dark[data-mood="tired"] {
+  --mood-accent: 280 35% 70%;
+}
+:root[data-mood="tired"] {
+  --mood-bg-start: 280 30% 94%;
+  --mood-bg-end: 280 25% 97%;
+}
+.dark[data-mood="tired"] {
+  --mood-bg-start: 280 25% 12%;
+  --mood-bg-end: 280 20% 15%;
+}
+
+/* Motivated / Energized - Coral */
+:root[data-mood="motivated"], .dark[data-mood="motivated"] {
+  --mood-accent: 15 85% 55%;
+}
+:root[data-mood="motivated"] {
+  --mood-bg-start: 15 65% 94%;
+  --mood-bg-end: 15 55% 97%;
+}
+.dark[data-mood="motivated"] {
+  --mood-bg-start: 15 45% 11%;
+  --mood-bg-end: 15 40% 14%;
+}
+
 @layer base {
   * {
     @apply border-border;

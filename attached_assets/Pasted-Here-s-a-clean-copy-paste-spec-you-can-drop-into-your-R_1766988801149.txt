@@ -1,0 +1,101 @@
+Here’s a clean copy-paste spec you can drop into your Replit notes or send to a dev. It includes mood colors, background behavior, and watch integration.
+
+⸻
+
+Mood Color + Background Theme Feature (Wellness App Spec)
+
+Goal
+
+Create a “Mood Theme” system where the app’s accent + background can change based on:
+	1.	the user’s selected mood, and/or
+	2.	a mood inferred from watch data (heart rate, HRV, sleep, activity).
+
+Users can also override the automatic choice anytime.
+
+⸻
+
+Mood → Color Palette (Default)
+
+Use calm, not neon. Keep text readable.
+	•	Peace / Calm → Soft Blue (#A7C7E7)
+	•	Focused / Productive → Deep Blue (#2F5D8C)
+	•	Happy / Uplifted → Warm Yellow (#F6D365)
+	•	Grateful / Open-Heart → Rose Pink (#F7A8B8)
+	•	Confident / Powerful → Purple (#6D5BD0)
+	•	Grounded / Safe → Forest Green (#2E7D32)
+	•	Balanced / Neutral → Warm Gray (#B0B0B0)
+	•	Sad / Low → Muted Indigo (#5B6C8F)
+	•	Stressed / Overwhelmed → Muted Red (#D17A7A) (not harsh)
+	•	Anxious / Restless → Amber (#F4A261)
+	•	Tired / Drained → Soft Lavender (#CDB4DB)
+	•	Motivated / Energized → Coral (#FF7A59)
+
+⸻
+
+Background Behavior (What Changes)
+
+Theme Elements
+	•	Background gradient (subtle)
+	•	Primary accent (buttons, toggles, highlights)
+	•	Icon tint
+	•	Optional: ambient animation (very light: slow pulse or drift)
+
+Rules
+	•	Background must keep contrast for accessibility.
+	•	Provide Dark Mode versions of each mood theme.
+	•	Let users pick:
+	•	“Mood color only” (accent)
+	•	“Full mood background” (accent + background)
+
+⸻
+
+Watch-Connected Auto Mood (Optional)
+
+Data Inputs (if connected)
+	•	Heart rate (current + resting)
+	•	HRV trend
+	•	Sleep duration + sleep quality
+	•	Steps/activity minutes
+	•	Stress score if available (platform dependent)
+
+Simple Auto-Theme Logic (v1)
+	•	Low sleep + low HRV → “Tired / Drained” theme
+	•	High HR + low HRV → “Stressed / Overwhelmed” theme
+	•	Good sleep + steady HRV → “Balanced / Neutral” or “Calm”
+	•	High activity + good sleep → “Motivated / Energized”
+
+User Control
+	•	Toggle: Auto Mood Theme ON/OFF
+	•	Slider: “How sensitive?” (Low / Medium / High)
+	•	Manual override always wins (until next scheduled refresh)
+
+⸻
+
+User Experience Flow
+	1.	User opens app → sees today’s theme.
+	2.	“How are you feeling?” quick picker (icons + names).
+	3.	If watch is connected and Auto Theme is ON:
+	•	App suggests a mood: “Based on your body signals, you may be feeling: Tired.”
+	•	User can accept or change.
+	4.	Theme updates instantly across the app.
+
+⸻
+
+Developer Notes (Implementation)
+	•	Store mood theme as a theme_id (string) + palette values.
+	•	Keep a user_theme_preference:
+	•	manual
+	•	auto_watch
+	•	scheduled (optional)
+	•	Use CSS variables / theming tokens so the whole UI updates consistently.
+
+Example tokens:
+	•	--bg-start
+	•	--bg-end
+	•	--accent
+	•	--text-primary
+	•	--card-bg
+
+⸻
+
+If you tell me the stack you’re using (React, Next.js, Flutter, etc.) I can also write the exact theme object JSON and the code snippet to apply it globally.
