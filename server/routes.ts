@@ -10,6 +10,14 @@ import {
   insertHabitSchema,
   insertMoodLogSchema,
   insertScheduleBlockSchema,
+  insertWellnessBlueprintSchema,
+  insertBaselineProfileSchema,
+  insertStressSignalsSchema,
+  insertStabilizingActionSchema,
+  insertSupportPreferencesSchema,
+  insertRecoveryReflectionSchema,
+  insertRoutineSchema,
+  insertTaskSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -721,6 +729,308 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Analysis error:", error);
       res.status(500).json({ error: "Failed to generate analysis" });
+    }
+  });
+
+  app.get("/api/blueprint", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const [baseline, signals, actions, support, reflections] = await Promise.all([
+        storage.getBaselineProfile(blueprint.id),
+        storage.getStressSignals(blueprint.id),
+        storage.getStabilizingActions(blueprint.id),
+        storage.getSupportPreferences(blueprint.id),
+        storage.getRecoveryReflections(blueprint.id),
+      ]);
+      
+      res.json({
+        blueprint,
+        baseline,
+        signals,
+        actions,
+        support,
+        reflections,
+      });
+    } catch (error) {
+      console.error("Blueprint error:", error);
+      res.status(500).json({ error: "Failed to load blueprint" });
+    }
+  });
+
+  app.patch("/api/blueprint", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        return res.status(404).json({ error: "Blueprint not found" });
+      }
+      const updated = await storage.updateWellnessBlueprint(blueprint.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update blueprint" });
+    }
+  });
+
+  app.post("/api/blueprint/baseline", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const existing = await storage.getBaselineProfile(blueprint.id);
+      if (existing) {
+        const updated = await storage.updateBaselineProfile(existing.id, req.body);
+        return res.json(updated);
+      }
+      
+      const data = insertBaselineProfileSchema.parse({ ...req.body, blueprintId: blueprint.id });
+      const created = await storage.createBaselineProfile(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save baseline profile" });
+    }
+  });
+
+  app.post("/api/blueprint/signals", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const existing = await storage.getStressSignals(blueprint.id);
+      if (existing) {
+        const updated = await storage.updateStressSignals(existing.id, req.body);
+        return res.json(updated);
+      }
+      
+      const data = insertStressSignalsSchema.parse({ ...req.body, blueprintId: blueprint.id });
+      const created = await storage.createStressSignals(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save stress signals" });
+    }
+  });
+
+  app.get("/api/blueprint/actions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        return res.json([]);
+      }
+      const actions = await storage.getStabilizingActions(blueprint.id);
+      res.json(actions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load actions" });
+    }
+  });
+
+  app.post("/api/blueprint/actions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const data = insertStabilizingActionSchema.parse({ ...req.body, blueprintId: blueprint.id });
+      const created = await storage.createStabilizingAction(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create action" });
+    }
+  });
+
+  app.patch("/api/blueprint/actions/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateStabilizingAction(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update action" });
+    }
+  });
+
+  app.delete("/api/blueprint/actions/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteStabilizingAction(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete action" });
+    }
+  });
+
+  app.post("/api/blueprint/support", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const existing = await storage.getSupportPreferences(blueprint.id);
+      if (existing) {
+        const updated = await storage.updateSupportPreferences(existing.id, req.body);
+        return res.json(updated);
+      }
+      
+      const data = insertSupportPreferencesSchema.parse({ ...req.body, blueprintId: blueprint.id });
+      const created = await storage.createSupportPreferences(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save support preferences" });
+    }
+  });
+
+  app.get("/api/blueprint/reflections", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        return res.json([]);
+      }
+      const reflections = await storage.getRecoveryReflections(blueprint.id);
+      res.json(reflections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load reflections" });
+    }
+  });
+
+  app.post("/api/blueprint/reflections", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      let blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint) {
+        blueprint = await storage.createWellnessBlueprint({ userId });
+      }
+      
+      const data = insertRecoveryReflectionSchema.parse({ ...req.body, blueprintId: blueprint.id });
+      const created = await storage.createRecoveryReflection(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create reflection" });
+    }
+  });
+
+  app.patch("/api/blueprint/reflections/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateRecoveryReflection(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update reflection" });
+    }
+  });
+
+  app.delete("/api/blueprint/reflections/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteRecoveryReflection(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete reflection" });
+    }
+  });
+
+  app.get("/api/routines", requireAuth, async (req, res) => {
+    try {
+      const routines = await storage.getRoutines(req.session.userId!);
+      res.json(routines);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load routines" });
+    }
+  });
+
+  app.post("/api/routines", requireAuth, async (req, res) => {
+    try {
+      const data = insertRoutineSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createRoutine(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create routine" });
+    }
+  });
+
+  app.patch("/api/routines/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateRoutine(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update routine" });
+    }
+  });
+
+  app.delete("/api/routines/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteRoutine(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete routine" });
+    }
+  });
+
+  app.get("/api/tasks", requireAuth, async (req, res) => {
+    try {
+      const tasks = await storage.getTasks(req.session.userId!);
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load tasks" });
+    }
+  });
+
+  app.post("/api/tasks", requireAuth, async (req, res) => {
+    try {
+      const data = insertTaskSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createTask(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateTask(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteTask(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
     }
   });
 
