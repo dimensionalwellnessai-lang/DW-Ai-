@@ -1,0 +1,244 @@
+# DWAI — Personal Wellness Blueprint (WRAP-Inspired) Spec
+Status: v1
+Goal: Provide a self-directed wellness planning framework inspired by recovery-oriented best practices, WITHOUT using the WRAP® name, labels, worksheets, or structure.
+
+## Legal/Brand Constraints (Non-Negotiable)
+- Do NOT use the term “WRAP” or “Wellness Recovery Action Plan” anywhere in UI, code comments, marketing, or documentation.
+- Do NOT replicate WRAP section names (e.g., “Daily Maintenance Plan,” “Triggers,” “Early Warning Signs,” “Crisis Plan,” “Post-Crisis Plan”).
+- Do NOT claim affiliation, endorsement, or certification.
+- Use original wording, layout, and step order.
+- Include a disclaimer (see below).
+
+## Feature Name
+“Personal Wellness Blueprint” (PWB)
+Alternate acceptable names:
+- “Wellness Blueprint”
+- “Support Blueprint”
+- “Balance Plan”
+
+## User Value
+Users create a personal wellness framework that:
+- defines their baseline
+- identifies stress signals
+- stores stabilizing actions (step-by-step routines)
+- stores support preferences
+- provides recovery reflections
+The assistant can suggest and schedule actions, turning plans into calendar events, tasks, or routines.
+
+---
+
+# 1) Data Model (Objects)
+
+## 1.1 WellnessBlueprint
+Fields:
+- id (uuid)
+- user_id
+- title (string) default: “My Wellness Blueprint”
+- created_at, updated_at
+- is_active (boolean)
+
+## 1.2 BaselineProfile (linked to WellnessBlueprint)
+Purpose: user-defined “what balanced looks like”
+Fields:
+- id, blueprint_id
+- baseline_signs (string[] or rich text blocks)
+- daily_supports (string[] or rich text blocks)  // ex: hydration, walk, meds reminders (non-medical claims)
+- preferred_pace (enum: gentle | steady | focused)
+- notes (text)
+
+## 1.3 StressSignals (linked)
+Purpose: user-defined signals and stressors without calling them “triggers”
+Fields:
+- id, blueprint_id
+- draining_patterns (string[])   // “things that tend to drain me”
+- early_signals (string[])       // “signals my balance is shifting”
+- context_tags (string[])        // optional: work, family, sleep, social
+- notes (text)
+
+## 1.4 StabilizingActions (linked)
+Purpose: actions that help user reset (connect to Routines)
+Fields:
+- id, blueprint_id
+- action_name (string)
+- action_type (enum: routine | suggestion | resource_link)
+- routine_id (nullable)          // if action_type=routine
+- duration_minutes (int, nullable)
+- instructions (text, nullable)  // if not a routine
+- links (string[], nullable)
+- dimension_tags (string[])      // 8 wellness dimensions tags
+- notes (text)
+
+## 1.5 SupportPreferences (linked)
+Purpose: “how I prefer support” without crisis/clinical framing
+Fields:
+- id, blueprint_id
+- helpful_support (string[])     // “what helps”
+- unhelpful_support (string[])   // “what doesn’t help”
+- trusted_people (json[])        // {name, relationship, contact_optional}
+- boundaries (string[])
+- environment_needs (string[])   // quiet, low light, space, etc.
+- notes (text)
+
+## 1.6 RecoveryReflection (linked)
+Purpose: after a hard period, reflect and adjust
+Fields:
+- id, blueprint_id
+- reflection_entries (json[])    // {date, title, content}
+- lessons_learned (string[])
+- adjustments_to_make (string[])
+- notes (text)
+
+---
+
+# 2) UI / Navigation
+
+## New Module: Blueprint
+Add a top-level module/tab called:
+- “Blueprint” OR “Wellness Blueprint”
+
+Within Blueprint, 5 sections:
+1. Baseline
+2. Signals
+3. Reset Actions
+4. Support Preferences
+5. Reflection
+
+Each section is editable, saveable, and can link to:
+- Tasks
+- Calendar events
+- Routines
+- Meditation suggestions
+
+## Interaction Requirements
+- Everything works WITHOUT AI.
+- AI enhances: suggests entries, converts entries into routines/tasks/events.
+
+---
+
+# 3) Core User Flows
+
+## 3.1 Create Blueprint Flow (Onboarding or first open)
+- Prompt: “Want to create your Wellness Blueprint?”
+- Optional quick start:
+  - Choose 3 baseline signs
+  - Choose 3 reset actions
+  - Choose preferred pace
+- Allow skipping.
+
+## 3.2 Baseline Setup
+User adds:
+- “How I know I’m okay” (baseline signs)
+- “What supports me daily” (daily supports)
+- optional preferred pace
+
+## 3.3 Signals Setup
+User adds:
+- “Signals my balance is shifting”
+- “Things that drain me”
+- optional context tags
+
+## 3.4 Reset Actions Setup
+User adds actions:
+- Create “Reset Routine” (step-by-step)
+OR
+- Save suggestions/resources/links
+Actions can be filtered by mood + time available.
+
+## 3.5 Support Preferences Setup
+User adds:
+- Helpful support
+- Unhelpful support
+- Trusted people (optional)
+- Boundaries
+- Environment needs
+
+## 3.6 Reflection
+User adds:
+- Reflection entry
+- Lessons learned
+- Adjustments for future
+
+---
+
+# 4) Integration with Existing DWAI Modules
+
+## 4.1 Dimensions of Wellness (Tagging)
+Every Blueprint item supports dimension tags:
+Physical, Emotional, Social, Spiritual, Intellectual, Occupational, Environmental, Financial
+Blueprint UI should include optional dimension chips.
+
+## 4.2 Tasks ↔ Calendar (Two-way)
+- Any Reset Action can become:
+  - a scheduled calendar event (routine session)
+  - a task (checklist)
+- Any calendar event can link back to:
+  - blueprint section reference (ex: “Reset Actions > 10-min calm routine”)
+
+## 4.3 Routines (Minute-by-minute)
+Reset Actions should prefer linking to Routines.
+Routine fields required:
+- name
+- dimension tags
+- steps[]: {title, instruction, duration_seconds}
+- optional total duration
+- schedule options (recurring)
+- completion logging
+
+## 4.4 Meditation Suggestions
+Meditation module can read Blueprint:
+- mood + signals → suggest meditation links and allow “Schedule”
+
+---
+
+# 5) Assistant Behavior (Glue Layer)
+
+## Assistant Placement
+Assistant remains a separate Chat tab.
+Blueprint remains a tool module.
+
+## Allowed Assistant Actions
+- Generate suggestions for Baseline/Signals wording (user confirms)
+- Propose a Reset Routine from user inputs
+- Convert Reset Actions into:
+  - routines
+  - tasks
+  - scheduled events
+- Create recurring routine sessions on calendar
+- Summarize recent Reflection entries (on request)
+
+## Confirmation Rules
+User preference you gave: “Automatically”
+Implementation:
+- default auto-create is ON
+- show a review summary after creation:
+  “Created 3 events + 1 routine + 5 tasks. Undo?”
+
+Include:
+- Undo last batch
+- Edit items
+
+---
+
+# 6) Disclaimer (Must Display)
+
+Add to Settings > Legal and Blueprint module footer:
+
+“DWAI provides general wellness and self-reflection tools. It is not medical, psychological, or therapeutic treatment and is not affiliated with or endorsed by any proprietary program or trademarked system.”
+
+---
+
+# 7) MVP Scope (Ship Fast)
+MVP includes:
+- Blueprint module UI with 5 sections
+- CRUD for entries
+- Link Reset Actions to Routines
+- Schedule routine session to Calendar
+- Dimension tags filtering
+- Assistant can generate a routine + schedule it
+
+Later:
+- analytics
+- templates library
+- sharing/export
+
+End of spec.

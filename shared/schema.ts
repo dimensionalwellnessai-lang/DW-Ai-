@@ -218,6 +218,167 @@ export const aiLearningsRelations = relations(aiLearnings, ({ one }) => ({
   }),
 }));
 
+export const wellnessBlueprints = pgTable("wellness_blueprints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").default("My Wellness Blueprint"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const wellnessBlueprintsRelations = relations(wellnessBlueprints, ({ one, many }) => ({
+  user: one(users, {
+    fields: [wellnessBlueprints.userId],
+    references: [users.id],
+  }),
+  baseline: one(baselineProfiles),
+  stressSignals: one(stressSignals),
+  stabilizingActions: many(stabilizingActions),
+  supportPreferences: one(supportPreferences),
+  recoveryReflections: many(recoveryReflections),
+}));
+
+export const baselineProfiles = pgTable("baseline_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull().references(() => wellnessBlueprints.id),
+  baselineSigns: text("baseline_signs").array(),
+  dailySupports: text("daily_supports").array(),
+  preferredPace: text("preferred_pace").default("steady"),
+  notes: text("notes"),
+});
+
+export const baselineProfilesRelations = relations(baselineProfiles, ({ one }) => ({
+  blueprint: one(wellnessBlueprints, {
+    fields: [baselineProfiles.blueprintId],
+    references: [wellnessBlueprints.id],
+  }),
+}));
+
+export const stressSignals = pgTable("stress_signals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull().references(() => wellnessBlueprints.id),
+  drainingPatterns: text("draining_patterns").array(),
+  earlySignals: text("early_signals").array(),
+  contextTags: text("context_tags").array(),
+  notes: text("notes"),
+});
+
+export const stressSignalsRelations = relations(stressSignals, ({ one }) => ({
+  blueprint: one(wellnessBlueprints, {
+    fields: [stressSignals.blueprintId],
+    references: [wellnessBlueprints.id],
+  }),
+}));
+
+export const stabilizingActions = pgTable("stabilizing_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull().references(() => wellnessBlueprints.id),
+  actionName: text("action_name").notNull(),
+  actionType: text("action_type").default("suggestion"),
+  routineId: varchar("routine_id"),
+  durationMinutes: integer("duration_minutes"),
+  instructions: text("instructions"),
+  links: text("links").array(),
+  dimensionTags: text("dimension_tags").array(),
+  notes: text("notes"),
+});
+
+export const stabilizingActionsRelations = relations(stabilizingActions, ({ one }) => ({
+  blueprint: one(wellnessBlueprints, {
+    fields: [stabilizingActions.blueprintId],
+    references: [wellnessBlueprints.id],
+  }),
+}));
+
+export const supportPreferences = pgTable("support_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull().references(() => wellnessBlueprints.id),
+  helpfulSupport: text("helpful_support").array(),
+  unhelpfulSupport: text("unhelpful_support").array(),
+  trustedPeople: jsonb("trusted_people"),
+  boundaries: text("boundaries").array(),
+  environmentNeeds: text("environment_needs").array(),
+  notes: text("notes"),
+});
+
+export const supportPreferencesRelations = relations(supportPreferences, ({ one }) => ({
+  blueprint: one(wellnessBlueprints, {
+    fields: [supportPreferences.blueprintId],
+    references: [wellnessBlueprints.id],
+  }),
+}));
+
+export const recoveryReflections = pgTable("recovery_reflections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull().references(() => wellnessBlueprints.id),
+  title: text("title"),
+  content: text("content"),
+  lessonsLearned: text("lessons_learned").array(),
+  adjustmentsToMake: text("adjustments_to_make").array(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const recoveryReflectionsRelations = relations(recoveryReflections, ({ one }) => ({
+  blueprint: one(wellnessBlueprints, {
+    fields: [recoveryReflections.blueprintId],
+    references: [wellnessBlueprints.id],
+  }),
+}));
+
+export const routines = pgTable("routines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  dimensionTags: text("dimension_tags").array(),
+  steps: jsonb("steps"),
+  totalDurationMinutes: integer("total_duration_minutes"),
+  scheduleOptions: jsonb("schedule_options"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const routinesRelations = relations(routines, ({ one }) => ({
+  user: one(users, {
+    fields: [routines.userId],
+    references: [users.id],
+  }),
+}));
+
+export const routineLogs = pgTable("routine_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  routineId: varchar("routine_id").notNull().references(() => routines.id),
+  completedAt: timestamp("completed_at").defaultNow(),
+  notes: text("notes"),
+});
+
+export const routineLogsRelations = relations(routineLogs, ({ one }) => ({
+  routine: one(routines, {
+    fields: [routineLogs.routineId],
+    references: [routines.id],
+  }),
+}));
+
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  isCompleted: boolean("is_completed").default(false),
+  dueDate: text("due_date"),
+  blueprintActionId: varchar("blueprint_action_id"),
+  dimensionTags: text("dimension_tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const tasksRelations = relations(tasks, ({ one }) => ({
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -277,6 +438,48 @@ export const insertAiLearningSchema = createInsertSchema(aiLearnings).omit({
   updatedAt: true,
 });
 
+export const insertWellnessBlueprintSchema = createInsertSchema(wellnessBlueprints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBaselineProfileSchema = createInsertSchema(baselineProfiles).omit({
+  id: true,
+});
+
+export const insertStressSignalsSchema = createInsertSchema(stressSignals).omit({
+  id: true,
+});
+
+export const insertStabilizingActionSchema = createInsertSchema(stabilizingActions).omit({
+  id: true,
+});
+
+export const insertSupportPreferencesSchema = createInsertSchema(supportPreferences).omit({
+  id: true,
+});
+
+export const insertRecoveryReflectionSchema = createInsertSchema(recoveryReflections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRoutineSchema = createInsertSchema(routines).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRoutineLogSchema = createInsertSchema(routineLogs).omit({
+  id: true,
+  completedAt: true,
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -301,3 +504,21 @@ export type ChatAttachment = typeof chatAttachments.$inferSelect;
 export type InsertChatAttachment = z.infer<typeof insertChatAttachmentSchema>;
 export type AiLearning = typeof aiLearnings.$inferSelect;
 export type InsertAiLearning = z.infer<typeof insertAiLearningSchema>;
+export type WellnessBlueprint = typeof wellnessBlueprints.$inferSelect;
+export type InsertWellnessBlueprint = z.infer<typeof insertWellnessBlueprintSchema>;
+export type BaselineProfile = typeof baselineProfiles.$inferSelect;
+export type InsertBaselineProfile = z.infer<typeof insertBaselineProfileSchema>;
+export type StressSignals = typeof stressSignals.$inferSelect;
+export type InsertStressSignals = z.infer<typeof insertStressSignalsSchema>;
+export type StabilizingAction = typeof stabilizingActions.$inferSelect;
+export type InsertStabilizingAction = z.infer<typeof insertStabilizingActionSchema>;
+export type SupportPreferences = typeof supportPreferences.$inferSelect;
+export type InsertSupportPreferences = z.infer<typeof insertSupportPreferencesSchema>;
+export type RecoveryReflection = typeof recoveryReflections.$inferSelect;
+export type InsertRecoveryReflection = z.infer<typeof insertRecoveryReflectionSchema>;
+export type Routine = typeof routines.$inferSelect;
+export type InsertRoutine = z.infer<typeof insertRoutineSchema>;
+export type RoutineLog = typeof routineLogs.$inferSelect;
+export type InsertRoutineLog = z.infer<typeof insertRoutineLogSchema>;
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
