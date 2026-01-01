@@ -33,6 +33,7 @@ import {
   Wind,
   Plus,
   MessageSquare,
+  Compass,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -40,9 +41,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@shared/schema";
 
 const QUICK_ACTIONS = [
-  { text: "Make a plan", icon: Calendar },
-  { text: "Talk it out", icon: Heart },
-  { text: "Breathing exercise", icon: Wind },
+  { text: "Make a plan", icon: Calendar, style: "default" },
+  { text: "Wellness Dimensions", icon: Compass, style: "dimensions", path: "/blueprint" },
+  { text: "Talk it out", icon: Heart, style: "default" },
+  { text: "Breathing exercise", icon: Wind, style: "default" },
 ];
 
 const MENU_ITEMS = [
