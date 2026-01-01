@@ -127,6 +127,89 @@ export interface DimensionSignals {
   financialStress: boolean;
 }
 
+export type WellnessDimension = 
+  | "body" 
+  | "nutrition" 
+  | "workout" 
+  | "finances" 
+  | "spiritual" 
+  | "mental" 
+  | "emotional" 
+  | "social" 
+  | "community";
+
+export interface DimensionFoundation {
+  dimension: WellnessDimension;
+  philosophy: string;
+  nonNegotiables: string[];
+  whatMatters: string;
+  confidence: number;
+  updatedAt: number;
+}
+
+export interface FoundationsProfile {
+  overallPhilosophy: string;
+  coreValues: string[];
+  whatMattersMost: string;
+  whatFeelsMisaligned: string;
+  whatWontCompromise: string[];
+  dimensionFoundations: DimensionFoundation[];
+  confidence: number;
+  clarifyingPrompts: string[];
+  inferredFromConversations: boolean;
+  updatedAt: number;
+}
+
+export type CommunityFocus = "volunteering" | "mentoring" | "advocacy" | "local_events" | "online_groups" | "donations";
+export type AvailabilityLevel = "few_hours_month" | "weekly" | "bi_weekly" | "flexible";
+
+export interface CommunityProfile {
+  impactGoals: string[];
+  preferredCauses: string[];
+  focusAreas: CommunityFocus[];
+  availability: AvailabilityLevel | null;
+  locationCity: string | null;
+  locationCountry: string | null;
+  preferOnline: boolean;
+  preferLocal: boolean;
+  currentInvolvement: string[];
+  notes: string;
+  updatedAt: number;
+}
+
+export interface CommunityOpportunity {
+  id: string;
+  title: string;
+  organization: string;
+  description: string;
+  type: CommunityFocus;
+  isOnline: boolean;
+  location: string | null;
+  url: string | null;
+  tags: string[];
+  matchScore: number;
+  discoveredAt: number;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  dimension: WellnessDimension | null;
+  startTime: number;
+  endTime: number;
+  isAllDay: boolean;
+  location: string | null;
+  virtualLink: string | null;
+  reminders: number[];
+  recurring: boolean;
+  recurrencePattern: string | null;
+  relatedFoundationIds: string[];
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -138,6 +221,10 @@ export interface GuestData {
   workoutPreferences: WorkoutPreferences | null;
   financeProfile: FinanceProfile | null;
   spiritualProfile: SpiritualProfile | null;
+  foundationsProfile: FoundationsProfile | null;
+  communityProfile: CommunityProfile | null;
+  communityOpportunities: CommunityOpportunity[];
+  calendarEvents: CalendarEvent[];
   savedRoutines: SavedRoutine[];
   preferences: {
     themeMode: "accent-only" | "full-background";
@@ -249,6 +336,10 @@ export function initGuestData(): GuestData {
     workoutPreferences: null,
     financeProfile: null,
     spiritualProfile: null,
+    foundationsProfile: null,
+    communityProfile: null,
+    communityOpportunities: [],
+    calendarEvents: [],
     savedRoutines: [],
     preferences: {
       themeMode: "accent-only",
@@ -542,4 +633,119 @@ export function getDimensionSignals(): DimensionSignals {
     bodyEnergy: body?.energyLevel || null,
     financialStress: finance?.moneyEmotion === "anxious",
   };
+}
+
+export function getFoundationsProfile(): FoundationsProfile | null {
+  const data = getGuestData();
+  return data?.foundationsProfile || null;
+}
+
+export function saveFoundationsProfile(profile: FoundationsProfile): void {
+  const data = getGuestData() || initGuestData();
+  data.foundationsProfile = { ...profile, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function getFoundationsConfidence(): number {
+  const profile = getFoundationsProfile();
+  return profile?.confidence || 0;
+}
+
+export function hasFoundations(): boolean {
+  const profile = getFoundationsProfile();
+  return profile != null && profile.confidence > 0.3;
+}
+
+export function getCommunityProfile(): CommunityProfile | null {
+  const data = getGuestData();
+  return data?.communityProfile || null;
+}
+
+export function saveCommunityProfile(profile: CommunityProfile): void {
+  const data = getGuestData() || initGuestData();
+  data.communityProfile = { ...profile, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function hasCompletedCommunityProfile(): boolean {
+  const profile = getCommunityProfile();
+  return profile?.focusAreas != null && profile.focusAreas.length > 0;
+}
+
+export function getCommunityOpportunities(): CommunityOpportunity[] {
+  const data = getGuestData();
+  return data?.communityOpportunities || [];
+}
+
+export function saveCommunityOpportunity(opp: Omit<CommunityOpportunity, "id" | "discoveredAt">): CommunityOpportunity {
+  const data = getGuestData() || initGuestData();
+  if (!data.communityOpportunities) data.communityOpportunities = [];
+  
+  const newOpp: CommunityOpportunity = {
+    ...opp,
+    id: generateId(),
+    discoveredAt: Date.now(),
+  };
+  
+  data.communityOpportunities.push(newOpp);
+  saveGuestData(data);
+  return newOpp;
+}
+
+export function getCalendarEvents(): CalendarEvent[] {
+  const data = getGuestData();
+  return data?.calendarEvents || [];
+}
+
+export function getCalendarEventsByDate(date: Date): CalendarEvent[] {
+  const events = getCalendarEvents();
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return events.filter(e => 
+    (e.startTime >= startOfDay.getTime() && e.startTime <= endOfDay.getTime()) ||
+    (e.isAllDay && new Date(e.startTime).toDateString() === date.toDateString())
+  );
+}
+
+export function saveCalendarEvent(event: Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">): CalendarEvent {
+  const data = getGuestData() || initGuestData();
+  if (!data.calendarEvents) data.calendarEvents = [];
+  
+  const newEvent: CalendarEvent = {
+    ...event,
+    id: generateId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  
+  data.calendarEvents.push(newEvent);
+  saveGuestData(data);
+  return newEvent;
+}
+
+export function updateCalendarEvent(eventId: string, updates: Partial<CalendarEvent>): CalendarEvent | null {
+  const data = getGuestData();
+  if (!data?.calendarEvents) return null;
+  
+  const index = data.calendarEvents.findIndex(e => e.id === eventId);
+  if (index < 0) return null;
+  
+  data.calendarEvents[index] = { 
+    ...data.calendarEvents[index], 
+    ...updates, 
+    updatedAt: Date.now() 
+  };
+  saveGuestData(data);
+  return data.calendarEvents[index];
+}
+
+export function deleteCalendarEvent(eventId: string): void {
+  const data = getGuestData();
+  if (!data?.calendarEvents) return;
+  
+  data.calendarEvents = data.calendarEvents.filter(e => e.id !== eventId);
+  saveGuestData(data);
 }
