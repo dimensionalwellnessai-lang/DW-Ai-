@@ -16,6 +16,9 @@ import { BodyScanPage } from "@/pages/body-scan";
 import RoutinesPage from "@/pages/routines";
 import WorkoutPage from "@/pages/workout";
 import MealPrepPage from "@/pages/meal-prep";
+import FinancesPage from "@/pages/finances";
+import SpiritualPage from "@/pages/spiritual";
+import LifeDashboardPage from "@/pages/life-dashboard";
 import { ProjectsPage } from "@/pages/projects";
 import { SettingsPage } from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -33,6 +36,9 @@ function Router() {
       <Route path="/routines" component={RoutinesPage} />
       <Route path="/workout" component={WorkoutPage} />
       <Route path="/meal-prep" component={MealPrepPage} />
+      <Route path="/finances" component={FinancesPage} />
+      <Route path="/spiritual" component={SpiritualPage} />
+      <Route path="/life-dashboard" component={LifeDashboardPage} />
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={LoginPage} />

@@ -20,6 +20,7 @@ import {
   getBodyProfile,
   getSavedRoutinesByType,
   saveRoutine,
+  getDimensionSignals,
   type MealPrepPreferences,
   type DietaryStyle,
   type SavedRoutine
@@ -70,6 +71,12 @@ const SAMPLE_MEAL_PLANS = [
     meals: ["Acai bowl", "Buddha bowl with tofu", "Lentil curry"],
     tags: ["vegan", "plant-based", "high-fiber"],
   },
+  {
+    title: "Budget Friendly",
+    description: "Nutritious meals that are easy on the wallet",
+    meals: ["Rice and beans bowl", "Egg fried rice", "Lentil soup with bread"],
+    tags: ["budget-friendly", "affordable", "pantry-staples"],
+  },
 ];
 
 export default function MealPrepPage() {
@@ -77,7 +84,9 @@ export default function MealPrepPage() {
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
   const [savedMeals, setSavedMeals] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));
   const bodyProfile = getBodyProfile();
+  const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
+  const isBudgetConscious = signals.costTier === "frugal" || signals.costTier === "moderate";
 
   const handleSavePreferences = (newPrefs: MealPrepPreferences) => {
     saveMealPrepPreferences(newPrefs);
@@ -97,8 +106,11 @@ export default function MealPrepPage() {
   };
 
   const getPersonalizedRecommendation = () => {
-    if (!prefs?.dietaryStyle && !bodyProfile?.bodyGoal) return null;
+    if (!prefs?.dietaryStyle && !bodyProfile?.bodyGoal && !isBudgetConscious) return null;
     
+    if (isBudgetConscious) {
+      return SAMPLE_MEAL_PLANS.find(p => p.tags.includes("budget-friendly"));
+    }
     if (prefs?.dietaryStyle === "vegan" || prefs?.dietaryStyle === "vegetarian") {
       return SAMPLE_MEAL_PLANS.find(p => p.tags.includes("plant-based"));
     }
@@ -119,6 +131,20 @@ export default function MealPrepPage() {
             Personalized meal plans based on your diet and goals
           </p>
         </div>
+
+        {isBudgetConscious && (
+          <Card className="bg-emerald-500/5 border-emerald-500/20">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-sm mb-1">Budget-conscious mode active</h4>
+                <p className="text-sm text-muted-foreground">
+                  We're prioritizing affordable, pantry-friendly meal options for you.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!hasPreferences ? (
           <Card className="border-dashed">

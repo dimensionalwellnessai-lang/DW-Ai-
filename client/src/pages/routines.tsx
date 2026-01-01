@@ -10,7 +10,9 @@ import {
   Wind,
   Play, 
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Wallet,
+  Sparkles
 } from "lucide-react";
 import { 
   getSavedRoutinesByType,
@@ -25,12 +27,16 @@ const TYPE_ICONS: Record<RoutineType, typeof Dumbbell> = {
   workout: Dumbbell,
   meal_plan: Utensils,
   meditation: Wind,
+  budget_plan: Wallet,
+  spiritual_practice: Sparkles,
 };
 
 const TYPE_LABELS: Record<RoutineType, string> = {
   workout: "Workouts",
   meal_plan: "Meal Plans",
   meditation: "Meditations",
+  budget_plan: "Budget Tools",
+  spiritual_practice: "Spiritual Practices",
 };
 
 export default function RoutinesPage() {
@@ -38,12 +44,16 @@ export default function RoutinesPage() {
   const [workouts, setWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
   const [mealPlans, setMealPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));
   const [meditations, setMeditations] = useState<SavedRoutine[]>(getSavedRoutinesByType("meditation"));
+  const [budgetPlans, setBudgetPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("budget_plan"));
+  const [spiritualPractices, setSpiritualPractices] = useState<SavedRoutine[]>(getSavedRoutinesByType("spiritual_practice"));
 
   const handleDelete = (type: RoutineType, id: string) => {
     deleteRoutine(id);
     if (type === "workout") setWorkouts(workouts.filter(r => r.id !== id));
     if (type === "meal_plan") setMealPlans(mealPlans.filter(r => r.id !== id));
     if (type === "meditation") setMeditations(meditations.filter(r => r.id !== id));
+    if (type === "budget_plan") setBudgetPlans(budgetPlans.filter(r => r.id !== id));
+    if (type === "spiritual_practice") setSpiritualPractices(spiritualPractices.filter(r => r.id !== id));
   };
 
   const handleUse = (routine: SavedRoutine) => {
@@ -141,28 +151,46 @@ export default function RoutinesPage() {
         </div>
 
         <Tabs defaultValue="workouts" className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="workouts" className="flex items-center gap-2" data-testid="tab-workouts">
-              <Dumbbell className="w-4 h-4" />
-              <span className="hidden sm:inline">Workouts</span>
+          <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
+            <TabsTrigger value="workouts" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-workouts">
+              <Dumbbell className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline text-xs">Workouts</span>
               {workouts.length > 0 && (
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
                   {workouts.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="meals" className="flex items-center gap-2" data-testid="tab-meals">
-              <Utensils className="w-4 h-4" />
-              <span className="hidden sm:inline">Meals</span>
+            <TabsTrigger value="meals" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-meals">
+              <Utensils className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline text-xs">Meals</span>
               {mealPlans.length > 0 && (
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
                   {mealPlans.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="meditations" className="flex items-center gap-2" data-testid="tab-meditations">
-              <Wind className="w-4 h-4" />
-              <span className="hidden sm:inline">Meditations</span>
+            <TabsTrigger value="budget" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-budget">
+              <Wallet className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline text-xs">Budget</span>
+              {budgetPlans.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {budgetPlans.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="spiritual" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-spiritual">
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline text-xs">Spiritual</span>
+              {spiritualPractices.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {spiritualPractices.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="meditations" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-meditations">
+              <Wind className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline text-xs">Calm</span>
               {meditations.length > 0 && (
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
                   {meditations.length}
@@ -177,6 +205,14 @@ export default function RoutinesPage() {
 
           <TabsContent value="meals" className="mt-4">
             {renderRoutineList(mealPlans, "meal_plan", "/meal-prep")}
+          </TabsContent>
+
+          <TabsContent value="budget" className="mt-4">
+            {renderRoutineList(budgetPlans, "budget_plan", "/finances")}
+          </TabsContent>
+
+          <TabsContent value="spiritual" className="mt-4">
+            {renderRoutineList(spiritualPractices, "spiritual_practice", "/spiritual")}
           </TabsContent>
 
           <TabsContent value="meditations" className="mt-4">

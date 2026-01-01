@@ -38,6 +38,7 @@ import {
   Compass,
   Dumbbell,
   Utensils,
+  Wallet,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -53,8 +54,11 @@ const QUICK_ACTIONS = [
 
 const MENU_ITEMS = [
   { name: "Home", path: "/", icon: Sun, description: "Start fresh" },
+  { name: "Life Dashboard", path: "/life-dashboard", icon: Sparkles, description: "Your wellness overview" },
   { name: "Workout", path: "/workout", icon: Dumbbell, description: "Personalized training" },
   { name: "Meal Prep", path: "/meal-prep", icon: Utensils, description: "Nutrition planning" },
+  { name: "Finances", path: "/finances", icon: Wallet, description: "Budget wellness" },
+  { name: "Spiritual", path: "/spiritual", icon: Heart, description: "Inner peace" },
   { name: "Routines", path: "/routines", icon: History, description: "Saved favorites" },
   { name: "Browse", path: "/browse", icon: Sparkles, description: "Explore content" },
   { name: "Calendar", path: "/calendar", icon: Calendar, description: "Your schedule" },

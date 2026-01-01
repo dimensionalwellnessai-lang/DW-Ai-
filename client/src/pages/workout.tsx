@@ -22,6 +22,8 @@ import {
   saveWorkoutPreferences,
   getSavedRoutinesByType,
   saveRoutine,
+  getSpiritualProfile,
+  getDimensionSignals,
   type BodyProfile,
   type WorkoutPreferences,
   type SavedRoutine
@@ -72,6 +74,13 @@ const SAMPLE_WORKOUTS = [
     intensity: "athlete",
     tags: ["cardio", "endurance", "high-energy"],
   },
+  {
+    title: "Mindful Yoga Flow",
+    description: "Gentle yoga for grounding and calm",
+    duration: 25,
+    intensity: "gentle",
+    tags: ["yoga", "mindfulness", "flexibility", "calm"],
+  },
 ];
 
 export default function WorkoutPage() {
@@ -79,6 +88,11 @@ export default function WorkoutPage() {
   const [bodyProfile, setBodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [savedWorkouts, setSavedWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
   const [hasBodyScan, setHasBodyScan] = useState(hasCompletedBodyScan());
+  const spiritualProfile = getSpiritualProfile();
+  const signals = getDimensionSignals();
+  const seeksCalmOrMindfulness = signals.mindfulState === "calm" || 
+    spiritualProfile?.practices?.includes("yoga") || 
+    spiritualProfile?.practices?.includes("meditation");
 
   const handleBodyScanComplete = () => {
     setBodyScanOpen(false);
@@ -98,6 +112,10 @@ export default function WorkoutPage() {
   };
 
   const getPersonalizedRecommendation = () => {
+    if (seeksCalmOrMindfulness) {
+      return SAMPLE_WORKOUTS.find(w => w.tags.includes("yoga"));
+    }
+    
     if (!bodyProfile?.bodyGoal) return null;
     
     const goal = bodyProfile.bodyGoal;
@@ -124,6 +142,20 @@ export default function WorkoutPage() {
             Personalized workouts based on your body goals
           </p>
         </div>
+
+        {seeksCalmOrMindfulness && (
+          <Card className="bg-violet-500/5 border-violet-500/20">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-sm mb-1">Mindfulness mode active</h4>
+                <p className="text-sm text-muted-foreground">
+                  Based on your spiritual practices, we're suggesting calming, grounding workouts.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!hasBodyScan ? (
           <Card className="border-dashed">
@@ -185,7 +217,7 @@ export default function WorkoutPage() {
           </Card>
         )}
 
-        {hasBodyScan && recommendedWorkout && (
+        {(hasBodyScan || seeksCalmOrMindfulness) && recommendedWorkout && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
