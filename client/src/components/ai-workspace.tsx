@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MoodPicker } from "@/components/mood-picker";
+import { BreathingPlayer } from "@/components/breathing-player";
 import { useTheme, MOOD_OPTIONS } from "@/lib/theme-provider";
 import { getGuestData, saveGuestData, initGuestData, type GuestData } from "@/lib/guest-storage";
 import { Link } from "wouter";
@@ -38,6 +39,7 @@ import {
   Shield,
   ArrowLeft,
   History,
+  Settings,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -111,6 +113,7 @@ const MENU_ITEMS = [
   { name: "Challenges", path: "/challenges", icon: Target, description: "Push yourself to grow" },
   { name: "Blueprint", path: "/blueprint", icon: Shield, description: "Your 8 dimensions of wellness" },
   { name: "Projects", path: "/projects", icon: Briefcase, description: "Bigger goals and plans" },
+  { name: "Settings", path: "/settings", icon: Settings, description: "Preferences and account" },
 ];
 
 const CATEGORIES: Category[] = DIMENSION_TAGS.map(d => ({
@@ -125,6 +128,7 @@ export function AIWorkspace() {
   const { mood, themeMode } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [moodPickerOpen, setMoodPickerOpen] = useState(false);
+  const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
 
@@ -497,8 +501,12 @@ export function AIWorkspace() {
                       <button
                         key={idx}
                         onClick={() => {
-                          setInput(option.text);
-                          inputRef.current?.focus();
+                          if (option.text === "Guided breathing") {
+                            setBreathingPlayerOpen(true);
+                          } else {
+                            setInput(option.text);
+                            inputRef.current?.focus();
+                          }
                         }}
                         className="flex items-center gap-3 p-4 rounded-2xl bg-card/60 hover-elevate transition-all text-left floating-surface"
                         data-testid={`button-option-${idx}`}
@@ -751,87 +759,16 @@ export function AIWorkspace() {
         </div>
       </div>
 
-      {menuOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex flex-col living-bg"
-          style={{
-            background: mood && themeMode === "full-background" 
-              ? `linear-gradient(135deg, hsl(var(--mood-bg-start)) 0%, hsl(var(--mood-bg-end)) 50%, hsl(var(--mood-bg-start)) 100%)`
-              : `linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--card)) 50%, hsl(var(--background)) 100%)`
-          }}
-        >
-          <header className="flex items-center justify-between gap-4 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg energy-ring">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-display font-bold">Life Categories</h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMenuOpen(false)}
-              data-testid="button-close-menu"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </header>
-          <ScrollArea className="flex-1 p-6">
-            <div className="max-w-2xl mx-auto space-y-6">
-              <Link href="/blueprint" onClick={() => setMenuOpen(false)}>
-                <button
-                  className="w-full flex items-center gap-4 p-5 rounded-3xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 shadow-lg hover-elevate transition-all duration-300 animate-fade-in-up floating-surface"
-                  data-testid="button-blueprint-link"
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
-                    <Shield className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-display font-semibold text-lg">Wellness Blueprint</p>
-                    <p className="text-sm text-muted-foreground font-body">Your personal wellness framework</p>
-                  </div>
-                </button>
-              </Link>
-              
-              <div className="grid grid-cols-2 gap-4">
-              {CATEGORIES.map((category, catIndex) => {
-                const Icon = category.icon;
-                const isActive = activeCategory === category.id;
-                
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.id)}
-                    className={`flex flex-col items-center gap-3 p-6 rounded-3xl text-center transition-all duration-300 hover-elevate animate-fade-in-up floating-surface ${
-                      isActive 
-                        ? "bg-primary/15 shadow-lg" 
-                        : "bg-card/40 shadow-md"
-                    }`}
-                    style={{ animationDelay: `${catIndex * 30}ms` }}
-                    data-testid={`button-category-${category.id}`}
-                  >
-                    <div 
-                      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${isActive ? "shadow-lg" : "shadow-md"}`}
-                      style={{ 
-                        background: isActive 
-                          ? `linear-gradient(135deg, ${category.color.replace('text-', '')}20, ${category.color.replace('text-', '')}40)` 
-                          : 'hsl(var(--muted))' 
-                      }}
-                    >
-                      <Icon className={`w-7 h-7 ${category.color}`} />
-                    </div>
-                    <div>
-                      <p className="font-display font-semibold">{category.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1 font-body">{category.description}</p>
-                    </div>
-                  </button>
-                );
-              })}
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
-      )}
+      <BreathingPlayer
+        open={breathingPlayerOpen}
+        onClose={() => setBreathingPlayerOpen(false)}
+        onComplete={(pattern, duration) => {
+          toast({
+            title: "Breathing session complete",
+            description: `You completed ${duration} minutes of ${pattern}.`,
+          });
+        }}
+      />
     </div>
   );
 }
