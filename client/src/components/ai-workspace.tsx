@@ -47,7 +47,7 @@ import type { UserProfile } from "@shared/schema";
 
 const QUICK_ACTIONS = [
   { text: "Make a plan", icon: Calendar, style: "default" },
-  { text: "Wellness Dimensions", icon: Compass, style: "dimensions", path: "/blueprint" },
+  { text: "Life Dashboard", icon: Compass, style: "dimensions", path: "/life-dashboard" },
   { text: "Talk it out", icon: Heart, style: "default" },
   { text: "Breathing exercise", icon: Wind, style: "default" },
 ];
@@ -63,7 +63,6 @@ const MENU_ITEMS = [
   { name: "Browse", path: "/browse", icon: Sparkles, description: "Explore content" },
   { name: "Calendar", path: "/calendar", icon: Calendar, description: "Your schedule" },
   { name: "Challenges", path: "/challenges", icon: Target, description: "Growth challenges" },
-  { name: "Blueprint", path: "/blueprint", icon: Shield, description: "Wellness framework" },
   { name: "Settings", path: "/settings", icon: Settings, description: "Preferences" },
 ];
 

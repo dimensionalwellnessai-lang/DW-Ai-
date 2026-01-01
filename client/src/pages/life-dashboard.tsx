@@ -334,6 +334,11 @@ export default function LifeDashboardPage() {
                 </Link>
               )}
             </div>
+            <Link href="/blueprint">
+              <Button variant="ghost" size="sm" className="mt-3 text-xs text-muted-foreground" data-testid="link-full-blueprint">
+                Advanced: Full Blueprint Configuration
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
