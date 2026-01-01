@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
+import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { 
   getGuestData, 
   initGuestData, 
@@ -23,7 +24,6 @@ import {
   Sun,
   Target,
   Heart,
-  X,
   Menu,
   Briefcase,
   Shield,
@@ -190,96 +190,79 @@ export function AIWorkspace() {
         </div>
       </header>
       
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setMenuOpen(false)}>
-          <div 
-            className="absolute left-0 top-0 h-full w-64 bg-background border-r p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-display font-semibold">Menu</span>
-              <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} data-testid="button-close-menu">
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <nav className="space-y-1">
-              {MENU_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link key={item.path} href={item.path}>
-                    <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
-                      onClick={() => setMenuOpen(false)}
-                      data-testid={`menu-item-${item.name.toLowerCase()}`}
-                    >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{item.name}</span>
-                    </button>
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="absolute bottom-4 left-4 right-4">
-              <Link href="/login">
-                <Button className="w-full" size="sm" data-testid="button-signup">
-                  Sign up
-                </Button>
+      <SwipeableDrawer 
+        open={menuOpen} 
+        onClose={() => setMenuOpen(false)} 
+        title="Menu"
+      >
+        <nav className="space-y-1 flex-1">
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.path} href={item.path}>
+                <button
+                  className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                  onClick={() => setMenuOpen(false)}
+                  data-testid={`menu-item-${item.name.toLowerCase()}`}
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{item.name}</span>
+                </button>
               </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {historyOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setHistoryOpen(false)}>
-          <div 
-            className="absolute left-0 top-0 h-full w-72 bg-background border-r p-4 overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-display font-semibold">Conversations</span>
-              <Button variant="ghost" size="icon" onClick={() => setHistoryOpen(false)} data-testid="button-close-history">
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mb-4 w-full"
-              onClick={handleNewConversation}
-              data-testid="button-new-conversation"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New conversation
+            );
+          })}
+        </nav>
+        <div className="pt-4">
+          <Link href="/login">
+            <Button className="w-full" size="sm" data-testid="button-signup">
+              Sign up
             </Button>
-            <ScrollArea className="flex-1">
-              <div className="space-y-4">
-                {Object.entries(conversationsByCategory).map(([category, convos]) => (
-                  <div key={category}>
-                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      {CATEGORY_LABELS[category] || category}
-                    </h3>
-                    <div className="space-y-1">
-                      {convos.map((convo) => (
-                        <button
-                          key={convo.id}
-                          onClick={() => handleSelectConversation(convo)}
-                          className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
-                            activeConversation?.id === convo.id ? "bg-muted" : ""
-                          }`}
-                          data-testid={`conversation-${convo.id}`}
-                        >
-                          {convo.title}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+          </Link>
         </div>
-      )}
+      </SwipeableDrawer>
+
+      <SwipeableDrawer 
+        open={historyOpen} 
+        onClose={() => setHistoryOpen(false)} 
+        title="Conversations"
+        width="w-72"
+      >
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mb-4 w-full"
+          onClick={handleNewConversation}
+          data-testid="button-new-conversation"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New conversation
+        </Button>
+        <ScrollArea className="flex-1">
+          <div className="space-y-4">
+            {Object.entries(conversationsByCategory).map(([category, convos]) => (
+              <div key={category}>
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  {CATEGORY_LABELS[category] || category}
+                </h3>
+                <div className="space-y-1">
+                  {convos.map((convo) => (
+                    <button
+                      key={convo.id}
+                      onClick={() => handleSelectConversation(convo)}
+                      className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
+                        activeConversation?.id === convo.id ? "bg-muted" : ""
+                      }`}
+                      data-testid={`conversation-${convo.id}`}
+                    >
+                      {convo.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </SwipeableDrawer>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
