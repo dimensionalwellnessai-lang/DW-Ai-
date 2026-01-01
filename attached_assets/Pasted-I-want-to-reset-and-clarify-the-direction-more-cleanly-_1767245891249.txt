@@ -1,0 +1,77 @@
+I want to reset and clarify the direction more cleanly.
+
+The app should open directly into the AI assistant.
+The assistant is the MAIN experience.
+Everything else supports it.
+
+This is an AI life coach + personal assistant.
+It should feel calm, grounded, supportive, but not afraid to tell the truth.
+No judgment, no shame, no “you’re doing life wrong” energy.
+
+The assistant’s core role:
+- Help users who struggle with decision-making
+- Help users get unstuck
+- Help users elevate their perspective
+- Help users turn reflection into action (gently)
+
+On first interaction, the AI should ask something simple like:
+“What do you feel like you need today — or do you want help figuring that out?”
+
+The AI should offer only a few options at a time, for example:
+- Make a simple plan
+- Talk things out
+- Try a challenge
+- I’m not sure, I need guidance
+
+There should be a simple menu (three lines) in the top corner that opens supporting sections.
+These sections should not overwhelm the user.
+
+Core menu sections:
+
+1) Challenges
+Challenges are meant to empower and elevate users.
+They help people push to the next level in a supportive way.
+
+Challenge categories:
+- Workout challenges
+- Mental health challenges
+- Meal / nutrition challenges
+- Social challenges
+- Financial challenges
+
+Challenges should:
+- Be optional
+- Feel motivating, not punishing
+- Help users build confidence and momentum
+- Align with the user’s goals and lifestyle
+
+2) Talk It Out
+This is a dedicated AI mode where users can:
+- Express feelings
+- Vent frustrations
+- Talk through life situations
+
+In this mode, the AI should:
+- Listen deeply
+- Help shift perspective
+- Gather understanding about the user’s values, goals, and non-negotiables
+- Help the user build a personal blueprint for how they want to live
+
+This mode should remain calm and supportive,
+but it should not be afraid to offer honest, grounded insight when appropriate.
+
+3) Calendar / Plans / Routines
+These exist to support what comes out of conversation.
+They should not feel like productivity tools on their own.
+
+Important principles:
+- Keep the interface simple
+- Avoid overwhelming choices
+- Let conversation guide structure
+- Wellness should feel like support, not correction
+- Users should always feel respected and empowered
+
+For now:
+- Focus on structure, flow, and tone
+- Stub advanced features if needed
+- Prioritize emotional clarity and ease of use

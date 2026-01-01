@@ -94,11 +94,17 @@ const DIMENSION_TAGS = [
   { id: "financial", name: "Financial", icon: DollarSign, color: "text-emerald-500" },
 ];
 
-const STARTER_SUGGESTIONS = [
-  { text: "Plan my day", icon: Calendar },
-  { text: "Build a routine", icon: Target },
-  { text: "Make a meal plan", icon: Utensils },
-  { text: "Just ground me", icon: Sun },
+const STARTER_OPTIONS = [
+  { text: "Make a simple plan", icon: Calendar },
+  { text: "Talk things out", icon: Heart },
+  { text: "Try a challenge", icon: Target },
+  { text: "I'm not sure, I need guidance", icon: Sun },
+];
+
+const MENU_ITEMS = [
+  { name: "Challenges", path: "/challenges", icon: Target, description: "Push to your next level" },
+  { name: "Talk It Out", path: "/talk", icon: Heart, description: "Process feelings and gain clarity" },
+  { name: "Calendar & Plans", path: "/calendar", icon: Calendar, description: "Your schedule and routines" },
 ];
 
 const CATEGORIES: Category[] = DIMENSION_TAGS.map(d => ({
@@ -350,15 +356,14 @@ export function AIWorkspace() {
     >
       <header className="flex items-center justify-between gap-4 p-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="icon"
-              data-testid="button-back-home"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMenuOpen(!menuOpen)}
+            data-testid="button-menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
           <button 
             onClick={() => setMoodPickerOpen(true)}
             className="flex items-center gap-2 group"
@@ -379,12 +384,6 @@ export function AIWorkspace() {
             </div>
             <span className="font-display font-bold text-xl tracking-tight" data-testid="text-brand">DWAI</span>
           </button>
-          {activeCategoryData && (
-            <Badge variant="secondary" className="bg-primary/10">
-              <activeCategoryData.icon className={`w-3 h-3 mr-1 ${activeCategoryData.color}`} />
-              {activeCategoryData.name}
-            </Badge>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -396,6 +395,42 @@ export function AIWorkspace() {
           </Link>
         </div>
       </header>
+      
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setMenuOpen(false)}>
+          <div 
+            className="absolute left-0 top-0 h-full w-72 bg-background border-r p-4 animate-slide-in-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <span className="font-display font-bold text-lg">Menu</span>
+              <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} data-testid="button-close-menu">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link key={item.path} href={item.path}>
+                    <button
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover-elevate text-left"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid={`menu-item-${item.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      <Icon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <div className="font-display font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground font-body">{item.description}</div>
+                      </div>
+                    </button>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       
       {showSavePrompt && (
         <div className="px-4 pb-2">
@@ -428,38 +463,40 @@ export function AIWorkspace() {
         <ScrollArea className="flex-1 px-4">
           <div className="space-y-6 max-w-3xl mx-auto py-4">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 space-y-8 animate-fade-in-up">
-                <div className="text-center space-y-3">
+              <div className="flex flex-col items-center justify-center py-12 space-y-8 animate-fade-in-up">
+                <div className="text-center space-y-4 max-w-lg">
                   <div 
-                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto energy-ring"
+                    className="w-20 h-20 rounded-full flex items-center justify-center mx-auto energy-ring"
                     style={{ 
                       background: currentMood 
                         ? `linear-gradient(135deg, ${currentMood.color}, ${currentMood.color}80)` 
                         : 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))'
                     }}
                   >
-                    <Sparkles className="h-8 w-8 text-white" />
+                    <Sparkles className="h-10 w-10 text-white" />
                   </div>
-                  <h2 className="text-2xl font-display font-bold">How can I help today?</h2>
-                  <p className="text-muted-foreground font-body max-w-md">
-                    I'm here to help you plan, organize, and feel grounded. Ask me anything or try one of these:
+                  <h2 className="text-2xl font-display font-bold mt-6">
+                    What do you feel like you need today?
+                  </h2>
+                  <p className="text-muted-foreground font-body">
+                    Or do you want help figuring that out?
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-                  {STARTER_SUGGESTIONS.map((suggestion, idx) => {
-                    const Icon = suggestion.icon;
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
+                  {STARTER_OPTIONS.map((option, idx) => {
+                    const Icon = option.icon;
                     return (
                       <button
                         key={idx}
                         onClick={() => {
-                          setInput(suggestion.text);
+                          setInput(option.text);
                           inputRef.current?.focus();
                         }}
                         className="flex items-center gap-3 p-4 rounded-2xl bg-card/60 hover-elevate transition-all text-left floating-surface"
-                        data-testid={`button-suggestion-${idx}`}
+                        data-testid={`button-option-${idx}`}
                       >
                         <Icon className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-body text-sm">{suggestion.text}</span>
+                        <span className="font-body text-sm">{option.text}</span>
                       </button>
                     );
                   })}

@@ -7,42 +7,18 @@ import { ThemeProvider } from "@/lib/theme-provider";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
-
-import { ModulesHome } from "@/pages/modules-home";
-import { SchedulePage } from "@/components/dashboard/schedule-page";
-import { GoalsPage } from "@/components/dashboard/goals-page";
-import { CheckInPage } from "@/components/dashboard/checkin-page";
-
-import { MealsPage } from "@/pages/meals";
-import { MeditationPage } from "@/pages/meditation";
-import { RoutinesPage } from "@/pages/routines";
-import { BlueprintPage } from "@/pages/blueprint";
-import { ProjectsPage } from "@/pages/projects";
-import { TasksPage } from "@/pages/tasks";
-import { WorkoutsPage } from "@/pages/workouts";
-import { InsightsPage } from "@/pages/insights";
+import { ChallengesPage } from "@/pages/challenges";
+import { TalkItOutPage } from "@/pages/talk-it-out";
+import { CalendarPlansPage } from "@/pages/calendar-plans";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={ModulesHome} />
-      
-      <Route path="/assistant" component={AIWorkspace} />
-      
-      <Route path="/calendar" component={SchedulePage} />
-      <Route path="/tasks" component={TasksPage} />
-      <Route path="/goals" component={GoalsPage} />
-      <Route path="/routines" component={RoutinesPage} />
-      <Route path="/meals" component={MealsPage} />
-      <Route path="/meditation" component={MeditationPage} />
-      <Route path="/workouts" component={WorkoutsPage} />
-      <Route path="/insights" component={InsightsPage} />
-      
-      <Route path="/projects" component={ProjectsPage} />
-      <Route path="/blueprint" component={BlueprintPage} />
-      <Route path="/checkin" component={CheckInPage} />
-      
+      <Route path="/" component={AIWorkspace} />
+      <Route path="/challenges" component={ChallengesPage} />
+      <Route path="/talk" component={TalkItOutPage} />
+      <Route path="/calendar" component={CalendarPlansPage} />
       <Route path="/login" component={LoginPage} />
       <Route component={NotFound} />
     </Switch>
