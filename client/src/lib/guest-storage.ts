@@ -36,7 +36,13 @@ export type BodyGoal = "slim_fit" | "build_muscle" | "tone" | "maintain" | "endu
 export type DietaryStyle = "omnivore" | "vegetarian" | "vegan" | "pescatarian" | "keto" | "paleo" | "custom";
 export type WorkoutEnvironment = "gym" | "home" | "outdoors" | "studio";
 export type WorkoutIntensity = "gentle" | "steady" | "focused" | "athlete";
-export type RoutineType = "meditation" | "meal_plan" | "workout";
+export type RoutineType = "meditation" | "meal_plan" | "workout" | "budget_plan" | "spiritual_practice";
+
+export type BudgetTier = "frugal" | "moderate" | "comfortable" | "flexible";
+export type MoneyEmotion = "anxious" | "neutral" | "confident" | "empowered";
+export type SpiritualPractice = "meditation" | "prayer" | "breathwork" | "journaling" | "gratitude" | "nature" | "yoga" | "mindfulness";
+export type ReflectionCadence = "daily" | "few_times_week" | "weekly" | "as_needed";
+export type GroundingNeed = "calm" | "clarity" | "connection" | "energy" | "release";
 
 export interface BodyProfile {
   currentState: string;
@@ -83,8 +89,42 @@ export interface SavedRoutine {
   description: string;
   data: Record<string, unknown>;
   tags: string[];
+  dimensionSignals?: string[];
   createdAt: number;
   lastUsedAt: number;
+}
+
+export interface FinanceProfile {
+  budgetTier: BudgetTier | null;
+  moneyEmotion: MoneyEmotion | null;
+  savingsGoal: string | null;
+  monthlyBudget: number | null;
+  spendingBoundaries: string[];
+  financialPriorities: string[];
+  stressors: string[];
+  notes: string;
+  updatedAt: number;
+}
+
+export interface SpiritualProfile {
+  practices: SpiritualPractice[];
+  reflectionCadence: ReflectionCadence | null;
+  groundingNeeds: GroundingNeed[];
+  beliefSystem: string | null;
+  values: string[];
+  dailyIntention: string;
+  gratitudeAreas: string[];
+  notes: string;
+  updatedAt: number;
+}
+
+export interface DimensionSignals {
+  movementFocus: string | null;
+  nutritionFocus: string | null;
+  costTier: BudgetTier | null;
+  mindfulState: GroundingNeed | null;
+  bodyEnergy: string | null;
+  financialStress: boolean;
 }
 
 export interface GuestData {
@@ -96,6 +136,8 @@ export interface GuestData {
   bodyProfile: BodyProfile | null;
   mealPrepPreferences: MealPrepPreferences | null;
   workoutPreferences: WorkoutPreferences | null;
+  financeProfile: FinanceProfile | null;
+  spiritualProfile: SpiritualProfile | null;
   savedRoutines: SavedRoutine[];
   preferences: {
     themeMode: "accent-only" | "full-background";
@@ -165,6 +207,8 @@ export function getGuestData(): GuestData | null {
           bodyProfile: null,
           mealPrepPreferences: null,
           workoutPreferences: null,
+          financeProfile: null,
+          spiritualProfile: null,
           savedRoutines: [],
           preferences: parsed.preferences || { themeMode: "accent-only" },
           createdAt: parsed.createdAt || Date.now(),
@@ -203,6 +247,8 @@ export function initGuestData(): GuestData {
     bodyProfile: null,
     mealPrepPreferences: null,
     workoutPreferences: null,
+    financeProfile: null,
+    spiritualProfile: null,
     savedRoutines: [],
     preferences: {
       themeMode: "accent-only",
@@ -449,4 +495,51 @@ export function deleteRoutine(routineId: string): void {
   
   data.savedRoutines = data.savedRoutines.filter(r => r.id !== routineId);
   saveGuestData(data);
+}
+
+export function getFinanceProfile(): FinanceProfile | null {
+  const data = getGuestData();
+  return data?.financeProfile || null;
+}
+
+export function saveFinanceProfile(profile: FinanceProfile): void {
+  const data = getGuestData() || initGuestData();
+  data.financeProfile = { ...profile, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function hasCompletedFinanceProfile(): boolean {
+  const profile = getFinanceProfile();
+  return profile?.budgetTier != null;
+}
+
+export function getSpiritualProfile(): SpiritualProfile | null {
+  const data = getGuestData();
+  return data?.spiritualProfile || null;
+}
+
+export function saveSpiritualProfile(profile: SpiritualProfile): void {
+  const data = getGuestData() || initGuestData();
+  data.spiritualProfile = { ...profile, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function hasCompletedSpiritualProfile(): boolean {
+  const profile = getSpiritualProfile();
+  return profile?.practices != null && profile.practices.length > 0;
+}
+
+export function getDimensionSignals(): DimensionSignals {
+  const body = getBodyProfile();
+  const finance = getFinanceProfile();
+  const spiritual = getSpiritualProfile();
+  
+  return {
+    movementFocus: body?.bodyGoal || null,
+    nutritionFocus: body?.bodyGoal || null,
+    costTier: finance?.budgetTier || null,
+    mindfulState: spiritual?.groundingNeeds?.[0] || null,
+    bodyEnergy: body?.energyLevel || null,
+    financialStress: finance?.moneyEmotion === "anxious",
+  };
 }
