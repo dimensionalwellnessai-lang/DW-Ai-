@@ -55,9 +55,9 @@ const QUICK_ACTIONS = [
 const MENU_ITEMS = [
   { name: "Home", path: "/", icon: Sun, description: "Start fresh" },
   { name: "Life Dashboard", path: "/life-dashboard", icon: Sparkles, description: "Your wellness overview" },
+  { name: "Meditation", path: "/spiritual", icon: Heart, description: "Inner peace" },
   { name: "Workout", path: "/workout", icon: Dumbbell, description: "Personalized training" },
   { name: "Meal Prep", path: "/meal-prep", icon: Utensils, description: "Nutrition planning" },
-  { name: "Meditation", path: "/spiritual", icon: Heart, description: "Inner peace" },
   { name: "Finances", path: "/finances", icon: Wallet, description: "Budget wellness" },
   { name: "Routines", path: "/routines", icon: History, description: "Saved favorites" },
   { name: "Browse", path: "/browse", icon: Sparkles, description: "Explore content" },
