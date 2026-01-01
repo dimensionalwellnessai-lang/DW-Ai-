@@ -41,6 +41,15 @@ import {
 
 const DIMENSION_CONFIGS = [
   {
+    id: "meditation",
+    name: "Meditation",
+    icon: Heart,
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+    path: "/spiritual",
+    description: "Inner peace & grounding",
+  },
+  {
     id: "body",
     name: "Body",
     icon: Dumbbell,
@@ -68,15 +77,6 @@ const DIMENSION_CONFIGS = [
     description: "Budget & financial peace",
   },
   {
-    id: "spiritual",
-    name: "Spiritual",
-    icon: Heart,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    path: "/spiritual",
-    description: "Inner peace & grounding",
-  },
-  {
     id: "community",
     name: "Community",
     icon: Users,
@@ -89,14 +89,14 @@ const DIMENSION_CONFIGS = [
 
 function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
   switch (dimensionId) {
+    case "meditation":
+      return signals.mindfulState ? "active" : "not_started";
     case "body":
       return signals.movementFocus ? "active" : "not_started";
     case "nutrition":
       return signals.nutritionFocus ? "active" : "not_started";
     case "finances":
       return signals.costTier ? "active" : "not_started";
-    case "spiritual":
-      return signals.mindfulState ? "active" : "not_started";
     case "community":
       return hasCompletedCommunityProfile() ? "active" : "not_started";
     default:
