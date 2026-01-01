@@ -13,7 +13,9 @@ import { CalendarPlansPage } from "@/pages/calendar-plans";
 import BrowsePage from "@/pages/browse";
 import { BlueprintPage } from "@/pages/blueprint";
 import { BodyScanPage } from "@/pages/body-scan";
-import { RoutinesPage } from "@/pages/routines";
+import RoutinesPage from "@/pages/routines";
+import WorkoutPage from "@/pages/workout";
+import MealPrepPage from "@/pages/meal-prep";
 import { ProjectsPage } from "@/pages/projects";
 import { SettingsPage } from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/blueprint" component={BlueprintPage} />
       <Route path="/body-scan" component={BodyScanPage} />
       <Route path="/routines" component={RoutinesPage} />
+      <Route path="/workout" component={WorkoutPage} />
+      <Route path="/meal-prep" component={MealPrepPage} />
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={LoginPage} />

@@ -1,207 +1,189 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Plus,
-  Clock,
-  Sun,
-  Moon,
-  Coffee,
-  Dumbbell,
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dumbbell, 
+  Utensils, 
   Wind,
-  Play,
-  Calendar,
+  Play, 
+  Trash2,
+  FolderOpen
 } from "lucide-react";
+import { 
+  getSavedRoutinesByType,
+  deleteRoutine,
+  updateRoutineLastUsed,
+  type SavedRoutine,
+  type RoutineType
+} from "@/lib/guest-storage";
+import { useLocation } from "wouter";
 
-interface Routine {
-  id: string;
-  name: string;
-  description: string;
-  duration: number;
-  steps: { time: number; action: string }[];
-  icon: typeof Sun;
-  category: string;
-}
+const TYPE_ICONS: Record<RoutineType, typeof Dumbbell> = {
+  workout: Dumbbell,
+  meal_plan: Utensils,
+  meditation: Wind,
+};
 
-const SAMPLE_ROUTINES: Routine[] = [
-  {
-    id: "morning",
-    name: "Morning Wake-up",
-    description: "A gentle way to start your day",
-    duration: 15,
-    steps: [
-      { time: 0, action: "Take 3 deep breaths in bed" },
-      { time: 2, action: "Stretch arms and legs" },
-      { time: 4, action: "Sit up slowly, feet on floor" },
-      { time: 6, action: "Drink a glass of water" },
-      { time: 8, action: "5 min gentle stretching" },
-      { time: 13, action: "Set your intention for the day" },
-    ],
-    icon: Sun,
-    category: "Morning",
-  },
-  {
-    id: "evening",
-    name: "Wind Down",
-    description: "Prepare your mind and body for rest",
-    duration: 20,
-    steps: [
-      { time: 0, action: "Put away screens" },
-      { time: 2, action: "Dim the lights" },
-      { time: 5, action: "Write 3 things you're grateful for" },
-      { time: 10, action: "5 minutes of gentle stretching" },
-      { time: 15, action: "4-7-8 breathing (5 cycles)" },
-      { time: 18, action: "Get into bed, close your eyes" },
-    ],
-    icon: Moon,
-    category: "Evening",
-  },
-  {
-    id: "focus",
-    name: "Focus Reset",
-    description: "Regain clarity when you feel scattered",
-    duration: 10,
-    steps: [
-      { time: 0, action: "Step away from your task" },
-      { time: 1, action: "Box breathing (4 cycles)" },
-      { time: 4, action: "Drink water" },
-      { time: 5, action: "Write down your next 3 priorities" },
-      { time: 8, action: "Set a 25-min timer for focused work" },
-    ],
-    icon: Coffee,
-    category: "Focus",
-  },
-  {
-    id: "quickmove",
-    name: "Quick Movement",
-    description: "Get your body moving in 5 minutes",
-    duration: 5,
-    steps: [
-      { time: 0, action: "10 jumping jacks" },
-      { time: 1, action: "10 squats" },
-      { time: 2, action: "10 arm circles each direction" },
-      { time: 3, action: "30-second plank" },
-      { time: 4, action: "Shake it out" },
-    ],
-    icon: Dumbbell,
-    category: "Movement",
-  },
-  {
-    id: "breathwork",
-    name: "Calm Breathing",
-    description: "A simple breathing routine for any time",
-    duration: 5,
-    steps: [
-      { time: 0, action: "Find a comfortable position" },
-      { time: 1, action: "Close your eyes" },
-      { time: 2, action: "5-5 breathing for 3 minutes" },
-      { time: 4, action: "Slowly open your eyes" },
-    ],
-    icon: Wind,
-    category: "Breathing",
-  },
-];
+const TYPE_LABELS: Record<RoutineType, string> = {
+  workout: "Workouts",
+  meal_plan: "Meal Plans",
+  meditation: "Meditations",
+};
 
-export function RoutinesPage() {
-  const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
+export default function RoutinesPage() {
+  const [, setLocation] = useLocation();
+  const [workouts, setWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
+  const [mealPlans, setMealPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));
+  const [meditations, setMeditations] = useState<SavedRoutine[]>(getSavedRoutinesByType("meditation"));
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between gap-4 p-4 max-w-3xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-display font-semibold">Routines</h1>
-              <p className="text-sm text-muted-foreground">Step-by-step patterns</p>
-            </div>
+  const handleDelete = (type: RoutineType, id: string) => {
+    deleteRoutine(id);
+    if (type === "workout") setWorkouts(workouts.filter(r => r.id !== id));
+    if (type === "meal_plan") setMealPlans(mealPlans.filter(r => r.id !== id));
+    if (type === "meditation") setMeditations(meditations.filter(r => r.id !== id));
+  };
+
+  const handleUse = (routine: SavedRoutine) => {
+    updateRoutineLastUsed(routine.id);
+  };
+
+  const renderRoutineList = (routines: SavedRoutine[], type: RoutineType, browseLink: string) => {
+    const Icon = TYPE_ICONS[type];
+
+    if (routines.length === 0) {
+      return (
+        <div className="text-center py-12 space-y-4">
+          <div className="w-12 h-12 mx-auto bg-muted rounded-full flex items-center justify-center">
+            <FolderOpen className="w-6 h-6 text-muted-foreground" />
           </div>
-          <Button size="sm" data-testid="button-create-routine">
-            <Plus className="h-4 w-4 mr-1" />
-            Create
-          </Button>
+          <div>
+            <p className="text-muted-foreground mb-2">No saved {TYPE_LABELS[type].toLowerCase()} yet</p>
+            <Button variant="outline" onClick={() => setLocation(browseLink)} data-testid={`button-browse-${type}`}>
+              Browse {TYPE_LABELS[type]}
+            </Button>
+          </div>
         </div>
-      </header>
+      );
+    }
 
-      <main className="p-4 max-w-3xl mx-auto">
-        <p className="text-sm text-muted-foreground mb-6 text-center">
-          Routines help you build consistency. Start one, and the AI will guide you through each step.
-        </p>
-
-        <div className="grid gap-4">
-          {SAMPLE_ROUTINES.map((routine) => {
-            const Icon = routine.icon;
-            const isExpanded = expandedRoutine === routine.id;
-
-            return (
-              <Card
-                key={routine.id}
-                className="overflow-visible cursor-pointer transition-all"
-                onClick={() => setExpandedRoutine(isExpanded ? null : routine.id)}
-                data-testid={`card-routine-${routine.id}`}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base">{routine.name}</CardTitle>
-                        <CardDescription>{routine.description}</CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        {routine.duration} min
-                      </Badge>
-                    </div>
+    return (
+      <div className="space-y-2">
+        {routines.map((routine) => (
+          <Card key={routine.id} className="hover-elevate" data-testid={`card-routine-${routine.id}`}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-primary" />
                   </div>
-                </CardHeader>
-
-                {isExpanded && (
-                  <CardContent className="pt-0">
-                    <div className="border-t pt-4 mt-2 space-y-4">
-                      <div className="space-y-2">
-                        {routine.steps.map((step, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-start gap-3 text-sm"
-                          >
-                            <span className="text-xs text-muted-foreground w-12 shrink-0">
-                              {step.time === 0 ? "Start" : `+${step.time} min`}
-                            </span>
-                            <span>{step.action}</span>
-                          </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{routine.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {routine.description}
+                    </p>
+                    {routine.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {routine.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
                         ))}
                       </div>
-
-                      <div className="flex gap-2 pt-2">
-                        <Button size="sm" className="flex-1" data-testid={`button-start-${routine.id}`}>
-                          <Play className="h-4 w-4 mr-1" />
-                          Start now
-                        </Button>
-                        <Button size="sm" variant="outline" data-testid={`button-schedule-${routine.id}`}>
-                          <Calendar className="h-4 w-4 mr-1" />
-                          Schedule
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="icon" 
+                    variant="ghost"
+                    onClick={() => handleDelete(type, routine.id)}
+                    data-testid={`button-delete-${routine.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    size="icon"
+                    onClick={() => handleUse(routine)}
+                    data-testid={`button-use-${routine.id}`}
+                  >
+                    <Play className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        <div className="pt-2">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => setLocation(browseLink)}
+            data-testid={`button-browse-more-${type}`}
+          >
+            Browse more {TYPE_LABELS[type].toLowerCase()}
+          </Button>
         </div>
-      </main>
-    </div>
+      </div>
+    );
+  };
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-display font-bold">Routines</h1>
+          <p className="text-muted-foreground">
+            Your saved workouts, meal plans, and meditations
+          </p>
+        </div>
+
+        <Tabs defaultValue="workouts" className="w-full">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="workouts" className="flex items-center gap-2" data-testid="tab-workouts">
+              <Dumbbell className="w-4 h-4" />
+              <span className="hidden sm:inline">Workouts</span>
+              {workouts.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {workouts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="meals" className="flex items-center gap-2" data-testid="tab-meals">
+              <Utensils className="w-4 h-4" />
+              <span className="hidden sm:inline">Meals</span>
+              {mealPlans.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {mealPlans.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="meditations" className="flex items-center gap-2" data-testid="tab-meditations">
+              <Wind className="w-4 h-4" />
+              <span className="hidden sm:inline">Meditations</span>
+              {meditations.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {meditations.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="workouts" className="mt-4">
+            {renderRoutineList(workouts, "workout", "/workout")}
+          </TabsContent>
+
+          <TabsContent value="meals" className="mt-4">
+            {renderRoutineList(mealPlans, "meal_plan", "/meal-prep")}
+          </TabsContent>
+
+          <TabsContent value="meditations" className="mt-4">
+            {renderRoutineList(meditations, "meditation", "/")}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ScrollArea>
   );
 }
