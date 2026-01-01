@@ -32,12 +32,71 @@ export interface GettingToKnowYou {
   completedAt: number | null;
 }
 
+export type BodyGoal = "slim_fit" | "build_muscle" | "tone" | "maintain" | "endurance" | "custom";
+export type DietaryStyle = "omnivore" | "vegetarian" | "vegan" | "pescatarian" | "keto" | "paleo" | "custom";
+export type WorkoutEnvironment = "gym" | "home" | "outdoors" | "studio";
+export type WorkoutIntensity = "gentle" | "steady" | "focused" | "athlete";
+export type RoutineType = "meditation" | "meal_plan" | "workout";
+
+export interface BodyProfile {
+  currentState: string;
+  bodyGoal: BodyGoal | null;
+  focusAreas: string[];
+  measurements?: {
+    weightKg?: number;
+    heightCm?: number;
+    bodyFatPercent?: number;
+  };
+  energyLevel: string;
+  notes: string;
+  updatedAt: number;
+}
+
+export interface MealPrepPreferences {
+  dietaryStyle: DietaryStyle | null;
+  restrictions: string[];
+  allergies: string[];
+  dislikedIngredients: string[];
+  caloricTarget: number | null;
+  mealsPerDay: number;
+  syncWithBodyGoal: boolean;
+  notes: string;
+  updatedAt: number;
+}
+
+export interface WorkoutPreferences {
+  environment: WorkoutEnvironment | null;
+  availableEquipment: string[];
+  sessionLengthMinutes: number;
+  frequencyPerWeek: number;
+  intensity: WorkoutIntensity | null;
+  focusMuscleGroups: string[];
+  injuryNotes: string;
+  prefersAiCoaching: boolean;
+  updatedAt: number;
+}
+
+export interface SavedRoutine {
+  id: string;
+  type: RoutineType;
+  title: string;
+  description: string;
+  data: Record<string, unknown>;
+  tags: string[];
+  createdAt: number;
+  lastUsedAt: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
   mood: string | null;
   dimensionAssessments: DimensionAssessment[];
   gettingToKnowYou: GettingToKnowYou | null;
+  bodyProfile: BodyProfile | null;
+  mealPrepPreferences: MealPrepPreferences | null;
+  workoutPreferences: WorkoutPreferences | null;
+  savedRoutines: SavedRoutine[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -101,6 +160,12 @@ export function getGuestData(): GuestData | null {
           conversations,
           activeConversationId: conversations[0]?.id || null,
           mood: parsed.mood || null,
+          dimensionAssessments: [],
+          gettingToKnowYou: null,
+          bodyProfile: null,
+          mealPrepPreferences: null,
+          workoutPreferences: null,
+          savedRoutines: [],
           preferences: parsed.preferences || { themeMode: "accent-only" },
           createdAt: parsed.createdAt || Date.now(),
           lastActiveAt: Date.now(),
@@ -135,6 +200,10 @@ export function initGuestData(): GuestData {
     mood: null,
     dimensionAssessments: [],
     gettingToKnowYou: null,
+    bodyProfile: null,
+    mealPrepPreferences: null,
+    workoutPreferences: null,
+    savedRoutines: [],
     preferences: {
       themeMode: "accent-only",
     },
@@ -298,4 +367,86 @@ export function saveGettingToKnowYou(gtky: GettingToKnowYou): void {
 export function hasCompletedOnboarding(): boolean {
   const gtky = getGettingToKnowYou();
   return gtky?.completedAt != null;
+}
+
+export function getBodyProfile(): BodyProfile | null {
+  const data = getGuestData();
+  return data?.bodyProfile || null;
+}
+
+export function saveBodyProfile(profile: BodyProfile): void {
+  const data = getGuestData() || initGuestData();
+  data.bodyProfile = { ...profile, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function hasCompletedBodyScan(): boolean {
+  const profile = getBodyProfile();
+  return profile?.bodyGoal != null;
+}
+
+export function getMealPrepPreferences(): MealPrepPreferences | null {
+  const data = getGuestData();
+  return data?.mealPrepPreferences || null;
+}
+
+export function saveMealPrepPreferences(prefs: MealPrepPreferences): void {
+  const data = getGuestData() || initGuestData();
+  data.mealPrepPreferences = { ...prefs, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function getWorkoutPreferences(): WorkoutPreferences | null {
+  const data = getGuestData();
+  return data?.workoutPreferences || null;
+}
+
+export function saveWorkoutPreferences(prefs: WorkoutPreferences): void {
+  const data = getGuestData() || initGuestData();
+  data.workoutPreferences = { ...prefs, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function getSavedRoutines(): SavedRoutine[] {
+  const data = getGuestData();
+  return data?.savedRoutines || [];
+}
+
+export function getSavedRoutinesByType(type: RoutineType): SavedRoutine[] {
+  return getSavedRoutines().filter(r => r.type === type);
+}
+
+export function saveRoutine(routine: Omit<SavedRoutine, "id" | "createdAt" | "lastUsedAt">): SavedRoutine {
+  const data = getGuestData() || initGuestData();
+  if (!data.savedRoutines) data.savedRoutines = [];
+  
+  const newRoutine: SavedRoutine = {
+    ...routine,
+    id: generateId(),
+    createdAt: Date.now(),
+    lastUsedAt: Date.now(),
+  };
+  
+  data.savedRoutines.unshift(newRoutine);
+  saveGuestData(data);
+  return newRoutine;
+}
+
+export function updateRoutineLastUsed(routineId: string): void {
+  const data = getGuestData();
+  if (!data) return;
+  
+  const routine = data.savedRoutines?.find(r => r.id === routineId);
+  if (routine) {
+    routine.lastUsedAt = Date.now();
+    saveGuestData(data);
+  }
+}
+
+export function deleteRoutine(routineId: string): void {
+  const data = getGuestData();
+  if (!data || !data.savedRoutines) return;
+  
+  data.savedRoutines = data.savedRoutines.filter(r => r.id !== routineId);
+  saveGuestData(data);
 }
