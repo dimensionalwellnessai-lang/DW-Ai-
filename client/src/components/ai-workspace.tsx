@@ -277,6 +277,22 @@ export function AIWorkspace() {
                 <div className="flex flex-wrap justify-center gap-2">
                   {QUICK_ACTIONS.map((action, idx) => {
                     const Icon = action.icon;
+                    const isDimensions = action.style === "dimensions";
+                    
+                    if (isDimensions && action.path) {
+                      return (
+                        <Link key={idx} href={action.path}>
+                          <button
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-sky-500 text-white hover-elevate text-sm"
+                            data-testid={`button-quick-${idx}`}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {action.text}
+                          </button>
+                        </Link>
+                      );
+                    }
+                    
                     return (
                       <button
                         key={idx}

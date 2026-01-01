@@ -26,6 +26,7 @@ import {
   Clock,
   ExternalLink,
   Loader2,
+  Compass,
 } from "lucide-react";
 import type {
   WellnessBlueprint,
@@ -36,16 +37,50 @@ import type {
   RecoveryReflection,
 } from "@shared/schema";
 
-const DIMENSION_OPTIONS = [
-  "Physical",
-  "Emotional",
-  "Social",
-  "Intellectual",
-  "Spiritual",
-  "Occupational",
-  "Environmental",
-  "Financial",
+const WELLNESS_DIMENSIONS = [
+  { 
+    name: "Physical", 
+    description: "Body health, exercise, nutrition, sleep, and physical self-care",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400"
+  },
+  { 
+    name: "Emotional", 
+    description: "Understanding and managing feelings, stress, and emotional awareness",
+    color: "bg-orange-500/10 text-orange-600 dark:text-orange-400"
+  },
+  { 
+    name: "Mental", 
+    description: "Cognitive stimulation, learning, creativity, and intellectual growth",
+    color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+  },
+  { 
+    name: "Social", 
+    description: "Relationships, community, belonging, and meaningful connections",
+    color: "bg-green-500/10 text-green-600 dark:text-green-400"
+  },
+  { 
+    name: "Spiritual", 
+    description: "Purpose, meaning, values, mindfulness, and inner peace",
+    color: "bg-teal-500/10 text-teal-600 dark:text-teal-400"
+  },
+  { 
+    name: "Environmental", 
+    description: "Surroundings, nature, living space, and harmony with your environment",
+    color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+  },
+  { 
+    name: "Occupational", 
+    description: "Career satisfaction, work-life balance, and professional fulfillment",
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+  },
+  { 
+    name: "Financial", 
+    description: "Money management, security, stability, and financial peace of mind",
+    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+  },
 ];
+
+const DIMENSION_OPTIONS = WELLNESS_DIMENSIONS.map(d => d.name);
 
 const PACE_OPTIONS = [
   { value: "gentle", label: "Gentle", description: "Take it slow, one thing at a time" },
@@ -99,10 +134,14 @@ export function BlueprintPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-6 h-auto p-1">
             <TabsTrigger value="baseline" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-baseline">
               <Heart className="w-4 h-4" />
               <span className="text-xs">Baseline</span>
+            </TabsTrigger>
+            <TabsTrigger value="dimensions" className="flex flex-col gap-1 py-3 data-[state=active]:bg-sky-500/20" data-testid="tab-dimensions">
+              <Compass className="w-4 h-4" />
+              <span className="text-xs">Dimensions</span>
             </TabsTrigger>
             <TabsTrigger value="signals" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-signals">
               <AlertCircle className="w-4 h-4" />
@@ -124,6 +163,10 @@ export function BlueprintPage() {
 
           <TabsContent value="baseline" className="space-y-6">
             <BaselineSection baseline={data?.baseline} />
+          </TabsContent>
+
+          <TabsContent value="dimensions" className="space-y-6">
+            <DimensionsSection />
           </TabsContent>
 
           <TabsContent value="signals" className="space-y-6">
@@ -316,6 +359,45 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
         {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
         Save Baseline
       </Button>
+    </div>
+  );
+}
+
+function DimensionsSection() {
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-xl font-display font-semibold mb-2">The 8 Wellness Dimensions</h2>
+        <p className="text-muted-foreground">
+          Holistic wellness means nurturing all parts of yourself. Notice which areas feel balanced and which could use attention.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {WELLNESS_DIMENSIONS.map((dimension, idx) => (
+          <Card key={dimension.name} className="overflow-visible">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${dimension.color}`}>
+                  <span className="text-lg font-semibold">{idx + 1}</span>
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">{dimension.name}</h3>
+                  <p className="text-sm text-muted-foreground">{dimension.description}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="bg-sky-500/5 border-sky-500/20">
+        <CardContent className="pt-6">
+          <p className="text-sm text-center text-muted-foreground">
+            Wellness is not about perfection in every area. It is about awareness and gentle, intentional care over time.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
