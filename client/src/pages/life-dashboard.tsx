@@ -37,6 +37,7 @@ import {
   getDimensionSignals,
   getDimensionWellnessProfile,
   saveDimensionWellnessProfile,
+  respondToAiSuggestion,
   hasCompletedBodyScan,
   hasCompletedFinanceProfile,
   hasCompletedSpiritualProfile,
@@ -63,7 +64,7 @@ const DIMENSION_CONFIGS = [
     defaultPhrase: "How I care for my physical self",
   },
   {
-    id: "mealPrep" as WellnessDimension,
+    id: "nutrition" as WellnessDimension,
     name: "Nutrition",
     icon: Utensils,
     color: "text-green-500",
@@ -108,7 +109,7 @@ function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
   switch (dimensionId) {
     case "body":
       return signals.movementFocus ? "active" : "not_started";
-    case "mealPrep":
+    case "nutrition":
       return signals.nutritionFocus ? "active" : "not_started";
     case "finances":
       return signals.costTier ? "active" : "not_started";
@@ -388,6 +389,7 @@ export default function LifeDashboardPage() {
 
       {selectedDimension && (
         <DimensionDetailSheet
+          key={selectedDimension.id}
           open={detailSheetOpen}
           onOpenChange={setDetailSheetOpen}
           dimension={selectedDimension}
@@ -469,19 +471,19 @@ interface DimensionDetailSheetProps {
 }
 
 function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetailSheetProps) {
-  const existingProfile = getDimensionWellnessProfile(dimension.id);
+  const [profile, setProfile] = useState(() => getDimensionWellnessProfile(dimension.id));
   const [isEditing, setIsEditing] = useState(false);
-  const [shortPhrase, setShortPhrase] = useState(existingProfile?.shortPhrase || dimension.defaultPhrase);
-  const [purpose, setPurpose] = useState(existingProfile?.wrapPlan.purpose || "");
-  const [triggers, setTriggers] = useState(existingProfile?.wrapPlan.triggers.join(", ") || "");
-  const [supports, setSupports] = useState(existingProfile?.wrapPlan.supportStrategies.join(", ") || "");
-  const [crisisPlan, setCrisisPlan] = useState(existingProfile?.wrapPlan.crisisPlan || "");
-  const [usageStory, setUsageStory] = useState(existingProfile?.usageStory || "");
-  const [assessmentLevel, setAssessmentLevel] = useState(existingProfile?.assessmentLevel || 3);
-  const [assessmentNotes, setAssessmentNotes] = useState(existingProfile?.assessmentNotes || "");
+  const [shortPhrase, setShortPhrase] = useState(profile?.shortPhrase || dimension.defaultPhrase);
+  const [purpose, setPurpose] = useState(profile?.wrapPlan.purpose || "");
+  const [triggers, setTriggers] = useState(profile?.wrapPlan.triggers.join(", ") || "");
+  const [supports, setSupports] = useState(profile?.wrapPlan.supportStrategies.join(", ") || "");
+  const [crisisPlan, setCrisisPlan] = useState(profile?.wrapPlan.crisisPlan || "");
+  const [usageStory, setUsageStory] = useState(profile?.usageStory || "");
+  const [assessmentLevel, setAssessmentLevel] = useState(profile?.assessmentLevel || 3);
+  const [assessmentNotes, setAssessmentNotes] = useState(profile?.assessmentNotes || "");
 
   const handleSave = () => {
-    saveDimensionWellnessProfile({
+    const saved = saveDimensionWellnessProfile({
       dimension: dimension.id,
       shortPhrase,
       wrapPlan: {
@@ -491,17 +493,23 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
         crisisPlan,
       },
       usageStory,
-      rituals: existingProfile?.rituals || [],
+      rituals: profile?.rituals || [],
       assessmentLevel,
       assessmentNotes,
-      evidence: existingProfile?.evidence || [],
-      aiSuggestions: existingProfile?.aiSuggestions || [],
+      evidence: profile?.evidence || [],
+      aiSuggestions: profile?.aiSuggestions || [],
     });
+    setProfile(saved);
     setIsEditing(false);
   };
 
+  const handleSuggestionResponse = (suggestionId: string, accept: boolean) => {
+    respondToAiSuggestion(dimension.id, suggestionId, accept);
+    setProfile(getDimensionWellnessProfile(dimension.id));
+  };
+
   const Icon = dimension.icon;
-  const pendingSuggestions = existingProfile?.aiSuggestions.filter(s => s.status === "pending") || [];
+  const pendingSuggestions = profile?.aiSuggestions.filter(s => s.status === "pending") || [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -781,11 +789,21 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
                       <div key={suggestion.id} className="p-3 bg-background rounded-md mb-2">
                         <p className="text-sm mb-2">{suggestion.content}</p>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" data-testid={`button-accept-${suggestion.id}`}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleSuggestionResponse(suggestion.id, true)}
+                            data-testid={`button-accept-${suggestion.id}`}
+                          >
                             <Check className="w-3 h-3 mr-1" />
                             Add
                           </Button>
-                          <Button size="sm" variant="ghost" data-testid={`button-decline-${suggestion.id}`}>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleSuggestionResponse(suggestion.id, false)}
+                            data-testid={`button-decline-${suggestion.id}`}
+                          >
                             <X className="w-3 h-3 mr-1" />
                             Dismiss
                           </Button>
