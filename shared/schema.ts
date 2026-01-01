@@ -16,11 +16,42 @@ export const users = pgTable("users", {
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   onboardingProfile: one(onboardingProfiles),
+  userProfile: one(userProfiles),
   lifeSystem: one(lifeSystems),
   goals: many(goals),
   habits: many(habits),
   moodLogs: many(moodLogs),
   checkIns: many(checkIns),
+}));
+
+export const userProfiles = pgTable("user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  goals: text("goals").array(),
+  scheduleAvailability: jsonb("schedule_availability"),
+  dietRestrictions: text("diet_restrictions").array(),
+  allergies: text("allergies").array(),
+  workoutLocation: text("workout_location"),
+  workoutEquipment: text("workout_equipment").array(),
+  fitnessGoal: text("fitness_goal"),
+  experienceLevel: text("experience_level"),
+  injuriesLimitations: text("injuries_limitations").array(),
+  coachingTone: text("coaching_tone"),
+  meditationStyle: text("meditation_style"),
+  meditationVoice: text("meditation_voice"),
+  meditationDurationMin: integer("meditation_duration_min"),
+  meditationDurationMax: integer("meditation_duration_max"),
+  reminderPreference: text("reminder_preference"),
+  profileCompleteness: integer("profile_completeness").default(0),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
 }));
 
 export const onboardingProfiles = pgTable("onboarding_profiles", {
@@ -441,6 +472,64 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
+export const wellnessContent = pgTable("wellness_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  contentType: text("content_type").notNull(),
+  category: text("category").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  duration: integer("duration"),
+  difficulty: text("difficulty"),
+  equipment: text("equipment").array(),
+  goalTags: text("goal_tags").array(),
+  moodTags: text("mood_tags").array(),
+  dietTags: text("diet_tags").array(),
+  instructions: jsonb("instructions"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const challenges = pgTable("challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  durationDays: integer("duration_days").notNull(),
+  dailyTasks: jsonb("daily_tasks"),
+  startDate: text("start_date"),
+  currentDay: integer("current_day").default(0),
+  status: text("status").default("not_started"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const challengesRelations = relations(challenges, ({ one }) => ({
+  user: one(users, {
+    fields: [challenges.userId],
+    references: [users.id],
+  }),
+}));
+
+export const bodyScans = pgTable("body_scans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  height: text("height"),
+  weight: text("weight"),
+  waist: text("waist"),
+  goals: text("goals").array(),
+  notes: text("notes"),
+  consentGiven: boolean("consent_given").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const bodyScansRelations = relations(bodyScans, ({ one }) => ({
+  user: one(users, {
+    fields: [bodyScans.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -557,6 +646,27 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   createdAt: true,
 });
 
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true,
+});
+
+export const insertWellnessContentSchema = createInsertSchema(wellnessContent).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChallengeSchema = createInsertSchema(challenges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBodyScanSchema = createInsertSchema(bodyScans).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -605,3 +715,11 @@ export type ProjectChat = typeof projectChats.$inferSelect;
 export type InsertProjectChat = z.infer<typeof insertProjectChatSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type WellnessContent = typeof wellnessContent.$inferSelect;
+export type InsertWellnessContent = z.infer<typeof insertWellnessContentSchema>;
+export type Challenge = typeof challenges.$inferSelect;
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type BodyScan = typeof bodyScans.$inferSelect;
+export type InsertBodyScan = z.infer<typeof insertBodyScanSchema>;

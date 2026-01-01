@@ -21,6 +21,10 @@ import {
   projects,
   projectChats,
   calendarEvents,
+  userProfiles,
+  wellnessContent,
+  challenges,
+  bodyScans,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -65,6 +69,14 @@ import {
   type InsertProjectChat,
   type CalendarEvent,
   type InsertCalendarEvent,
+  type UserProfile,
+  type InsertUserProfile,
+  type WellnessContent,
+  type InsertWellnessContent,
+  type Challenge,
+  type InsertChallenge,
+  type BodyScan,
+  type InsertBodyScan,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -169,6 +181,23 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEventForUser(id: string, userId: string): Promise<boolean>;
+
+  getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<UserProfile | undefined>;
+
+  getWellnessContent(filters?: { category?: string; goalTags?: string[]; difficulty?: string }): Promise<WellnessContent[]>;
+  getWellnessContentById(id: string): Promise<WellnessContent | undefined>;
+
+  getChallenges(userId: string): Promise<Challenge[]>;
+  getChallenge(id: string, userId: string): Promise<Challenge | undefined>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: string, userId: string, data: Partial<Challenge>): Promise<Challenge | undefined>;
+  deleteChallenge(id: string, userId: string): Promise<boolean>;
+
+  getBodyScans(userId: string): Promise<BodyScan[]>;
+  createBodyScan(scan: InsertBodyScan): Promise<BodyScan>;
+  deleteBodyScan(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -594,6 +623,76 @@ export class DatabaseStorage implements IStorage {
   async deleteCalendarEventForUser(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    return true;
+  }
+
+  async getUserProfile(userId: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    const [created] = await db.insert(userProfiles).values(profile).returning();
+    return created;
+  }
+
+  async updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles).set({ ...data, lastUpdated: new Date() })
+      .where(eq(userProfiles.userId, userId)).returning();
+    return updated || undefined;
+  }
+
+  async getWellnessContent(filters?: { category?: string; goalTags?: string[]; difficulty?: string }): Promise<WellnessContent[]> {
+    let query = db.select().from(wellnessContent).where(eq(wellnessContent.isActive, true));
+    return query;
+  }
+
+  async getWellnessContentById(id: string): Promise<WellnessContent | undefined> {
+    const [content] = await db.select().from(wellnessContent).where(eq(wellnessContent.id, id));
+    return content || undefined;
+  }
+
+  async getChallenges(userId: string): Promise<Challenge[]> {
+    return db.select().from(challenges)
+      .where(eq(challenges.userId, userId))
+      .orderBy(desc(challenges.createdAt));
+  }
+
+  async getChallenge(id: string, userId: string): Promise<Challenge | undefined> {
+    const [challenge] = await db.select().from(challenges)
+      .where(and(eq(challenges.id, id), eq(challenges.userId, userId)));
+    return challenge || undefined;
+  }
+
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const [created] = await db.insert(challenges).values(challenge).returning();
+    return created;
+  }
+
+  async updateChallenge(id: string, userId: string, data: Partial<Challenge>): Promise<Challenge | undefined> {
+    const [updated] = await db.update(challenges).set(data)
+      .where(and(eq(challenges.id, id), eq(challenges.userId, userId))).returning();
+    return updated || undefined;
+  }
+
+  async deleteChallenge(id: string, userId: string): Promise<boolean> {
+    await db.delete(challenges).where(and(eq(challenges.id, id), eq(challenges.userId, userId)));
+    return true;
+  }
+
+  async getBodyScans(userId: string): Promise<BodyScan[]> {
+    return db.select().from(bodyScans)
+      .where(eq(bodyScans.userId, userId))
+      .orderBy(desc(bodyScans.createdAt));
+  }
+
+  async createBodyScan(scan: InsertBodyScan): Promise<BodyScan> {
+    const [created] = await db.insert(bodyScans).values(scan).returning();
+    return created;
+  }
+
+  async deleteBodyScan(id: string, userId: string): Promise<boolean> {
+    await db.delete(bodyScans).where(and(eq(bodyScans.id, id), eq(bodyScans.userId, userId)));
     return true;
   }
 }

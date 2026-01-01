@@ -39,9 +39,10 @@ import {
   ArrowLeft,
   History,
 } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@shared/schema";
 
 interface WorkoutExercise {
   name: string;
@@ -95,16 +96,18 @@ const DIMENSION_TAGS = [
 ];
 
 const STARTER_OPTIONS = [
-  { text: "Make a simple plan", icon: Calendar },
+  { text: "Make a plan", icon: Calendar },
   { text: "Talk things out", icon: Heart },
   { text: "Try a challenge", icon: Target },
-  { text: "I'm not sure, I need guidance", icon: Sun },
+  { text: "Browse content", icon: Sparkles },
 ];
 
 const MENU_ITEMS = [
-  { name: "Challenges", path: "/challenges", icon: Target, description: "Push to your next level" },
+  { name: "Browse", path: "/browse", icon: Sparkles, description: "Personalized content for you" },
+  { name: "Challenges", path: "/challenges", icon: Target, description: "Push yourself to grow" },
   { name: "Talk It Out", path: "/talk", icon: Heart, description: "Process feelings and gain clarity" },
-  { name: "Calendar & Plans", path: "/calendar", icon: Calendar, description: "Your schedule and routines" },
+  { name: "Calendar", path: "/calendar", icon: Calendar, description: "Your schedule and events" },
+  { name: "Blueprint", path: "/blueprint", icon: Shield, description: "Your 8 dimensions of wellness" },
 ];
 
 const CATEGORIES: Category[] = DIMENSION_TAGS.map(d => ({
@@ -121,6 +124,10 @@ export function AIWorkspace() {
   const [moodPickerOpen, setMoodPickerOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [input, setInput] = useState("");
+
+  const { data: userProfile } = useQuery<UserProfile | null>({
+    queryKey: ["/api/profile"],
+  });
   const [attachments, setAttachments] = useState<{ name: string; type: string; url: string }[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const guestData = getGuestData();
@@ -228,6 +235,7 @@ export function AIWorkspace() {
         context: activeCategory,
         conversationHistory: messages.slice(-10),
         attachments,
+        userProfile: userProfile || undefined,
       });
       return response.json();
     },

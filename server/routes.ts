@@ -21,6 +21,9 @@ import {
   insertProjectSchema,
   insertProjectChatSchema,
   insertCalendarEventSchema,
+  insertUserProfileSchema,
+  insertChallengeSchema,
+  insertBodyScanSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -382,7 +385,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", async (req, res) => {
     try {
-      const { message, conversationHistory, context } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -397,10 +400,11 @@ export async function registerRoutes(
         req.session.userId = userId;
       }
       
-      const [user, goals, habits] = await Promise.all([
+      const [user, goals, habits, profile] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
+        storage.getUserProfile(userId),
       ]);
       
       const userContext = {
@@ -414,6 +418,7 @@ export async function registerRoutes(
           title: h.title, 
           streak: h.streak || 0 
         })),
+        profile: profile || clientProfile || null,
       };
       
       const result = await detectIntentAndRespond(
@@ -1175,6 +1180,161 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+
+  app.get("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const profile = await storage.getUserProfile(req.session.userId!);
+      res.json(profile || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load profile" });
+    }
+  });
+
+  app.post("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getUserProfile(req.session.userId!);
+      if (existing) {
+        const updated = await storage.updateUserProfile(req.session.userId!, req.body);
+        return res.json(updated);
+      }
+      const data = insertUserProfileSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createUserProfile(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save profile" });
+    }
+  });
+
+  app.patch("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getUserProfile(req.session.userId!);
+      if (!existing) {
+        const data = insertUserProfileSchema.parse({ ...req.body, userId: req.session.userId! });
+        const created = await storage.createUserProfile(data);
+        return res.json(created);
+      }
+      const updated = await storage.updateUserProfile(req.session.userId!, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.get("/api/challenges", requireAuth, async (req, res) => {
+    try {
+      const userChallenges = await storage.getChallenges(req.session.userId!);
+      res.json(userChallenges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load challenges" });
+    }
+  });
+
+  app.get("/api/challenges/:id", requireAuth, async (req, res) => {
+    try {
+      const challenge = await storage.getChallenge(req.params.id, req.session.userId!);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+      res.json(challenge);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load challenge" });
+    }
+  });
+
+  app.post("/api/challenges", requireAuth, async (req, res) => {
+    try {
+      const data = insertChallengeSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createChallenge(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create challenge" });
+    }
+  });
+
+  app.patch("/api/challenges/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateChallenge(req.params.id, req.session.userId!, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update challenge" });
+    }
+  });
+
+  app.delete("/api/challenges/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteChallenge(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete challenge" });
+    }
+  });
+
+  app.get("/api/body-scans", requireAuth, async (req, res) => {
+    try {
+      const scans = await storage.getBodyScans(req.session.userId!);
+      res.json(scans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load body scans" });
+    }
+  });
+
+  app.post("/api/body-scans", requireAuth, async (req, res) => {
+    try {
+      const data = insertBodyScanSchema.parse({ ...req.body, userId: req.session.userId! });
+      const created = await storage.createBodyScan(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create body scan" });
+    }
+  });
+
+  app.delete("/api/body-scans/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteBodyScan(req.params.id, req.session.userId!);
+      if (!deleted) {
+        return res.status(404).json({ error: "Body scan not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete body scan" });
+    }
+  });
+
+  app.get("/api/wellness-content", async (req, res) => {
+    try {
+      const content = await storage.getWellnessContent();
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load wellness content" });
+    }
+  });
+
+  app.get("/api/wellness-content/:id", async (req, res) => {
+    try {
+      const content = await storage.getWellnessContentById(req.params.id);
+      if (!content) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load content" });
     }
   });
 

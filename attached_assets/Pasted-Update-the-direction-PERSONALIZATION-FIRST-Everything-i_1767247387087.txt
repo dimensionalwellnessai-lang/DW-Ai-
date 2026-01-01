@@ -1,0 +1,92 @@
+Update the direction:
+
+PERSONALIZATION FIRST:
+Everything in the app should be driven by the user’s profile/preferences.
+The AI should behave like ChatGPT: it asks questions when needed, remembers answers, and uses them to personalize recommendations.
+
+The app experience is a blend of:
+- ChatGPT-style AI assistant (conversation-first, smart questions, memory)
+- Meditation app (Breathe/Calm-like browsing: thumbnails, moods, durations, intentions)
+- Workout/bodybuilding planner (personalized routines, plans, progression)
+
+KEY BEHAVIOR:
+- The app should NOT be pre-populated with random content that ignores the user.
+- Instead, the assistant builds the user profile quickly through conversation (micro-onboarding).
+- Content shown in Browse (meditation/workouts/meals/challenges) should be personalized based on profile + recent mood + goals.
+
+PROFILE (store this and keep updating):
+- goals (choose 1–3)
+- schedule availability
+- diet restrictions + allergies
+- workout preference (home/gym, equipment)
+- fitness goal (muscle gain, fat loss, maintenance, performance)
+- experience level (beginner/intermediate/advanced)
+- injuries/limitations (optional)
+- preferred coaching tone (gentle / steady / direct)
+- preferred meditation style (guided vs instructions-only, voice style, duration range)
+- reminder preference
+
+AI QUESTION STYLE:
+- Ask only what’s needed, when it’s needed (like ChatGPT).
+- Do not overwhelm users with long forms.
+- If the user is stuck, offer 2–4 options and guide them calmly.
+
+HOME / MAIN SCREEN:
+- Main screen opens to AI chat with minimal UI:
+  “How can I help you today?”
+- Offer quick actions:
+  Make a plan / Talk it out / Start a challenge / Browse
+- No long paragraphs on Home.
+
+BROWSE (NETFLIX STYLE, BUT PERSONALIZED):
+- Show rows/grids with thumbnails
+- Use filters: mood, goal, duration, difficulty, equipment, diet
+- Content should be ranked and displayed based on the user profile.
+- If profile info is missing, the assistant asks short questions and then updates the browse results.
+
+CHALLENGES:
+Add a Challenges section (personalized):
+- Workout challenges
+- Mental health challenges
+- Meal challenges
+- Social challenges
+- Financial challenges
+Each challenge has a start button that creates daily tasks + optional calendar blocks.
+
+TALK IT OUT MODE:
+Add a Talk it out mode in the assistant:
+- Supportive, calm, but can give honest grounded truth without shaming.
+- Ends with 1 suggested next step (task/routine).
+
+CALENDAR:
+Use a real calendar with month view (dates/numbers/year) + day agenda.
+
+BLUEPRINT:
+Blueprint screen for the 8 dimensions of wellness.
+Each dimension shows a synopsis based on the user profile + behavior.
+If the assistant needs more info, show “Answer 3 questions” to refine that dimension.
+
+BODY SCAN FEATURE (IMPORTANT):
+Add a Body Scan feature that uses the device camera (with explicit consent).
+Phase 1 (MVP):
+- Capture front/side photos or short video
+- Ask user goals + optional measurements (height/weight/waist)
+- Store only if the user agrees (or process without saving)
+- Use results to personalize workout/meal recommendations (no medical claims)
+
+Phase 2 (advanced):
+- Optional computer-vision based estimates (only if feasible)
+- Must include privacy notice, consent, and ability to delete images/data
+
+PRIVACY & SAFETY:
+- Clear consent before camera use
+- “Delete my data” option
+- No medical diagnosis or guarantees
+- Keep it supportive and empowering
+
+IMPLEMENTATION PRIORITY:
+1) Fix UI flow: AI-first + simple nav + real calendar
+2) Build user profile + ChatGPT-like question behavior
+3) Personalize browse based on profile
+4) Add body scan Phase 1
+Leave deeper AI and advanced vision as Phase 2.
