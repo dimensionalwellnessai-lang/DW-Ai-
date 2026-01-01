@@ -210,6 +210,31 @@ export interface CalendarEvent {
   updatedAt: number;
 }
 
+export interface DimensionWellnessProfile {
+  id: string;
+  dimension: WellnessDimension;
+  shortPhrase: string;
+  wrapPlan: {
+    purpose: string;
+    triggers: string[];
+    supportStrategies: string[];
+    crisisPlan: string;
+  };
+  usageStory: string;
+  rituals: string[];
+  assessmentLevel: number;
+  assessmentNotes: string;
+  evidence: string[];
+  aiSuggestions: {
+    id: string;
+    content: string;
+    sourceConversationId: string | null;
+    status: "pending" | "accepted" | "declined";
+    createdAt: number;
+  }[];
+  updatedAt: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -225,6 +250,7 @@ export interface GuestData {
   communityProfile: CommunityProfile | null;
   communityOpportunities: CommunityOpportunity[];
   calendarEvents: CalendarEvent[];
+  dimensionWellnessProfiles: DimensionWellnessProfile[];
   savedRoutines: SavedRoutine[];
   preferences: {
     themeMode: "accent-only" | "full-background";
@@ -296,6 +322,11 @@ export function getGuestData(): GuestData | null {
           workoutPreferences: null,
           financeProfile: null,
           spiritualProfile: null,
+          foundationsProfile: null,
+          communityProfile: null,
+          communityOpportunities: [],
+          calendarEvents: [],
+          dimensionWellnessProfiles: [],
           savedRoutines: [],
           preferences: parsed.preferences || { themeMode: "accent-only" },
           createdAt: parsed.createdAt || Date.now(),
@@ -340,6 +371,7 @@ export function initGuestData(): GuestData {
     communityProfile: null,
     communityOpportunities: [],
     calendarEvents: [],
+    dimensionWellnessProfiles: [],
     savedRoutines: [],
     preferences: {
       themeMode: "accent-only",
@@ -747,5 +779,116 @@ export function deleteCalendarEvent(eventId: string): void {
   if (!data?.calendarEvents) return;
   
   data.calendarEvents = data.calendarEvents.filter(e => e.id !== eventId);
+  saveGuestData(data);
+}
+
+export function getDimensionWellnessProfiles(): DimensionWellnessProfile[] {
+  const data = getGuestData();
+  return data?.dimensionWellnessProfiles || [];
+}
+
+export function getDimensionWellnessProfile(dimension: WellnessDimension): DimensionWellnessProfile | null {
+  const profiles = getDimensionWellnessProfiles();
+  return profiles.find(p => p.dimension === dimension) || null;
+}
+
+export function saveDimensionWellnessProfile(profile: Omit<DimensionWellnessProfile, "id" | "updatedAt">): DimensionWellnessProfile {
+  const data = getGuestData() || initGuestData();
+  if (!data.dimensionWellnessProfiles) data.dimensionWellnessProfiles = [];
+  
+  const existingIndex = data.dimensionWellnessProfiles.findIndex(p => p.dimension === profile.dimension);
+  
+  const newProfile: DimensionWellnessProfile = {
+    ...profile,
+    id: existingIndex >= 0 ? data.dimensionWellnessProfiles[existingIndex].id : generateId(),
+    updatedAt: Date.now(),
+  };
+  
+  if (existingIndex >= 0) {
+    data.dimensionWellnessProfiles[existingIndex] = newProfile;
+  } else {
+    data.dimensionWellnessProfiles.push(newProfile);
+  }
+  
+  saveGuestData(data);
+  return newProfile;
+}
+
+export function updateDimensionWellnessProfile(dimension: WellnessDimension, updates: Partial<DimensionWellnessProfile>): DimensionWellnessProfile | null {
+  const data = getGuestData();
+  if (!data?.dimensionWellnessProfiles) return null;
+  
+  const index = data.dimensionWellnessProfiles.findIndex(p => p.dimension === dimension);
+  if (index < 0) return null;
+  
+  data.dimensionWellnessProfiles[index] = { 
+    ...data.dimensionWellnessProfiles[index], 
+    ...updates, 
+    updatedAt: Date.now() 
+  };
+  saveGuestData(data);
+  return data.dimensionWellnessProfiles[index];
+}
+
+export function addAiSuggestionToDimension(
+  dimension: WellnessDimension, 
+  content: string, 
+  sourceConversationId: string | null
+): void {
+  const data = getGuestData() || initGuestData();
+  if (!data.dimensionWellnessProfiles) data.dimensionWellnessProfiles = [];
+  
+  let profile = data.dimensionWellnessProfiles.find(p => p.dimension === dimension);
+  
+  if (!profile) {
+    profile = {
+      id: generateId(),
+      dimension,
+      shortPhrase: "",
+      wrapPlan: { purpose: "", triggers: [], supportStrategies: [], crisisPlan: "" },
+      usageStory: "",
+      rituals: [],
+      assessmentLevel: 0,
+      assessmentNotes: "",
+      evidence: [],
+      aiSuggestions: [],
+      updatedAt: Date.now(),
+    };
+    data.dimensionWellnessProfiles.push(profile);
+  }
+  
+  profile.aiSuggestions.push({
+    id: generateId(),
+    content,
+    sourceConversationId,
+    status: "pending",
+    createdAt: Date.now(),
+  });
+  profile.updatedAt = Date.now();
+  
+  saveGuestData(data);
+}
+
+export function respondToAiSuggestion(
+  dimension: WellnessDimension, 
+  suggestionId: string, 
+  accept: boolean
+): void {
+  const data = getGuestData();
+  if (!data?.dimensionWellnessProfiles) return;
+  
+  const profile = data.dimensionWellnessProfiles.find(p => p.dimension === dimension);
+  if (!profile) return;
+  
+  const suggestion = profile.aiSuggestions.find(s => s.id === suggestionId);
+  if (!suggestion) return;
+  
+  suggestion.status = accept ? "accepted" : "declined";
+  
+  if (accept) {
+    profile.evidence.push(suggestion.content);
+  }
+  
+  profile.updatedAt = Date.now();
   saveGuestData(data);
 }
