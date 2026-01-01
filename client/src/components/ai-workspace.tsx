@@ -4,7 +4,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
-import { getGuestData, saveGuestData, initGuestData } from "@/lib/guest-storage";
+import { 
+  getGuestData, 
+  initGuestData, 
+  getActiveConversation,
+  createNewConversation,
+  addMessageToConversation,
+  setActiveConversation,
+  getConversationsByCategory,
+  type GuestConversation,
+  type ChatMessage,
+} from "@/lib/guest-storage";
 import { Link } from "wouter";
 import {
   Send,
@@ -21,16 +31,13 @@ import {
   Settings,
   Sparkles,
   Wind,
+  Plus,
+  MessageSquare,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@shared/schema";
-
-interface ChatMessage {
-  role: "assistant" | "user";
-  content: string;
-}
 
 const QUICK_ACTIONS = [
   { text: "Make a plan", icon: Calendar },
@@ -49,46 +56,43 @@ const MENU_ITEMS = [
   { name: "Settings", path: "/settings", icon: Settings, description: "Preferences" },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  planning: "Planning",
+  emotional: "Emotional Support",
+  wellness: "Wellness",
+  productivity: "Productivity",
+  relationships: "Relationships",
+  general: "General",
+};
+
 export function AIWorkspace() {
   const { toast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [conversationVersion, setConversationVersion] = useState(0);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
   });
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const guestData = getGuestData();
-    if (guestData && guestData.messages.length > 0) {
-      return guestData.messages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-    }
-    return [];
-  });
+  const activeConversation = getActiveConversation();
+  const messages: ChatMessage[] = activeConversation?.messages || [];
+  const conversationsByCategory = getConversationsByCategory();
+  
   const [isTyping, setIsTyping] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  
+
   useEffect(() => {
-    const guestData = getGuestData() || initGuestData();
-    const existingTimestamps = new Map(
-      guestData.messages.map((m, i) => [i, m.timestamp])
-    );
-    const messagesToSave = messages.map((m, i) => ({
-      ...m,
-      timestamp: existingTimestamps.get(i) || Date.now(),
-    }));
-    saveGuestData({ ...guestData, messages: messagesToSave });
-  }, [messages]);
+    initGuestData();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length, conversationVersion]);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -100,10 +104,8 @@ export function AIWorkspace() {
       return response.json();
     },
     onSuccess: (data) => {
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: data.response,
-      }]);
+      addMessageToConversation("assistant", data.response);
+      setConversationVersion(v => v + 1);
       setIsTyping(false);
     },
     onError: () => {
@@ -120,7 +122,8 @@ export function AIWorkspace() {
     if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    addMessageToConversation("user", userMessage);
+    setConversationVersion(v => v + 1);
     setInput("");
     setIsTyping(true);
     chatMutation.mutate(userMessage);
@@ -135,21 +138,56 @@ export function AIWorkspace() {
     }
   };
 
+  const handleNewConversation = () => {
+    createNewConversation();
+    setConversationVersion(v => v + 1);
+    setHistoryOpen(false);
+  };
+
+  const handleSelectConversation = (convo: GuestConversation) => {
+    setActiveConversation(convo.id);
+    setConversationVersion(v => v + 1);
+    setHistoryOpen(false);
+  };
+
   const greeting = "How can I support you today?";
+  const hasConversations = Object.values(conversationsByCategory).flat().length > 0;
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
       <header className="flex items-center justify-between p-3 border-b">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMenuOpen(true)}
-          data-testid="button-menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMenuOpen(true)}
+            data-testid="button-menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          {hasConversations && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHistoryOpen(true)}
+              data-testid="button-history"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
         <span className="font-display font-semibold text-lg" data-testid="text-brand">DWAI</span>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNewConversation}
+            data-testid="button-new-chat"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+          <ThemeToggle />
+        </div>
       </header>
       
       {menuOpen && (
@@ -188,6 +226,57 @@ export function AIWorkspace() {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {historyOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setHistoryOpen(false)}>
+          <div 
+            className="absolute left-0 top-0 h-full w-72 bg-background border-r p-4 overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-display font-semibold">Conversations</span>
+              <Button variant="ghost" size="icon" onClick={() => setHistoryOpen(false)} data-testid="button-close-history">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mb-4 w-full"
+              onClick={handleNewConversation}
+              data-testid="button-new-conversation"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New conversation
+            </Button>
+            <ScrollArea className="flex-1">
+              <div className="space-y-4">
+                {Object.entries(conversationsByCategory).map(([category, convos]) => (
+                  <div key={category}>
+                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      {CATEGORY_LABELS[category] || category}
+                    </h3>
+                    <div className="space-y-1">
+                      {convos.map((convo) => (
+                        <button
+                          key={convo.id}
+                          onClick={() => handleSelectConversation(convo)}
+                          className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
+                            activeConversation?.id === convo.id ? "bg-muted" : ""
+                          }`}
+                          data-testid={`conversation-${convo.id}`}
+                        >
+                          {convo.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </div>
       )}

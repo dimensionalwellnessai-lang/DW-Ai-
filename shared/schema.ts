@@ -667,6 +667,30 @@ export const insertBodyScanSchema = createInsertSchema(bodyScans).omit({
   createdAt: true,
 });
 
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  title: text("title").notNull(),
+  category: text("category").notNull().default("general"),
+  messages: jsonb("messages").notNull().default([]),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const conversationsRelations = relations(conversations, ({ one }) => ({
+  user: one(users, {
+    fields: [conversations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+  lastMessageAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -723,3 +747,5 @@ export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;
 export type InsertBodyScan = z.infer<typeof insertBodyScanSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;

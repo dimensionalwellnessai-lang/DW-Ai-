@@ -1,34 +1,91 @@
 const GUEST_DATA_KEY = "dwai_guest_data";
 const GUEST_SESSION_KEY = "dwai_guest_session";
 
-export interface AiLearning {
-  topic: string;
-  details: Record<string, unknown>;
+export interface ChatMessage {
+  role: "assistant" | "user";
+  content: string;
   timestamp: number;
 }
 
+export interface GuestConversation {
+  id: string;
+  title: string;
+  category: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  lastMessageAt: number;
+}
+
 export interface GuestData {
-  messages: Array<{
-    role: "assistant" | "user";
-    content: string;
-    category?: string;
-    attachments?: { name: string; type: string; url: string }[];
-    timestamp: number;
-  }>;
+  conversations: GuestConversation[];
+  activeConversationId: string | null;
   mood: string | null;
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
-  learnings: AiLearning[];
   createdAt: number;
   lastActiveAt: number;
+}
+
+const CATEGORIES = [
+  { id: "planning", keywords: ["plan", "schedule", "organize", "todo", "task", "goal"] },
+  { id: "emotional", keywords: ["feel", "emotion", "stress", "anxious", "sad", "happy", "worried", "overwhelm"] },
+  { id: "wellness", keywords: ["health", "exercise", "sleep", "meditat", "breath", "relax", "calm"] },
+  { id: "productivity", keywords: ["work", "focus", "productiv", "habit", "routine"] },
+  { id: "relationships", keywords: ["friend", "family", "relationship", "social", "people"] },
+];
+
+function detectCategory(messages: ChatMessage[]): string {
+  const text = messages.map(m => m.content.toLowerCase()).join(" ");
+  for (const cat of CATEGORIES) {
+    if (cat.keywords.some(keyword => text.includes(keyword))) {
+      return cat.id;
+    }
+  }
+  return "general";
+}
+
+function generateTitle(messages: ChatMessage[]): string {
+  const firstUserMessage = messages.find(m => m.role === "user");
+  if (firstUserMessage) {
+    const content = firstUserMessage.content;
+    if (content.length <= 40) return content;
+    return content.substring(0, 37) + "...";
+  }
+  return "New conversation";
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 export function getGuestData(): GuestData | null {
   try {
     const data = localStorage.getItem(GUEST_DATA_KEY);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (parsed.messages && !parsed.conversations) {
+        const conversations: GuestConversation[] = [];
+        if (parsed.messages.length > 0) {
+          conversations.push({
+            id: generateId(),
+            title: generateTitle(parsed.messages),
+            category: detectCategory(parsed.messages),
+            messages: parsed.messages,
+            createdAt: parsed.createdAt || Date.now(),
+            lastMessageAt: Date.now(),
+          });
+        }
+        return {
+          conversations,
+          activeConversationId: conversations[0]?.id || null,
+          mood: parsed.mood || null,
+          preferences: parsed.preferences || { themeMode: "accent-only" },
+          createdAt: parsed.createdAt || Date.now(),
+          lastActiveAt: Date.now(),
+        };
+      }
+      return parsed;
     }
   } catch (e) {
     console.error("Failed to parse guest data:", e);
@@ -48,19 +105,16 @@ export function saveGuestData(data: GuestData): void {
 export function initGuestData(): GuestData {
   const existing = getGuestData();
   if (existing) {
-    if (!existing.learnings) {
-      existing.learnings = [];
-    }
     return existing;
   }
   
   const newData: GuestData = {
-    messages: [],
+    conversations: [],
+    activeConversationId: null,
     mood: null,
     preferences: {
       themeMode: "accent-only",
     },
-    learnings: [],
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
   };
@@ -86,21 +140,81 @@ export function setGuestSession(isGuest: boolean): void {
   }
 }
 
-export function addGuestMessage(
-  role: "assistant" | "user",
-  content: string,
-  category?: string,
-  attachments?: { name: string; type: string; url: string }[]
-): void {
+export function getActiveConversation(): GuestConversation | null {
+  const data = getGuestData();
+  if (!data || !data.activeConversationId) return null;
+  return data.conversations.find(c => c.id === data.activeConversationId) || null;
+}
+
+export function createNewConversation(): GuestConversation {
   const data = getGuestData() || initGuestData();
-  data.messages.push({
+  const newConvo: GuestConversation = {
+    id: generateId(),
+    title: "New conversation",
+    category: "general",
+    messages: [],
+    createdAt: Date.now(),
+    lastMessageAt: Date.now(),
+  };
+  data.conversations.unshift(newConvo);
+  data.activeConversationId = newConvo.id;
+  saveGuestData(data);
+  return newConvo;
+}
+
+export function addMessageToConversation(
+  role: "assistant" | "user",
+  content: string
+): GuestConversation {
+  const data = getGuestData() || initGuestData();
+  
+  let conversation = data.conversations.find(c => c.id === data.activeConversationId);
+  
+  if (!conversation) {
+    conversation = createNewConversation();
+    data.conversations = [conversation, ...data.conversations.filter(c => c.id !== conversation!.id)];
+    data.activeConversationId = conversation.id;
+  }
+  
+  conversation.messages.push({
     role,
     content,
-    category,
-    attachments,
     timestamp: Date.now(),
   });
+  
+  conversation.lastMessageAt = Date.now();
+  conversation.title = generateTitle(conversation.messages);
+  conversation.category = detectCategory(conversation.messages);
+  
   saveGuestData(data);
+  return conversation;
+}
+
+export function setActiveConversation(conversationId: string): void {
+  const data = getGuestData();
+  if (data) {
+    data.activeConversationId = conversationId;
+    saveGuestData(data);
+  }
+}
+
+export function getConversationsByCategory(): Record<string, GuestConversation[]> {
+  const data = getGuestData();
+  if (!data) return {};
+  
+  const grouped: Record<string, GuestConversation[]> = {};
+  for (const convo of data.conversations) {
+    if (!grouped[convo.category]) {
+      grouped[convo.category] = [];
+    }
+    grouped[convo.category].push(convo);
+  }
+  return grouped;
+}
+
+export function getAllConversations(): GuestConversation[] {
+  const data = getGuestData();
+  return data?.conversations || [];
 }
 
 export function updateGuestMood(mood: string | null): void {
@@ -115,28 +229,4 @@ export function updateGuestPreferences(
   const data = getGuestData() || initGuestData();
   data.preferences = { ...data.preferences, ...preferences };
   saveGuestData(data);
-}
-
-export function getGuestMessageCount(): number {
-  const data = getGuestData();
-  return data?.messages.length || 0;
-}
-
-export function addGuestLearning(topic: string, details: Record<string, unknown>): void {
-  const data = getGuestData() || initGuestData();
-  if (!data.learnings) {
-    data.learnings = [];
-  }
-  const existingIndex = data.learnings.findIndex(l => l.topic === topic);
-  if (existingIndex >= 0) {
-    data.learnings[existingIndex] = { topic, details, timestamp: Date.now() };
-  } else {
-    data.learnings.push({ topic, details, timestamp: Date.now() });
-  }
-  saveGuestData(data);
-}
-
-export function getGuestLearnings(): AiLearning[] {
-  const data = getGuestData();
-  return data?.learnings || [];
 }
