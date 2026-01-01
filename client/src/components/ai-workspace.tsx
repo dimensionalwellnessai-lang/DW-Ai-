@@ -13,9 +13,11 @@ import {
   addMessageToConversation,
   setActiveConversation,
   getConversationsByCategory,
+  hasCompletedOnboarding,
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
+import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { Link } from "wouter";
 import {
   Send,
@@ -72,8 +74,18 @@ export function AIWorkspace() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!hasCompletedOnboarding()) {
+        setShowOnboarding(true);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
@@ -381,6 +393,12 @@ export function AIWorkspace() {
             description: `${duration} minutes of ${pattern} breathing.`,
           });
         }}
+      />
+
+      <GettingToKnowYouDialog
+        open={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={() => setShowOnboarding(false)}
       />
     </div>
   );

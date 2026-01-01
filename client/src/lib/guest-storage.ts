@@ -24,11 +24,20 @@ export interface DimensionAssessment {
   lastUpdated: number;
 }
 
+export interface GettingToKnowYou {
+  supportStyle: string | null;
+  peakEnergyTime: string | null;
+  dayStructure: string | null;
+  currentNeeds: string[];
+  completedAt: number | null;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
   mood: string | null;
   dimensionAssessments: DimensionAssessment[];
+  gettingToKnowYou: GettingToKnowYou | null;
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -125,6 +134,7 @@ export function initGuestData(): GuestData {
     activeConversationId: null,
     mood: null,
     dimensionAssessments: [],
+    gettingToKnowYou: null,
     preferences: {
       themeMode: "accent-only",
     },
@@ -272,4 +282,20 @@ export function saveDimensionAssessment(assessment: DimensionAssessment): void {
     data.dimensionAssessments.push({ ...assessment, lastUpdated: Date.now() });
   }
   saveGuestData(data);
+}
+
+export function getGettingToKnowYou(): GettingToKnowYou | null {
+  const data = getGuestData();
+  return data?.gettingToKnowYou || null;
+}
+
+export function saveGettingToKnowYou(gtky: GettingToKnowYou): void {
+  const data = getGuestData() || initGuestData();
+  data.gettingToKnowYou = gtky;
+  saveGuestData(data);
+}
+
+export function hasCompletedOnboarding(): boolean {
+  const gtky = getGettingToKnowYou();
+  return gtky?.completedAt != null;
 }

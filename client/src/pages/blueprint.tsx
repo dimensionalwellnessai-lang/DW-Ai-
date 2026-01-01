@@ -32,6 +32,14 @@ import {
   ExternalLink,
   Loader2,
   Compass,
+  ChevronRight,
+  Activity,
+  Smile,
+  Brain,
+  Flower2,
+  TreePine,
+  Briefcase,
+  Wallet,
 } from "lucide-react";
 import type {
   WellnessBlueprint,
@@ -46,42 +54,50 @@ const WELLNESS_DIMENSIONS = [
   { 
     name: "Physical", 
     description: "Body health, exercise, nutrition, sleep, and physical self-care",
-    color: "bg-red-500/10 text-red-600 dark:text-red-400"
+    color: "bg-red-500/10 text-red-600 dark:text-red-400",
+    icon: Activity
   },
   { 
     name: "Emotional", 
     description: "Understanding and managing feelings, stress, and emotional awareness",
-    color: "bg-orange-500/10 text-orange-600 dark:text-orange-400"
+    color: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    icon: Smile
   },
   { 
     name: "Mental", 
     description: "Cognitive stimulation, learning, creativity, and intellectual growth",
-    color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+    color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+    icon: Brain
   },
   { 
     name: "Social", 
     description: "Relationships, community, belonging, and meaningful connections",
-    color: "bg-green-500/10 text-green-600 dark:text-green-400"
+    color: "bg-green-500/10 text-green-600 dark:text-green-400",
+    icon: Users
   },
   { 
     name: "Spiritual", 
     description: "Purpose, meaning, values, mindfulness, and inner peace",
-    color: "bg-teal-500/10 text-teal-600 dark:text-teal-400"
+    color: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    icon: Flower2
   },
   { 
     name: "Environmental", 
     description: "Surroundings, nature, living space, and harmony with your environment",
-    color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+    color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+    icon: TreePine
   },
   { 
     name: "Occupational", 
     description: "Career satisfaction, work-life balance, and professional fulfillment",
-    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    icon: Briefcase
   },
   { 
     name: "Financial", 
     description: "Money management, security, stability, and financial peace of mind",
-    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    icon: Wallet
   },
 ];
 
@@ -575,60 +591,59 @@ function DimensionsSection() {
     );
   }
 
+  const getLevelColor = (level: number | undefined) => {
+    if (!level) return "bg-muted";
+    if (level <= 2) return "bg-amber-500/20 border-amber-500/40";
+    if (level === 3) return "bg-sky-500/10 border-sky-500/30";
+    return "bg-emerald-500/20 border-emerald-500/40";
+  };
+
   return (
     <div className="space-y-6">
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h2 className="text-xl font-display font-semibold mb-2">The 8 Wellness Dimensions</h2>
-        <p className="text-muted-foreground">
-          Tap on any dimension to check in with yourself. This is your personal space to notice and reflect.
+        <p className="text-sm text-muted-foreground">
+          Tap any dimension to check in. You are the expert on yourself.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {WELLNESS_DIMENSIONS.map((dimension, idx) => {
+      <div className="space-y-2">
+        {WELLNESS_DIMENSIONS.map((dimension) => {
           const assessment = assessments[dimension.name];
+          const levelLabel = LEVEL_LABELS.find(l => l.level === assessment?.level)?.label;
           return (
             <button
               key={dimension.name}
               onClick={() => setSelectedDimension(dimension.name)}
-              className="text-left"
+              className="w-full text-left"
               data-testid={`dimension-${dimension.name.toLowerCase()}`}
             >
-              <Card className="overflow-visible hover-elevate h-full">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${dimension.color}`}>
-                      <span className="text-lg font-semibold">{idx + 1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <h3 className="font-medium">{dimension.name}</h3>
-                        {assessment && (
-                          <Badge variant="outline" className="text-xs">
-                            {LEVEL_LABELS.find(l => l.level === assessment.level)?.label || "Not set"}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{dimension.description}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className={`flex items-center gap-3 p-3 rounded-lg border transition-colors hover-elevate ${
+                assessment ? getLevelColor(assessment.level) : "border-border"
+              }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${dimension.color}`}>
+                  <dimension.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-sm">{dimension.name}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {levelLabel && (
+                    <span className="text-xs text-muted-foreground">{levelLabel}</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
             </button>
           );
         })}
       </div>
 
-      <Card className="bg-sky-500/5 border-sky-500/20">
-        <CardContent className="pt-6 space-y-3">
-          <p className="text-sm text-center">
-            <span className="font-medium">WRAP Philosophy:</span> You are the expert on yourself.
-          </p>
-          <p className="text-sm text-center text-muted-foreground">
-            Wellness is not about perfection. It is about awareness, self-compassion, and knowing what supports you.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="pt-4 border-t">
+        <p className="text-xs text-center text-muted-foreground">
+          Wellness is about awareness and self-compassion, not perfection.
+        </p>
+      </div>
     </div>
   );
 }

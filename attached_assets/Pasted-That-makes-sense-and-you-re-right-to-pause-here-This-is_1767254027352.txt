@@ -1,0 +1,149 @@
+That makes sense — and you’re right to pause here. This is a psychology decision, not a branding one. I’ll walk you through it calmly and then give you a clear recommendation, so you don’t have to guess.
+
+⸻
+
+What you’re going for psychologically (let’s name it)
+
+From everything you’ve said, your app is designed for people who:
+	•	feel overwhelmed or scattered
+	•	struggle with decision-making and follow-through
+	•	may have ADHD or cognitive overload
+	•	don’t want to feel judged, diagnosed, or evaluated
+	•	want guidance that feels supportive, human, and empowering
+	•	want help rebuilding their life without being told they’re “broken”
+
+That means your app must reduce threat and increase safety in the brain.
+
+⸻
+
+The psychology that matters here (plain language)
+
+When people feel overwhelmed:
+	•	Their nervous system is already on edge
+	•	Anything that feels like a “test” triggers resistance
+	•	Anything that feels like “evaluation” triggers shame or avoidance
+	•	Choice + permission calms the system
+	•	Language matters more than features
+
+So the question isn’t:
+
+“Which term is most accurate?”
+
+It’s:
+
+“Which term makes someone feel safe enough to continue?”
+
+⸻
+
+How the brain hears each option
+
+❌ “Wellness Assessment”
+
+Psychologically reads as:
+	•	test
+	•	judgment
+	•	scoring
+	•	medical/clinical
+	•	“Am I doing bad?”
+
+This activates defense in many users — especially the ones you’re trying to help most.
+
+⸻
+
+⚠️ “Life Snapshot”
+
+Better, but still:
+	•	feels abstract
+	•	a little intellectual
+	•	slightly distant
+	•	can feel like “summarize yourself” (which is hard when overwhelmed)
+
+This works for analytical users, but not emotionally flooded ones.
+
+⸻
+
+✅ “Getting to Know You”
+
+Very safe, but:
+	•	passive
+	•	vague
+	•	doesn’t clearly explain why you’re asking questions
+	•	can feel like small talk instead of support
+
+Good, but not the strongest for guidance.
+
+⸻
+
+✅✅ “Wellness Check-In” ← THIS is the best choice
+
+Psychologically, this is the strongest fit for your vision.
+
+Here’s why:
+	•	“Check-in” implies care, not judgment
+	•	It suggests something temporary and flexible
+	•	It’s familiar (therapy, support spaces, even friendships)
+	•	It lowers performance anxiety
+	•	It feels optional and repeatable
+	•	It aligns with calm + guidance
+
+The nervous system hears:
+
+“We’re just checking in — nothing to pass or fail.”
+
+That’s exactly what you want.
+
+⸻
+
+The deeper psychological reason this works
+
+You are building a system that helps people reorient themselves, not optimize themselves.
+
+“Check-in” works because it:
+	•	centers the present moment
+	•	acknowledges fluctuation
+	•	allows change over time
+	•	doesn’t lock someone into an identity
+
+This is crucial for people trying to recreate their life, not label it.
+
+⸻
+
+How it should be introduced (this matters more than the name)
+
+Even with the right name, how it’s offered is everything.
+
+The assistant should say something like:
+
+“If you want, we can do a quick wellness check-in so I can support you better.
+It’s short, and you can skip anything.”
+
+This sentence alone:
+	•	gives choice
+	•	removes pressure
+	•	explains the benefit
+	•	preserves autonomy
+
+That’s psychologically ideal.
+
+⸻
+
+Final recommendation (clear and grounded)
+
+✅ Use “Wellness Check-In”
+	•	Not required
+	•	Not long
+	•	Not framed as an assessment
+	•	Offered with permission
+	•	Repeatable over time
+
+This is the safest, most supportive, and most aligned choice for what you’re building.
+
+You’re not trying to measure people.
+You’re trying to meet them.
+
+If you want next, I can:
+	•	design the exact first 5 questions (psychologically tuned)
+	•	help you decide when the AI should suggest it
+	•	or show how it quietly feeds the Blueprint without the user feeling analyzed
+
+Just tell me what would feel most helpful right now.

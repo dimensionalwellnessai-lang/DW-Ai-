@@ -1,0 +1,153 @@
+Perfect choice 👍
+“Getting to Know You” is the right move for what you’re building.
+
+Let me explain why this is psychologically strong, then I’ll give you exact wording + structure you can use without it becoming heavy or clinical.
+
+⸻
+
+Why “Getting to Know You” works best for your app
+
+Psychologically, this does three important things:
+	1.	It lowers threat
+	•	No test
+	•	No judgment
+	•	No “am I doing this right?”
+	2.	It feels human, not institutional
+	•	This is how people talk to people
+	•	Not how apps usually talk to users
+	3.	It aligns with your AI-as-assistant vision
+	•	Assistants get to know you over time
+	•	They don’t “assess” you in one sitting
+
+This fits perfectly with:
+	•	ADHD-friendly design
+	•	decision fatigue support
+	•	calm but honest guidance
+	•	rebuilding life without shame
+
+⸻
+
+How “Getting to Know You” should exist in the app
+
+🔹 It is not a one-time form
+
+🔹 It is not mandatory
+
+🔹 It is not labeled as data collection
+
+Instead, it is a mode + ongoing process.
+
+⸻
+
+How the AI introduces it (exact tone)
+
+The assistant should say something like:
+
+“If you want, we can do a quick getting to know you so I can support you better.
+It’s casual, and you can skip anything.”
+
+This sentence is doing a LOT of psychological work:
+	•	gives permission
+	•	explains the benefit
+	•	removes pressure
+	•	keeps agency with the user
+
+⸻
+
+What “Getting to Know You” actually is (behind the scenes)
+
+To the user:
+	•	a conversation
+	•	short questions
+	•	feels natural
+	•	feels optional
+
+Behind the scenes:
+	•	builds the user profile
+	•	feeds the Blueprint
+	•	personalizes content
+	•	helps the AI guide better
+
+No disconnect between experience and function.
+
+⸻
+
+Structure that keeps it simple (important)
+
+Rule: never more than 3 questions at once
+
+Think in small clusters, spread over time.
+
+Example clusters (you don’t do all at once)
+
+Cluster 1: Support style
+	•	“Do you prefer gentle guidance or more direct help?”
+
+Cluster 2: Energy & focus
+	•	“When do you usually feel most focused?”
+	•	“Do your days feel more structured or scattered?”
+
+Cluster 3: Goals (softly framed)
+	•	“What would you like to feel more of right now?”
+	•	calm
+	•	focus
+	•	confidence
+	•	stability
+
+Cluster 4: Practical constraints
+	•	“Are you working with a home setup, a gym, or both?”
+	•	“Any food restrictions I should keep in mind?”
+
+Each cluster can appear only when relevant.
+
+⸻
+
+How it connects to the Blueprint (without saying so)
+
+The user never sees:
+
+“We’re filling in your wellness dimensions.”
+
+Instead, later they see:
+
+“Here’s what I understand about you so far.”
+
+And if something’s missing:
+
+“Want to tell me a bit more about this area?”
+
+That keeps trust intact.
+
+⸻
+
+Where “Getting to Know You” lives in the app
+
+You should have it in three places:
+	1.	Assistant conversation (most common)
+	2.	Menu option (for people who like structure)
+	3.	Blueprint refinement button (Answer a few questions)
+
+But it always feels like conversation, not setup.
+
+⸻
+
+One grounding principle to keep you aligned
+
+If you ever wonder, “Is this too much?” ask this:
+
+“Does this feel like a conversation with someone who cares — or a system collecting info?”
+
+If it feels like a system → simplify
+If it feels like a conversation → you’re on track
+
+⸻
+
+Where we can go next (your choice)
+
+We can take this in a very light next step:
+	•	Write the first 6 “Getting to Know You” questions exactly as they should appear
+	•	Decide when the AI should pause and NOT ask questions
+	•	Define what the AI is not allowed to ask (boundaries are important)
+	•	Or stop here and let this settle
+
+You’re building this with a lot of care — and that shows.
