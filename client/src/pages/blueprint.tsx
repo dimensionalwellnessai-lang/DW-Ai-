@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { 
+  getDimensionAssessments, 
+  saveDimensionAssessment,
+  type DimensionAssessment,
+} from "@/lib/guest-storage";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -364,37 +369,263 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 }
 
 function DimensionsSection() {
+  const { toast } = useToast();
+  const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
+  const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[] }>>({});
+  const [newSupport, setNewSupport] = useState("");
+
+  useEffect(() => {
+    const stored = getDimensionAssessments();
+    const map: Record<string, { level: number; notes: string; supports: string[] }> = {};
+    stored.forEach(a => {
+      map[a.dimension] = { level: a.level, notes: a.notes, supports: a.supports };
+    });
+    setAssessments(map);
+  }, []);
+
+  const selectedData = selectedDimension ? WELLNESS_DIMENSIONS.find(d => d.name === selectedDimension) : null;
+  const currentAssessment = selectedDimension ? assessments[selectedDimension] : null;
+
+  const updateLevel = (level: number) => {
+    if (!selectedDimension) return;
+    const updated = {
+      ...assessments,
+      [selectedDimension]: {
+        level,
+        notes: currentAssessment?.notes || "",
+        supports: currentAssessment?.supports || [],
+      }
+    };
+    setAssessments(updated);
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      level,
+      notes: currentAssessment?.notes || "",
+      supports: currentAssessment?.supports || [],
+      lastUpdated: Date.now(),
+    });
+  };
+
+  const updateNotes = (notes: string) => {
+    if (!selectedDimension) return;
+    const updated = {
+      ...assessments,
+      [selectedDimension]: {
+        level: currentAssessment?.level || 3,
+        notes,
+        supports: currentAssessment?.supports || [],
+      }
+    };
+    setAssessments(updated);
+  };
+
+  const saveNotes = () => {
+    if (!selectedDimension || !currentAssessment) return;
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      level: currentAssessment.level || 3,
+      notes: currentAssessment.notes,
+      supports: currentAssessment.supports,
+      lastUpdated: Date.now(),
+    });
+    toast({ title: "Saved", description: "Your reflection has been saved." });
+  };
+
+  const addSupport = () => {
+    if (!selectedDimension || !newSupport.trim()) return;
+    const supports = [...(currentAssessment?.supports || []), newSupport.trim()];
+    const updated = {
+      ...assessments,
+      [selectedDimension]: {
+        level: currentAssessment?.level || 3,
+        notes: currentAssessment?.notes || "",
+        supports,
+      }
+    };
+    setAssessments(updated);
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      level: currentAssessment?.level || 3,
+      notes: currentAssessment?.notes || "",
+      supports,
+      lastUpdated: Date.now(),
+    });
+    setNewSupport("");
+  };
+
+  const removeSupport = (idx: number) => {
+    if (!selectedDimension || !currentAssessment) return;
+    const supports = currentAssessment.supports.filter((_, i) => i !== idx);
+    const updated = {
+      ...assessments,
+      [selectedDimension]: { ...currentAssessment, supports }
+    };
+    setAssessments(updated);
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      ...currentAssessment,
+      supports,
+      lastUpdated: Date.now(),
+    });
+  };
+
+  const LEVEL_LABELS = [
+    { level: 1, label: "Struggling", description: "This area needs attention" },
+    { level: 2, label: "Challenged", description: "Some difficulty here" },
+    { level: 3, label: "Balanced", description: "Feeling okay in this area" },
+    { level: 4, label: "Strong", description: "This area feels good" },
+    { level: 5, label: "Thriving", description: "Really flourishing here" },
+  ];
+
+  if (selectedDimension && selectedData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setSelectedDimension(null)} data-testid="button-back-dimensions">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-display font-semibold">{selectedData.name}</h2>
+            <p className="text-sm text-muted-foreground">{selectedData.description}</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium">How do you feel in this area right now?</CardTitle>
+            <CardDescription>There is no right or wrong answer. Just notice where you are today.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {LEVEL_LABELS.map((item) => (
+              <button
+                key={item.level}
+                onClick={() => updateLevel(item.level)}
+                className={`w-full flex items-center gap-4 p-4 rounded-lg border text-left transition-colors ${
+                  currentAssessment?.level === item.level
+                    ? "border-sky-500 bg-sky-500/10"
+                    : "border-border hover-elevate"
+                }`}
+                data-testid={`button-level-${item.level}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  currentAssessment?.level === item.level ? "bg-sky-500 text-white" : "bg-muted"
+                }`}>
+                  {item.level}
+                </div>
+                <div>
+                  <div className="font-medium">{item.label}</div>
+                  <div className="text-sm text-muted-foreground">{item.description}</div>
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium">What supports you in this area?</CardTitle>
+            <CardDescription>Things, people, or practices that help you feel well here</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {(currentAssessment?.supports || []).map((support, i) => (
+                <Badge key={i} variant="secondary" className="gap-1 pr-1">
+                  {support}
+                  <button onClick={() => removeSupport(i)} className="ml-1 hover:bg-muted rounded-full p-0.5">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add something that helps..."
+                value={newSupport}
+                onChange={(e) => setNewSupport(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addSupport()}
+                data-testid="input-support"
+              />
+              <Button onClick={addSupport} size="icon" variant="outline" data-testid="button-add-support">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-medium">Personal Reflection</CardTitle>
+            <CardDescription>Any thoughts, patterns, or insights you want to remember</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              placeholder="What do you notice about this area of your life?"
+              value={currentAssessment?.notes || ""}
+              onChange={(e) => updateNotes(e.target.value)}
+              className="min-h-24"
+              data-testid="input-dimension-notes"
+            />
+            <Button onClick={saveNotes} size="sm" data-testid="button-save-notes">
+              <Check className="w-4 h-4 mr-2" />
+              Save Reflection
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
         <h2 className="text-xl font-display font-semibold mb-2">The 8 Wellness Dimensions</h2>
         <p className="text-muted-foreground">
-          Holistic wellness means nurturing all parts of yourself. Notice which areas feel balanced and which could use attention.
+          Tap on any dimension to check in with yourself. This is your personal space to notice and reflect.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {WELLNESS_DIMENSIONS.map((dimension, idx) => (
-          <Card key={dimension.name} className="overflow-visible">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${dimension.color}`}>
-                  <span className="text-lg font-semibold">{idx + 1}</span>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-1">{dimension.name}</h3>
-                  <p className="text-sm text-muted-foreground">{dimension.description}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {WELLNESS_DIMENSIONS.map((dimension, idx) => {
+          const assessment = assessments[dimension.name];
+          return (
+            <button
+              key={dimension.name}
+              onClick={() => setSelectedDimension(dimension.name)}
+              className="text-left"
+              data-testid={`dimension-${dimension.name.toLowerCase()}`}
+            >
+              <Card className="overflow-visible hover-elevate h-full">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${dimension.color}`}>
+                      <span className="text-lg font-semibold">{idx + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h3 className="font-medium">{dimension.name}</h3>
+                        {assessment && (
+                          <Badge variant="outline" className="text-xs">
+                            {LEVEL_LABELS.find(l => l.level === assessment.level)?.label || "Not set"}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{dimension.description}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          );
+        })}
       </div>
 
       <Card className="bg-sky-500/5 border-sky-500/20">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-3">
+          <p className="text-sm text-center">
+            <span className="font-medium">WRAP Philosophy:</span> You are the expert on yourself.
+          </p>
           <p className="text-sm text-center text-muted-foreground">
-            Wellness is not about perfection in every area. It is about awareness and gentle, intentional care over time.
+            Wellness is not about perfection. It is about awareness, self-compassion, and knowing what supports you.
           </p>
         </CardContent>
       </Card>

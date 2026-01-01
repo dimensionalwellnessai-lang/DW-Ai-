@@ -16,10 +16,19 @@ export interface GuestConversation {
   lastMessageAt: number;
 }
 
+export interface DimensionAssessment {
+  dimension: string;
+  level: number; // 1-5 scale
+  notes: string;
+  supports: string[];
+  lastUpdated: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
   mood: string | null;
+  dimensionAssessments: DimensionAssessment[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -64,6 +73,9 @@ export function getGuestData(): GuestData | null {
     const data = localStorage.getItem(GUEST_DATA_KEY);
     if (data) {
       const parsed = JSON.parse(data);
+      if (!parsed.dimensionAssessments) {
+        parsed.dimensionAssessments = [];
+      }
       if (parsed.messages && !parsed.conversations) {
         const conversations: GuestConversation[] = [];
         if (parsed.messages.length > 0) {
@@ -112,6 +124,7 @@ export function initGuestData(): GuestData {
     conversations: [],
     activeConversationId: null,
     mood: null,
+    dimensionAssessments: [],
     preferences: {
       themeMode: "accent-only",
     },
@@ -235,4 +248,28 @@ export function getGuestMessageCount(): number {
   const data = getGuestData();
   if (!data) return 0;
   return data.conversations.reduce((acc, c) => acc + c.messages.length, 0);
+}
+
+export function getDimensionAssessments(): DimensionAssessment[] {
+  const data = getGuestData();
+  return data?.dimensionAssessments || [];
+}
+
+export function getDimensionAssessment(dimension: string): DimensionAssessment | null {
+  const assessments = getDimensionAssessments();
+  return assessments.find(a => a.dimension === dimension) || null;
+}
+
+export function saveDimensionAssessment(assessment: DimensionAssessment): void {
+  const data = getGuestData() || initGuestData();
+  if (!data.dimensionAssessments) {
+    data.dimensionAssessments = [];
+  }
+  const existing = data.dimensionAssessments.findIndex(a => a.dimension === assessment.dimension);
+  if (existing >= 0) {
+    data.dimensionAssessments[existing] = { ...assessment, lastUpdated: Date.now() };
+  } else {
+    data.dimensionAssessments.push({ ...assessment, lastUpdated: Date.now() });
+  }
+  saveGuestData(data);
 }
