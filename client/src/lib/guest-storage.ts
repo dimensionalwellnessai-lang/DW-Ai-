@@ -230,3 +230,9 @@ export function updateGuestPreferences(
   data.preferences = { ...data.preferences, ...preferences };
   saveGuestData(data);
 }
+
+export function getGuestMessageCount(): number {
+  const data = getGuestData();
+  if (!data) return 0;
+  return data.conversations.reduce((acc, c) => acc + c.messages.length, 0);
+}
