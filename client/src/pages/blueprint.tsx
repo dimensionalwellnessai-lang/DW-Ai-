@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { 
   getDimensionAssessments, 
   saveDimensionAssessment,
+  getFoundationsProfile,
+  saveFoundationsProfile,
+  hasFoundations,
   type DimensionAssessment,
+  type FoundationsProfile,
+  type WellnessDimension,
 } from "@/lib/guest-storage";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -33,6 +38,7 @@ import {
   Loader2,
   Compass,
   ChevronRight,
+  ChevronDown,
   Activity,
   Smile,
   Brain,
@@ -40,6 +46,10 @@ import {
   TreePine,
   Briefcase,
   Wallet,
+  Sparkles,
+  SkipForward,
+  MessageCircle,
+  Anchor,
 } from "lucide-react";
 import type {
   WellnessBlueprint,
@@ -120,7 +130,7 @@ interface BlueprintData {
 
 export function BlueprintPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("baseline");
+  const [activeTab, setActiveTab] = useState("foundations");
 
   const { data, isLoading } = useQuery<BlueprintData>({
     queryKey: ["/api/blueprint"],
@@ -155,7 +165,11 @@ export function BlueprintPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-auto p-1 gap-1">
+            <TabsTrigger value="foundations" className="flex flex-col gap-1 py-3 data-[state=active]:bg-amber-500/20" data-testid="tab-foundations">
+              <Anchor className="w-4 h-4" />
+              <span className="text-xs">Foundations</span>
+            </TabsTrigger>
             <TabsTrigger value="baseline" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-baseline">
               <Heart className="w-4 h-4" />
               <span className="text-xs">Baseline</span>
@@ -181,6 +195,10 @@ export function BlueprintPage() {
               <span className="text-xs">Reflect</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="foundations" className="space-y-6">
+            <FoundationsSection />
+          </TabsContent>
 
           <TabsContent value="baseline" className="space-y-6">
             <BaselineSection baseline={data?.baseline} />
@@ -1505,6 +1523,368 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+const FOUNDATIONS_QUESTIONS = [
+  {
+    id: "overall_philosophy",
+    question: "How would you describe how you want to live your life?",
+    subtext: "This is your personal philosophy - there's no right answer",
+    type: "text" as const,
+    field: "overallPhilosophy",
+  },
+  {
+    id: "what_matters",
+    question: "What matters most to you right now?",
+    subtext: "Think about what you'd protect even if it's inconvenient",
+    type: "choice" as const,
+    field: "whatMattersMost",
+    options: [
+      "Peace of mind",
+      "Health and energy",
+      "Meaningful relationships",
+      "Financial security",
+      "Personal growth",
+      "Creative expression",
+      "Making a difference",
+    ],
+  },
+  {
+    id: "core_values",
+    question: "What values guide your decisions?",
+    subtext: "Pick the ones that feel most true to who you are",
+    type: "multi" as const,
+    field: "coreValues",
+    options: [
+      "Authenticity",
+      "Compassion",
+      "Growth",
+      "Balance",
+      "Connection",
+      "Freedom",
+      "Integrity",
+      "Creativity",
+      "Gratitude",
+      "Courage",
+    ],
+  },
+  {
+    id: "non_negotiables",
+    question: "What will you not compromise on?",
+    subtext: "These are your personal boundaries",
+    type: "multi" as const,
+    field: "whatWontCompromise",
+    options: [
+      "My sleep and rest",
+      "Time with loved ones",
+      "My physical health",
+      "My mental peace",
+      "My values and ethics",
+      "My creative time",
+      "My financial boundaries",
+      "My spiritual practices",
+    ],
+  },
+  {
+    id: "misaligned",
+    question: "What currently feels out of alignment for you?",
+    subtext: "Areas where your life doesn't match how you want to live",
+    type: "text" as const,
+    field: "whatFeelsMisaligned",
+  },
+];
+
+function FoundationsSection() {
+  const { toast } = useToast();
+  const [foundations, setFoundations] = useState<FoundationsProfile | null>(getFoundationsProfile());
+  const [isExploring, setIsExploring] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [customInput, setCustomInput] = useState("");
+  const [showOther, setShowOther] = useState(false);
+
+  const currentQuestion = FOUNDATIONS_QUESTIONS[currentQuestionIndex];
+  const hasFoundationsData = foundations && foundations.confidence > 0.3;
+  const isLastQuestion = currentQuestionIndex === FOUNDATIONS_QUESTIONS.length - 1;
+
+  const handleSelect = (value: string) => {
+    if (currentQuestion.type === "multi") {
+      const current = (answers[currentQuestion.field] as string[]) || [];
+      if (current.includes(value)) {
+        setAnswers({ ...answers, [currentQuestion.field]: current.filter(v => v !== value) });
+      } else {
+        setAnswers({ ...answers, [currentQuestion.field]: [...current, value] });
+      }
+    } else {
+      setAnswers({ ...answers, [currentQuestion.field]: value });
+    }
+  };
+
+  const handleNext = () => {
+    if (isLastQuestion) {
+      const newProfile: FoundationsProfile = {
+        overallPhilosophy: (answers.overallPhilosophy as string) || "",
+        coreValues: (answers.coreValues as string[]) || [],
+        whatMattersMost: (answers.whatMattersMost as string) || "",
+        whatFeelsMisaligned: (answers.whatFeelsMisaligned as string) || "",
+        whatWontCompromise: (answers.whatWontCompromise as string[]) || [],
+        dimensionFoundations: [],
+        confidence: 0.7,
+        clarifyingPrompts: [],
+        inferredFromConversations: false,
+        updatedAt: Date.now(),
+      };
+      saveFoundationsProfile(newProfile);
+      setFoundations(newProfile);
+      setIsExploring(false);
+      toast({ title: "Foundations saved", description: "Your personal philosophy has been captured." });
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setShowOther(false);
+      setCustomInput("");
+    }
+  };
+
+  const handleSkip = () => {
+    if (isLastQuestion) {
+      handleNext();
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setShowOther(false);
+      setCustomInput("");
+    }
+  };
+
+  const handleAddOther = () => {
+    if (customInput.trim()) {
+      handleSelect(customInput.trim());
+      setCustomInput("");
+      setShowOther(false);
+    }
+  };
+
+  const startExploring = () => {
+    setIsExploring(true);
+    setCurrentQuestionIndex(0);
+    setAnswers({});
+  };
+
+  if (isExploring) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Question {currentQuestionIndex + 1} of {FOUNDATIONS_QUESTIONS.length}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setIsExploring(false)} data-testid="button-cancel-foundations">
+            <X className="w-4 h-4 mr-1" />
+            Cancel
+          </Button>
+        </div>
+
+        <div className="h-1 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-amber-500 transition-all duration-300"
+            style={{ width: `${((currentQuestionIndex + 1) / FOUNDATIONS_QUESTIONS.length) * 100}%` }}
+          />
+        </div>
+
+        <Card>
+          <CardContent className="p-6 space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-display font-semibold">{currentQuestion.question}</h2>
+              <p className="text-muted-foreground">{currentQuestion.subtext}</p>
+            </div>
+
+            {currentQuestion.type === "text" && (
+              <Textarea
+                placeholder="Share your thoughts..."
+                value={(answers[currentQuestion.field] as string) || ""}
+                onChange={(e) => setAnswers({ ...answers, [currentQuestion.field]: e.target.value })}
+                className="min-h-[120px]"
+                data-testid={`input-${currentQuestion.id}`}
+              />
+            )}
+
+            {(currentQuestion.type === "choice" || currentQuestion.type === "multi") && (
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  {currentQuestion.options?.map((option) => {
+                    const isSelected = currentQuestion.type === "multi"
+                      ? ((answers[currentQuestion.field] as string[]) || []).includes(option)
+                      : answers[currentQuestion.field] === option;
+
+                    return (
+                      <Button
+                        key={option}
+                        variant={isSelected ? "default" : "outline"}
+                        className="justify-start text-left h-auto py-3 px-4"
+                        onClick={() => handleSelect(option)}
+                        data-testid={`option-${option.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        {isSelected && <Check className="w-4 h-4 mr-2 flex-shrink-0" />}
+                        {option}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {!showOther ? (
+                  <Button variant="ghost" size="sm" onClick={() => setShowOther(true)} className="w-full" data-testid="button-show-other">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add your own
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type your answer..."
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddOther()}
+                      data-testid="input-custom-answer"
+                    />
+                    <Button onClick={handleAddOther} size="icon" data-testid="button-add-custom">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4">
+              <Button variant="ghost" onClick={handleSkip} data-testid="button-skip-question">
+                <SkipForward className="w-4 h-4 mr-2" />
+                Skip
+              </Button>
+              <Button onClick={handleNext} data-testid="button-next-question">
+                {isLastQuestion ? "Complete" : "Continue"}
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Anchor className="w-5 h-5 text-amber-500" />
+            Your Foundations
+          </CardTitle>
+          <CardDescription>
+            Your personal philosophy, values, and non-negotiables that guide how you want to live
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {hasFoundationsData ? (
+            <>
+              {foundations.overallPhilosophy && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Philosophy</h4>
+                  <p className="text-sm">{foundations.overallPhilosophy}</p>
+                </div>
+              )}
+
+              {foundations.whatMattersMost && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">What Matters Most</h4>
+                  <Badge variant="secondary">{foundations.whatMattersMost}</Badge>
+                </div>
+              )}
+
+              {foundations.coreValues && foundations.coreValues.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Core Values</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {foundations.coreValues.map((value, i) => (
+                      <Badge key={i} variant="outline">{value}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {foundations.whatWontCompromise && foundations.whatWontCompromise.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Non-Negotiables</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {foundations.whatWontCompromise.map((item, i) => (
+                      <Badge key={i} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {foundations.whatFeelsMisaligned && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Feeling Misaligned</h4>
+                  <p className="text-sm text-muted-foreground">{foundations.whatFeelsMisaligned}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-amber-500"
+                      style={{ width: `${foundations.confidence * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {Math.round(foundations.confidence * 100)}% understood
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={startExploring} data-testid="button-refine-foundations">
+                  <Edit2 className="w-4 h-4 mr-1" />
+                  Refine
+                </Button>
+              </div>
+
+              {foundations.confidence < 0.7 && (
+                <Card className="bg-amber-500/5 border-amber-500/20">
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <MessageCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-2">We'd love to understand you better</p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        A few more questions would help us give you more aligned suggestions.
+                      </p>
+                      <Button size="sm" onClick={startExploring} data-testid="button-clarify-foundations">
+                        <Sparkles className="w-4 h-4 mr-1" />
+                        Answer a few questions
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8 space-y-4">
+              <div className="w-16 h-16 mx-auto bg-amber-500/10 rounded-full flex items-center justify-center">
+                <Anchor className="w-8 h-8 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Discover Your Foundations</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Take a moment to reflect on what matters most to you. This helps us understand how you want to live, 
+                  so we can offer guidance that truly fits.
+                </p>
+              </div>
+              <Button onClick={startExploring} data-testid="button-start-foundations">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Explore My Foundations
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

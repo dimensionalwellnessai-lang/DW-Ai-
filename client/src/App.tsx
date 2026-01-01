@@ -19,6 +19,7 @@ import MealPrepPage from "@/pages/meal-prep";
 import FinancesPage from "@/pages/finances";
 import SpiritualPage from "@/pages/spiritual";
 import LifeDashboardPage from "@/pages/life-dashboard";
+import CommunityPage from "@/pages/community";
 import { ProjectsPage } from "@/pages/projects";
 import { SettingsPage } from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/finances" component={FinancesPage} />
       <Route path="/spiritual" component={SpiritualPage} />
       <Route path="/life-dashboard" component={LifeDashboardPage} />
+      <Route path="/community" component={CommunityPage} />
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/login" component={LoginPage} />

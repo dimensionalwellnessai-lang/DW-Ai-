@@ -11,6 +11,7 @@ import {
   Utensils, 
   Wallet, 
   Heart,
+  Users,
   ChevronRight,
   Sun,
   Moon,
@@ -24,14 +25,17 @@ import {
   getMealPrepPreferences,
   getFinanceProfile,
   getSpiritualProfile,
+  getCommunityProfile,
   getDimensionSignals,
   hasCompletedBodyScan,
   hasCompletedFinanceProfile,
   hasCompletedSpiritualProfile,
+  hasCompletedCommunityProfile,
   type BodyProfile,
   type MealPrepPreferences,
   type FinanceProfile,
   type SpiritualProfile,
+  type CommunityProfile,
   type DimensionSignals
 } from "@/lib/guest-storage";
 
@@ -72,6 +76,15 @@ const DIMENSION_CONFIGS = [
     path: "/spiritual",
     description: "Inner peace & grounding",
   },
+  {
+    id: "community",
+    name: "Community",
+    icon: Users,
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+    path: "/community",
+    description: "Impact & connection",
+  },
 ];
 
 function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
@@ -84,6 +97,8 @@ function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
       return signals.costTier ? "active" : "not_started";
     case "spiritual":
       return signals.mindfulState ? "active" : "not_started";
+    case "community":
+      return hasCompletedCommunityProfile() ? "active" : "not_started";
     default:
       return "not_started";
   }
@@ -127,9 +142,11 @@ export default function LifeDashboardPage() {
     mealPrefs?.dietaryStyle != null,
     hasCompletedFinanceProfile(),
     hasCompletedSpiritualProfile(),
+    hasCompletedCommunityProfile(),
   ].filter(Boolean).length;
   
-  const completionPercent = (completedDimensions / 4) * 100;
+  const totalDimensions = DIMENSION_CONFIGS.length;
+  const completionPercent = (completedDimensions / totalDimensions) * 100;
   const connectionInsights = getConnectionInsights(signals);
 
   const getQuickSummary = () => {
@@ -170,10 +187,10 @@ export default function LifeDashboardPage() {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">Dimensions Set Up</span>
-              <span className="text-sm text-muted-foreground">{completedDimensions}/4</span>
+              <span className="text-sm text-muted-foreground">{completedDimensions}/{totalDimensions}</span>
             </div>
             <Progress value={completionPercent} className="h-2" />
-            {completedDimensions < 4 && (
+            {completedDimensions < totalDimensions && (
               <p className="text-xs text-muted-foreground">
                 Complete more dimensions to unlock personalized cross-dimension insights
               </p>
