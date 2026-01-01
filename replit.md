@@ -28,7 +28,15 @@ Use: "We can", "If you want", "Notice", "Adjust"
 Tone: calm, grounded, human, humble
 
 ### Screen Structure
-Today | Plan | Assistant | Me
+**AI Assistant is the main experience** (landing page)
+Supporting sections accessible via hamburger menu:
+- Challenges (workout, mental health, nutrition, social, financial)
+- Talk It Out (dedicated AI mode for processing feelings)
+- Calendar & Plans (schedule, plans, routines)
+
+### First Interaction
+Welcome: "What do you feel like you need today?"
+Options: Make a simple plan | Talk things out | Try a challenge | I'm not sure, I need guidance
 
 ## User Preferences
 
