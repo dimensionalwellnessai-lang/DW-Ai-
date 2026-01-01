@@ -96,18 +96,21 @@ const DIMENSION_TAGS = [
 ];
 
 const STARTER_OPTIONS = [
-  { text: "Make a plan", icon: Calendar },
-  { text: "Talk things out", icon: Heart },
-  { text: "Try a challenge", icon: Target },
-  { text: "Browse content", icon: Sparkles },
+  { text: "Make a simple plan", icon: Calendar },
+  { text: "Talk it out", icon: Heart },
+  { text: "Guided breathing", icon: Sun },
+  { text: "Start a challenge", icon: Target },
+  { text: "Browse", icon: Sparkles },
 ];
 
 const MENU_ITEMS = [
+  { name: "Today", path: "/", icon: Sun, description: "Your daily overview" },
   { name: "Browse", path: "/browse", icon: Sparkles, description: "Personalized content for you" },
-  { name: "Challenges", path: "/challenges", icon: Target, description: "Push yourself to grow" },
-  { name: "Talk It Out", path: "/talk", icon: Heart, description: "Process feelings and gain clarity" },
   { name: "Calendar", path: "/calendar", icon: Calendar, description: "Your schedule and events" },
+  { name: "Routines", path: "/routines", icon: History, description: "Daily and weekly patterns" },
+  { name: "Challenges", path: "/challenges", icon: Target, description: "Push yourself to grow" },
   { name: "Blueprint", path: "/blueprint", icon: Shield, description: "Your 8 dimensions of wellness" },
+  { name: "Projects", path: "/projects", icon: Briefcase, description: "Bigger goals and plans" },
 ];
 
 const CATEGORIES: Category[] = DIMENSION_TAGS.map(d => ({
@@ -484,11 +487,8 @@ export function AIWorkspace() {
                     <Sparkles className="h-10 w-10 text-white" />
                   </div>
                   <h2 className="text-2xl font-display font-bold mt-6">
-                    What do you feel like you need today?
+                    How can I help you today?
                   </h2>
-                  <p className="text-muted-foreground font-body">
-                    Or do you want help figuring that out?
-                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
                   {STARTER_OPTIONS.map((option, idx) => {

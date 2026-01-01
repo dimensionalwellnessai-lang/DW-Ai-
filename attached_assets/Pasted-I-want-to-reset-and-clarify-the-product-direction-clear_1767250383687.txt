@@ -1,0 +1,155 @@
+I want to reset and clarify the product direction clearly. Please prioritize flow + experience over adding random features.
+
+CORE IDENTITY:
+This app is an AI LIFE COACH + PERSONAL ASSISTANT (wellness + life organization).
+It should feel calm, grounded, supportive, and uplifting — but not afraid to deliver honest truth when appropriate (without shaming).
+
+MAIN EXPERIENCE (START SCREEN):
+The app should open directly into the AI chat (like ChatGPT).
+- Minimal, sleek UI (not busy)
+- No long paragraphs on login/open
+- Just: “How can I help you today?”
+- Show a short list of quick actions (2–5 max), for example:
+  1) Make a simple plan
+  2) Talk it out
+  3) Guided breathing
+  4) Start a challenge
+  5) Browse
+
+NAVIGATION:
+Add a simple ☰ menu icon (top corner) that opens a drawer. Keep it simple.
+Suggested drawer items:
+- Today
+- Browse
+- Calendar
+- Routines
+- Challenges
+- Blueprint
+- Projects
+- Settings
+
+IMPORTANT: Tools are secondary. The assistant is the main entry point.
+
+AI BEHAVIOR (CHATGPT STYLE):
+The assistant should ask questions like ChatGPT when it needs info, and learn the user over time.
+- Ask only what’s needed (micro-onboarding)
+- If the user is stuck, offer 2–4 options and guide gently
+- Never make the user feel wrong
+- Help with decision paralysis and staying on track
+
+TALK IT OUT MODE:
+Add a “Talk it out” mode:
+- User vents or explains feelings/frustrations
+- AI helps shift perspective in a realistic, uplifting way
+- AI can give honest truth, but no shaming, no judgment
+- Ends with 1 small next step suggestion (task, routine, or calendar block)
+- This mode should also gather “non-negotiables” + preferences over time (quietly, not as forms)
+
+GUIDED BREATHING (NEW FEATURE):
+Add a “Guided breathing” feature inside the AI (and optionally a separate Breathing screen later).
+Requirements:
+- The AI can guide breathing exercises in a calm voice/tone using text first (audio later).
+- Provide several breathing patterns:
+  - Box breathing (4-4-4-4)
+  - 4-7-8 breathing
+  - Calm reset (e.g., 5 in / 5 out)
+  - Quick grounding (30–60 seconds)
+- Let the user choose:
+  - duration (1 / 3 / 5 / 10 minutes)
+  - pace (gentle / steady)
+  - goal (calm down, focus, sleep)
+- The breathing session should feel like a guided player:
+  - Start / Pause / End
+  - Simple visual cue (optional) and step-by-step prompts
+- After session, AI asks one soft check-in:
+  “How do you feel now?”
+- Optional: Save as a routine and/or schedule it on the Master Calendar.
+
+MASTER CALENDAR (BACKBONE):
+This should NOT become just a scheduling app. The calendar exists to reduce mental load.
+Any time-based thing should land on the calendar:
+- routines (when scheduled)
+- challenges (auto-create daily entries)
+- workouts
+- breathing sessions (optional)
+- meditation sessions
+- meal prep
+- timed tasks
+
+Calendar must be a REAL calendar:
+- Month view with date numbers + year
+- Tap date → day agenda
+- Week/day views allowed, but month view is required
+
+ROUTINES:
+Routines are step-by-step, minute-by-minute.
+- Can be scheduled to calendar
+- Can be created by AI from conversation
+- Include breathing routines too
+
+CHALLENGES (NEW CATEGORY):
+Add a “Challenges” category and make it empowering.
+Challenge categories:
+- Workout challenges
+- Mental health challenges
+- Meal challenges
+- Social challenges
+- Financial challenges
+Challenges should:
+- be optional
+- motivating, not punishing
+- help users elevate perspective and reach goals
+- create daily tasks + optional calendar blocks when started
+
+BROWSE (CALM/NETFLIX STYLE, BUT PERSONALIZED):
+I want a Calm-like experience for meditation and a similar browse experience for workouts/meals.
+- Rows/grids with thumbnails
+- Filters button:
+  - mood, intention, duration (minutes)
+  - workouts: difficulty, equipment
+  - meals: diet restrictions/allergies, calories/macros
+- It should not feel generic.
+- The content shown should be personalized based on the user profile/preferences.
+- If the profile is missing info, the AI asks questions and updates results.
+
+IMPORTANT NOTE ON CONTENT:
+Do NOT scrape the internet.
+For MVP, it’s okay to:
+- use a starter catalog as fallback
+- then rank/filter it based on user preferences
+- link out to external content (safe)
+
+BLUEPRINT (DIMENSIONS OF WELLNESS):
+Add a “Blueprint” screen with 8 dimension cards:
+Physical, Emotional, Social, Spiritual, Intellectual, Occupational, Environmental, Financial
+Each card shows:
+- a short synopsis of the user’s current blueprint in that dimension
+- a “needs more info” state if low confidence
+- a button: “Answer 3 questions” to improve this dimension
+Those questions should be asked by the AI and then the synopsis updates.
+
+BODY SCAN (CAMERA) — PHASED:
+Add a Body Scan feature that uses the device camera with explicit consent.
+Phase 1 (MVP, required first):
+- allow user to capture front/side photos (or short video)
+- ask goals + optional measurements (height/weight/waist)
+- allow “do not save photos” option
+- use results only to personalize workouts/meals (no medical claims)
+Phase 2 (advanced, optional later):
+- computer vision estimates only if feasible
+- must include privacy notice, consent, and full delete option
+
+PRIVACY & SAFETY:
+- Consent before camera
+- Delete my data option
+- No medical diagnosis or guarantees
+- Keep tone supportive, grounded, empowering
+
+BUILD PRIORITY (PHASES):
+Phase 1: AI-first clean UI + menu + Master Calendar month view + Talk it out + Guided breathing player (text prompts) + basic routines
+Phase 2: Personalized Browse for meditation/workouts/meals + starter catalog + filters + challenges
+Phase 3: Blueprint dimension synopses + “Answer 3 questions” refinement + Projects
+Phase 4: Body scan Phase 1
+Phase 5: Voice conversation + deeper intelligence + optional advanced vision
+
+Please confirm what you implemented and where each screen/route is located so I can find it easily.
