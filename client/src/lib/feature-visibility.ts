@@ -1,4 +1,4 @@
-export type VisibilityLevel = "primary" | "secondary" | "dormant";
+export type VisibilityLevel = "primary" | "more" | "dormant";
 
 export interface FeatureConfig {
   id: string;
@@ -11,21 +11,22 @@ export interface FeatureConfig {
 }
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
-  { id: "life-systems", name: "Life Systems", path: "/systems", visibility: "primary", description: "Your personalized systems" },
+  { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Your wellness hub" },
   { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule" },
   { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", indent: true },
-  { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Wellness overview" },
+  { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training" },
+  { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "primary", description: "Inner peace" },
   { id: "astrology", name: "Astrology", path: "/astrology", visibility: "primary", description: "Cosmic insights" },
-  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "secondary", description: "Process feelings" },
-  { id: "ai-chat", name: "AI Chat", path: "/", visibility: "secondary", description: "Main conversation" },
-  { id: "challenges", name: "Challenges", path: "/challenges", visibility: "secondary", description: "Growth challenges" },
-  { id: "routines", name: "Routines", path: "/routines", visibility: "secondary", description: "Saved routines" },
-  { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "secondary", description: "Inner peace" },
-  { id: "workout", name: "Workout", path: "/workout", visibility: "secondary", description: "Training" },
-  { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", visibility: "secondary", description: "Nutrition" },
-  { id: "finances", name: "Finances", path: "/finances", visibility: "secondary", description: "Budget" },
-  { id: "browse", name: "Browse", path: "/browse", visibility: "secondary", description: "Explore content" },
-  { id: "settings", name: "Settings", path: "/settings", visibility: "secondary", description: "Preferences" },
+  { id: "browse", name: "Browse", path: "/browse", visibility: "primary", description: "Explore content" },
+  
+  { id: "ai-chat", name: "AI Chat", path: "/", visibility: "more", description: "Main conversation" },
+  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "more", description: "Process feelings" },
+  { id: "challenges", name: "Challenges", path: "/challenges", visibility: "more", description: "Growth challenges" },
+  { id: "routines", name: "Routines", path: "/routines", visibility: "more", description: "Saved routines" },
+  { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", visibility: "more", description: "Nutrition" },
+  { id: "finances", name: "Finances", path: "/finances", visibility: "more", description: "Budget" },
+  { id: "feedback", name: "Feedback", path: "/feedback", visibility: "more", description: "Share thoughts" },
+  { id: "settings", name: "Settings", path: "/settings", visibility: "more", description: "Preferences" },
   
   { id: "body-scan", name: "Body Scan", visibility: "dormant", aiUnlockable: true, description: "Camera features" },
   { id: "advanced-challenges", name: "Advanced Challenges", visibility: "dormant", aiUnlockable: true },
@@ -41,8 +42,8 @@ export function getPrimaryFeatures(): FeatureConfig[] {
   return getFeaturesByVisibility("primary");
 }
 
-export function getSecondaryFeatures(): FeatureConfig[] {
-  return getFeaturesByVisibility("secondary");
+export function getMoreFeatures(): FeatureConfig[] {
+  return getFeaturesByVisibility("more");
 }
 
 export function getDormantFeatures(): FeatureConfig[] {
@@ -51,7 +52,13 @@ export function getDormantFeatures(): FeatureConfig[] {
 
 export function getMenuFeatures(): FeatureConfig[] {
   return FEATURE_VISIBILITY.filter(f => 
-    f.visibility === "primary" || f.visibility === "secondary"
+    f.visibility === "primary"
+  ).filter(f => f.path);
+}
+
+export function getMoreMenuFeatures(): FeatureConfig[] {
+  return FEATURE_VISIBILITY.filter(f => 
+    f.visibility === "more"
   ).filter(f => f.path);
 }
 
@@ -59,7 +66,7 @@ export function isFeatureVisible(featureId: string, userLevel: VisibilityLevel =
   const feature = FEATURE_VISIBILITY.find(f => f.id === featureId);
   if (!feature) return false;
   
-  const levels: VisibilityLevel[] = ["primary", "secondary", "dormant"];
+  const levels: VisibilityLevel[] = ["primary", "more", "dormant"];
   const userLevelIndex = levels.indexOf(userLevel);
   const featureLevelIndex = levels.indexOf(feature.visibility);
   

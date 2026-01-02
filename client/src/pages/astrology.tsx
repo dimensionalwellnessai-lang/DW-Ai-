@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Sparkles, Moon, Sun, Star } from "lucide-react";
-import { Link } from "wouter";
+import { Moon, Sun, Star } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 interface AstrologyNote {
   id: string;
@@ -70,17 +70,7 @@ export default function AstrologyPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center gap-2 p-3 border-b sticky top-0 bg-background z-50">
-        <Link href="/">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-muted-foreground" />
-          <h1 className="font-display text-lg font-medium">Astrology Notes</h1>
-        </div>
-      </header>
+      <PageHeader title="Astrology" />
 
       <main className="p-4 max-w-2xl mx-auto space-y-6">
         <Card>

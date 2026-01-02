@@ -22,7 +22,7 @@ import {
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
-import { getMenuFeatures } from "@/lib/feature-visibility";
+import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { Link, useLocation } from "wouter";
@@ -51,6 +51,11 @@ import {
   Upload,
   HelpCircle,
   MessageCircle,
+  ChevronDown,
+  LayoutGrid,
+  MessageCircleHeart,
+  Paperclip,
+  X,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -67,17 +72,19 @@ const FIRST_TIME_ACTIONS = [
 const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "ai-chat": Sun,
   "daily-schedule": Clock,
-  "life-dashboard": Sparkles,
+  "life-dashboard": Grid3X3,
   "meditation": Heart,
   "workout": Dumbbell,
   "meal-prep": Utensils,
   "finances": Wallet,
   "routines": History,
-  "browse": Sparkles,
+  "browse": Compass,
   "calendar": Calendar,
   "challenges": Target,
   "settings": Settings,
-  "life-systems": Grid3X3,
+  "astrology": Sparkles,
+  "talk-it-out": MessageCircle,
+  "feedback": MessageCircleHeart,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -97,6 +104,8 @@ export function AIWorkspace() {
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
 
@@ -235,6 +244,7 @@ export function AIWorkspace() {
   const subGreeting = "What would help most right now?";
   const hasConversations = Object.values(conversationsByCategory).flat().length > 0;
   const menuFeatures = getMenuFeatures();
+  const moreFeatures = getMoreMenuFeatures();
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
@@ -313,16 +323,36 @@ export function AIWorkspace() {
               </Link>
             );
           })}
+          
+          <details className="group">
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm flex-1">More</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-1 space-y-1 ml-2">
+              {moreFeatures.map((feature) => {
+                const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
+                return (
+                  <Link key={feature.path} href={feature.path || "/"}>
+                    <button
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid={`menu-item-${feature.id}`}
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{feature.name}</span>
+                    </button>
+                  </Link>
+                );
+              })}
+            </div>
+          </details>
         </nav>
         <div className="pt-4 space-y-2">
-          <Link href="/feedback">
-            <Button variant="outline" className="w-full" size="sm" data-testid="button-feedback">
-              Send Feedback
-            </Button>
-          </Link>
           <Link href="/login">
             <Button className="w-full" size="sm" data-testid="button-signup">
-              Sign up
+              Sign in
             </Button>
           </Link>
         </div>
@@ -442,31 +472,73 @@ export function AIWorkspace() {
         </ScrollArea>
 
         <div className="p-4 border-t">
-          <div className="flex gap-2 max-w-2xl mx-auto">
-            <Textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message..."
-              className="resize-none min-h-[44px] max-h-32 rounded-2xl"
-              disabled={isTyping}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              data-testid="input-message"
-            />
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
-              className="rounded-full shrink-0"
-              data-testid="button-send"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
+          <div className="max-w-2xl mx-auto space-y-2">
+            {attachedFile && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span className="flex-1 truncate">{attachedFile.name}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6"
+                  onClick={() => setAttachedFile(null)}
+                  data-testid="button-remove-attachment"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setAttachedFile(file);
+                    toast({
+                      title: "File attached",
+                      description: `${file.name} ready to share.`,
+                    });
+                  }
+                }}
+                data-testid="input-file"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+                data-testid="button-attach"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              <Textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message..."
+                className="resize-none min-h-[44px] max-h-32 rounded-2xl"
+                disabled={isTyping}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                data-testid="input-message"
+              />
+              <Button
+                size="icon"
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                className="rounded-full shrink-0"
+                data-testid="button-send"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, ArrowLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -12,11 +15,58 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getGuestData, clearGuestData, getGuestMessageCount } from "@/lib/guest-storage";
 
+const TERMS_OF_USE = `
+Terms of Use & Disclaimer
+
+Last updated: January 2026
+
+1. Purpose of Service
+
+DW.ai ("Dimensional Wellness") is a wellness support tool designed to help users reflect on their wellbeing, organize their daily routines, and explore personal growth. The service provides AI-assisted guidance, tracking features, and educational content.
+
+2. Not a Medical Service
+
+IMPORTANT: DW.ai is NOT a medical device, healthcare provider, or mental health treatment service. The content, features, and AI responses provided through this platform:
+
+- Are for informational and self-reflection purposes only
+- Do not constitute medical advice, diagnosis, or treatment
+- Should not be used as a substitute for professional medical advice
+- Are not intended to treat, cure, or prevent any medical or psychological condition
+
+3. Seek Professional Help
+
+If you are experiencing a mental health crisis, medical emergency, or have concerns about your physical or mental health, please:
+
+- Contact your healthcare provider
+- Call emergency services (911 in the US)
+- Reach out to a crisis helpline
+
+4. User Responsibility
+
+By using this service, you acknowledge that:
+
+- You are responsible for your own health decisions
+- You will consult qualified professionals for medical or mental health concerns
+- The AI responses are generated content and may not always be accurate
+- You use this service at your own discretion and risk
+
+5. Privacy & Data
+
+We respect your privacy. Your conversations and personal data are stored securely and are not shared with third parties for marketing purposes. See our Privacy Policy for details.
+
+6. Acceptance
+
+By creating an account, you confirm that you have read, understood, and agree to these terms.
+`;
+
+
 export function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "" });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   
   const guestMessageCount = getGuestMessageCount();
 
@@ -210,10 +260,30 @@ export function LoginPage() {
                       data-testid="input-register-confirm"
                     />
                   </div>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      data-testid="checkbox-terms"
+                    />
+                    <label htmlFor="terms" className="text-sm text-muted-foreground leading-tight">
+                      I agree to the{" "}
+                      <button 
+                        type="button"
+                        onClick={() => setShowTerms(true)}
+                        className="text-primary underline hover:no-underline"
+                        data-testid="link-terms"
+                      >
+                        Terms of Use
+                      </button>
+                      {" "}and understand this is a wellness support tool, not a medical service.
+                    </label>
+                  </div>
                   <Button
                     type="submit"
                     className="w-full rounded-full"
-                    disabled={registerMutation.isPending}
+                    disabled={registerMutation.isPending || !agreedToTerms}
                     data-testid="button-register"
                   >
                     {registerMutation.isPending ? "Creating account..." : "Create Account"}
@@ -224,6 +294,25 @@ export function LoginPage() {
           </CardContent>
         </Card>
       </main>
+      
+      <Dialog open={showTerms} onOpenChange={setShowTerms}>
+        <DialogContent className="max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Terms of Use</DialogTitle>
+            <DialogDescription>
+              Please read our terms and disclaimer
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[50vh]">
+            <div className="text-sm whitespace-pre-wrap pr-4">
+              {TERMS_OF_USE}
+            </div>
+          </ScrollArea>
+          <Button onClick={() => setShowTerms(false)} data-testid="button-close-terms">
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
