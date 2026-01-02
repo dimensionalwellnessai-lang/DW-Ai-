@@ -39,6 +39,8 @@ import {
   Dumbbell,
   Utensils,
   Wallet,
+  Grid3X3,
+  Clock,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -54,6 +56,8 @@ const QUICK_ACTIONS = [
 
 const MENU_ITEMS = [
   { name: "Home", path: "/", icon: Sun, description: "Start fresh" },
+  { name: "Life Systems", path: "/systems", icon: Grid3X3, description: "Your modular systems" },
+  { name: "Daily Schedule", path: "/daily-schedule", icon: Clock, description: "Reference-based flow" },
   { name: "Life Dashboard", path: "/life-dashboard", icon: Sparkles, description: "Your wellness overview" },
   { name: "Meditation", path: "/spiritual", icon: Heart, description: "Inner peace" },
   { name: "Workout", path: "/workout", icon: Dumbbell, description: "Personalized training" },

@@ -251,6 +251,9 @@ export interface GuestData {
   calendarEvents: CalendarEvent[];
   dimensionWellnessProfiles: DimensionWellnessProfile[];
   savedRoutines: SavedRoutine[];
+  systemModules?: SystemModule[];
+  scheduleEvents?: ScheduleEvent[];
+  systemPreferences?: SystemPreferences;
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -890,4 +893,206 @@ export function respondToAiSuggestion(
   
   profile.updatedAt = Date.now();
   saveGuestData(data);
+}
+
+export type SystemType = "wake_up" | "training" | "meals" | "meal_prep" | "wind_down" | "meditation" | "spiritual";
+
+export interface RoutineStep {
+  id: string;
+  title: string;
+  description: string;
+  durationMinutes: number;
+  isOptional: boolean;
+  linkedSubsystem: SystemType | null;
+}
+
+export interface SystemModule {
+  id: string;
+  systemType: SystemType;
+  name: string;
+  description: string;
+  isEnabled: boolean;
+  settings: Record<string, unknown>;
+  routineSteps: RoutineStep[];
+  linkedSubsystems: SystemType[];
+  conditionalLogic: {
+    condition: string;
+    linkedSystem: SystemType;
+    showWhenTrue: boolean;
+  }[];
+  updatedAt: number;
+}
+
+export interface ScheduleEvent {
+  id: string;
+  title: string;
+  scheduledTime: string;
+  endTime: string | null;
+  dayOfWeek: number | null;
+  systemReference: string | null;
+  systemType: SystemType | null;
+  isRecurring: boolean;
+  notes: string;
+  createdAt: number;
+}
+
+export interface SystemPreferences {
+  enabledSystems: SystemType[];
+  meditationEnabled: boolean;
+  spiritualEnabled: boolean;
+  astrologyEnabled: boolean;
+  journalingEnabled: boolean;
+  mealContainersEnabled: boolean;
+  aiRoutingEnabled: boolean;
+  preferredWakeTime: string | null;
+  preferredSleepTime: string | null;
+  updatedAt: number;
+}
+
+const DEFAULT_SYSTEM_PREFERENCES: SystemPreferences = {
+  enabledSystems: ["wake_up", "meals", "training", "wind_down"],
+  meditationEnabled: false,
+  spiritualEnabled: false,
+  astrologyEnabled: false,
+  journalingEnabled: true,
+  mealContainersEnabled: true,
+  aiRoutingEnabled: true,
+  preferredWakeTime: "07:00",
+  preferredSleepTime: "22:00",
+  updatedAt: Date.now(),
+};
+
+export function getSystemPreferences(): SystemPreferences {
+  const data = getGuestData();
+  return data?.systemPreferences || DEFAULT_SYSTEM_PREFERENCES;
+}
+
+export function saveSystemPreferences(prefs: Partial<SystemPreferences>): void {
+  const data = getGuestData() || initGuestData();
+  data.systemPreferences = { ...getSystemPreferences(), ...prefs, updatedAt: Date.now() };
+  saveGuestData(data);
+}
+
+export function isSystemEnabled(systemType: SystemType): boolean {
+  const prefs = getSystemPreferences();
+  return prefs.enabledSystems.includes(systemType);
+}
+
+export function toggleSystem(systemType: SystemType, enabled: boolean): void {
+  const prefs = getSystemPreferences();
+  const enabledSystems = enabled 
+    ? Array.from(new Set([...prefs.enabledSystems, systemType]))
+    : prefs.enabledSystems.filter(s => s !== systemType);
+  saveSystemPreferences({ enabledSystems });
+}
+
+export function getSystemModules(): SystemModule[] {
+  const data = getGuestData();
+  return data?.systemModules || [];
+}
+
+export function getSystemModule(systemType: SystemType): SystemModule | null {
+  const modules = getSystemModules();
+  return modules.find(m => m.systemType === systemType) || null;
+}
+
+export function saveSystemModule(module: Omit<SystemModule, "id" | "updatedAt">): SystemModule {
+  const data = getGuestData() || initGuestData();
+  if (!data.systemModules) data.systemModules = [];
+  
+  const existingIndex = data.systemModules.findIndex(m => m.systemType === module.systemType);
+  
+  const newModule: SystemModule = {
+    ...module,
+    id: existingIndex >= 0 ? data.systemModules[existingIndex].id : generateId(),
+    updatedAt: Date.now(),
+  };
+  
+  if (existingIndex >= 0) {
+    data.systemModules[existingIndex] = newModule;
+  } else {
+    data.systemModules.push(newModule);
+  }
+  
+  saveGuestData(data);
+  return newModule;
+}
+
+export function getScheduleEvents(): ScheduleEvent[] {
+  const data = getGuestData();
+  return data?.scheduleEvents || [];
+}
+
+export function getScheduleEventsByDay(dayOfWeek: number): ScheduleEvent[] {
+  return getScheduleEvents().filter(e => e.dayOfWeek === dayOfWeek || e.isRecurring);
+}
+
+export function saveScheduleEvent(event: Omit<ScheduleEvent, "id" | "createdAt">): ScheduleEvent {
+  const data = getGuestData() || initGuestData();
+  if (!data.scheduleEvents) data.scheduleEvents = [];
+  
+  const newEvent: ScheduleEvent = {
+    ...event,
+    id: generateId(),
+    createdAt: Date.now(),
+  };
+  
+  data.scheduleEvents.push(newEvent);
+  saveGuestData(data);
+  return newEvent;
+}
+
+export function saveScheduleEventWithId(event: ScheduleEvent): void {
+  const data = getGuestData() || initGuestData();
+  if (!data.scheduleEvents) data.scheduleEvents = [];
+  const existingIndex = data.scheduleEvents.findIndex(e => e.id === event.id);
+  if (existingIndex >= 0) {
+    data.scheduleEvents[existingIndex] = event;
+  } else {
+    data.scheduleEvents.push(event);
+  }
+  saveGuestData(data);
+}
+
+export function updateScheduleEvent(eventId: string, updates: Partial<ScheduleEvent>): ScheduleEvent | null {
+  const data = getGuestData();
+  if (!data?.scheduleEvents) return null;
+  
+  const index = data.scheduleEvents.findIndex(e => e.id === eventId);
+  if (index < 0) return null;
+  
+  data.scheduleEvents[index] = { ...data.scheduleEvents[index], ...updates };
+  saveGuestData(data);
+  return data.scheduleEvents[index];
+}
+
+export function deleteScheduleEvent(eventId: string): void {
+  const data = getGuestData();
+  if (!data?.scheduleEvents) return;
+  
+  data.scheduleEvents = data.scheduleEvents.filter(e => e.id !== eventId);
+  saveGuestData(data);
+}
+
+export function shouldShowSubsystem(parentSystem: SystemType, subsystem: SystemType): boolean {
+  const prefs = getSystemPreferences();
+  const parentModule = getSystemModule(parentSystem);
+  
+  if (!parentModule) return false;
+  
+  const condition = parentModule.conditionalLogic?.find(c => c.linkedSystem === subsystem);
+  if (!condition) return true;
+  
+  switch (condition.condition) {
+    case "meditation_enabled":
+      return prefs.meditationEnabled === condition.showWhenTrue;
+    case "spiritual_enabled":
+      return prefs.spiritualEnabled === condition.showWhenTrue;
+    case "astrology_enabled":
+      return prefs.astrologyEnabled === condition.showWhenTrue;
+    case "journaling_enabled":
+      return prefs.journalingEnabled === condition.showWhenTrue;
+    default:
+      return true;
+  }
 }

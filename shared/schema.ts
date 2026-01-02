@@ -530,6 +530,73 @@ export const bodyScansRelations = relations(bodyScans, ({ one }) => ({
   }),
 }));
 
+export const systemModules = pgTable("system_modules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  systemType: text("system_type").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isEnabled: boolean("is_enabled").default(true),
+  settings: jsonb("settings"),
+  routineSteps: jsonb("routine_steps"),
+  linkedSubsystems: text("linked_subsystems").array(),
+  conditionalLogic: jsonb("conditional_logic"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const systemModulesRelations = relations(systemModules, ({ one }) => ({
+  user: one(users, {
+    fields: [systemModules.userId],
+    references: [users.id],
+  }),
+}));
+
+export const dailyScheduleEvents = pgTable("daily_schedule_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  scheduledTime: text("scheduled_time").notNull(),
+  endTime: text("end_time"),
+  dayOfWeek: integer("day_of_week"),
+  systemReference: varchar("system_reference"),
+  systemType: text("system_type"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurrenceRule: text("recurrence_rule"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dailyScheduleEventsRelations = relations(dailyScheduleEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyScheduleEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userSystemPreferences = pgTable("user_system_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  enabledSystems: text("enabled_systems").array(),
+  meditationEnabled: boolean("meditation_enabled").default(false),
+  spiritualEnabled: boolean("spiritual_enabled").default(false),
+  astrologyEnabled: boolean("astrology_enabled").default(false),
+  journalingEnabled: boolean("journaling_enabled").default(true),
+  mealContainersEnabled: boolean("meal_containers_enabled").default(true),
+  aiRoutingEnabled: boolean("ai_routing_enabled").default(true),
+  preferredWakeTime: text("preferred_wake_time"),
+  preferredSleepTime: text("preferred_sleep_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userSystemPreferencesRelations = relations(userSystemPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userSystemPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -667,6 +734,23 @@ export const insertBodyScanSchema = createInsertSchema(bodyScans).omit({
   createdAt: true,
 });
 
+export const insertSystemModuleSchema = createInsertSchema(systemModules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDailyScheduleEventSchema = createInsertSchema(dailyScheduleEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserSystemPreferencesSchema = createInsertSchema(userSystemPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
@@ -749,3 +833,9 @@ export type BodyScan = typeof bodyScans.$inferSelect;
 export type InsertBodyScan = z.infer<typeof insertBodyScanSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type SystemModule = typeof systemModules.$inferSelect;
+export type InsertSystemModule = z.infer<typeof insertSystemModuleSchema>;
+export type DailyScheduleEvent = typeof dailyScheduleEvents.$inferSelect;
+export type InsertDailyScheduleEvent = z.infer<typeof insertDailyScheduleEventSchema>;
+export type UserSystemPreferences = typeof userSystemPreferences.$inferSelect;
+export type InsertUserSystemPreferences = z.infer<typeof insertUserSystemPreferencesSchema>;

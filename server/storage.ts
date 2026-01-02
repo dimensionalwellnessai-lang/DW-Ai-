@@ -25,6 +25,9 @@ import {
   wellnessContent,
   challenges,
   bodyScans,
+  systemModules,
+  dailyScheduleEvents,
+  userSystemPreferences,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -77,6 +80,12 @@ import {
   type InsertChallenge,
   type BodyScan,
   type InsertBodyScan,
+  type SystemModule,
+  type InsertSystemModule,
+  type DailyScheduleEvent,
+  type InsertDailyScheduleEvent,
+  type UserSystemPreferences,
+  type InsertUserSystemPreferences,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -198,6 +207,22 @@ export interface IStorage {
   getBodyScans(userId: string): Promise<BodyScan[]>;
   createBodyScan(scan: InsertBodyScan): Promise<BodyScan>;
   deleteBodyScan(id: string, userId: string): Promise<boolean>;
+
+  getSystemModules(userId: string): Promise<SystemModule[]>;
+  getSystemModule(id: string): Promise<SystemModule | undefined>;
+  createSystemModule(module: InsertSystemModule): Promise<SystemModule>;
+  updateSystemModule(id: string, data: Partial<SystemModule>): Promise<SystemModule | undefined>;
+  deleteSystemModule(id: string): Promise<void>;
+
+  getScheduleEvents(userId: string): Promise<DailyScheduleEvent[]>;
+  getScheduleEventsByDay(userId: string, dayOfWeek: number): Promise<DailyScheduleEvent[]>;
+  createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent>;
+  updateScheduleEvent(id: string, data: Partial<DailyScheduleEvent>): Promise<DailyScheduleEvent | undefined>;
+  deleteScheduleEvent(id: string): Promise<void>;
+
+  getUserSystemPreferences(userId: string): Promise<UserSystemPreferences | undefined>;
+  createUserSystemPreferences(prefs: InsertUserSystemPreferences): Promise<UserSystemPreferences>;
+  updateUserSystemPreferences(userId: string, data: Partial<UserSystemPreferences>): Promise<UserSystemPreferences | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -694,6 +719,83 @@ export class DatabaseStorage implements IStorage {
   async deleteBodyScan(id: string, userId: string): Promise<boolean> {
     await db.delete(bodyScans).where(and(eq(bodyScans.id, id), eq(bodyScans.userId, userId)));
     return true;
+  }
+
+  async getSystemModules(userId: string): Promise<SystemModule[]> {
+    return db.select().from(systemModules).where(eq(systemModules.userId, userId));
+  }
+
+  async getSystemModule(id: string): Promise<SystemModule | undefined> {
+    const [module] = await db.select().from(systemModules).where(eq(systemModules.id, id));
+    return module || undefined;
+  }
+
+  async createSystemModule(module: InsertSystemModule): Promise<SystemModule> {
+    const [created] = await db.insert(systemModules).values(module).returning();
+    return created;
+  }
+
+  async updateSystemModule(id: string, data: Partial<SystemModule>): Promise<SystemModule | undefined> {
+    const [updated] = await db.update(systemModules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(systemModules.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSystemModule(id: string): Promise<void> {
+    await db.delete(systemModules).where(eq(systemModules.id, id));
+  }
+
+  async getScheduleEvents(userId: string): Promise<DailyScheduleEvent[]> {
+    return db.select().from(dailyScheduleEvents)
+      .where(eq(dailyScheduleEvents.userId, userId))
+      .orderBy(dailyScheduleEvents.scheduledTime);
+  }
+
+  async getScheduleEventsByDay(userId: string, dayOfWeek: number): Promise<DailyScheduleEvent[]> {
+    return db.select().from(dailyScheduleEvents)
+      .where(and(
+        eq(dailyScheduleEvents.userId, userId),
+        eq(dailyScheduleEvents.dayOfWeek, dayOfWeek)
+      ))
+      .orderBy(dailyScheduleEvents.scheduledTime);
+  }
+
+  async createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent> {
+    const [created] = await db.insert(dailyScheduleEvents).values(event).returning();
+    return created;
+  }
+
+  async updateScheduleEvent(id: string, data: Partial<DailyScheduleEvent>): Promise<DailyScheduleEvent | undefined> {
+    const [updated] = await db.update(dailyScheduleEvents)
+      .set(data)
+      .where(eq(dailyScheduleEvents.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteScheduleEvent(id: string): Promise<void> {
+    await db.delete(dailyScheduleEvents).where(eq(dailyScheduleEvents.id, id));
+  }
+
+  async getUserSystemPreferences(userId: string): Promise<UserSystemPreferences | undefined> {
+    const [prefs] = await db.select().from(userSystemPreferences)
+      .where(eq(userSystemPreferences.userId, userId));
+    return prefs || undefined;
+  }
+
+  async createUserSystemPreferences(prefs: InsertUserSystemPreferences): Promise<UserSystemPreferences> {
+    const [created] = await db.insert(userSystemPreferences).values(prefs).returning();
+    return created;
+  }
+
+  async updateUserSystemPreferences(userId: string, data: Partial<UserSystemPreferences>): Promise<UserSystemPreferences | undefined> {
+    const [updated] = await db.update(userSystemPreferences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userSystemPreferences.userId, userId))
+      .returning();
+    return updated || undefined;
   }
 }
 
