@@ -19,6 +19,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "browse", name: "Browse", path: "/browse", visibility: "secondary", description: "Explore content" },
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "secondary", description: "Wellness overview" },
   { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "secondary", description: "Inner peace" },
+  { id: "astrology", name: "Astrology", path: "/astrology", visibility: "secondary", description: "Cosmic insights" },
   { id: "workout", name: "Workout", path: "/workout", visibility: "secondary", description: "Training" },
   { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", visibility: "secondary", description: "Nutrition" },
   { id: "finances", name: "Finances", path: "/finances", visibility: "secondary", description: "Budget" },
