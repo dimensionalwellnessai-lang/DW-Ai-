@@ -55,9 +55,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex h-screen w-full">
         <Sidebar>
           <SidebarHeader className="p-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-chart-1" />
-              <span className="font-display font-bold text-lg tracking-tight" data-testid="text-sidebar-brand">DW.ai</span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-chart-1" />
+                <span className="font-display font-bold text-lg tracking-tight" data-testid="text-sidebar-brand">DW.ai</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground tracking-wide uppercase ml-8">Dimensional Wellness</span>
             </div>
           </SidebarHeader>
           <SidebarContent>

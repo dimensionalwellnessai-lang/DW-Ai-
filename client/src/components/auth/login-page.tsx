@@ -112,11 +112,14 @@ export function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
+            <div className="flex flex-col items-center mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <span className="font-display font-bold text-2xl tracking-tight">DW.ai</span>
               </div>
-              <span className="font-display font-bold text-2xl tracking-tight">DW.ai</span>
+              <span className="text-xs text-muted-foreground tracking-wide uppercase">Dimensional Wellness</span>
             </div>
             <CardTitle className="text-2xl font-display">Welcome</CardTitle>
             <CardDescription className="font-body">

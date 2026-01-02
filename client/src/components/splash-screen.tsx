@@ -72,7 +72,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           </div>
 
           <motion.h1
-            className="text-2xl font-display font-semibold text-foreground mb-2"
+            className="text-3xl font-display font-bold text-foreground mb-1"
             initial={{ opacity: 0, y: 10 }}
             animate={{ 
               opacity: phase === "open" || phase === "fading" ? 1 : 0,
@@ -84,7 +84,18 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           </motion.h1>
 
           <motion.p
-            className="text-sm text-muted-foreground"
+            className="text-sm text-muted-foreground/80 tracking-wide uppercase mb-3"
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: phase === "open" || phase === "fading" ? 1 : 0
+            }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            Dimensional Wellness
+          </motion.p>
+
+          <motion.p
+            className="text-xs text-muted-foreground"
             initial={{ opacity: 0 }}
             animate={{ 
               opacity: phase === "open" || phase === "fading" ? 1 : 0
