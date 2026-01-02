@@ -183,7 +183,13 @@ export async function registerRoutes(
       const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
       const user = await storage.createUser({ ...data, password: hashedPassword });
       req.session.userId = user.id;
-      res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Session error" });
+        }
+        res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
@@ -204,7 +210,13 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       req.session.userId = user.id;
-      res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ error: "Session error" });
+        }
+        res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+      });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
     }
