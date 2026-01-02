@@ -303,7 +303,7 @@ export function AIWorkspace() {
             return (
               <Link key={feature.path} href={feature.path || "/"}>
                 <button
-                  className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left ${feature.indent ? "ml-6" : ""}`}
                   onClick={() => setMenuOpen(false)}
                   data-testid={`menu-item-${feature.id}`}
                 >
