@@ -24,12 +24,10 @@ import CommunityPage from "@/pages/community";
 import { ProjectsPage } from "@/pages/projects";
 import { SettingsPage } from "@/pages/settings";
 import SystemsHubPage from "@/pages/systems-hub";
-import WakeUpSystemPage from "@/pages/systems/wake-up";
-import TrainingSystemPage from "@/pages/systems/training";
-import WindDownSystemPage from "@/pages/systems/wind-down";
 import DailySchedulePage from "@/pages/daily-schedule";
 import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
+import WelcomePage from "@/pages/welcome";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -52,12 +50,10 @@ function Router() {
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/systems" component={SystemsHubPage} />
-      <Route path="/systems/wake-up" component={WakeUpSystemPage} />
-      <Route path="/systems/training" component={TrainingSystemPage} />
-      <Route path="/systems/wind-down" component={WindDownSystemPage} />
       <Route path="/daily-schedule" component={DailySchedulePage} />
       <Route path="/feedback" component={FeedbackPage} />
       <Route path="/astrology" component={AstrologyPage} />
+      <Route path="/welcome" component={WelcomePage} />
       <Route path="/login" component={LoginPage} />
       <Route component={NotFound} />
     </Switch>

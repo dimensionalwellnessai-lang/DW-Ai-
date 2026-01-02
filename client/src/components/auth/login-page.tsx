@@ -78,7 +78,7 @@ export function LoginPage() {
     onSuccess: async () => {
       queryClient.invalidateQueries();
       toast({ title: "Welcome back!" });
-      setLocation("/app");
+      setLocation("/");
     },
     onError: () => {
       toast({
@@ -107,7 +107,7 @@ export function LoginPage() {
       } else {
         toast({ title: "Account created successfully!" });
       }
-      setLocation("/app");
+      setLocation("/welcome");
     },
     onError: () => {
       toast({
