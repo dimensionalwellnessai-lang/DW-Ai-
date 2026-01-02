@@ -151,14 +151,23 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const isProduction = process.env.NODE_ENV === "production";
+  
+  if (isProduction && !process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  }
+  
+  const sessionSecret = process.env.SESSION_SECRET || "wellness-dev-only-secret-key-not-for-production";
+  
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "wellness-lifestyle-ai-secret-key-dev",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         httpOnly: true,
+        sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     })
