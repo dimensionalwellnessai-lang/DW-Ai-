@@ -564,6 +564,29 @@ export function hasCompletedOnboarding(): boolean {
   return gtky?.completedAt != null;
 }
 
+const ONBOARDING_COOLDOWN_KEY = "dwai_onboarding_dismissed";
+const ONBOARDING_COOLDOWN_DAYS = 7;
+
+export function dismissOnboardingDialog(): void {
+  localStorage.setItem(ONBOARDING_COOLDOWN_KEY, Date.now().toString());
+}
+
+export function shouldShowOnboardingDialog(): boolean {
+  const gtky = getGettingToKnowYou();
+  if (gtky?.completedAt != null) {
+    return false;
+  }
+  
+  const dismissedAt = localStorage.getItem(ONBOARDING_COOLDOWN_KEY);
+  if (!dismissedAt) {
+    return true;
+  }
+  
+  const dismissedTime = parseInt(dismissedAt, 10);
+  const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+  return daysSinceDismissed >= ONBOARDING_COOLDOWN_DAYS;
+}
+
 export function getBodyProfile(): BodyProfile | null {
   const data = getGuestData();
   return data?.bodyProfile || null;

@@ -14,7 +14,8 @@ import {
   addMessageToConversation,
   setActiveConversation,
   getConversationsByCategory,
-  hasCompletedOnboarding,
+  shouldShowOnboardingDialog,
+  dismissOnboardingDialog,
   getLifeSystemContext,
   getMealPrepPreferences,
   getWorkoutPreferences,
@@ -114,7 +115,7 @@ export function AIWorkspace() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!hasCompletedOnboarding()) {
+      if (shouldShowOnboardingDialog()) {
         setShowOnboarding(true);
       }
     }, 1500);
@@ -556,7 +557,10 @@ export function AIWorkspace() {
 
       <GettingToKnowYouDialog
         open={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
+        onClose={() => {
+          dismissOnboardingDialog();
+          setShowOnboarding(false);
+        }}
         onComplete={() => setShowOnboarding(false)}
       />
     </div>

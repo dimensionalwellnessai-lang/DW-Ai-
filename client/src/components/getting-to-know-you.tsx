@@ -6,7 +6,8 @@ import { ChevronRight, ChevronLeft, Check, Sparkles } from "lucide-react";
 import { 
   getGettingToKnowYou, 
   saveGettingToKnowYou,
-  hasCompletedOnboarding,
+  shouldShowOnboardingDialog,
+  dismissOnboardingDialog,
   type GettingToKnowYou 
 } from "@/lib/guest-storage";
 
@@ -335,8 +336,7 @@ export function useGettingToKnowYou() {
 
   useEffect(() => {
     if (!hasChecked) {
-      const completed = hasCompletedOnboarding();
-      if (!completed) {
+      if (shouldShowOnboardingDialog()) {
         const timer = setTimeout(() => setShowDialog(true), 1500);
         return () => clearTimeout(timer);
       }
@@ -346,6 +346,7 @@ export function useGettingToKnowYou() {
 
   const openDialog = () => setShowDialog(true);
   const closeDialog = () => {
+    dismissOnboardingDialog();
     setShowDialog(false);
     setHasChecked(true);
   };
