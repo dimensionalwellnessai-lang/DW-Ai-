@@ -57,7 +57,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <SidebarHeader className="p-4">
             <div className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-chart-1" />
-              <span className="font-semibold" data-testid="text-sidebar-brand">Wellness AI</span>
+              <span className="font-display font-bold text-lg tracking-tight" data-testid="text-sidebar-brand">DW.ai</span>
             </div>
           </SidebarHeader>
           <SidebarContent>

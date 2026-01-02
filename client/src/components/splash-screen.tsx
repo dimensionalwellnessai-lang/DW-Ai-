@@ -80,7 +80,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            Dimensional Wellness
+            DW.ai
           </motion.h1>
 
           <motion.p

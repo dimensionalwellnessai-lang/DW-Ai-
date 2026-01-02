@@ -47,10 +47,11 @@ export function LoginPage() {
     onSuccess: () => {
       queryClient.invalidateQueries();
       const guestData = getGuestData();
-      if (guestData && guestData.messages.length > 0) {
+      const messageCount = guestData?.conversations.reduce((sum, conv) => sum + conv.messages.length, 0) || 0;
+      if (messageCount > 0) {
         toast({ 
           title: "Account created!", 
-          description: `Your ${guestData.messages.length} messages have been saved to your account.` 
+          description: `Your ${messageCount} messages have been saved to your account.` 
         });
         clearGuestData();
       } else {
@@ -115,7 +116,7 @@ export function LoginPage() {
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <span className="font-display font-bold text-2xl tracking-tight">DWAI</span>
+              <span className="font-display font-bold text-2xl tracking-tight">DW.ai</span>
             </div>
             <CardTitle className="text-2xl font-display">Welcome</CardTitle>
             <CardDescription className="font-body">

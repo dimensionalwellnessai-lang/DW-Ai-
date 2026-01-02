@@ -145,7 +145,7 @@ export function AIWorkspace() {
         preferredWakeTime: systemPrefs.preferredWakeTime,
         preferredSleepTime: systemPrefs.preferredSleepTime,
       },
-      scheduleEvents: (scheduleEvents.length > 0 ? scheduleEvents : (guestContext.scheduleEvents || [])).slice(0, 10).map((e: Record<string, unknown>) => ({
+      scheduleEvents: (scheduleEvents.length > 0 ? scheduleEvents : (Array.isArray(guestContext.scheduleEvents) ? guestContext.scheduleEvents : [])).slice(0, 10).map((e: Record<string, unknown>) => ({
         title: e.title as string,
         scheduledTime: e.scheduledTime as string,
         systemReference: e.systemReference as string | undefined,
@@ -246,7 +246,7 @@ export function AIWorkspace() {
             </Button>
           )}
         </div>
-        <span className="font-display font-semibold text-lg" data-testid="text-brand">DWAI</span>
+        <span className="font-display font-semibold text-lg" data-testid="text-brand">DW.ai</span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
