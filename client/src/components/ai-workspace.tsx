@@ -16,9 +16,13 @@ import {
   getConversationsByCategory,
   hasCompletedOnboarding,
   getLifeSystemContext,
+  getMealPrepPreferences,
+  getWorkoutPreferences,
+  getImportedDocuments,
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
+import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { Link } from "wouter";
 import {
@@ -93,6 +97,9 @@ export function AIWorkspace() {
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
 
+  const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
+  const { events: scheduleEvents } = useScheduleEvents();
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!hasCompletedOnboarding()) {
@@ -123,9 +130,39 @@ export function AIWorkspace() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, conversationVersion]);
 
+  const buildLifeSystemContext = () => {
+    const guestContext = getLifeSystemContext();
+    const mealPrefs = getMealPrepPreferences();
+    const workoutPrefs = getWorkoutPreferences();
+    const importedDocs = getImportedDocuments();
+    
+    return {
+      preferences: {
+        enabledSystems: systemPrefs.enabledSystems,
+        meditationEnabled: systemPrefs.meditationEnabled,
+        spiritualEnabled: systemPrefs.spiritualEnabled,
+        journalingEnabled: systemPrefs.journalingEnabled,
+        preferredWakeTime: systemPrefs.preferredWakeTime,
+        preferredSleepTime: systemPrefs.preferredSleepTime,
+      },
+      scheduleEvents: (scheduleEvents.length > 0 ? scheduleEvents : (guestContext.scheduleEvents || [])).slice(0, 10).map((e: Record<string, unknown>) => ({
+        title: e.title as string,
+        scheduledTime: e.scheduledTime as string,
+        systemReference: e.systemReference as string | undefined,
+      })),
+      mealPrepPreferences: mealPrefs || guestContext.mealPrepPreferences,
+      workoutPreferences: workoutPrefs || guestContext.workoutPreferences,
+      importedDocuments: importedDocs.slice(0, 5).map(d => ({
+        type: d.type,
+        title: d.title,
+        content: d.content.substring(0, 500),
+      })),
+    };
+  };
+
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const lifeContext = getLifeSystemContext();
+      const lifeContext = buildLifeSystemContext();
       const response = await apiRequest("POST", "/api/chat/smart", {
         message,
         conversationHistory: messages.slice(-10),
