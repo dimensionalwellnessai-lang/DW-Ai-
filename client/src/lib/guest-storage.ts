@@ -234,6 +234,29 @@ export interface DimensionWellnessProfile {
   updatedAt: number;
 }
 
+export type ImportedDocumentType = 
+  | "work_schedule" 
+  | "recipe" 
+  | "dietary_restrictions" 
+  | "brainstorm" 
+  | "workout_plan"
+  | "budget"
+  | "goals"
+  | "journal"
+  | "other";
+
+export interface ImportedDocument {
+  id: string;
+  type: ImportedDocumentType;
+  title: string;
+  content: string;
+  parsedData: Record<string, unknown>;
+  linkedSystems: string[];
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -254,6 +277,7 @@ export interface GuestData {
   systemModules?: SystemModule[];
   scheduleEvents?: ScheduleEvent[];
   systemPreferences?: SystemPreferences;
+  importedDocuments?: ImportedDocument[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -1095,4 +1119,72 @@ export function shouldShowSubsystem(parentSystem: SystemType, subsystem: SystemT
     default:
       return true;
   }
+}
+
+export function getImportedDocuments(): ImportedDocument[] {
+  const data = getGuestData();
+  return data?.importedDocuments || [];
+}
+
+export function getImportedDocumentsByType(type: ImportedDocumentType): ImportedDocument[] {
+  return getImportedDocuments().filter(d => d.type === type);
+}
+
+export function saveImportedDocument(doc: Omit<ImportedDocument, "id" | "createdAt" | "updatedAt">): ImportedDocument {
+  const data = getGuestData() || initGuestData();
+  if (!data.importedDocuments) data.importedDocuments = [];
+  
+  const newDoc: ImportedDocument = {
+    ...doc,
+    id: generateId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  
+  data.importedDocuments.push(newDoc);
+  saveGuestData(data);
+  return newDoc;
+}
+
+export function updateImportedDocument(docId: string, updates: Partial<ImportedDocument>): ImportedDocument | null {
+  const data = getGuestData();
+  if (!data?.importedDocuments) return null;
+  
+  const index = data.importedDocuments.findIndex(d => d.id === docId);
+  if (index < 0) return null;
+  
+  data.importedDocuments[index] = { 
+    ...data.importedDocuments[index], 
+    ...updates, 
+    updatedAt: Date.now() 
+  };
+  saveGuestData(data);
+  return data.importedDocuments[index];
+}
+
+export function deleteImportedDocument(docId: string): void {
+  const data = getGuestData();
+  if (!data?.importedDocuments) return;
+  
+  data.importedDocuments = data.importedDocuments.filter(d => d.id !== docId);
+  saveGuestData(data);
+}
+
+export function getLifeSystemContext(): Record<string, unknown> {
+  const data = getGuestData();
+  if (!data) return {};
+  
+  return {
+    preferences: getSystemPreferences(),
+    scheduleEvents: getScheduleEvents(),
+    mealPrepPreferences: data.mealPrepPreferences,
+    workoutPreferences: data.workoutPreferences,
+    bodyProfile: data.bodyProfile,
+    financeProfile: data.financeProfile,
+    spiritualProfile: data.spiritualProfile,
+    gettingToKnowYou: data.gettingToKnowYou,
+    importedDocuments: data.importedDocuments || [],
+    dimensionAssessments: data.dimensionAssessments,
+    savedRoutines: data.savedRoutines,
+  };
 }

@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
+import { ImportDialog } from "@/components/import-dialog";
 import { 
   getGuestData, 
   initGuestData, 
@@ -14,6 +15,7 @@ import {
   setActiveConversation,
   getConversationsByCategory,
   hasCompletedOnboarding,
+  getLifeSystemContext,
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
@@ -41,6 +43,7 @@ import {
   Wallet,
   Grid3X3,
   Clock,
+  Upload,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -52,6 +55,7 @@ const QUICK_ACTIONS = [
   { text: "Life Dashboard", icon: Compass, style: "dimensions", path: "/life-dashboard" },
   { text: "Talk it out", icon: Heart, style: "default" },
   { text: "Breathing exercise", icon: Wind, style: "default" },
+  { text: "Import something", icon: Upload, style: "import" },
 ];
 
 const MENU_ITEMS = [
@@ -84,6 +88,7 @@ export function AIWorkspace() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
@@ -120,10 +125,12 @@ export function AIWorkspace() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
+      const lifeContext = getLifeSystemContext();
       const response = await apiRequest("POST", "/api/chat/smart", {
         message,
         conversationHistory: messages.slice(-10),
         userProfile: userProfile || undefined,
+        lifeSystemContext: lifeContext,
       });
       return response.json();
     },
@@ -153,9 +160,11 @@ export function AIWorkspace() {
     chatMutation.mutate(userMessage);
   };
 
-  const handleQuickAction = (text: string) => {
+  const handleQuickAction = (text: string, style?: string) => {
     if (text === "Breathing exercise") {
       setBreathingPlayerOpen(true);
+    } else if (style === "import") {
+      setImportDialogOpen(true);
     } else {
       setInput(text);
       inputRef.current?.focus();
@@ -205,6 +214,14 @@ export function AIWorkspace() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setImportDialogOpen(true)}
+            data-testid="button-import"
+          >
+            <Upload className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleNewConversation}
             data-testid="button-new-chat"
           >
@@ -213,6 +230,17 @@ export function AIWorkspace() {
           <ThemeToggle />
         </div>
       </header>
+      
+      <ImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImportComplete={() => {
+          toast({
+            title: "Import successful",
+            description: "Your document has been added to your life system.",
+          });
+        }}
+      />
       
       <SwipeableDrawer 
         open={menuOpen} 
@@ -318,7 +346,7 @@ export function AIWorkspace() {
                     return (
                       <button
                         key={idx}
-                        onClick={() => handleQuickAction(action.text)}
+                        onClick={() => handleQuickAction(action.text, action.style)}
                         className="flex items-center gap-2 px-4 py-2 rounded-full border bg-card hover-elevate text-sm"
                         data-testid={`button-quick-${idx}`}
                       >

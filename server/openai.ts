@@ -26,6 +26,20 @@ interface UserLifeContext {
   recentMoods?: { energy: number; mood: number; date: string }[];
   activeGoals?: { title: string; progress: number }[];
   habits?: { title: string; streak: number }[];
+  lifeSystem?: {
+    preferences?: {
+      enabledSystems?: string[];
+      meditationEnabled?: boolean;
+      spiritualEnabled?: boolean;
+      journalingEnabled?: boolean;
+      preferredWakeTime?: string;
+      preferredSleepTime?: string;
+    };
+    scheduleEvents?: { title: string; scheduledTime: string; systemReference?: string }[];
+    mealPrepPreferences?: Record<string, unknown>;
+    workoutPreferences?: Record<string, unknown>;
+    importedDocuments?: { type: string; title: string; content: string }[];
+  };
 }
 
 export async function generateChatResponse(
@@ -110,6 +124,24 @@ ${userContext?.peakMotivationTime ? `PEAK ENERGY TIME: ${userContext.peakMotivat
 ${userContext?.category ? `CURRENT CONTEXT: They're exploring ${userContext.category}` : ""}
 ${userContext?.recentMoods?.length ? `RECENT ENERGY: ${userContext.recentMoods.slice(0, 3).map(m => `energy ${m.energy}/5, mood ${m.mood}/5`).join(", ")}` : ""}
 ${userContext?.activeGoals?.length ? `INTENTIONS: ${userContext.activeGoals.map(g => g.title).join(", ")}` : ""}
+${userContext?.lifeSystem?.preferences?.enabledSystems?.length ? `ENABLED SYSTEMS: ${userContext.lifeSystem.preferences.enabledSystems.join(", ")}` : ""}
+${userContext?.lifeSystem?.preferences?.preferredWakeTime ? `WAKE TIME: ${userContext.lifeSystem.preferences.preferredWakeTime}` : ""}
+${userContext?.lifeSystem?.preferences?.preferredSleepTime ? `SLEEP TIME: ${userContext.lifeSystem.preferences.preferredSleepTime}` : ""}
+${userContext?.lifeSystem?.scheduleEvents?.length ? `TODAY'S SCHEDULE: ${userContext.lifeSystem.scheduleEvents.slice(0, 5).map(e => `${e.scheduledTime} - ${e.title}`).join(", ")}` : ""}
+${userContext?.lifeSystem?.mealPrepPreferences ? `HAS MEAL PREFERENCES: Yes` : ""}
+${userContext?.lifeSystem?.workoutPreferences ? `HAS WORKOUT PREFERENCES: Yes` : ""}
+${userContext?.lifeSystem?.importedDocuments?.length ? `IMPORTED DOCUMENTS: ${userContext.lifeSystem.importedDocuments.map(d => `${d.type}: ${d.title}`).join(", ")}` : ""}
+
+SYSTEM ROUTING:
+When the user needs help with a specific area, you can guide them to relevant system pages:
+- Morning/wake up routine → "/systems/wake-up" (Morning Anchor)
+- Workouts/training/exercise → "/systems/training" (Movement Practice) or "/workout"
+- Evening/wind down/sleep → "/systems/wind-down" (Evening Transition)
+- Meals/nutrition/food → "/meal-prep" (Meal Planning)
+- Schedule/daily plan → "/daily-schedule" (Daily Schedule)
+- All systems overview → "/systems" (Life Systems Hub)
+
+When routing, say something like: "I can help you explore that. You might find our [System Name] helpful - would you like me to guide you there, or shall we work through it here together?"
 
 WHAT TO REMEMBER:
 - This is a companion, not a productivity tool

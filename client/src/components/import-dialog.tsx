@@ -1,0 +1,318 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import {
+  Calendar,
+  Utensils,
+  AlertCircle,
+  Lightbulb,
+  Dumbbell,
+  Wallet,
+  Target,
+  BookOpen,
+  FileText,
+  Upload,
+  Check,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
+import {
+  saveImportedDocument,
+  type ImportedDocumentType,
+} from "@/lib/guest-storage";
+
+interface DocumentTypeOption {
+  id: ImportedDocumentType;
+  label: string;
+  description: string;
+  icon: typeof Calendar;
+  linkedSystems: string[];
+}
+
+const DOCUMENT_TYPES: DocumentTypeOption[] = [
+  {
+    id: "work_schedule",
+    label: "Work Schedule",
+    description: "Import your work hours to plan around them",
+    icon: Calendar,
+    linkedSystems: ["daily_schedule", "wake_up", "wind_down"],
+  },
+  {
+    id: "recipe",
+    label: "Recipe",
+    description: "Save recipes to your meal planning library",
+    icon: Utensils,
+    linkedSystems: ["meals"],
+  },
+  {
+    id: "dietary_restrictions",
+    label: "Dietary Needs",
+    description: "Allergies, preferences, or medical dietary requirements",
+    icon: AlertCircle,
+    linkedSystems: ["meals"],
+  },
+  {
+    id: "workout_plan",
+    label: "Workout Plan",
+    description: "Import existing workout routines or programs",
+    icon: Dumbbell,
+    linkedSystems: ["training"],
+  },
+  {
+    id: "budget",
+    label: "Budget Info",
+    description: "Financial goals, budgets, or spending plans",
+    icon: Wallet,
+    linkedSystems: ["finances"],
+  },
+  {
+    id: "goals",
+    label: "Goals & Intentions",
+    description: "Personal goals, resolutions, or intentions",
+    icon: Target,
+    linkedSystems: ["wake_up", "wind_down"],
+  },
+  {
+    id: "journal",
+    label: "Journal Entry",
+    description: "Thoughts, reflections, or journaling content",
+    icon: BookOpen,
+    linkedSystems: ["wind_down", "spiritual"],
+  },
+  {
+    id: "brainstorm",
+    label: "Brainstorm / Ideas",
+    description: "Creative ideas, projects, or brainstorming notes",
+    icon: Lightbulb,
+    linkedSystems: [],
+  },
+  {
+    id: "other",
+    label: "Other",
+    description: "Any other document you want to save",
+    icon: FileText,
+    linkedSystems: [],
+  },
+];
+
+interface ImportDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onImportComplete?: (docId: string) => void;
+}
+
+export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogProps) {
+  const [step, setStep] = useState<"select-type" | "enter-content" | "confirm">("select-type");
+  const [selectedType, setSelectedType] = useState<ImportedDocumentType | null>(null);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const selectedTypeInfo = DOCUMENT_TYPES.find(t => t.id === selectedType);
+
+  const handleSelectType = (type: ImportedDocumentType) => {
+    setSelectedType(type);
+    setStep("enter-content");
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
+  };
+
+  const handleImport = async () => {
+    if (!selectedType || !title.trim() || !content.trim()) return;
+
+    setIsProcessing(true);
+    
+    try {
+      const doc = saveImportedDocument({
+        type: selectedType,
+        title: title.trim(),
+        content: content.trim(),
+        parsedData: {},
+        linkedSystems: selectedTypeInfo?.linkedSystems || [],
+        tags,
+      });
+
+      onImportComplete?.(doc.id);
+      handleClose();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleClose = () => {
+    setStep("select-type");
+    setSelectedType(null);
+    setTitle("");
+    setContent("");
+    setTags([]);
+    setTagInput("");
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>
+            {step === "select-type" && "What are you importing?"}
+            {step === "enter-content" && selectedTypeInfo?.label}
+          </DialogTitle>
+          <DialogDescription>
+            {step === "select-type" && "Choose the type of document so we can connect it to your life systems"}
+            {step === "enter-content" && "Paste or type your content below"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === "select-type" && (
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="grid gap-2 py-2">
+              {DOCUMENT_TYPES.map((type) => {
+                const Icon = type.icon;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => handleSelectType(type.id)}
+                    className="flex items-start gap-3 p-3 rounded-lg text-left hover-elevate active-elevate-2 border"
+                    data-testid={`import-type-${type.id}`}
+                  >
+                    <div className="p-2 rounded-md bg-muted">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{type.label}</p>
+                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground mt-2" />
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
+
+        {step === "enter-content" && selectedTypeInfo && (
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep("select-type")}
+                data-testid="button-back-to-types"
+              >
+                Back
+              </Button>
+              <Badge variant="secondary" className="gap-1">
+                {(() => {
+                  const Icon = selectedTypeInfo.icon;
+                  return <Icon className="w-3 h-3" />;
+                })()}
+                {selectedTypeInfo.label}
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Give this a name..."
+                data-testid="input-import-title"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Paste or type your content here..."
+                className="flex-1 min-h-[120px] resize-none"
+                data-testid="input-import-content"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tags (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                  placeholder="Add a tag..."
+                  className="flex-1"
+                  data-testid="input-tag"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddTag}
+                  disabled={!tagInput.trim()}
+                  data-testid="button-add-tag"
+                >
+                  Add
+                </Button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      {tag} &times;
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedTypeInfo.linkedSystems.length > 0 && (
+              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md">
+                This will be connected to: {selectedTypeInfo.linkedSystems.join(", ")}
+              </div>
+            )}
+
+            <Button
+              onClick={handleImport}
+              disabled={!title.trim() || !content.trim() || isProcessing}
+              className="w-full"
+              data-testid="button-import"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
