@@ -13,8 +13,6 @@ import { Link } from "wouter";
 import { 
   Sparkles, 
   Dumbbell, 
-  Utensils, 
-  Wallet, 
   Heart,
   Users,
   ChevronRight,
@@ -27,6 +25,11 @@ import {
   X,
   Plus,
   Shield,
+  Brain,
+  Briefcase,
+  Wallet,
+  Leaf,
+  Utensils,
 } from "lucide-react";
 import { 
   getBodyProfile, 
@@ -54,69 +57,105 @@ import {
 
 const DIMENSION_CONFIGS = [
   {
-    id: "body" as WellnessDimension,
-    name: "Body",
+    id: "physical" as WellnessDimension,
+    name: "Physical",
     icon: Dumbbell,
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
     path: "/workout",
-    description: "Physical wellness & movement",
+    description: "Movement, exercise & body care",
     defaultPhrase: "How I care for my physical self",
   },
   {
-    id: "nutrition" as WellnessDimension,
-    name: "Nutrition",
-    icon: Utensils,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    path: "/meal-prep",
-    description: "Food & nourishment",
-    defaultPhrase: "What nourishes me",
-  },
-  {
-    id: "finances" as WellnessDimension,
-    name: "Finances",
-    icon: Wallet,
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
-    path: "/finances",
-    description: "Budget & financial peace",
-    defaultPhrase: "My relationship with money",
-  },
-  {
-    id: "spiritual" as WellnessDimension,
-    name: "Spiritual",
+    id: "emotional" as WellnessDimension,
+    name: "Emotional",
     icon: Heart,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    path: "/spiritual",
-    description: "Inner peace & grounding",
-    defaultPhrase: "What grounds me",
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10",
+    path: "/talk",
+    description: "Feelings, coping & self-awareness",
+    defaultPhrase: "How I process my emotions",
   },
   {
-    id: "community" as WellnessDimension,
-    name: "Community",
+    id: "social" as WellnessDimension,
+    name: "Social",
     icon: Users,
     color: "text-teal-500",
     bgColor: "bg-teal-500/10",
     path: "/community",
-    description: "Impact & connection",
+    description: "Relationships & connection",
     defaultPhrase: "How I connect with others",
+  },
+  {
+    id: "intellectual" as WellnessDimension,
+    name: "Intellectual",
+    icon: Brain,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+    path: "/challenges",
+    description: "Learning, creativity & growth",
+    defaultPhrase: "How I keep my mind engaged",
+  },
+  {
+    id: "spiritual" as WellnessDimension,
+    name: "Spiritual",
+    icon: Sun,
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+    path: "/spiritual",
+    description: "Inner peace, purpose & meaning",
+    defaultPhrase: "What grounds and centers me",
+  },
+  {
+    id: "occupational" as WellnessDimension,
+    name: "Occupational",
+    icon: Briefcase,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    path: "/projects",
+    description: "Work, purpose & contribution",
+    defaultPhrase: "How I find meaning in my work",
+  },
+  {
+    id: "financial" as WellnessDimension,
+    name: "Financial",
+    icon: Wallet,
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    path: "/finances",
+    description: "Money, security & abundance",
+    defaultPhrase: "My relationship with money",
+  },
+  {
+    id: "environmental" as WellnessDimension,
+    name: "Environmental",
+    icon: Leaf,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+    path: "/routines",
+    description: "Surroundings, space & nature",
+    defaultPhrase: "How my environment supports me",
   },
 ];
 
 function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
   switch (dimensionId) {
-    case "body":
+    case "physical":
       return signals.movementFocus ? "active" : "not_started";
-    case "nutrition":
-      return signals.nutritionFocus ? "active" : "not_started";
-    case "finances":
-      return signals.costTier ? "active" : "not_started";
+    case "emotional":
+      return "not_started";
+    case "social":
+      return hasCompletedCommunityProfile() ? "active" : "not_started";
+    case "intellectual":
+      return "not_started";
     case "spiritual":
       return signals.mindfulState ? "active" : "not_started";
-    case "community":
-      return hasCompletedCommunityProfile() ? "active" : "not_started";
+    case "occupational":
+      return "not_started";
+    case "financial":
+      return signals.costTier ? "active" : "not_started";
+    case "environmental":
+      return "not_started";
     default:
       return "not_started";
   }
@@ -160,7 +199,6 @@ export default function LifeDashboardPage() {
   
   const completedDimensions = [
     hasCompletedBodyScan(),
-    mealPrefs?.dietaryStyle != null,
     hasCompletedFinanceProfile(),
     hasCompletedSpiritualProfile(),
     hasCompletedCommunityProfile(),
@@ -416,7 +454,7 @@ function WellnessDimensionsSheet({ open, onOpenChange, onSelectDimension, signal
             Wellness Dimensions
           </SheetTitle>
           <SheetDescription>
-            Tap any dimension to view your WRAP plan and assessment
+            Tap any dimension to view your Anchor Plan and assessment
           </SheetDescription>
         </SheetHeader>
 
@@ -474,10 +512,10 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
   const [profile, setProfile] = useState(() => getDimensionWellnessProfile(dimension.id));
   const [isEditing, setIsEditing] = useState(false);
   const [shortPhrase, setShortPhrase] = useState(profile?.shortPhrase || dimension.defaultPhrase);
-  const [purpose, setPurpose] = useState(profile?.wrapPlan.purpose || "");
-  const [triggers, setTriggers] = useState(profile?.wrapPlan.triggers.join(", ") || "");
-  const [supports, setSupports] = useState(profile?.wrapPlan.supportStrategies.join(", ") || "");
-  const [crisisPlan, setCrisisPlan] = useState(profile?.wrapPlan.crisisPlan || "");
+  const [coreIntention, setCoreIntention] = useState(profile?.anchorPlan.coreIntention || "");
+  const [earlySignals, setEarlySignals] = useState(profile?.anchorPlan.earlySignals.join(", ") || "");
+  const [stabilizers, setStabilizers] = useState(profile?.anchorPlan.stabilizers.join(", ") || "");
+  const [safetyNet, setSafetyNet] = useState(profile?.anchorPlan.safetyNet || "");
   const [usageStory, setUsageStory] = useState(profile?.usageStory || "");
   const [assessmentLevel, setAssessmentLevel] = useState(profile?.assessmentLevel || 3);
   const [assessmentNotes, setAssessmentNotes] = useState(profile?.assessmentNotes || "");
@@ -486,11 +524,11 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
     const saved = saveDimensionWellnessProfile({
       dimension: dimension.id,
       shortPhrase,
-      wrapPlan: {
-        purpose,
-        triggers: triggers.split(",").map(t => t.trim()).filter(Boolean),
-        supportStrategies: supports.split(",").map(s => s.trim()).filter(Boolean),
-        crisisPlan,
+      anchorPlan: {
+        coreIntention,
+        earlySignals: earlySignals.split(",").map(t => t.trim()).filter(Boolean),
+        stabilizers: stabilizers.split(",").map(s => s.trim()).filter(Boolean),
+        safetyNet,
       },
       usageStory,
       rituals: profile?.rituals || [],
@@ -527,24 +565,24 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
         </SheetHeader>
 
         <div className="mt-6">
-          <Tabs defaultValue="wrap" className="w-full">
+          <Tabs defaultValue="anchor" className="w-full">
             <TabsList className="w-full">
-              <TabsTrigger value="wrap" className="flex-1">WRAP Plan</TabsTrigger>
+              <TabsTrigger value="anchor" className="flex-1">Anchor Plan</TabsTrigger>
               <TabsTrigger value="usage" className="flex-1">How I Use It</TabsTrigger>
               <TabsTrigger value="assessment" className="flex-1">Assessment</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="wrap" className="mt-4 space-y-4">
+            <TabsContent value="anchor" className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium flex items-center gap-2">
                   <Shield className="w-4 h-4" />
-                  Wellness Recovery Action Plan
+                  Personal Anchor Plan
                 </h3>
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => setIsEditing(!isEditing)}
-                  data-testid="button-edit-wrap"
+                  data-testid="button-edit-anchor"
                 >
                   {isEditing ? <X className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
                 </Button>
@@ -562,88 +600,88 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Purpose</Label>
+                    <Label>Core Intention</Label>
                     <Textarea 
-                      value={purpose} 
-                      onChange={(e) => setPurpose(e.target.value)}
+                      value={coreIntention} 
+                      onChange={(e) => setCoreIntention(e.target.value)}
                       placeholder="Why is this dimension important to me?"
                       className="resize-none"
-                      data-testid="input-purpose"
+                      data-testid="input-intention"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Triggers (comma-separated)</Label>
+                    <Label>Early Signals (comma-separated)</Label>
                     <Input 
-                      value={triggers} 
-                      onChange={(e) => setTriggers(e.target.value)}
-                      placeholder="Things that signal I need to focus here"
-                      data-testid="input-triggers"
+                      value={earlySignals} 
+                      onChange={(e) => setEarlySignals(e.target.value)}
+                      placeholder="Signs that tell me I need to focus here"
+                      data-testid="input-signals"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Support strategies (comma-separated)</Label>
+                    <Label>Stabilizers (comma-separated)</Label>
                     <Input 
-                      value={supports} 
-                      onChange={(e) => setSupports(e.target.value)}
-                      placeholder="What helps me in this dimension"
-                      data-testid="input-supports"
+                      value={stabilizers} 
+                      onChange={(e) => setStabilizers(e.target.value)}
+                      placeholder="What helps me stay grounded"
+                      data-testid="input-stabilizers"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Crisis plan</Label>
+                    <Label>Safety Net</Label>
                     <Textarea 
-                      value={crisisPlan} 
-                      onChange={(e) => setCrisisPlan(e.target.value)}
+                      value={safetyNet} 
+                      onChange={(e) => setSafetyNet(e.target.value)}
                       placeholder="What I do when I'm really struggling"
                       className="resize-none"
-                      data-testid="input-crisis"
+                      data-testid="input-safety"
                     />
                   </div>
-                  <Button onClick={handleSave} className="w-full" data-testid="button-save-wrap">
-                    Save WRAP Plan
+                  <Button onClick={handleSave} className="w-full" data-testid="button-save-anchor">
+                    Save Anchor Plan
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {purpose ? (
+                  {coreIntention ? (
                     <>
                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Purpose</h4>
-                        <p className="text-sm">{purpose}</p>
+                        <h4 className="text-sm font-medium text-muted-foreground mb-1">Core Intention</h4>
+                        <p className="text-sm">{coreIntention}</p>
                       </div>
-                      {triggers && (
+                      {earlySignals && (
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Triggers</h4>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Early Signals</h4>
                           <div className="flex flex-wrap gap-1">
-                            {triggers.split(",").map((t, i) => (
+                            {earlySignals.split(",").map((t, i) => (
                               <Badge key={i} variant="outline" className="text-xs">{t.trim()}</Badge>
                             ))}
                           </div>
                         </div>
                       )}
-                      {supports && (
+                      {stabilizers && (
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Support Strategies</h4>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Stabilizers</h4>
                           <div className="flex flex-wrap gap-1">
-                            {supports.split(",").map((s, i) => (
+                            {stabilizers.split(",").map((s, i) => (
                               <Badge key={i} variant="secondary" className="text-xs">{s.trim()}</Badge>
                             ))}
                           </div>
                         </div>
                       )}
-                      {crisisPlan && (
+                      {safetyNet && (
                         <div>
-                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Crisis Plan</h4>
-                          <p className="text-sm">{crisisPlan}</p>
+                          <h4 className="text-sm font-medium text-muted-foreground mb-1">Safety Net</h4>
+                          <p className="text-sm">{safetyNet}</p>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm mb-3">No WRAP plan yet</p>
-                      <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-create-wrap">
+                      <p className="text-sm mb-3">No anchor plan yet</p>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-create-anchor">
                         <Plus className="w-4 h-4 mr-1" />
-                        Create WRAP Plan
+                        Create Anchor Plan
                       </Button>
                     </div>
                   )}

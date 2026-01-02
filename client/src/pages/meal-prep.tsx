@@ -12,8 +12,16 @@ import {
   ChevronRight,
   Sparkles,
   AlertCircle,
-  Check
+  Check,
+  ArrowRightLeft,
+  ShoppingBag,
+  ChefHat,
+  Search,
+  X,
+  Info
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   getMealPrepPreferences, 
   saveMealPrepPreferences,
@@ -79,14 +87,228 @@ const SAMPLE_MEAL_PLANS = [
   },
 ];
 
+interface IngredientAlternative {
+  original: string;
+  alternatives: {
+    name: string;
+    type: "homemade" | "store";
+    forRestrictions: string[];
+    description: string;
+    howToMake?: string;
+    whereToBuy?: string;
+  }[];
+}
+
+const INGREDIENT_ALTERNATIVES: IngredientAlternative[] = [
+  {
+    original: "Milk",
+    alternatives: [
+      { 
+        name: "Oat Milk", 
+        type: "homemade", 
+        forRestrictions: ["Dairy-free", "Nut-free"],
+        description: "Creamy, slightly sweet, great for coffee",
+        howToMake: "Blend 1 cup rolled oats with 4 cups water for 30 seconds. Strain through cheesecloth. Add pinch of salt and vanilla."
+      },
+      { 
+        name: "Oat Milk", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Nut-free"],
+        description: "Creamy, slightly sweet, great for coffee",
+        whereToBuy: "Oatly, Planet Oat, Chobani - available at most grocery stores"
+      },
+      { 
+        name: "Coconut Milk", 
+        type: "homemade", 
+        forRestrictions: ["Dairy-free", "Nut-free", "Soy-free"],
+        description: "Rich and creamy, tropical flavor",
+        howToMake: "Blend 2 cups shredded coconut with 4 cups hot water. Strain through cheesecloth. Refrigerate."
+      },
+      { 
+        name: "Rice Milk", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Nut-free", "Soy-free"],
+        description: "Light and naturally sweet",
+        whereToBuy: "Rice Dream, Pacific Foods - most grocery stores"
+      },
+    ]
+  },
+  {
+    original: "Chicken",
+    alternatives: [
+      { 
+        name: "Jackfruit", 
+        type: "store", 
+        forRestrictions: ["Vegetarian", "Vegan"],
+        description: "Shredded texture similar to pulled chicken",
+        whereToBuy: "Canned in water/brine at Asian markets or Whole Foods"
+      },
+      { 
+        name: "Lion's Mane Mushroom", 
+        type: "store", 
+        forRestrictions: ["Vegetarian", "Vegan"],
+        description: "Meaty texture, absorbs flavors well",
+        whereToBuy: "Fresh at specialty stores, dried online"
+      },
+      { 
+        name: "Seitan", 
+        type: "homemade", 
+        forRestrictions: ["Vegetarian", "Vegan", "Soy-free"],
+        description: "High protein wheat gluten with chewy texture",
+        howToMake: "Mix vital wheat gluten with broth and seasonings. Knead, shape, and simmer 45 min."
+      },
+      { 
+        name: "Tofu (pressed)", 
+        type: "store", 
+        forRestrictions: ["Vegetarian", "Vegan", "Gluten-free"],
+        description: "Versatile, takes on any flavor",
+        whereToBuy: "Extra-firm tofu, press 30 min before cooking"
+      },
+    ]
+  },
+  {
+    original: "Eggs",
+    alternatives: [
+      { 
+        name: "Flax Egg", 
+        type: "homemade", 
+        forRestrictions: ["Vegan", "Dairy-free"],
+        description: "Great for baking, binding",
+        howToMake: "Mix 1 tbsp ground flax + 3 tbsp water. Let sit 5 min until gel-like."
+      },
+      { 
+        name: "Chia Egg", 
+        type: "homemade", 
+        forRestrictions: ["Vegan", "Dairy-free"],
+        description: "Similar to flax, slightly more binding",
+        howToMake: "Mix 1 tbsp chia seeds + 3 tbsp water. Let sit 5 min."
+      },
+      { 
+        name: "JUST Egg", 
+        type: "store", 
+        forRestrictions: ["Vegan", "Dairy-free"],
+        description: "Scrambles and cooks like real eggs",
+        whereToBuy: "Most grocery stores in refrigerated section"
+      },
+      { 
+        name: "Silken Tofu", 
+        type: "store", 
+        forRestrictions: ["Vegan", "Dairy-free", "Gluten-free"],
+        description: "Blend for creamy dishes, quiches",
+        whereToBuy: "Any grocery store, shelf-stable or refrigerated"
+      },
+    ]
+  },
+  {
+    original: "Butter",
+    alternatives: [
+      { 
+        name: "Coconut Oil", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Vegan"],
+        description: "1:1 replacement, slight coconut flavor",
+        whereToBuy: "Any grocery store - refined has less coconut taste"
+      },
+      { 
+        name: "Olive Oil", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Vegan"],
+        description: "For savory dishes, use 3/4 amount",
+        whereToBuy: "Any grocery store"
+      },
+      { 
+        name: "Vegan Butter", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Vegan"],
+        description: "Closest to real butter taste",
+        whereToBuy: "Earth Balance, Miyoko's - most stores"
+      },
+    ]
+  },
+  {
+    original: "Cheese",
+    alternatives: [
+      { 
+        name: "Nutritional Yeast", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Vegan", "Gluten-free"],
+        description: "Cheesy, nutty flavor for sauces",
+        whereToBuy: "Health food stores, Bragg brand common"
+      },
+      { 
+        name: "Cashew Cheese", 
+        type: "homemade", 
+        forRestrictions: ["Dairy-free", "Vegan"],
+        description: "Creamy, spreadable, rich flavor",
+        howToMake: "Blend soaked cashews with lemon, garlic, nutritional yeast, salt."
+      },
+      { 
+        name: "Vegan Shreds", 
+        type: "store", 
+        forRestrictions: ["Dairy-free", "Vegan"],
+        description: "Melts for pizza, nachos",
+        whereToBuy: "Violife, Daiya, Follow Your Heart - most stores"
+      },
+    ]
+  },
+  {
+    original: "Wheat Flour",
+    alternatives: [
+      { 
+        name: "Almond Flour", 
+        type: "store", 
+        forRestrictions: ["Gluten-free"],
+        description: "Nutty, moist baked goods",
+        whereToBuy: "Bob's Red Mill, any grocery store"
+      },
+      { 
+        name: "Oat Flour", 
+        type: "homemade", 
+        forRestrictions: ["Gluten-free", "Nut-free"],
+        description: "Mild flavor, good for cookies",
+        howToMake: "Blend certified gluten-free oats until fine powder."
+      },
+      { 
+        name: "Coconut Flour", 
+        type: "store", 
+        forRestrictions: ["Gluten-free", "Nut-free"],
+        description: "Absorbent - use 1/4 amount, add extra liquid",
+        whereToBuy: "Any grocery store baking aisle"
+      },
+    ]
+  },
+];
+
 export default function MealPrepPage() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
   const [savedMeals, setSavedMeals] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));
+  const [ingredientSearch, setIngredientSearch] = useState("");
+  const [selectedIngredient, setSelectedIngredient] = useState<IngredientAlternative | null>(null);
+  const [filterType, setFilterType] = useState<"all" | "homemade" | "store">("all");
   const bodyProfile = getBodyProfile();
   const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
   const isBudgetConscious = signals.costTier === "frugal" || signals.costTier === "moderate";
+
+  const getRelevantAlternatives = (alt: IngredientAlternative) => {
+    let alternatives = alt.alternatives;
+    if (filterType !== "all") {
+      alternatives = alternatives.filter(a => a.type === filterType);
+    }
+    if (prefs?.restrictions && prefs.restrictions.length > 0) {
+      alternatives = alternatives.filter(a => 
+        prefs.restrictions.some(r => a.forRestrictions.includes(r))
+      );
+    }
+    return alternatives.length > 0 ? alternatives : alt.alternatives.filter(a => filterType === "all" || a.type === filterType);
+  };
+
+  const filteredIngredients = ingredientSearch 
+    ? INGREDIENT_ALTERNATIVES.filter(i => 
+        i.original.toLowerCase().includes(ingredientSearch.toLowerCase())
+      )
+    : INGREDIENT_ALTERNATIVES;
 
   const handleSavePreferences = (newPrefs: MealPrepPreferences) => {
     saveMealPrepPreferences(newPrefs);
@@ -128,7 +350,7 @@ export default function MealPrepPage() {
         <div>
           <h1 className="text-2xl font-display font-bold">Meal Prep</h1>
           <p className="text-muted-foreground">
-            Personalized meal plans based on your diet and goals
+            Personalized meal plans and ingredient alternatives
           </p>
         </div>
 
@@ -146,135 +368,280 @@ export default function MealPrepPage() {
           </Card>
         )}
 
-        {!hasPreferences ? (
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                <Utensils className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Set Your Preferences</h3>
-                <p className="text-sm text-muted-foreground">
-                  Tell us about your dietary needs so we can personalize your meal plans
-                </p>
-              </div>
-              <Button onClick={() => setPrefsOpen(true)} data-testid="button-set-preferences">
-                <Settings2 className="w-4 h-4 mr-2" />
-                Set Preferences
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base">Your Preferences</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setPrefsOpen(true)}
-                  data-testid="button-edit-preferences"
-                >
-                  <Settings2 className="w-4 h-4 mr-1" />
-                  Edit
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {prefs?.dietaryStyle && (
-                <div className="flex items-center gap-2">
-                  <Leaf className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm capitalize">{prefs.dietaryStyle}</span>
-                </div>
-              )}
-              {prefs?.restrictions && prefs.restrictions.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {prefs.restrictions.map((r) => (
-                    <Badge key={r} variant="secondary" className="text-xs">
-                      {r}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              {bodyProfile?.bodyGoal && prefs?.syncWithBodyGoal && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Check className="w-4 h-4 text-emerald-500" />
-                  Synced with your body goal
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <Tabs defaultValue="plans" className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="plans" className="flex-1" data-testid="tab-meal-plans">
+              <Utensils className="w-4 h-4 mr-2" />
+              Meal Plans
+            </TabsTrigger>
+            <TabsTrigger value="swap" className="flex-1" data-testid="tab-ingredient-swap">
+              <ArrowRightLeft className="w-4 h-4 mr-2" />
+              Ingredient Swap
+            </TabsTrigger>
+          </TabsList>
 
-        {hasPreferences && recommendedPlan && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold">Recommended for You</h2>
-            </div>
-            <Card className="hover-elevate cursor-pointer" data-testid="card-recommended-meal">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <h3 className="font-medium mb-1">{recommendedPlan.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {recommendedPlan.description}
-                    </p>
-                    <div className="text-sm text-muted-foreground">
-                      {recommendedPlan.meals.length} meals included
-                    </div>
+          <TabsContent value="plans" className="mt-4 space-y-6">
+            {!hasPreferences ? (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <Utensils className="w-6 h-6 text-primary" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <h3 className="font-semibold mb-1">Set Your Preferences</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tell us about your dietary needs so we can personalize your meal plans
+                    </p>
+                  </div>
+                  <Button onClick={() => setPrefsOpen(true)} data-testid="button-set-preferences">
+                    <Settings2 className="w-4 h-4 mr-2" />
+                    Set Preferences
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-base">Your Preferences</CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setPrefsOpen(true)}
+                      data-testid="button-edit-preferences"
+                    >
+                      <Settings2 className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {prefs?.dietaryStyle && (
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm capitalize">{prefs.dietaryStyle}</span>
+                    </div>
+                  )}
+                  {prefs?.restrictions && prefs.restrictions.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {prefs.restrictions.map((r) => (
+                        <Badge key={r} variant="secondary" className="text-xs">
+                          {r}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {bodyProfile?.bodyGoal && prefs?.syncWithBodyGoal && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      Synced with your body goal
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {hasPreferences && recommendedPlan && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <h2 className="font-semibold">Recommended for You</h2>
+                </div>
+                <Card className="hover-elevate cursor-pointer" data-testid="card-recommended-meal">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <h3 className="font-medium mb-1">{recommendedPlan.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {recommendedPlan.description}
+                        </p>
+                        <div className="text-sm text-muted-foreground">
+                          {recommendedPlan.meals.length} meals included
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Utensils className="w-4 h-4" />
+                Browse Meal Plans
+              </h2>
+              <div className="space-y-2">
+                {SAMPLE_MEAL_PLANS.map((plan, index) => (
+                  <Card 
+                    key={index} 
+                    className="hover-elevate cursor-pointer"
+                    data-testid={`card-meal-plan-${index}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium mb-1">{plan.title}</h3>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {plan.description}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {plan.tags.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveMealPlan(plan);
+                          }}
+                          data-testid={`button-save-meal-${index}`}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="swap" className="mt-4 space-y-6">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Info className="w-4 h-4" />
+                  <span>Find alternatives based on your dietary restrictions</span>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search ingredient (milk, eggs, chicken...)"
+                    value={ingredientSearch}
+                    onChange={(e) => setIngredientSearch(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-ingredient-search"
+                  />
+                  {ingredientSearch && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      onClick={() => setIngredientSearch("")}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Badge 
+                    variant={filterType === "all" ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setFilterType("all")}
+                  >
+                    All
+                  </Badge>
+                  <Badge 
+                    variant={filterType === "homemade" ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setFilterType("homemade")}
+                  >
+                    <ChefHat className="w-3 h-3 mr-1" />
+                    Homemade
+                  </Badge>
+                  <Badge 
+                    variant={filterType === "store" ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setFilterType("store")}
+                  >
+                    <ShoppingBag className="w-3 h-3 mr-1" />
+                    Store-bought
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
 
-        <div className="space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Utensils className="w-4 h-4" />
-            Browse Meal Plans
-          </h2>
-          <div className="space-y-2">
-            {SAMPLE_MEAL_PLANS.map((plan, index) => (
-              <Card 
-                key={index} 
-                className="hover-elevate cursor-pointer"
-                data-testid={`card-meal-plan-${index}`}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="font-medium mb-1">{plan.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {plan.description}
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {plan.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
+            {prefs?.restrictions && prefs.restrictions.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-muted-foreground">Filtering for:</span>
+                {prefs.restrictions.map(r => (
+                  <Badge key={r} variant="secondary" className="text-xs">{r}</Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {filteredIngredients.map((ingredient, idx) => (
+                <Card 
+                  key={idx} 
+                  className={`hover-elevate cursor-pointer ${selectedIngredient?.original === ingredient.original ? 'ring-2 ring-primary' : ''}`}
+                  onClick={() => setSelectedIngredient(selectedIngredient?.original === ingredient.original ? null : ingredient)}
+                  data-testid={`card-ingredient-${ingredient.original.toLowerCase()}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <ArrowRightLeft className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{ingredient.original}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {getRelevantAlternatives(ingredient).length} alternatives
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className={`w-5 h-5 text-muted-foreground transition-transform ${selectedIngredient?.original === ingredient.original ? 'rotate-90' : ''}`} />
+                    </div>
+
+                    {selectedIngredient?.original === ingredient.original && (
+                      <div className="mt-4 pt-4 border-t space-y-3">
+                        {getRelevantAlternatives(ingredient).map((alt, altIdx) => (
+                          <div key={altIdx} className="p-3 bg-muted/30 rounded-md space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-sm">{alt.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {alt.type === "homemade" ? (
+                                  <><ChefHat className="w-3 h-3 mr-1" />Homemade</>
+                                ) : (
+                                  <><ShoppingBag className="w-3 h-3 mr-1" />Store</>
+                                )}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{alt.description}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {alt.forRestrictions.map(r => (
+                                <Badge key={r} variant="secondary" className="text-xs">{r}</Badge>
+                              ))}
+                            </div>
+                            {alt.howToMake && (
+                              <div className="pt-2 border-t border-muted">
+                                <p className="text-xs text-muted-foreground font-medium mb-1">How to make:</p>
+                                <p className="text-sm">{alt.howToMake}</p>
+                              </div>
+                            )}
+                            {alt.whereToBuy && (
+                              <div className="pt-2 border-t border-muted">
+                                <p className="text-xs text-muted-foreground font-medium mb-1">Where to buy:</p>
+                                <p className="text-sm">{alt.whereToBuy}</p>
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSaveMealPlan(plan);
-                      }}
-                      data-testid={`button-save-meal-${index}`}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <MealPreferencesDialog
           open={prefsOpen}

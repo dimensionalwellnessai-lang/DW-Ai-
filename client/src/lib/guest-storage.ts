@@ -128,15 +128,14 @@ export interface DimensionSignals {
 }
 
 export type WellnessDimension = 
-  | "body" 
-  | "nutrition" 
-  | "workout" 
-  | "finances" 
-  | "spiritual" 
-  | "mental" 
+  | "physical" 
   | "emotional" 
   | "social" 
-  | "community";
+  | "intellectual" 
+  | "spiritual" 
+  | "occupational" 
+  | "financial" 
+  | "environmental";
 
 export interface DimensionFoundation {
   dimension: WellnessDimension;
@@ -214,11 +213,11 @@ export interface DimensionWellnessProfile {
   id: string;
   dimension: WellnessDimension;
   shortPhrase: string;
-  wrapPlan: {
-    purpose: string;
-    triggers: string[];
-    supportStrategies: string[];
-    crisisPlan: string;
+  anchorPlan: {
+    coreIntention: string;
+    earlySignals: string[];
+    stabilizers: string[];
+    safetyNet: string;
   };
   usageStory: string;
   rituals: string[];
@@ -845,7 +844,7 @@ export function addAiSuggestionToDimension(
       id: generateId(),
       dimension,
       shortPhrase: "",
-      wrapPlan: { purpose: "", triggers: [], supportStrategies: [], crisisPlan: "" },
+      anchorPlan: { coreIntention: "", earlySignals: [], stabilizers: [], safetyNet: "" },
       usageStory: "",
       rituals: [],
       assessmentLevel: 0,

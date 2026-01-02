@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { SplashScreen, useSplashScreen } from "@/components/splash-screen";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -50,12 +51,19 @@ function Router() {
 }
 
 function App() {
+  const { showSplash, handleSplashComplete } = useSplashScreen();
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+          {!showSplash && (
+            <>
+              <Toaster />
+              <Router />
+            </>
+          )}
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
