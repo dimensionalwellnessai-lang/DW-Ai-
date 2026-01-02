@@ -10,22 +10,22 @@ export interface FeatureConfig {
 }
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
-  { id: "ai-chat", name: "AI Chat", path: "/", visibility: "primary", description: "Main conversation" },
-  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "primary", description: "Process feelings" },
+  { id: "life-systems", name: "Life Systems", path: "/systems", visibility: "primary", description: "Your personalized systems" },
   { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance" },
+  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "primary", description: "Process feelings" },
+  { id: "ai-chat", name: "AI Chat", path: "/", visibility: "primary", description: "Main conversation" },
   
   { id: "challenges", name: "Challenges", path: "/challenges", visibility: "secondary", description: "Growth challenges" },
   { id: "routines", name: "Routines", path: "/routines", visibility: "secondary", description: "Saved routines" },
-  { id: "browse", name: "Browse", path: "/browse", visibility: "secondary", description: "Explore content" },
+  { id: "calendar", name: "Calendar", path: "/calendar", visibility: "secondary", description: "Full schedule" },
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "secondary", description: "Wellness overview" },
   { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "secondary", description: "Inner peace" },
   { id: "astrology", name: "Astrology", path: "/astrology", visibility: "secondary", description: "Cosmic insights" },
   { id: "workout", name: "Workout", path: "/workout", visibility: "secondary", description: "Training" },
   { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", visibility: "secondary", description: "Nutrition" },
   { id: "finances", name: "Finances", path: "/finances", visibility: "secondary", description: "Budget" },
-  { id: "calendar", name: "Calendar", path: "/calendar", visibility: "secondary", description: "Full schedule" },
+  { id: "browse", name: "Browse", path: "/browse", visibility: "secondary", description: "Explore content" },
   { id: "settings", name: "Settings", path: "/settings", visibility: "secondary", description: "Preferences" },
-  { id: "life-systems", name: "Life Systems", path: "/systems", visibility: "secondary", description: "Modular systems" },
   
   { id: "body-scan", name: "Body Scan", visibility: "dormant", aiUnlockable: true, description: "Camera features" },
   { id: "advanced-challenges", name: "Advanced Challenges", visibility: "dormant", aiUnlockable: true },
