@@ -22,9 +22,10 @@ import {
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
+import { getMenuFeatures } from "@/lib/feature-visibility";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Send,
   Loader2,
@@ -48,35 +49,36 @@ import {
   Grid3X3,
   Clock,
   Upload,
+  HelpCircle,
+  MessageCircle,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@shared/schema";
 
-const QUICK_ACTIONS = [
-  { text: "Make a plan", icon: Calendar, style: "default" },
-  { text: "Life Dashboard", icon: Compass, style: "dimensions", path: "/life-dashboard" },
-  { text: "Talk it out", icon: Heart, style: "default" },
-  { text: "Breathing exercise", icon: Wind, style: "default" },
-  { text: "Import something", icon: Upload, style: "import" },
+const FIRST_TIME_ACTIONS = [
+  { id: "talk", text: "I want to talk", icon: MessageCircle, action: "talk" },
+  { id: "decide", text: "Help me decide my day", icon: Calendar, action: "decide" },
+  { id: "calm", text: "Calm my body", icon: Wind, action: "breathing" },
+  { id: "unsure", text: "I'm not sure", icon: HelpCircle, action: "unsure" },
 ];
 
-const MENU_ITEMS = [
-  { name: "Home", path: "/", icon: Sun, description: "Start fresh" },
-  { name: "Life Systems", path: "/systems", icon: Grid3X3, description: "Your modular systems" },
-  { name: "Daily Schedule", path: "/daily-schedule", icon: Clock, description: "Reference-based flow" },
-  { name: "Life Dashboard", path: "/life-dashboard", icon: Sparkles, description: "Your wellness overview" },
-  { name: "Meditation", path: "/spiritual", icon: Heart, description: "Inner peace" },
-  { name: "Workout", path: "/workout", icon: Dumbbell, description: "Personalized training" },
-  { name: "Meal Prep", path: "/meal-prep", icon: Utensils, description: "Nutrition planning" },
-  { name: "Finances", path: "/finances", icon: Wallet, description: "Budget wellness" },
-  { name: "Routines", path: "/routines", icon: History, description: "Saved favorites" },
-  { name: "Browse", path: "/browse", icon: Sparkles, description: "Explore content" },
-  { name: "Calendar", path: "/calendar", icon: Calendar, description: "Your schedule" },
-  { name: "Challenges", path: "/challenges", icon: Target, description: "Growth challenges" },
-  { name: "Settings", path: "/settings", icon: Settings, description: "Preferences" },
-];
+const MENU_ICON_MAP: Record<string, typeof Sun> = {
+  "ai-chat": Sun,
+  "daily-schedule": Clock,
+  "life-dashboard": Sparkles,
+  "meditation": Heart,
+  "workout": Dumbbell,
+  "meal-prep": Utensils,
+  "finances": Wallet,
+  "routines": History,
+  "browse": Sparkles,
+  "calendar": Calendar,
+  "challenges": Target,
+  "settings": Settings,
+  "life-systems": Grid3X3,
+};
 
 const CATEGORY_LABELS: Record<string, string> = {
   planning: "Planning",
@@ -89,6 +91,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function AIWorkspace() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
@@ -197,14 +200,22 @@ export function AIWorkspace() {
     chatMutation.mutate(userMessage);
   };
 
-  const handleQuickAction = (text: string, style?: string) => {
-    if (text === "Breathing exercise") {
-      setBreathingPlayerOpen(true);
-    } else if (style === "import") {
-      setImportDialogOpen(true);
-    } else {
-      setInput(text);
-      inputRef.current?.focus();
+  const handleFirstTimeAction = (action: string) => {
+    switch (action) {
+      case "talk":
+        setLocation("/talk");
+        break;
+      case "decide":
+        setInput("Help me figure out my day.");
+        inputRef.current?.focus();
+        break;
+      case "breathing":
+        setBreathingPlayerOpen(true);
+        break;
+      case "unsure":
+        setInput("I'm not sure what I need right now.");
+        inputRef.current?.focus();
+        break;
     }
   };
 
@@ -220,8 +231,10 @@ export function AIWorkspace() {
     setHistoryOpen(false);
   };
 
-  const greeting = "How can I support you today?";
+  const greeting = "Hey. I'm here.";
+  const subGreeting = "What would help most right now?";
   const hasConversations = Object.values(conversationsByCategory).flat().length > 0;
+  const menuFeatures = getMenuFeatures();
 
   return (
     <div className="flex flex-col h-screen w-full bg-background">
@@ -285,23 +298,28 @@ export function AIWorkspace() {
         title="Menu"
       >
         <nav className="space-y-1 flex-1">
-          {MENU_ITEMS.map((item) => {
-            const Icon = item.icon;
+          {menuFeatures.map((feature) => {
+            const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
             return (
-              <Link key={item.path} href={item.path}>
+              <Link key={feature.path} href={feature.path || "/"}>
                 <button
                   className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
                   onClick={() => setMenuOpen(false)}
-                  data-testid={`menu-item-${item.name.toLowerCase()}`}
+                  data-testid={`menu-item-${feature.id}`}
                 >
                   <Icon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{item.name}</span>
+                  <span className="text-sm">{feature.name}</span>
                 </button>
               </Link>
             );
           })}
         </nav>
-        <div className="pt-4">
+        <div className="pt-4 space-y-2">
+          <Link href="/feedback">
+            <Button variant="outline" className="w-full" size="sm" data-testid="button-feedback">
+              Send Feedback
+            </Button>
+          </Link>
           <Link href="/login">
             <Button className="w-full" size="sm" data-testid="button-signup">
               Sign up
@@ -357,42 +375,36 @@ export function AIWorkspace() {
         <ScrollArea className="flex-1 px-4">
           <div className="max-w-2xl mx-auto py-6">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-                <h1 className="text-2xl font-display font-semibold text-center" data-testid="text-greeting">
-                  {greeting}
-                </h1>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {QUICK_ACTIONS.map((action, idx) => {
+              <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+                <div className="text-center space-y-2">
+                  <h1 className="text-2xl font-display font-semibold" data-testid="text-greeting">
+                    {greeting}
+                  </h1>
+                  <p className="text-muted-foreground text-sm">
+                    {subGreeting}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+                  {FIRST_TIME_ACTIONS.map((action) => {
                     const Icon = action.icon;
-                    const isDimensions = action.style === "dimensions";
-                    
-                    if (isDimensions && action.path) {
-                      return (
-                        <Link key={idx} href={action.path}>
-                          <button
-                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-sky-500 text-white hover-elevate text-sm"
-                            data-testid={`button-quick-${idx}`}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {action.text}
-                          </button>
-                        </Link>
-                      );
-                    }
-                    
                     return (
                       <button
-                        key={idx}
-                        onClick={() => handleQuickAction(action.text, action.style)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full border bg-card hover-elevate text-sm"
-                        data-testid={`button-quick-${idx}`}
+                        key={action.id}
+                        onClick={() => handleFirstTimeAction(action.action)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover-elevate text-center"
+                        data-testid={`button-action-${action.id}`}
                       >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        {action.text}
+                        <Icon className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm">{action.text}</span>
                       </button>
                     );
                   })}
                 </div>
+                <Link href="/daily-schedule">
+                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
+                    View today's schedule
+                  </button>
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">

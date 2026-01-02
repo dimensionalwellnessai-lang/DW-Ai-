@@ -1,0 +1,112 @@
+I want to get this app ready for a SMALL soft beta, without deleting features that are already built.
+
+GOAL:
+Make the app feel calm, simple, and guided on first launch (AI-first), especially for overwhelmed/ADHD users.
+We are testing FEEL + FLOW, not feature completeness.
+
+========================================================
+A) TEST-READY CHECKLIST (Do not consider it beta-ready until most are true)
+UX / Emotional:
+- App opens without explanation
+- User knows what to do first in under 5 seconds
+- User does NOT feel judged/tested/overwhelmed
+- Tone is consistent everywhere (calm, grounded, honest)
+- No screen is visually busy or text-heavy
+Flow:
+- No more than 3–5 visible choices at first launch
+- Everything else is discoverable, not forced
+AI:
+- AI opens with ONE clear gentle question
+- AI does not dump lots of options or long text
+- AI asks only what it needs (ChatGPT style)
+- AI can offer “keep it light today”
+- AI does not push features unless relevant
+Core system:
+- There is one obvious place plans go (Today/Master Calendar)
+========================================================
+B) WHAT TO HIDE (Without deleting anything)
+Use 3 levels of visibility: PRIMARY, SECONDARY (menu only), DORMANT (AI-unlocked).
+
+PRIMARY (visible Day 1):
+- AI Chat (main screen)
+- Getting to Know You (optional)
+- Talk It Out mode
+- Guided Breathing
+- Today/Master Calendar (very light access)
+
+SECONDARY (menu only, not on main screen):
+- Challenges
+- Routines
+- Browse (meditation/workouts/meals)
+- Blueprint (read-only at first)
+
+DORMANT / AI-UNLOCKED (built but not shown to new users):
+- Body scan / camera features
+- Advanced challenges
+- Deep Blueprint editing
+- Projects / heavy organization features
+Rule: AI introduces dormant features only when relevant and with permission.
+
+========================================================
+C) SINGLE PERFECT FIRST-TIME EXPERIENCE (Replace current busy home)
+FIRST LAUNCH = AI screen only, minimal UI (no long text).
+AI message:
+“Hey. I’m here. What would help most right now?”
+
+Show ONLY 4 quick action buttons (no scrolling):
+1) I want to talk
+2) Help me decide my day
+3) Calm my body (breathing)
+4) I’m not sure
+
+Routing:
+- Talk -> Talk It Out mode
+- Decide -> AI asks 1–2 clarifying questions and proposes a very light plan
+- Calm body -> guided breathing starts immediately
+- Not sure -> AI reassures and offers one small next step
+
+After 3–5 minutes, AI ends with:
+“Want me to remember this for next time?”
+Yes -> save profile preferences
+No -> no saving / continue
+
+No forced onboarding. No long assessment. Only conversational “Getting to Know You” in micro-questions.
+
+========================================================
+D) SOFT BETA PLAN (5–10 people, low risk)
+This is not a launch. It’s feel + flow testing.
+
+Tester group:
+- 5–10 people max
+- include people who get overwhelmed easily / need guidance
+- avoid productivity-power-users for now
+
+What we measure:
+- How they feel on opening
+- Whether they know what to do first
+- Whether it feels supportive vs demanding
+- Whether they’d open it on a hard day
+
+Provide a simple in-app feedback link/button: “Send Feedback”.
+
+========================================================
+E) HOW TO HIDE THINGS TECHNICALLY WITHOUT REMOVING THEM
+Do NOT delete pages/routes/components already built.
+Instead:
+- Use feature flags OR “beta visibility levels”
+- Hide items from main UI and navigation for new users
+- Keep routes accessible only via:
+  - menu
+  - deep links
+  - AI suggestions
+  - “coming soon” placeholders
+- For read-only/unfinished pages: show a clean placeholder with “Generate with Assistant” button
+
+Implement a simple “visibility config” so I can turn features on later without rebuilding.
+
+========================================================
+DELIVERABLE REQUEST:
+1) Update the UI flow to match the First-Time Experience above.
+2) Add the 3-level visibility system (Primary/Secondary/Dormant).
+3) Make Master Calendar easy to access but not overwhelming.
+4) Summarize exactly what changed and list the updated routes + where the visibility config lives.
