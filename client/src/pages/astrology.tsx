@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,9 +16,12 @@ import {
   ChevronRight,
   Sparkles,
   Settings2,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  MessageSquareText
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -601,6 +605,39 @@ export default function AstrologyPage() {
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
   const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthChart?.zodiacSystem || "tropical");
+  const [aiReading, setAiReading] = useState<string | null>(null);
+  const [readingType, setReadingType] = useState<"day" | "chart" | "pattern">("day");
+  
+  const aiReadingMutation = useMutation({
+    mutationFn: async (type: "day" | "chart" | "pattern") => {
+      const moonPhaseNow = getMoonPhase();
+      const lifePathNum = birthChart?.birthDate ? calculateLifePathNumber(birthChart.birthDate) : null;
+      const lifePathMeaning = lifePathNum ? LIFE_PATH_MEANINGS[lifePathNum] : null;
+      
+      const placementsSummary = birthChart?.placements?.map(p => 
+        `${p.planet} in ${p.sign} at ${p.degree} degrees`
+      ).join(", ") || "";
+      
+      let prompt = "";
+      if (type === "day") {
+        prompt = `You are a gentle cosmic guide. Given today's moon phase (${moonPhaseNow}) and these birth chart placements: ${placementsSummary}, provide a brief (3-4 sentences) daily cosmic reading. What energy is present today? Be warm and grounding, not predictive.`;
+      } else if (type === "chart") {
+        prompt = `You are a gentle astrologer. Given these birth chart placements: ${placementsSummary}, provide a brief (4-5 sentences) interpretation of this person's core cosmic blueprint. What themes, strengths, and growth areas show up? Be affirming and insightful.`;
+      } else {
+        const lpTitle = lifePathMeaning?.title || "unknown";
+        prompt = `You are a gentle cosmic guide. This person has Life Path Number ${lifePathNum} (${lpTitle}) and these placements: ${placementsSummary}. Provide a brief (4-5 sentences) reading about their life patterns and soul purpose. What recurring themes might show up in their life? Be compassionate and empowering.`;
+      }
+      
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: prompt,
+        conversationHistory: [],
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setAiReading(data.response);
+    },
+  });
   
   const handleOpenDialog = () => {
     const savedChart = getBirthChart();
@@ -778,6 +815,89 @@ export default function AstrologyPage() {
                   <p className="text-sm text-muted-foreground">
                     {birthChart.birthPlace}
                   </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          
+          {birthChart?.placements && birthChart.placements.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageSquareText className="w-4 h-4" />
+                  AI Cosmic Reading
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={readingType === "day" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setReadingType("day");
+                      setAiReading(null);
+                    }}
+                    data-testid="button-reading-day"
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant={readingType === "chart" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setReadingType("chart");
+                      setAiReading(null);
+                    }}
+                    data-testid="button-reading-chart"
+                  >
+                    My Chart
+                  </Button>
+                  <Button
+                    variant={readingType === "pattern" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setReadingType("pattern");
+                      setAiReading(null);
+                    }}
+                    data-testid="button-reading-pattern"
+                  >
+                    Life Patterns
+                  </Button>
+                </div>
+                
+                {aiReading ? (
+                  <div className="space-y-3">
+                    <p className="text-sm leading-relaxed">{aiReading}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => aiReadingMutation.mutate(readingType)}
+                      disabled={aiReadingMutation.isPending}
+                      data-testid="button-refresh-reading"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${aiReadingMutation.isPending ? "animate-spin" : ""}`} />
+                      Refresh
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => aiReadingMutation.mutate(readingType)}
+                    disabled={aiReadingMutation.isPending}
+                    className="w-full"
+                    data-testid="button-generate-reading"
+                  >
+                    {aiReadingMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Reading the stars...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate {readingType === "day" ? "Daily" : readingType === "chart" ? "Chart" : "Pattern"} Reading
+                      </>
+                    )}
+                  </Button>
                 )}
               </CardContent>
             </Card>
