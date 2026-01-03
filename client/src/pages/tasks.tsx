@@ -144,7 +144,7 @@ export function TasksPage() {
                   <Plus className="h-4 w-4" />
                   Create Task
                 </Button>
-                <Link href="/assistant">
+                <Link href="/">
                   <Button variant="outline" className="gap-2" data-testid="button-ask-ai-tasks">
                     <MessageSquareText className="h-4 w-4" />
                     Ask AI to plan

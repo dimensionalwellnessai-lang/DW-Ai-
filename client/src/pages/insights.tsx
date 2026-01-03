@@ -54,7 +54,7 @@ export function InsightsPage() {
               <p className="text-muted-foreground font-body text-sm mb-4">
                 Visual dimension tracking coming soon. For now, the AI can help you reflect on your balance.
               </p>
-              <Link href="/assistant">
+              <Link href="/">
                 <Button variant="outline" size="sm" data-testid="button-reflect-with-ai">
                   Reflect with AI
                 </Button>

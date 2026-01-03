@@ -22,7 +22,7 @@ export function MeditationPage() {
               Back
             </Button>
           </Link>
-          <Link href="/assistant">
+          <Link href="/">
             <Button className="gap-2" data-testid="button-ask-ai-meditation">
               <MessageSquareText className="h-4 w-4" />
               Ask AI for a meditation

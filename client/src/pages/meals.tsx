@@ -22,7 +22,7 @@ export function MealsPage() {
               Back
             </Button>
           </Link>
-          <Link href="/assistant">
+          <Link href="/">
             <Button className="gap-2" data-testid="button-ask-ai-meal">
               <MessageSquareText className="h-4 w-4" />
               Ask AI to build a meal plan

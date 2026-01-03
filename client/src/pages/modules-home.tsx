@@ -99,7 +99,7 @@ export function ModulesHome() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/assistant">
+          <Link href="/">
             <Button variant="secondary" className="gap-2" data-testid="button-ai-chat">
               <MessageSquareText className="h-4 w-4" />
               AI Chat
@@ -165,7 +165,7 @@ export function ModulesHome() {
         </div>
       </main>
 
-      <Link href="/assistant">
+      <Link href="/">
         <Button 
           className="fixed bottom-5 right-5 rounded-full h-14 px-5 shadow-lg gap-2"
           data-testid="button-coach-ai-floating"

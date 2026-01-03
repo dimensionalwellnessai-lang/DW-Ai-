@@ -22,7 +22,7 @@ export function WorkoutsPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <Link href="/assistant">
+            <Link href="/">
               <Button className="gap-2" data-testid="button-ask-ai-workout">
                 <MessageSquareText className="h-4 w-4" />
                 Ask AI
@@ -43,7 +43,7 @@ export function WorkoutsPage() {
               </p>
             </div>
             <div className="flex gap-2 justify-center">
-              <Link href="/assistant">
+              <Link href="/">
                 <Button className="gap-2" data-testid="button-create-workout-plan">
                   <Plus className="h-4 w-4" />
                   Create Workout Plan with AI
