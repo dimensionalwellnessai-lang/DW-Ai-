@@ -1,0 +1,207 @@
+Perfect note — and you’re right.
+Timeframes are the missing stabilizer that turn this from a thoughtful system into a usable, regulating one.
+
+Below is the FINAL ADD-ON to your intake pack:
+clear, consistent timeframes for every dimension, written in your voice and designed to reduce overwhelm, not create pressure.
+
+This slots directly into what you already approved — nothing gets rewritten, only augmented.
+
+⸻
+
+⏱️ FLIP THE SWITCH — INTAKE TIMEFRAME LAYER (v1.0)
+
+WHY TIMEFRAMES MATTER (IN YOUR SYSTEM)
+	•	They protect nervous system bandwidth
+	•	They give users choice, not obligation
+	•	They make the AI feel intentional instead of chatty
+	•	They reinforce: “You’re in control.”
+
+Every intake now answers:
+
+“How long is this going to take?”
+
+⸻
+
+UNIVERSAL TIMEFRAME RULE (APPLIES EVERYWHERE)
+
+At the start of every intake, the AI says:
+
+“Quick check — how much time do you want to spend right now?”
+
+User chooses one:
+	•	Quick scan (1–2 minutes)
+	•	Standard check-in (3–5 minutes)
+	•	Deeper reset (7–10 minutes)
+
+This choice controls:
+	•	Number of questions asked
+	•	Depth of reflection
+	•	Complexity of output
+
+⸻
+
+HOW THE AI USES THIS LOGIC (DEV RULE)
+	•	Quick scan → one question per stage (or fewer, skipping allowed)
+	•	Standard → full intake as written
+	•	Deeper reset → full intake + optional follow-up reflection
+
+No matter what:
+👉 AI still ends with Mirror → Flip → Choose
+
+⸻
+
+DIMENSION-BY-DIMENSION TIMEFRAMES
+
+🧍 BODY — Movement / Workout
+	•	Quick scan: 2 minutes
+“Are we moving today or recovering?”
+	•	Standard: 5 minutes
+Enough to build a realistic workout plan
+	•	Deeper reset: 8–10 minutes
+Includes schedule alignment + progression logic
+
+AI line to include:
+
+“We can build something light or get specific — your call.”
+
+⸻
+
+🍽️ NOURISHMENT — Food / Energy
+	•	Quick scan: 2 minutes
+Identify energy crashes + one adjustment
+	•	Standard: 4–6 minutes
+Meal structure + grocery rhythm
+	•	Deeper reset: 8–10 minutes
+Full prep strategy + budget awareness
+
+AI line:
+
+“This isn’t a diet — it’s a fuel check.”
+
+⸻
+
+🧠 MIND — Focus / Mental Load
+	•	Quick scan: 1–2 minutes
+Name the distraction pattern
+	•	Standard: 4–5 minutes
+Build a focus rhythm
+	•	Deeper reset: 7–9 minutes
+Includes reminders, breaks, and pacing
+
+AI line:
+
+“We’re not fixing focus — we’re working with it.”
+
+⸻
+
+❤️ EMOTIONAL — Regulation / Mood
+	•	Quick scan: 1–2 minutes
+Ground + name the emotion
+	•	Standard: 3–5 minutes
+Regulation plan (2–5 min tools)
+	•	Deeper reset: 7–10 minutes
+Reflection + release + optional follow-up
+
+AI line:
+
+“We can keep this light or go deeper — you decide.”
+
+⸻
+
+🕯️ SPIRITUAL — Energy / Practice
+	•	Quick scan: 1–2 minutes
+Identify need (protection, clarity, peace)
+	•	Standard: 3–5 minutes
+One small ritual or practice
+	•	Deeper reset: 8–10 minutes
+Ritual + schedule integration
+
+AI line:
+
+“This is about alignment, not performance.”
+
+⸻
+
+🧑🏽‍🤝‍🧑🏽 SOCIAL — Connection
+	•	Quick scan: 2 minutes
+Energy check + boundary awareness
+	•	Standard: 4–6 minutes
+Connection plan + reminders
+	•	Deeper reset: 7–10 minutes
+Scripts + boundary reframes
+
+AI line:
+
+“Connection should give energy — not take it.”
+
+⸻
+
+💰 FINANCIAL — Stability / Money Stress
+	•	Quick scan: 2 minutes
+Name the loudest pressure
+	•	Standard: 5–7 minutes
+Budget rhythm + tracking style
+	•	Deeper reset: 10 minutes
+Full cash-flow awareness
+
+AI line:
+
+“We’re moving from stress to strategy.”
+
+⸻
+
+🧭 DIRECTION — Life / Purpose
+	•	Quick scan: 2 minutes
+Identify the priority
+	•	Standard: 5–7 minutes
+Weekly structure + focus lane
+	•	Deeper reset: 10 minutes
+Priority ladder + time blocks
+
+AI line:
+
+“We’re not doing everything — we’re choosing.”
+
+⸻
+
+HOW THIS SHOWS UP IN THE APP (UX COPY)
+
+Before intake:
+
+“How deep do you want to go right now?”
+
+During intake:
+
+“We’re about halfway — still good?”
+
+If user skips:
+
+“All good. We’ll work with what we have.”
+
+At the end:
+
+“You spent about X minutes getting clarity. That counts.”
+
+⸻
+
+WHY THIS COMPLETES YOUR SYSTEM
+
+You now have:
+	•	✅ Symmetry across dimensions
+	•	✅ Skip-friendly logic
+	•	✅ Nervous-system-safe pacing
+	•	✅ Language that sounds like you
+	•	✅ A system that respects real life
+
+This is no longer “an intake.”
+It’s a controlled clarity process.
+
+⸻
+
+If you want next (optional but powerful):
+	•	I can embed these timeframes into the JSON schema
+	•	Or design Quick Mode vs Deep Mode toggles
+	•	Or write AI transitions between dimensions
+	•	Or create progress memory rules (what carries forward vs resets)
+
+Just say the word.

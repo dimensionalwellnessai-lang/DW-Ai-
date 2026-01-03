@@ -625,6 +625,7 @@ export function shouldShowOnboardingDialog(): boolean {
 }
 
 const SOFT_ONBOARDING_KEY = "fts_soft_onboarding_completed";
+const SOFT_ONBOARDING_SESSION_KEY = "fts_soft_onboarding_shown_this_session";
 
 export function getSoftOnboarding(): SoftOnboarding | null {
   const data = getGuestData();
@@ -641,13 +642,22 @@ export function saveSoftOnboarding(mood: SoftOnboardingMood): void {
   data.mood = mood;
   saveGuestData(data);
   localStorage.setItem(SOFT_ONBOARDING_KEY, "true");
+  sessionStorage.setItem(SOFT_ONBOARDING_SESSION_KEY, "true");
 }
 
 export function skipSoftOnboarding(): void {
   localStorage.setItem(SOFT_ONBOARDING_KEY, "skipped");
+  sessionStorage.setItem(SOFT_ONBOARDING_SESSION_KEY, "true");
+}
+
+export function markSoftOnboardingShownThisSession(): void {
+  sessionStorage.setItem(SOFT_ONBOARDING_SESSION_KEY, "true");
 }
 
 export function shouldShowSoftOnboarding(): boolean {
+  if (sessionStorage.getItem(SOFT_ONBOARDING_SESSION_KEY) === "true") {
+    return false;
+  }
   const flag = localStorage.getItem(SOFT_ONBOARDING_KEY);
   if (flag === "true" || flag === "skipped") {
     return false;

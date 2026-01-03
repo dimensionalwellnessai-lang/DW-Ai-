@@ -22,6 +22,7 @@ import {
   shouldShowSoftOnboarding,
   saveSoftOnboarding,
   skipSoftOnboarding,
+  markSoftOnboardingShownThisSession,
   getSoftOnboardingMood,
   getLifeSystemContext,
   getMealPrepPreferences,
@@ -128,6 +129,7 @@ export function AIWorkspace() {
 
   useEffect(() => {
     if (shouldShowSoftOnboarding()) {
+      markSoftOnboardingShownThisSession();
       setShowSoftOnboarding(true);
     } else {
       const timer = setTimeout(() => {

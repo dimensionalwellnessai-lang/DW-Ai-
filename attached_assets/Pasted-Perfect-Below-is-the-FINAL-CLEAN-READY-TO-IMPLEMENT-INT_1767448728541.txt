@@ -1,0 +1,592 @@
+Perfect. Below is the FINAL, CLEAN, READY-TO-IMPLEMENT INTAKE PACK for Flip the Switch.
+
+This is locked language.
+Every question is rewritten in your voice, with signature phrases baked in, symmetry preserved, and skip logic respected.
+
+You can:
+	•	Paste this directly to your Replit developer
+	•	Turn this into JSON later (I can do that next)
+	•	Use this as the authoritative intake system across the entire app
+
+⸻
+
+🔐 FLIP THE SWITCH — FINAL DIMENSIONAL INTAKE PACK (v1.0)
+
+SYSTEM IDENTITY
+
+App Name: Flip the Switch
+Descriptor: A Dimensional Wellness AI
+
+Core Voice Rule:
+
+Pause. Name it. Flip it. Choose the next step.
+
+⸻
+
+UNIVERSAL INTAKE LOGIC (APPLIES EVERYWHERE)
+
+STAGES (Same for every dimension)
+	1.	GROUND – slow the moment
+	2.	SCAN – notice what’s true
+	3.	CONSTRAINTS – reality check
+	4.	CAPACITY – what’s sustainable
+	5.	PREFERENCES – what fits you
+
+GLOBAL RULES
+	•	Skipping is allowed at any stage
+	•	If skipped, AI asks one fallback clarifier
+	•	No “why” questions
+	•	No “you should / you need”
+	•	Always end with Mirror → Flip → Choose
+
+⸻
+
+DIMENSION 1 — BODY
+
+Module: Body Scan → Movement / Workout
+
+🟢 GROUND
+
+“Pause for a second.”
+We’re not chasing perfect. We’re noticing what’s possible.
+
+(Skip)
+
+⸻
+
+🟢 SCAN
+	1.	“What’s the energy in your body lately?”
+	•	Ready and strong
+	•	Tight or stiff
+	•	Sore or recovering
+	•	Low energy
+	•	Hard to tell
+	2.	“Anywhere asking for extra care?”
+	•	Knees
+	•	Back
+	•	Hips
+	•	Shoulders
+	•	Nothing specific
+	•	Not sure
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“Where does movement usually happen for you?”
+	•	At home
+	•	At a gym
+	•	Outside
+	•	A mix
+	4.	“What equipment do you already have access to?”
+	•	None
+	•	Resistance bands
+	•	Dumbbells
+	•	Barbell / rack
+	•	Cardio equipment
+	5.	“Are you open to buying equipment if it makes things easier?”
+	•	Yes
+	•	Maybe, depending on cost
+	•	No — work with what I have
+
+Fallback if skipped:
+
+“Quick check — are we working with home, gym, or both?”
+
+⸻
+
+🟢 CAPACITY
+	6.	“What actually fits your life right now?”
+	•	2–3 days a week
+	•	3–4 days
+	•	4–5 days
+	•	It changes week to week
+	7.	“How long can you move without feeling drained?”
+	•	15–20 minutes
+	•	30 minutes
+	•	45 minutes
+	•	60 minutes
+	8.	“When does movement feel most realistic?”
+	•	Morning
+	•	Midday
+	•	Evening
+	•	Depends on the day
+
+⸻
+
+🟢 PREFERENCES
+	9.	“What kind of movement do you actually enjoy?”
+	•	Strength
+	•	Cardio
+	•	Mobility / stretching
+	•	A mix
+	•	Still figuring it out
+	10.	“What’s the focus right now?”
+
+	•	Building muscle
+	•	Feeling stronger
+	•	Losing fat
+	•	Reducing stress
+	•	Just staying consistent
+
+⸻
+
+🔁 OUTPUT (REQUIRED)
+
+Mirror:
+
+“Here’s what I’m hearing…”
+
+Flip:
+
+“Let’s flip the switch — consistency beats intensity right now.”
+
+Choose:
+	•	Build a simple plan
+	•	See a weekly rhythm
+	•	Come back to this later
+
+⸻
+
+DIMENSION 2 — NOURISHMENT
+
+Module: Food / Energy Scan
+
+🟢 GROUND
+
+“No food guilt here. We’re just naming what’s working and what’s loud.”
+
+⸻
+
+🟢 SCAN
+	1.	“How has eating been feeling lately?”
+	•	Steady
+	•	Inconsistent
+	•	Skipping meals
+	•	Eating past fullness
+	•	Hard to tell
+	2.	“How does your body usually feel after meals?”
+	•	Energized
+	•	Heavy
+	•	Crashy
+	•	Depends on the day
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“What’s your food setup right now?”
+	•	Full kitchen
+	•	Limited kitchen
+	•	Mostly eating out
+	4.	“How does budget feel around food?”
+	•	Tight
+	•	Manageable
+	•	Flexible
+	•	Rather not think about it right now
+	5.	“Any dietary lane you already follow?”
+	•	No restrictions
+	•	Vegan
+	•	Vegetarian
+	•	Pescatarian
+	•	Other
+
+Fallback:
+
+“Are you cooking at home most days — yes or no?”
+
+⸻
+
+🟢 CAPACITY
+	6.	“How much effort can meals realistically get?”
+	•	Very simple
+	•	Moderate
+	•	I like cooking
+	7.	“How often could you prep ahead?”
+	•	Not at all
+	•	Once a week
+	•	Twice
+	•	More if it’s easy
+
+⸻
+
+🟢 PREFERENCES
+	8.	“What flavors do you lean toward?”
+	•	Savory
+	•	Sweet
+	•	Spicy
+	•	A mix
+	9.	“Anything you avoid or just don’t mess with?”
+	•	Open text
+
+⸻
+
+🔁 OUTPUT
+
+Flip:
+
+“Let’s flip the switch from perfection to fuel.”
+
+⸻
+
+DIMENSION 3 — MIND
+
+Module: Focus / Mental Load Scan
+
+🟢 GROUND
+
+“We’re not labeling anything. We’re just noticing patterns.”
+
+⸻
+
+🟢 SCAN
+	1.	“What’s your mind doing most days?”
+	•	Focused
+	•	Jumping everywhere
+	•	Heavy
+	•	Tired
+	•	Wired
+	2.	“What trips you up the most?”
+	•	Starting
+	•	Staying focused
+	•	Finishing
+	•	Remembering
+	•	Feeling overwhelmed
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“What’s filling most of your time right now?”
+	•	Work
+	•	School
+	•	Both
+	•	Neither
+	4.	“Your environment is mostly…”
+	•	Quiet
+	•	Noisy
+	•	Phone-heavy
+	•	Shared space
+
+⸻
+
+🟢 CAPACITY
+	5.	“How long can you focus before drifting?”
+	•	5–10 minutes
+	•	15–20
+	•	30–45
+	•	Varies
+	6.	“What helps more?”
+	•	Timers
+	•	Lists
+	•	Music
+	•	Accountability
+	•	Breaks
+
+⸻
+
+🟢 PREFERENCES
+	7.	“How should this app show up for you?”
+	•	Gentle nudges
+	•	Clear structure
+	•	A mix
+	8.	“What tone keeps you engaged?”
+	•	Calm
+	•	Direct
+	•	Minimal
+
+⸻
+
+DIMENSION 4 — EMOTIONAL
+
+Module: Emotional Weather Scan
+
+🟢 GROUND
+
+“You don’t have to be okay to check in.”
+
+⸻
+
+🟢 SCAN
+	1.	“What’s the emotional weather lately?”
+	•	Anxious
+	•	Sad
+	•	Irritated
+	•	Numb
+	•	Mixed
+	•	Okay
+	2.	“Where do you feel it most?”
+	•	Chest
+	•	Stomach
+	•	Head
+	•	Body tension
+	•	Hard to tell
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“What do you need right now?”
+	•	Privacy
+	•	Quick grounding
+	•	Space to reflect
+	4.	“Anything off-limits today?”
+	•	Yes / No
+
+⸻
+
+🟢 CAPACITY
+	5.	“How deep can we go right now?”
+	•	Light
+	•	Medium
+	•	Deep
+	•	Not sure
+
+⸻
+
+🟢 PREFERENCES
+	6.	“What usually helps you regulate?”
+	•	Naming it
+	•	Breathing
+	•	Movement
+	•	Journaling
+	•	Distraction
+
+⸻
+
+DIMENSION 5 — SPIRITUAL
+
+Module: Energy / Practice Scan
+
+🟢 GROUND
+
+“We’re not performing spirituality. We’re protecting your energy.”
+
+⸻
+
+🟢 SCAN
+	1.	“What are you needing most right now?”
+	•	Protection
+	•	Clarity
+	•	Confidence
+	•	Peace
+	•	Release
+	2.	“Your energy lately feels…”
+	•	Grounded
+	•	Drained
+	•	Sensitive
+	•	Open
+	•	Blocked
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“How much time can you actually give?”
+	•	2–5 minutes
+	•	10 minutes
+	•	20 minutes
+	•	Varies
+	4.	“Any tools you already work with?”
+	•	Candles
+	•	Incense
+	•	Crystals
+	•	Tarot
+	•	None
+
+⸻
+
+🟢 CAPACITY
+	5.	“How often feels right?”
+	•	Daily
+	•	A few times a week
+	•	Weekly
+
+⸻
+
+🟢 PREFERENCES
+	6.	“What kind of practice fits you?”
+	•	Quiet
+	•	Guided
+	•	Ritual
+	•	Journaling
+	•	Movement
+
+⸻
+
+DIMENSION 6 — SOCIAL
+
+Module: Connection Scan
+
+🟢 GROUND
+
+“This isn’t about more people. It’s about the right connection.”
+
+⸻
+
+🟢 SCAN
+	1.	“Your social energy lately?”
+	•	High
+	•	Low
+	•	Selective
+	•	Overwhelmed
+	•	Isolated
+	2.	“What feels off?”
+	•	Boundaries
+	•	Loneliness
+	•	Conflict
+	•	Dating
+	•	Family
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“How much time do you realistically have?”
+	•	Very little
+	•	Some
+	•	Flexible
+	4.	“Do reminders help or annoy you?”
+	•	Help
+	•	Annoy
+	•	Depends
+
+⸻
+
+🟢 CAPACITY
+	5.	“How many meaningful connections per week feels good?”
+	•	1–2
+	•	3–5
+	•	Varies
+
+⸻
+
+🟢 PREFERENCES
+	6.	“Connection style?”
+	•	Text
+	•	Call
+	•	In-person
+	•	Group
+	•	One-on-one
+
+⸻
+
+DIMENSION 7 — FINANCIAL
+
+Module: Money Stress → Stability Scan
+
+🟢 GROUND
+
+“No shame. We’re flipping stress into strategy.”
+
+⸻
+
+🟢 SCAN
+	1.	“Money feels…”
+	•	Stable
+	•	Tight
+	•	Chaotic
+	•	Improving
+	•	Unsure
+	2.	“What’s the loudest pressure?”
+	•	Rent
+	•	Debt
+	•	Food
+	•	Saving
+	•	Spending habits
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“How does income come in?”
+	•	Weekly
+	•	Biweekly
+	•	Monthly
+	•	Variable
+	4.	“Are you tracking now?”
+	•	Yes
+	•	No
+	•	Kind of
+
+⸻
+
+🟢 CAPACITY
+	5.	“How much tracking can you tolerate?”
+	•	Very light
+	•	Moderate
+	•	Detailed
+
+⸻
+
+🟢 PREFERENCES
+	6.	“Your money style?”
+	•	Strict
+	•	Flexible
+	•	Automated reminders
+
+⸻
+
+DIMENSION 8 — DIRECTION
+
+Module: Life / Purpose Scan
+
+🟢 GROUND
+
+“We’re not doing everything. We’re choosing what matters.”
+
+⸻
+
+🟢 SCAN
+	1.	“What do you need most right now?”
+	•	Clarity
+	•	Structure
+	•	Motivation
+	•	Discipline
+	•	Peace
+	2.	“Where do you feel stuck?”
+	•	Decisions
+	•	Consistency
+	•	Overwhelm
+	•	Fear
+	•	Confidence
+
+⸻
+
+🟢 CONSTRAINTS
+	3.	“What’s filling most of your week?”
+	•	Work
+	•	School
+	•	Caregiving
+	•	Mixed
+	4.	“Which time blocks are actually yours?”
+	•	Mornings
+	•	Evenings
+	•	Weekends
+	•	Very few
+
+⸻
+
+🟢 CAPACITY
+	5.	“How many priorities can you hold right now?”
+	•	One
+	•	Two
+	•	Three
+	•	It depends
+
+⸻
+
+🟢 PREFERENCES
+	6.	“How do you like to plan?”
+	•	Detailed
+	•	Time blocks
+	•	Flexible
+
+⸻
+
+🔒 FINAL NOTE FOR YOUR DEV
+
+This is now your authoritative intake system.
+	•	Every dimension uses the same logic
+	•	Every question sounds like you
+	•	The AI will finally feel like your license system, not a chatbot
+
+If you want next:
+	•	I can convert this into one clean JSON file
+	•	Or write the AI reflection templates that follow each intake
+	•	Or create a “short intake vs deep intake” toggle
+
+Just tell me the next move.
