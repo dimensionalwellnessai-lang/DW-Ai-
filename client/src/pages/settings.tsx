@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import {
   ArrowLeft,
   User,
@@ -15,10 +16,13 @@ import {
   Smartphone,
   Download,
   Check,
+  BellRing,
+  BellOff,
 } from "lucide-react";
 
 export function SettingsPage() {
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
+  const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   
   return (
     <div className="min-h-screen bg-background gradient-bg">
@@ -85,6 +89,53 @@ export function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Install option will appear when supported by your browser
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Notifications</CardTitle>
+                <CardDescription>Receive gentle reminders for check-ins</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!isSupported ? (
+              <p className="text-sm text-muted-foreground">
+                Push notifications are not supported in your browser
+              </p>
+            ) : permission === "granted" ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <BellRing className="h-4 w-4" />
+                  Notifications enabled
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={sendTestNotification}
+                  data-testid="button-test-notification"
+                >
+                  Send Test Notification
+                </Button>
+              </div>
+            ) : permission === "denied" ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <BellOff className="h-4 w-4" />
+                Notifications blocked. Enable in browser settings.
+              </div>
+            ) : (
+              <Button 
+                onClick={requestPermission}
+                data-testid="button-enable-notifications"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Enable Notifications
+              </Button>
             )}
           </CardContent>
         </Card>

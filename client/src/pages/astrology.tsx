@@ -618,14 +618,28 @@ export default function AstrologyPage() {
         `${p.planet} in ${p.sign} at ${p.degree} degrees`
       ).join(", ") || "";
       
+      const voiceRules = `Follow this 4-step response structure strictly:
+1. GROUND: Start with "Pause for a second." or similar grounding phrase
+2. NAME: Name what's present (the energy, feeling, or cosmic theme)
+3. SHIFT: Offer a gentle perspective shift or insight
+4. NEXT STEP: End with one small, optional action they could take
+
+Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded". Never use "you should", "fix", "broken", "optimize", "maximize".`;
+
       let prompt = "";
       if (type === "day") {
-        prompt = `You are a gentle cosmic guide. Given today's moon phase (${moonPhaseNow}) and these birth chart placements: ${placementsSummary}, provide a brief (3-4 sentences) daily cosmic reading. What energy is present today? Be warm and grounding, not predictive.`;
+        prompt = `You are a gentle cosmic guide speaking in a warm, grounded voice. Given today's moon phase (${moonPhaseNow}) and these birth chart placements: ${placementsSummary}, provide a daily cosmic reading.
+
+${voiceRules}`;
       } else if (type === "chart") {
-        prompt = `You are a gentle astrologer. Given these birth chart placements: ${placementsSummary}, provide a brief (4-5 sentences) interpretation of this person's core cosmic blueprint. What themes, strengths, and growth areas show up? Be affirming and insightful.`;
+        prompt = `You are a gentle astrologer speaking in a warm, grounded voice. Given these birth chart placements: ${placementsSummary}, provide an interpretation of this person's core cosmic blueprint.
+
+${voiceRules}`;
       } else {
         const lpTitle = lifePathMeaning?.title || "unknown";
-        prompt = `You are a gentle cosmic guide. This person has Life Path Number ${lifePathNum} (${lpTitle}) and these placements: ${placementsSummary}. Provide a brief (4-5 sentences) reading about their life patterns and soul purpose. What recurring themes might show up in their life? Be compassionate and empowering.`;
+        prompt = `You are a gentle cosmic guide speaking in a warm, grounded voice. This person has Life Path Number ${lifePathNum} (${lpTitle}) and these placements: ${placementsSummary}. Provide a reading about their life patterns and soul purpose.
+
+${voiceRules}`;
       }
       
       const response = await apiRequest("POST", "/api/chat/smart", {

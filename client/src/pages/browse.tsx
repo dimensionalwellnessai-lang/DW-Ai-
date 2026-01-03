@@ -124,20 +124,25 @@ export default function Browse() {
 
   const aiCustomizeMutation = useMutation({
     mutationFn: async (mood: string) => {
-      const contentTitles = content.map(c => `${c.title} (${c.category}, ${c.duration}min): ${c.description}`).join("\n");
+      const contentList = content.map((c, i) => `[${i}] ${c.title}`).join("\n");
       
       const response = await apiRequest("POST", "/api/chat/smart", {
-        message: `You are a wellness guide. The user is feeling: "${mood}". Based on this energy state, recommend 2-3 activities from this list that would be most supportive right now. Return ONLY the exact titles, one per line, no numbering or extra text.
+        message: `You are a gentle wellness guide. The user is feeling: "${mood}". 
 
-Available content:
-${contentTitles}`,
+Choose 2-3 activities from this numbered list that would be most supportive for their current energy. Return ONLY the numbers (e.g., "0, 2, 4"), nothing else.
+
+${contentList}`,
         conversationHistory: [],
       });
       return response.json();
     },
     onSuccess: (data) => {
-      const titles = data.response.split("\n").filter((t: string) => t.trim()).map((t: string) => t.trim());
-      setAiRecommendations(titles);
+      const response = data.response || "";
+      const indices = response.match(/\d+/g)?.map((n: string) => parseInt(n, 10)) || [];
+      const titles = indices
+        .filter((i: number) => i >= 0 && i < content.length)
+        .map((i: number) => content[i].title);
+      setAiRecommendations(titles.length > 0 ? titles : null);
       setAiDialogOpen(false);
     },
   });
@@ -147,7 +152,7 @@ ${contentTitles}`,
   const filteredContent = activeCategory
     ? content.filter((c) => c.category === activeCategory)
     : aiRecommendations
-    ? content.filter((c) => aiRecommendations.some(r => c.title.toLowerCase().includes(r.toLowerCase().substring(0, 15))))
+    ? content.filter((c) => aiRecommendations.includes(c.title))
     : content;
 
   const getCategoryIcon = (category: string) => {
