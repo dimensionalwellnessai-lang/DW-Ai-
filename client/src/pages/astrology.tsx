@@ -186,10 +186,19 @@ function getSunSign(birthDate: string, system: ZodiacSystem = "tropical"): strin
   return tropicalSign;
 }
 
+interface Aspect {
+  planet1: string;
+  planet2: string;
+  type: "conjunction" | "opposition" | "trine" | "square" | "sextile";
+  orb: number;
+}
+
 function calculatePlacements(birthDate: string, birthTime: string, system: ZodiacSystem): PlanetPlacement[] {
   const date = new Date(birthDate);
   const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const hour = birthTime ? parseInt(birthTime.split(":")[0]) : 12;
+  const minute = birthTime ? parseInt(birthTime.split(":")[1]) : 0;
+  const hourDecimal = hour + minute / 60;
   
   const getSign = (degree: number): string => {
     let adjustedDegree = degree;
@@ -204,24 +213,82 @@ function calculatePlacements(birthDate: string, birthTime: string, system: Zodia
   const moonCycle = 27.3;
   const moonDegree = ((dayOfYear / moonCycle) * 360 + hour * 0.5) % 360;
   
-  const risingDegree = (hour * 15 + (dayOfYear / 365.25) * 360) % 360;
+  const risingDegree = (hourDecimal * 15 + (dayOfYear / 365.25) * 360) % 360;
+  const descendantDegree = (risingDegree + 180) % 360;
+  const midheavenDegree = (risingDegree + 270) % 360;
+  const imumCoeliDegree = (midheavenDegree + 180) % 360;
+  const vertexDegree = (risingDegree + 90 + (hourDecimal * 2)) % 360;
   
   const mercuryDegree = (sunDegree + 15 + (dayOfYear % 88) * 4) % 360;
   const venusDegree = (sunDegree - 20 + (dayOfYear % 225) * 1.6) % 360;
   const marsDegree = ((dayOfYear / 687) * 360 + 45) % 360;
   const jupiterDegree = ((dayOfYear / 4333) * 360 + 120) % 360;
   const saturnDegree = ((dayOfYear / 10759) * 360 + 200) % 360;
+  const uranusDegree = ((dayOfYear / 30687) * 360 + 50) % 360;
+  const neptuneDegree = ((dayOfYear / 60182) * 360 + 355) % 360;
+  const plutoDegree = ((dayOfYear / 90560) * 360 + 300) % 360;
   
   return [
     { planet: "Sun", sign: getSign(sunDegree), degree: Math.round(sunDegree % 30) },
     { planet: "Moon", sign: getSign(moonDegree), degree: Math.round(moonDegree % 30) },
-    { planet: "Rising", sign: getSign(risingDegree), degree: Math.round(risingDegree % 30) },
+    { planet: "Ascendant", sign: getSign(risingDegree), degree: Math.round(risingDegree % 30) },
+    { planet: "Descendant", sign: getSign(descendantDegree), degree: Math.round(descendantDegree % 30) },
+    { planet: "Midheaven", sign: getSign(midheavenDegree), degree: Math.round(midheavenDegree % 30) },
+    { planet: "Imum Coeli", sign: getSign(imumCoeliDegree), degree: Math.round(imumCoeliDegree % 30) },
+    { planet: "Vertex", sign: getSign(vertexDegree), degree: Math.round(vertexDegree % 30) },
     { planet: "Mercury", sign: getSign(mercuryDegree), degree: Math.round(mercuryDegree % 30) },
     { planet: "Venus", sign: getSign(venusDegree), degree: Math.round(venusDegree % 30) },
     { planet: "Mars", sign: getSign(marsDegree), degree: Math.round(marsDegree % 30) },
     { planet: "Jupiter", sign: getSign(jupiterDegree), degree: Math.round(jupiterDegree % 30) },
     { planet: "Saturn", sign: getSign(saturnDegree), degree: Math.round(saturnDegree % 30) },
+    { planet: "Uranus", sign: getSign(uranusDegree), degree: Math.round(uranusDegree % 30) },
+    { planet: "Neptune", sign: getSign(neptuneDegree), degree: Math.round(neptuneDegree % 30) },
+    { planet: "Pluto", sign: getSign(plutoDegree), degree: Math.round(plutoDegree % 30) },
   ];
+}
+
+function calculateAspects(placements: PlanetPlacement[]): Aspect[] {
+  const aspects: Aspect[] = [];
+  const planets = placements.filter(p => 
+    !["Descendant", "Imum Coeli", "Vertex"].includes(p.planet)
+  );
+  
+  const getAbsoluteDegree = (p: PlanetPlacement): number => {
+    const signIndex = ZODIAC_SIGNS.indexOf(p.sign);
+    return signIndex * 30 + p.degree;
+  };
+  
+  const aspectTypes: { name: Aspect["type"]; angle: number; orb: number }[] = [
+    { name: "conjunction", angle: 0, orb: 8 },
+    { name: "opposition", angle: 180, orb: 8 },
+    { name: "trine", angle: 120, orb: 8 },
+    { name: "square", angle: 90, orb: 7 },
+    { name: "sextile", angle: 60, orb: 6 },
+  ];
+  
+  for (let i = 0; i < planets.length; i++) {
+    for (let j = i + 1; j < planets.length; j++) {
+      const deg1 = getAbsoluteDegree(planets[i]);
+      const deg2 = getAbsoluteDegree(planets[j]);
+      let diff = Math.abs(deg1 - deg2);
+      if (diff > 180) diff = 360 - diff;
+      
+      for (const aspect of aspectTypes) {
+        const orb = Math.abs(diff - aspect.angle);
+        if (orb <= aspect.orb) {
+          aspects.push({
+            planet1: planets[i].planet,
+            planet2: planets[j].planet,
+            type: aspect.name,
+            orb: Math.round(orb * 10) / 10,
+          });
+          break;
+        }
+      }
+    }
+  }
+  
+  return aspects;
 }
 
 function getUpcomingCosmicEvents(): CosmicEvent[] {
@@ -287,12 +354,43 @@ const ZODIAC_SYMBOLS: Record<string, string> = {
 const PLANET_SYMBOLS: Record<string, string> = {
   "Sun": "☉",
   "Moon": "☽",
-  "Rising": "Asc",
+  "Ascendant": "Asc",
+  "Descendant": "Dsc",
+  "Midheaven": "MC",
+  "Imum Coeli": "IC",
+  "Vertex": "Vx",
   "Mercury": "☿",
   "Venus": "♀",
   "Mars": "♂",
   "Jupiter": "♃",
-  "Saturn": "♄"
+  "Saturn": "♄",
+  "Uranus": "♅",
+  "Neptune": "♆",
+  "Pluto": "♇"
+};
+
+const ASPECT_SYMBOLS: Record<string, string> = {
+  "conjunction": "☌",
+  "opposition": "☍",
+  "trine": "△",
+  "square": "□",
+  "sextile": "⚹"
+};
+
+const ASPECT_COLORS: Record<string, string> = {
+  "conjunction": "#f97316",
+  "opposition": "#ef4444",
+  "trine": "#22c55e",
+  "square": "#dc2626",
+  "sextile": "#3b82f6"
+};
+
+const ASPECT_DESCRIPTIONS: Record<string, string> = {
+  "conjunction": "Planets blend their energies intensely",
+  "opposition": "Creates tension that seeks balance",
+  "trine": "Harmonious flow of energy",
+  "square": "Dynamic tension driving growth",
+  "sextile": "Opportunities for creative expression"
 };
 
 const ZODIAC_COLORS: Record<string, string> = {
@@ -786,11 +884,16 @@ ${voiceRules}`;
                   </div>
                 </div>
                 
-                <div className="text-xs text-muted-foreground">
-                  {zodiacSystem === "tropical" 
-                    ? "Western/Tropical: Based on seasons and the vernal equinox"
-                    : "Vedic/Sidereal: Based on fixed star positions (Lahiri Ayanamsa)"
-                  }
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>
+                    {zodiacSystem === "tropical" 
+                      ? "Western/Tropical: Based on seasons and the vernal equinox"
+                      : "Vedic/Sidereal: Based on fixed star positions (Lahiri Ayanamsa)"
+                    }
+                  </p>
+                  <p className="text-muted-foreground/70 italic">
+                    Note: Placements are illustrative estimates. For precise calculations, consult a professional astrologer.
+                  </p>
                 </div>
                 
                 {birthChart.placements && birthChart.placements.length > 0 && (
@@ -798,19 +901,79 @@ ${voiceRules}`;
                 )}
                 
                 {birthChart.placements && birthChart.placements.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    {birthChart.placements.map((placement) => (
-                      <div 
-                        key={placement.planet} 
-                        className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
-                      >
-                        <span className="text-sm font-medium">{placement.planet}</span>
-                        <Badge variant="secondary" className="text-xs">
-                          {placement.sign} {placement.degree}
-                        </Badge>
+                  <Tabs defaultValue="placements" className="w-full">
+                    <TabsList className="w-full mb-3">
+                      <TabsTrigger value="placements" className="flex-1" data-testid="tab-placements">
+                        Placements
+                      </TabsTrigger>
+                      <TabsTrigger value="aspects" className="flex-1" data-testid="tab-aspects">
+                        Aspects
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="placements">
+                      <div className="grid grid-cols-2 gap-2">
+                        {birthChart.placements.map((placement) => (
+                          <div 
+                            key={placement.planet} 
+                            className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+                          >
+                            <span className="text-sm font-medium flex items-center gap-1">
+                              <span className="opacity-60">{PLANET_SYMBOLS[placement.planet] || ""}</span>
+                              {placement.planet}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">
+                              {ZODIAC_SYMBOLS[placement.sign] || ""} {placement.sign} {placement.degree}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="aspects">
+                      {(() => {
+                        const aspects = calculateAspects(birthChart.placements || []);
+                        if (aspects.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              No major aspects found
+                            </p>
+                          );
+                        }
+                        return (
+                          <div className="space-y-2">
+                            {aspects.map((aspect, idx) => (
+                              <div 
+                                key={idx}
+                                className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+                              >
+                                <span className="text-sm">
+                                  {aspect.planet1}
+                                  <span 
+                                    className="mx-2 text-lg"
+                                    style={{ color: ASPECT_COLORS[aspect.type] }}
+                                  >
+                                    {ASPECT_SYMBOLS[aspect.type]}
+                                  </span>
+                                  {aspect.planet2}
+                                </span>
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs capitalize"
+                                  style={{ borderColor: ASPECT_COLORS[aspect.type], color: ASPECT_COLORS[aspect.type] }}
+                                >
+                                  {aspect.type} ({aspect.orb})
+                                </Badge>
+                              </div>
+                            ))}
+                            <p className="text-xs text-muted-foreground text-center pt-2">
+                              Orbs indicate how exact the aspect is (lower = stronger)
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </TabsContent>
+                  </Tabs>
                 ) : (
                   <div className="flex items-center gap-3">
                     <Badge variant="secondary" className="text-sm">
