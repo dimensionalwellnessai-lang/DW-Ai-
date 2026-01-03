@@ -1,0 +1,154 @@
+Got you. Here are step-by-step, do-this-next instructions to add the safety + privacy + crisis guardrails into your app in a way that’s clean and calm (and won’t mess up your vibe).
+
+I’ll write this so you can follow it even on your phone.
+
+⸻
+
+Step-by-step: Add Safety + Privacy + Crisis Guardrails
+
+STEP 1 — Add a small “Info / Privacy” link on the home or chat screen
+
+Goal: A visible place where users can see what the app is (and what it isn’t).
+
+Do this:
+	1.	In Replit, open your project
+	2.	Find the file that renders the main screen (home/chat page)
+	3.	Add a tiny link/button that says:
+	•	“Info” or “About” or “Privacy”
+	4.	When clicked, it opens a small modal (popup)
+
+Paste this text into the modal:
+	•	Disclaimer
+This app is not therapy or medical advice. It’s a wellness support tool for reflection, clarity, and everyday decisions.
+	•	Privacy
+This is an early beta. Please avoid sharing sensitive personal or medical information.
+
+✅ Result: You’ve covered your baseline protection without being scary.
+
+⸻
+
+STEP 2 — Update the FIRST AI message (first-time experience)
+
+Goal: Make the AI feel supportive, not authoritative.
+
+Do this:
+	1.	Find where your AI “welcome” message is set (usually a default message in the assistant/chat file)
+	2.	Replace it with this:
+
+Paste this exact message:
+
+I’m here to support you — not to tell you what to do.
+We can take this at your pace. Choose one:
+	1.	Make a simple plan for today
+	2.	Talk it out
+	3.	Guided breathing for calm
+
+✅ Result: Clear, calm, and users know what to do first (fixes the “Mostly” feedback).
+
+⸻
+
+STEP 3 — Add a “Crisis Guardrail” to the chat logic
+
+Goal: If someone mentions self-harm or danger, the app responds responsibly.
+
+Do this:
+	1.	Find the code that handles sending user messages to the AI (the “send message” handler)
+	2.	Before sending to the AI, check the user text for crisis phrases
+	3.	If triggered, do not call the AI — show the crisis support message instead.
+
+Crisis trigger words to check for:
+	•	“suicide”
+	•	“kill myself”
+	•	“end my life”
+	•	“self harm”
+	•	“hurt myself”
+	•	“I don’t want to live”
+	•	“I’m going to do it”
+	•	“I’m in danger”
+
+Crisis response to display:
+
+I’m really glad you reached out. I can’t help with emergencies, but you deserve real support right now.
+If you’re in the U.S., call or text 988. If you’re in immediate danger, call 911.
+If you’re outside the U.S., tell me your country and I’ll help find the right number.
+
+✅ Result: You reduce risk massively.
+
+⸻
+
+STEP 4 — Add a “Report a Problem” link
+
+Goal: Give users a safe way to report bugs or concerns.
+
+Do this:
+	1.	In the same “Info” modal or settings page, add:
+	•	“Report an issue”
+	2.	Link it to:
+	•	your Typeform feedback form or
+	•	a simple email address you control
+
+Text:
+
+Found something confusing or broken? Report it here.
+
+✅ Result: You get feedback without chaos.
+
+⸻
+
+STEP 5 — Add a Not Found (404) fallback screen
+
+Goal: No blank 404 pages ever again.
+
+Do this:
+	1.	In your router file, add a catch-all route:
+	•	* route → NotFound component
+	2.	Make that NotFound screen calm and helpful:
+
+Not Found Screen copy:
+
+That page isn’t ready yet.
+Let’s get you back on track.
+
+Buttons:
+	•	Go Home
+	•	Back to Assistant
+
+✅ Result: Even broken links don’t break user trust.
+
+⸻
+
+STEP 6 — Add a version label (tiny but powerful)
+
+Goal: When someone reports an issue, you know what build they used.
+
+Do this:
+	1.	Add text to footer or Info modal:
+	•	Beta v0.1.0
+
+✅ Result: Better debugging, better product discipline.
+
+⸻
+
+Your “Done Today” checklist
+
+If you do ONLY these today, you’re safe:
+
+✅ Info/Privacy modal
+✅ First AI message improved
+✅ Crisis guardrail
+✅ NotFound fallback
+✅ Version label
+
+⸻
+
+If you want, I can make this EVEN easier
+
+If you tell me what your app is built with (just pick one):
+	•	React (Vite)
+	•	Next.js
+	•	Remix
+	•	Other
+
+…I’ll give you exact code snippets and exact file names to paste into Replit so you don’t have to hunt around.
+
+But even without that, the steps above are the correct blueprint.

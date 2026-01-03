@@ -6,6 +6,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { ImportDialog } from "@/components/import-dialog";
+import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
+import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { 
   getGuestData, 
   initGuestData, 
@@ -20,6 +23,7 @@ import {
   getMealPrepPreferences,
   getWorkoutPreferences,
   getImportedDocuments,
+  saveChatFeedback,
   type GuestConversation,
   type ChatMessage,
 } from "@/lib/guest-storage";
@@ -109,6 +113,8 @@ export function AIWorkspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
+  const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
+  const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
 
   const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
   const { events: scheduleEvents } = useScheduleEvents();
@@ -203,11 +209,43 @@ export function AIWorkspace() {
     if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
+    
+    const crisisAnalysis = analyzeCrisisRisk(userMessage);
+    if (crisisAnalysis.isPotentialCrisis) {
+      setPendingCrisisMessage(userMessage);
+      setCrisisDialogOpen(true);
+      return;
+    }
+    
     addMessageToConversation("user", userMessage);
     setConversationVersion(v => v + 1);
     setInput("");
     setIsTyping(true);
     chatMutation.mutate(userMessage);
+  };
+
+  const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
+    const messageToSend = pendingCrisisMessage;
+    setInput("");
+    setPendingCrisisMessage("");
+    
+    if (sendToAI && messageToSend) {
+      addMessageToConversation("user", messageToSend);
+      setConversationVersion(v => v + 1);
+      setIsTyping(true);
+      chatMutation.mutate(messageToSend);
+    } else if (responseMessage) {
+      if (messageToSend) {
+        addMessageToConversation("user", messageToSend);
+        setConversationVersion(v => v + 1);
+      }
+      addMessageToConversation("assistant", responseMessage);
+      setConversationVersion(v => v + 1);
+    }
+  };
+
+  const handleFeedback = (messageId: string, type: "positive" | "negative", comment?: string) => {
+    saveChatFeedback(messageId, type, "main", comment);
   };
 
   const handleFirstTimeAction = (action: string) => {
@@ -444,17 +482,25 @@ export function AIWorkspace() {
                     key={index}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
-                      data-testid={`message-${index}`}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-line">
-                        {message.content}
-                      </p>
+                    <div className={`max-w-[80%] ${message.role === "assistant" ? "space-y-0" : ""}`}>
+                      <div
+                        className={`px-4 py-3 rounded-2xl ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        }`}
+                        data-testid={`message-${index}`}
+                      >
+                        <p className="text-sm leading-relaxed whitespace-pre-line">
+                          {message.content}
+                        </p>
+                      </div>
+                      {message.role === "assistant" && index > 0 && (
+                        <ChatFeedbackBar 
+                          messageId={`msg-${index}`} 
+                          onFeedback={handleFeedback} 
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -562,6 +608,16 @@ export function AIWorkspace() {
           setShowOnboarding(false);
         }}
         onComplete={() => setShowOnboarding(false)}
+      />
+
+      <CrisisSupportDialog
+        open={crisisDialogOpen}
+        onClose={() => {
+          setCrisisDialogOpen(false);
+          setPendingCrisisMessage("");
+        }}
+        onResume={handleCrisisResume}
+        userMessage={pendingCrisisMessage}
       />
     </div>
   );

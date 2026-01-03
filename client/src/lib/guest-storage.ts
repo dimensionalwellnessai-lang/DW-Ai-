@@ -257,6 +257,15 @@ export interface ImportedDocument {
   updatedAt: number;
 }
 
+export interface ChatFeedback {
+  id: string;
+  messageId: string;
+  type: "positive" | "negative";
+  comment?: string;
+  context: "main" | "talk-it-out";
+  createdAt: number;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -278,6 +287,7 @@ export interface GuestData {
   scheduleEvents?: ScheduleEvent[];
   systemPreferences?: SystemPreferences;
   importedDocuments?: ImportedDocument[];
+  chatFeedback?: ChatFeedback[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -1220,4 +1230,32 @@ export function getLifeSystemContext(): Record<string, unknown> {
     dimensionAssessments: data.dimensionAssessments,
     savedRoutines: data.savedRoutines,
   };
+}
+
+export function saveChatFeedback(
+  messageId: string, 
+  type: "positive" | "negative", 
+  context: "main" | "talk-it-out",
+  comment?: string
+): ChatFeedback {
+  const data = getGuestData() || initGuestData();
+  if (!data.chatFeedback) data.chatFeedback = [];
+  
+  const feedback: ChatFeedback = {
+    id: generateId(),
+    messageId,
+    type,
+    comment,
+    context,
+    createdAt: Date.now(),
+  };
+  
+  data.chatFeedback.push(feedback);
+  saveGuestData(data);
+  return feedback;
+}
+
+export function getChatFeedback(): ChatFeedback[] {
+  const data = getGuestData();
+  return data?.chatFeedback || [];
 }

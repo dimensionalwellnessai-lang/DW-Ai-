@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
+import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { analyzeCrisisRisk } from "@/lib/crisis-detection";
+import { saveChatFeedback } from "@/lib/guest-storage";
 import { ArrowLeft, Send, Loader2, Sparkles, Heart } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -43,6 +47,8 @@ export function TalkItOutPage() {
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
+  const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,10 +84,39 @@ export function TalkItOutPage() {
     if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
+    
+    const crisisAnalysis = analyzeCrisisRisk(userMessage);
+    if (crisisAnalysis.isPotentialCrisis) {
+      setPendingCrisisMessage(userMessage);
+      setCrisisDialogOpen(true);
+      return;
+    }
+    
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setInput("");
     setIsTyping(true);
     chatMutation.mutate(userMessage);
+  };
+
+  const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
+    const messageToSend = pendingCrisisMessage;
+    setInput("");
+    setPendingCrisisMessage("");
+    
+    if (sendToAI && messageToSend) {
+      setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
+      setIsTyping(true);
+      chatMutation.mutate(messageToSend);
+    } else if (responseMessage) {
+      if (messageToSend) {
+        setMessages((prev) => [...prev, { role: "user", content: messageToSend }]);
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content: responseMessage }]);
+    }
+  };
+
+  const handleFeedback = (messageId: string, type: "positive" | "negative", comment?: string) => {
+    saveChatFeedback(messageId, type, "talk-it-out", comment);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -117,15 +152,23 @@ export function TalkItOutPage() {
               key={index}
               className={`flex animate-fade-in-up ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[85%] ${
-                  message.role === "user"
-                    ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl"
-                    : "bg-card px-5 py-4 rounded-3xl border"
-                }`}
-                data-testid={`message-talk-${index}`}
-              >
-                <p className="font-body whitespace-pre-line leading-relaxed">{message.content}</p>
+              <div className={`max-w-[85%] ${message.role === "assistant" ? "space-y-0" : ""}`}>
+                <div
+                  className={`${
+                    message.role === "user"
+                      ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl"
+                      : "bg-card px-5 py-4 rounded-3xl border"
+                  }`}
+                  data-testid={`message-talk-${index}`}
+                >
+                  <p className="font-body whitespace-pre-line leading-relaxed">{message.content}</p>
+                </div>
+                {message.role === "assistant" && index > 0 && (
+                  <ChatFeedbackBar 
+                    messageId={`talk-${index}`} 
+                    onFeedback={handleFeedback} 
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -168,6 +211,16 @@ export function TalkItOutPage() {
           </div>
         </div>
       </div>
+
+      <CrisisSupportDialog
+        open={crisisDialogOpen}
+        onClose={() => {
+          setCrisisDialogOpen(false);
+          setPendingCrisisMessage("");
+        }}
+        onResume={handleCrisisResume}
+        userMessage={pendingCrisisMessage}
+      />
     </div>
   );
 }
