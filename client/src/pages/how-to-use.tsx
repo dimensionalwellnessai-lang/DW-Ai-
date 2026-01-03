@@ -156,6 +156,10 @@ function getOverallCompletion(): number {
   return Math.round((completed / questionnaireSections.length) * 100);
 }
 
+function getTotalSetupTime(): number {
+  return GUIDE_SECTIONS.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
+}
+
 const QUICK_TIPS = [
   { icon: Clock, text: "Take your time - there's no rush here" },
   { icon: Upload, text: "Upload documents to let AI help organize your schedule" },
@@ -166,6 +170,7 @@ const QUICK_TIPS = [
 export default function HowToUsePage() {
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();
+  const totalTime = getTotalSetupTime();
   
   return (
     <div className="min-h-screen bg-background">
@@ -189,9 +194,13 @@ export default function HowToUsePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Progress value={overallCompletion} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                Complete the questionnaires below to personalize your experience
-              </p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Complete the questionnaires below to personalize your experience</span>
+                <Badge variant="outline" className="gap-1">
+                  <Clock className="w-3 h-3" />
+                  ~{totalTime} min total
+                </Badge>
+              </div>
             </CardContent>
           </Card>
 

@@ -26,6 +26,7 @@ import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
 import ResetPasswordPage from "@/pages/reset-password";
 import HowToUsePage from "@/pages/how-to-use";
+import JournalPage from "@/pages/journal";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +51,7 @@ function Router() {
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
       {isRouteEnabled("/finances") && <Route path="/finances" component={FinancesPage} />}
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
+      {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {isRouteEnabled("/how-to-use") && <Route path="/how-to-use" component={HowToUsePage} />}
       

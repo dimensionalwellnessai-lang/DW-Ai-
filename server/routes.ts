@@ -1,9 +1,11 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { sendPasswordResetEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions } from "./openai";
 import {
@@ -161,8 +163,15 @@ export async function registerRoutes(
   
   const sessionSecret = process.env.SESSION_SECRET || "wellness-dev-only-secret-key-not-for-production";
   
+  const PgSession = connectPgSimple(session);
+  
   app.use(
     session({
+      store: new PgSession({
+        pool: pool,
+        tableName: "session",
+        createTableIfMissing: true,
+      }),
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,

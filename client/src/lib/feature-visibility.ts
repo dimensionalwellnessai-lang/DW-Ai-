@@ -25,6 +25,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "challenges", name: "Challenges", path: "/challenges", visibility: "more", description: "Growth challenges", enabled: true },
   { id: "routines", name: "Routines", path: "/routines", visibility: "more", description: "Saved routines", enabled: true },
   { id: "finances", name: "Finances", path: "/finances", visibility: "more", description: "Budget", enabled: true },
+  { id: "journal", name: "Journal", path: "/journal", visibility: "more", description: "Daily reflections", enabled: true },
   { id: "feedback", name: "Feedback", path: "/feedback", visibility: "more", description: "Share thoughts", enabled: true },
   { id: "settings", name: "Settings", path: "/settings", visibility: "more", description: "Preferences", enabled: true },
   { id: "how-to-use", name: "How to Use", path: "/how-to-use", visibility: "primary", description: "App guide", enabled: true },

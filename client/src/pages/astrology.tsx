@@ -265,6 +265,95 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function calculateLifePathNumber(birthDate: string): number {
+  if (!birthDate) return 0;
+  
+  const digits = birthDate.replace(/-/g, "").split("").map(Number);
+  
+  let sum = digits.reduce((a, b) => a + b, 0);
+  
+  while (sum > 9 && sum !== 11 && sum !== 22 && sum !== 33) {
+    sum = sum.toString().split("").map(Number).reduce((a, b) => a + b, 0);
+  }
+  
+  return sum;
+}
+
+const LIFE_PATH_MEANINGS: Record<number, { title: string; description: string; traits: string[]; challenges: string[] }> = {
+  1: {
+    title: "The Leader",
+    description: "You are here to pioneer new paths and develop independence. Your journey is about learning to trust yourself and lead with confidence.",
+    traits: ["Independent", "Original", "Ambitious", "Innovative", "Self-reliant"],
+    challenges: ["Stubbornness", "Isolation", "Ego dominance"]
+  },
+  2: {
+    title: "The Peacemaker",
+    description: "Your purpose involves partnership, diplomacy, and bringing harmony. You're here to cooperate, support, and balance.",
+    traits: ["Diplomatic", "Sensitive", "Cooperative", "Patient", "Intuitive"],
+    challenges: ["Over-sensitivity", "Codependency", "Indecision"]
+  },
+  3: {
+    title: "The Creative",
+    description: "Self-expression and creativity are your gifts. You're here to inspire others through your joy, artistry, and communication.",
+    traits: ["Creative", "Expressive", "Optimistic", "Social", "Inspiring"],
+    challenges: ["Scattered energy", "Self-doubt", "Superficiality"]
+  },
+  4: {
+    title: "The Builder",
+    description: "You create lasting foundations through discipline and hard work. Your path involves structure, order, and practical achievement.",
+    traits: ["Reliable", "Practical", "Disciplined", "Organized", "Patient"],
+    challenges: ["Rigidity", "Workaholic tendencies", "Resistance to change"]
+  },
+  5: {
+    title: "The Adventurer",
+    description: "Freedom and change are your essence. You're here to experience life fully and help others embrace transformation.",
+    traits: ["Adventurous", "Versatile", "Curious", "Adaptable", "Magnetic"],
+    challenges: ["Restlessness", "Overindulgence", "Lack of commitment"]
+  },
+  6: {
+    title: "The Nurturer",
+    description: "Love, responsibility, and service define your path. You're here to create harmony in home and community.",
+    traits: ["Nurturing", "Responsible", "Loving", "Protective", "Harmonious"],
+    challenges: ["Over-giving", "Perfectionism", "Self-sacrifice"]
+  },
+  7: {
+    title: "The Seeker",
+    description: "Wisdom and spiritual understanding are your calling. You're here to discover deeper truths and share your insights.",
+    traits: ["Analytical", "Intuitive", "Wise", "Introspective", "Spiritual"],
+    challenges: ["Isolation", "Skepticism", "Disconnection from emotions"]
+  },
+  8: {
+    title: "The Powerhouse",
+    description: "Material and spiritual abundance are your domain. You're here to master the balance of power, money, and purpose.",
+    traits: ["Ambitious", "Authoritative", "Successful", "Resilient", "Visionary"],
+    challenges: ["Materialism", "Control issues", "Workaholism"]
+  },
+  9: {
+    title: "The Humanitarian",
+    description: "Compassion and universal love guide your purpose. You're here to serve humanity and let go of the personal.",
+    traits: ["Compassionate", "Wise", "Generous", "Idealistic", "Creative"],
+    challenges: ["Detachment", "Martyrdom", "Unrealistic expectations"]
+  },
+  11: {
+    title: "The Intuitive (Master Number)",
+    description: "You carry heightened intuition and spiritual awareness. Your path involves inspiring others through your vision.",
+    traits: ["Visionary", "Intuitive", "Inspiring", "Sensitive", "Illuminating"],
+    challenges: ["Nervous energy", "Self-doubt", "Overwhelm"]
+  },
+  22: {
+    title: "The Master Builder (Master Number)",
+    description: "You have the potential to turn dreams into reality on a grand scale. Your purpose involves building something lasting for humanity.",
+    traits: ["Visionary", "Practical", "Powerful", "Disciplined", "Transformative"],
+    challenges: ["Overwhelm", "Self-imposed pressure", "Unrealistic goals"]
+  },
+  33: {
+    title: "The Master Teacher (Master Number)",
+    description: "You embody unconditional love and spiritual teaching. Your path involves uplifting humanity through compassion.",
+    traits: ["Loving", "Inspiring", "Healing", "Selfless", "Spiritual"],
+    challenges: ["Self-neglect", "Martyrdom", "Extreme sensitivity"]
+  },
+};
+
 const HOROSCOPE_READINGS: Record<string, { daily: string; weekly: string; monthly: string }> = {
   Aries: {
     daily: "Your fiery energy is well-aspected today. Channel your natural leadership into a creative project or meaningful conversation.",
@@ -511,6 +600,63 @@ export default function AstrologyPage() {
                     {birthChart.birthPlace}
                   </p>
                 )}
+              </CardContent>
+            </Card>
+          )}
+          
+          {birthChart?.birthDate && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Numerology
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(() => {
+                  const lifePathNumber = calculateLifePathNumber(birthChart.birthDate);
+                  const meaning = LIFE_PATH_MEANINGS[lifePathNumber];
+                  
+                  if (!meaning) return null;
+                  
+                  return (
+                    <>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-2xl font-display font-bold text-primary">{lifePathNumber}</span>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">{meaning.title}</h3>
+                          <p className="text-sm text-muted-foreground">Life Path Number</p>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm leading-relaxed">{meaning.description}</p>
+                      
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Core Traits</p>
+                        <div className="flex flex-wrap gap-1">
+                          {meaning.traits.map(trait => (
+                            <Badge key={trait} variant="secondary" className="text-xs">
+                              {trait}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Growth Areas</p>
+                        <div className="flex flex-wrap gap-1">
+                          {meaning.challenges.map(challenge => (
+                            <Badge key={challenge} variant="outline" className="text-xs">
+                              {challenge}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </CardContent>
             </Card>
           )}
