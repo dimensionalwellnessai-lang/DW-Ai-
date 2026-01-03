@@ -25,7 +25,11 @@ import {
   ExternalLink,
   Calendar,
   Zap,
-  Filter
+  Filter,
+  Plus,
+  Link2,
+  FileText,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
@@ -39,10 +43,14 @@ import {
   getSpiritualProfile,
   getDimensionSignals,
   saveCalendarEvent,
+  getUserResourcesByType,
+  deleteUserResource,
   type BodyProfile,
   type WorkoutPreferences,
-  type SavedRoutine
+  type SavedRoutine,
+  type UserResource
 } from "@/lib/guest-storage";
+import { ResourceFormDialog } from "@/components/resource-form-dialog";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -194,6 +202,8 @@ export default function WorkoutPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
   const [pendingWorkout, setPendingWorkout] = useState<WorkoutData | null>(null);
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("workout"));
   
   const { toast } = useToast();
   const spiritualProfile = getSpiritualProfile();
@@ -658,6 +668,109 @@ export default function WorkoutPage() {
             ))}
           </div>
         </div>
+
+        {/* Your Resources Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Your Resources
+            </h2>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setResourceDialogOpen(true)}
+              data-testid="button-add-resource"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add
+            </Button>
+          </div>
+          
+          {userResources.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-center text-muted-foreground">
+                <p className="text-sm">Save your own workout plans, links, or documents here.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {userResources.map((resource) => (
+                <Card key={resource.id} className="hover-elevate" data-testid={`card-resource-${resource.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                          {resource.variant === "link" ? (
+                            <Link2 className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium truncate">{resource.title}</h4>
+                          {resource.description && (
+                            <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
+                          )}
+                          {resource.variant === "link" && resource.url && (
+                            <a 
+                              href={resource.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline truncate block"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {resource.url}
+                            </a>
+                          )}
+                          {resource.variant === "file" && resource.fileData && (
+                            <p className="text-xs text-muted-foreground">
+                              {resource.fileData.fileName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {resource.variant === "link" && resource.url && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => window.open(resource.url, "_blank")}
+                            data-testid={`button-open-resource-${resource.id}`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            deleteUserResource(resource.id);
+                            setUserResources(getUserResourcesByType("workout"));
+                            toast({ title: "Resource removed" });
+                          }}
+                          data-testid={`button-delete-resource-${resource.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ResourceFormDialog
+          open={resourceDialogOpen}
+          onOpenChange={setResourceDialogOpen}
+          resourceType="workout"
+          onSaved={() => {
+            setUserResources(getUserResourcesByType("workout"));
+            toast({ title: "Resource saved" });
+          }}
+        />
 
         <BodyScanDialog
           open={bodyScanOpen}

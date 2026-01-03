@@ -29,7 +29,12 @@ import {
   Users,
   Heart,
   Calendar,
-  Zap
+  Zap,
+  Plus,
+  Link2,
+  FileText,
+  Trash2,
+  ExternalLink
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,10 +46,14 @@ import {
   saveRoutine,
   getDimensionSignals,
   saveCalendarEvent,
+  getUserResourcesByType,
+  deleteUserResource,
   type MealPrepPreferences,
   type DietaryStyle,
-  type SavedRoutine
+  type SavedRoutine,
+  type UserResource
 } from "@/lib/guest-storage";
+import { ResourceFormDialog } from "@/components/resource-form-dialog";
 
 type EffortLevel = "any" | "minimal" | "moderate" | "involved";
 type MealType = "any" | "breakfast" | "lunch" | "dinner";
@@ -561,6 +570,8 @@ export default function MealPrepPage() {
   const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
   const [confirmMealOpen, setConfirmMealOpen] = useState(false);
   const [pendingMeal, setPendingMeal] = useState<{ name: string; mealType: string; prepTime: number } | null>(null);
+  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("meal_plan"));
   
   const { toast } = useToast();
   const bodyProfile = getBodyProfile();
@@ -1208,6 +1219,109 @@ export default function MealPrepPage() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Your Resources Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Your Resources
+            </h2>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setResourceDialogOpen(true)}
+              data-testid="button-add-meal-resource"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add
+            </Button>
+          </div>
+          
+          {userResources.length === 0 ? (
+            <Card>
+              <CardContent className="p-4 text-center text-muted-foreground">
+                <p className="text-sm">Save your own recipes, meal plans, or links here.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {userResources.map((resource) => (
+                <Card key={resource.id} className="hover-elevate" data-testid={`card-meal-resource-${resource.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                          {resource.variant === "link" ? (
+                            <Link2 className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-medium truncate">{resource.title}</h4>
+                          {resource.description && (
+                            <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
+                          )}
+                          {resource.variant === "link" && resource.url && (
+                            <a 
+                              href={resource.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline truncate block"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {resource.url}
+                            </a>
+                          )}
+                          {resource.variant === "file" && resource.fileData && (
+                            <p className="text-xs text-muted-foreground">
+                              {resource.fileData.fileName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {resource.variant === "link" && resource.url && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => window.open(resource.url, "_blank")}
+                            data-testid={`button-open-meal-resource-${resource.id}`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            deleteUserResource(resource.id);
+                            setUserResources(getUserResourcesByType("meal_plan"));
+                            toast({ title: "Resource removed" });
+                          }}
+                          data-testid={`button-delete-meal-resource-${resource.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ResourceFormDialog
+          open={resourceDialogOpen}
+          onOpenChange={setResourceDialogOpen}
+          resourceType="meal_plan"
+          onSaved={() => {
+            setUserResources(getUserResourcesByType("meal_plan"));
+            toast({ title: "Resource saved" });
+          }}
+        />
 
         <MealPreferencesDialog
           open={prefsOpen}
