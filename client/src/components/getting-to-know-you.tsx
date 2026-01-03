@@ -8,6 +8,7 @@ import {
   saveGettingToKnowYou,
   shouldShowOnboardingDialog,
   dismissOnboardingDialog,
+  markOnboardingComplete,
   type GettingToKnowYou 
 } from "@/lib/guest-storage";
 
@@ -69,6 +70,7 @@ export function GettingToKnowYouDialog({ open, onClose, onComplete }: GettingToK
   const handleComplete = () => {
     const completed = { ...answers, completedAt: Date.now() };
     saveGettingToKnowYou(completed);
+    markOnboardingComplete();
     onComplete();
   };
 

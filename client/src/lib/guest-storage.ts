@@ -565,15 +565,25 @@ export function hasCompletedOnboarding(): boolean {
 }
 
 const ONBOARDING_COOLDOWN_KEY = "dwai_onboarding_dismissed";
+const ONBOARDING_COMPLETED_KEY = "dwai_onboarding_completed";
 const ONBOARDING_COOLDOWN_DAYS = 7;
 
 export function dismissOnboardingDialog(): void {
   localStorage.setItem(ONBOARDING_COOLDOWN_KEY, Date.now().toString());
 }
 
+export function markOnboardingComplete(): void {
+  localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
+}
+
 export function shouldShowOnboardingDialog(): boolean {
+  if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) === "true") {
+    return false;
+  }
+  
   const gtky = getGettingToKnowYou();
   if (gtky?.completedAt != null) {
+    localStorage.setItem(ONBOARDING_COMPLETED_KEY, "true");
     return false;
   }
   
