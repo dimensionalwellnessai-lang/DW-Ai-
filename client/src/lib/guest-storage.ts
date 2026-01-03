@@ -266,6 +266,14 @@ export interface ChatFeedback {
   createdAt: number;
 }
 
+export type SoftOnboardingMood = "calm" | "heavy" | "scattered" | "motivated" | "unsure";
+
+export interface SoftOnboarding {
+  completed: boolean;
+  mood: SoftOnboardingMood | null;
+  completedAt: number | null;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -288,6 +296,7 @@ export interface GuestData {
   systemPreferences?: SystemPreferences;
   importedDocuments?: ImportedDocument[];
   chatFeedback?: ChatFeedback[];
+  softOnboarding?: SoftOnboarding;
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -605,6 +614,49 @@ export function shouldShowOnboardingDialog(): boolean {
   const dismissedTime = parseInt(dismissedAt, 10);
   const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
   return daysSinceDismissed >= ONBOARDING_COOLDOWN_DAYS;
+}
+
+const SOFT_ONBOARDING_KEY = "dwai_soft_onboarding_completed";
+
+export function getSoftOnboarding(): SoftOnboarding | null {
+  const data = getGuestData();
+  return data?.softOnboarding || null;
+}
+
+export function saveSoftOnboarding(mood: SoftOnboardingMood): void {
+  const data = getGuestData() || initGuestData();
+  data.softOnboarding = {
+    completed: true,
+    mood,
+    completedAt: Date.now(),
+  };
+  data.mood = mood;
+  saveGuestData(data);
+  localStorage.setItem(SOFT_ONBOARDING_KEY, "true");
+}
+
+export function skipSoftOnboarding(): void {
+  localStorage.setItem(SOFT_ONBOARDING_KEY, "skipped");
+}
+
+export function shouldShowSoftOnboarding(): boolean {
+  const flag = localStorage.getItem(SOFT_ONBOARDING_KEY);
+  if (flag === "true" || flag === "skipped") {
+    return false;
+  }
+  const data = getGuestData();
+  if (data?.softOnboarding?.completed) {
+    return false;
+  }
+  if (data?.conversations && data.conversations.length > 0) {
+    return false;
+  }
+  return true;
+}
+
+export function getSoftOnboardingMood(): SoftOnboardingMood | null {
+  const data = getGuestData();
+  return data?.softOnboarding?.mood || null;
 }
 
 export function getBodyProfile(): BodyProfile | null {

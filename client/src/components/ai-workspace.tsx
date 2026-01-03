@@ -19,6 +19,10 @@ import {
   getConversationsByCategory,
   shouldShowOnboardingDialog,
   dismissOnboardingDialog,
+  shouldShowSoftOnboarding,
+  saveSoftOnboarding,
+  skipSoftOnboarding,
+  getSoftOnboardingMood,
   getLifeSystemContext,
   getMealPrepPreferences,
   getWorkoutPreferences,
@@ -26,10 +30,12 @@ import {
   saveChatFeedback,
   type GuestConversation,
   type ChatMessage,
+  type SoftOnboardingMood,
 } from "@/lib/guest-storage";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
+import { SoftOnboardingModal, type OnboardingMood } from "@/components/soft-onboarding-modal";
 import { Link, useLocation } from "wouter";
 import {
   Send,
@@ -109,6 +115,7 @@ export function AIWorkspace() {
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
@@ -120,12 +127,16 @@ export function AIWorkspace() {
   const { events: scheduleEvents } = useScheduleEvents();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (shouldShowOnboardingDialog()) {
-        setShowOnboarding(true);
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
+    if (shouldShowSoftOnboarding()) {
+      setShowSoftOnboarding(true);
+    } else {
+      const timer = setTimeout(() => {
+        if (shouldShowOnboardingDialog()) {
+          setShowOnboarding(true);
+        }
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
@@ -222,6 +233,14 @@ export function AIWorkspace() {
     setInput("");
     setIsTyping(true);
     chatMutation.mutate(userMessage);
+  };
+
+  const handleSendMessage = (message: string) => {
+    if (isTyping) return;
+    addMessageToConversation("user", message);
+    setConversationVersion(v => v + 1);
+    setIsTyping(true);
+    chatMutation.mutate(message);
   };
 
   const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
@@ -598,6 +617,26 @@ export function AIWorkspace() {
             title: "Session complete",
             description: `${duration} minutes of ${pattern} breathing.`,
           });
+        }}
+      />
+
+      <SoftOnboardingModal
+        open={showSoftOnboarding}
+        onComplete={(mood: OnboardingMood) => {
+          saveSoftOnboarding(mood as SoftOnboardingMood);
+          setShowSoftOnboarding(false);
+          const moodMessages: Record<OnboardingMood, string> = {
+            calm: "I'm feeling calm today.",
+            heavy: "I'm feeling heavy today and could use some support.",
+            scattered: "My mind feels scattered right now.",
+            motivated: "I'm feeling motivated and ready to move forward.",
+            unsure: "I'm not quite sure how I'm feeling.",
+          };
+          handleSendMessage(moodMessages[mood]);
+        }}
+        onSkip={() => {
+          skipSoftOnboarding();
+          setShowSoftOnboarding(false);
         }}
       />
 
