@@ -47,6 +47,11 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript, using Vite as the build tool
 - **Routing**: Wouter for lightweight client-side routing
+  - **Central Route Registry**: `client/src/lib/routes.ts` defines all routes with enabled flags
+  - **Feature Visibility**: `client/src/lib/feature-visibility.ts` controls menu visibility
+  - Routes must be enabled in both files to be accessible and visible
+  - Disabled routes show a friendly "Not Found" page
+- **Version**: App version stored in `client/src/lib/routes.ts` as `APP_VERSION` (currently 0.1.0-beta)
 - **State Management**: TanStack React Query for server state management and caching
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens for theming (light/dark mode support)
@@ -107,6 +112,12 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 ### Authentication
 - Session-based authentication with express-session
 - SESSION_SECRET environment variable recommended for production
+- **Password Reset**: Email-based reset via Resend integration (tokens expire in 1 hour)
+- **Remember Me**: Login sessions extend from 7 days to 30 days when checked
+
+### Email
+- **Provider**: Resend via Replit connector
+- **Default Sender**: DW.ai <no-reply@resend.dev> (temporary for beta)
 
 ### Third-Party Libraries
 - **UI**: Full shadcn/ui component suite with Radix UI primitives
