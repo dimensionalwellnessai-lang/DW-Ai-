@@ -127,8 +127,8 @@ export function TalkItOutPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b">
+    <div className="flex flex-col h-screen bg-background gradient-bg-animated">
+      <header className="flex items-center justify-between gap-4 p-4 border-b dark:border-white/5 glass-subtle">
         <div className="flex items-center gap-3">
           <Link href="/">
             <Button variant="ghost" size="icon" data-testid="button-back">
@@ -156,8 +156,8 @@ export function TalkItOutPage() {
                 <div
                   className={`${
                     message.role === "user"
-                      ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl"
-                      : "bg-card px-5 py-4 rounded-3xl border"
+                      ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl glow-purple-sm"
+                      : "bg-card glass px-5 py-4 rounded-3xl border dark:border-white/10"
                   }`}
                   data-testid={`message-talk-${index}`}
                 >
@@ -186,7 +186,7 @@ export function TalkItOutPage() {
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t bg-background/80 backdrop-blur-sm">
+      <div className="p-4 border-t dark:border-white/5 bg-background/80 glass-subtle backdrop-blur-sm">
         <div className="max-w-2xl mx-auto">
           <div className="flex gap-2 items-end">
             <Textarea

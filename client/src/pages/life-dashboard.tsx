@@ -239,7 +239,7 @@ export default function LifeDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background gradient-bg">
       <PageHeader title="Life Dashboard" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">

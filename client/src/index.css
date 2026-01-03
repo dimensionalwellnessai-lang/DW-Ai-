@@ -91,54 +91,56 @@
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-  --background: 222 47% 11%;
+  --button-outline: rgba(255,255,255, .12);
+  --badge-outline: rgba(255,255,255, .08);
+  --opaque-button-border-intensity: 12;
+  --elevate-1: rgba(255,255,255, .05);
+  --elevate-2: rgba(255,255,255, .12);
+  --background: 240 20% 6%;
   --foreground: 210 40% 98%;
-  --border: 217 33% 22%;
-  --card: 217 33% 14%;
+  --border: 260 20% 18%;
+  --card: 250 25% 12%;
   --card-foreground: 210 40% 98%;
-  --card-border: 217 33% 18%;
-  --sidebar: 222 47% 8%;
+  --card-border: 260 25% 20%;
+  --sidebar: 250 30% 8%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 217 33% 15%;
-  --sidebar-primary: 199 89% 48%;
+  --sidebar-border: 260 25% 15%;
+  --sidebar-primary: 262 83% 58%;
   --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 217 33% 20%;
+  --sidebar-accent: 260 30% 18%;
   --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 199 89% 48%;
-  --popover: 217 33% 14%;
+  --sidebar-ring: 262 83% 58%;
+  --popover: 250 30% 10%;
   --popover-foreground: 210 40% 98%;
-  --popover-border: 217 33% 22%;
-  --primary: 217 91% 60%;
+  --popover-border: 260 25% 18%;
+  --primary: 262 83% 58%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 217 33% 22%;
+  --secondary: 260 25% 18%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 217 33% 18%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 199 89% 48%;
+  --muted: 260 20% 15%;
+  --muted-foreground: 250 15% 65%;
+  --accent: 217 91% 60%;
   --accent-foreground: 210 40% 98%;
   --destructive: 0 63% 55%;
   --destructive-foreground: 0 0% 98%;
-  --input: 217 33% 30%;
-  --ring: 217 91% 60%;
-  --chart-1: 217 91% 65%;
-  --chart-2: 199 89% 55%;
-  --chart-3: 262 83% 65%;
+  --input: 260 25% 22%;
+  --ring: 262 83% 58%;
+  --chart-1: 262 83% 65%;
+  --chart-2: 217 91% 60%;
+  --chart-3: 280 80% 60%;
   --chart-4: 173 58% 50%;
-  --chart-5: 12 76% 65%;
-  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.1);
-  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.12);
-  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.15);
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.18);
-  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.22);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.25);
-  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.3);
-  --shadow-glow: 0 0 30px -5px rgba(99,102,241,0.25);
+  --chart-5: 330 80% 60%;
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.15);
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.2);
+  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.25);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.45);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 40px -5px rgba(139,92,246,0.35);
+  --glow-purple: 0 0 20px rgba(139,92,246,0.4);
+  --glow-blue: 0 0 20px rgba(59,130,246,0.4);
 
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -539,4 +541,145 @@
   .animate-slide-in-left {
     animation: slide-in-left 0.3s ease-out forwards;
   }
+  
+  /* Glassmorphism utilities - no-op in light mode, styled in dark mode */
+  .glass {
+    /* Light mode: transparent/no-op */
+  }
+  
+  .glass-strong {
+    /* Light mode: transparent/no-op */
+  }
+  
+  .glass-subtle {
+    /* Light mode: transparent/no-op */
+  }
+  
+  .gradient-bg {
+    /* Light mode: uses bg-background */
+  }
+  
+  .gradient-bg-animated {
+    /* Light mode: uses bg-background */
+  }
+  
+  .glow-purple {
+    /* Light mode: no glow */
+  }
+  
+  .glow-purple-sm {
+    /* Light mode: no glow */
+  }
+  
+  .glow-blue {
+    /* Light mode: no glow */
+  }
+  
+  .text-gradient {
+    /* Light mode: uses default text color */
+  }
+  
+  .pill {
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .gradient-border {
+    position: relative;
+  }
+}
+
+/* Dark mode glassmorphism and gradient utilities */
+.dark .glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(30, 20, 50, 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .glass-strong {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  background: rgba(30, 20, 50, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .glass-subtle {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(30, 20, 50, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .gradient-bg {
+  background: linear-gradient(135deg, 
+    hsl(240 20% 6%) 0%, 
+    hsl(260 25% 10%) 50%,
+    hsl(240 20% 8%) 100%
+  ) !important;
+}
+
+.dark .gradient-bg-animated {
+  background: linear-gradient(135deg, 
+    hsl(240 20% 6%) 0%, 
+    hsl(260 25% 10%) 25%,
+    hsl(250 30% 12%) 50%,
+    hsl(260 25% 10%) 75%,
+    hsl(240 20% 6%) 100%
+  ) !important;
+  background-size: 200% 200%;
+  animation: living-gradient 20s ease-in-out infinite;
+}
+
+.dark .glow-purple {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3),
+              0 0 40px rgba(139, 92, 246, 0.15);
+}
+
+.dark .glow-purple-sm {
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
+}
+
+.dark .glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3),
+              0 0 40px rgba(59, 130, 246, 0.15);
+}
+
+.dark .text-gradient {
+  background: linear-gradient(135deg, 
+    hsl(262 83% 65%) 0%,
+    hsl(217 91% 65%) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .pill {
+  background: linear-gradient(135deg, 
+    rgba(139, 92, 246, 0.15) 0%,
+    rgba(59, 130, 246, 0.15) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.dark .gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, 
+    rgba(139, 92, 246, 0.5) 0%,
+    rgba(59, 130, 246, 0.3) 100%
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }

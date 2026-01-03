@@ -15,8 +15,8 @@ import {
 
 export function SettingsPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
+    <div className="min-h-screen bg-background gradient-bg">
+      <header className="sticky top-0 z-50 border-b dark:border-white/5 bg-background/95 glass-subtle backdrop-blur">
         <div className="flex items-center justify-between gap-4 p-4 max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/">

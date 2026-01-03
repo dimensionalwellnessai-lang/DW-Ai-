@@ -286,8 +286,8 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background">
-      <header className="flex items-center justify-between p-3 border-b">
+    <div className="flex flex-col h-screen w-full bg-background gradient-bg-animated">
+      <header className="flex items-center justify-between p-3 border-b dark:border-white/5 glass-subtle">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -308,7 +308,7 @@ export function AIWorkspace() {
             </Button>
           )}
         </div>
-        <span className="font-display font-semibold text-lg" data-testid="text-brand">DW.ai</span>
+        <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">DW.ai</span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -460,7 +460,7 @@ export function AIWorkspace() {
                       <button
                         key={action.id}
                         onClick={() => handleFirstTimeAction(action.action)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover-elevate text-center"
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
                         data-testid={`button-action-${action.id}`}
                       >
                         <Icon className="h-5 w-5 text-muted-foreground" />
@@ -486,8 +486,8 @@ export function AIWorkspace() {
                       <div
                         className={`px-4 py-3 rounded-2xl ${
                           message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                            ? "bg-primary text-primary-foreground glow-purple-sm"
+                            : "bg-muted glass"
                         }`}
                         data-testid={`message-${index}`}
                       >
@@ -518,7 +518,7 @@ export function AIWorkspace() {
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t dark:border-white/5 glass-subtle">
           <div className="max-w-2xl mx-auto space-y-2">
             {attachedFile && (
               <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">

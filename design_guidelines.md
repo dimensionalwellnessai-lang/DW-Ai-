@@ -1,207 +1,251 @@
-# Wellness Lifestyle AI - Design Guidelines
+# DW.ai - Design Guidelines
 
 ## Design Approach
 
-**Reference-Based Approach**: Drawing inspiration from Calm (emotional resonance), Notion (flexible personalization), and Linear (clean modern aesthetics) to create a supportive, growth-oriented wellness experience.
+**Reference-Based**: Drawing from Calm (emotional resonance), Linear (clean modern aesthetics), and Apple's dark mode mastery to create a premium, futuristic wellness experience that feels sophisticated yet calming.
 
 **Core Principles**:
-- Supportive, not clinical: Design should feel like a trusted companion
-- Clarity over complexity: Information hierarchy must reduce cognitive load
-- Breathable layouts: Generous spacing creates calm, focused experiences
-- Progressive disclosure: Reveal complexity gradually through onboarding
+- Depth through gradients: Layered dark gradients create dimensional space
+- Glass architecture: Frosted blur effects establish hierarchy without harsh borders
+- Luminous interactions: Subtle glows guide attention naturally
+- Floating design language: Pill shapes and elevated cards create weightless sophistication
+
+---
+
+## Visual Treatment
+
+**Background Strategy**:
+- Primary: Dark gradient backgrounds (slate-900 to slate-950 with purple/blue undertones)
+- Layered gradients: Radial gradients with purple-900/20% and blue-900/15% overlays
+- Section variations: Shift gradient angles (bg-gradient-to-br, bg-gradient-to-tr) between sections
+
+**Glassmorphism System**:
+- Card base: backdrop-blur-xl with bg-white/5 or bg-slate-800/30
+- Border treatment: border border-white/10 for subtle definition
+- Shadow depth: shadow-2xl with colored shadow-purple-500/10
+- Elevation levels: Increase blur and opacity for higher hierarchy elements
+
+**Glow Effects**:
+- Accent glows: Purple/blue box-shadows on interactive elements (shadow-purple-500/50)
+- Hover states: Intensified glow (shadow-purple-400/70)
+- Active elements: ring-2 ring-purple-500/50 with glow
+
+**Accent Colors** (Purple/Blue Spectrum):
+- Primary purple: #8B5CF6 (purple-500)
+- Accent blue: #3B82F6 (blue-500)
+- Glow purple: #A78BFA (purple-400)
+- Deep purple: #6D28D9 (purple-700)
 
 ---
 
 ## Typography System
 
-**Primary Font**: Inter (via Google Fonts) - clean, highly readable
-**Secondary Font**: Crimson Pro (for emotional, inspirational content)
+**Fonts**: Inter (primary), Crimson Pro (emotional content) via Google Fonts
 
-**Hierarchy**:
-- Hero/Page Titles: text-5xl to text-6xl, font-bold
-- Section Headers: text-3xl to text-4xl, font-semibold
-- Card Titles: text-xl to text-2xl, font-medium
-- Body Text: text-base to text-lg, font-normal, leading-relaxed
-- Micro Copy (labels, captions): text-sm, font-medium
-- AI Prompts: text-lg, Crimson Pro, leading-loose for warmth
+**Hierarchy for Dark Theme**:
+- Hero Headlines: text-5xl to text-6xl, font-bold, text-white
+- Section Headers: text-3xl to text-4xl, font-bold, text-slate-100
+- Card Titles: text-xl to text-2xl, font-semibold, text-white
+- Body Text: text-base to text-lg, font-normal, leading-relaxed, text-slate-300
+- Micro Copy: text-sm, font-medium, text-slate-400
+- AI Prompts: text-lg, Crimson Pro, text-purple-200, leading-loose
+
+**Contrast Enhancement**: All text on glass cards uses increased font-weight for readability against blur
 
 ---
 
-## Layout & Spacing System
+## Layout & Spacing
 
-**Core Spacing Units**: Tailwind units of 4, 6, 8, 12, 16, 20, 24
-- Component padding: p-6 (mobile), p-8 (desktop)
-- Section spacing: py-12 (mobile), py-20 (desktop)
+**Core Units**: Tailwind 4, 6, 8, 12, 16, 20, 24
+
+**Spacing Application**:
+- Glass card padding: p-6 (mobile), p-8 (desktop)
+- Section spacing: py-16 (mobile), py-24 (desktop)
 - Card gaps: gap-6 (mobile), gap-8 (desktop)
-- Inline spacing: space-x-4, space-y-4
+- Floating elements: Margin separation of 12-16 units
 
-**Container Strategy**:
-- App Shell: max-w-7xl mx-auto for main content
-- Reading Content: max-w-2xl for long-form text
-- Dashboard Cards: max-w-6xl with grid layouts
-- Full-width sections for onboarding flows
-
-**Grid Patterns**:
-- Onboarding: Single column, centered, max-w-2xl
-- Dashboard: grid-cols-1 md:grid-cols-2 lg:grid-cols-3
-- Habit Tracker: grid-cols-2 md:grid-cols-4 lg:grid-cols-7 (weekly view)
-- Goal Cards: grid-cols-1 md:grid-cols-2
+**Containers**:
+- App shell: max-w-7xl mx-auto
+- Reading content: max-w-2xl
+- Dashboard grids: max-w-6xl
+- Onboarding: max-w-2xl centered
 
 ---
 
 ## Component Library
 
 ### Navigation
-**Top Navigation Bar**: Sticky header with logo, main nav links, user avatar
-- Height: h-16, px-6, shadow-sm
-- Mobile: Hamburger menu revealing side drawer
+**Top Bar**: Glassmorphic sticky header
+- Glass card: backdrop-blur-md, bg-slate-900/80, border-b border-white/10
+- Height: h-16, px-6
+- Mobile: Hamburger revealing frosted side drawer
 
-**Side Navigation (Dashboard)**: Optional left sidebar for power users
-- Width: w-64, fixed positioning
-- Collapsible on mobile: transform to bottom navigation
+### Pill-Shaped Elements
+**Floating Pills**: Status indicators, tags, category labels
+- Base: rounded-full, px-4, py-2, bg-gradient-to-r from-purple-500/20 to-blue-500/20
+- Border: border border-purple-400/30
+- Glow: shadow-lg shadow-purple-500/20
+- Text: text-sm, font-semibold, text-purple-200
 
-### Onboarding Flow
-**Multi-Step Cards**: Centered, elevated cards with progress indicator
-- Card: max-w-2xl, p-8, rounded-2xl, shadow-lg
-- Progress: Stepped dots at top, current step highlighted
-- Question Layout: Vertical stack with generous spacing (space-y-8)
-- Input Groups: Checkbox/radio grids with 2-3 columns on desktop
+### Cards (Glassmorphism)
+**Primary Glass Cards**:
+- Base: rounded-2xl, backdrop-blur-xl, bg-slate-800/40
+- Border: border border-white/10
+- Shadow: shadow-2xl shadow-purple-900/20
+- Padding: p-6 to p-8
+- Hover: Glow intensifies (shadow-purple-500/40)
 
-**Selection Cards**: Interactive choice cards (responsibilities, wellness priorities)
-- Hover state: Subtle elevation increase
-- Selected state: Border emphasis, no background change yet
-- Icon + Title + Optional Description
-- Grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3, gap-4
+**Metric Cards** (Dashboard):
+- Square aspect ratio: aspect-square
+- Icon top-left with purple/blue gradient
+- Large numeric display: text-4xl, font-bold, text-white
+- Label below: text-sm, text-slate-400
 
-### Dashboard Components
-**Metric Cards**: Showcase daily energy, mood, progress
-- Design: Compact square/rectangle cards
-- Layout: Icon top-left, metric center, label below
-- Size: aspect-square for visual consistency
+### Buttons
+**Primary**: 
+- Pill shape: rounded-full, px-8, py-3
+- Gradient: bg-gradient-to-r from-purple-600 to-blue-600
+- Glow: shadow-lg shadow-purple-500/50
+- Text: font-semibold, text-white
+- Hover: Increased brightness and glow
 
-**Habit Tracker**: Weekly grid visualization
-- Days as columns, habits as rows
-- Checkboxes or dots showing completion
-- Visual: Soft rounded squares for each day cell
+**Secondary**:
+- Glass style: backdrop-blur-md, bg-white/10
+- Border: border-2 border-purple-400/50
+- Glow: shadow-md shadow-purple-500/30
 
-**AI Chat Interface**: Conversational daily check-ins
-- Chat bubbles: max-w-lg, rounded-2xl, p-4
-- AI messages: Align left with subtle avatar
-- User responses: Align right
-- Input: Fixed bottom with rounded-full input field
+**Buttons on Images**: backdrop-blur-lg, bg-slate-900/60 for hero sections
 
-**Schedule Builder**: Time-block visual representation
-- Vertical timeline showing day segments
-- Draggable blocks (indicate via cursor pointer)
-- Time labels on left, activity blocks on right
+### Forms
+**Text Inputs**: 
+- Glass: rounded-xl, backdrop-blur-md, bg-slate-800/50
+- Border: border border-slate-700/50
+- Focus: ring-2 ring-purple-500/50, glow effect
+- Text: text-slate-100, placeholder-slate-500
 
-### Forms & Inputs
-**Text Inputs**: rounded-lg, px-4, py-3, text-base
-**Textareas**: rounded-lg, min-h-32, p-4
-**Select Dropdowns**: rounded-lg with chevron icon
-**Buttons**: 
-- Primary: px-6, py-3, rounded-full, font-semibold
-- Secondary: px-6, py-3, rounded-full, font-medium (outline variant)
-- Icon Buttons: p-3, rounded-full, size-12
+**Checkboxes/Radios**: Custom glass styling with purple glow when selected
 
-**Checkbox/Radio Groups**: 
-- Large tap targets: min-h-12, px-4
-- Custom styled with checkmark icons
-- Label: text-base, font-medium
+### AI Chat Interface
+**Chat Bubbles**:
+- AI messages: Glass card aligned left, max-w-lg, purple accent glow
+- User messages: Glass card aligned right, blue accent glow
+- Input: Fixed bottom, frosted glass bar with rounded-full input
 
 ### Data Visualization
-**Progress Bars**: Soft rounded-full, h-2 or h-3
-**Goal Progress Circles**: Circular progress indicators for visual appeal
-**Mood/Energy Graphs**: Line or area charts, simplified style
+**Progress Bars**: 
+- Track: rounded-full, h-3, bg-slate-800/50
+- Fill: bg-gradient-to-r from-purple-500 to-blue-500, glow shadow
+**Circular Progress**: Glowing arc with gradient stroke
 
 ---
 
 ## Page Layouts
 
-### Landing/Marketing Page
-**Hero Section**: Full viewport height (min-h-screen)
-- Large hero image (supportive, aspirational wellness imagery)
-- Centered headline + subheadline
-- Primary CTA button (rounded-full, large size)
-- Trust indicator below CTA ("Join 10,000+ people building better lives")
+### Landing Page
 
-**Features Section**: 3-column grid showcasing core capabilities
-- Icon + Title + Description cards
-- Icons from Heroicons (outline style)
+**Hero Section** (min-h-screen):
+- Large aspirational wellness image: Person in serene tech-enhanced environment, purple/blue lighting, modern minimalist space
+- Gradient overlay: bg-gradient-to-b from-slate-950/80 to-slate-950/95
+- Centered headline (text-6xl, font-bold, text-white) with purple gradient text effect
+- Subheadline: text-xl, text-slate-300
+- Primary CTA: Glowing purple gradient button with backdrop-blur
+- Floating pills below CTA: "AI-Powered", "Science-Backed", "Personalized" in pill shapes
 
-**How It Works**: Stepped process (3-4 steps)
-- Horizontal flow on desktop, vertical on mobile
-- Visual connectors between steps
+**Features Section** (py-24):
+- 3-column grid: grid-cols-1 md:grid-cols-3, gap-8
+- Glass cards with icons (Heroicons, w-12 h-12, purple gradient)
+- Icon + bold title + description layout
+- Cards have subtle purple glow on hover
 
-**Testimonials**: 2-column grid with user photos and quotes
-- Card style with subtle elevation
+**How It Works** (py-24):
+- Horizontal stepped flow on desktop (4 steps)
+- Glass cards connected by glowing gradient lines
+- Each step: Large number, icon, title, description
+- Purple-to-blue gradient progression through steps
 
-**CTA Section**: Full-width, centered
-- Compelling headline + button + secondary text
+**Testimonials** (py-20):
+- 2-column grid
+- Glass cards with user circular avatars (w-16 h-16, border-2 border-purple-500/30, glow)
+- Quote text in Crimson Pro, text-slate-300
+- Floating pill with user role below
 
-**Footer**: Multi-column layout
-- Column 1: Logo + tagline
-- Column 2-3: Navigation links
-- Column 4: Newsletter signup
-- Bottom: Social icons + legal links
+**CTA Section** (py-24):
+- Full-width centered, gradient background shift
+- Large headline, glowing primary button
+- Secondary supporting text
+
+**Footer** (py-16):
+- Multi-column glass container
+- Logo + tagline | Navigation | Newsletter signup
+- Social icons with purple glow on hover
+- Bottom legal links in pill shapes
 
 ### Onboarding Flow
-**Progressive Steps**: One question per screen
-- Centered card layout
-- Clear progress indication
-- Back/Next navigation at bottom
-- AI personality present via welcoming microcopy
+**Progressive Cards**:
+- Centered glass card: max-w-2xl, p-8, backdrop-blur-xl
+- Progress: Floating pill indicators at top showing step count
+- Question layouts: Vertical stack, space-y-8
+- Selection cards: Grid of smaller glass cards with glow on selection
+- Bottom nav: Glass bar with Back/Next buttons
 
-### Dashboard (Post-Onboarding)
-**Layout**: Sidebar (optional) + Main content area
-- Top: Welcome message with personalized system name
-- Grid of metric cards (energy, mood, clarity)
-- Today's Schedule block
-- Active Goals section (cards)
-- Quick Actions: Add habit, Log mood, AI check-in button
+### Dashboard
+**Header**:
+- Welcome message: text-3xl, font-bold, text-white
+- Personalized AI name in purple gradient text
+- Date/time with floating pill aesthetic
 
-### Goal/Habit Detail View
-**Header**: Goal title, progress indicator, edit button
-- Metrics: Days tracked, current streak, overall progress
-**Main Content**: Notes, milestones, related habits
-**Activity Log**: Timeline of check-ins and updates
+**Metric Grid** (grid-cols-1 md:grid-cols-3, gap-6):
+- Glass cards showing Energy, Mood, Clarity scores
+- Large icons with gradient, numeric displays with glow
+
+**Today's Schedule** (max-w-4xl):
+- Glass container with time-block visualization
+- Vertical timeline, activity blocks as floating glass pills
+- Purple/blue gradient indicators for different activity types
+
+**Active Goals** (grid-cols-1 md:grid-cols-2, gap-6):
+- Glass cards with circular progress indicators
+- Goal title, current streak, next milestone
+- Subtle glow on cards nearing completion
+
+**Quick Actions**: Floating pill buttons at bottom-right for common tasks
 
 ---
 
 ## Icons
-**Library**: Heroicons (via CDN)
-**Usage**:
-- Navigation: Solid variant
-- Cards/Features: Outline variant
-- Size: w-5 h-5 (inline), w-8 h-8 (feature cards), w-12 h-12 (hero icons)
 
----
-
-## Accessibility
-- All interactive elements minimum tap target: 44x44px
-- Form inputs with visible labels
-- Focus states: ring-2 offset-2
-- Semantic HTML throughout (nav, main, section, article)
-- ARIA labels for icon-only buttons
+**Library**: Heroicons (outline for features, solid for navigation)
+**Sizes**: w-5 h-5 (inline), w-8 h-8 (cards), w-12 h-12 (hero features)
+**Treatment**: Purple-to-blue gradient fills on feature icons
 
 ---
 
 ## Images
-**Required Images**:
-1. **Hero Image**: Aspirational wellness scene (person meditating at sunrise, organized workspace with plants, balanced lifestyle visualization) - full-width background with content overlay
-2. **Feature Cards**: Icon-based (no images)
-3. **Testimonial Photos**: Circular avatar images (rounded-full, w-12 h-12 or w-16 h-16)
-4. **Dashboard**: Optional decorative illustrations for empty states
 
-**Image Treatment**: 
-- Hero backgrounds: Subtle overlay for text readability
-- Buttons on images: Backdrop blur (backdrop-blur-sm) for glass morphism effect
+**Hero Image**: Full-width background featuring modern wellness space - minimalist room with purple/blue ambient lighting, person meditating with subtle tech elements (wearable, ambient display), plants, natural textures. Image should evoke premium futuristic calm.
+
+**Testimonial Avatars**: Circular photos (w-16 h-16) with glowing purple border treatment
+
+**Dashboard Empty States**: Minimal abstract gradient illustrations maintaining dark theme
+
+---
+
+## Accessibility
+
+- Interactive elements: min 44x44px tap targets
+- Focus states: ring-2 ring-purple-500/70 with glow
+- Text contrast: WCAG AA compliant (slate-100/200 on dark backgrounds)
+- Semantic HTML maintained
+- ARIA labels for icon buttons
+- Glass cards maintain sufficient text contrast via backdrop-blur strength
 
 ---
 
 ## Animations
-**Minimal, Purposeful Use**:
-- Page transitions: Fade in (200ms)
-- Card hover: Slight scale (transform scale-105, transition-transform)
-- Progress indicators: Smooth fill animations
-- NO scroll-triggered animations, parallax, or excessive motion
+
+**Purposeful Only**:
+- Card hover: Glow intensification (300ms)
+- Page transitions: Fade in (250ms)
+- Glass card entrance: Subtle scale-in with blur increase
+- NO scroll animations or excessive motion
+- Progress fills: Smooth gradient animations
