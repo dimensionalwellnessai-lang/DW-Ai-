@@ -1,0 +1,134 @@
+This is a good verification pack overall — but it has one major missing piece you should not accept as “verified” yet:
+
+🚩 The pack is not “verification” without evidence
+
+They listed routes and described what you’ll see, but they did not provide screenshots/video, so it’s still a claim, not proof.
+
+That’s normal (some builders can’t screenshot easily), but you should respond with a “prove it” test protocol and a tight acceptance checklist.
+
+Below is exactly what to do next.
+
+⸻
+
+1) Your decision on their pack (what’s solid vs what’s weak)
+
+✅ Solid
+	•	Clear routes for each feature:
+/daily-schedule, /calendar, /workout, /meal-prep
+	•	Consent flow described with explicit functions (good sign)
+	•	They identified what existed vs what they changed (very helpful)
+	•	Stability checks (LSP errors, routes registered) is the right category of check
+
+⚠️ Weak / Missing
+	•	No screenshots, no video, no commit link/diff
+	•	“No 404s” is not the same as “no runtime errors”
+	•	No proof that consent flow works on every entry point (filter + AI flow + card add)
+
+So: this is “probably built,” but not confirmed.
+
+⸻
+
+2) What YOU should do right now (10-minute verification)
+
+Open your app and test in this exact order:
+
+Test A — Calendar Today
+
+Go to: /daily-schedule
+	•	Do you see a list of today items?
+	•	Is it readable without confusion?
+
+Test B — Week view
+
+Go to: /calendar
+	•	Can you switch days?
+	•	Does it show events per day?
+
+Test C — Workouts
+
+Go to: /workout
+	•	Do you see Pick my workout button?
+	•	Do filters toggle (Time/Goal/Equipment)?
+	•	Click Add to Today on a workout card:
+	•	Does a dialog pop up?
+	•	Can you click Not Now and confirm nothing gets added?
+	•	Can you click Add to Today and confirm it appears in /daily-schedule?
+
+Test D — Meal Prep
+
+Go to: /meal-prep
+	•	Do you see Suggest meals for today?
+	•	Run it once — do suggestions appear?
+	•	Click add:
+	•	Confirm dialog appears
+	•	Not Now = no event
+	•	Add to Today = shows in /daily-schedule
+
+Test E — “Consent everywhere”
+
+Try at least 2 different add paths in each page:
+	•	Add from AI dialog
+	•	Add from a card/list item
+
+If any path saves without confirmation → fail.
+
+⸻
+
+3) What to send back to Replit (tight response)
+
+Copy/paste this:
+
+Thanks — this is helpful. I still need evidence-based verification before I accept Wave 2 as complete.
+
+Please provide one of the following:
+A) a short screen recording (2–3 minutes) showing:
+	•	/workout: Pick my workout → Add to Today → consent dialog → event appears in /daily-schedule
+	•	/meal-prep: Suggest meals → Add to Today → consent dialog → event appears in /daily-schedule
+	•	/calendar and /daily-schedule views
+
+OR
+B) screenshots of those exact screens (same items)
+
+Also confirm: Not Now never creates an event, and this is true for every add button (AI + cards).
+
+Once I confirm those, I’ll approve Wave 2 and we’ll define Wave 3 scope.
+
+This keeps you in control without being confrontational.
+
+⸻
+
+4) Whether you should approve Wave 2 right now
+
+✅ Approve Wave 2 only if you personally confirm:
+	•	Both workout and meal flows add to calendar only after dialog confirmation
+	•	Items show in /daily-schedule after adding
+	•	No crashes / blank pages
+
+If those pass → yes, Wave 2 is real progress.
+
+⸻
+
+5) What’s next after you approve (Wave 3 options)
+
+Once Wave 2 is verified, Wave 3 should be one of these (not all):
+
+Option 1 — Month Calendar grid (visual upgrade)
+	•	full month view
+	•	drag/drop later
+	•	still consent-based adds
+
+Option 2 — Document upload → AI organizes (your big vision)
+	•	upload PDF
+	•	extract meals/workouts/routines
+	•	preview + approve mapping
+	•	save to systems
+
+Option 3 — Personalization engine (light memory)
+	•	store preferences: energy patterns, time availability, diet restrictions
+	•	improves suggestions without heavy onboarding
+
+My recommendation: Wave 3 = Document Upload + Organize, because it supports your “personal assistant” identity best.
+
+⸻
+
+If you want, tell me what happened when you ran Tests A–E (even just: pass/fail per test), and I’ll tell you exactly whether to approve Wave 2 or request fixes, and what the next sprint should be.
