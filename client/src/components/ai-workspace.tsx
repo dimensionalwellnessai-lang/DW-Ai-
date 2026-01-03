@@ -327,7 +327,7 @@ export function AIWorkspace() {
             </Button>
           )}
         </div>
-        <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">DW.ai</span>
+        <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">FTS</span>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImage from "@assets/generated_images/minimalist_eye_wellness_logo.png";
+import { BRAND } from "@/config/brand";
 
-const SPLASH_SHOWN_KEY = "dwai_splash_shown";
+const SPLASH_SHOWN_KEY = "fts_splash_shown";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -60,7 +61,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             />
             <motion.img
               src={logoImage}
-              alt="Dimensional Wellness AI"
+              alt={BRAND.appName}
               className="w-full h-full object-contain rounded-2xl"
               initial={{ scale: 0.8, opacity: 0.5 }}
               animate={{ 
@@ -80,7 +81,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            DW.ai
+            {BRAND.appName}
           </motion.h1>
 
           <motion.p
@@ -91,7 +92,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            Dimensional Wellness
+            {BRAND.descriptor}
           </motion.p>
 
           <motion.p
@@ -102,7 +103,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            Your life, your rhythm
+            {BRAND.tagline}
           </motion.p>
         </div>
       </motion.div>

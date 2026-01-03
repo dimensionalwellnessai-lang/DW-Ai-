@@ -74,7 +74,7 @@ export default function Welcome() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-display font-semibold mb-2">
-            Welcome to DW.ai
+            Welcome to Flip the Switch
           </h1>
           <p className="text-muted-foreground">
             Let's get you started
