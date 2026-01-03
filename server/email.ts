@@ -51,7 +51,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <noreply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: toEmail,
       subject: 'Reset Your DW.ai Password',
       html: `

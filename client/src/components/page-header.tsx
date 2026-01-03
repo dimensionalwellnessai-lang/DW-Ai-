@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
+import { APP_VERSION } from "@/lib/routes";
 import { 
   Sun, Clock, Sparkles, Heart, Dumbbell, Utensils, Wallet, History, 
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
@@ -131,6 +132,9 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
               Sign in
             </Button>
           </Link>
+        </div>
+        <div className="pt-4 text-center">
+          <p className="text-xs text-muted-foreground">v{APP_VERSION}</p>
         </div>
       </SwipeableDrawer>
     </>

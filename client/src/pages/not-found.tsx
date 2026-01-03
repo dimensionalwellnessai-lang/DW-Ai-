@@ -1,21 +1,57 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Home, Sparkles, ArrowLeft } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { APP_VERSION } from "@/lib/routes";
 
 export default function NotFound() {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
+  const [location] = useLocation();
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+  return (
+    <div className="min-h-screen bg-background flex flex-col font-body">
+      <header className="p-6 flex items-center justify-between">
+        <Link href="/">
+          <Button variant="ghost" data-testid="link-back-home">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </Link>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex-1 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="flex flex-col items-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Sparkles className="h-8 w-8 text-muted-foreground" />
+              </div>
+            </div>
+            <CardTitle className="text-xl">This page isn't here yet</CardTitle>
+            <CardDescription className="mt-2">
+              We couldn't find what you were looking for. That's okay — let's get you back on track.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Link href="/">
+              <Button className="w-full" data-testid="button-go-home">
+                <Home className="mr-2 h-4 w-4" />
+                Go to Home
+              </Button>
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              If you keep seeing this, try refreshing or heading back to the main page.
+            </p>
+          </CardContent>
+        </Card>
+      </main>
+
+      <footer className="p-4 text-center">
+        <p className="text-xs text-muted-foreground">
+          DW.ai v{APP_VERSION}
+        </p>
+      </footer>
     </div>
   );
 }
