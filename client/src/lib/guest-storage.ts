@@ -274,6 +274,28 @@ export interface ChatFeedback {
   createdAt: number;
 }
 
+export type UserResourceType = "workout" | "meal_plan";
+export type UserResourceVariant = "link" | "file";
+
+export interface UserResource {
+  id: string;
+  resourceType: UserResourceType;
+  variant: UserResourceVariant;
+  title: string;
+  description: string;
+  url?: string;
+  fileData?: {
+    fileName: string;
+    mimeType: string;
+    size: number;
+    dataUrl: string;
+  };
+  tags: string[];
+  calendarEventId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type SoftOnboardingMood = "calm" | "heavy" | "scattered" | "pushing" | "unsure";
 
 export interface SoftOnboarding {
@@ -305,6 +327,7 @@ export interface GuestData {
   importedDocuments?: ImportedDocument[];
   chatFeedback?: ChatFeedback[];
   softOnboarding?: SoftOnboarding;
+  userResources?: UserResource[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -1328,4 +1351,53 @@ export function saveChatFeedback(
 export function getChatFeedback(): ChatFeedback[] {
   const data = getGuestData();
   return data?.chatFeedback || [];
+}
+
+export function getUserResources(): UserResource[] {
+  const data = getGuestData();
+  return data?.userResources || [];
+}
+
+export function getUserResourcesByType(resourceType: UserResourceType): UserResource[] {
+  return getUserResources().filter(r => r.resourceType === resourceType);
+}
+
+export function saveUserResource(resource: Omit<UserResource, "id" | "createdAt" | "updatedAt">): UserResource {
+  const data = getGuestData() || initGuestData();
+  if (!data.userResources) data.userResources = [];
+  
+  const newResource: UserResource = {
+    ...resource,
+    id: generateId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  
+  data.userResources.unshift(newResource);
+  saveGuestData(data);
+  return newResource;
+}
+
+export function updateUserResource(resourceId: string, updates: Partial<UserResource>): UserResource | null {
+  const data = getGuestData();
+  if (!data?.userResources) return null;
+  
+  const index = data.userResources.findIndex(r => r.id === resourceId);
+  if (index < 0) return null;
+  
+  data.userResources[index] = { 
+    ...data.userResources[index], 
+    ...updates, 
+    updatedAt: Date.now() 
+  };
+  saveGuestData(data);
+  return data.userResources[index];
+}
+
+export function deleteUserResource(resourceId: string): void {
+  const data = getGuestData();
+  if (!data?.userResources) return;
+  
+  data.userResources = data.userResources.filter(r => r.id !== resourceId);
+  saveGuestData(data);
 }
