@@ -29,6 +29,8 @@ import {
   dailyScheduleEvents,
   userSystemPreferences,
   passwordResetTokens,
+  importedDocuments,
+  importedDocumentItems,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -89,6 +91,10 @@ import {
   type InsertUserSystemPreferences,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type ImportedDocument,
+  type InsertImportedDocument,
+  type ImportedDocumentItem,
+  type InsertImportedDocumentItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -230,6 +236,15 @@ export interface IStorage {
   createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(id: string): Promise<void>;
+
+  getImportedDocuments(userId: string): Promise<ImportedDocument[]>;
+  getImportedDocument(id: string): Promise<ImportedDocument | undefined>;
+  createImportedDocument(doc: InsertImportedDocument): Promise<ImportedDocument>;
+  updateImportedDocument(id: string, data: Partial<ImportedDocument>): Promise<ImportedDocument | undefined>;
+
+  getImportedDocumentItems(documentId: string): Promise<ImportedDocumentItem[]>;
+  createImportedDocumentItem(item: InsertImportedDocumentItem): Promise<ImportedDocumentItem>;
+  updateImportedDocumentItem(id: string, data: Partial<ImportedDocumentItem>): Promise<ImportedDocumentItem | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -820,6 +835,49 @@ export class DatabaseStorage implements IStorage {
     await db.update(passwordResetTokens)
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.id, id));
+  }
+
+  async getImportedDocuments(userId: string): Promise<ImportedDocument[]> {
+    return await db.select().from(importedDocuments)
+      .where(eq(importedDocuments.userId, userId))
+      .orderBy(desc(importedDocuments.createdAt));
+  }
+
+  async getImportedDocument(id: string): Promise<ImportedDocument | undefined> {
+    const [doc] = await db.select().from(importedDocuments)
+      .where(eq(importedDocuments.id, id));
+    return doc || undefined;
+  }
+
+  async createImportedDocument(doc: InsertImportedDocument): Promise<ImportedDocument> {
+    const [created] = await db.insert(importedDocuments).values(doc).returning();
+    return created;
+  }
+
+  async updateImportedDocument(id: string, data: Partial<ImportedDocument>): Promise<ImportedDocument | undefined> {
+    const [updated] = await db.update(importedDocuments)
+      .set(data)
+      .where(eq(importedDocuments.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getImportedDocumentItems(documentId: string): Promise<ImportedDocumentItem[]> {
+    return await db.select().from(importedDocumentItems)
+      .where(eq(importedDocumentItems.documentId, documentId));
+  }
+
+  async createImportedDocumentItem(item: InsertImportedDocumentItem): Promise<ImportedDocumentItem> {
+    const [created] = await db.insert(importedDocumentItems).values(item).returning();
+    return created;
+  }
+
+  async updateImportedDocumentItem(id: string, data: Partial<ImportedDocumentItem>): Promise<ImportedDocumentItem | undefined> {
+    const [updated] = await db.update(importedDocumentItems)
+      .set(data)
+      .where(eq(importedDocumentItems.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

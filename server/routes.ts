@@ -4,10 +4,12 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions } from "./openai";
+import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, type DocumentAnalysisResult } from "./document-parser";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -1606,6 +1608,259 @@ export async function registerRoutes(
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: "Failed to update system preferences" });
+    }
+  });
+
+  // Document Upload & Analysis - Wave 3
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  });
+
+  app.post("/api/documents/upload", requireAuth, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file provided" });
+      }
+
+      const { buffer, originalname, mimetype } = req.file;
+      
+      // Extract text from document
+      const extracted = await extractTextFromBuffer(buffer, mimetype, originalname);
+      
+      if (!extracted.text || extracted.text.trim().length < 10) {
+        return res.status(400).json({ error: "Could not extract meaningful text from this document" });
+      }
+
+      // Save the document record
+      const docRecord = await storage.createImportedDocument({
+        userId: req.session.userId!,
+        fileName: originalname,
+        fileType: mimetype,
+        rawText: extracted.text,
+        status: "pending",
+      });
+
+      res.json({ 
+        documentId: docRecord.id,
+        fileName: originalname,
+        textLength: extracted.text.length,
+        metadata: extracted.metadata,
+        message: "Document uploaded. Ready for analysis."
+      });
+    } catch (error) {
+      console.error("Document upload error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to process document" });
+    }
+  });
+
+  app.post("/api/documents/:id/analyze", requireAuth, async (req, res) => {
+    try {
+      const docId = req.params.id;
+      const doc = await storage.getImportedDocument(docId);
+      
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (!doc.rawText) {
+        return res.status(400).json({ error: "Document has no text content" });
+      }
+
+      // Generate analysis prompt and call AI
+      const analysisPrompt = generateDocumentAnalysisPrompt(doc.rawText);
+      
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI();
+      
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a document analysis AI that extracts structured data. Always respond with valid JSON only." },
+          { role: "user", content: analysisPrompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || "{}";
+      let analysisResult: DocumentAnalysisResult | null = null;
+      
+      try {
+        const parsed = JSON.parse(responseText);
+        analysisResult = validateAnalysisResult(parsed);
+      } catch {
+        console.error("Failed to parse AI response:", responseText);
+      }
+
+      if (!analysisResult) {
+        return res.status(500).json({ error: "Failed to analyze document structure" });
+      }
+
+      // Save analysis to document
+      await storage.updateImportedDocument(docId, {
+        analysisJson: analysisResult as unknown as Record<string, unknown>,
+        documentTitle: analysisResult.documentTitle,
+        summary: analysisResult.summary,
+        confidence: analysisResult.confidence,
+        status: "analyzed",
+      });
+
+      // Save individual items
+      for (const item of analysisResult.items) {
+        await storage.createImportedDocumentItem({
+          documentId: docId,
+          itemType: item.itemType,
+          title: item.title,
+          description: item.description,
+          details: item.details,
+          destinationSystem: item.destinationSystem,
+          confidence: item.confidence,
+          isSelected: item.isSelected,
+        });
+      }
+
+      res.json({
+        documentId: docId,
+        analysis: analysisResult,
+        message: "Document analyzed. Review the items before saving."
+      });
+    } catch (error) {
+      console.error("Document analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze document" });
+    }
+  });
+
+  app.get("/api/documents/:id", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getImportedDocument(req.params.id);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      const items = await storage.getImportedDocumentItems(req.params.id);
+      
+      res.json({
+        document: doc,
+        items,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load document" });
+    }
+  });
+
+  app.patch("/api/documents/:id/items", requireAuth, async (req, res) => {
+    try {
+      const { items } = req.body as { items: Array<{ id: string; title?: string; isSelected?: boolean; destinationSystem?: string }> };
+      
+      const doc = await storage.getImportedDocument(req.params.id);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      for (const item of items) {
+        await storage.updateImportedDocumentItem(item.id, {
+          title: item.title,
+          isSelected: item.isSelected,
+          destinationSystem: item.destinationSystem,
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update items" });
+    }
+  });
+
+  app.post("/api/documents/:id/commit", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getImportedDocument(req.params.id);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      const items = await storage.getImportedDocumentItems(req.params.id);
+      const selectedItems = items.filter(item => item.isSelected);
+      
+      const committed: Array<{ itemId: string; entityType: string; entityId: string }> = [];
+
+      for (const item of selectedItems) {
+        let entityId: string | undefined;
+        let entityType: string = item.destinationSystem || "";
+
+        // Create entities based on destination system
+        if (item.destinationSystem === "calendar") {
+          const details = item.details as { date?: string; startTime?: string; endTime?: string; isRecurring?: boolean };
+          const event = await storage.createCalendarEvent({
+            userId: req.session.userId!,
+            title: item.title,
+            description: item.description || "",
+            startTime: details.startTime || "09:00",
+            endTime: details.endTime || "10:00",
+            eventType: "imported",
+            isRecurring: details.isRecurring || false,
+          });
+          entityId = event.id;
+          entityType = "calendar";
+        } else if (item.destinationSystem === "routines") {
+          const details = item.details as { steps?: Array<{ title: string; instructions?: string; duration?: number }> };
+          const routine = await storage.createRoutine({
+            userId: req.session.userId!,
+            name: item.title,
+            dimensionTags: [],
+            steps: details.steps || [{ title: item.title, instructions: item.description || "" }],
+            totalDurationMinutes: 30,
+            scheduleOptions: {},
+            mode: "instructions",
+            isActive: true,
+          });
+          entityId = routine.id;
+          entityType = "routine";
+        }
+        // For meal and workout items, we store them as category entries
+        else if (item.destinationSystem === "nutrition" || item.destinationSystem === "workout") {
+          const entry = await storage.createCategoryEntry({
+            userId: req.session.userId!,
+            category: item.destinationSystem,
+            title: item.title,
+            content: item.description || "",
+            metadata: item.details as Record<string, unknown> | null,
+          });
+          entityId = entry.id;
+          entityType = item.destinationSystem;
+        }
+
+        if (entityId) {
+          await storage.updateImportedDocumentItem(item.id, {
+            linkedEntityId: entityId,
+            linkedEntityType: entityType,
+          });
+          committed.push({ itemId: item.id, entityType, entityId });
+        }
+      }
+
+      // Update document status
+      await storage.updateImportedDocument(req.params.id, {
+        status: "saved",
+      });
+
+      res.json({
+        success: true,
+        committed,
+        message: `Saved ${committed.length} items to your systems.`
+      });
+    } catch (error) {
+      console.error("Document commit error:", error);
+      res.status(500).json({ error: "Failed to save items" });
+    }
+  });
+
+  app.get("/api/documents", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getImportedDocuments(req.session.userId!);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load documents" });
     }
   });
 
