@@ -51,9 +51,9 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
       to: toEmail,
-      subject: 'Reset Your DW.ai Password',
+      subject: 'Reset Your Flip the Switch Password',
       html: `
         <!DOCTYPE html>
         <html>
@@ -63,8 +63,8 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">DW.ai</h1>
-            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Dimensional Wellness</p>
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">Flip the Switch</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">A Dimensional Wellness AI</p>
           </div>
           
           <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 20px;">
@@ -84,7 +84,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
           
           <div style="text-align: center; color: #888; font-size: 12px;">
             <p style="margin: 0;">
-              DW.ai - Your wellness companion
+              Flip the Switch - Your wellness companion
             </p>
           </div>
         </body>

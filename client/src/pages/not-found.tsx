@@ -49,7 +49,7 @@ export default function NotFound() {
 
       <footer className="p-4 text-center">
         <p className="text-xs text-muted-foreground">
-          DW.ai v{APP_VERSION}
+          FTS v{APP_VERSION}
         </p>
       </footer>
     </div>

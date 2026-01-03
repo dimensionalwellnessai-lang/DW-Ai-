@@ -199,7 +199,7 @@ export default function ResetPasswordPage() {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
-                <span className="font-display font-bold text-2xl tracking-tight">DW.ai</span>
+                <span className="font-display font-bold text-2xl tracking-tight">Flip the Switch</span>
               </div>
             </div>
             <CardTitle className="text-xl">Create New Password</CardTitle>

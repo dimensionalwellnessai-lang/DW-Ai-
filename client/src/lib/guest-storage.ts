@@ -1,5 +1,5 @@
-const GUEST_DATA_KEY = "dwai_guest_data";
-const GUEST_SESSION_KEY = "dwai_guest_session";
+const GUEST_DATA_KEY = "fts_guest_data";
+const GUEST_SESSION_KEY = "fts_guest_session";
 
 export interface ChatMessage {
   role: "assistant" | "user";
@@ -274,7 +274,7 @@ export interface ChatFeedback {
   createdAt: number;
 }
 
-export type SoftOnboardingMood = "calm" | "heavy" | "scattered" | "motivated" | "unsure";
+export type SoftOnboardingMood = "calm" | "heavy" | "scattered" | "pushing" | "unsure";
 
 export interface SoftOnboarding {
   completed: boolean;
@@ -591,8 +591,8 @@ export function hasCompletedOnboarding(): boolean {
   return gtky?.completedAt != null;
 }
 
-const ONBOARDING_COOLDOWN_KEY = "dwai_onboarding_dismissed";
-const ONBOARDING_COMPLETED_KEY = "dwai_onboarding_completed";
+const ONBOARDING_COOLDOWN_KEY = "fts_onboarding_dismissed";
+const ONBOARDING_COMPLETED_KEY = "fts_onboarding_completed";
 const ONBOARDING_COOLDOWN_DAYS = 7;
 
 export function dismissOnboardingDialog(): void {
@@ -624,7 +624,7 @@ export function shouldShowOnboardingDialog(): boolean {
   return daysSinceDismissed >= ONBOARDING_COOLDOWN_DAYS;
 }
 
-const SOFT_ONBOARDING_KEY = "dwai_soft_onboarding_completed";
+const SOFT_ONBOARDING_KEY = "fts_soft_onboarding_completed";
 
 export function getSoftOnboarding(): SoftOnboarding | null {
   const data = getGuestData();

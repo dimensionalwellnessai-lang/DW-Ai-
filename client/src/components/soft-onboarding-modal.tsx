@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, X } from "lucide-react";
 import { COPY } from "@/copy/en";
-import { BRAND } from "@/config/brand";
 
 export type OnboardingMood = "calm" | "heavy" | "scattered" | "pushing" | "unsure";
 

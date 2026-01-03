@@ -629,7 +629,7 @@ export function AIWorkspace() {
             calm: "I'm feeling calm today.",
             heavy: "I'm feeling heavy today and could use some support.",
             scattered: "My mind feels scattered right now.",
-            motivated: "I'm feeling motivated and ready to move forward.",
+            pushing: "I'm pushing through but could use some grounding.",
             unsure: "I'm not quite sure how I'm feeling.",
           };
           handleSendMessage(moodMessages[mood]);

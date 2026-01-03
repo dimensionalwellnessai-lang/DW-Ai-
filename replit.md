@@ -1,18 +1,25 @@
-# Dimensional Wellness AI (DWAI)
+# Flip the Switch (FTS)
 
 ## Overview
 
-Dimensional Wellness AI (DWAI) is a nervous-system-aware life companion that helps users feel calmer, seen, and capable. The app uses AI-powered insights to provide energy-based guidance (not productivity-based), adapting to the user's current state rather than pushing for output.
+Flip the Switch (FTS) is a Dimensional Wellness AI - a nervous-system-aware life companion that helps users feel calmer, seen, and capable. The app uses AI-powered insights to provide energy-based guidance (not productivity-based), adapting to the user's current state rather than pushing for output.
 
 ## Core Philosophy
 
-**North Star Flow**: Arrive → Acknowledge → Guide → Act → Release
+**North Star Flow**: Ground → Name → Shift → Next Step
 
 **Core Principle**: If a feature does not reduce cognitive load or support emotional regulation, it does not belong.
 
 **North Star Question**: "Does this help the user feel safer in their body right now?" If no, it doesn't belong.
 
-DWAI must never: overwhelm, rush, guilt, or compete for attention.
+FTS must never: overwhelm, rush, guilt, or compete for attention.
+
+### Voice Methodology (Reil Brown's "Flip the Switch")
+- **4-Step Response Structure**: Ground → Name → Shift → Next Step
+- **Banned Language**: "you should", "fix", "broken", "always", "never", "just", "optimize", "maximize", "hack"
+- **Preferred Language**: "notice", "shift", "heavy", "steady", "grounded", "clear", "observe"
+- **Signature Phrases**: "Pause for a second", "Let's flip the switch", "What's the energy right now?"
+- **Max Response Length**: 120 words per AI response
 
 ### Design Principles
 - **Energy-based guidance** instead of productivity-based guidance
@@ -23,8 +30,8 @@ DWAI must never: overwhelm, rush, guilt, or compete for attention.
 - **Dependence avoidance**: Teach self-trust, normalize days without app use
 
 ### Copy & Language Standards
-Avoid: "You should", "You must", "Complete", "Fix"
-Use: "We can", "If you want", "Notice", "Adjust"
+Avoid: "You should", "You must", "Complete", "Fix", "Broken"
+Use: "We can", "If you want", "Notice", "Shift", "Observe"
 Tone: calm, grounded, human, humble
 
 ### Screen Structure
@@ -34,12 +41,21 @@ Supporting sections accessible via hamburger menu:
 - Talk It Out (dedicated AI mode for processing feelings)
 - Calendar & Plans (schedule, plans, routines)
 
-### First Interaction
-Welcome: "What do you feel like you need today?"
-Options: Make a simple plan | Talk things out | Try a challenge | I'm not sure, I need guidance
+### First Interaction (Soft Onboarding)
+4-step flow:
+1. "Pause for a second." - Introduction
+2. "What's the energy right now?" - Energy check-in
+3. "What's running in the background?" - Context gathering
+4. "You're in control." - Boundary setting
 
-## User Preferences
+## Configuration Architecture
 
+### Centralized Voice & Copy
+- **Brand Config**: `client/src/config/brand.ts` - App name, tagline, descriptor
+- **Voice Guide**: `client/src/config/voiceGuide.ts` - AI voice rules, banned/preferred words, response structure
+- **Copy Constants**: `client/src/copy/en.ts` - All UI text, onboarding copy, microcopy
+
+### User Preferences
 Preferred communication style: Simple, everyday language. Collaborative, not directive.
 
 ## System Architecture
@@ -60,7 +76,7 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
   - Space Grotesk (display/headings via .font-display)
   - Nunito (body text via .font-body)
   - Crimson Pro (serif/emotional content via .font-serif)
-- **Guest Mode**: Local storage persistence for chat messages before signup
+- **Guest Mode**: Local storage persistence for chat messages before signup (uses `fts_` prefix keys)
 - **Charts**: Recharts for data visualization on the progress page
 
 ### Backend Architecture
@@ -93,6 +109,7 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
   - Chat-based daily check-ins with contextual wellness guidance
   - Life system recommendations based on onboarding data
 - **Context**: AI responses are personalized using user's system name, wellness focus, and peak motivation time
+- **Voice Config**: System prompt enforces 4-step structure and vocabulary rules
 
 ### Build System
 - **Development**: Vite dev server with HMR, proxied through Express
@@ -117,7 +134,7 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 
 ### Email
 - **Provider**: Resend via Replit connector
-- **Default Sender**: DW.ai <no-reply@resend.dev> (temporary for beta)
+- **Default Sender**: Flip the Switch <no-reply@resend.dev> (temporary for beta)
 
 ### Third-Party Libraries
 - **UI**: Full shadcn/ui component suite with Radix UI primitives

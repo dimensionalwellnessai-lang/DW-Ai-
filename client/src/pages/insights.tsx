@@ -71,7 +71,7 @@ export function InsightsPage() {
             <div className="flex-1">
               <h3 className="font-display font-semibold">Deeper Insights Coming</h3>
               <p className="text-muted-foreground font-body text-sm mt-1">
-                As you use DWAI more, we'll surface patterns about your energy, mood, and activity across all wellness dimensions. No grades or scores - just gentle observations.
+                As you use Flip the Switch more, we'll surface patterns about your energy, mood, and activity across all wellness dimensions. No grades or scores - just gentle observations.
               </p>
             </div>
           </div>
