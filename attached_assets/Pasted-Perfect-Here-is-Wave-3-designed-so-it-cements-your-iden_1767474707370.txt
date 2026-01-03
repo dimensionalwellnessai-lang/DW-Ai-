@@ -1,0 +1,262 @@
+Perfect. Here is Wave 3, designed so it cements your identity as a true personal assistant and not “just another wellness app.”
+
+I’m going to give you:
+	1.	What Wave 3 is (in one sentence)
+	2.	What Wave 3 builds (exact scope)
+	3.	What Wave 3 explicitly does NOT build
+	4.	The copy-paste spec to send to Replit
+	5.	How to know Wave 3 is successful
+
+Slow, intentional, high leverage.
+
+⸻
+
+🌊 WAVE 3 — DOCUMENT → SYSTEM INTELLIGENCE
+
+1️⃣ Wave 3 in one sentence
+
+Wave 3 allows users to upload a document and have the AI understand it, organize it, and place it into the right systems (calendar, workouts, nutrition, routines) — with review and consent.
+
+This is the moment your app stops feeling like:
+
+“an AI chat with features”
+
+and starts feeling like:
+
+“an assistant that actually handles my life systems.”
+
+⸻
+
+2️⃣ What Wave 3 BUILDS (exact scope)
+
+🧠 Core Capability
+
+Document Upload → AI Parsing → Preview → User Approval → Save
+
+Supported file types:
+	•	PDF
+	•	DOCX
+	•	Plain text
+
+⸻
+
+📥 Step-by-step User Flow
+
+Step 1 — Upload
+User clicks:
+
+“Upload a plan or document”
+
+Examples:
+	•	meal plans
+	•	workout programs
+	•	routines
+	•	schedules
+	•	life plans
+	•	PDFs like the one you shared
+
+⸻
+
+Step 2 — AI Analysis
+UI shows:
+
+“Analyzing your document…”
+
+Behind the scenes, the AI:
+	•	reads the full document
+	•	detects structure
+	•	identifies repeat patterns
+	•	classifies content by system
+
+⸻
+
+Step 3 — Preview Screen (CRITICAL)
+Before anything is saved, user sees a Preview with tabs:
+
+Tabs:
+	•	Summary
+	•	Items Found
+	•	Where They’ll Go
+
+Each item shows:
+	•	Title
+	•	Category (Meal / Workout / Routine / Calendar / Pattern)
+	•	Destination system
+	•	Checkbox (include / exclude)
+
+User can:
+	•	rename items
+	•	delete items
+	•	change where items go
+
+⸻
+
+Step 4 — Save (Consent)
+Button:
+
+“Save to my system”
+
+Nothing is written unless user confirms.
+
+⸻
+
+3️⃣ System Mapping Rules (this matters)
+
+Nutrition System
+
+AI detects:
+	•	meals
+	•	batch cooking steps
+	•	portion rules
+	•	weekly patterns
+
+Creates:
+	•	meal entries
+	•	optional meal reminders (calendar)
+	•	saved “plans”
+
+⸻
+
+Workout System
+
+AI detects:
+	•	workout days
+	•	movement types
+	•	durations
+	•	rest days
+
+Creates:
+	•	workouts
+	•	optional calendar blocks
+
+⸻
+
+Routines System
+
+AI detects:
+	•	step-by-step processes
+	•	prep days
+	•	repeatable flows
+
+Creates:
+	•	routines with checklist steps
+
+⸻
+
+Calendar System
+
+AI detects:
+	•	prep days
+	•	recurring blocks
+	•	suggested reminders
+
+But:
+	•	calendar items are always optional
+	•	user must approve each suggestion
+
+⸻
+
+Patterns / Plans
+
+AI groups everything into a named Plan, e.g.:
+
+“4-Week Meal Prep System”
+
+This plan can be:
+	•	activated
+	•	paused
+	•	edited later
+
+⸻
+
+4️⃣ What Wave 3 DOES NOT BUILD (important discipline)
+
+🚫 No auto-saving
+🚫 No hidden scheduling
+🚫 No background automation
+🚫 No assumptions
+🚫 No rewriting user content
+🚫 No “optimization” without permission
+
+The AI organizes, it does not control.
+
+⸻
+
+5️⃣ Copy-Paste Spec for Replit (Use This)
+
+You can send this verbatim 👇
+
+⸻
+
+Wave 3 Build Spec — Document Upload & AI Organization
+
+Objective:
+Allow users to upload a document (PDF/DOCX/text). The AI scans the entire document, extracts structured items, and maps them into existing systems (Calendar, Workouts, Nutrition, Routines, Plans). User must review and approve before saving.
+
+Key Requirements:
+	•	Upload endpoint for PDF/DOCX/text
+	•	Server-side text extraction
+	•	AI parsing returns structured JSON:
+	•	document_title
+	•	sections
+	•	meals[]
+	•	workouts[]
+	•	routines[]
+	•	calendar_suggestions[]
+	•	patterns/plans[]
+	•	confidence score
+	•	Preview UI with editable items and checkboxes
+	•	Nothing saved without explicit confirmation
+	•	Calm copy: “You can change anything before saving.”
+
+UX Flow:
+	1.	Upload document
+	2.	“Analyzing your document…”
+	3.	Preview with tabs (Summary / Items / Destinations)
+	4.	User edits + confirms
+	5.	Save to systems
+
+Safety & Trust:
+	•	Never auto-save
+	•	Show exactly what will be created
+	•	Allow skipping calendar suggestions
+	•	If confidence is low, ask clarifying questions
+
+⸻
+
+6️⃣ How to know Wave 3 is successful
+
+Wave 3 is a win if:
+	•	Users say: “This saved me time”
+	•	Users upload a second document
+	•	Users trust the preview before saving
+	•	No one is surprised by what gets added
+
+If a user ever says:
+
+“I didn’t realize it would add that”
+
+→ Wave 3 failed and needs tightening.
+
+⸻
+
+7️⃣ Why Wave 3 is the right next move (founder lens)
+
+Wave 3:
+	•	differentiates you immediately
+	•	supports calendar, workouts, and nutrition at once
+	•	reduces manual input
+	•	aligns perfectly with “AI personal assistant”
+	•	sets you up for future monetization without rushing it
+
+This is a real product leap, not feature fluff.
+
+⸻
+
+Next choices (pick one):
+	1.	I write the exact JSON schema for document parsing
+	2.	I simulate a full user journey using document upload
+	3.	I help you scope Wave 4 (light memory + personalization)
+	4.	I turn this into an investor roadmap narrative
+
+Say the number.

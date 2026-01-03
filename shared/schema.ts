@@ -597,6 +597,52 @@ export const userSystemPreferencesRelations = relations(userSystemPreferences, (
   }),
 }));
 
+// Imported Documents - Wave 3 Document Intelligence
+export const importedDocuments = pgTable("imported_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  rawText: text("raw_text"),
+  analysisJson: jsonb("analysis_json"),
+  documentTitle: text("document_title"),
+  summary: text("summary"),
+  confidence: integer("confidence"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+  savedAt: timestamp("saved_at"),
+});
+
+export const importedDocumentsRelations = relations(importedDocuments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [importedDocuments.userId],
+    references: [users.id],
+  }),
+  items: many(importedDocumentItems),
+}));
+
+export const importedDocumentItems = pgTable("imported_document_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => importedDocuments.id),
+  itemType: text("item_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  details: jsonb("details"),
+  destinationSystem: text("destination_system"),
+  confidence: integer("confidence"),
+  isSelected: boolean("is_selected").default(true),
+  linkedEntityId: varchar("linked_entity_id"),
+  linkedEntityType: text("linked_entity_type"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const importedDocumentItemsRelations = relations(importedDocumentItems, ({ one }) => ({
+  document: one(importedDocuments, {
+    fields: [importedDocumentItems.documentId],
+    references: [importedDocuments.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -751,6 +797,17 @@ export const insertUserSystemPreferencesSchema = createInsertSchema(userSystemPr
   updatedAt: true,
 });
 
+export const insertImportedDocumentSchema = createInsertSchema(importedDocuments).omit({
+  id: true,
+  createdAt: true,
+  savedAt: true,
+});
+
+export const insertImportedDocumentItemSchema = createInsertSchema(importedDocumentItems).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -863,3 +920,7 @@ export type UserSystemPreferences = typeof userSystemPreferences.$inferSelect;
 export type InsertUserSystemPreferences = z.infer<typeof insertUserSystemPreferencesSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type ImportedDocument = typeof importedDocuments.$inferSelect;
+export type InsertImportedDocument = z.infer<typeof insertImportedDocumentSchema>;
+export type ImportedDocumentItem = typeof importedDocumentItems.$inferSelect;
+export type InsertImportedDocumentItem = z.infer<typeof insertImportedDocumentItemSchema>;
