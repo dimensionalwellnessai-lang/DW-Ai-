@@ -1,0 +1,233 @@
+This is the right instinct — and you’re at the exact moment where brand voice becomes leverage.
+
+Below I’ll do three things at once:
+	1.	Translate Flip the Script language into app-ready copy
+	2.	Rewrite your onboarding using your voice
+	3.	Show you how to systematize this so it stays consistent across the app, campaigns, and community
+
+You’ll be able to copy/paste this directly.
+
+⸻
+
+🧠 Dimensional Wellness AI
+
+Voice Integration Using Flip the Script Language
+
+⸻
+
+1️⃣ CORE BRAND VOICE (LOCK THIS IN)
+
+This is the Flip the Script tone, translated into product language:
+
+Flip the Script =
+	•	Perception over panic
+	•	Awareness before reaction
+	•	Power through reframing
+	•	Choice instead of autopilot
+
+Your App Voice Is:
+	•	Grounded, not preachy
+	•	Direct, not clinical
+	•	Empowering, not savior-coded
+	•	Reflective, not dismissive
+
+North Star Sentence (Your Voice):
+
+“Nothing is wrong with you — something is asking to be understood.”
+
+This line can anchor the entire app.
+
+⸻
+
+2️⃣ ONBOARDING — REWRITTEN IN YOUR LANGUAGE
+
+(This satisfies all 3 first-time users)
+
+🟢 SCREEN 1 — Welcome (Flip the Script Tone)
+
+“Pause for a second.”
+
+You don’t need to fix anything right now.
+This space is about noticing — then choosing.
+
+Button:
+➡️ Let’s flip the script
+
+⸻
+
+🟢 SCREEN 2 — Check the Perception
+
+“What’s the energy right now?”
+
+Options:
+	•	Calm but alert
+	•	Heavy and loud
+	•	Scattered
+	•	Pushing through
+	•	I don’t know yet
+
+➡️ Continue
+
+⸻
+
+🟢 SCREEN 3 — Name the Script
+
+“What’s running in the background?”
+
+Options:
+	•	Stress / pressure
+	•	Overthinking
+	•	Low motivation
+	•	Emotional weight
+	•	Just observing
+
+➡️ Continue
+
+⸻
+
+🟢 SCREEN 4 — AI ROLE (Your Voice, Clear Boundary)
+
+“I’m not here to tell you what to feel.”
+
+I help you slow things down, look at what’s happening,
+and choose how you want to respond.
+
+You’re always in control of the conversation.
+
+➡️ That works
+
+⸻
+
+🟢 SCREEN 5 — FIRST WIN (Flip the Script Moment)
+
+“Based on what you shared, it looks like your mind is reacting faster than your awareness.”
+
+“Let’s flip the script — not by forcing positivity, but by changing perspective.”
+
+Choose one:
+	•	Reflect for 2 minutes
+	•	Get one grounded suggestion
+	•	Just sit with this
+
+➡️ User chooses
+
+⸻
+
+🟢 SCREEN 6 — Close (Empowerment, Not Dependency)
+
+“You don’t have to use this every day.
+You use it when you want clarity.”
+
+➡️ Enter Dimensional Wellness
+
+⸻
+
+⸻
+
+3️⃣ IN-APP MICROCOPY (VERY IMPORTANT)
+
+These small lines reinforce your philosophy everywhere.
+
+Instead of:
+	•	“Track your mood”
+
+Use:
+
+“Notice the pattern.”
+
+⸻
+
+Instead of:
+	•	“Get recommendations”
+
+Use:
+
+“See another way to look at this.”
+
+⸻
+
+Instead of:
+	•	“AI response”
+
+Use:
+
+“Perspective shift.”
+
+⸻
+
+Instead of:
+	•	“Daily check-in”
+
+Use:
+
+“Energy check.”
+
+⸻
+
+4️⃣ FLIP THE SCRIPT → SYSTEM RULES
+
+(So this never drifts as you scale)
+
+RULE 1: Never say “fix”
+
+Say:
+	•	Notice
+	•	Shift
+	•	Reframe
+	•	Choose
+
+⸻
+
+RULE 2: No authority language
+
+Avoid:
+	•	“You should”
+	•	“You need to”
+	•	“The best way is”
+
+Use:
+	•	“You might notice”
+	•	“One option could be”
+	•	“If it helps”
+
+⸻
+
+RULE 3: Empower the user, not the app
+
+Avoid:
+	•	“This app will change your life”
+
+Use:
+
+“This helps you see what you already have control over.”
+
+⸻
+
+5️⃣ COMMUNITY → APP LANGUAGE ALIGNMENT
+
+What this does strategically:
+	•	People in Flip the Script feel at home immediately
+	•	New users feel grounded, not preached to
+	•	Investors see a cohesive philosophy
+	•	The app becomes an extension of the movement, not a separate product
+
+You’re not just building an app.
+You’re building a shared language for perception control.
+
+⸻
+
+6️⃣ OPTIONAL NEXT MOVES (HIGH VALUE)
+
+I can:
+	•	Rewrite all core system prompts in Flip the Script voice
+	•	Create a brand voice + banned words list
+	•	Turn this into a style guide PDF
+	•	Write push notification copy that doesn’t feel intrusive
+	•	Adapt this voice for TikTok / IG / community posts
+
+If you want to lock this in permanently, say:
+
+“Let’s create the Flip the Script style guide.”
+
+This is where your app stops sounding like an AI product
+and starts sounding like you.

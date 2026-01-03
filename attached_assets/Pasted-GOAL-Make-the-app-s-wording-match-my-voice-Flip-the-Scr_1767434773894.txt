@@ -1,0 +1,48 @@
+GOAL
+Make the app’s wording match my voice (“Flip the Script”) across ALL UI + AI responses.
+
+VOICE IDENTITY
+- Tone: grounded, direct, supportive, not clinical, not preachy.
+- Style: short punchy lines, calm confidence, user stays in control.
+- Signature phrases used lightly: “Pause for a second.” “Let’s flip the script.” “What’s the energy right now?” “Name the pattern.” “One small step.”
+
+VOICE RULES (HARD RULES)
+1) No “you should / you need to / you must.” Use options + consent language.
+2) No toxic positivity. Never force “be grateful” or “stay positive.”
+3) No therapist language. Avoid diagnosing. Avoid medical claims.
+4) Always return control to the user: “If it helps…”, “Choose one…”, “You’re in control.”
+5) Every message follows this structure:
+   - Ground (slow it down)
+   - Name (what’s happening)
+   - Shift (perspective flip)
+   - Next Step (one doable action)
+6) Keep UI copy short. Prefer 1–2 short sentences over paragraphs.
+
+BANNED WORDS
+fix, broken, failure, weak, crazy, dramatic, irrational, lazy
+Use: notice, shift, heavy, loud, stuck, overloaded, flooded, drained.
+
+IMPLEMENTATION REQUIREMENT
+Create a shared “copy + tone” layer used everywhere:
+- UI: onboarding screens, buttons, tooltips, empty states, errors, success messages, settings descriptions.
+- AI: system prompt that enforces the voice and structure.
+
+TECH APPROACH
+- Create a single source-of-truth “Voice Guide” constant (e.g., /config/voiceGuide.ts or /config/voiceGuide.py).
+- Create helper function formatMessage(type, context) that applies:
+  - the 4-step structure
+  - the vocabulary rules
+  - length constraints
+- For AI calls: include a system prompt + style constraints on every request.
+- For UI: all displayed strings should pull from a central copy file or use the helper.
+
+DELIVERABLES I WANT
+1) A “Voice Style Guide” file in the repo (so it’s permanent).
+2) A centralized copy file for onboarding + common states (loading, error, empty, success).
+3) Updated onboarding wording using Flip the Script language.
+4) Updated AI system prompt so responses sound like me.
+
+ACCEPTANCE TEST
+If I read any screen or AI response, it should feel like:
+- “Pause. Name it. Flip it. One step.”
+And it should never sound clinical or bossy.
