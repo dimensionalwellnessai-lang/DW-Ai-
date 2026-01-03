@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { 
   Dumbbell, 
@@ -21,8 +22,12 @@ import {
   ChevronUp,
   Sparkles,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Calendar,
+  Zap,
+  Filter
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
 import { 
   getBodyProfile, 
@@ -33,10 +38,15 @@ import {
   saveRoutine,
   getSpiritualProfile,
   getDimensionSignals,
+  saveCalendarEvent,
   type BodyProfile,
   type WorkoutPreferences,
   type SavedRoutine
 } from "@/lib/guest-storage";
+
+type TimeFilter = "any" | "10" | "20" | "30";
+type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
+type EquipmentFilter = "any" | "none" | "dumbbells" | "bands";
 
 const GOAL_LABELS: Record<string, string> = {
   slim_fit: "Slim & Fit",
@@ -174,6 +184,16 @@ export default function WorkoutPage() {
   const [hasBodyScan, setHasBodyScan] = useState(hasCompletedBodyScan());
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(null);
   const [expandedWorkout, setExpandedWorkout] = useState<number | null>(null);
+  const [pickWorkoutOpen, setPickWorkoutOpen] = useState(false);
+  const [pickStep, setPickStep] = useState<"energy" | "time" | "results">("energy");
+  const [energyLevel, setEnergyLevel] = useState<"low" | "medium" | "high" | null>(null);
+  const [timeAvailable, setTimeAvailable] = useState<"10" | "20" | "30" | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("any");
+  const [goalFilter, setGoalFilter] = useState<GoalFilter>("any");
+  const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>("any");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const { toast } = useToast();
   const spiritualProfile = getSpiritualProfile();
   const signals = getDimensionSignals();
   const seeksCalmOrMindfulness = signals.mindfulState === "calm" || 
@@ -184,6 +204,75 @@ export default function WorkoutPage() {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(workout.youtubeSearch)}`;
     window.open(searchUrl, "_blank");
   };
+
+  const addToCalendar = (workout: WorkoutData) => {
+    const now = new Date();
+    const startTime = now.getTime();
+    const endTime = startTime + workout.duration * 60 * 1000;
+    
+    saveCalendarEvent({
+      title: workout.title,
+      description: workout.description,
+      dimension: "physical",
+      startTime,
+      endTime,
+      isAllDay: false,
+      location: null,
+      virtualLink: null,
+      reminders: [],
+      recurring: false,
+      recurrencePattern: null,
+      relatedFoundationIds: [],
+      tags: workout.tags,
+    });
+    
+    toast({
+      title: "Added to your schedule",
+      description: `${workout.title} has been added to today's calendar.`,
+    });
+  };
+
+  const getAISuggestions = (): WorkoutData[] => {
+    let suggestions = [...SAMPLE_WORKOUTS];
+    
+    if (energyLevel === "low") {
+      suggestions = suggestions.filter(w => w.intensity === "gentle" || w.tags.includes("yoga"));
+    } else if (energyLevel === "high") {
+      suggestions = suggestions.filter(w => w.intensity === "athlete" || w.intensity === "focused");
+    }
+    
+    if (timeAvailable) {
+      const time = parseInt(timeAvailable);
+      suggestions = suggestions.filter(w => w.duration <= time + 5);
+    }
+    
+    return suggestions.slice(0, 3);
+  };
+
+  const filteredWorkouts = SAMPLE_WORKOUTS.filter(workout => {
+    if (timeFilter !== "any") {
+      const time = parseInt(timeFilter);
+      if (workout.duration > time + 5) return false;
+    }
+    
+    if (goalFilter !== "any") {
+      const goalTags: Record<GoalFilter, string[]> = {
+        any: [],
+        calm: ["yoga", "mindfulness", "calm"],
+        strength: ["strength", "upper-body", "lower-body", "core"],
+        mobility: ["flexibility", "yoga"],
+        cardio: ["cardio", "endurance", "high-energy"],
+      };
+      if (!goalTags[goalFilter].some(tag => workout.tags.includes(tag))) return false;
+    }
+    
+    if (equipmentFilter !== "any") {
+      if (equipmentFilter === "none" && workout.equipment && workout.equipment.length > 0) return false;
+      if (equipmentFilter === "dumbbells" && !workout.tags.includes("dumbbells")) return false;
+    }
+    
+    return true;
+  });
 
   const handleBodyScanComplete = () => {
     setBodyScanOpen(false);
@@ -347,13 +436,101 @@ export default function WorkoutPage() {
           </div>
         )}
 
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Pick my workout</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Let me suggest something based on how you feel
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setPickStep("energy");
+                  setEnergyLevel(null);
+                  setTimeAvailable(null);
+                  setPickWorkoutOpen(true);
+                }}
+                data-testid="button-pick-workout"
+              >
+                Start
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Dumbbell className="w-4 h-4" />
-            Browse Workouts
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Dumbbell className="w-4 h-4" />
+              Browse Workouts
+            </h2>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-filters"
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Filters
+            </Button>
+          </div>
+          
+          {showFilters && (
+            <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Time:</span>
+                {(["any", "10", "20", "30"] as TimeFilter[]).map((t) => (
+                  <Button
+                    key={t}
+                    variant={timeFilter === t ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTimeFilter(t)}
+                    data-testid={`button-time-${t}`}
+                  >
+                    {t === "any" ? "Any" : `${t}min`}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Goal:</span>
+                {(["any", "calm", "strength", "cardio"] as GoalFilter[]).map((g) => (
+                  <Button
+                    key={g}
+                    variant={goalFilter === g ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setGoalFilter(g)}
+                    data-testid={`button-goal-${g}`}
+                  >
+                    {g === "any" ? "Any" : g.charAt(0).toUpperCase() + g.slice(1)}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Equipment:</span>
+                {(["any", "none", "dumbbells"] as EquipmentFilter[]).map((e) => (
+                  <Button
+                    key={e}
+                    variant={equipmentFilter === e ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setEquipmentFilter(e)}
+                    data-testid={`button-equip-${e}`}
+                  >
+                    {e === "any" ? "Any" : e === "none" ? "No Equipment" : "Dumbbells"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="space-y-2">
-            {SAMPLE_WORKOUTS.map((workout, index) => (
+            {filteredWorkouts.map((workout, index) => (
               <Card 
                 key={index} 
                 className="hover-elevate cursor-pointer"
@@ -388,11 +565,12 @@ export default function WorkoutPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleSaveWorkout(workout);
+                          addToCalendar(workout);
                         }}
-                        data-testid={`button-save-workout-${index}`}
+                        data-testid={`button-add-today-${index}`}
                       >
-                        Save
+                        <Calendar className="w-3.5 h-3.5 mr-1" />
+                        Add to Today
                       </Button>
                       <Button 
                         size="icon" 
@@ -510,15 +688,143 @@ export default function WorkoutPage() {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        handleSaveWorkout(selectedWorkout);
+                        addToCalendar(selectedWorkout);
                         setSelectedWorkout(null);
                       }}
                     >
-                      Save
+                      <Calendar className="w-4 h-4 mr-1" />
+                      Add to Today
                     </Button>
                   </div>
                 </div>
               </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={pickWorkoutOpen} onOpenChange={setPickWorkoutOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {pickStep === "energy" && "How's your energy right now?"}
+                {pickStep === "time" && "How much time do you have?"}
+                {pickStep === "results" && "Here are some options for you"}
+              </DialogTitle>
+              <DialogDescription>
+                {pickStep === "energy" && "This helps me suggest the right intensity"}
+                {pickStep === "time" && "No pressure - even 10 minutes counts"}
+                {pickStep === "results" && "Pick one that feels right, or ask for different options"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {pickStep === "energy" && (
+              <div className="grid grid-cols-3 gap-3 py-4">
+                {([
+                  { level: "low" as const, label: "Low", desc: "Need gentle" },
+                  { level: "medium" as const, label: "Medium", desc: "Feeling okay" },
+                  { level: "high" as const, label: "High", desc: "Ready to go" },
+                ]).map((option) => (
+                  <Button
+                    key={option.level}
+                    variant={energyLevel === option.level ? "default" : "outline"}
+                    className="h-auto py-4 flex flex-col gap-1"
+                    onClick={() => {
+                      setEnergyLevel(option.level);
+                      setPickStep("time");
+                    }}
+                    data-testid={`button-energy-${option.level}`}
+                  >
+                    <span className="font-medium">{option.label}</span>
+                    <span className="text-xs opacity-70">{option.desc}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            {pickStep === "time" && (
+              <div className="grid grid-cols-3 gap-3 py-4">
+                {([
+                  { time: "10" as const, label: "10 min" },
+                  { time: "20" as const, label: "20 min" },
+                  { time: "30" as const, label: "30+ min" },
+                ]).map((option) => (
+                  <Button
+                    key={option.time}
+                    variant={timeAvailable === option.time ? "default" : "outline"}
+                    className="h-auto py-4"
+                    onClick={() => {
+                      setTimeAvailable(option.time);
+                      setPickStep("results");
+                    }}
+                    data-testid={`button-time-pick-${option.time}`}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            {pickStep === "results" && (
+              <div className="space-y-3 py-4">
+                {getAISuggestions().map((workout, idx) => (
+                  <Card 
+                    key={idx} 
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => {
+                      setSelectedWorkout(workout);
+                      setPickWorkoutOpen(false);
+                    }}
+                    data-testid={`card-ai-suggestion-${idx}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-medium">{workout.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {workout.duration} min - {workout.intensity}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCalendar(workout);
+                            }}
+                            data-testid={`button-add-suggestion-${idx}`}
+                          >
+                            Add to Today
+                          </Button>
+                          <Button
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openYouTubeSearch(workout);
+                            }}
+                            data-testid={`button-start-suggestion-${idx}`}
+                          >
+                            <Play className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                <Button 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => {
+                    setPickStep("energy");
+                    setEnergyLevel(null);
+                    setTimeAvailable(null);
+                  }}
+                  data-testid="button-different-options"
+                >
+                  Different options
+                </Button>
+              </div>
             )}
           </DialogContent>
         </Dialog>

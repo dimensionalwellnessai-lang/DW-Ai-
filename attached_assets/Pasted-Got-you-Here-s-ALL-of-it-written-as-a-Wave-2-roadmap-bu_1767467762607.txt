@@ -1,0 +1,307 @@
+Got you. Here’s ALL of it — written as a Wave 2 roadmap + build specs you can copy/paste directly to Replit. This keeps your app as a personal assistant (AI = brain, features = outputs) and avoids turning it into a generic scheduling app.
+
+⸻
+
+Wave 2 Roadmap Doc (Copy/Paste for Replit)
+
+Goal of Wave 2
+
+Add Calendar logic + Workout suggestions + Nutrition suggestions as AI-driven outputs (consent-based), without breaking the calm, supportive experience.
+
+Non-negotiables
+	•	AI remains the main interface (hub)
+	•	Features are optional and confirmed before saving
+	•	No guilt language, no “should,” no pressure
+	•	Avoid feature creep: start with minimum scope
+
+⸻
+
+A) Calendar v1 Build Spec (Build First)
+
+Objective
+
+Create a simple Master Calendar that the AI can add to only with user confirmation, focused on “Today” and “This Week” (minimal views).
+
+UI Requirements
+
+Calendar tab/page includes:
+	1.	Today View (default)
+
+	•	List of today’s events (time + title)
+	•	“Add manually” button (optional)
+	•	“Edit” option for each event
+
+	2.	Week View (basic)
+
+	•	Simple list by day (not full grid required yet)
+	•	“Jump to today”
+
+Month grid is optional later. Don’t block v1 on it.
+
+Data Model (Minimum)
+
+Event
+	•	id
+	•	title
+	•	date
+	•	start_time
+	•	end_time (optional; allow duration too)
+	•	category (assistant-generated: Work / Wellness / Meal / Workout / Personal / Other)
+	•	source (AI or manual)
+	•	notes (optional)
+	•	created_at / updated_at
+
+Calendar Logic Rules
+	•	AI may suggest events, but must ask:
+“Want me to add this to your schedule?”
+Buttons: Add / Not now / Edit time
+	•	No autoscheduling without consent.
+	•	No overbooking: keep whitespace.
+	•	Always respect existing user commitments.
+	•	If conflict exists, AI offers options:
+	•	“Move it”
+	•	“Shorten it”
+	•	“Skip today”
+
+AI → Calendar API
+
+Add endpoints (or internal services) for:
+	•	create_event
+	•	update_event
+	•	delete_event
+	•	list_events_by_day
+	•	list_events_by_week
+
+Success Criteria for Calendar v1
+	•	User can see today’s plan clearly
+	•	AI can add items without confusion
+	•	Edits work
+	•	No 404s / no broken routing
+
+⸻
+
+B) Workouts v1 Build Spec (Build Second)
+
+Objective
+
+Provide workout suggestions that match:
+	•	energy level
+	•	time available
+	•	equipment access
+…and allow adding to Calendar with one tap.
+
+UI Requirements
+
+Workouts page includes:
+	•	“Pick my workout” button (AI-led)
+	•	Quick filters:
+	•	Time: 10 / 20 / 30 minutes
+	•	Goal: Calm / Strength / Mobility / Cardio
+	•	Equipment: None / Bands / Dumbbells / Gym
+	•	Workout cards (Netflix-style later; for now simple cards ok)
+	•	Title
+	•	Duration
+	•	Focus
+	•	Difficulty (light labels: Easy / Moderate / Hard)
+	•	“Start” and “Add to Today”
+
+Minimum Workout Data Model
+
+Workout
+	•	id
+	•	title
+	•	duration_minutes
+	•	focus (calm/strength/mobility/cardio)
+	•	equipment
+	•	intensity
+	•	description (short)
+	•	steps (optional list)
+	•	video_url (optional)
+	•	tags (optional)
+
+Workout Logic Rules (Very Important)
+	•	No streak pressure
+	•	No punishment framing
+	•	Rest is always valid
+	•	If user says “low energy,” suggest lower intensity first
+
+AI Prompting for Workouts (Flow)
+
+AI asks 1–2 questions max:
+	1.	“How’s your energy right now? Low / Medium / High”
+	2.	“How much time do you have? 10 / 20 / 30+”
+
+Then suggests 3 options max, with buttons:
+	•	Start now
+	•	Add to calendar
+	•	Different options
+
+Video Links
+
+For now:
+	•	allow curated YouTube links OR internal list
+	•	do not scrape or auto-pull random content yet
+
+Success Criteria
+	•	User can get a workout in <30 seconds
+	•	Adding to calendar is smooth
+	•	Suggestions feel aligned and not overwhelming
+
+⸻
+
+C) Nutrition v1 Build Spec (Build Third)
+
+Objective
+
+Offer meal suggestions + meal patterns based on preferences and restrictions, without tracking calories by default.
+
+UI Requirements
+
+Nutrition page includes:
+	•	“Suggest meals for today” button
+	•	Filters:
+	•	Diet preference (none/vegan/vegetarian/pescatarian/etc.)
+	•	Allergies (optional)
+	•	Effort level (no-cook/quick/normal)
+	•	Cuisine (optional)
+	•	Meal cards
+	•	title
+	•	time (breakfast/lunch/dinner/snack)
+	•	prep time
+	•	tags
+	•	“Save” / “Add to calendar” / “Swap”
+
+Minimum Data Model
+
+Meal
+	•	id
+	•	title
+	•	meal_type
+	•	prep_time
+	•	ingredients (optional list)
+	•	instructions (optional short)
+	•	dietary_tags
+	•	allergens (optional)
+	•	notes (optional)
+
+Nutrition Logic Rules
+	•	No guilt language
+	•	No “healthy vs unhealthy” labeling
+	•	Default is suggestion-based (no logging)
+	•	Optionally: “Add to calendar” as a reminder
+
+Nutrition Questions (Minimal Onboarding)
+
+AI asks only if needed:
+	•	“Any dietary restrictions?”
+	•	“How much effort can you do today? low/medium/high”
+	•	“Any foods you avoid?”
+
+Success Criteria
+	•	Meals feel supportive, not corrective
+	•	User can quickly pick something
+	•	Calendar integration works
+
+⸻
+
+D) AI Suggestion Rules (So it feels like a “Personal Assistant”)
+
+The AI’s job in Wave 2
+	1.	Understand intent (talk it out vs plan vs breathe)
+	2.	Offer one small next step
+	3.	Convert decisions into:
+
+	•	calendar events
+	•	routines
+	•	workout / meal suggestions
+
+Suggestion Triggers (When AI should propose structure)
+
+AI can suggest a calendar item when:
+	•	user asks for a plan
+	•	user says they want to “stay on track”
+	•	user is overwhelmed and asks “what do I do”
+	•	a routine is created (morning/evening)
+
+AI should NOT push scheduling when:
+	•	user is venting heavily
+	•	user is in Support Mode
+	•	user hasn’t asked for action yet
+
+The Consent Pattern (Always)
+
+Before saving anything:
+
+“Want me to add this to your schedule?”
+Buttons:
+
+	•	Add
+	•	Edit
+	•	Not now
+
+The “3 Choices Max” Rule
+
+Any time the AI suggests options:
+	•	max 3
+	•	never a long list
+	•	add “Different options” button
+
+Personalization Without Overreach
+	•	AI uses what it knows (time preferences, energy patterns)
+	•	asks questions only when needed
+	•	never assumes medical conditions
+	•	never diagnoses
+
+⸻
+
+E) Implementation Order (Critical)
+
+Sprint 1 (Calendar v1)
+	•	Calendar page (Today + Week list)
+	•	Events CRUD APIs
+	•	AI “Add to calendar” confirmation flow
+	•	NotFound fallback for routes
+
+Sprint 2 (Workouts v1)
+	•	Workouts page + basic cards
+	•	AI workout suggestion flow (energy/time)
+	•	Add workout to calendar event
+
+Sprint 3 (Nutrition v1)
+	•	Nutrition page + meal cards
+	•	Preference filters
+	•	Add meal reminder to calendar
+
+⸻
+
+F) Testing Plan (Wave 2)
+
+Internal tests (you + Replit)
+	•	Create/edit/delete events
+	•	Add workout/meal to calendar
+	•	Safety flow still works
+	•	No routing errors
+
+User tests (10–12 people)
+
+Ask 3 questions only:
+	1.	“Did you know what to do first?”
+	2.	“Did this feel calm or overwhelming?”
+	3.	“Would you use calendar/workouts/meals or ignore them?”
+
+Success = calm + clarity stays intact while features add value.
+
+⸻
+
+G) “What’s Already Built” (Do not break)
+	•	AI-first home flow
+	•	Supportive tone rules
+	•	Safety confirmation flow (ask intent + allow continuation)
+	•	Feedback bar
+	•	Error fallback / routing sanity
+
+Wave 2 must not overwrite these.
+
+⸻
+
+If you want, I can also write a short “Replit instruction message” that summarizes this into a smaller block for their chat (some builders prefer shorter specs).
