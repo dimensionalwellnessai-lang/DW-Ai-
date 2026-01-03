@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Utensils, 
   Settings2, 
@@ -26,7 +27,9 @@ import {
   Video,
   Timer,
   Users,
-  Heart
+  Heart,
+  Calendar,
+  Zap
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,10 +40,14 @@ import {
   getSavedRoutinesByType,
   saveRoutine,
   getDimensionSignals,
+  saveCalendarEvent,
   type MealPrepPreferences,
   type DietaryStyle,
   type SavedRoutine
 } from "@/lib/guest-storage";
+
+type EffortLevel = "any" | "minimal" | "moderate" | "involved";
+type MealType = "any" | "breakfast" | "lunch" | "dinner";
 
 const DIETARY_STYLES: { id: DietaryStyle; label: string; description: string }[] = [
   { id: "omnivore", label: "Omnivore", description: "All foods" },
@@ -548,10 +555,87 @@ export default function MealPrepPage() {
     const saved = localStorage.getItem("fts_saved_videos");
     return saved ? JSON.parse(saved) : [];
   });
+  const [suggestMealsOpen, setSuggestMealsOpen] = useState(false);
+  const [suggestStep, setSuggestStep] = useState<"energy" | "mealType" | "results">("energy");
+  const [suggestEnergy, setSuggestEnergy] = useState<"low" | "medium" | "high" | null>(null);
+  const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
+  const [confirmMealOpen, setConfirmMealOpen] = useState(false);
+  const [pendingMeal, setPendingMeal] = useState<{ name: string; mealType: string; prepTime: number } | null>(null);
+  
+  const { toast } = useToast();
   const bodyProfile = getBodyProfile();
   const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
   const isBudgetConscious = signals.costTier === "frugal" || signals.costTier === "moderate";
+
+  const promptAddMealToCalendar = (mealName: string, mealType: string, prepTime: number) => {
+    setPendingMeal({ name: mealName, mealType, prepTime });
+    setConfirmMealOpen(true);
+  };
+
+  const confirmAddMealToCalendar = () => {
+    if (!pendingMeal) return;
+    
+    const now = new Date();
+    let startHour = 12;
+    if (pendingMeal.mealType === "breakfast" || pendingMeal.name.toLowerCase().includes("oat") || pendingMeal.name.toLowerCase().includes("smoothie") || pendingMeal.name.toLowerCase().includes("egg")) {
+      startHour = 8;
+    } else if (pendingMeal.name.toLowerCase().includes("lunch") || pendingMeal.name.toLowerCase().includes("salad") || pendingMeal.name.toLowerCase().includes("wrap")) {
+      startHour = 12;
+    } else if (pendingMeal.name.toLowerCase().includes("dinner") || pendingMeal.name.toLowerCase().includes("salmon") || pendingMeal.name.toLowerCase().includes("beef") || pendingMeal.name.toLowerCase().includes("curry")) {
+      startHour = 18;
+    }
+    
+    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0).getTime();
+    const endTime = startTime + pendingMeal.prepTime * 60 * 1000;
+    
+    saveCalendarEvent({
+      title: pendingMeal.name,
+      description: `${pendingMeal.prepTime} min prep time`,
+      dimension: "physical",
+      startTime,
+      endTime,
+      isAllDay: false,
+      location: null,
+      virtualLink: null,
+      reminders: [],
+      recurring: false,
+      recurrencePattern: null,
+      relatedFoundationIds: [],
+      tags: ["meal", pendingMeal.mealType],
+    });
+    
+    toast({
+      title: "Added to your calendar",
+      description: `${pendingMeal.name} scheduled for today.`,
+    });
+    
+    setConfirmMealOpen(false);
+    setPendingMeal(null);
+  };
+
+  const getMealSuggestions = () => {
+    let allMeals: { name: string; prepTime: number; planTitle: string; ingredients: string[] }[] = [];
+    
+    SAMPLE_MEAL_PLANS.forEach(plan => {
+      plan.meals.forEach(meal => {
+        allMeals.push({
+          name: meal.name,
+          prepTime: meal.prepTime,
+          planTitle: plan.title,
+          ingredients: meal.ingredients,
+        });
+      });
+    });
+    
+    if (suggestEnergy === "low") {
+      allMeals = allMeals.filter(m => m.prepTime <= 10);
+    } else if (suggestEnergy === "medium") {
+      allMeals = allMeals.filter(m => m.prepTime <= 20);
+    }
+    
+    return allMeals.slice(0, 3);
+  };
 
   const getRelevantAlternatives = (alt: IngredientAlternative) => {
     let alternatives = alt.alternatives;
@@ -652,6 +736,35 @@ export default function MealPrepPage() {
           </TabsList>
 
           <TabsContent value="plans" className="mt-4 space-y-6">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Suggest meals for today</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Quick ideas based on your energy and time
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setSuggestStep("energy");
+                      setSuggestEnergy(null);
+                      setSuggestMealType("any");
+                      setSuggestMealsOpen(true);
+                    }}
+                    data-testid="button-suggest-meals"
+                  >
+                    Start
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
             {!hasPreferences ? (
               <Card className="border-dashed">
                 <CardContent className="p-6 text-center space-y-4">
@@ -1103,6 +1216,126 @@ export default function MealPrepPage() {
           initialPrefs={prefs}
           hasBodyProfile={!!bodyProfile?.bodyGoal}
         />
+
+        <Dialog open={suggestMealsOpen} onOpenChange={setSuggestMealsOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {suggestStep === "energy" && "How much energy for cooking today?"}
+                {suggestStep === "mealType" && "What meal are we planning?"}
+                {suggestStep === "results" && "Here are some ideas for you"}
+              </DialogTitle>
+              <DialogDescription>
+                {suggestStep === "energy" && "This helps me suggest the right prep level"}
+                {suggestStep === "mealType" && "Just to narrow things down a bit"}
+                {suggestStep === "results" && "Pick one that feels doable, or browse for more"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {suggestStep === "energy" && (
+              <div className="grid grid-cols-3 gap-3 py-4">
+                {([
+                  { level: "low" as const, label: "Low", desc: "Quick & easy" },
+                  { level: "medium" as const, label: "Medium", desc: "Some effort" },
+                  { level: "high" as const, label: "High", desc: "Ready to cook" },
+                ]).map((option) => (
+                  <Button
+                    key={option.level}
+                    variant={suggestEnergy === option.level ? "default" : "outline"}
+                    className="h-auto py-4 flex flex-col gap-1"
+                    onClick={() => {
+                      setSuggestEnergy(option.level);
+                      setSuggestStep("results");
+                    }}
+                    data-testid={`button-meal-energy-${option.level}`}
+                  >
+                    <span className="font-medium">{option.label}</span>
+                    <span className="text-xs opacity-70">{option.desc}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            {suggestStep === "results" && (
+              <div className="space-y-3 py-4">
+                {getMealSuggestions().map((meal, idx) => (
+                  <Card 
+                    key={idx} 
+                    className="hover-elevate cursor-pointer"
+                    data-testid={`card-meal-suggestion-${idx}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="font-medium">{meal.name}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {meal.prepTime} min prep - {meal.planTitle}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            promptAddMealToCalendar(meal.name, "meal", meal.prepTime);
+                          }}
+                          data-testid={`button-add-meal-${idx}`}
+                        >
+                          <Calendar className="w-3.5 h-3.5 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                <Button 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => {
+                    setSuggestStep("energy");
+                    setSuggestEnergy(null);
+                  }}
+                  data-testid="button-different-meals"
+                >
+                  Different options
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={confirmMealOpen} onOpenChange={setConfirmMealOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Add to today's schedule?</DialogTitle>
+              <DialogDescription>
+                {pendingMeal?.name} - {pendingMeal?.prepTime} min prep
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                This will add the meal to your calendar for today. You can always adjust the time later.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button onClick={confirmAddMealToCalendar} data-testid="button-confirm-meal-add">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add to Today
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setConfirmMealOpen(false);
+                    setPendingMeal(null);
+                  }}
+                  data-testid="button-meal-not-now"
+                >
+                  Not Now
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         </div>
       </ScrollArea>
     </div>

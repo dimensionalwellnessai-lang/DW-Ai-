@@ -192,6 +192,8 @@ export default function WorkoutPage() {
   const [goalFilter, setGoalFilter] = useState<GoalFilter>("any");
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>("any");
   const [showFilters, setShowFilters] = useState(false);
+  const [confirmAddOpen, setConfirmAddOpen] = useState(false);
+  const [pendingWorkout, setPendingWorkout] = useState<WorkoutData | null>(null);
   
   const { toast } = useToast();
   const spiritualProfile = getSpiritualProfile();
@@ -205,14 +207,21 @@ export default function WorkoutPage() {
     window.open(searchUrl, "_blank");
   };
 
-  const addToCalendar = (workout: WorkoutData) => {
+  const promptAddToCalendar = (workout: WorkoutData) => {
+    setPendingWorkout(workout);
+    setConfirmAddOpen(true);
+  };
+
+  const confirmAddToCalendar = () => {
+    if (!pendingWorkout) return;
+    
     const now = new Date();
     const startTime = now.getTime();
-    const endTime = startTime + workout.duration * 60 * 1000;
+    const endTime = startTime + pendingWorkout.duration * 60 * 1000;
     
     saveCalendarEvent({
-      title: workout.title,
-      description: workout.description,
+      title: pendingWorkout.title,
+      description: pendingWorkout.description,
       dimension: "physical",
       startTime,
       endTime,
@@ -223,13 +232,16 @@ export default function WorkoutPage() {
       recurring: false,
       recurrencePattern: null,
       relatedFoundationIds: [],
-      tags: workout.tags,
+      tags: pendingWorkout.tags,
     });
     
     toast({
       title: "Added to your schedule",
-      description: `${workout.title} has been added to today's calendar.`,
+      description: `${pendingWorkout.title} has been added to today's calendar.`,
     });
+    
+    setConfirmAddOpen(false);
+    setPendingWorkout(null);
   };
 
   const getAISuggestions = (): WorkoutData[] => {
@@ -565,7 +577,7 @@ export default function WorkoutPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          addToCalendar(workout);
+                          promptAddToCalendar(workout);
                         }}
                         data-testid={`button-add-today-${index}`}
                       >
@@ -688,7 +700,7 @@ export default function WorkoutPage() {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        addToCalendar(selectedWorkout);
+                        promptAddToCalendar(selectedWorkout);
                         setSelectedWorkout(null);
                       }}
                     >
@@ -790,7 +802,7 @@ export default function WorkoutPage() {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              addToCalendar(workout);
+                              promptAddToCalendar(workout);
                             }}
                             data-testid={`button-add-suggestion-${idx}`}
                           >
@@ -826,6 +838,38 @@ export default function WorkoutPage() {
                 </Button>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Add to today's schedule?</DialogTitle>
+              <DialogDescription>
+                {pendingWorkout?.title} - {pendingWorkout?.duration} minutes
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                This will add the workout to your calendar for today. You can always adjust the time later.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button onClick={confirmAddToCalendar} data-testid="button-confirm-add">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add to Today
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setConfirmAddOpen(false);
+                    setPendingWorkout(null);
+                  }}
+                  data-testid="button-not-now"
+                >
+                  Not Now
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
         </div>
