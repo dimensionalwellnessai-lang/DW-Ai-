@@ -21,7 +21,7 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
       {
         targetTestId: "button-menu",
         title: "Navigation Menu",
-        description: "Tap here to explore different areas of the app and discover wellness tools.",
+        description: "Notice what's available here. Open the menu to explore different areas when you're ready.",
         placement: "right"
       },
       {
@@ -33,19 +33,19 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
       {
         targetTestId: "button-send",
         title: "Send Message",
-        description: "When you're ready, tap to share your message.",
+        description: "When you feel steady, share your message.",
         placement: "left"
       },
       {
         targetTestId: "button-attach",
         title: "Add Context",
-        description: "Attach documents or images that help explain what you're working through.",
+        description: "If it helps, attach documents or images that ground what you're working through.",
         placement: "top"
       },
       {
         targetTestId: "button-new-chat",
         title: "Fresh Start",
-        description: "Start a new conversation whenever you need a clean slate.",
+        description: "Start a new conversation whenever you need a clean slate. A fresh space is always here.",
         placement: "bottom"
       },
       {

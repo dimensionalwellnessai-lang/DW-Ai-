@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ export function TutorialOverlay() {
   const { state, currentStep, nextStep, prevStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<ElementRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   const updateTargetPosition = useCallback(() => {
     if (!currentStep) {
@@ -29,48 +30,56 @@ export function TutorialOverlay() {
       return;
     }
 
-    const rect = element.getBoundingClientRect();
-    const padding = 8;
+    element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+
+    setTimeout(() => {
+      const rect = element.getBoundingClientRect();
+      const padding = 8;
     
-    setTargetRect({
-      top: rect.top - padding,
-      left: rect.left - padding,
-      width: rect.width + padding * 2,
-      height: rect.height + padding * 2
-    });
+      setTargetRect({
+        top: rect.top - padding,
+        left: rect.left - padding,
+        width: rect.width + padding * 2,
+        height: rect.height + padding * 2
+      });
 
-    const tooltipWidth = 300;
-    const tooltipHeight = 180;
-    const spacing = 16;
+      const tooltipWidth = 300;
+      const tooltipHeight = 180;
+      const spacing = 16;
 
-    let tooltipTop = 0;
-    let tooltipLeft = 0;
+      let tooltipTop = 0;
+      let tooltipLeft = 0;
 
-    const placement = currentStep.placement || "bottom";
+      const placement = currentStep.placement || "bottom";
 
-    switch (placement) {
-      case "top":
-        tooltipTop = rect.top - tooltipHeight - spacing;
-        tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-        break;
-      case "bottom":
-        tooltipTop = rect.bottom + spacing;
-        tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-        break;
-      case "left":
-        tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
-        tooltipLeft = rect.left - tooltipWidth - spacing;
-        break;
-      case "right":
-        tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
-        tooltipLeft = rect.right + spacing;
-        break;
-    }
+      switch (placement) {
+        case "top":
+          tooltipTop = rect.top - tooltipHeight - spacing;
+          tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          break;
+        case "bottom":
+          tooltipTop = rect.bottom + spacing;
+          tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          break;
+        case "left":
+          tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+          tooltipLeft = rect.left - tooltipWidth - spacing;
+          break;
+        case "right":
+          tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+          tooltipLeft = rect.right + spacing;
+          break;
+      }
 
-    tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 16));
-    tooltipTop = Math.max(16, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 16));
+      tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 16));
+      tooltipTop = Math.max(16, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 16));
 
-    setTooltipPosition({ top: tooltipTop, left: tooltipLeft });
+      setTooltipPosition({ top: tooltipTop, left: tooltipLeft });
+      
+      if (tooltipRef.current) {
+        tooltipRef.current.focus();
+      }
+    }, 100);
   }, [currentStep]);
 
   useEffect(() => {
@@ -170,13 +179,18 @@ export function TutorialOverlay() {
       )}
 
       <Card
-        className="fixed w-[300px] shadow-xl border-primary/20"
+        ref={tooltipRef}
+        tabIndex={-1}
+        className="fixed w-[300px] shadow-xl border-primary/20 outline-none"
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
           zIndex: 10000
         }}
         data-testid="tutorial-tooltip"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Tutorial step ${state.currentStepIndex + 1}: ${currentStep.title}`}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2 mb-3">
