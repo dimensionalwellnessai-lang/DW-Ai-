@@ -9,7 +9,6 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft,
   Camera,
   Shield,
   Target,
@@ -18,6 +17,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 type Step = "consent" | "goals" | "capture" | "complete";
 
@@ -122,16 +122,7 @@ export function BodyScanPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="font-display font-bold text-xl">Body Scan</h1>
-        </div>
-      </header>
+      <PageHeader title="Body Scan" backPath="/workout" />
 
       <main className="flex-1 p-4 max-w-lg mx-auto w-full">
         {step === "consent" && (

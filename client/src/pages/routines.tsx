@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
 import { 
   Dumbbell, 
   Utensils, 
@@ -12,12 +13,17 @@ import {
   Trash2,
   FolderOpen,
   Wallet,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  Coffee,
+  Briefcase
 } from "lucide-react";
 import { 
   getSavedRoutinesByType,
   deleteRoutine,
   updateRoutineLastUsed,
+  getGettingToKnowYou,
   type SavedRoutine,
   type RoutineType
 } from "@/lib/guest-storage";
@@ -39,6 +45,41 @@ const TYPE_LABELS: Record<RoutineType, string> = {
   spiritual_practice: "Spiritual Practices",
 };
 
+const SUGGESTED_ROUTINES = [
+  {
+    id: "morning",
+    title: "Morning Routine",
+    icon: Sun,
+    description: "Start your day with intention",
+    defaultSteps: ["Wake up gently", "Hydrate with water", "5-min stretch", "Set daily intention", "Light breakfast"],
+    personalizable: true,
+  },
+  {
+    id: "work",
+    title: "Work Routine",
+    icon: Briefcase,
+    description: "Stay focused and productive",
+    defaultSteps: ["Clear workspace", "Review priorities", "Deep work block", "Short break every 90 min", "End-of-day review"],
+    personalizable: true,
+  },
+  {
+    id: "lunch",
+    title: "Lunch Routine",
+    icon: Coffee,
+    description: "Recharge midday",
+    defaultSteps: ["Step away from work", "Mindful eating", "Brief walk", "Quick reset meditation"],
+    personalizable: true,
+  },
+  {
+    id: "evening",
+    title: "Evening Routine",
+    icon: Moon,
+    description: "Wind down peacefully",
+    defaultSteps: ["Limit screens 1hr before bed", "Light stretching", "Gratitude reflection", "Prepare for tomorrow", "Relaxing activity"],
+    personalizable: true,
+  },
+];
+
 export default function RoutinesPage() {
   const [, setLocation] = useLocation();
   const [workouts, setWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
@@ -46,6 +87,7 @@ export default function RoutinesPage() {
   const [meditations, setMeditations] = useState<SavedRoutine[]>(getSavedRoutinesByType("meditation"));
   const [budgetPlans, setBudgetPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("budget_plan"));
   const [spiritualPractices, setSpiritualPractices] = useState<SavedRoutine[]>(getSavedRoutinesByType("spiritual_practice"));
+  const gtky = getGettingToKnowYou();
 
   const handleDelete = (type: RoutineType, id: string) => {
     deleteRoutine(id);
@@ -140,17 +182,68 @@ export default function RoutinesPage() {
     );
   };
 
-  return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-display font-bold">Routines</h1>
-          <p className="text-muted-foreground">
-            Your saved workouts, meal plans, and meditations
-          </p>
-        </div>
+  const getPersonalizedSteps = (routineId: string) => {
+    const routine = SUGGESTED_ROUTINES.find(r => r.id === routineId);
+    if (!routine) return [];
+    
+    let steps = [...routine.defaultSteps];
+    
+    if (gtky?.peakEnergyTime === "morning" && routineId === "morning") {
+      steps = ["Quick energizing workout", ...steps.slice(1)];
+    }
+    if (gtky?.peakEnergyTime === "evening" && routineId === "evening") {
+      steps = ["Light exercise", ...steps];
+    }
+    if (gtky?.dayStructure === "scattered" && routineId === "work") {
+      steps = ["Time block your day", ...steps];
+    }
+    
+    return steps;
+  };
 
-        <Tabs defaultValue="workouts" className="w-full">
+  return (
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Routines" />
+      
+      <ScrollArea className="h-[calc(100vh-57px)]">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+          <div className="space-y-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Suggested Daily Routines</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {SUGGESTED_ROUTINES.map((routine) => {
+                const Icon = routine.icon;
+                const steps = getPersonalizedSteps(routine.id);
+                return (
+                  <Card key={routine.id} className="hover-elevate cursor-pointer" data-testid={`card-suggested-${routine.id}`}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-5 h-5 text-primary" />
+                        <h3 className="font-medium text-sm">{routine.title}</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{routine.description}</p>
+                      <div className="space-y-1 pt-2">
+                        {steps.slice(0, 3).map((step, idx) => (
+                          <div key={idx} className="text-xs text-muted-foreground flex items-start gap-1">
+                            <span className="text-primary">-</span>
+                            <span>{step}</span>
+                          </div>
+                        ))}
+                        {steps.length > 3 && (
+                          <span className="text-xs text-muted-foreground">+{steps.length - 3} more</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">Your Saved Routines</h2>
+          </div>
+
+          <Tabs defaultValue="workouts" className="w-full">
           <TabsList className="w-full flex flex-wrap gap-1 h-auto p-1">
             <TabsTrigger value="workouts" className="flex items-center gap-1.5 flex-1 min-w-0" data-testid="tab-workouts">
               <Dumbbell className="w-4 h-4 shrink-0" />
@@ -219,7 +312,8 @@ export default function RoutinesPage() {
             {renderRoutineList(meditations, "meditation", "/")}
           </TabsContent>
         </Tabs>
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

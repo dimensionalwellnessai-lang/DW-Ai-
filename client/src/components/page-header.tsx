@@ -8,11 +8,10 @@ import { APP_VERSION } from "@/lib/routes";
 import { 
   Sun, Clock, Sparkles, Heart, Dumbbell, Utensils, Wallet, History, 
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
-  MessageCircle, MessageCircleHeart
+  MessageCircle, MessageCircleHeart, HelpCircle
 } from "lucide-react";
 
 const MENU_ICON_MAP: Record<string, typeof Sun> = {
-  "ai-chat": Sun,
   "daily-schedule": Clock,
   "life-dashboard": LayoutGrid,
   "meditation": Heart,
@@ -27,6 +26,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "astrology": Sparkles,
   "talk-it-out": MessageCircle,
   "feedback": MessageCircleHeart,
+  "how-to-use": HelpCircle,
 };
 
 interface PageHeaderProps {
@@ -134,7 +134,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           </Link>
         </div>
         <div className="pt-4 text-center">
-          <p className="text-xs text-muted-foreground">v{APP_VERSION}</p>
+          <p className="text-[10px] text-muted-foreground/50">v{APP_VERSION}</p>
         </div>
       </SwipeableDrawer>
     </>

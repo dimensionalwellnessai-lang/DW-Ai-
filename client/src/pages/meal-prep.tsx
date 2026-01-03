@@ -1,17 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 import { 
   Utensils, 
   Settings2, 
   Leaf, 
   Clock, 
+  ChevronDown,
+  ChevronUp,
   ChevronRight,
   Sparkles,
-  AlertCircle,
   Check,
   ArrowRightLeft,
   ShoppingBag,
@@ -54,35 +56,142 @@ const COMMON_RESTRICTIONS = [
   "Low sugar",
 ];
 
-const SAMPLE_MEAL_PLANS = [
+interface MealPlanData {
+  title: string;
+  description: string;
+  meals: {
+    name: string;
+    prepTime: number;
+    ingredients: string[];
+    instructions: string[];
+  }[];
+  tags: string[];
+}
+
+const SAMPLE_MEAL_PLANS: MealPlanData[] = [
   {
     title: "Balanced Day",
     description: "Nutritious meals for steady energy",
-    meals: ["Overnight oats with berries", "Grilled chicken salad", "Salmon with quinoa"],
+    meals: [
+      {
+        name: "Overnight Oats with Berries",
+        prepTime: 5,
+        ingredients: ["1/2 cup rolled oats", "1/2 cup milk (or plant milk)", "1/4 cup Greek yogurt", "1 tbsp honey", "1/4 cup mixed berries", "1 tbsp chia seeds"],
+        instructions: ["Combine oats, milk, yogurt, and honey in a jar", "Stir in chia seeds", "Top with berries", "Refrigerate overnight (or at least 4 hours)", "Enjoy cold or heat for 2 minutes"]
+      },
+      {
+        name: "Grilled Chicken Salad",
+        prepTime: 20,
+        ingredients: ["4 oz chicken breast", "2 cups mixed greens", "1/4 cup cherry tomatoes", "1/4 cucumber sliced", "2 tbsp olive oil", "1 tbsp lemon juice", "Salt and pepper"],
+        instructions: ["Season chicken with salt and pepper", "Grill chicken 6-7 min per side until cooked through", "Let rest 5 min, then slice", "Arrange greens and vegetables in bowl", "Top with sliced chicken", "Drizzle with olive oil and lemon"]
+      },
+      {
+        name: "Salmon with Quinoa",
+        prepTime: 25,
+        ingredients: ["4 oz salmon fillet", "1/2 cup quinoa", "1 cup broccoli florets", "1 tbsp olive oil", "Lemon wedge", "Fresh dill", "Salt and pepper"],
+        instructions: ["Cook quinoa according to package (about 15 min)", "Season salmon with salt, pepper, dill", "Pan-sear salmon 4 min per side", "Steam broccoli until tender-crisp (5 min)", "Plate quinoa, top with salmon and broccoli", "Squeeze lemon over and serve"]
+      }
+    ],
     tags: ["balanced", "high-protein", "meal-prep-friendly"],
   },
   {
     title: "Quick & Easy",
     description: "Simple meals under 30 minutes",
-    meals: ["Smoothie bowl", "Wrap with hummus", "Stir-fry vegetables"],
+    meals: [
+      {
+        name: "Smoothie Bowl",
+        prepTime: 5,
+        ingredients: ["1 frozen banana", "1/2 cup frozen berries", "1/4 cup milk", "2 tbsp granola", "1 tbsp nut butter", "Fresh fruit for topping"],
+        instructions: ["Blend banana, berries, and milk until thick", "Pour into bowl", "Top with granola, nut butter, and fresh fruit", "Enjoy immediately"]
+      },
+      {
+        name: "Veggie Hummus Wrap",
+        prepTime: 10,
+        ingredients: ["1 large tortilla", "3 tbsp hummus", "1/4 avocado sliced", "1/4 cup shredded carrots", "1/4 cup cucumber", "Handful spinach", "Sprouts (optional)"],
+        instructions: ["Spread hummus on tortilla", "Layer vegetables in center", "Fold sides in, then roll tightly", "Slice in half diagonally", "Wrap in foil for meal prep"]
+      },
+      {
+        name: "Quick Vegetable Stir-Fry",
+        prepTime: 15,
+        ingredients: ["2 cups mixed vegetables", "2 tbsp soy sauce", "1 tbsp sesame oil", "1 clove garlic minced", "1 tsp ginger", "Cooked rice or noodles"],
+        instructions: ["Heat sesame oil in wok or pan over high heat", "Add garlic and ginger, cook 30 seconds", "Add vegetables, stir-fry 5-7 minutes", "Add soy sauce, toss to coat", "Serve over rice or noodles"]
+      }
+    ],
     tags: ["quick", "beginner-friendly", "minimal-prep"],
   },
   {
     title: "High Protein",
     description: "For muscle building and recovery",
-    meals: ["Egg white omelette", "Turkey & avocado bowl", "Lean beef stir-fry"],
+    meals: [
+      {
+        name: "Egg White Omelette",
+        prepTime: 10,
+        ingredients: ["4 egg whites", "1/4 cup spinach", "2 tbsp feta cheese", "1/4 cup mushrooms", "Salt and pepper", "Cooking spray"],
+        instructions: ["Whisk egg whites with salt and pepper", "Heat pan with cooking spray over medium", "Pour in egg whites, let set 2 min", "Add spinach, mushrooms, and feta to one half", "Fold omelette in half, cook 1 more minute", "Slide onto plate"]
+      },
+      {
+        name: "Turkey & Avocado Bowl",
+        prepTime: 15,
+        ingredients: ["5 oz ground turkey", "1/2 avocado", "1/2 cup brown rice", "1/4 cup black beans", "Salsa", "Lime juice"],
+        instructions: ["Cook brown rice if not prepped", "Brown ground turkey in skillet, season with cumin", "Arrange rice in bowl", "Top with turkey, beans, sliced avocado", "Add salsa and squeeze of lime"]
+      },
+      {
+        name: "Lean Beef Stir-Fry",
+        prepTime: 20,
+        ingredients: ["5 oz lean beef strips", "1 cup bell peppers", "1/2 cup snap peas", "2 tbsp soy sauce", "1 tbsp oyster sauce", "Garlic and ginger"],
+        instructions: ["Slice beef into thin strips", "Heat oil in wok over high heat", "Sear beef 2-3 min, remove and set aside", "Stir-fry vegetables 3-4 min", "Return beef, add sauces", "Toss together and serve over rice"]
+      }
+    ],
     tags: ["high-protein", "muscle-building", "post-workout"],
   },
   {
     title: "Plant Power",
     description: "Delicious plant-based options",
-    meals: ["Acai bowl", "Buddha bowl with tofu", "Lentil curry"],
+    meals: [
+      {
+        name: "Acai Bowl",
+        prepTime: 5,
+        ingredients: ["1 acai packet (frozen)", "1/2 banana", "1/4 cup plant milk", "Granola", "Coconut flakes", "Fresh berries", "Chia seeds"],
+        instructions: ["Blend acai, banana, and milk until thick", "Pour into bowl", "Top with granola, coconut, berries, chia", "Eat immediately while cold"]
+      },
+      {
+        name: "Buddha Bowl with Tofu",
+        prepTime: 25,
+        ingredients: ["4 oz firm tofu", "1/2 cup quinoa", "1/4 cup chickpeas", "1/2 cup roasted vegetables", "Tahini dressing", "Fresh greens"],
+        instructions: ["Press tofu 15 min, cube and bake at 400F for 20 min", "Cook quinoa", "Roast vegetables (sweet potato, broccoli)", "Arrange all in bowl on bed of greens", "Drizzle with tahini dressing"]
+      },
+      {
+        name: "Lentil Curry",
+        prepTime: 30,
+        ingredients: ["1 cup red lentils", "1 can coconut milk", "2 tbsp curry paste", "1 onion diced", "2 cloves garlic", "1 can diced tomatoes", "Spinach"],
+        instructions: ["Saute onion and garlic until soft", "Add curry paste, cook 1 min", "Add lentils, tomatoes, coconut milk, 2 cups water", "Simmer 20-25 min until lentils tender", "Stir in spinach at end", "Serve over rice or with naan"]
+      }
+    ],
     tags: ["vegan", "plant-based", "high-fiber"],
   },
   {
     title: "Budget Friendly",
     description: "Nutritious meals that are easy on the wallet",
-    meals: ["Rice and beans bowl", "Egg fried rice", "Lentil soup with bread"],
+    meals: [
+      {
+        name: "Rice and Beans Bowl",
+        prepTime: 20,
+        ingredients: ["1 cup rice", "1 can black beans", "1/2 onion", "Cumin and chili powder", "Salsa", "Cilantro", "Lime"],
+        instructions: ["Cook rice according to package", "Saute onion, add beans and spices", "Heat through 5 min", "Serve beans over rice", "Top with salsa, cilantro, lime"]
+      },
+      {
+        name: "Egg Fried Rice",
+        prepTime: 15,
+        ingredients: ["2 cups day-old rice", "2 eggs", "1/2 cup frozen peas and carrots", "3 tbsp soy sauce", "Sesame oil", "Green onions"],
+        instructions: ["Scramble eggs in wok, set aside", "Add more oil, fry cold rice until heated", "Add frozen vegetables", "Return eggs, add soy sauce", "Finish with sesame oil and green onions"]
+      },
+      {
+        name: "Lentil Soup with Bread",
+        prepTime: 30,
+        ingredients: ["1 cup green lentils", "1 onion", "2 carrots", "2 celery stalks", "4 cups broth", "Crusty bread", "Bay leaf"],
+        instructions: ["Saute diced onion, carrots, celery", "Add lentils, broth, bay leaf", "Simmer 25-30 min until lentils soft", "Season with salt and pepper", "Serve with crusty bread for dipping"]
+      }
+    ],
     tags: ["budget-friendly", "affordable", "pantry-staples"],
   },
 ];
@@ -286,6 +395,8 @@ export default function MealPrepPage() {
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientAlternative | null>(null);
   const [filterType, setFilterType] = useState<"all" | "homemade" | "store">("all");
+  const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
+  const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
   const bodyProfile = getBodyProfile();
   const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
@@ -345,14 +456,11 @@ export default function MealPrepPage() {
   const recommendedPlan = getPersonalizedRecommendation();
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-display font-bold">Meal Prep</h1>
-          <p className="text-muted-foreground">
-            Personalized meal plans and ingredient alternatives
-          </p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Meal Prep" />
+      
+      <ScrollArea className="h-[calc(100vh-57px)]">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
 
         {isBudgetConscious && (
           <Card className="bg-emerald-500/5 border-emerald-500/20">
@@ -477,11 +585,19 @@ export default function MealPrepPage() {
                     key={index} 
                     className="hover-elevate cursor-pointer"
                     data-testid={`card-meal-plan-${index}`}
+                    onClick={() => setExpandedPlan(expandedPlan === index ? null : index)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <h3 className="font-medium mb-1">{plan.title}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium">{plan.title}</h3>
+                            {expandedPlan === index ? (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground mb-2">
                             {plan.description}
                           </p>
@@ -505,6 +621,64 @@ export default function MealPrepPage() {
                           Save
                         </Button>
                       </div>
+                      
+                      {expandedPlan === index && (
+                        <div className="mt-4 pt-4 border-t space-y-4">
+                          <h4 className="text-sm font-medium">Meals in this plan:</h4>
+                          {plan.meals.map((meal, mealIdx) => (
+                            <div 
+                              key={mealIdx} 
+                              className="bg-muted/50 rounded-lg p-3 space-y-2"
+                            >
+                              <div 
+                                className="flex items-center justify-between cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const mealKey = `${index}-${mealIdx}`;
+                                  setExpandedMeal(expandedMeal === mealKey ? null : mealKey);
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-medium text-sm">{meal.name}</h5>
+                                  {expandedMeal === `${index}-${mealIdx}` ? (
+                                    <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {meal.prepTime} min
+                                </span>
+                              </div>
+                              
+                              {expandedMeal === `${index}-${mealIdx}` && (
+                                <div className="mt-3 space-y-3">
+                                  <div>
+                                    <h6 className="text-xs font-medium text-muted-foreground mb-1">Ingredients:</h6>
+                                    <ul className="space-y-0.5">
+                                      {meal.ingredients.map((ing, ingIdx) => (
+                                        <li key={ingIdx} className="text-xs text-muted-foreground flex items-start gap-1">
+                                          <span className="text-primary">•</span> {ing}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  
+                                  <div>
+                                    <h6 className="text-xs font-medium text-muted-foreground mb-1">Instructions:</h6>
+                                    <ol className="space-y-1 list-decimal list-inside">
+                                      {meal.instructions.map((inst, instIdx) => (
+                                        <li key={instIdx} className="text-xs text-muted-foreground">{inst}</li>
+                                      ))}
+                                    </ol>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -650,8 +824,9 @@ export default function MealPrepPage() {
           initialPrefs={prefs}
           hasBodyProfile={!!bodyProfile?.bodyGoal}
         />
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 

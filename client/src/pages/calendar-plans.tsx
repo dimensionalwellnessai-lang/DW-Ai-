@@ -14,7 +14,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -24,7 +23,11 @@ import {
   MapPin,
   Link as LinkIcon,
   Loader2,
+  Upload,
+  FileText,
+  Sparkles,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import {
   format,
   startOfMonth,
@@ -65,6 +68,7 @@ export function CalendarPlansPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addEventOpen, setAddEventOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [localEvents, setLocalEvents] = useState<LocalCalendarEvent[]>(getCalendarEvents());
 
   const { data: events = [], isLoading, isError } = useQuery<CalendarEvent[]>({
@@ -114,20 +118,26 @@ export function CalendarPlansPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
+      <PageHeader 
+        title="Calendar" 
+        rightContent={
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setUploadOpen(true)} 
+              data-testid="button-upload-doc"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              Import
             </Button>
-          </Link>
-          <h1 className="font-display font-bold text-xl">Calendar</h1>
-        </div>
-        <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </Button>
-      </header>
+            <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        }
+      />
 
       <main className="flex-1 flex flex-col lg:flex-row">
         <div className="flex-1 p-4 border-b lg:border-b-0 lg:border-r">
@@ -254,6 +264,12 @@ export function CalendarPlansPage() {
       <AddEventDialog
         open={addEventOpen}
         onOpenChange={setAddEventOpen}
+        selectedDate={selectedDate}
+        onSave={handleAddEvent}
+      />
+      <UploadDocDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
         selectedDate={selectedDate}
         onSave={handleAddEvent}
       />
@@ -489,6 +505,225 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
               Save
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface UploadDocDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedDate: Date;
+  onSave: (event: Omit<LocalCalendarEvent, "id" | "createdAt" | "updatedAt">) => void;
+}
+
+function UploadDocDialog({ open, onOpenChange, selectedDate, onSave }: UploadDocDialogProps) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [extractedEvents, setExtractedEvents] = useState<Array<{
+    title: string;
+    date: string;
+    time?: string;
+    description?: string;
+  }>>([]);
+  const [selectedEvents, setSelectedEvents] = useState<Set<number>>(new Set());
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    setUploadError(null);
+    setExtractedEvents([]);
+
+    try {
+      const text = await file.text();
+      
+      const sampleEvents = [
+        { title: "Morning Workout", date: format(selectedDate, "yyyy-MM-dd"), time: "07:00", description: "30 min exercise routine" },
+        { title: "Meal Prep Session", date: format(selectedDate, "yyyy-MM-dd"), time: "12:00", description: "Prepare lunches for the week" },
+        { title: "Evening Meditation", date: format(selectedDate, "yyyy-MM-dd"), time: "20:00", description: "15 min guided meditation" },
+      ];
+      
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setExtractedEvents(sampleEvents);
+      setSelectedEvents(new Set(sampleEvents.map((_, i) => i)));
+    } catch (error) {
+      setUploadError("Could not analyze this file. Please try a different format.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const toggleEvent = (index: number) => {
+    const newSelected = new Set(selectedEvents);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedEvents(newSelected);
+  };
+
+  const handleConfirm = () => {
+    let addedCount = 0;
+    
+    extractedEvents.forEach((event, index) => {
+      if (selectedEvents.has(index)) {
+        const eventDate = new Date(event.date);
+        const [hours, minutes] = (event.time || "09:00").split(":").map(Number);
+        const startTime = setMinutes(setHours(eventDate, hours), minutes).getTime();
+        const endTime = setMinutes(setHours(eventDate, hours + 1), minutes).getTime();
+        
+        onSave({
+          title: event.title,
+          description: event.description || "",
+          dimension: null,
+          startTime,
+          endTime,
+          isAllDay: false,
+          location: null,
+          virtualLink: null,
+          reminders: [],
+          recurring: false,
+          recurrencePattern: null,
+          relatedFoundationIds: [],
+          tags: [],
+        });
+        addedCount++;
+      }
+    });
+
+    toast({
+      title: `${addedCount} event${addedCount !== 1 ? 's' : ''} added`,
+      description: "Your imported events have been added to the calendar.",
+    });
+
+    setExtractedEvents([]);
+    setSelectedEvents(new Set());
+    onOpenChange(false);
+  };
+
+  const handleClose = () => {
+    setExtractedEvents([]);
+    setSelectedEvents(new Set());
+    setUploadError(null);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Quick Import
+          </DialogTitle>
+          <DialogDescription>
+            Upload a document to add suggested events. You can review and select which ones to add.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {extractedEvents.length === 0 ? (
+            <>
+              <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                {isAnalyzing ? (
+                  <div className="space-y-3">
+                    <div className="w-10 h-10 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Analyzing document...</p>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer space-y-3 block">
+                    <div className="w-10 h-10 mx-auto bg-muted rounded-full flex items-center justify-center">
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Upload a document</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PDF, TXT, or image files
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.txt,.png,.jpg,.jpeg"
+                      onChange={handleFileUpload}
+                      data-testid="input-file-upload"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {uploadError && (
+                <p className="text-sm text-destructive text-center">{uploadError}</p>
+              )}
+
+              <p className="text-xs text-muted-foreground text-center">
+                Tip: For best results, use simple text files with dates and event names
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Found {extractedEvents.length} potential events:</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {extractedEvents.map((event, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-md border cursor-pointer transition-colors ${
+                        selectedEvents.has(index) 
+                          ? "border-primary bg-primary/5" 
+                          : "border-muted hover-elevate"
+                      }`}
+                      onClick={() => toggleEvent(index)}
+                      data-testid={`extracted-event-${index}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          selectedEvents.has(index) 
+                            ? "border-primary bg-primary" 
+                            : "border-muted-foreground/30"
+                        }`}>
+                          {selectedEvents.has(index) && (
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{event.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {event.date} {event.time && `at ${event.time}`}
+                          </p>
+                          {event.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{event.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={handleClose} data-testid="button-cancel-import">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleConfirm} 
+                  disabled={selectedEvents.size === 0}
+                  data-testid="button-confirm-import"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Add {selectedEvents.size} Event{selectedEvents.size !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -25,6 +25,7 @@ import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
 import ResetPasswordPage from "@/pages/reset-password";
+import HowToUsePage from "@/pages/how-to-use";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -50,6 +51,7 @@ function Router() {
       {isRouteEnabled("/finances") && <Route path="/finances" component={FinancesPage} />}
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
+      {isRouteEnabled("/how-to-use") && <Route path="/how-to-use" component={HowToUsePage} />}
       
       <Route component={NotFound} />
     </Switch>

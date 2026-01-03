@@ -31,6 +31,7 @@ import {
   Leaf,
   Utensils,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { 
   getBodyProfile, 
   getMealPrepPreferences,
@@ -238,23 +239,23 @@ export default function LifeDashboardPage() {
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-display font-bold">Life Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Life Dashboard" />
+      
+      <ScrollArea className="h-[calc(100vh-57px)]">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+          <div className="flex items-center justify-between gap-4">
             <p className="text-muted-foreground">
               Your wellness dimensions, all connected
             </p>
+            <Button 
+              onClick={() => setDimensionsOpen(true)} 
+              data-testid="button-wellness-dimensions"
+            >
+              <Compass className="w-4 h-4 mr-2" />
+              Dimensions
+            </Button>
           </div>
-          <Button 
-            onClick={() => setDimensionsOpen(true)} 
-            data-testid="button-wellness-dimensions"
-          >
-            <Compass className="w-4 h-4 mr-2" />
-            Dimensions
-          </Button>
-        </div>
 
         <Card>
           <CardContent className="p-4 space-y-3">
@@ -433,7 +434,8 @@ export default function LifeDashboardPage() {
           dimension={selectedDimension}
         />
       )}
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }
 

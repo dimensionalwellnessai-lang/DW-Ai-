@@ -9,7 +9,7 @@ export interface RouteConfig {
 }
 
 export const ROUTES: RouteConfig[] = [
-  { path: "/", name: "AI Chat", enabled: true },
+  { path: "/", name: "Home", enabled: true },
   { path: "/login", name: "Login", enabled: true, isPublic: true },
   { path: "/reset-password", name: "Reset Password", enabled: true, isPublic: true },
   { path: "/welcome", name: "Welcome", enabled: true },
@@ -17,6 +17,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/life-dashboard", name: "Life Dashboard", enabled: true },
   { path: "/calendar", name: "Calendar", enabled: true },
   { path: "/daily-schedule", name: "Today", enabled: true },
+  { path: "/meal-prep", name: "Meal Prep", enabled: true },
   { path: "/workout", name: "Workout", enabled: true },
   { path: "/spiritual", name: "Meditation", enabled: true },
   { path: "/astrology", name: "Astrology", enabled: true },
@@ -25,12 +26,12 @@ export const ROUTES: RouteConfig[] = [
   { path: "/talk", name: "Talk It Out", enabled: true },
   { path: "/challenges", name: "Challenges", enabled: true },
   { path: "/routines", name: "Routines", enabled: true },
-  { path: "/meal-prep", name: "Meal Prep", enabled: true },
   { path: "/finances", name: "Finances", enabled: true },
   { path: "/feedback", name: "Feedback", enabled: true },
   { path: "/settings", name: "Settings", enabled: true },
+  { path: "/how-to-use", name: "How to Use", enabled: true },
   
-  { path: "/body-scan", name: "Body Scan", enabled: false },
+  { path: "/body-scan", name: "Body Scan", enabled: true },
   { path: "/blueprint", name: "Blueprint", enabled: false },
   { path: "/projects", name: "Projects", enabled: false },
   { path: "/community", name: "Community", enabled: false },

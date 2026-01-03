@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Dumbbell,
   Brain,
   Utensils,
@@ -14,80 +14,119 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+import { getGettingToKnowYou, getBodyProfile, getFinanceProfile } from "@/lib/guest-storage";
 
-const CHALLENGE_CATEGORIES = [
-  {
-    id: "workout",
-    name: "Workout Challenges",
-    icon: Dumbbell,
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    description: "Push your physical limits and build strength",
-    examples: ["7-day morning stretch", "10K steps daily", "30-day pushup challenge"],
-  },
-  {
-    id: "mental",
-    name: "Mental Health",
-    icon: Brain,
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    description: "Build resilience and calm your mind",
-    examples: ["5-minute daily meditation", "Gratitude journaling", "Digital detox weekend"],
-  },
-  {
-    id: "nutrition",
-    name: "Meal & Nutrition",
-    icon: Utensils,
-    color: "text-green-500",
-    bgColor: "bg-green-500/10",
-    description: "Nourish your body with intention",
-    examples: ["Meal prep Sunday", "Hydration challenge", "Try one new recipe weekly"],
-  },
-  {
-    id: "social",
-    name: "Social Challenges",
-    icon: Users,
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    description: "Strengthen your connections",
-    examples: ["Reach out to an old friend", "Random act of kindness", "Weekly coffee date"],
-  },
-  {
-    id: "financial",
-    name: "Financial Challenges",
-    icon: DollarSign,
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
-    description: "Build financial peace of mind",
-    examples: ["No-spend weekend", "Save $5 daily", "Review subscriptions"],
-  },
-];
+function getChallengeCategories(userNeeds: string[], bodyGoal: string | null, financialStress: boolean) {
+  return [
+    {
+      id: "workout",
+      name: "Workout Challenges",
+      icon: Dumbbell,
+      color: "text-red-500",
+      bgColor: "bg-red-500/10",
+      description: "Push your physical limits and build strength",
+      examples: getPersonalizedWorkoutChallenges(bodyGoal),
+    },
+    {
+      id: "mental",
+      name: "Mental Health",
+      icon: Brain,
+      color: "text-purple-500",
+      bgColor: "bg-purple-500/10",
+      description: "Build resilience and calm your mind",
+      examples: getPersonalizedMentalChallenges(userNeeds),
+    },
+    {
+      id: "nutrition",
+      name: "Meal & Nutrition",
+      icon: Utensils,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+      description: "Nourish your body with intention",
+      examples: getPersonalizedNutritionChallenges(bodyGoal),
+    },
+    {
+      id: "social",
+      name: "Social Challenges",
+      icon: Users,
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+      description: "Strengthen your connections",
+      examples: getPersonalizedSocialChallenges(userNeeds),
+    },
+    {
+      id: "financial",
+      name: "Financial Challenges",
+      icon: DollarSign,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      description: "Build financial peace of mind",
+      examples: getPersonalizedFinancialChallenges(financialStress),
+    },
+  ];
+}
+
+function getPersonalizedWorkoutChallenges(bodyGoal: string | null): string[] {
+  const base = ["7-day morning stretch", "10K steps daily"];
+  if (bodyGoal === "build_muscle") return [...base, "Progressive pushup challenge"];
+  if (bodyGoal === "slim_fit") return [...base, "30-min cardio 5x/week"];
+  if (bodyGoal === "endurance") return [...base, "Couch to 5K program"];
+  return [...base, "30-day movement streak"];
+}
+
+function getPersonalizedMentalChallenges(needs: string[]): string[] {
+  const base = ["5-minute daily meditation"];
+  if (needs.includes("calm")) return [...base, "Digital detox weekend", "Breathwork before bed"];
+  if (needs.includes("focus")) return [...base, "Single-tasking day", "Pomodoro week"];
+  if (needs.includes("clarity")) return [...base, "Morning journaling", "Weekly reflection"];
+  return [...base, "Gratitude journaling", "Screen-free morning"];
+}
+
+function getPersonalizedNutritionChallenges(bodyGoal: string | null): string[] {
+  const base = ["Hydration challenge", "Meal prep Sunday"];
+  if (bodyGoal === "slim_fit") return [...base, "Mindful portion sizes"];
+  if (bodyGoal === "build_muscle") return [...base, "Protein with every meal"];
+  return [...base, "Try one new recipe weekly"];
+}
+
+function getPersonalizedSocialChallenges(needs: string[]): string[] {
+  if (needs.includes("connection")) {
+    return ["Weekly video call with loved one", "Join a local group", "Express appreciation daily"];
+  }
+  return ["Reach out to an old friend", "Random act of kindness", "Weekly coffee date"];
+}
+
+function getPersonalizedFinancialChallenges(hasStress: boolean): string[] {
+  if (hasStress) {
+    return ["Track all spending for a week", "Find 3 expenses to cut", "Build $100 emergency buffer"];
+  }
+  return ["No-spend weekend", "Save $5 daily", "Review subscriptions"];
+}
 
 export function ChallengesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const gtky = getGettingToKnowYou();
+  const bodyProfile = getBodyProfile();
+  const financeProfile = getFinanceProfile();
+  
+  const userNeeds = gtky?.currentNeeds || [];
+  const bodyGoal = bodyProfile?.bodyGoal || null;
+  const financialStress = financeProfile?.moneyEmotion === "anxious";
+  
+  const categories = getChallengeCategories(userNeeds, bodyGoal, financialStress);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <h1 className="font-display font-bold text-xl">Challenges</h1>
-        </div>
-        <ThemeToggle />
-      </header>
-
-      <main className="flex-1 p-4 max-w-2xl mx-auto w-full">
-        <div className="space-y-4">
-          <p className="text-muted-foreground font-body text-center py-4">
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Challenges" />
+      
+      <ScrollArea className="h-[calc(100vh-57px)]">
+        <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
+          <p className="text-muted-foreground font-body text-center py-2">
             Challenges are here to empower you, not pressure you. Pick something that feels right for where you are today.
           </p>
 
           <div className="space-y-3">
-            {CHALLENGE_CATEGORIES.map((category) => {
+            {categories.map((category) => {
               const Icon = category.icon;
               return (
                 <Card
@@ -135,7 +174,7 @@ export function ChallengesPage() {
             })}
           </div>
         </div>
-      </main>
+      </ScrollArea>
     </div>
   );
 }
