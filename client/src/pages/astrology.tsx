@@ -265,6 +265,181 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const ZODIAC_SYMBOLS: Record<string, string> = {
+  "Aries": "♈",
+  "Taurus": "♉",
+  "Gemini": "♊",
+  "Cancer": "♋",
+  "Leo": "♌",
+  "Virgo": "♍",
+  "Libra": "♎",
+  "Scorpio": "♏",
+  "Sagittarius": "♐",
+  "Capricorn": "♑",
+  "Aquarius": "♒",
+  "Pisces": "♓"
+};
+
+const PLANET_SYMBOLS: Record<string, string> = {
+  "Sun": "☉",
+  "Moon": "☽",
+  "Rising": "Asc",
+  "Mercury": "☿",
+  "Venus": "♀",
+  "Mars": "♂",
+  "Jupiter": "♃",
+  "Saturn": "♄"
+};
+
+const ZODIAC_COLORS: Record<string, string> = {
+  "Aries": "#ef4444",
+  "Taurus": "#22c55e",
+  "Gemini": "#eab308",
+  "Cancer": "#6366f1",
+  "Leo": "#f97316",
+  "Virgo": "#84cc16",
+  "Libra": "#ec4899",
+  "Scorpio": "#dc2626",
+  "Sagittarius": "#8b5cf6",
+  "Capricorn": "#64748b",
+  "Aquarius": "#06b6d4",
+  "Pisces": "#a855f7"
+};
+
+function BirthChartWheel({ placements }: { placements: PlanetPlacement[] }) {
+  const size = 280;
+  const center = size / 2;
+  const outerRadius = center - 10;
+  const middleRadius = outerRadius - 30;
+  const innerRadius = middleRadius - 40;
+  
+  const getSignIndex = (sign: string): number => ZODIAC_SIGNS.indexOf(sign);
+  
+  const getAngleForPlacement = (sign: string, degree: number): number => {
+    const signIndex = getSignIndex(sign);
+    const signStartAngle = signIndex * 30;
+    return signStartAngle + degree - 90;
+  };
+  
+  const polarToCartesian = (angle: number, radius: number): { x: number; y: number } => {
+    const rad = (angle * Math.PI) / 180;
+    return {
+      x: center + radius * Math.cos(rad),
+      y: center + radius * Math.sin(rad)
+    };
+  };
+  
+  return (
+    <div className="flex justify-center py-4" data-testid="birth-chart-wheel">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={outerRadius} 
+          fill="none" 
+          stroke="currentColor" 
+          strokeOpacity={0.2} 
+          strokeWidth={1} 
+        />
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={middleRadius} 
+          fill="none" 
+          stroke="currentColor" 
+          strokeOpacity={0.2} 
+          strokeWidth={1} 
+        />
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={innerRadius} 
+          fill="none" 
+          stroke="currentColor" 
+          strokeOpacity={0.1} 
+          strokeWidth={1} 
+        />
+        
+        {ZODIAC_SIGNS.map((sign, i) => {
+          const startAngle = i * 30 - 90;
+          const endAngle = (i + 1) * 30 - 90;
+          const midAngle = startAngle + 15;
+          
+          const start = polarToCartesian(startAngle, outerRadius);
+          const end = polarToCartesian(endAngle, outerRadius);
+          const innerStart = polarToCartesian(startAngle, middleRadius);
+          
+          const symbolPos = polarToCartesian(midAngle, (outerRadius + middleRadius) / 2);
+          
+          return (
+            <g key={sign}>
+              <line 
+                x1={innerStart.x} 
+                y1={innerStart.y} 
+                x2={start.x} 
+                y2={start.y} 
+                stroke="currentColor" 
+                strokeOpacity={0.15} 
+                strokeWidth={1} 
+              />
+              <text 
+                x={symbolPos.x} 
+                y={symbolPos.y} 
+                textAnchor="middle" 
+                dominantBaseline="central"
+                fill={ZODIAC_COLORS[sign]}
+                fontSize="14"
+                fontWeight="bold"
+              >
+                {ZODIAC_SYMBOLS[sign]}
+              </text>
+            </g>
+          );
+        })}
+        
+        {placements.map((placement, i) => {
+          const angle = getAngleForPlacement(placement.sign, placement.degree);
+          const pos = polarToCartesian(angle, (middleRadius + innerRadius) / 2);
+          const labelPos = polarToCartesian(angle, innerRadius - 15);
+          
+          return (
+            <g key={placement.planet}>
+              <circle 
+                cx={pos.x} 
+                cy={pos.y} 
+                r={12} 
+                fill={ZODIAC_COLORS[placement.sign]}
+                fillOpacity={0.2}
+                stroke={ZODIAC_COLORS[placement.sign]}
+                strokeWidth={1.5}
+              />
+              <text 
+                x={pos.x} 
+                y={pos.y} 
+                textAnchor="middle" 
+                dominantBaseline="central"
+                fontSize={placement.planet === "Rising" ? "8" : "12"}
+                fontWeight="bold"
+                fill="currentColor"
+              >
+                {PLANET_SYMBOLS[placement.planet]}
+              </text>
+            </g>
+          );
+        })}
+        
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={8} 
+          fill="currentColor" 
+          fillOpacity={0.1} 
+        />
+      </svg>
+    </div>
+  );
+}
+
 function calculateLifePathNumber(birthDate: string): number {
   if (!birthDate) return 0;
   
@@ -566,6 +741,10 @@ export default function AstrologyPage() {
                     : "Vedic/Sidereal: Based on fixed star positions (Lahiri Ayanamsa)"
                   }
                 </div>
+                
+                {birthChart.placements && birthChart.placements.length > 0 && (
+                  <BirthChartWheel placements={birthChart.placements} />
+                )}
                 
                 {birthChart.placements && birthChart.placements.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2">
