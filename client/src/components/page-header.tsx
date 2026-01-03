@@ -134,7 +134,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           </Link>
         </div>
         <div className="pt-4 text-center">
-          <p className="text-[10px] text-muted-foreground/50">v{APP_VERSION}</p>
+          <p className="text-sm text-muted-foreground">v{APP_VERSION}</p>
         </div>
       </SwipeableDrawer>
     </>
