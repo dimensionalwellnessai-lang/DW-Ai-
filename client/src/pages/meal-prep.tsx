@@ -54,6 +54,7 @@ import {
   type UserResource
 } from "@/lib/guest-storage";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
+import { DocumentImportFlow } from "@/components/document-import-flow";
 
 type EffortLevel = "any" | "minimal" | "moderate" | "involved";
 type MealType = "any" | "breakfast" | "lunch" | "dinner";
@@ -571,6 +572,7 @@ export default function MealPrepPage() {
   const [confirmMealOpen, setConfirmMealOpen] = useState(false);
   const [pendingMeal, setPendingMeal] = useState<{ name: string; mealType: string; prepTime: number } | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("meal_plan"));
   
   const { toast } = useToast();
@@ -1227,15 +1229,26 @@ export default function MealPrepPage() {
               <FileText className="w-4 h-4" />
               Your Resources
             </h2>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setResourceDialogOpen(true)}
-              data-testid="button-add-meal-resource"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setDocumentImportOpen(true)}
+                data-testid="button-import-meal-document"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                Import
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setResourceDialogOpen(true)}
+                data-testid="button-add-meal-resource"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
           </div>
           
           {userResources.length === 0 ? (
@@ -1320,6 +1333,16 @@ export default function MealPrepPage() {
           onSaved={() => {
             setUserResources(getUserResourcesByType("meal_plan"));
             toast({ title: "Resource saved" });
+          }}
+        />
+
+        <DocumentImportFlow
+          open={documentImportOpen}
+          onClose={() => setDocumentImportOpen(false)}
+          context="nutrition"
+          onComplete={() => {
+            setUserResources(getUserResourcesByType("meal_plan"));
+            toast({ title: "Items imported to your meal library" });
           }}
         />
 

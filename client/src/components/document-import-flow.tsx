@@ -25,6 +25,7 @@ import {
   Sparkles,
   AlertCircle,
 } from "lucide-react";
+import { saveUserResource, type UserResourceType } from "@/lib/guest-storage";
 
 interface DocumentItem {
   id: string;
@@ -178,6 +179,21 @@ export function DocumentImportFlow({
       return response.json();
     },
     onSuccess: (data) => {
+      if (analysisResult) {
+        const selectedItemsData = analysisResult.items.filter(item => selectedItems.has(item.id));
+        for (const item of selectedItemsData) {
+          if (item.destinationSystem === "workout" || item.destinationSystem === "nutrition") {
+            const resourceType: UserResourceType = item.destinationSystem === "workout" ? "workout" : "meal_plan";
+            saveUserResource({
+              resourceType,
+              variant: "file",
+              title: item.title,
+              description: item.description || "",
+              tags: [item.itemType, "imported"],
+            });
+          }
+        }
+      }
       toast({
         title: "Items saved",
         description: data.message,

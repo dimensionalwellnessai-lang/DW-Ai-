@@ -51,6 +51,7 @@ import {
   type UserResource
 } from "@/lib/guest-storage";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
+import { DocumentImportFlow } from "@/components/document-import-flow";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -203,6 +204,7 @@ export default function WorkoutPage() {
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
   const [pendingWorkout, setPendingWorkout] = useState<WorkoutData | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
+  const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("workout"));
   
   const { toast } = useToast();
@@ -676,15 +678,26 @@ export default function WorkoutPage() {
               <FileText className="w-4 h-4" />
               Your Resources
             </h2>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setResourceDialogOpen(true)}
-              data-testid="button-add-resource"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setDocumentImportOpen(true)}
+                data-testid="button-import-document"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                Import
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setResourceDialogOpen(true)}
+                data-testid="button-add-resource"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
           </div>
           
           {userResources.length === 0 ? (
@@ -769,6 +782,16 @@ export default function WorkoutPage() {
           onSaved={() => {
             setUserResources(getUserResourcesByType("workout"));
             toast({ title: "Resource saved" });
+          }}
+        />
+
+        <DocumentImportFlow
+          open={documentImportOpen}
+          onClose={() => setDocumentImportOpen(false)}
+          context="workout"
+          onComplete={() => {
+            setUserResources(getUserResourcesByType("workout"));
+            toast({ title: "Items imported to your workout library" });
           }}
         />
 
