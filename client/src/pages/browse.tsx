@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import {
   ArrowLeft,
   Play,
@@ -108,6 +109,7 @@ const SAMPLE_CONTENT = [
 ];
 
 export default function Browse() {
+  useTutorialStart("browse", 1000);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);

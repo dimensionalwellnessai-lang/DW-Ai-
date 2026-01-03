@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { SplashScreen, useSplashScreen } from "@/components/splash-screen";
 import { isRouteEnabled } from "@/lib/routes";
+import { TutorialProvider } from "@/contexts/tutorial-context";
+import { TutorialOverlay } from "@/components/tutorial-overlay";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -67,13 +69,16 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-          {!showSplash && (
-            <>
-              <Toaster />
-              <Router />
-            </>
-          )}
+          <TutorialProvider>
+            {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+            {!showSplash && (
+              <>
+                <Toaster />
+                <TutorialOverlay />
+                <Router />
+              </>
+            )}
+          </TutorialProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

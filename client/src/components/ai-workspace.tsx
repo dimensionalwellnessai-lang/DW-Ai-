@@ -9,6 +9,7 @@ import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { 
   getGuestData, 
   initGuestData, 
@@ -111,6 +112,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function AIWorkspace() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  useTutorialStart("chat", 1500);
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);

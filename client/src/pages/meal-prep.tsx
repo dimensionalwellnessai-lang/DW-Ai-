@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { 
   Utensils, 
   Settings2, 
@@ -532,6 +533,7 @@ const VIDEO_CATEGORIES = [
 ];
 
 export default function MealPrepPage() {
+  useTutorialStart("meal-prep", 1000);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
   const [savedMeals, setSavedMeals] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));

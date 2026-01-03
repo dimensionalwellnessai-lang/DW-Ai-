@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { 
   Moon, 
   Sun, 
@@ -695,6 +696,7 @@ const HOROSCOPE_READINGS: Record<string, { daily: string; weekly: string; monthl
 };
 
 export default function AstrologyPage() {
+  useTutorialStart("astrology", 1000);
   const [notes, setNotes] = useState<AstrologyNote[]>(getStoredNotes);
   const [newNote, setNewNote] = useState("");
   const [birthChart, setBirthChart] = useState<BirthChart | null>(getBirthChart);
