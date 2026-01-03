@@ -46,6 +46,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   const handleBack = () => {
     if (backPath) {
       setLocation(backPath);
+    } else if (window.history.length > 1) {
+      window.history.back();
     } else {
       setLocation("/");
     }

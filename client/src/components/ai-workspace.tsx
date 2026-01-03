@@ -117,7 +117,7 @@ export function AIWorkspace() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState("");
   const [conversationVersion, setConversationVersion] = useState(0);
@@ -219,9 +219,24 @@ export function AIWorkspace() {
   });
 
   const handleSend = () => {
-    if (!input.trim() || isTyping) return;
+    const hasInput = input.trim();
+    const hasFiles = attachedFiles.length > 0;
+    
+    if ((!hasInput && !hasFiles) || isTyping) return;
 
-    const userMessage = input.trim();
+    let userMessage = input.trim();
+    
+    if (hasFiles && !hasInput) {
+      const fileNames = attachedFiles.map(f => f.name).join(", ");
+      userMessage = attachedFiles.length === 1
+        ? `I'm sharing a file with you: ${fileNames}. Please analyze it and let me know what you find.`
+        : `I'm sharing ${attachedFiles.length} files with you: ${fileNames}. Please analyze them and let me know what you find.`;
+    } else if (hasFiles) {
+      const fileNames = attachedFiles.map(f => f.name).join(", ");
+      userMessage = `[Attached: ${fileNames}] ${userMessage}`;
+    }
+    
+    setAttachedFiles([]);
     
     const crisisAnalysis = analyzeCrisisRisk(userMessage);
     if (crisisAnalysis.isPotentialCrisis) {
@@ -541,15 +556,19 @@ export function AIWorkspace() {
 
         <div className="p-4 border-t dark:border-white/5 glass-subtle">
           <div className="max-w-2xl mx-auto space-y-2">
-            {attachedFile && (
-              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span className="flex-1 truncate">{attachedFile.name}</span>
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
+                <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="flex-1 truncate">
+                  {attachedFiles.length === 1 
+                    ? attachedFiles[0].name 
+                    : `${attachedFiles.length} files selected`}
+                </span>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-6 w-6"
-                  onClick={() => setAttachedFile(null)}
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => setAttachedFiles([])}
                   data-testid="button-remove-attachment"
                 >
                   <X className="w-3 h-3" />
@@ -560,14 +579,17 @@ export function AIWorkspace() {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setAttachedFile(file);
+                  const files = e.target.files;
+                  if (files && files.length > 0) {
+                    setAttachedFiles(Array.from(files));
                     toast({
-                      title: "File attached",
-                      description: `${file.name} ready to share.`,
+                      title: files.length === 1 ? "File attached" : "Files attached",
+                      description: files.length === 1 
+                        ? `${files[0].name} ready to share.`
+                        : `${files.length} files ready to share.`,
                     });
                   }
                 }}
@@ -600,7 +622,7 @@ export function AIWorkspace() {
               <Button
                 size="icon"
                 onClick={handleSend}
-                disabled={!input.trim() || isTyping}
+                disabled={(!input.trim() && attachedFiles.length === 0) || isTyping}
                 className="rounded-full shrink-0"
                 data-testid="button-send"
               >

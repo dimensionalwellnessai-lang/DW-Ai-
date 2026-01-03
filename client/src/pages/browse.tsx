@@ -194,8 +194,8 @@ ${contentList}`,
           </div>
         </div>
 
-        <ScrollArea className="w-full">
-          <div className="flex gap-2 px-4 pb-4">
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
             {aiRecommendations && (
               <Button
                 variant="secondary"
@@ -237,7 +237,7 @@ ${contentList}`,
               </Button>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </header>
 
       {userProfile && (
