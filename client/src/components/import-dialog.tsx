@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import {
   Calendar,
   Utensils,
@@ -115,6 +116,7 @@ interface ImportDialogProps {
 }
 
 export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogProps) {
+  const { toast } = useToast();
   const [step, setStep] = useState<"select-type" | "enter-content" | "confirm">("select-type");
   const [selectedType, setSelectedType] = useState<ImportedDocumentType | null>(null);
   const [title, setTitle] = useState("");
@@ -124,6 +126,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [failedFiles, setFailedFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedTypeInfo = DOCUMENT_TYPES.find(t => t.id === selectedType);
@@ -149,24 +152,37 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
     if (!files || files.length === 0) return;
 
     setIsLoadingFiles(true);
+    setFailedFiles([]);
     const newPendingFiles: PendingFile[] = [];
+    const failed: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        const content = await readFileContent(file);
+        const fileContent = await readFileContent(file);
         newPendingFiles.push({
           file,
-          content,
+          content: fileContent,
           title: file.name.replace(/\.[^/.]+$/, ""),
         });
       } catch (error) {
         console.error(`Failed to read file ${file.name}:`, error);
+        failed.push(file.name);
       }
     }
 
     setPendingFiles([...pendingFiles, ...newPendingFiles]);
+    setFailedFiles(failed);
     setIsLoadingFiles(false);
+    
+    if (failed.length > 0) {
+      toast({
+        title: "Some files couldn't be read",
+        description: `${failed.join(", ")} - Try a different file format.`,
+        variant: "destructive",
+      });
+    }
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -204,6 +220,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
     
     try {
       let lastDocId = "";
+      let importCount = 0;
       
       if (hasManualContent) {
         const doc = saveImportedDocument({
@@ -215,6 +232,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
           tags,
         });
         lastDocId = doc.id;
+        importCount++;
       }
       
       for (const pending of pendingFiles) {
@@ -227,10 +245,23 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
           tags,
         });
         lastDocId = doc.id;
+        importCount++;
       }
 
+      toast({
+        title: "Document imported",
+        description: `${importCount} ${importCount === 1 ? "item" : "items"} added to your life system.`,
+      });
+      
       onImportComplete?.(lastDocId);
       handleClose();
+    } catch (error) {
+      console.error("Failed to import document:", error);
+      toast({
+        title: "Import failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }

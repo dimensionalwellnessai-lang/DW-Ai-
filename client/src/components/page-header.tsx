@@ -8,7 +8,7 @@ import { APP_VERSION } from "@/lib/routes";
 import { 
   Sun, Clock, Sparkles, Heart, Dumbbell, Utensils, Wallet, History, 
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
-  MessageCircle, MessageCircleHeart, HelpCircle
+  MessageCircle, MessageCircleHeart, HelpCircle, BookOpen
 } from "lucide-react";
 
 const MENU_ICON_MAP: Record<string, typeof Sun> = {
@@ -27,6 +27,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "talk-it-out": MessageCircle,
   "feedback": MessageCircleHeart,
   "how-to-use": HelpCircle,
+  "journal": BookOpen,
 };
 
 interface PageHeaderProps {
@@ -84,7 +85,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         onClose={() => setMenuOpen(false)} 
         title="Menu"
       >
-        <nav className="space-y-1 flex-1">
+        <nav className="space-y-1 flex-1 overflow-y-auto min-h-0">
           {menuFeatures.map((feature) => {
             const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
             return (
