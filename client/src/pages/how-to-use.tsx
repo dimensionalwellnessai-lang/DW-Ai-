@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { 
   MessageCircle, 
@@ -12,11 +13,31 @@ import {
   Heart,
   Sparkles,
   Upload,
-  Clock
+  Clock,
+  CheckCircle2
 } from "lucide-react";
 import { Link } from "wouter";
+import {
+  hasCompletedBodyScan,
+  hasCompletedFinanceProfile,
+  hasCompletedSpiritualProfile,
+  hasCompletedCommunityProfile,
+  getMealPrepPreferences,
+} from "@/lib/guest-storage";
 
-const GUIDE_SECTIONS = [
+interface GuideSection {
+  id: string;
+  title: string;
+  icon: typeof MessageCircle;
+  description: string;
+  tips: string[];
+  path: string;
+  estimatedMinutes?: number;
+  hasQuestionnaire?: boolean;
+  completionKey?: string;
+}
+
+const GUIDE_SECTIONS: GuideSection[] = [
   {
     id: "talk",
     title: "Talk It Out",
@@ -39,7 +60,10 @@ const GUIDE_SECTIONS = [
       "Your answers create personalized support strategies",
       "Revisit anytime to update as you grow"
     ],
-    path: "/life-dashboard"
+    path: "/life-dashboard",
+    estimatedMinutes: 15,
+    hasQuestionnaire: true,
+    completionKey: "life-dashboard"
   },
   {
     id: "calendar",
@@ -63,7 +87,10 @@ const GUIDE_SECTIONS = [
       "Each meal has ingredients and cooking instructions",
       "Swap ingredients if needed"
     ],
-    path: "/meal-prep"
+    path: "/meal-prep",
+    estimatedMinutes: 3,
+    hasQuestionnaire: true,
+    completionKey: "meal-prep"
   },
   {
     id: "workout",
@@ -75,7 +102,10 @@ const GUIDE_SECTIONS = [
       "Each workout has video demonstrations",
       "Save favorites to your routines"
     ],
-    path: "/workout"
+    path: "/workout",
+    estimatedMinutes: 5,
+    hasQuestionnaire: true,
+    completionKey: "body-scan"
   },
   {
     id: "meditation",
@@ -87,7 +117,10 @@ const GUIDE_SECTIONS = [
       "Sessions range from 5 to 30 minutes",
       "Follow along with step-by-step guidance"
     ],
-    path: "/spiritual"
+    path: "/spiritual",
+    estimatedMinutes: 4,
+    hasQuestionnaire: true,
+    completionKey: "spiritual"
   },
   {
     id: "astrology",
@@ -99,9 +132,29 @@ const GUIDE_SECTIONS = [
       "Get AI-powered readings for any timeframe",
       "Track moon phases and retrogrades"
     ],
-    path: "/astrology"
+    path: "/astrology",
+    estimatedMinutes: 2,
+    hasQuestionnaire: true,
+    completionKey: "astrology"
   }
 ];
+
+function getCompletionStatus(): Record<string, boolean> {
+  return {
+    "body-scan": hasCompletedBodyScan(),
+    "meal-prep": getMealPrepPreferences() !== null,
+    "spiritual": hasCompletedSpiritualProfile(),
+    "astrology": false,
+    "life-dashboard": hasCompletedBodyScan() && hasCompletedFinanceProfile() && hasCompletedSpiritualProfile() && hasCompletedCommunityProfile(),
+  };
+}
+
+function getOverallCompletion(): number {
+  const status = getCompletionStatus();
+  const questionnaireSections = GUIDE_SECTIONS.filter(s => s.hasQuestionnaire);
+  const completed = questionnaireSections.filter(s => s.completionKey && status[s.completionKey]).length;
+  return Math.round((completed / questionnaireSections.length) * 100);
+}
 
 const QUICK_TIPS = [
   { icon: Clock, text: "Take your time - there's no rush here" },
@@ -111,6 +164,9 @@ const QUICK_TIPS = [
 ];
 
 export default function HowToUsePage() {
+  const completionStatus = getCompletionStatus();
+  const overallCompletion = getOverallCompletion();
+  
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="How to Use" />
@@ -123,6 +179,21 @@ export default function HowToUsePage() {
               Your wellness companion that adapts to you. Here's how to get the most out of it.
             </p>
           </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-base">Your Progress</CardTitle>
+                <span className="text-sm font-medium">{overallCompletion}% complete</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Progress value={overallCompletion} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                Complete the questionnaires below to personalize your experience
+              </p>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="pb-2">
@@ -146,6 +217,8 @@ export default function HowToUsePage() {
             
             {GUIDE_SECTIONS.map((section) => {
               const Icon = section.icon;
+              const isCompleted = section.completionKey ? completionStatus[section.completionKey] : false;
+              
               return (
                 <Card key={section.id} data-testid={`card-guide-${section.id}`}>
                   <CardContent className="p-4 space-y-3">
@@ -154,7 +227,24 @@ export default function HowToUsePage() {
                         <Icon className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">{section.title}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-medium">{section.title}</h4>
+                          {section.hasQuestionnaire && (
+                            <>
+                              {isCompleted ? (
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Complete
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Clock className="w-3 h-3" />
+                                  {section.estimatedMinutes} min
+                                </Badge>
+                              )}
+                            </>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground mt-1">
                           {section.description}
                         </p>
@@ -173,7 +263,7 @@ export default function HowToUsePage() {
                     <div className="ml-[52px]">
                       <Link href={section.path}>
                         <Button variant="outline" size="sm" data-testid={`button-go-${section.id}`}>
-                          Try it out
+                          {section.hasQuestionnaire && isCompleted ? "View" : "Try it out"}
                         </Button>
                       </Link>
                     </div>
