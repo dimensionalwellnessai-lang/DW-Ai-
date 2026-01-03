@@ -751,6 +751,28 @@ export const insertUserSystemPreferencesSchema = createInsertSchema(userSystemPr
   updatedAt: true,
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+  usedAt: true,
+});
+
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
@@ -839,3 +861,5 @@ export type DailyScheduleEvent = typeof dailyScheduleEvents.$inferSelect;
 export type InsertDailyScheduleEvent = z.infer<typeof insertDailyScheduleEventSchema>;
 export type UserSystemPreferences = typeof userSystemPreferences.$inferSelect;
 export type InsertUserSystemPreferences = z.infer<typeof insertUserSystemPreferencesSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;

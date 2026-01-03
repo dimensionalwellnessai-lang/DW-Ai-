@@ -28,6 +28,7 @@ import {
   systemModules,
   dailyScheduleEvents,
   userSystemPreferences,
+  passwordResetTokens,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -86,6 +87,8 @@ import {
   type InsertDailyScheduleEvent,
   type UserSystemPreferences,
   type InsertUserSystemPreferences,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -223,6 +226,10 @@ export interface IStorage {
   getUserSystemPreferences(userId: string): Promise<UserSystemPreferences | undefined>;
   createUserSystemPreferences(prefs: InsertUserSystemPreferences): Promise<UserSystemPreferences>;
   updateUserSystemPreferences(userId: string, data: Partial<UserSystemPreferences>): Promise<UserSystemPreferences | undefined>;
+
+  createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -796,6 +803,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userSystemPreferences.userId, userId))
       .returning();
     return updated || undefined;
+  }
+
+  async createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(data).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [result] = await db.select().from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return result || undefined;
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.id, id));
   }
 }
 

@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Loader2, Mail } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -63,15 +63,18 @@ By creating an account, you confirm that you have read, understood, and agree to
 export function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [loginData, setLoginData] = useState({ email: "", password: "", rememberMe: false });
   const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "" });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotEmailSent, setForgotEmailSent] = useState(false);
   
   const guestMessageCount = getGuestMessageCount();
 
   const loginMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
+    mutationFn: async (data: { email: string; password: string; rememberMe?: boolean }) => {
       const res = await apiRequest("POST", "/api/auth/login", data);
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
@@ -84,6 +87,23 @@ export function LoginPage() {
       toast({
         title: "Login failed",
         description: "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiRequest("POST", "/api/auth/forgot-password", { email });
+      return res.json();
+    },
+    onSuccess: () => {
+      setForgotEmailSent(true);
+    },
+    onError: () => {
+      toast({
+        title: "Something went wrong",
+        description: "Please try again later.",
         variant: "destructive",
       });
     },
@@ -120,7 +140,23 @@ export function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate(loginData);
+    loginMutation.mutate({ 
+      email: loginData.email, 
+      password: loginData.password,
+      rememberMe: loginData.rememberMe 
+    });
+  };
+
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    forgotPasswordMutation.mutate(forgotEmail);
+  };
+
+  const closeForgotPassword = () => {
+    setShowForgotPassword(false);
+    setForgotEmail("");
+    setForgotEmailSent(false);
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -200,7 +236,20 @@ export function LoginPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotEmail(loginData.email);
+                          setShowForgotPassword(true);
+                        }}
+                        className="text-xs text-primary hover:underline"
+                        data-testid="link-forgot-password"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                     <Input
                       id="login-password"
                       type="password"
@@ -210,6 +259,17 @@ export function LoginPage() {
                       required
                       data-testid="input-login-password"
                     />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="remember-me"
+                      checked={loginData.rememberMe}
+                      onCheckedChange={(checked) => setLoginData({ ...loginData, rememberMe: checked === true })}
+                      data-testid="checkbox-remember-me"
+                    />
+                    <label htmlFor="remember-me" className="text-sm text-muted-foreground">
+                      Remember me on this device
+                    </label>
                   </div>
                   <Button
                     type="submit"
@@ -311,6 +371,72 @@ export function LoginPage() {
           <Button onClick={() => setShowTerms(false)} data-testid="button-close-terms">
             Close
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForgotPassword} onOpenChange={(open) => !open && closeForgotPassword()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              {forgotEmailSent 
+                ? "Check your email for reset instructions" 
+                : "Enter your email address and we'll send you a link to reset your password."}
+            </DialogDescription>
+          </DialogHeader>
+          {forgotEmailSent ? (
+            <div className="py-6 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                If an account exists for <span className="font-medium text-foreground">{forgotEmail}</span>, you'll receive an email with instructions to reset your password.
+              </p>
+              <Button onClick={closeForgotPassword} className="w-full" data-testid="button-close-forgot">
+                Back to Login
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  required
+                  data-testid="input-forgot-email"
+                />
+              </div>
+              <DialogFooter className="flex-col gap-2 sm:flex-col">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={forgotPasswordMutation.isPending}
+                  data-testid="button-send-reset"
+                >
+                  {forgotPasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Reset Link"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={closeForgotPassword}
+                  data-testid="button-cancel-forgot"
+                >
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
