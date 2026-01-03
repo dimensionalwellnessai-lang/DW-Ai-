@@ -15,7 +15,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Your wellness hub", enabled: true },
   { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
   { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", indent: true, enabled: true },
-  { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", visibility: "primary", description: "Nutrition", enabled: true },
+  { id: "meal-prep", name: "Meal Plans", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
   { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
   { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "primary", description: "Inner peace", enabled: true },
   { id: "astrology", name: "Astrology", path: "/astrology", visibility: "primary", description: "Cosmic insights", enabled: true },

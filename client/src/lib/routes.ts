@@ -17,7 +17,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/life-dashboard", name: "Life Dashboard", enabled: true },
   { path: "/calendar", name: "Calendar", enabled: true },
   { path: "/daily-schedule", name: "Today", enabled: true },
-  { path: "/meal-prep", name: "Meal Prep", enabled: true },
+  { path: "/meal-prep", name: "Meal Plans", enabled: true },
   { path: "/workout", name: "Workout", enabled: true },
   { path: "/spiritual", name: "Meditation", enabled: true },
   { path: "/astrology", name: "Astrology", enabled: true },

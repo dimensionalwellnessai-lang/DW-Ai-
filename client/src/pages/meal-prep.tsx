@@ -20,7 +20,12 @@ import {
   ChefHat,
   Search,
   X,
-  Info
+  Info,
+  Play,
+  Video,
+  Timer,
+  Users,
+  Heart
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -388,6 +393,144 @@ const INGREDIENT_ALTERNATIVES: IngredientAlternative[] = [
   },
 ];
 
+interface CookingVideo {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  servings: number;
+  category: string;
+  thumbnail: string;
+  tags: string[];
+}
+
+const COOKING_VIDEOS: CookingVideo[] = [
+  {
+    id: "meal-prep-basics",
+    title: "Weekly Meal Prep Basics",
+    description: "Learn the fundamentals of preparing a week's worth of healthy meals in just 2 hours",
+    duration: "15:00",
+    difficulty: "beginner",
+    servings: 5,
+    category: "Meal Prep",
+    thumbnail: "meal-prep",
+    tags: ["beginner", "time-saving", "batch-cooking"],
+  },
+  {
+    id: "overnight-oats-5-ways",
+    title: "Overnight Oats 5 Ways",
+    description: "Quick breakfast ideas that take just 5 minutes to prepare the night before",
+    duration: "8:30",
+    difficulty: "beginner",
+    servings: 1,
+    category: "Breakfast",
+    thumbnail: "breakfast",
+    tags: ["quick", "breakfast", "no-cook"],
+  },
+  {
+    id: "protein-bowl-mastery",
+    title: "Build the Perfect Protein Bowl",
+    description: "Create balanced, satisfying bowls with lean proteins and fresh vegetables",
+    duration: "12:00",
+    difficulty: "beginner",
+    servings: 2,
+    category: "Lunch",
+    thumbnail: "protein-bowl",
+    tags: ["high-protein", "balanced", "customizable"],
+  },
+  {
+    id: "sheet-pan-dinners",
+    title: "One-Pan Dinners for Busy Nights",
+    description: "Simple sheet pan meals that cook while you relax - minimal cleanup required",
+    duration: "10:45",
+    difficulty: "beginner",
+    servings: 4,
+    category: "Dinner",
+    thumbnail: "sheet-pan",
+    tags: ["easy", "family-friendly", "minimal-cleanup"],
+  },
+  {
+    id: "plant-based-proteins",
+    title: "Cooking with Plant-Based Proteins",
+    description: "How to prepare tofu, tempeh, and legumes for maximum flavor and texture",
+    duration: "18:00",
+    difficulty: "intermediate",
+    servings: 4,
+    category: "Plant-Based",
+    thumbnail: "plant-based",
+    tags: ["vegan", "vegetarian", "protein"],
+  },
+  {
+    id: "healthy-smoothies",
+    title: "Nutrient-Packed Smoothies",
+    description: "Blend delicious smoothies that support energy and wellness throughout the day",
+    duration: "7:00",
+    difficulty: "beginner",
+    servings: 1,
+    category: "Smoothies",
+    thumbnail: "smoothie",
+    tags: ["quick", "breakfast", "energy"],
+  },
+  {
+    id: "budget-friendly-meals",
+    title: "Eating Well on a Budget",
+    description: "Nutritious meals using affordable pantry staples and seasonal produce",
+    duration: "14:30",
+    difficulty: "beginner",
+    servings: 4,
+    category: "Budget",
+    thumbnail: "budget",
+    tags: ["budget-friendly", "pantry", "affordable"],
+  },
+  {
+    id: "quick-stir-fry",
+    title: "15-Minute Stir-Fry Mastery",
+    description: "Master the wok for fast, flavorful meals any night of the week",
+    duration: "11:00",
+    difficulty: "intermediate",
+    servings: 2,
+    category: "Quick Meals",
+    thumbnail: "stir-fry",
+    tags: ["quick", "asian-inspired", "vegetables"],
+  },
+  {
+    id: "healthy-snacks",
+    title: "Snacks That Fuel Your Day",
+    description: "Prepare satisfying snacks that keep energy steady between meals",
+    duration: "9:00",
+    difficulty: "beginner",
+    servings: 4,
+    category: "Snacks",
+    thumbnail: "snacks",
+    tags: ["snacks", "energy", "portable"],
+  },
+  {
+    id: "salad-dressings",
+    title: "Homemade Dressings in Minutes",
+    description: "Create fresh, flavorful dressings without preservatives or added sugars",
+    duration: "6:00",
+    difficulty: "beginner",
+    servings: 8,
+    category: "Basics",
+    thumbnail: "dressing",
+    tags: ["basics", "homemade", "healthy"],
+  },
+];
+
+const VIDEO_CATEGORIES = [
+  "All",
+  "Meal Prep",
+  "Breakfast",
+  "Lunch",
+  "Dinner",
+  "Plant-Based",
+  "Quick Meals",
+  "Snacks",
+  "Basics",
+  "Budget",
+];
+
 export default function MealPrepPage() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
@@ -397,6 +540,12 @@ export default function MealPrepPage() {
   const [filterType, setFilterType] = useState<"all" | "homemade" | "store">("all");
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
+  const [videoCategory, setVideoCategory] = useState("All");
+  const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
+  const [savedVideos, setSavedVideos] = useState<string[]>(() => {
+    const saved = localStorage.getItem("fts_saved_videos");
+    return saved ? JSON.parse(saved) : [];
+  });
   const bodyProfile = getBodyProfile();
   const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
@@ -455,9 +604,17 @@ export default function MealPrepPage() {
 
   const recommendedPlan = getPersonalizedRecommendation();
 
+  const toggleSaveVideo = (videoId: string) => {
+    const newSaved = savedVideos.includes(videoId)
+      ? savedVideos.filter(id => id !== videoId)
+      : [...savedVideos, videoId];
+    setSavedVideos(newSaved);
+    localStorage.setItem("fts_saved_videos", JSON.stringify(newSaved));
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Meal Prep" />
+      <PageHeader title="Meal Plans" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
@@ -477,14 +634,18 @@ export default function MealPrepPage() {
         )}
 
         <Tabs defaultValue="plans" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="plans" className="flex-1" data-testid="tab-meal-plans">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="plans" data-testid="tab-meal-plans">
               <Utensils className="w-4 h-4 mr-2" />
-              Meal Plans
+              Recipes
             </TabsTrigger>
-            <TabsTrigger value="swap" className="flex-1" data-testid="tab-ingredient-swap">
+            <TabsTrigger value="videos" data-testid="tab-videos">
+              <Video className="w-4 h-4 mr-2" />
+              Videos
+            </TabsTrigger>
+            <TabsTrigger value="swap" data-testid="tab-ingredient-swap">
               <ArrowRightLeft className="w-4 h-4 mr-2" />
-              Ingredient Swap
+              Swap
             </TabsTrigger>
           </TabsList>
 
@@ -684,6 +845,122 @@ export default function MealPrepPage() {
                 ))}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="videos" className="mt-4 space-y-6">
+            <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1">
+              {VIDEO_CATEGORIES.map((cat) => (
+                <Badge
+                  key={cat}
+                  variant={videoCategory === cat ? "default" : "outline"}
+                  className="cursor-pointer whitespace-nowrap"
+                  onClick={() => setVideoCategory(cat)}
+                  data-testid={`badge-video-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  {cat}
+                </Badge>
+              ))}
+            </div>
+
+            <div className="grid gap-4">
+              {COOKING_VIDEOS.filter(v => videoCategory === "All" || v.category === videoCategory).map((video) => (
+                <Card 
+                  key={video.id} 
+                  className="hover-elevate cursor-pointer overflow-visible"
+                  data-testid={`card-video-${video.id}`}
+                  onClick={() => setExpandedVideo(expandedVideo === video.id ? null : video.id)}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex gap-4 p-4">
+                      <div className="relative w-28 h-20 bg-muted rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
+                        <div className="relative z-10 w-10 h-10 rounded-full bg-background/90 flex items-center justify-center">
+                          <Play className="w-5 h-5 text-primary ml-0.5" />
+                        </div>
+                        <div className="absolute bottom-1 right-1 bg-background/90 px-1.5 py-0.5 rounded text-xs font-medium">
+                          {video.duration}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-medium text-sm mb-1 line-clamp-1">{video.title}</h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="flex-shrink-0 -mt-1 -mr-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSaveVideo(video.id);
+                            }}
+                            data-testid={`button-save-video-${video.id}`}
+                          >
+                            <Heart 
+                              className={`w-4 h-4 ${savedVideos.includes(video.id) ? 'fill-primary text-primary' : ''}`} 
+                            />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{video.description}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Timer className="w-3 h-3" />
+                            {video.duration}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {video.servings} serving{video.servings > 1 ? 's' : ''}
+                          </span>
+                          <Badge variant="secondary" className="text-xs capitalize">
+                            {video.difficulty}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {expandedVideo === video.id && (
+                      <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3">
+                        <p className="text-sm text-muted-foreground">{video.description}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {video.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="pt-2">
+                          <p className="text-xs text-muted-foreground italic">
+                            Video tutorials coming soon. Save this to revisit later.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {expandedVideo !== video.id && (
+                      <div className="px-4 pb-3">
+                        <div className="flex flex-wrap gap-1">
+                          {video.tags.slice(0, 2).map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {video.tags.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{video.tags.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {COOKING_VIDEOS.filter(v => videoCategory === "All" || v.category === videoCategory).length === 0 && (
+              <div className="text-center py-8">
+                <Video className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">No videos in this category yet</p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="swap" className="mt-4 space-y-6">
