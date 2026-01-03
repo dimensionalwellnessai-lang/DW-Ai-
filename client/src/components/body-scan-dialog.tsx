@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, ChevronLeft, Check, User, Target, Ruler } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X } from "lucide-react";
 import { 
   getBodyProfile, 
   saveBodyProfile,
   type BodyProfile,
-  type BodyGoal
+  type BodyGoal,
+  type BodyPhoto
 } from "@/lib/guest-storage";
 
 interface BodyScanDialogProps {
@@ -46,6 +48,12 @@ const ENERGY_LEVELS = [
   { id: "high", label: "Energized", description: "Feeling strong and capable" },
 ];
 
+const POSE_INSTRUCTIONS = [
+  { pose: "front" as const, label: "Front View", instruction: "Stand facing the camera with arms relaxed at your sides" },
+  { pose: "side" as const, label: "Side View", instruction: "Turn to show your side profile" },
+  { pose: "back" as const, label: "Back View", instruction: "Turn to show your back" },
+];
+
 export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProps) {
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<BodyProfile>({
@@ -55,8 +63,14 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     measurements: {},
     energyLevel: "",
     notes: "",
+    photos: [],
     updatedAt: Date.now(),
   });
+  const [cameraActive, setCameraActive] = useState(false);
+  const [currentPose, setCurrentPose] = useState<"front" | "side" | "back">("front");
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -68,14 +82,29 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     }
   }, [open]);
 
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const handleComplete = () => {
+    stopCamera();
     saveBodyProfile(profile);
     onComplete();
   };
 
   const handleSkipToEnd = () => {
+    stopCamera();
     saveBodyProfile(profile);
     onClose();
+  };
+  
+  const handleSkipPhotoStep = () => {
+    stopCamera();
+    setStep(6);
   };
 
   const toggleFocusArea = (area: string) => {
@@ -85,8 +114,66 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     setProfile({ ...profile, focusAreas: areas });
   };
 
-  const showNav = step > 0 && step < 5;
-  const totalSteps = 5;
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (err) {
+      setCameraError("Camera access denied. Please allow camera permissions to take photos.");
+      console.error("Camera error:", err);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    ctx.drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    
+    const newPhoto: BodyPhoto = {
+      id: Date.now().toString(),
+      dataUrl,
+      pose: currentPose,
+      capturedAt: Date.now(),
+    };
+    
+    const existingPhotos = profile.photos || [];
+    const filteredPhotos = existingPhotos.filter(p => p.pose !== currentPose);
+    setProfile({ ...profile, photos: [...filteredPhotos, newPhoto] });
+  };
+
+  const removePhoto = (photoId: string) => {
+    const photos = (profile.photos || []).filter(p => p.id !== photoId);
+    setProfile({ ...profile, photos });
+  };
+
+  const getPhotoForPose = (pose: "front" | "side" | "back") => {
+    return (profile.photos || []).find(p => p.pose === pose);
+  };
+
+  const showNav = step > 0 && step < 6;
+  const totalSteps = 6;
 
   const renderStep = () => {
     switch (step) {
@@ -264,6 +351,122 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
 
       case 5:
         return (
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <Camera className="w-8 h-8 mx-auto text-primary mb-2" />
+              <h3 className="text-lg font-display font-semibold">Optional: Body Photos</h3>
+              <p className="text-sm text-muted-foreground">
+                Take photos for personalized body type analysis. Photos are stored locally on your device only.
+              </p>
+            </div>
+            
+            {cameraError && (
+              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md mb-4">
+                {cameraError}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-2"
+                  onClick={handleSkipPhotoStep}
+                  data-testid="button-skip-photos-error"
+                >
+                  Skip photos for now
+                </Button>
+              </div>
+            )}
+            
+            {!cameraActive && !cameraError ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {POSE_INSTRUCTIONS.map((poseInfo) => {
+                    const photo = getPhotoForPose(poseInfo.pose);
+                    return (
+                      <div key={poseInfo.pose} className="text-center">
+                        <div className="aspect-square rounded-md bg-muted/50 flex items-center justify-center overflow-hidden relative">
+                          {photo ? (
+                            <>
+                              <img 
+                                src={photo.dataUrl} 
+                                alt={poseInfo.label} 
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                onClick={() => removePhoto(photo.id)}
+                                className="absolute top-1 right-1 w-6 h-6 bg-background/80 rounded-full flex items-center justify-center"
+                                data-testid={`button-remove-photo-${poseInfo.pose}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </>
+                          ) : (
+                            <Image className="w-8 h-8 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-1 block">{poseInfo.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <Button onClick={startCamera} variant="outline" className="w-full" data-testid="button-start-camera">
+                  <Camera className="w-4 h-4 mr-2" />
+                  Open Camera
+                </Button>
+                
+                <button
+                  onClick={handleSkipPhotoStep}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+                  data-testid="button-skip-photos"
+                >
+                  Skip photos
+                </button>
+              </div>
+            ) : cameraActive ? (
+              <div className="space-y-4">
+                <div className="relative aspect-[4/3] bg-black rounded-md overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {POSE_INSTRUCTIONS.map((poseInfo) => (
+                    <Button
+                      key={poseInfo.pose}
+                      variant={currentPose === poseInfo.pose ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPose(poseInfo.pose)}
+                      data-testid={`button-pose-${poseInfo.pose}`}
+                    >
+                      {poseInfo.label}
+                    </Button>
+                  ))}
+                </div>
+                
+                <p className="text-sm text-center text-muted-foreground">
+                  {POSE_INSTRUCTIONS.find(p => p.pose === currentPose)?.instruction}
+                </p>
+                
+                <div className="flex gap-2">
+                  <Button onClick={capturePhoto} className="flex-1" data-testid="button-capture">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Capture {POSE_INSTRUCTIONS.find(p => p.pose === currentPose)?.label}
+                  </Button>
+                  <Button variant="ghost" onClick={stopCamera} data-testid="button-stop-camera">
+                    Done
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        );
+
+      case 6:
+        return (
           <div className="text-center space-y-6 py-4">
             <div className="w-16 h-16 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center">
               <Check className="w-8 h-8 text-emerald-500" />
@@ -285,8 +488,13 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     }
   };
 
+  const handleDialogClose = () => {
+    stopCamera();
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDialogClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="sr-only">Body Scan</DialogTitle>
@@ -300,17 +508,20 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setStep(step - 1)}
+              onClick={() => {
+                if (step === 5) stopCamera();
+                setStep(step - 1);
+              }}
               data-testid="button-prev-step"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
             <div className="flex gap-1">
-              {[1, 2, 3, 4].map((s) => (
+              {[1, 2, 3, 4, 5].map((s) => (
                 <div
                   key={s}
-                  className={`h-1.5 w-6 rounded-full transition-colors ${
+                  className={`h-1.5 w-5 rounded-full transition-colors ${
                     s <= step ? "bg-primary" : "bg-muted"
                   }`}
                 />
@@ -326,9 +537,11 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
           </div>
         )}
 
-        {renderStep()}
+        <ScrollArea className="max-h-[60vh]">
+          {renderStep()}
+        </ScrollArea>
 
-        {showNav && step < 5 && (
+        {showNav && step < 6 && (
           <div className="mt-6">
             <Button
               onClick={() => setStep(step + 1)}

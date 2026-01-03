@@ -44,6 +44,13 @@ export type SpiritualPractice = "meditation" | "prayer" | "breathwork" | "journa
 export type ReflectionCadence = "daily" | "few_times_week" | "weekly" | "as_needed";
 export type GroundingNeed = "calm" | "clarity" | "connection" | "energy" | "release";
 
+export interface BodyPhoto {
+  id: string;
+  dataUrl: string;
+  pose: "front" | "side" | "back";
+  capturedAt: number;
+}
+
 export interface BodyProfile {
   currentState: string;
   bodyGoal: BodyGoal | null;
@@ -55,6 +62,7 @@ export interface BodyProfile {
   };
   energyLevel: string;
   notes: string;
+  photos?: BodyPhoto[];
   updatedAt: number;
 }
 

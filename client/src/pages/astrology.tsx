@@ -32,13 +32,23 @@ interface AstrologyNote {
   moonPhase?: string;
 }
 
+type ZodiacSystem = "tropical" | "sidereal";
+
+interface PlanetPlacement {
+  planet: string;
+  sign: string;
+  degree: number;
+}
+
 interface BirthChart {
   birthDate: string;
   birthTime: string;
   birthPlace: string;
+  zodiacSystem: ZodiacSystem;
   sunSign?: string;
   moonSign?: string;
   risingSign?: string;
+  placements?: PlanetPlacement[];
 }
 
 interface CosmicEvent {
@@ -103,12 +113,19 @@ function getMoonPhaseGuidance(phase: string): string {
   return guidance[phase] || "Tune into your inner wisdom today.";
 }
 
-function getSunSign(birthDate: string): string {
+const ZODIAC_SIGNS = [
+  "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+  "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+];
+
+const AYANAMSA_OFFSET = 24;
+
+function getSunSign(birthDate: string, system: ZodiacSystem = "tropical"): string {
   const date = new Date(birthDate);
   const month = date.getMonth() + 1;
   const day = date.getDate();
   
-  const signs = [
+  const tropicalSigns = [
     { sign: "Capricorn", start: [12, 22], end: [1, 19] },
     { sign: "Aquarius", start: [1, 20], end: [2, 18] },
     { sign: "Pisces", start: [2, 19], end: [3, 20] },
@@ -123,15 +140,84 @@ function getSunSign(birthDate: string): string {
     { sign: "Sagittarius", start: [11, 22], end: [12, 21] },
   ];
   
-  for (const { sign, start, end } of signs) {
+  let tropicalSign = "Capricorn";
+  for (const { sign, start, end } of tropicalSigns) {
     if (
       (month === start[0] && day >= start[1]) ||
       (month === end[0] && day <= end[1])
     ) {
-      return sign;
+      tropicalSign = sign;
+      break;
     }
   }
-  return "Capricorn";
+  
+  if (system === "sidereal") {
+    const siderealSigns = [
+      { sign: "Capricorn", start: [1, 15], end: [2, 12] },
+      { sign: "Aquarius", start: [2, 13], end: [3, 14] },
+      { sign: "Pisces", start: [3, 15], end: [4, 13] },
+      { sign: "Aries", start: [4, 14], end: [5, 14] },
+      { sign: "Taurus", start: [5, 15], end: [6, 14] },
+      { sign: "Gemini", start: [6, 15], end: [7, 16] },
+      { sign: "Cancer", start: [7, 17], end: [8, 16] },
+      { sign: "Leo", start: [8, 17], end: [9, 16] },
+      { sign: "Virgo", start: [9, 17], end: [10, 16] },
+      { sign: "Libra", start: [10, 17], end: [11, 15] },
+      { sign: "Scorpio", start: [11, 16], end: [12, 15] },
+      { sign: "Sagittarius", start: [12, 16], end: [1, 14] },
+    ];
+    
+    for (const { sign, start, end } of siderealSigns) {
+      if (start[0] > end[0]) {
+        if ((month === start[0] && day >= start[1]) || (month === end[0] && day <= end[1])) {
+          return sign;
+        }
+      } else if ((month === start[0] && day >= start[1]) || (month === end[0] && day <= end[1])) {
+        return sign;
+      }
+    }
+    return "Sagittarius";
+  }
+  
+  return tropicalSign;
+}
+
+function calculatePlacements(birthDate: string, birthTime: string, system: ZodiacSystem): PlanetPlacement[] {
+  const date = new Date(birthDate);
+  const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  const hour = birthTime ? parseInt(birthTime.split(":")[0]) : 12;
+  
+  const getSign = (degree: number): string => {
+    let adjustedDegree = degree;
+    if (system === "sidereal") {
+      adjustedDegree = (degree - AYANAMSA_OFFSET + 360) % 360;
+    }
+    return ZODIAC_SIGNS[Math.floor(adjustedDegree / 30) % 12];
+  };
+  
+  const sunDegree = ((dayOfYear / 365.25) * 360 + 280) % 360;
+  
+  const moonCycle = 27.3;
+  const moonDegree = ((dayOfYear / moonCycle) * 360 + hour * 0.5) % 360;
+  
+  const risingDegree = (hour * 15 + (dayOfYear / 365.25) * 360) % 360;
+  
+  const mercuryDegree = (sunDegree + 15 + (dayOfYear % 88) * 4) % 360;
+  const venusDegree = (sunDegree - 20 + (dayOfYear % 225) * 1.6) % 360;
+  const marsDegree = ((dayOfYear / 687) * 360 + 45) % 360;
+  const jupiterDegree = ((dayOfYear / 4333) * 360 + 120) % 360;
+  const saturnDegree = ((dayOfYear / 10759) * 360 + 200) % 360;
+  
+  return [
+    { planet: "Sun", sign: getSign(sunDegree), degree: Math.round(sunDegree % 30) },
+    { planet: "Moon", sign: getSign(moonDegree), degree: Math.round(moonDegree % 30) },
+    { planet: "Rising", sign: getSign(risingDegree), degree: Math.round(risingDegree % 30) },
+    { planet: "Mercury", sign: getSign(mercuryDegree), degree: Math.round(mercuryDegree % 30) },
+    { planet: "Venus", sign: getSign(venusDegree), degree: Math.round(venusDegree % 30) },
+    { planet: "Mars", sign: getSign(marsDegree), degree: Math.round(marsDegree % 30) },
+    { planet: "Jupiter", sign: getSign(jupiterDegree), degree: Math.round(jupiterDegree % 30) },
+    { planet: "Saturn", sign: getSign(saturnDegree), degree: Math.round(saturnDegree % 30) },
+  ];
 }
 
 function getUpcomingCosmicEvents(): CosmicEvent[] {
@@ -250,6 +336,7 @@ export default function AstrologyPage() {
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
+  const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthChart?.zodiacSystem || "tropical");
   
   const handleOpenDialog = () => {
     const savedChart = getBirthChart();
@@ -257,6 +344,21 @@ export default function AstrologyPage() {
     setBirthTime(savedChart?.birthTime || "");
     setBirthPlace(savedChart?.birthPlace || "");
     setChartDialogOpen(true);
+  };
+  
+  const handleSystemChange = (system: ZodiacSystem) => {
+    setZodiacSystem(system);
+    if (birthChart) {
+      const placements = calculatePlacements(birthChart.birthDate, birthChart.birthTime, system);
+      const updatedChart: BirthChart = {
+        ...birthChart,
+        zodiacSystem: system,
+        sunSign: getSunSign(birthChart.birthDate, system),
+        placements,
+      };
+      saveBirthChart(updatedChart);
+      setBirthChart(updatedChart);
+    }
   };
   
   const moonPhase = getMoonPhase();
@@ -285,11 +387,14 @@ export default function AstrologyPage() {
   const handleSaveBirthChart = () => {
     if (!birthDate) return;
     
+    const placements = calculatePlacements(birthDate, birthTime, zodiacSystem);
     const chart: BirthChart = {
       birthDate,
       birthTime,
       birthPlace,
-      sunSign: getSunSign(birthDate),
+      zodiacSystem,
+      sunSign: getSunSign(birthDate, zodiacSystem),
+      placements,
     };
     
     saveBirthChart(chart);
@@ -341,18 +446,66 @@ export default function AstrologyPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className="text-sm">
-                    <Sun className="w-3 h-3 mr-1" />
-                    {sunSign}
-                  </Badge>
-                  {birthChart.birthTime && (
-                    <span className="text-sm text-muted-foreground">
-                      Born at {birthChart.birthTime}
-                    </span>
-                  )}
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">System:</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={zodiacSystem === "tropical" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSystemChange("tropical")}
+                        data-testid="button-tropical"
+                      >
+                        Western
+                      </Button>
+                      <Button
+                        variant={zodiacSystem === "sidereal" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSystemChange("sidereal")}
+                        data-testid="button-sidereal"
+                      >
+                        Vedic
+                      </Button>
+                    </div>
+                  </div>
                 </div>
+                
+                <div className="text-xs text-muted-foreground">
+                  {zodiacSystem === "tropical" 
+                    ? "Western/Tropical: Based on seasons and the vernal equinox"
+                    : "Vedic/Sidereal: Based on fixed star positions (Lahiri Ayanamsa)"
+                  }
+                </div>
+                
+                {birthChart.placements && birthChart.placements.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {birthChart.placements.map((placement) => (
+                      <div 
+                        key={placement.planet} 
+                        className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
+                      >
+                        <span className="text-sm font-medium">{placement.planet}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {placement.sign} {placement.degree}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Badge variant="secondary" className="text-sm">
+                      <Sun className="w-3 h-3 mr-1" />
+                      {sunSign}
+                    </Badge>
+                  </div>
+                )}
+                
+                {birthChart.birthTime && (
+                  <p className="text-sm text-muted-foreground">
+                    Born at {birthChart.birthTime}
+                  </p>
+                )}
                 {birthChart.birthPlace && (
                   <p className="text-sm text-muted-foreground">
                     {birthChart.birthPlace}
