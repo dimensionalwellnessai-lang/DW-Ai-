@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Play,
@@ -16,7 +16,18 @@ import {
   Sun,
   Filter,
   Sparkles,
+  Loader2,
+  X,
+  Wand2,
 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { WellnessContent, UserProfile } from "@shared/schema";
 
 const CONTENT_CATEGORIES = [
@@ -99,6 +110,9 @@ const SAMPLE_CONTENT = [
 export default function Browse() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [currentMood, setCurrentMood] = useState("");
+  const [aiRecommendations, setAiRecommendations] = useState<string[] | null>(null);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
@@ -108,10 +122,32 @@ export default function Browse() {
     queryKey: ["/api/wellness-content"],
   });
 
+  const aiCustomizeMutation = useMutation({
+    mutationFn: async (mood: string) => {
+      const contentTitles = content.map(c => `${c.title} (${c.category}, ${c.duration}min): ${c.description}`).join("\n");
+      
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: `You are a wellness guide. The user is feeling: "${mood}". Based on this energy state, recommend 2-3 activities from this list that would be most supportive right now. Return ONLY the exact titles, one per line, no numbering or extra text.
+
+Available content:
+${contentTitles}`,
+        conversationHistory: [],
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const titles = data.response.split("\n").filter((t: string) => t.trim()).map((t: string) => t.trim());
+      setAiRecommendations(titles);
+      setAiDialogOpen(false);
+    },
+  });
+
   const content = dbContent && dbContent.length > 0 ? dbContent : SAMPLE_CONTENT;
   
   const filteredContent = activeCategory
     ? content.filter((c) => c.category === activeCategory)
+    : aiRecommendations
+    ? content.filter((c) => aiRecommendations.some(r => c.title.toLowerCase().includes(r.toLowerCase().substring(0, 15))))
     : content;
 
   const getCategoryIcon = (category: string) => {
@@ -131,23 +167,51 @@ export default function Browse() {
             </Link>
             <h1 className="text-xl font-display font-semibold">Browse</h1>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            data-testid="button-filters"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setAiDialogOpen(true)}
+              data-testid="button-ai-customize"
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              AI Picks
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-filters"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+          </div>
         </div>
 
         <ScrollArea className="w-full">
           <div className="flex gap-2 px-4 pb-4">
+            {aiRecommendations && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setAiRecommendations(null);
+                  setActiveCategory(null);
+                }}
+                data-testid="button-clear-ai"
+              >
+                <X className="h-4 w-4 mr-1" />
+                AI Picks
+              </Button>
+            )}
             <Button
-              variant={activeCategory === null ? "default" : "outline"}
+              variant={activeCategory === null && !aiRecommendations ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveCategory(null)}
+              onClick={() => {
+                setActiveCategory(null);
+                setAiRecommendations(null);
+              }}
               data-testid="button-category-all"
             >
               All
@@ -157,7 +221,10 @@ export default function Browse() {
                 key={cat.id}
                 variant={activeCategory === cat.id ? "default" : "outline"}
                 size="sm"
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  setAiRecommendations(null);
+                }}
                 data-testid={`button-category-${cat.id}`}
               >
                 <cat.icon className="h-4 w-4 mr-1" />
@@ -246,6 +313,60 @@ export default function Browse() {
           </div>
         )}
       </main>
+
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5" />
+              What's your energy right now?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Share how you're feeling and we'll find the right content for you.
+            </p>
+            <Textarea
+              placeholder="e.g., I'm feeling tired but need to move, anxious and need to calm down, energized and want a challenge..."
+              value={currentMood}
+              onChange={(e) => setCurrentMood(e.target.value)}
+              className="min-h-[100px]"
+              data-testid="input-mood"
+            />
+            <div className="flex flex-wrap gap-2">
+              {["Tired", "Anxious", "Energized", "Scattered", "Low energy", "Motivated"].map((mood) => (
+                <Button
+                  key={mood}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentMood(mood)}
+                  data-testid={`button-mood-${mood.toLowerCase().replace(" ", "-")}`}
+                >
+                  {mood}
+                </Button>
+              ))}
+            </div>
+            <Button
+              onClick={() => aiCustomizeMutation.mutate(currentMood)}
+              disabled={!currentMood.trim() || aiCustomizeMutation.isPending}
+              className="w-full"
+              data-testid="button-get-recommendations"
+            >
+              {aiCustomizeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Finding the right fit...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Get Recommendations
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
