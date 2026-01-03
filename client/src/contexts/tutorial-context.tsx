@@ -1,25 +1,31 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { getTutorialForPage, type PageTutorial, type TutorialStep } from "@/config/tutorials";
+import { getTutorialForPage, NAVIGATION_TUTORIAL, type PageTutorial, type TutorialStep } from "@/config/tutorials";
 
 const STORAGE_KEY = "fts_seen_tutorials";
+const NAV_TUTORIAL_KEY = "fts_seen_nav_tutorial";
 
 interface TutorialState {
   isActive: boolean;
   currentPageId: string | null;
   currentStepIndex: number;
   tutorial: PageTutorial | null;
+  isNavigationTutorial: boolean;
+  navigationSteps: TutorialStep[];
 }
 
 interface TutorialContextValue {
   state: TutorialState;
   startTutorial: (pageId: string, force?: boolean) => void;
+  startNavigationTutorial: (force?: boolean) => void;
   nextStep: () => void;
   prevStep: () => void;
   skipTutorial: () => void;
   completeTutorial: () => void;
   resetAllTutorials: () => void;
   hasSeenTutorial: (pageId: string) => boolean;
+  hasSeenNavigationTutorial: () => boolean;
   currentStep: TutorialStep | null;
+  requiresMenuOpen: boolean;
 }
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
@@ -43,6 +49,15 @@ function markTutorialSeen(pageId: string): void {
 
 function clearSeenTutorials(): void {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(NAV_TUTORIAL_KEY);
+}
+
+function hasSeenNavTutorial(): boolean {
+  return localStorage.getItem(NAV_TUTORIAL_KEY) === "true";
+}
+
+function markNavTutorialSeen(): void {
+  localStorage.setItem(NAV_TUTORIAL_KEY, "true");
 }
 
 export function TutorialProvider({ children }: { children: React.ReactNode }) {
@@ -50,7 +65,9 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     isActive: false,
     currentPageId: null,
     currentStepIndex: 0,
-    tutorial: null
+    tutorial: null,
+    isNavigationTutorial: false,
+    navigationSteps: []
   });
 
   const hasSeenTutorial = useCallback((pageId: string): boolean => {
@@ -71,30 +88,56 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
       isActive: true,
       currentPageId: pageId,
       currentStepIndex: 0,
-      tutorial
+      tutorial,
+      isNavigationTutorial: false,
+      navigationSteps: []
     });
   }, [hasSeenTutorial]);
 
+  const startNavigationTutorial = useCallback((force = false) => {
+    if (!force && hasSeenNavTutorial()) {
+      return;
+    }
+
+    setState({
+      isActive: true,
+      currentPageId: "navigation",
+      currentStepIndex: 0,
+      tutorial: null,
+      isNavigationTutorial: true,
+      navigationSteps: NAVIGATION_TUTORIAL
+    });
+  }, []);
+
+  const hasSeenNavigationTutorial = useCallback((): boolean => {
+    return hasSeenNavTutorial();
+  }, []);
+
   const completeTutorial = useCallback(() => {
-    if (state.currentPageId) {
+    if (state.isNavigationTutorial) {
+      markNavTutorialSeen();
+    } else if (state.currentPageId) {
       markTutorialSeen(state.currentPageId);
     }
     setState({
       isActive: false,
       currentPageId: null,
       currentStepIndex: 0,
-      tutorial: null
+      tutorial: null,
+      isNavigationTutorial: false,
+      navigationSteps: []
     });
-  }, [state.currentPageId]);
+  }, [state.currentPageId, state.isNavigationTutorial]);
 
   const skipTutorial = useCallback(() => {
     completeTutorial();
   }, [completeTutorial]);
 
   const nextStep = useCallback(() => {
-    if (!state.tutorial) return;
+    const steps = state.isNavigationTutorial ? state.navigationSteps : state.tutorial?.steps;
+    if (!steps || steps.length === 0) return;
 
-    if (state.currentStepIndex >= state.tutorial.steps.length - 1) {
+    if (state.currentStepIndex >= steps.length - 1) {
       completeTutorial();
     } else {
       setState(prev => ({
@@ -102,7 +145,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
         currentStepIndex: prev.currentStepIndex + 1
       }));
     }
-  }, [state.tutorial, state.currentStepIndex, completeTutorial]);
+  }, [state.tutorial, state.isNavigationTutorial, state.navigationSteps, state.currentStepIndex, completeTutorial]);
 
   const prevStep = useCallback(() => {
     if (state.currentStepIndex > 0) {
@@ -117,20 +160,27 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     clearSeenTutorials();
   }, []);
 
-  const currentStep = state.tutorial?.steps[state.currentStepIndex] || null;
+  const currentStep = state.isNavigationTutorial
+    ? state.navigationSteps[state.currentStepIndex] || null
+    : state.tutorial?.steps[state.currentStepIndex] || null;
+  
+  const requiresMenuOpen = currentStep?.requiresMenuOpen || false;
 
   return (
     <TutorialContext.Provider
       value={{
         state,
         startTutorial,
+        startNavigationTutorial,
         nextStep,
         prevStep,
         skipTutorial,
         completeTutorial,
         resetAllTutorials,
         hasSeenTutorial,
-        currentStep
+        hasSeenNavigationTutorial,
+        currentStep,
+        requiresMenuOpen
       }}
     >
       {children}

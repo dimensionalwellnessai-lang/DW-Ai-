@@ -120,11 +120,14 @@ export function TutorialOverlay() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state.isActive, nextStep, prevStep, skipTutorial]);
 
-  if (!state.isActive || !state.tutorial || !currentStep) {
+  if (!state.isActive || !currentStep) {
     return null;
   }
 
-  const totalSteps = state.tutorial.steps.length;
+  const isNavTutorial = state.isNavigationTutorial;
+  const totalSteps = isNavTutorial 
+    ? state.navigationSteps.length 
+    : (state.tutorial?.steps.length || 0);
   const currentStepNum = state.currentStepIndex + 1;
   const isFirstStep = state.currentStepIndex === 0;
   const isLastStep = state.currentStepIndex === totalSteps - 1;

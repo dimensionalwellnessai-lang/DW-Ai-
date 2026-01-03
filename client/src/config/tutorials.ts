@@ -3,6 +3,7 @@ export interface TutorialStep {
   title: string;
   description: string;
   placement?: "top" | "bottom" | "left" | "right";
+  requiresMenuOpen?: boolean;
 }
 
 export interface PageTutorial {
@@ -11,6 +12,71 @@ export interface PageTutorial {
   welcomeMessage?: string;
   steps: TutorialStep[];
 }
+
+export const NAVIGATION_TUTORIAL: TutorialStep[] = [
+  {
+    targetTestId: "button-menu",
+    title: "Open the Menu",
+    description: "Tap here to see all the areas you can explore. Take your time.",
+    placement: "right"
+  },
+  {
+    targetTestId: "menu-item-life-dashboard",
+    title: "Life Dashboard",
+    description: "Your wellness hub. See your energy, habits, and progress at a glance.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-calendar",
+    title: "Calendar",
+    description: "View your week and plan what feels manageable.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-daily-schedule",
+    title: "Today",
+    description: "Focus on just today. One day at a time.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-workout",
+    title: "Workout",
+    description: "Find movement that matches your energy. No pressure.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-meal-prep",
+    title: "Meal Plans",
+    description: "Simple recipes and videos for nourishment.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-meditation",
+    title: "Meditation",
+    description: "A space for stillness whenever you need it.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-browse",
+    title: "Browse",
+    description: "Explore resources organized by what matters to you.",
+    placement: "right",
+    requiresMenuOpen: true
+  },
+  {
+    targetTestId: "menu-item-how-to-use",
+    title: "How to Use",
+    description: "Come back here anytime you want a refresher.",
+    placement: "right",
+    requiresMenuOpen: true
+  }
+];
 
 export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
   chat: {

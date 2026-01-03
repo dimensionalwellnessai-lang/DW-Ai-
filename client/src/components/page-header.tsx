@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Menu } from "lucide-react";
+import { ArrowLeft, Menu, GraduationCap } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
+import { useTutorial } from "@/contexts/tutorial-context";
 import { 
   Sun, Clock, Sparkles, Heart, Dumbbell, Utensils, Wallet, History, 
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
@@ -42,6 +43,26 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   const [menuOpen, setMenuOpen] = useState(false);
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
+  const { 
+    state: tutorialState, 
+    startNavigationTutorial, 
+    hasSeenNavigationTutorial,
+    requiresMenuOpen,
+    skipTutorial
+  } = useTutorial();
+
+  useEffect(() => {
+    if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
+      setMenuOpen(true);
+    }
+  }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, menuOpen]);
+
+  const handleStartTutorial = () => {
+    setMenuOpen(false);
+    setTimeout(() => {
+      startNavigationTutorial(true);
+    }, 300);
+  };
 
   const handleBack = () => {
     if (backPath) {
@@ -130,6 +151,16 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           </details>
         </nav>
         <div className="pt-4 space-y-2">
+          <Button 
+            variant="outline" 
+            className="w-full" 
+            size="sm" 
+            onClick={handleStartTutorial}
+            data-testid="button-start-tutorial"
+          >
+            <GraduationCap className="h-4 w-4 mr-2" />
+            Take a Tour
+          </Button>
           <Link href="/login">
             <Button className="w-full" size="sm" data-testid="button-signup">
               Sign in
