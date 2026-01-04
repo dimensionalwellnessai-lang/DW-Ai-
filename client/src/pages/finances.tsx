@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/page-header";
 import { 
   Wallet, 
   Settings2, 
@@ -98,14 +99,13 @@ export default function FinancesPage() {
   const relevantTips = getRelevantTips();
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-display font-bold">Financial Wellness</h1>
+    <div className="flex flex-col h-full">
+      <PageHeader title="Financial Wellness" />
+      <ScrollArea className="flex-1">
+        <div className="p-6 max-w-2xl mx-auto space-y-6">
           <p className="text-muted-foreground">
             Budget-aware suggestions that respect where you are
           </p>
-        </div>
 
         {!hasProfile ? (
           <Card className="border-dashed">
@@ -276,7 +276,8 @@ export default function FinancesPage() {
           onClose={() => setProfileOpen(false)}
           onComplete={handleProfileComplete}
         />
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

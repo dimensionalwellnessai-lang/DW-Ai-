@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X, Upload } from "lucide-react";
 import { 
   getBodyProfile, 
   saveBodyProfile,
@@ -69,8 +70,10 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   const [cameraActive, setCameraActive] = useState(false);
   const [currentPose, setCurrentPose] = useState<"front" | "side" | "back">("front");
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [useMetric, setUseMetric] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -170,6 +173,80 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
 
   const getPhotoForPose = (pose: "front" | "side" | "back") => {
     return (profile.photos || []).find(p => p.pose === pose);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const newPhoto: BodyPhoto = {
+        id: Date.now().toString(),
+        dataUrl,
+        pose: currentPose,
+        capturedAt: Date.now(),
+      };
+      
+      const existingPhotos = profile.photos || [];
+      const filteredPhotos = existingPhotos.filter(p => p.pose !== currentPose);
+      setProfile({ ...profile, photos: [...filteredPhotos, newPhoto] });
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleUnitToggle = (metric: boolean) => {
+    setUseMetric(metric);
+  };
+
+  const getDisplayHeight = (): string => {
+    const heightCm = profile.measurements?.heightCm;
+    if (!heightCm) return "";
+    if (useMetric) return String(heightCm);
+    return String(Math.round(heightCm / 2.54));
+  };
+
+  const getDisplayWeight = (): string => {
+    const weightKg = profile.measurements?.weightKg;
+    if (!weightKg) return "";
+    if (useMetric) return String(weightKg);
+    return String(Math.round(weightKg * 2.20462));
+  };
+
+  const handleHeightChange = (value: string) => {
+    if (!value) {
+      setProfile({
+        ...profile,
+        measurements: { ...profile.measurements, heightCm: undefined }
+      });
+      return;
+    }
+    const num = Number(value);
+    const heightCm = useMetric ? num : Math.round(num * 2.54);
+    setProfile({
+      ...profile,
+      measurements: { ...profile.measurements, heightCm }
+    });
+  };
+
+  const handleWeightChange = (value: string) => {
+    if (!value) {
+      setProfile({
+        ...profile,
+        measurements: { ...profile.measurements, weightKg: undefined }
+      });
+      return;
+    }
+    const num = Number(value);
+    const weightKg = useMetric ? num : Math.round(num / 2.20462);
+    setProfile({
+      ...profile,
+      measurements: { ...profile.measurements, weightKg }
+    });
   };
 
   const showNav = step > 0 && step < 6;
@@ -305,32 +382,35 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
               </p>
             </div>
             <div className="space-y-4">
+              <div className="flex items-center justify-center gap-3 py-2">
+                <span className={`text-sm ${!useMetric ? "font-medium" : "text-muted-foreground"}`}>Imperial</span>
+                <Switch
+                  checked={useMetric}
+                  onCheckedChange={handleUnitToggle}
+                  data-testid="switch-unit-toggle"
+                />
+                <span className={`text-sm ${useMetric ? "font-medium" : "text-muted-foreground"}`}>Metric</span>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
+                  <Label htmlFor="height">Height ({useMetric ? "cm" : "in"})</Label>
                   <Input
                     id="height"
                     type="number"
-                    placeholder="170"
-                    value={profile.measurements?.heightCm || ""}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      measurements: { ...profile.measurements, heightCm: e.target.value ? Number(e.target.value) : undefined }
-                    })}
+                    placeholder={useMetric ? "170" : "67"}
+                    value={getDisplayHeight()}
+                    onChange={(e) => handleHeightChange(e.target.value)}
                     data-testid="input-height"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Label htmlFor="weight">Weight ({useMetric ? "kg" : "lbs"})</Label>
                   <Input
                     id="weight"
                     type="number"
-                    placeholder="70"
-                    value={profile.measurements?.weightKg || ""}
-                    onChange={(e) => setProfile({
-                      ...profile,
-                      measurements: { ...profile.measurements, weightKg: e.target.value ? Number(e.target.value) : undefined }
-                    })}
+                    placeholder={useMetric ? "70" : "154"}
+                    value={getDisplayWeight()}
+                    onChange={(e) => handleWeightChange(e.target.value)}
                     data-testid="input-weight"
                   />
                 </div>
@@ -408,10 +488,47 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
                   })}
                 </div>
                 
-                <Button onClick={startCamera} variant="outline" className="w-full" data-testid="button-start-camera">
-                  <Camera className="w-4 h-4 mr-2" />
-                  Open Camera
-                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  data-testid="input-photo-upload"
+                />
+                
+                <div className="flex gap-2">
+                  <Button onClick={startCamera} variant="outline" className="flex-1" data-testid="button-start-camera">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Camera
+                  </Button>
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    variant="outline" 
+                    className="flex-1" 
+                    data-testid="button-upload-photo"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <span>Uploading for:</span>
+                  <div className="flex gap-1">
+                    {POSE_INSTRUCTIONS.map((poseInfo) => (
+                      <Button
+                        key={poseInfo.pose}
+                        variant={currentPose === poseInfo.pose ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrentPose(poseInfo.pose)}
+                        data-testid={`button-select-pose-${poseInfo.pose}`}
+                      >
+                        {poseInfo.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
                 
                 <button
                   onClick={handleSkipPhotoStep}

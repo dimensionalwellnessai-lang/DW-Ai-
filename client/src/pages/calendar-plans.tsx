@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ import {
   Upload,
   FileText,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -42,7 +43,7 @@ import {
   setHours,
   setMinutes,
 } from "date-fns";
-import type { CalendarEvent } from "@shared/schema";
+import type { CalendarEvent as DbCalendarEvent } from "@shared/schema";
 import {
   getCalendarEvents,
   saveCalendarEvent,
@@ -50,18 +51,31 @@ import {
   type WellnessDimension,
 } from "@/lib/guest-storage";
 
+interface DisplayEvent {
+  id: string;
+  title: string;
+  description?: string | null;
+  startTime: Date;
+  endTime?: Date | null;
+  isAllDay?: boolean;
+  dimensionTags?: string[];
+  location?: string | null;
+  meetingLink?: string | null;
+  linkedType?: string | null;
+  linkedId?: string | null;
+}
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const DIMENSION_OPTIONS: { id: WellnessDimension; label: string }[] = [
-  { id: "body", label: "Body" },
-  { id: "workout", label: "Workout" },
-  { id: "mealPrep", label: "Meal Prep" },
-  { id: "finances", label: "Finances" },
-  { id: "spiritual", label: "Spiritual" },
-  { id: "mental", label: "Mental" },
+  { id: "physical", label: "Physical" },
   { id: "emotional", label: "Emotional" },
   { id: "social", label: "Social" },
-  { id: "community", label: "Community" },
+  { id: "intellectual", label: "Intellectual" },
+  { id: "spiritual", label: "Spiritual" },
+  { id: "occupational", label: "Occupational" },
+  { id: "financial", label: "Financial" },
+  { id: "environmental", label: "Environmental" },
 ];
 
 export function CalendarPlansPage() {
@@ -69,28 +83,40 @@ export function CalendarPlansPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
   const [localEvents, setLocalEvents] = useState<LocalCalendarEvent[]>(getCalendarEvents());
+  const [, setLocation] = useLocation();
 
-  const { data: events = [], isLoading, isError } = useQuery<CalendarEvent[]>({
+  const { data: dbEvents = [], isLoading, isError } = useQuery<DbCalendarEvent[]>({
     queryKey: ["/api/calendar"],
     retry: false,
   });
 
-  const allEvents = [...events, ...localEvents.map(e => ({
-    id: parseInt(e.id) || Math.random(),
-    userId: 0,
-    title: e.title,
-    description: e.description,
-    startTime: new Date(e.startTime),
-    endTime: e.endTime ? new Date(e.endTime) : null,
-    isAllDay: e.isAllDay,
-    dimensionTags: e.dimension ? [e.dimension] : [],
-    location: e.location,
-    meetingLink: e.virtualLink,
-    reminders: [],
-    recurrence: null,
-    relatedFoundationIds: e.relatedFoundationIds,
-  } as CalendarEvent))];
+  const allEvents: DisplayEvent[] = [
+    ...dbEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      startTime: new Date(e.startTime),
+      endTime: e.endTime ? new Date(e.endTime) : null,
+      isAllDay: false,
+      dimensionTags: e.dimensionTags || [],
+      linkedType: e.eventType,
+      linkedId: e.routineId || e.projectId,
+    })),
+    ...localEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      startTime: new Date(e.startTime),
+      endTime: e.endTime ? new Date(e.endTime) : null,
+      isAllDay: e.isAllDay,
+      dimensionTags: e.dimension ? [e.dimension] : [],
+      location: e.location,
+      meetingLink: e.virtualLink,
+    })),
+  ];
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -114,6 +140,28 @@ export function CalendarPlansPage() {
     saveCalendarEvent(event);
     setLocalEvents(getCalendarEvents());
     setAddEventOpen(false);
+  };
+
+  const getEventDeepLink = (event: DisplayEvent): string | null => {
+    if (event.linkedType === "workout") return "/workout";
+    if (event.linkedType === "meal") return "/meal-prep";
+    if (event.linkedType === "routine") return "/routines";
+    if (event.linkedType === "meditation") return "/spiritual";
+    const dimension = event.dimensionTags?.[0];
+    if (dimension === "physical") return "/workout";
+    if (dimension === "spiritual") return "/spiritual";
+    if (dimension === "financial") return "/finances";
+    return null;
+  };
+
+  const handleEventClick = (event: DisplayEvent) => {
+    const deepLink = getEventDeepLink(event);
+    if (deepLink) {
+      setLocation(deepLink);
+    } else {
+      setSelectedEvent(event);
+      setEditEventOpen(true);
+    }
   };
 
   return (
@@ -227,33 +275,42 @@ export function CalendarPlansPage() {
               ) : (
                 <ScrollArea className="h-64">
                   <div className="space-y-3">
-                    {selectedDateEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className="p-3 rounded-md bg-muted/50"
-                        data-testid={`event-${event.id}`}
-                      >
-                        <div className="font-medium text-sm">{event.title}</div>
-                        {event.startTime && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(event.startTime), "h:mm a")}
-                            {event.endTime && (
-                              <> - {format(new Date(event.endTime), "h:mm a")}</>
+                    {selectedDateEvents.map((event) => {
+                      const deepLink = getEventDeepLink(event);
+                      return (
+                        <button
+                          key={event.id}
+                          className="w-full p-3 rounded-md bg-muted/50 text-left hover-elevate active-elevate-2 transition-colors"
+                          onClick={() => handleEventClick(event)}
+                          data-testid={`event-${event.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-medium text-sm">{event.title}</div>
+                            {deepLink && (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                             )}
                           </div>
-                        )}
-                        {event.dimensionTags && event.dimensionTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {event.dimensionTags.map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          {event.startTime && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(event.startTime), "h:mm a")}
+                              {event.endTime && (
+                                <> - {format(new Date(event.endTime), "h:mm a")}</>
+                              )}
+                            </div>
+                          )}
+                          {event.dimensionTags && event.dimensionTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {event.dimensionTags.map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               )}
@@ -273,6 +330,16 @@ export function CalendarPlansPage() {
         selectedDate={selectedDate}
         onSave={handleAddEvent}
       />
+      {selectedEvent && (
+        <EditEventDialog
+          open={editEventOpen}
+          onOpenChange={(open) => {
+            setEditEventOpen(open);
+            if (!open) setSelectedEvent(null);
+          }}
+          event={selectedEvent}
+        />
+      )}
     </div>
   );
 }
@@ -724,6 +791,138 @@ function UploadDocDialog({ open, onOpenChange, selectedDate, onSave }: UploadDoc
               </div>
             </>
           )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditEventDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  event: DisplayEvent;
+}
+
+function EditEventDialog({ open, onOpenChange, event }: EditEventDialogProps) {
+  const [title, setTitle] = useState(event.title);
+  const [description, setDescription] = useState(event.description || "");
+  const [startHour, setStartHour] = useState(format(event.startTime, "HH"));
+  const [startMinute, setStartMinute] = useState(format(event.startTime, "mm"));
+  const [endHour, setEndHour] = useState(event.endTime ? format(event.endTime, "HH") : format(event.startTime, "HH"));
+  const [endMinute, setEndMinute] = useState(event.endTime ? format(event.endTime, "mm") : "00");
+  const { toast } = useToast();
+
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+  const minutes = ["00", "15", "30", "45"];
+
+  const handleSave = () => {
+    toast({
+      title: "Event updated",
+      description: "Your changes have been saved.",
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" />
+            Edit Event
+          </DialogTitle>
+          <DialogDescription>
+            {format(event.startTime, "EEEE, MMMM d, yyyy")}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-title">Title</Label>
+            <Input
+              id="edit-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="input-edit-event-title"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-description">Description</Label>
+            <Textarea
+              id="edit-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="resize-none"
+              data-testid="input-edit-event-description"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Start time</Label>
+              <div className="flex gap-1">
+                <Select value={startHour} onValueChange={setStartHour}>
+                  <SelectTrigger className="w-[70px]" data-testid="select-edit-start-hour">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hours.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="self-center">:</span>
+                <Select value={startMinute} onValueChange={setStartMinute}>
+                  <SelectTrigger className="w-[70px]" data-testid="select-edit-start-minute">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {minutes.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>End time</Label>
+              <div className="flex gap-1">
+                <Select value={endHour} onValueChange={setEndHour}>
+                  <SelectTrigger className="w-[70px]" data-testid="select-edit-end-hour">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hours.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="self-center">:</span>
+                <Select value={endMinute} onValueChange={setEndMinute}>
+                  <SelectTrigger className="w-[70px]" data-testid="select-edit-end-minute">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {minutes.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-edit">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} data-testid="button-save-edit">
+              <Check className="h-4 w-4 mr-1" />
+              Save Changes
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,0 +1,88 @@
+Wave 3.1 – Fixes & UX Stabilization Spec
+
+Objective:
+Stabilize the app so existing features work intuitively, progress is saved, navigation is consistent, and first-time users are guided properly. No major new features in this wave.
+
+⸻
+
+1. Calendar & Navigation
+	•	Calendar items must be clickable and deep-link to their source (workout, meal, routine).
+	•	Add edit capability for calendar events:
+	•	change time
+	•	add/remove recurrence
+	•	Ensure every page has:
+	•	back button OR
+	•	home button OR
+	•	hamburger menu (consistent)
+
+⸻
+
+2. State Persistence & Auth
+	•	Save all in-progress data (body scan, chat, forms) even if user leaves the app.
+	•	Persist login/session state reliably.
+	•	On connection failure, show graceful recovery instead of blocking the app.
+
+⸻
+
+3. Tutorials (First-Time Users Only)
+	•	Fix tutorial progression (Next must work).
+	•	Add a tutorial to every page, shown only on first visit.
+	•	Tutorials must:
+	•	highlight UI elements
+	•	allow interaction with highlighted buttons
+	•	include Next / Skip
+	•	Add a tutorial specifically for the hamburger menu explaining each item.
+
+⸻
+
+4. Inputs & Forms
+	•	Allow multi-select where applicable (stress, emotions, etc.).
+	•	When “create my own goals” is selected, show a free-text input.
+	•	Add unit toggle (metric ↔ imperial) for height/weight.
+	•	Clarify whether measurements are current stats or goals.
+
+⸻
+
+5. Body Scan & Camera
+	•	Fix camera black-screen issue.
+	•	Add option to upload photos from phone instead of live camera.
+	•	Persist body scan progress so users don’t restart if they leave.
+
+⸻
+
+6. Search & AI Integration
+	•	All search bars should invoke AI when empty or unclear.
+	•	Ingredient substitution searches should return results or links inline.
+	•	Keep results inside the page (not external navigation unless chosen).
+
+⸻
+
+7. Workouts & Media
+	•	Add multiple “Add to” options:
+	•	Today
+	•	Routine
+	•	Week
+	•	Display YouTube thumbnails instead of raw links.
+
+⸻
+
+8. Menu & Ordering
+	•	Move Journal above Meditation.
+	•	Nest Today / Week / Month under Calendar as a dropdown.
+	•	Ensure feedback form is accessible from inside the app.
+
+⸻
+
+Out of Scope for Wave 3.1 (Explicitly):
+	•	Banking integrations
+	•	Advanced financial analytics
+	•	Scientific astrology content
+	•	Large-scale document ingestion
+	•	New AI memory systems
+
+⸻
+
+What I recommend you do next (very important)
+	1.	Send the spec above to Replit
+	2.	Tell them:
+“Let’s treat this as Wave 3.1 fixes only. No new features.”
