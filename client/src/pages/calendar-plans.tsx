@@ -63,6 +63,7 @@ interface DisplayEvent {
   meetingLink?: string | null;
   linkedType?: string | null;
   linkedId?: string | null;
+  source: "db" | "local";
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -93,6 +94,20 @@ export function CalendarPlansPage() {
     retry: false,
   });
 
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { title: string; description: string; startTime: Date; endTime: Date } }) => {
+      return apiRequest("PATCH", `/api/calendar/${id}`, {
+        title: updates.title,
+        description: updates.description,
+        startTime: updates.startTime.toISOString(),
+        endTime: updates.endTime.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+    },
+  });
+
   const allEvents: DisplayEvent[] = [
     ...dbEvents.map(e => ({
       id: e.id,
@@ -104,6 +119,7 @@ export function CalendarPlansPage() {
       dimensionTags: e.dimensionTags || [],
       linkedType: e.eventType,
       linkedId: e.routineId || e.projectId,
+      source: "db" as const,
     })),
     ...localEvents.map(e => ({
       id: e.id,
@@ -115,6 +131,7 @@ export function CalendarPlansPage() {
       dimensionTags: e.dimension ? [e.dimension] : [],
       location: e.location,
       meetingLink: e.virtualLink,
+      source: "local" as const,
     })),
   ];
 
@@ -161,6 +178,29 @@ export function CalendarPlansPage() {
     } else {
       setSelectedEvent(event);
       setEditEventOpen(true);
+    }
+  };
+
+  const handleUpdateEvent = (eventId: string, updates: { title: string; description: string; startTime: Date; endTime: Date }, source: "db" | "local") => {
+    if (source === "local") {
+      const updatedEvents = localEvents.map(e => {
+        if (e.id === eventId) {
+          return {
+            ...e,
+            title: updates.title,
+            description: updates.description,
+            startTime: updates.startTime.getTime(),
+            endTime: updates.endTime.getTime(),
+            updatedAt: Date.now(),
+          };
+        }
+        return e;
+      });
+      
+      localStorage.setItem("fts_calendar_events", JSON.stringify(updatedEvents));
+      setLocalEvents(updatedEvents);
+    } else {
+      updateEventMutation.mutate({ id: eventId, updates });
     }
   };
 
@@ -338,6 +378,7 @@ export function CalendarPlansPage() {
             if (!open) setSelectedEvent(null);
           }}
           event={selectedEvent}
+          onSave={handleUpdateEvent}
         />
       )}
     </div>
@@ -801,9 +842,10 @@ interface EditEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: DisplayEvent;
+  onSave: (eventId: string, updates: { title: string; description: string; startTime: Date; endTime: Date }, source: "db" | "local") => void;
 }
 
-function EditEventDialog({ open, onOpenChange, event }: EditEventDialogProps) {
+function EditEventDialog({ open, onOpenChange, event, onSave }: EditEventDialogProps) {
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description || "");
   const [startHour, setStartHour] = useState(format(event.startTime, "HH"));
@@ -816,6 +858,20 @@ function EditEventDialog({ open, onOpenChange, event }: EditEventDialogProps) {
   const minutes = ["00", "15", "30", "45"];
 
   const handleSave = () => {
+    const baseDate = event.startTime;
+    const newStartTime = new Date(baseDate);
+    newStartTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
+    
+    const newEndTime = new Date(baseDate);
+    newEndTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+    
+    onSave(event.id, {
+      title,
+      description,
+      startTime: newStartTime,
+      endTime: newEndTime,
+    }, event.source);
+    
     toast({
       title: "Event updated",
       description: "Your changes have been saved.",
