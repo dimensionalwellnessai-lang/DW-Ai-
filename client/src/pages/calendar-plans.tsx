@@ -181,6 +181,7 @@ export function CalendarPlansPage() {
       const typeRoutes: Record<string, string> = {
         workout: "/workout",
         meal: "/meal-prep",
+        recovery: "/recovery",
         routine: "/routines",
         meditation: "/spiritual",
         chat: "/",
@@ -191,7 +192,11 @@ export function CalendarPlansPage() {
       }
     }
     
-    const dimension = event.dimensionTags?.[0];
+    // Check tags for recovery items
+    const tags = event.dimensionTags || [];
+    if (tags.includes("recovery")) return "/recovery";
+    
+    const dimension = tags[0];
     if (dimension === "physical") return "/workout";
     if (dimension === "spiritual") return "/spiritual";
     if (dimension === "financial") return "/finances";
