@@ -1063,51 +1063,38 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {/* Wave 6A: Category Thumbnails */}
             <section className="space-y-3">
               <h2 className="font-display font-semibold text-sm">Browse by Category</h2>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={selectedNutritionCategory === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedNutritionCategory(null)}
-                  data-testid="button-nutrition-category-all"
-                >
-                  All
-                </Button>
-                <Button
-                  variant={selectedNutritionCategory === "meal-plans" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedNutritionCategory("meal-plans")}
-                  data-testid="button-nutrition-category-meal-plans"
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Meal Plans
-                </Button>
-                <Button
-                  variant={selectedNutritionCategory === "meal-prep" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedNutritionCategory("meal-prep")}
-                  data-testid="button-nutrition-category-meal-prep"
-                >
-                  <ChefHat className="h-4 w-4 mr-1" />
-                  Meal Prep Ideas
-                </Button>
-                <Button
-                  variant={selectedNutritionCategory === "alternatives" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedNutritionCategory("alternatives")}
-                  data-testid="button-nutrition-category-alternatives"
-                >
-                  <ArrowRightLeft className="h-4 w-4 mr-1" />
-                  Alternatives
-                </Button>
-                <Button
-                  variant={selectedNutritionCategory === "grocery" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedNutritionCategory("grocery")}
-                  data-testid="button-nutrition-category-grocery"
-                >
-                  <ShoppingBag className="h-4 w-4 mr-1" />
-                  Grocery Builder
-                </Button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { id: "meal-plans", label: "Meal Plans", icon: Calendar, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+                  { id: "meal-prep", label: "Meal Prep Ideas", icon: ChefHat, color: "text-amber-500", bgColor: "bg-amber-500/10" },
+                  { id: "alternatives", label: "Ingredient Alternatives", icon: ArrowRightLeft, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+                  { id: "grocery", label: "Grocery Builder", icon: ShoppingBag, color: "text-purple-500", bgColor: "bg-purple-500/10" },
+                ].map((cat) => {
+                  const Icon = cat.icon;
+                  const isSelected = selectedNutritionCategory === cat.id;
+                  return (
+                    <Card
+                      key={cat.id}
+                      className={`cursor-pointer transition-all ${
+                        isSelected 
+                          ? "ring-2 ring-primary bg-primary/5" 
+                          : "hover-elevate"
+                      }`}
+                      onClick={() => setSelectedNutritionCategory(isSelected ? null : cat.id)}
+                      data-testid={`card-nutrition-category-${cat.id}`}
+                    >
+                      <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                        <div className={`w-12 h-12 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
+                          <Icon className={`h-6 w-6 ${cat.color}`} />
+                        </div>
+                        <span className="text-sm font-medium">{cat.label}</span>
+                        {isSelected && (
+                          <Badge variant="default" className="text-xs">Selected</Badge>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </section>
 

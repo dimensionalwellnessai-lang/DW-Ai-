@@ -492,27 +492,38 @@ export function RecoveryPage() {
             <h2 className="font-display font-semibold text-sm mb-3">
               Browse by Category
             </h2>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Button
-                variant={selectedCategory === null ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(null)}
-                data-testid="button-category-all"
-              >
-                All
-              </Button>
-              {categories.map((cat) => (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategory === cat.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  data-testid={`button-category-${cat.id}`}
-                >
-                  <cat.icon className="h-4 w-4 mr-1" />
-                  {cat.label}
-                </Button>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+              {categories.map((cat) => {
+                const Icon = cat.icon;
+                const isSelected = selectedCategory === cat.id;
+                const colorMap: Record<string, { color: string; bgColor: string }> = {
+                  "breathwork": { color: "text-sky-500", bgColor: "bg-sky-500/10" },
+                  "stretch": { color: "text-amber-500", bgColor: "bg-amber-500/10" },
+                  "grounding": { color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
+                  "wind-down": { color: "text-indigo-500", bgColor: "bg-indigo-500/10" },
+                  "stress-reset": { color: "text-rose-500", bgColor: "bg-rose-500/10" },
+                };
+                const colors = colorMap[cat.id] || { color: "text-muted-foreground", bgColor: "bg-muted" };
+                return (
+                  <Card
+                    key={cat.id}
+                    className={`cursor-pointer transition-all ${
+                      isSelected 
+                        ? "ring-2 ring-primary bg-primary/5" 
+                        : "hover-elevate"
+                    }`}
+                    onClick={() => setSelectedCategory(isSelected ? null : cat.id)}
+                    data-testid={`card-recovery-category-${cat.id}`}
+                  >
+                    <CardContent className="p-3 flex flex-col items-center text-center gap-2">
+                      <div className={`w-10 h-10 rounded-lg ${colors.bgColor} flex items-center justify-center`}>
+                        <Icon className={`h-5 w-5 ${colors.color}`} />
+                      </div>
+                      <span className="text-xs font-medium">{cat.label}</span>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
             
             <div className="flex flex-wrap items-center gap-2 mb-3">

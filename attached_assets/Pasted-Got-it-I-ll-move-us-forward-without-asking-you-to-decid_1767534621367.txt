@@ -1,0 +1,97 @@
+Got it. I’ll move us forward without asking you to decide anything else right now.
+
+Here’s the next concrete step, what should happen immediately, and what you do vs what they do.
+
+⸻
+
+🔜 NEXT STEP (RIGHT NOW)
+
+👉 We are officially in Wave 6A.1 — Nutrition
+
+This is the only active work until it passes.
+
+⸻
+
+🥗 WHAT REPLIT / AGENT SHOULD DO NEXT (NO DEVIATION)
+
+1️⃣ Update /meal-prep to full Wave 6.3 Guided Experience
+
+They must:
+	•	Replace current Nutrition UI with GuidedExperienceLayout
+	•	Add AI Picks (2–3 max) with Why text
+	•	Add Categories (thumbnails):
+	•	Meal Plans
+	•	Meal Prep Ideas
+	•	Ingredient Alternatives
+	•	Grocery Builder (must route to real explainer if not built)
+	•	Add Filters that actually change results:
+	•	Diet
+	•	Prep Time
+	•	Focus (protein, balanced, light)
+	•	Enforce single-select only
+	•	Save disabled until 1 selection
+	•	Helper text: “Pick 1 option to save.”
+	•	Save persists after refresh (Safari)
+	•	Optional Add to Calendar → confirmation dialog
+	•	Calendar event deep-links back to Nutrition item
+
+🚫 No placeholders
+🚫 No “not available”
+🚫 No fake buttons
+
+⸻
+
+📦 REQUIRED DELIVERABLE AFTER NUTRITION IS DONE
+
+They must send you:
+	1.	Updated PASS/FAIL table including Nutrition
+	2.	List of changed files
+	3.	iPhone Safari screen recordings showing:
+	•	Selecting 1 Nutrition item
+	•	Save enabling and persisting
+	•	Calendar confirmation
+	•	Deep link opening Nutrition page
+
+Until this is delivered → Recovery does not start.
+
+⸻
+
+🧠 WHAT YOU SHOULD DO (MINIMAL)
+
+You do not need to:
+	•	redesign anything
+	•	rethink philosophy
+	•	add features
+	•	explain your life system
+
+You only need to:
+	•	Wait for Nutrition proof
+	•	Do a quick sanity check:
+	•	“Does this feel calm?”
+	•	“Does this feel optional?”
+	•	“Does this feel like my tone?”
+
+If yes → approve Nutrition → move to Recovery.
+
+⸻
+
+🔜 WHAT COMES IMMEDIATELY AFTER (FYI)
+
+Once Nutrition passes:
+	•	Wave 6A.2 — Recovery begins
+	•	Same layout, same rules, faster execution
+	•	Then we enter B: Polish/Stabilization
+
+You are exactly where you should be.
+No backtracking. No identity confusion. No overexposure.
+
+⸻
+
+When Replit replies with Nutrition updates:
+
+Paste their message here and I’ll:
+	•	verify it against Wave 6.3
+	•	tell you approve / revise / block
+	•	and draft the exact response back to them
+
+You’re doing this cleanly.
