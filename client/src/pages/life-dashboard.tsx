@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link } from "wouter";
 import { 
   Sparkles, 
@@ -16,6 +18,7 @@ import {
   Heart,
   Users,
   ChevronRight,
+  ChevronDown,
   Sun,
   AlertCircle,
   Check,
@@ -30,7 +33,15 @@ import {
   Wallet,
   Leaf,
   Utensils,
+  User,
+  Bot,
+  FileDown,
+  Target,
+  RefreshCw,
+  Clock,
+  Info,
 } from "lucide-react";
+import type { Goal, Habit, Routine } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
 import { 
   getBodyProfile, 
@@ -186,6 +197,224 @@ function getConnectionInsights(signals: DimensionSignals): string[] {
   }
   
   return insights;
+}
+
+function getDataSourceIcon(source: string | null | undefined) {
+  switch (source) {
+    case "ai":
+      return <Bot className="w-3 h-3" />;
+    case "imported":
+      return <FileDown className="w-3 h-3" />;
+    default:
+      return <User className="w-3 h-3" />;
+  }
+}
+
+function getDataSourceLabel(source: string | null | undefined) {
+  switch (source) {
+    case "ai":
+      return "AI Suggested";
+    case "imported":
+      return "Imported";
+    default:
+      return "You Created";
+  }
+}
+
+function getDataSourceBadgeVariant(source: string | null | undefined): "default" | "secondary" | "outline" {
+  switch (source) {
+    case "ai":
+      return "secondary";
+    case "imported":
+      return "outline";
+    default:
+      return "default";
+  }
+}
+
+interface LifeSystemItemProps {
+  title: string;
+  dataSource?: string | null;
+  explainWhy?: string | null;
+}
+
+function LifeSystemItem({ title, dataSource, explainWhy }: LifeSystemItemProps) {
+  const [showWhy, setShowWhy] = useState(false);
+  
+  return (
+    <div className="border rounded-md p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium flex-1">{title}</span>
+        <Badge variant={getDataSourceBadgeVariant(dataSource)} className="text-xs gap-1">
+          {getDataSourceIcon(dataSource)}
+          {getDataSourceLabel(dataSource)}
+        </Badge>
+      </div>
+      {explainWhy && (
+        <Collapsible open={showWhy} onOpenChange={setShowWhy}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground gap-1">
+              <Info className="w-3 h-3" />
+              {showWhy ? "Hide why" : "Why this?"}
+              <ChevronDown className={`w-3 h-3 transition-transform ${showWhy ? "rotate-180" : ""}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-1">
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              {explainWhy}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  );
+}
+
+function MyLifeSystemSection() {
+  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ["/api/goals"] });
+  const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"] });
+  const { data: routines = [] } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+
+  const hasAnyItems = goals.length > 0 || habits.length > 0 || routines.length > 0;
+
+  if (!hasAnyItems) return null;
+
+  const countsBySource = (items: { dataSource?: string | null }[]) => {
+    const counts = { user: 0, ai: 0, imported: 0 };
+    items.forEach((item) => {
+      const source = item.dataSource || "user";
+      if (source === "ai") counts.ai++;
+      else if (source === "imported") counts.imported++;
+      else counts.user++;
+    });
+    return counts;
+  };
+
+  const goalCounts = countsBySource(goals);
+  const habitCounts = countsBySource(habits);
+  const routineCounts = countsBySource(routines);
+
+  const totalCounts = {
+    user: goalCounts.user + habitCounts.user + routineCounts.user,
+    ai: goalCounts.ai + habitCounts.ai + routineCounts.ai,
+    imported: goalCounts.imported + habitCounts.imported + routineCounts.imported,
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">My Life System</h2>
+        <div className="flex gap-2">
+          {totalCounts.user > 0 && (
+            <Badge variant="default" className="text-xs gap-1">
+              <User className="w-3 h-3" />
+              {totalCounts.user}
+            </Badge>
+          )}
+          {totalCounts.ai > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Bot className="w-3 h-3" />
+              {totalCounts.ai}
+            </Badge>
+          )}
+          {totalCounts.imported > 0 && (
+            <Badge variant="outline" className="text-xs gap-1">
+              <FileDown className="w-3 h-3" />
+              {totalCounts.imported}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Everything here is yours to keep, edit, or remove. The badges show where each item came from.
+      </p>
+
+      {goals.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              Goals ({goals.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 space-y-2">
+            {goals.slice(0, 5).map((goal) => (
+              <LifeSystemItem
+                key={goal.id}
+                title={goal.title}
+                dataSource={goal.dataSource}
+                explainWhy={goal.explainWhy}
+              />
+            ))}
+            {goals.length > 5 && (
+              <Link href="/goals">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  View all {goals.length} goals
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {habits.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-primary" />
+              Habits ({habits.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 space-y-2">
+            {habits.slice(0, 5).map((habit) => (
+              <LifeSystemItem
+                key={habit.id}
+                title={habit.title}
+                dataSource={habit.dataSource}
+                explainWhy={habit.explainWhy}
+              />
+            ))}
+            {habits.length > 5 && (
+              <Link href="/routines">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  View all {habits.length} habits
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {routines.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              Routines ({routines.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2 space-y-2">
+            {routines.slice(0, 5).map((routine) => (
+              <LifeSystemItem
+                key={routine.id}
+                title={routine.name}
+                dataSource={routine.dataSource}
+                explainWhy={routine.explainWhy}
+              />
+            ))}
+            {routines.length > 5 && (
+              <Link href="/routines">
+                <Button variant="ghost" size="sm" className="w-full text-xs">
+                  View all {routines.length} routines
+                </Button>
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }
 
 export default function LifeDashboardPage() {
@@ -370,6 +599,8 @@ export default function LifeDashboardPage() {
             </CardContent>
           </Card>
         )}
+
+        <MyLifeSystemSection />
 
         <Card className="bg-muted/30">
           <CardContent className="p-4 text-center">
