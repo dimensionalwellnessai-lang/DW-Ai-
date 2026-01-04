@@ -223,7 +223,12 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       req.session.userId = user.id;
-      if (rememberMe) {
+      // Always set a longer maxAge by default if rememberMe is not specified
+      // but if rememberMe is provided, we can use it to determine the duration
+      if (rememberMe !== undefined) {
+        req.session.cookie.maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+      } else {
+        // Default to 30 days for better UX if not specified
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
       }
       req.session.save((err) => {
