@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Menu, GraduationCap } from "lucide-react";
+import { ArrowLeft, Menu, GraduationCap, Clock, History } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { 
-  Sun, Clock, Sparkles, Heart, Dumbbell, Utensils, Wallet, History, 
+  Sun, Sparkles, Heart, Dumbbell, Utensils, Wallet,
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
   MessageCircle, MessageCircleHeart, HelpCircle, BookOpen
 } from "lucide-react";
@@ -50,6 +52,12 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     requiresMenuOpen,
     skipTutorial
   } = useTutorial();
+
+  const { data: authData } = useQuery<{ user: any } | null>({ 
+    queryKey: ["/api/auth/me"],
+    retry: false
+  });
+  const user = authData?.user;
 
   useEffect(() => {
     if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
@@ -228,11 +236,32 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             <GraduationCap className="h-4 w-4 mr-2" />
             Take a Tour
           </Button>
-          <Link href="/login">
-            <Button className="w-full" size="sm" data-testid="button-signup">
-              Sign in
-            </Button>
-          </Link>
+          {user ? (
+            <div className="space-y-2">
+              <div className="px-2 py-1 text-xs text-muted-foreground truncate border-t pt-3">
+                {user.email}
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                size="sm" 
+                onClick={() => {
+                  apiRequest("POST", "/api/auth/logout").then(() => {
+                    window.location.href = "/login";
+                  });
+                }}
+                data-testid="button-signout"
+              >
+                Sign out
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button className="w-full" size="sm" data-testid="button-signin">
+                Sign in
+              </Button>
+            </Link>
+          )}
         </div>
         <div className="pt-4 text-center">
           <p className="text-sm text-muted-foreground">v{APP_VERSION}</p>

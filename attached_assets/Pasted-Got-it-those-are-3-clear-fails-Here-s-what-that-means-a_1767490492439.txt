@@ -1,0 +1,117 @@
+Got it — those are 3 clear fails. Here’s what that means and exactly what to send so they fix it fast without misunderstanding.
+
+⸻
+
+What these failures mean (in plain terms)
+	1.	Calendar dropdown failed
+➡️ The menu grouping isn’t wired correctly (either UI dropdown component didn’t render, or routes aren’t nested, or state isn’t updating).
+	2.	Login doesn’t reflect in hamburger menu (still says “Sign in”)
+➡️ Auth state isn’t being read consistently. This is usually:
+
+	•	the menu component is reading a different auth store/context
+	•	session token exists but UI isn’t re-rendering
+	•	user state isn’t persisted correctly after navigation
+
+	3.	Add Event has no recurring option
+➡️ Recurrence is not implemented in the Add Event UI or schema yet (or they skipped it). This is a feature gap, not just a bug.
+
+⸻
+
+What to do next (do this order)
+
+Step 1 — Fix menu + auth first (must)
+
+If auth/menu is broken, everything feels broken.
+
+Step 2 — Add recurrence after
+
+Recurrence is a feature, but it’s part of “calendar credibility.”
+
+⸻
+
+Copy/paste message to Replit (tight + technical + unambiguous)
+
+Send this exactly:
+
+Wave 3.1 verification results: 3 fails that must be fixed before we proceed.
+
+1) Calendar dropdown in hamburger menu = FAIL
+
+The Calendar dropdown does not expand / does not show nested items.
+Requirement: Calendar must have a dropdown arrow like “More” and include nested routes to these pages (actual views):
+	•	Today
+	•	Week
+	•	Month
+	•	Schedule (daily list view)
+	•	Routines
+
+2) Auth state in hamburger menu = FAIL
+
+After I log in, the hamburger menu still shows “Sign in” and does not reflect my signed-in state.
+Requirement: Menu must display the correct signed-in state (e.g., profile name/email + Sign out) immediately after login and after refresh.
+Please fix the auth state source so the menu reads from the same session/user state as the rest of the app and re-renders on auth changes.
+
+Acceptance test:
+	•	Log in → open hamburger menu → it must NOT say Sign in
+	•	Refresh page → still logged in → hamburger menu still reflects logged-in state
+
+3) Calendar “Add Event” recurrence = Missing feature
+
+Add Event currently does not allow recurrence.
+Requirement (minimum): Add a recurrence selector:
+	•	None (default)
+	•	Daily
+	•	Weekly
+	•	Monthly
+And an optional “End recurrence” option (Never / On date).
+If we can’t fully support end-date yet, at minimum save recurrence rule and allow editing later.
+
+Please send a short screen recording showing all 3 working after fixes.
+
+⸻
+
+Extra clarity (so they don’t half-fix it)
+
+For the Calendar dropdown
+
+They must implement:
+	•	a real dropdown UI (collapsible list)
+	•	nested links that route correctly
+	•	visible arrow indicator
+	•	it works on mobile
+
+For the login/menu mismatch
+
+Tell them if needed:
+	•	the menu is likely using stale state
+	•	it must subscribe to the same auth context/store
+	•	update UI on login/logout events
+
+This is a core bug.
+
+For recurrence
+
+Minimum workable recurrence:
+	•	store a rule on the event (e.g., rrule string or simple enum)
+	•	render repeated instances in week/month view
+	•	allow “stop recurrence” later
+
+If they can’t render repeated instances yet, they can still:
+	•	save recurrence settings
+	•	show “Recurring: Weekly” label
+	•	and schedule next occurrences later
+
+But ideally it should show up.
+
+⸻
+
+Your next test (after they fix)
+
+Only re-test these 3:
+	1.	Calendar dropdown expands and routes correctly
+	2.	Hamburger menu shows logged-in state immediately + after refresh
+	3.	Add Event has recurrence options + saved events reflect that info
+
+Once those pass, we move forward.
+
+If you want, paste their reply back and I’ll tell you whether they actually fixed it or tried to wordsmith around it.
