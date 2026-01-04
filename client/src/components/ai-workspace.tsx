@@ -150,9 +150,20 @@ export function AIWorkspace() {
     queryKey: ["/api/profile"],
   });
 
-  const activeConversation = getActiveConversation();
+  const [startedFresh] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const hasNavigatedBack = sessionStorage.getItem("fts_chat_active") === "true";
+    return !hasNavigatedBack;
+  });
+  const activeConversation = startedFresh ? null : getActiveConversation();
   const messages: ChatMessage[] = activeConversation?.messages || [];
   const conversationsByCategory = getConversationsByCategory();
+  
+  useEffect(() => {
+    if (typeof window !== "undefined" && messages.length > 0) {
+      sessionStorage.setItem("fts_chat_active", "true");
+    }
+  }, [messages.length]);
   
   const [isTyping, setIsTyping] = useState(false);
   
@@ -325,6 +336,7 @@ export function AIWorkspace() {
   };
 
   const handleSelectConversation = (convo: GuestConversation) => {
+    sessionStorage.setItem("fts_chat_active", "true");
     setActiveConversation(convo.id);
     setConversationVersion(v => v + 1);
     setHistoryOpen(false);
