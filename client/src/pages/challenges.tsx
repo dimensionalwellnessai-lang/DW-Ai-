@@ -18,8 +18,9 @@ import {
   Calendar,
   Target,
   Check,
+  Clock,
 } from "lucide-react";
-import { getGettingToKnowYou, getBodyProfile, getFinanceProfile, saveCalendarEvent } from "@/lib/guest-storage";
+import { getGettingToKnowYou, getBodyProfile, getFinanceProfile, saveCalendarEvent, getSoftOnboardingMood } from "@/lib/guest-storage";
 
 function getChallengeCategories(userNeeds: string[], bodyGoal: string | null, financialStress: boolean) {
   return [
@@ -108,21 +109,83 @@ function getPersonalizedFinancialChallenges(hasStress: boolean): string[] {
   return ["No-spend weekend", "Save $5 daily", "Review subscriptions"];
 }
 
+interface AIPick {
+  title: string;
+  category: string;
+  why: string;
+  duration: string;
+}
+
+function getAIPicks(userNeeds: string[], bodyGoal: string | null, financialStress: boolean, userMood: string | null): AIPick[] {
+  const picks: AIPick[] = [];
+  
+  if (userMood === "scattered" || userMood === "overwhelmed" || userNeeds.includes("calm")) {
+    picks.push({
+      title: "5-minute daily meditation",
+      category: "mental",
+      why: "I'm suggesting this because it matches where your energy is today.",
+      duration: "7 days"
+    });
+  }
+  
+  if (bodyGoal === "build_muscle" || bodyGoal === "slim_fit") {
+    picks.push({
+      title: "7-day morning stretch",
+      category: "workout",
+      why: "This aligns with your body goals and builds consistency.",
+      duration: "7 days"
+    });
+  }
+  
+  if (financialStress) {
+    picks.push({
+      title: "Track all spending for a week",
+      category: "financial",
+      why: "Awareness is the first step to peace of mind with money.",
+      duration: "7 days"
+    });
+  }
+  
+  if (picks.length < 2) {
+    picks.push({
+      title: "Gratitude journaling",
+      category: "mental",
+      why: "A gentle way to shift perspective and build awareness.",
+      duration: "7 days"
+    });
+  }
+  
+  if (picks.length < 2) {
+    picks.push({
+      title: "10K steps daily",
+      category: "workout",
+      why: "Movement supports both body and mind.",
+      duration: "7 days"
+    });
+  }
+  
+  return picks.slice(0, 3);
+}
+
 export function ChallengesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<{ category: string; title: string } | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedAIPick, setSelectedAIPick] = useState<AIPick | null>(null);
+  const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false);
   const gtky = getGettingToKnowYou();
   const bodyProfile = getBodyProfile();
   const financeProfile = getFinanceProfile();
+  const userMood = getSoftOnboardingMood();
   
   const userNeeds = gtky?.currentNeeds || [];
   const bodyGoal = bodyProfile?.bodyGoal || null;
   const financialStress = financeProfile?.moneyEmotion === "anxious";
   
   const categories = getChallengeCategories(userNeeds, bodyGoal, financialStress);
+  const aiPicks = getAIPicks(userNeeds, bodyGoal, financialStress, userMood);
 
   const handleChallengeClick = (categoryId: string, challengeTitle: string) => {
     setSelectedChallenge({ category: categoryId, title: challengeTitle });
@@ -173,12 +236,87 @@ export function ChallengesPage() {
       <PageHeader title="Challenges" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
-        <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           <p className="text-muted-foreground font-body text-center py-2">
             Challenges are here to empower you, not pressure you. Pick something that feels right for where you are today.
           </p>
 
-          <div className="space-y-3">
+          {aiPicks.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Picked for You</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedAIPick ? "Tap Save to start this challenge" : "Pick 1 option to save."}
+              </p>
+              <div className="space-y-2">
+                {aiPicks.map((pick, idx) => {
+                  const isSelected = selectedAIPick?.title === pick.title;
+                  return (
+                    <Card
+                      key={idx}
+                      className={`cursor-pointer transition-all ${isSelected ? "ring-2 ring-primary bg-primary/5" : "hover-elevate"}`}
+                      onClick={() => setSelectedAIPick(isSelected ? null : pick)}
+                      data-testid={`card-ai-pick-challenge-${idx}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />}
+                          <div className="flex-1">
+                            <h3 className="font-medium text-sm">{pick.title}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {pick.duration}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs capitalize">
+                                {pick.category}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-primary mt-2 italic">{pick.why}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={!selectedAIPick}
+                  onClick={() => {
+                    if (selectedAIPick) {
+                      toast({
+                        title: "Saved.",
+                        description: `"${selectedAIPick.title}" added to your challenges.`,
+                      });
+                      setSelectedAIPick(null);
+                    }
+                  }}
+                  data-testid="button-save-ai-pick"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Save
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={!selectedAIPick}
+                  onClick={() => setCalendarConfirmOpen(true)}
+                  data-testid="button-calendar-ai-pick"
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Add to Calendar
+                </Button>
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Browse by Category</h2>
+            <div className="space-y-3">
             {categories.map((category) => {
               const Icon = category.icon;
               return (
@@ -225,7 +363,8 @@ export function ChallengesPage() {
                 </Card>
               );
             })}
-          </div>
+            </div>
+          </section>
         </div>
       </ScrollArea>
 
@@ -254,6 +393,59 @@ export function ChallengesPage() {
                 Start with AI
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={calendarConfirmOpen} onOpenChange={setCalendarConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Calendar</DialogTitle>
+            <DialogDescription>
+              Would you like to schedule "{selectedAIPick?.title}" to start tomorrow?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setCalendarConfirmOpen(false)} data-testid="button-cancel-calendar">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedAIPick) {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  tomorrow.setHours(9, 0, 0, 0);
+                  const endTime = new Date(tomorrow);
+                  endTime.setHours(10, 0, 0, 0);
+                  
+                  saveCalendarEvent({
+                    title: selectedAIPick.title,
+                    description: `Challenge: ${selectedAIPick.title}`,
+                    dimension: null,
+                    startTime: tomorrow.getTime(),
+                    endTime: endTime.getTime(),
+                    isAllDay: false,
+                    location: null,
+                    virtualLink: null,
+                    reminders: [],
+                    recurring: false,
+                    recurrencePattern: null,
+                    relatedFoundationIds: [],
+                    tags: ["challenge", selectedAIPick.category],
+                  });
+                  
+                  toast({
+                    title: "Added to calendar.",
+                    description: `"${selectedAIPick.title}" starts tomorrow.`,
+                  });
+                  setCalendarConfirmOpen(false);
+                  setSelectedAIPick(null);
+                }
+              }}
+              data-testid="button-confirm-calendar"
+            >
+              Confirm
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

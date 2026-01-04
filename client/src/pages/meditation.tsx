@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MessageSquareText, 
@@ -129,6 +130,8 @@ export function MeditationPage() {
   const [savedMeditations, setSavedMeditations] = useState<SavedRoutine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
+  const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false);
+  const [pendingCalendarItem, setPendingCalendarItem] = useState<MeditationItem | null>(null);
   
   const userMood = getSoftOnboardingMood();
 
@@ -152,16 +155,23 @@ export function MeditationPage() {
   };
 
   const handleAddToCalendar = (item: MeditationItem) => {
+    setPendingCalendarItem(item);
+    setCalendarConfirmOpen(true);
+  };
+
+  const confirmAddToCalendar = () => {
+    if (!pendingCalendarItem) return;
+    
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(7, 0, 0, 0);
     
     const endTime = new Date(tomorrow);
-    endTime.setMinutes(endTime.getMinutes() + item.duration);
+    endTime.setMinutes(endTime.getMinutes() + pendingCalendarItem.duration);
     
     saveCalendarEvent({
-      title: item.title,
-      description: item.description,
+      title: pendingCalendarItem.title,
+      description: pendingCalendarItem.description,
       dimension: "spiritual",
       startTime: tomorrow.getTime(),
       endTime: endTime.getTime(),
@@ -172,28 +182,51 @@ export function MeditationPage() {
       recurring: false,
       recurrencePattern: null,
       relatedFoundationIds: [],
-      tags: [item.category, "meditation"],
+      tags: [pendingCalendarItem.category, "meditation"],
     });
     
     toast({
-      title: "Added to today.",
-      description: `"${item.title}" scheduled for tomorrow morning.`,
+      title: "Added to calendar.",
+      description: `"${pendingCalendarItem.title}" scheduled for tomorrow morning.`,
     });
+    setCalendarConfirmOpen(false);
+    setPendingCalendarItem(null);
+    setSelectedSuggestionId(null);
   };
 
   const isSaved = (itemId: string) => {
     return savedMeditations.some(s => s.title === MEDITATION_LIBRARY.find(m => m.id === itemId)?.title);
   };
 
-  const getSuggestedMeditations = () => {
-    if (!userMood) return MEDITATION_LIBRARY.slice(0, 3);
+  const getWhyText = (item: MeditationItem): string => {
+    if (!userMood) return "A great starting point for any moment.";
     
     const moodLower = userMood.toLowerCase();
-    const matching = MEDITATION_LIBRARY.filter(m => 
-      m.mood.some(mood => moodLower.includes(mood) || mood.includes(moodLower))
-    );
+    if (item.mood.some(m => moodLower.includes(m) || m.includes(moodLower))) {
+      return `I'm suggesting this because it matches your ${userMood} energy today.`;
+    }
+    if (item.category === "breath") return "Breathwork helps reset your nervous system.";
+    if (item.category === "body") return "This can help release physical tension.";
+    if (item.category === "sleep") return "Perfect for winding down.";
+    if (item.category === "energy") return "A good pick when you need a gentle boost.";
+    return "This practice supports mindful awareness.";
+  };
+
+  const getSuggestedMeditations = (): Array<MeditationItem & { why: string }> => {
+    const items = !userMood 
+      ? MEDITATION_LIBRARY.slice(0, 3)
+      : (() => {
+          const moodLower = userMood.toLowerCase();
+          const matching = MEDITATION_LIBRARY.filter(m => 
+            m.mood.some(mood => moodLower.includes(mood) || mood.includes(moodLower))
+          );
+          return matching.length > 0 ? matching.slice(0, 3) : MEDITATION_LIBRARY.slice(0, 3);
+        })();
     
-    return matching.length > 0 ? matching.slice(0, 3) : MEDITATION_LIBRARY.slice(0, 3);
+    return items.map(item => ({
+      ...item,
+      why: getWhyText(item)
+    }));
   };
 
   const suggestedMeditations = getSuggestedMeditations();
@@ -264,6 +297,9 @@ export function MeditationPage() {
                                 </Badge>
                               )}
                             </div>
+                            <p className="text-xs text-primary mt-2 italic">
+                              {item.why}
+                            </p>
                           </div>
                         </div>
                       </CardContent>
@@ -418,6 +454,25 @@ export function MeditationPage() {
           </section>
         </div>
       </ScrollArea>
+
+      <Dialog open={calendarConfirmOpen} onOpenChange={setCalendarConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Calendar</DialogTitle>
+            <DialogDescription>
+              Would you like to schedule "{pendingCalendarItem?.title}" for tomorrow at 7 AM?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setCalendarConfirmOpen(false)} data-testid="button-cancel-calendar">
+              Cancel
+            </Button>
+            <Button onClick={confirmAddToCalendar} data-testid="button-confirm-calendar">
+              Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
