@@ -757,3 +757,181 @@ Respond with valid JSON only.`;
     };
   }
 }
+
+export async function analyzeMealPlanDocument(documentText: string): Promise<{
+  planTitle: string;
+  summary: string;
+  confidence: number;
+  meals: Array<{
+    id: string;
+    type: "meal";
+    title: string;
+    mealType: "breakfast" | "lunch" | "dinner" | "snack" | "other";
+    weekLabel?: string;
+    tags?: string[];
+    notes?: string;
+    ingredients?: string[];
+    instructions?: string[];
+    isSelected: boolean;
+  }>;
+  routine: {
+    title: string;
+    steps: Array<{
+      id: string;
+      type: "routine_step";
+      text: string;
+      notes?: string;
+    }>;
+  };
+  calendarSuggestions: Array<{
+    id: string;
+    type: "calendar_suggestion";
+    title: string;
+    durationMinutes: number;
+    suggestedStart?: string;
+    recurrence?: { frequency: "none" | "daily" | "weekly" | "monthly"; until?: string };
+    notes?: string;
+    linkedSystem: "nutrition" | "workouts" | "routines" | "none";
+    linkedId?: string;
+    isSelected: boolean;
+  }>;
+  questions?: string[];
+}> {
+  const prompt = `You are a calm, organized AI that helps people manage their meal plans. Analyze this meal plan document and extract structured data.
+
+DOCUMENT TEXT:
+${documentText.slice(0, 25000)}
+
+INSTRUCTIONS:
+1. Read the document carefully and identify:
+   - Individual meals (breakfast, lunch, dinner, snacks)
+   - Meal prep routines or batch cooking steps
+   - Week/day groupings if present
+   - Portion rules, shopping lists, or prep timing
+
+2. Extract meals with:
+   - title: Clear meal name
+   - mealType: breakfast/lunch/dinner/snack/other
+   - weekLabel: "Week 1", "Week 2", etc. if applicable
+   - ingredients: List of ingredients if present
+   - instructions: Cooking steps if present
+   - tags: Categories like "high-protein", "vegetarian", etc.
+
+3. Create a meal prep routine with actionable steps the user can follow
+
+4. Suggest calendar blocks:
+   - "Meal Prep Block" (suggest ~2 hours)
+   - "Grocery Shopping" reminder (optional)
+   - Keep calendar suggestions minimal and useful
+
+5. If confidence is below 60% for any major section, include 1-3 clarifying questions
+
+RESPOND WITH VALID JSON ONLY in this exact format:
+{
+  "planTitle": "Name of this meal plan",
+  "summary": "Brief 2-3 sentence overview",
+  "confidence": 0.0-1.0,
+  "meals": [
+    {
+      "id": "meal-1",
+      "type": "meal",
+      "title": "Meal name",
+      "mealType": "breakfast|lunch|dinner|snack|other",
+      "weekLabel": "Week 1",
+      "tags": ["tag1"],
+      "notes": "optional notes",
+      "ingredients": ["ingredient1"],
+      "instructions": ["step1"],
+      "isSelected": true
+    }
+  ],
+  "routine": {
+    "title": "Meal Prep Routine",
+    "steps": [
+      {
+        "id": "step-1",
+        "type": "routine_step",
+        "text": "Step description",
+        "notes": "optional"
+      }
+    ]
+  },
+  "calendarSuggestions": [
+    {
+      "id": "cal-1",
+      "type": "calendar_suggestion",
+      "title": "Meal Prep Block",
+      "durationMinutes": 120,
+      "recurrence": { "frequency": "weekly" },
+      "notes": "Weekly meal prep session",
+      "linkedSystem": "routines",
+      "isSelected": true
+    }
+  ],
+  "questions": []
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 4000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error("No response from AI");
+    }
+
+    const parsed = JSON.parse(content);
+    
+    // Ensure all required fields exist with defaults
+    return {
+      planTitle: parsed.planTitle || "Imported Meal Plan",
+      summary: parsed.summary || "Meal plan imported from document",
+      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.75,
+      meals: Array.isArray(parsed.meals) ? parsed.meals.map((m: Record<string, unknown>, i: number) => ({
+        id: m.id || `meal-${i + 1}`,
+        type: "meal" as const,
+        title: m.title || "Untitled Meal",
+        mealType: ["breakfast", "lunch", "dinner", "snack", "other"].includes(m.mealType as string) 
+          ? m.mealType as "breakfast" | "lunch" | "dinner" | "snack" | "other" 
+          : "other",
+        weekLabel: m.weekLabel as string | undefined,
+        tags: Array.isArray(m.tags) ? m.tags as string[] : undefined,
+        notes: m.notes as string | undefined,
+        ingredients: Array.isArray(m.ingredients) ? m.ingredients as string[] : undefined,
+        instructions: Array.isArray(m.instructions) ? m.instructions as string[] : undefined,
+        isSelected: m.isSelected !== false,
+      })) : [],
+      routine: {
+        title: parsed.routine?.title || "Meal Prep Routine",
+        steps: Array.isArray(parsed.routine?.steps) ? parsed.routine.steps.map((s: Record<string, unknown>, i: number) => ({
+          id: s.id || `step-${i + 1}`,
+          type: "routine_step" as const,
+          text: s.text || "Step",
+          notes: s.notes as string | undefined,
+        })) : [],
+      },
+      calendarSuggestions: Array.isArray(parsed.calendarSuggestions) ? parsed.calendarSuggestions.map((c: Record<string, unknown>, i: number) => ({
+        id: c.id || `cal-${i + 1}`,
+        type: "calendar_suggestion" as const,
+        title: c.title || "Calendar Block",
+        durationMinutes: typeof c.durationMinutes === "number" ? c.durationMinutes : 60,
+        suggestedStart: c.suggestedStart as string | undefined,
+        recurrence: c.recurrence as { frequency: "none" | "daily" | "weekly" | "monthly"; until?: string } | undefined,
+        notes: c.notes as string | undefined,
+        linkedSystem: ["nutrition", "workouts", "routines", "none"].includes(c.linkedSystem as string) 
+          ? c.linkedSystem as "nutrition" | "workouts" | "routines" | "none"
+          : "none",
+        linkedId: c.linkedId as string | undefined,
+        isSelected: c.isSelected !== false,
+      })) : [],
+      questions: Array.isArray(parsed.questions) ? parsed.questions.slice(0, 3) : undefined,
+    };
+  } catch (error) {
+    console.error("Failed to analyze meal plan:", error);
+    throw new Error("Failed to analyze meal plan document");
+  }
+}

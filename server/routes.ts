@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument } from "./openai";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, type DocumentAnalysisResult } from "./document-parser";
 import {
   insertUserSchema,
@@ -1869,5 +1869,242 @@ export async function registerRoutes(
     }
   });
 
+  // Wave 4: Meal Plan Import Endpoints
+  app.post("/api/import/upload", requireAuth, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { buffer, mimetype, originalname } = req.file;
+      
+      // Extract text from PDF/document
+      const extracted = await extractTextFromBuffer(buffer, mimetype, originalname);
+      
+      if (!extracted.text || extracted.text.trim().length < 50) {
+        return res.status(400).json({ 
+          error: "I couldn't read that file. Sometimes PDFs are scanned images. Try a different PDF, or copy/paste the text version." 
+        });
+      }
+
+      // Create draft import document
+      const doc = await storage.createImportedDocument({
+        userId: req.session.userId!,
+        fileName: originalname,
+        fileType: mimetype,
+        rawText: extracted.text,
+        status: "draft",
+      });
+
+      res.json({ 
+        documentId: doc.id,
+        fileName: originalname,
+        textLength: extracted.text.length,
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ error: "Failed to process file" });
+    }
+  });
+
+  app.post("/api/import/analyze/:documentId", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getImportedDocument(req.params.documentId);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (!doc.rawText) {
+        return res.status(400).json({ error: "No text content to analyze" });
+      }
+
+      // Analyze with AI
+      const analysis = await analyzeMealPlanDocument(doc.rawText);
+
+      // Update document with analysis
+      await storage.updateImportedDocument(doc.id, {
+        documentTitle: analysis.planTitle,
+        summary: analysis.summary,
+        confidence: Math.round(analysis.confidence * 100),
+        analysisJson: analysis,
+        status: "analyzed",
+      });
+
+      res.json(analysis);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      res.status(500).json({ error: "I couldn't read that file. Try a different PDF or copy/paste text." });
+    }
+  });
+
+  app.post("/api/import/commit/:documentId", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getImportedDocument(req.params.documentId);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      // Prevent duplicate commits
+      if (doc.status === "saved") {
+        return res.status(400).json({ error: "This plan has already been saved" });
+      }
+
+      const { meals, routine, planTitle } = req.body;
+
+      // Create meal plan
+      const mealPlan = await storage.createMealPlan({
+        userId: req.session.userId!,
+        title: planTitle || doc.documentTitle || "Imported Meal Plan",
+        summary: doc.summary || undefined,
+        source: "import",
+        importedDocumentId: doc.id,
+        isActive: true,
+      });
+
+      // Create ONLY selected meals (explicit isSelected === true check)
+      const selectedMeals = (meals || []).filter((m: { isSelected?: boolean }) => m.isSelected === true);
+      const createdMeals = await storage.createMeals(
+        selectedMeals.map((m: { title: string; mealType?: string; weekLabel?: string; tags?: string[]; notes?: string; ingredients?: string[]; instructions?: string[] }) => ({
+          userId: req.session.userId!,
+          mealPlanId: mealPlan.id,
+          title: m.title,
+          mealType: m.mealType || "other",
+          weekLabel: m.weekLabel,
+          tags: m.tags,
+          notes: m.notes,
+          ingredients: m.ingredients,
+          instructions: m.instructions,
+        }))
+      );
+
+      // Create routine if steps exist
+      let createdRoutine = null;
+      if (routine?.steps?.length > 0) {
+        createdRoutine = await storage.createRoutine({
+          userId: req.session.userId!,
+          name: routine.title || "Meal Prep Routine",
+          dimensionTags: ["nutrition"],
+          steps: routine.steps.map((s: { text: string; notes?: string }) => ({
+            title: s.text,
+            instructions: s.notes || "",
+          })),
+          totalDurationMinutes: routine.steps.length * 10,
+          scheduleOptions: {},
+          mode: "instructions",
+          isActive: true,
+        });
+      }
+
+      // Update document status to prevent re-commit
+      await storage.updateImportedDocument(doc.id, {
+        status: "saved",
+        savedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        mealPlan: mealPlan,
+        mealsCount: createdMeals.length,
+        routine: createdRoutine,
+      });
+    } catch (error) {
+      console.error("Commit error:", error);
+      res.status(500).json({ error: "Failed to save meal plan" });
+    }
+  });
+
+  app.post("/api/import/calendar/:documentId", requireAuth, async (req, res) => {
+    try {
+      // Verify document ownership and status
+      const doc = await storage.getImportedDocument(req.params.documentId);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      // Only allow calendar additions for saved documents
+      if (doc.status !== "saved") {
+        return res.status(400).json({ error: "Save the plan first before adding calendar events" });
+      }
+
+      const { suggestions } = req.body;
+      
+      if (!suggestions || !Array.isArray(suggestions)) {
+        return res.status(400).json({ error: "No calendar suggestions provided" });
+      }
+
+      // Only create events explicitly marked as selected
+      const selectedSuggestions = suggestions.filter((s: { isSelected?: boolean }) => s.isSelected === true);
+      const created = [];
+
+      for (const suggestion of selectedSuggestions) {
+        const event = await storage.createCalendarEvent({
+          userId: req.session.userId!,
+          title: suggestion.title,
+          description: suggestion.notes || "",
+          startTime: suggestion.suggestedStart || "09:00",
+          endTime: calculateEndTime(suggestion.suggestedStart || "09:00", suggestion.durationMinutes || 60),
+          eventType: "meal-prep",
+          isRecurring: suggestion.recurrence?.frequency !== "none" && !!suggestion.recurrence?.frequency,
+          recurrenceRule: suggestion.recurrence?.frequency && suggestion.recurrence.frequency !== "none" 
+            ? suggestion.recurrence.frequency 
+            : undefined,
+        });
+        created.push(event);
+      }
+
+      res.json({
+        success: true,
+        eventsCreated: created.length,
+        events: created,
+      });
+    } catch (error) {
+      console.error("Calendar add error:", error);
+      res.status(500).json({ error: "Failed to add calendar events" });
+    }
+  });
+
+  // Get meal plans
+  app.get("/api/meal-plans", requireAuth, async (req, res) => {
+    try {
+      const plans = await storage.getMealPlans(req.session.userId!);
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load meal plans" });
+    }
+  });
+
+  // Get meals for a plan
+  app.get("/api/meal-plans/:id/meals", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getMealPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Meal plan not found" });
+      }
+      const planMeals = await storage.getMeals(req.session.userId!, req.params.id);
+      res.json(planMeals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load meals" });
+    }
+  });
+
+  // Get draft imports
+  app.get("/api/import/drafts", requireAuth, async (req, res) => {
+    try {
+      const docs = await storage.getImportedDocuments(req.session.userId!);
+      const drafts = docs.filter(d => d.status === "draft" || d.status === "analyzed");
+      res.json(drafts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load drafts" });
+    }
+  });
+
   return httpServer;
+}
+
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  const [hours, minutes] = startTime.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + durationMinutes;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+  return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
 }

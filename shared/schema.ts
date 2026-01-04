@@ -597,6 +597,52 @@ export const userSystemPreferencesRelations = relations(userSystemPreferences, (
   }),
 }));
 
+// Meal Plans - Wave 4 Meal Plan Import
+export const mealPlans = pgTable("meal_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  source: text("source").default("import"),
+  importedDocumentId: varchar("imported_document_id"),
+  isActive: boolean("is_active").default(true),
+  activatedAt: timestamp("activated_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const mealPlansRelations = relations(mealPlans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [mealPlans.userId],
+    references: [users.id],
+  }),
+  meals: many(meals),
+}));
+
+export const meals = pgTable("meals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  mealPlanId: varchar("meal_plan_id").references(() => mealPlans.id),
+  title: text("title").notNull(),
+  mealType: text("meal_type").default("other"),
+  weekLabel: text("week_label"),
+  tags: text("tags").array(),
+  notes: text("notes"),
+  ingredients: text("ingredients").array(),
+  instructions: text("instructions").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const mealsRelations = relations(meals, ({ one }) => ({
+  user: one(users, {
+    fields: [meals.userId],
+    references: [users.id],
+  }),
+  mealPlan: one(mealPlans, {
+    fields: [meals.mealPlanId],
+    references: [mealPlans.id],
+  }),
+}));
+
 // Imported Documents - Wave 3 Document Intelligence
 export const importedDocuments = pgTable("imported_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -797,11 +843,89 @@ export const insertUserSystemPreferencesSchema = createInsertSchema(userSystemPr
   updatedAt: true,
 });
 
+export const insertMealPlanSchema = createInsertSchema(mealPlans).omit({
+  id: true,
+  createdAt: true,
+  activatedAt: true,
+});
+
+export const insertMealSchema = createInsertSchema(meals).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertImportedDocumentSchema = createInsertSchema(importedDocuments).omit({
   id: true,
   createdAt: true,
   savedAt: true,
 });
+
+// Wave 4 Import Parser Schemas
+export const ImportMealTypeSchema = z.enum([
+  "breakfast",
+  "lunch",
+  "dinner",
+  "snack",
+  "other",
+]);
+
+export const CalendarRecurrenceSchema = z.object({
+  frequency: z.enum(["none", "daily", "weekly", "monthly"]).default("none"),
+  until: z.string().optional(),
+}).optional();
+
+export const ImportMealSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("meal"),
+  title: z.string().min(1),
+  mealType: ImportMealTypeSchema.default("other"),
+  weekLabel: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  ingredients: z.array(z.string()).optional(),
+  instructions: z.array(z.string()).optional(),
+  isSelected: z.boolean().default(true),
+});
+
+export const ImportRoutineStepSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("routine_step"),
+  text: z.string().min(1),
+  notes: z.string().optional(),
+});
+
+export const ImportRoutineSchema = z.object({
+  title: z.string().min(1).default("Meal Prep Routine"),
+  steps: z.array(ImportRoutineStepSchema).default([]),
+});
+
+export const ImportCalendarSuggestionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("calendar_suggestion"),
+  title: z.string().min(1),
+  durationMinutes: z.number().int().positive().default(60),
+  suggestedStart: z.string().optional(),
+  recurrence: CalendarRecurrenceSchema,
+  notes: z.string().optional(),
+  linkedSystem: z.enum(["nutrition", "workouts", "routines", "none"]).default("none"),
+  linkedId: z.string().optional(),
+  isSelected: z.boolean().default(true),
+});
+
+export const Wave4ImportSchema = z.object({
+  planTitle: z.string().min(1).default("Imported Plan"),
+  summary: z.string().optional(),
+  confidence: z.number().min(0).max(1).default(0.75),
+  meals: z.array(ImportMealSchema).default([]),
+  routine: ImportRoutineSchema.default({ title: "Meal Prep Routine", steps: [] }),
+  calendarSuggestions: z.array(ImportCalendarSuggestionSchema).default([]),
+  questions: z.array(z.string()).max(3).optional(),
+});
+
+export type Wave4Import = z.infer<typeof Wave4ImportSchema>;
+export type ImportMeal = z.infer<typeof ImportMealSchema>;
+export type ImportRoutineStep = z.infer<typeof ImportRoutineStepSchema>;
+export type ImportCalendarSuggestion = z.infer<typeof ImportCalendarSuggestionSchema>;
 
 export const insertImportedDocumentItemSchema = createInsertSchema(importedDocumentItems).omit({
   id: true,
@@ -924,3 +1048,7 @@ export type ImportedDocument = typeof importedDocuments.$inferSelect;
 export type InsertImportedDocument = z.infer<typeof insertImportedDocumentSchema>;
 export type ImportedDocumentItem = typeof importedDocumentItems.$inferSelect;
 export type InsertImportedDocumentItem = z.infer<typeof insertImportedDocumentItemSchema>;
+export type MealPlan = typeof mealPlans.$inferSelect;
+export type InsertMealPlan = z.infer<typeof insertMealPlanSchema>;
+export type Meal = typeof meals.$inferSelect;
+export type InsertMeal = z.infer<typeof insertMealSchema>;
