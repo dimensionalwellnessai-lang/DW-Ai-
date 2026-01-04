@@ -1,0 +1,112 @@
+Got it — you want this formatted specifically as a Replit-ready message you can paste in (clear, direct, not overwhelming). Here you go.
+
+⸻
+
+Copy/paste to Replit: Wave 6 QA Acceptance Checklist (Gate)
+
+We’re pausing new feature work and using this as the QA gate for Wave 6. Wave 6 cannot ship until this passes on iPhone Safari.
+
+1) Wave 6.1 — Voice Mode (must pass first)
+
+Requirements
+	•	Push-to-talk only (no auto listening / no wake word)
+	•	Works in: AI Chat, Meditation, Talk It Out
+	•	App still fully usable without voice
+	•	Voice never saves or navigates without user confirmation
+
+Exact copy (must match)
+	•	“Hey. I’m here. What would you like to focus on today?”
+	•	“That’s okay. We can take this one step at a time.”
+	•	“I have an idea. Would you like to hear it?”
+	•	“Got it. I’ve saved that for you.”
+
+Safari proof required
+	•	Screen recording on iPhone Safari normal tab + private tab showing voice start/stop and no stuck state
+
+⸻
+
+2) Wave 6.2 — Body & Energy Intelligence
+
+Enhance existing features only (mood logging sliders + existing body scan dialog). No new biometric detection.
+
+Body scan
+	•	Optional: Camera / Upload / Skip
+	•	Must resume after app is backgrounded (no restart)
+	•	Camera failure must fall back to upload
+
+Measurements
+	•	Global units toggle: Imperial / Metric (persists after refresh)
+	•	Separate: Current state (“Where you are now”) vs Goal state (“What you’re working toward”)
+
+AI awareness
+	•	AI tone + suggestions must change based on energy/mood/clarity
+	•	Low energy = fewer suggestions + gentle tone
+	•	High energy = more options but no pressure
+	•	AI must always include: “I’m suggesting this because …”
+
+Out of scope
+	•	No nervous system labeling shown to users
+	•	No readiness scores
+	•	No forced data entry
+
+Safari proof required
+	•	Screen recording showing body scan resume + units persistence + AI “why” explanation
+
+⸻
+
+3) Wave 6.3 — Guided Experiences (Netflix-style but calm)
+
+Applies to: Meditation, Workouts, Nutrition, Challenges, Recovery
+
+Layout
+	•	AI Picks (max 2–3, each with “Why”)
+	•	Category thumbnails
+	•	Filters that actually change results
+	•	Clickable cards with thumbnail + duration + tag
+
+Interaction
+	•	Single-select only
+	•	Save button disabled until selection (with helper text: “Pick 1 option to save.”)
+	•	Save must work in Safari
+	•	After save: toast “Saved” + persists after refresh
+	•	Add to Calendar requires explicit confirmation
+	•	Calendar event must deep link back to the source item page
+
+⸻
+
+4) Global rules (all pages)
+
+Every page must have:
+	•	Hamburger menu
+	•	Back button
+	•	Access to AI Chat
+
+No dead ends
+	•	No “not available” pages
+	•	No fake buttons
+	•	Suggested Schedule must always open a real review/edit flow
+
+State persistence
+	•	Login persists across refresh in Safari
+	•	Draft inputs persist when navigating away
+	•	Chat history saves even if the user starts with no prompt
+
+⸻
+
+5) Deliverables (required before Wave 6 continues)
+	1.	PASS/FAIL checklist for all major pages
+	2.	List of changed files
+	3.	iPhone Safari screen recordings proving:
+
+	•	Save meal works
+	•	Save meditation works
+	•	Suggested schedule opens + saves
+	•	Navigation doesn’t reset app
+	•	Voice start/stop works (normal + private)
+
+Once these are delivered and passing, we proceed with Wave 6 build order:
+Voice → Body/Energy → Guided Experiences
+
+⸻
+
+If you want, tell me what Replit replies and I’ll help you respond in the cleanest way so they don’t wander off-scope.

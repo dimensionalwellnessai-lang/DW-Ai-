@@ -38,6 +38,7 @@ import {
   type SoftOnboardingMood,
 } from "@/lib/guest-storage";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
+import { getEnergyContextForAPI } from "@/lib/energy-context";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { SoftOnboardingModal, type OnboardingMood } from "@/components/soft-onboarding-modal";
@@ -232,11 +233,13 @@ export function AIWorkspace() {
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       const lifeContext = buildLifeSystemContext();
+      const energyContext = getEnergyContextForAPI();
       const response = await apiRequest("POST", "/api/chat/smart", {
         message,
         conversationHistory: messages.slice(-10),
         userProfile: userProfile || undefined,
         lifeSystemContext: lifeContext,
+        energyContext,
       });
       return response.json();
     },

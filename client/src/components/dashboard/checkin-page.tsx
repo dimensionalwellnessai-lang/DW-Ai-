@@ -17,6 +17,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { saveCurrentClarity } from "@/lib/energy-context";
 import type { MoodLog, CheckIn } from "@shared/schema";
 
 interface ChatMessage {
@@ -78,6 +79,7 @@ export function CheckInPage() {
 
   const logMoodMutation = useMutation({
     mutationFn: async (data: { energyLevel: number; moodLevel: number; clarityLevel: number }) => {
+      saveCurrentClarity(data.clarityLevel, 10);
       return apiRequest("POST", "/api/mood", data);
     },
     onSuccess: () => {

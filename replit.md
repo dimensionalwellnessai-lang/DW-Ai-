@@ -163,3 +163,39 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 - Voice never saves without confirmation
 - Voice never interrupts
 - Voice mirrors on-screen actions (populates text input before sending)
+
+## Body & Energy Intelligence (Wave 6.2)
+
+### Energy Context System
+- **Location**: `client/src/lib/energy-context.ts`
+- **Sources**: Mood logs, body scan, soft onboarding mood
+- **Levels**: low, medium, high (mapped from numeric/categorical inputs)
+
+### AI Energy Awareness
+- AI adapts tone, pacing, and number of suggestions based on energy level
+- Low energy: 1-2 gentle options, slower pacing, prioritize grounding
+- Medium energy: Balanced, collaborative options
+- High energy: More opportunities, remind user can save energy
+
+### Transparency Rules
+- AI must explain why it's adjusting guidance ("I'm suggesting this because your energy seems lower today")
+- Never silently adjust without explanation
+- Never restrict options or auto-schedule
+
+### Consent Rules
+- Never auto-schedule
+- Never block options based on energy
+- Never force rest or effort
+- All actions require explicit user confirmation
+
+### Data Sources (Existing Only)
+- Mood/energy/clarity sliders
+- Body scan dialog (energy level, body goal)
+- Soft onboarding mood selection
+- No new sensors or biometric inference
+
+### Persistence
+- Body scan progress auto-saves
+- Unit toggle (imperial/metric) persists globally
+- Clarity level saves to localStorage (fts_current_clarity) when mood is logged
+- Leaving app does not reset scan

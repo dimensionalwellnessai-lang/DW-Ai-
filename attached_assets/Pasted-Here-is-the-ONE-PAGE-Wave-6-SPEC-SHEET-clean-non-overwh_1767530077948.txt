@@ -1,0 +1,156 @@
+Here is the ONE-PAGE Wave 6 SPEC SHEET — clean, non-overwhelming, and exactly what Replit needs to execute without interpretation.
+
+You can copy & paste this whole thing.
+
+⸻
+
+🌊 WAVE 6 — ONE-PAGE SPEC (LOCKED)
+
+GOAL
+
+Turn the app into a calm, embodied personal assistant that adapts to the user’s energy and body state without forcing actions, diagnosing, or overwhelming them.
+
+Wave 6 is assistant quality, not feature quantity.
+
+⸻
+
+BUILD ORDER (LOCKED)
+
+Wave 6.1 → Wave 6.2 → Wave 6.3
+	1.	Voice Mode (first)
+	2.	Body & Energy Intelligence
+	3.	Guided Experiences (Netflix-style)
+
+Each phase must pass QA before the next begins.
+
+⸻
+
+WAVE 6.1 — VOICE MODE (PUSH-TO-TALK ONLY)
+
+Scope
+	•	Push-to-talk voice input
+	•	Works in:
+	•	AI Chat
+	•	Meditation
+	•	Talk It Out
+	•	Voice mirrors UI (never acts alone)
+
+Rules
+	•	No auto-listening
+	•	No wake words
+	•	No auto-saving
+	•	No forced navigation
+
+Core Voice Copy (verbatim)
+	•	“Hey. I’m here. What would you like to focus on today?”
+	•	“That’s okay. We can take this one step at a time.”
+	•	“I have an idea. Would you like to hear it?”
+	•	“Got it. I’ve saved that for you.”
+
+Voice must work reliably in iPhone Safari.
+
+⸻
+
+WAVE 6.2 — BODY & ENERGY INTELLIGENCE (ENHANCEMENT ONLY)
+
+Use Existing Inputs Only
+	•	Energy / mood / clarity sliders
+	•	Existing body scan dialog
+	•	User text input
+
+❌ No new biometric sensors
+❌ No nervous system detection labels
+
+Required Enhancements
+	•	Body scan is:
+	•	Optional
+	•	Resumable (no restart if app closes)
+	•	Allows camera OR upload OR skip
+	•	Measurements separated clearly:
+	•	Current state (“Where you are now”)
+	•	Goal state (“What you’re working toward”)
+	•	Units toggle:
+	•	Imperial / Metric (global, persistent)
+
+AI Behavior
+
+AI must:
+	•	Adapt tone + suggestions based on energy
+	•	Reduce suggestions when energy is low
+	•	Offer, never restrict
+	•	Always explain why it’s suggesting something
+
+Example:
+
+“I’m suggesting this because your energy is low today.”
+
+❌ No scoring
+❌ No judgment
+❌ No auto-scheduling
+
+⸻
+
+WAVE 6.3 — GUIDED EXPERIENCES (CALM, NETFLIX-STYLE)
+
+Applies To
+	•	Meditation
+	•	Workouts
+	•	Nutrition
+	•	Challenges
+	•	Recovery
+
+Layout Pattern (Same Everywhere)
+	1.	AI Picks (2–3 max, each with “Why”)
+	2.	Categories (thumbnails)
+	3.	Smart filters (time, goal, style)
+	4.	Results grid (clickable cards)
+
+Interaction Rules
+	•	Single-select only
+	•	Save button disabled until selection
+	•	Save requires explicit consent
+	•	Optional: Add to Calendar (confirmation required)
+
+No dead cards. No fake buttons.
+
+⸻
+
+GLOBAL NON-NEGOTIABLE RULES
+	•	Every page must have:
+	•	Hamburger menu
+	•	Back button
+	•	Access to AI Chat
+	•	No “not available” pages
+	•	No faded buttons that do nothing
+	•	Save must work everywhere
+	•	State must persist on Safari refresh
+
+⸻
+
+SUCCESS CRITERIA
+
+Wave 6 is successful when:
+	•	The app feels like a real assistant
+	•	Users feel understood, not analyzed
+	•	Nothing feels forced or overwhelming
+	•	Safari works without resets or broken flows
+
+⸻
+
+QA GATE
+
+Wave 6 does not ship unless:
+	•	Save works across all categories
+	•	Navigation is consistent
+	•	No dead routes exist
+	•	Safari screen recordings confirm behavior
+
+⸻
+
+End of Spec
+
+If you want, next I can:
+	•	Turn this into a Replit acceptance checklist
+	•	Or help you write a “what Wave 6 unlocks” explanation for testers/investors
+
+Just tell me.

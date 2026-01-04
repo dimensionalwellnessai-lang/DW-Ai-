@@ -351,6 +351,7 @@ export interface GuestData {
   contentRotations?: ContentRotation[];
   preferences: {
     themeMode: "accent-only" | "full-background";
+    useMetricUnits?: boolean;
   };
   createdAt: number;
   lastActiveAt: number;
@@ -735,6 +736,17 @@ export function saveBodyProfile(profile: BodyProfile): void {
 export function hasCompletedBodyScan(): boolean {
   const profile = getBodyProfile();
   return profile?.bodyGoal != null;
+}
+
+export function getUseMetricUnits(): boolean {
+  const data = getGuestData();
+  return data?.preferences?.useMetricUnits ?? true;
+}
+
+export function setUseMetricUnits(useMetric: boolean): void {
+  const data = getGuestData() || initGuestData();
+  data.preferences = { ...data.preferences, useMetricUnits: useMetric };
+  saveGuestData(data);
 }
 
 export function getMealPrepPreferences(): MealPrepPreferences | null {

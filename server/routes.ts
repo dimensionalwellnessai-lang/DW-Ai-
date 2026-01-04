@@ -516,7 +516,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -551,6 +551,7 @@ export async function registerRoutes(
         })),
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
+        energyContext: energyContext || null,
       };
       
       const result = await detectIntentAndRespond(

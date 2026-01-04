@@ -11,6 +11,17 @@ interface ChatMessage {
   content: string;
 }
 
+type EnergyLevel = "low" | "medium" | "high";
+
+interface EnergyContext {
+  currentEnergy?: EnergyLevel;
+  currentMood?: string | null;
+  currentClarity?: EnergyLevel;
+  bodyGoal?: string | null;
+  hasBodyScan?: boolean;
+  energySource?: string;
+}
+
 interface UserLifeContext {
   systemName?: string;
   wellnessFocus?: string[];
@@ -40,6 +51,75 @@ interface UserLifeContext {
     workoutPreferences?: Record<string, unknown>;
     importedDocuments?: { type: string; title: string; content: string }[];
   };
+  energyContext?: EnergyContext;
+}
+
+function getEnergyToneGuidance(energy: EnergyLevel): string {
+  switch (energy) {
+    case "low":
+      return `CURRENT ENERGY STATE: LOW
+The user appears to have low energy right now.
+TONE ADJUSTMENTS:
+- Keep suggestions to 1-2 options maximum
+- Use gentle, slower pacing
+- Prioritize grounding, recovery, or simplicity
+- Avoid planning stacks or future pressure
+- Start with: "Let's keep this light today."
+Example: "Based on your energy, one small step is enough. Would you like something grounding or something simple?"`;
+    
+    case "high":
+      return `CURRENT ENERGY STATE: HIGH
+The user's energy is up today.
+TONE ADJUSTMENTS:
+- Can offer more opportunities (still not demands)
+- Remind them they can save energy too
+- Avoid stacking too many actions
+- Use encouraging but grounded tone
+Example: "Your energy is up today. We could use it, or save it — either works. Want to explore a couple options?"`;
+    
+    default:
+      return `CURRENT ENERGY STATE: MEDIUM
+The user has moderate capacity today.
+TONE ADJUSTMENTS:
+- Offer balanced, collaborative options
+- Light planning is okay, nothing heavy
+- Use supportive, balanced tone
+Example: "You've got some capacity today. We can do a little, or keep it simple. What feels right?"`;
+  }
+}
+
+function getClarityToneGuidance(clarity: EnergyLevel): string {
+  switch (clarity) {
+    case "low":
+      return `CURRENT CLARITY STATE: LOW
+The user's mental clarity seems lower right now.
+TONE ADJUSTMENTS:
+- Use shorter, simpler sentences
+- Offer one clear choice at a time
+- Avoid complex planning or multi-step options
+- Focus on grounding before action
+- Help them name what's present before moving forward
+Example: "Sounds like things feel a bit foggy. Let's start with one thing. What's the most immediate need?"`;
+    
+    case "high":
+      return `CURRENT CLARITY STATE: HIGH
+The user seems clear-headed and focused.
+TONE ADJUSTMENTS:
+- Can explore deeper or more nuanced topics
+- Offer more structured options if relevant
+- Mirror their clarity with direct responses
+- Celebrate their groundedness
+Example: "You seem really clear today. Want to use that clarity for something specific, or keep flowing?"`;
+    
+    default:
+      return `CURRENT CLARITY STATE: MEDIUM
+The user has moderate mental clarity today.
+TONE ADJUSTMENTS:
+- Balance between simple and structured options
+- Offer gentle guidance without overwhelming
+- Check in if things are landing
+Example: "How's your headspace today? Want something focused or more open-ended?"`;
+  }
 }
 
 export async function generateChatResponse(
@@ -134,6 +214,31 @@ Adapt to how the user seems to be arriving:
 - If scattered: grounding questions, one thing at a time
 - If steady: more options, deeper exploration
 - If grounded: celebrate their clarity, mirror their calm
+
+${userContext?.energyContext?.currentEnergy ? getEnergyToneGuidance(userContext.energyContext.currentEnergy) : ""}
+${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
+${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext.bodyGoal}` : ""}
+${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
+
+TRANSPARENCY RULE (MANDATORY):
+When adapting your tone or suggestions based on the user's energy, mood, or body state:
+- ALWAYS explain why you're adjusting your guidance
+- Use phrases like: "I'm suggesting this because your energy seems lower today"
+- Or: "Based on your energy level, let's keep this light"
+- Never silently adjust without explanation
+- Never restrict options - always offer choices
+
+CONSENT RULES:
+- Never auto-schedule anything
+- Never block options based on energy
+- Never force rest or effort
+- All actions require explicit user confirmation
+
+NERVOUS SYSTEM LANGUAGE:
+When referring to states, use gentle language:
+- OK: "This seems like a low-capacity moment"
+- OK: "Things feel a bit activated today"
+- NEVER SAY: "fight/flight", "sympathetic/parasympathetic", "dysregulated"
 
 FLOW: Arrive → Acknowledge → Clarify → Guide → Act → Release
 1. ARRIVE: Meet them where they are

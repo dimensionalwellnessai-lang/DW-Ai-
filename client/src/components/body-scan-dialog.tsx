@@ -14,6 +14,8 @@ import {
   saveBodyScanDraft,
   getBodyScanDraft,
   clearBodyScanDraft,
+  getUseMetricUnits,
+  setUseMetricUnits,
   type BodyProfile,
   type BodyGoal,
   type BodyPhoto
@@ -73,7 +75,12 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   const [cameraActive, setCameraActive] = useState(false);
   const [currentPose, setCurrentPose] = useState<"front" | "side" | "back">("front");
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [useMetric, setUseMetric] = useState(true);
+  const [useMetric, setUseMetricLocal] = useState(() => getUseMetricUnits());
+  
+  const handleUnitToggle = (checked: boolean) => {
+    setUseMetricLocal(checked);
+    setUseMetricUnits(checked);
+  };
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,10 +231,6 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
-
-  const handleUnitToggle = (metric: boolean) => {
-    setUseMetric(metric);
   };
 
   const getDisplayHeight = (): string => {
