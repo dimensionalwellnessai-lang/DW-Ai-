@@ -230,7 +230,7 @@ export function MeditationPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                {selectedSuggestionId ? "Tap Save to add this practice" : "Pick one option"}
+                {selectedSuggestionId ? "Tap Save to add this practice" : "Choose 1 option to save"}
               </p>
               <div className="space-y-2">
                 {suggestedMeditations.map((item) => {

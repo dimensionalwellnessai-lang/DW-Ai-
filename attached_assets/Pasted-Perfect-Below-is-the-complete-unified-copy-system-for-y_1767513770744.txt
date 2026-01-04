@@ -1,0 +1,231 @@
+Perfect. Below is the complete, unified copy system for your app — labels, toasts, error states, and multi-select language — all aligned with your philosophy: calm, supportive, non-punitive, assistant-like.
+
+You can hand this to Replit as the final UX language spec.
+
+⸻
+
+🧭 GLOBAL UX COPY SYSTEM (FINAL)
+
+This applies everywhere in the app.
+No improvising. No alternate wording.
+
+⸻
+
+1️⃣ Primary Button Labels (System-Changing Actions)
+
+Used when something is saved, committed, or activated.
+	•	Save to My System
+	•	Add to Calendar
+	•	Activate Plan
+	•	Confirm & Add
+	•	Save Changes
+
+After success:
+	•	Saved
+	•	Added
+
+⸻
+
+2️⃣ Secondary / Safe Exit Buttons
+
+Used to reduce pressure and allow choice.
+	•	Not Now
+	•	Back
+	•	Cancel
+	•	Finish Later
+	•	Skip
+
+⸻
+
+3️⃣ Instructional Microcopy (Above Lists)
+
+Single-Select (most flows)
+	•	“Pick one to save.”
+	•	“Pick one for today.”
+
+Used for:
+	•	Meals
+	•	Meditations
+	•	Workouts (AI picks)
+	•	Challenges (default mode)
+
+⸻
+
+Multi-Select (only where intentional)
+	•	“Select all that apply.”
+
+Used for:
+	•	Feelings / emotional state
+	•	Challenges (optional advanced mode)
+	•	Reflections / check-ins
+
+⸻
+
+4️⃣ Helper Text (When Save Is Disabled)
+
+Shown only when the button is faded.
+	•	“Pick 1 option to save.”
+
+(Do not add warnings or red text.)
+
+⸻
+
+5️⃣ Toast Messages (Success Feedback)
+
+Universal success toasts
+	•	“Saved.”
+	•	“Added to your system.”
+	•	“Added to today.”
+	•	“Updated.”
+
+Category-specific (optional but nice)
+	•	Meal → “Meal saved.”
+	•	Meditation → “Meditation saved.”
+	•	Workout → “Workout added.”
+	•	Plan → “Plan saved.”
+
+⸻
+
+6️⃣ Error States (Calm, Non-Blaming)
+
+Save fails (network, auth, Safari, etc.)
+	•	“That didn’t save just yet.”
+	•	Secondary line (optional):
+	•	“You can try again, or come back later.”
+
+Offline / local fallback
+	•	“Saved on this device.”
+	•	Subtext:
+	•	“We’ll sync when you’re connected.”
+
+Page unavailable (never say “not available”)
+
+Replace with:
+	•	“This isn’t ready yet.”
+	•	CTA:
+	•	“Go Back”
+	•	“Return Home”
+
+⸻
+
+7️⃣ Multi-Select Labels (Feelings, States, Challenges)
+
+Header
+	•	“What’s coming up for you right now?”
+
+Instruction
+	•	“Select all that apply.”
+
+Primary button
+	•	Save to My System
+
+After save toast
+	•	“Noted.”
+
+⸻
+
+8️⃣ AI Explanation Microcopy (Transparency)
+
+Shown below suggestions when enabled.
+
+Always start with Why:
+
+Examples:
+	•	“Why: This supports your goal of building size without overloading today.”
+	•	“Why: Your energy has been lower lately, so this keeps momentum without pressure.”
+	•	“Why: This pairs well with the workout you already have scheduled.”
+
+Never:
+	•	Shame
+	•	Absolutes
+	•	Commands
+
+⸻
+
+9️⃣ Browse Page Labels (Search-Engine Feel)
+
+Header
+	•	Browse
+
+Subheader (dynamic)
+	•	“Explore resources for [category].”
+
+Search placeholder
+	•	“Search within this category…”
+
+Filter button
+	•	Filters
+
+Empty state
+	•	“Nothing here yet — try adjusting filters.”
+
+⸻
+
+🔟 Challenges Page (Now Fully Functional)
+
+Challenge card buttons
+	•	View Details
+	•	Add to My Plan
+	•	Add to Calendar
+
+Challenge detail page
+
+Primary:
+	•	Add to My Plan
+
+Secondary:
+	•	Add to Calendar
+	•	Not Now
+
+⸻
+
+1️⃣1️⃣ Navigation & Auth Labels
+
+Auth button (single dynamic)
+	•	Logged out: Sign In / Sign Up
+	•	Logged in: Log Out
+
+Menu utility
+	•	App Tour
+	•	Feedback
+	•	Settings
+
+⸻
+
+1️⃣2️⃣ Tutorial / App Tour Labels
+	•	Start Tour
+	•	Next
+	•	Try It
+	•	Skip Tour
+	•	Don’t Show Again
+
+⸻
+
+📌 Copy/Paste Instruction to Replit (Final)
+
+Use this exactly:
+
+Apply the attached UX copy system globally.
+Use single-select (“Pick one”) by default for suggestions, with Save disabled until one option is selected.
+Multi-select must explicitly say “Select all that apply.”
+Use “Save to My System” as the primary save label everywhere.
+Replace all harsh or generic error messages with the calm error copy provided.
+No page should say “not available.”
+All Save actions must provide visible feedback (toast + Saved state).
+
+⸻
+
+Why this matters (big picture)
+
+This does 4 critical things:
+	1.	Removes decision anxiety
+	2.	Fixes the Safari “faded Save” confusion permanently
+	3.	Makes the app feel cohesive and intentional
+	4.	Reinforces your identity: AI personal assistant, not a taskmaster
+
+If you want next, I can:
+	•	generate a QA checklist specifically for copy + state
+	•	write voice-mode scripts using this same language
+	•	or turn this into a 1-page product language spec PDF
+
+Just say the word.

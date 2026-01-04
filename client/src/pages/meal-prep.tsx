@@ -1624,7 +1624,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {suggestStep === "results" && (
               <div className="space-y-3 py-4">
                 <p className="text-xs text-muted-foreground text-center">
-                  {selectedSuggestionId ? "Tap Save to add to calendar" : "Pick one option"}
+                  {selectedSuggestionId ? "Tap Save to add to calendar" : "Choose 1 option to save"}
                 </p>
                 {getMealSuggestions().map((meal) => {
                   const isSelected = selectedSuggestionId === meal.id;
