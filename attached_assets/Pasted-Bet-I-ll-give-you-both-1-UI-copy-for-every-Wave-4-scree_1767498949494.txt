@@ -1,0 +1,260 @@
+Bet — I’ll give you both:
+	1.	UI copy for every Wave 4 screen (in your “Flip the Switch” vibe: calm, uplifting, but real)
+	2.	A strict JSON schema (Zod) your dev can paste into Replit so the import output never breaks the app
+
+⸻
+
+1) Wave 4 UI Copy Pack (paste into the app)
+
+A) Upload Screen
+
+Title: Upload a Meal Plan
+Subtitle: Drop a PDF and let me organize it into your system.
+Helper text: You stay in control. Nothing gets saved until you approve it.
+
+Buttons:
+	•	Upload PDF
+	•	Or paste text (optional later)
+
+Microcopy under upload:
+
+Best results: meal plans, weekly schedules, prep guides, or anything with sections like “Week 1” / “Breakfast” / “Prep.”
+
+⸻
+
+B) Scanning / Loading State
+
+Title: Scanning your plan…
+Subtext (rotating optional lines):
+	•	Pulling out meals, prep steps, and patterns
+	•	Turning this into a routine you can actually follow
+	•	I’ll show you everything before saving
+
+If it’s taking long:
+
+Still working. Some PDFs take a minute.
+
+If extraction fails:
+Title: I couldn’t read that file
+Body: Sometimes PDFs are scanned images. Try a different PDF, or copy/paste the text version.
+Buttons: Try another file / Cancel
+
+⸻
+
+C) Preview Screen (Main)
+
+Header: Review your import
+Subheader: This is a draft. Edit anything. Save only what you want.
+
+Top summary card:
+	•	Plan name (editable): “4-Week Meal Prep System” (example)
+	•	What I found: __ meals • __ prep steps • __ calendar suggestions
+
+Primary buttons:
+	•	Save plan (meals + routine)
+	•	Add selected to calendar (only if user wants)
+	•	Not now
+
+Consent reminder (small text):
+
+Nothing goes into your calendar unless you choose it.
+
+⸻
+
+D) Tabs Copy
+
+Tab 1: Summary
+Title: What this plan is
+Body (generated):
+
+Here’s the structure I’m seeing. If anything looks off, tell me and I’ll adjust it.
+
+If low confidence:
+
+Quick check: I’m not 100% sure about a few parts. Answer these and I’ll clean it up.
+
+(Then show 1–3 questions max.)
+
+⸻
+
+Tab 2: Meals
+Title: Meals
+Helper text: Select what you want to keep. You can rename anything.
+
+Empty state:
+
+I didn’t find clear meals in this doc. Want to paste the meal list or tell me what week format it uses?
+
+Buttons: Ask me / Cancel
+
+⸻
+
+Tab 3: Meal Prep Routine
+Title: Meal Prep Routine
+Helper text: These steps become a checklist you can follow.
+
+Optional tone line:
+
+Keep it simple. Consistency beats perfection.
+
+⸻
+
+Tab 4: Calendar Suggestions
+Title: Suggested schedule blocks
+Helper text: These are suggestions only. You approve what gets added.
+
+Default suggestions shown:
+	•	“Meal Prep Block” (duration + editable)
+	•	“Grocery Reminder” (optional)
+
+Buttons:
+	•	Add selected to calendar
+	•	Not now
+
+Small print:
+
+You can always edit, reschedule, or stop recurrence later.
+
+⸻
+
+E) Save Confirmation Screen
+
+Title: Saved to your system
+Body: Your plan is organized and ready.
+
+Buttons:
+	•	View Meals
+	•	View Routine
+	•	View Calendar
+	•	Back to chat
+
+Closing line:
+
+Want me to help you activate this plan for the week?
+
+⸻
+
+2) Zod Schema for Wave 4 Import Output (paste into Replit)
+
+This validates the AI parser response so your app doesn’t crash when a field is missing.
+
+import { z } from "zod";
+
+/**
+ * Wave 4 Import Parser Schema (Option B)
+ * - Meals + Routine saved with "Save plan"
+ * - Calendar suggestions are optional and require explicit consent
+ */
+
+export const ImportMealTypeSchema = z.enum([
+  "breakfast",
+  "lunch",
+  "dinner",
+  "snack",
+  "other",
+]);
+
+export const ImportItemTypeSchema = z.enum([
+  "meal",
+  "routine_step",
+  "calendar_suggestion",
+  "rule",
+  "note",
+]);
+
+export const CalendarRecurrenceSchema = z
+  .object({
+    frequency: z.enum(["none", "daily", "weekly", "monthly"]).default("none"),
+    // Optional end date for recurrence
+    until: z.string().datetime().optional(), // ISO string
+  })
+  .optional();
+
+export const ImportMealSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("meal"),
+  title: z.string().min(1),
+  mealType: ImportMealTypeSchema.default("other"),
+  weekLabel: z.string().optional(), // e.g., "Week 1"
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  ingredients: z.array(z.string()).optional(),
+  instructions: z.array(z.string()).optional(),
+});
+
+export const ImportRoutineSchema = z.object({
+  title: z.string().min(1).default("Meal Prep Routine"),
+  steps: z.array(
+    z.object({
+      id: z.string().min(1),
+      type: z.literal("routine_step"),
+      text: z.string().min(1),
+      notes: z.string().optional(),
+    })
+  ).default([]),
+});
+
+export const ImportCalendarSuggestionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal("calendar_suggestion"),
+  title: z.string().min(1),
+  durationMinutes: z.number().int().positive().default(60),
+  // Optional suggested date/time; user can edit in preview
+  suggestedStart: z.string().datetime().optional(),
+  recurrence: CalendarRecurrenceSchema,
+  notes: z.string().optional(),
+  // For deep linking later
+  linkedSystem: z.enum(["nutrition", "workouts", "routines", "none"]).default("none"),
+  linkedId: z.string().optional(),
+});
+
+export const ImportRuleOrNoteSchema = z.object({
+  id: z.string().min(1),
+  type: z.union([z.literal("rule"), z.literal("note")]),
+  text: z.string().min(1),
+});
+
+export const Wave4ImportSchema = z.object({
+  planTitle: z.string().min(1).default("Imported Plan"),
+  summary: z.string().optional(),
+  confidence: z.number().min(0).max(1).default(0.75),
+
+  meals: z.array(ImportMealSchema).default([]),
+  routine: ImportRoutineSchema.default({ title: "Meal Prep Routine", steps: [] }),
+  calendarSuggestions: z.array(ImportCalendarSuggestionSchema).default([]),
+  extra: z.array(ImportRuleOrNoteSchema).default([]),
+
+  // If confidence is low, ask questions before commit
+  questions: z.array(z.string()).max(3).optional(),
+});
+
+export type Wave4Import = z.infer<typeof Wave4ImportSchema>;
+
+
+⸻
+
+Implementation Notes for Your Dev (quick + clear)
+
+When AI returns JSON:
+	•	Run:
+
+const parsed = Wave4ImportSchema.safeParse(aiJson);
+
+If !parsed.success:
+	•	show: “I couldn’t organize that file—try again or paste text”
+	•	log the validation errors (developer-side)
+
+If parsed.data.questions?.length:
+	•	ask user those questions before saving anything
+
+Save behavior:
+	•	Save plan writes: meals + routine + plan record
+	•	Add selected to calendar writes only selected calendarSuggestions
+
+⸻
+
+If you want, I can also write the deep-linking spec you asked for earlier:
+
+click a calendar block (e.g., 7:00 workout) → opens the exact workout/plan/routine page for that item.
+
+Just say: “write deep link spec”.

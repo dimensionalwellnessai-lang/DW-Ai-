@@ -1,0 +1,150 @@
+Locked. B is the perfect default: it feels smart, but it never takes control.
+
+Here’s the exact Wave 4 spec for Option B (Meals + Prep Routine + Suggested Calendar blocks with consent). You can paste this to Replit as-is.
+
+⸻
+
+Wave 4 Spec (Option B): PDF Meal Plan Import → Organize → Save + Suggested Calendar
+
+Goal
+
+User uploads a meal plan PDF. AI reads the whole document and creates:
+	•	Meals (Nutrition system)
+	•	Meal prep routine (Routines system)
+	•	Suggested calendar blocks (Calendar system)
+Nothing is saved until the user approves.
+
+⸻
+
+1) UX Flow (Must Match)
+
+Step 1 — Upload
+
+Button: Upload a meal plan
+	•	Accept: PDF (Wave 4.1)
+	•	Show file name + “Remove” option
+
+Step 2 — Analyze
+
+Loading text: “Scanning your plan…”
+	•	Show progress indicator
+	•	If extraction fails, show: “I couldn’t read that file—try a different PDF or copy/paste text.”
+
+Step 3 — Preview & Edit (Core Screen)
+
+Tabs:
+	1.	Summary
+	•	Plan name (editable)
+	•	What AI found (counts): meals, routines, calendar suggestions
+	2.	Meals
+	•	Group by Week + Meal Type (when available)
+	•	Each meal has:
+	•	checkbox include/exclude
+	•	edit title
+	•	tags (optional)
+	3.	Routine
+	•	“Meal Prep Routine”
+	•	Steps checklist extracted from document
+	•	Editable steps + reorder
+	4.	Calendar Suggestions
+	•	Proposed blocks (not saved yet)
+	•	Each suggestion has:
+	•	checkbox include/exclude
+	•	date/time picker
+	•	recurrence picker (optional)
+	•	Buttons:
+	•	Add selected to calendar
+	•	Not now
+
+Step 4 — Save Plan
+
+Button: Save this plan
+	•	Saves meals + routine + plan record
+	•	Calendar suggestions are saved only if user clicks Add selected
+
+Step 5 — Done Screen
+
+Show:
+	•	View Meals
+	•	View Routine
+	•	View Calendar (if any added)
+	•	“Activate plan later” (optional)
+
+⸻
+
+2) Data Output Rules (What AI must extract)
+
+From uploaded PDF, AI should detect:
+	•	Sections: weeks, meal types, day groupings
+	•	Meals:
+	•	name
+	•	meal type (breakfast/lunch/dinner/snack)
+	•	optional ingredients/instructions if present
+	•	Prep routine:
+	•	batch cooking steps
+	•	portion rules as notes/steps
+	•	Calendar candidates:
+	•	1 suggested “Meal Prep Block”
+	•	optional grocery reminder
+	•	optional daily meal reminders (OFF by default)
+
+⸻
+
+3) Consent Rules (Non-negotiable)
+	•	Uploading does not save anything
+	•	Preview is editable before saving
+	•	Calendar additions require explicit confirmation:
+	•	Add selected
+	•	Not now
+	•	If user leaves mid-import, progress must be saved (draft import)
+
+⸻
+
+4) Technical Implementation (Replit)
+
+Endpoints
+	•	POST /api/import/upload (PDF)
+	•	POST /api/import/analyze
+	•	returns structured JSON
+	•	POST /api/import/commit
+	•	writes Meals/Routine/Plan
+	•	POST /api/calendar/bulkAdd (optional)
+	•	adds selected suggestions with consent
+
+AI Parser Response Schema (Minimum)
+
+Return:
+	•	planTitle
+	•	summary
+	•	confidence
+	•	meals[]:
+	•	id, title, mealType, week(optional), tags(optional), notes(optional)
+	•	routine:
+	•	title, steps[]
+	•	calendarSuggestions[]:
+	•	id, title, suggestedDateTime(optional), duration, recurrence(optional), notes(optional)
+
+If confidence < threshold:
+	•	return questions[] (1–3 max) before commit
+
+⸻
+
+5) Acceptance Tests (You can read this to Replit)
+
+✅ Upload PDF → Preview shows meals + routine + calendar suggestions
+✅ Edit meals and steps → changes persist
+✅ Save plan → meals appear in Meal Prep/Nutrition and routine appears in Routines
+✅ Calendar suggestions are not added unless user clicks Add selected
+✅ Leave app mid-import → return → import draft is still there
+
+⸻
+
+Copy/Paste Message to Replit (short)
+
+Implement Wave 4 Option B: PDF Meal Plan Import → Preview → Save. Uploading a PDF triggers AI parsing and shows a Preview with tabs (Summary/Meals/Routine/Calendar Suggestions). User can edit + include/exclude items. “Save plan” writes Meals + Routine + Plan. Calendar suggestions are optional and only added if user confirms “Add selected to calendar.” Also save draft state if user leaves mid-import.
+
+⸻
+
+If you want, I can also write:
+	•	the exact UI copy for each screen (so it sounds like you / “Flip the Switch” tone), and/or
+	•	the exact JSON schema as a Zod validator so the parser output never breaks your app.
