@@ -1,0 +1,481 @@
+Cool — here’s B: a Route Registry (JSON) you can drop into your code as the single source of truth. It includes:
+	•	every route
+	•	type (page/generator/modal/dev)
+	•	where it should send users
+	•	required data + fallback
+	•	“no dead ends” enforcement
+	•	deep link support via selected query param
+
+You can paste this into something like src/routes/registry.ts and have your router + menu render from it.
+
+// src/routes/registry.ts
+// Single Source of Truth: Route Registry (No Dead Ends)
+
+export type RouteType = "page" | "generator" | "modal" | "dev";
+
+export type LinkedType =
+  | "workout"
+  | "meal"
+  | "routine"
+  | "plan"
+  | "task"
+  | "chat"
+  | "custom"
+  | "none";
+
+export interface RouteAction {
+  id: string;
+  label: string;
+  icon?: string; // icon key name used by your UI library
+  to?: string; // route path OR computed
+  handler?: string; // optional handler name e.g. "openScheduleReview"
+  requiresAuth?: boolean;
+}
+
+export interface RouteGuard {
+  // Data or state needed for the route to function
+  requiredData?: string[]; // e.g. ["userSession"], ["draftId"]
+  // If requiredData missing, where do we send the user instead?
+  fallbackTo?: string; // route path
+  fallbackHandler?: string; // e.g. "startGetToKnowYou", "createEmptyDraft"
+}
+
+export interface RouteRegistryItem {
+  id: string;
+  path: string;
+  label: string;
+  navLabel?: string; // optional menu label different from page title
+  icon?: string;
+  type: RouteType;
+  description?: string;
+
+  // Menu behavior
+  showInMenu?: boolean;
+  menuSection?: "primary" | "calendar" | "more" | "bottom" | "hidden";
+  menuOrder?: number; // for sorting
+  menuParentId?: string; // dropdown parent e.g. calendar-root
+
+  // Routing behavior
+  supportsSelectedQuery?: boolean; // supports ?selected=<id> highlight
+  linkedType?: LinkedType; // what it links to when opened from calendar
+
+  // Guards and fallbacks (No Dead Ends)
+  guard?: RouteGuard;
+
+  // Primary actions shown on the page
+  actions?: RouteAction[];
+}
+
+export const ROUTE_REGISTRY: RouteRegistryItem[] = [
+  // ---------- CORE ----------
+  {
+    id: "home-ai",
+    path: "/",
+    label: "AI Chat",
+    navLabel: "Home",
+    icon: "home",
+    type: "page",
+    description: "Main assistant screen (ChatGPT-like).",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 1,
+    actions: [
+      { id: "make-plan", label: "Make a plan", handler: "startPlanBuilder", icon: "sparkles" },
+      { id: "suggested-schedule", label: "Suggested schedule", handler: "openLatestDraftOrCreate", icon: "calendar" },
+      { id: "talk-it-out", label: "Talk it out", to: "/talk", icon: "message" },
+      { id: "challenges", label: "Challenges", to: "/challenges", icon: "trophy" },
+      { id: "import-doc", label: "Import a document", to: "/import", icon: "upload" },
+      { id: "continue", label: "Continue my progress", handler: "resumeLastFlow", icon: "history" },
+    ],
+  },
+
+  // ---------- PROFILE / ONBOARDING ----------
+  {
+    id: "profile",
+    path: "/profile",
+    label: "Profile",
+    icon: "user",
+    type: "page",
+    description: "Get to know you assessment + preferences.",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 80,
+    guard: {
+      requiredData: [],
+      fallbackHandler: "openProfile",
+    },
+    actions: [
+      { id: "save-profile", label: "Save", handler: "saveProfile" },
+      { id: "not-now", label: "Not now", handler: "dismissProfilePrompt" },
+    ],
+  },
+
+  // ---------- PLANS (LIFE SYSTEM) ----------
+  {
+    id: "plans",
+    path: "/plans",
+    label: "Plans",
+    icon: "layers",
+    type: "page",
+    description: "Life System dashboard (Drafts/Active/Archived).",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 3,
+    actions: [
+      { id: "new-plan", label: "Create new plan", to: "/plan-builder", icon: "plus" },
+    ],
+  },
+  {
+    id: "plan-detail",
+    path: "/plans/:planId",
+    label: "Plan Detail",
+    icon: "layers",
+    type: "page",
+    description: "View a plan and its items. Export / Activate.",
+    showInMenu: false,
+    guard: { requiredData: ["planId"], fallbackTo: "/plans" },
+    actions: [
+      { id: "edit-plan", label: "Edit plan", handler: "editPlan" },
+      { id: "activate-plan", label: "Activate plan", handler: "activatePlanWizard" },
+      { id: "export-plan", label: "Export", to: "/export/:planId" },
+    ],
+  },
+
+  // ---------- PLAN BUILDER ----------
+  {
+    id: "plan-builder",
+    path: "/plan-builder",
+    label: "Plan Builder",
+    icon: "sparkles",
+    type: "generator",
+    description: "AI wizard that creates a draft schedule.",
+    showInMenu: false,
+    actions: [
+      { id: "create-draft", label: "Create draft schedule", handler: "createDraftSchedule" },
+      { id: "cancel", label: "Cancel", to: "/" },
+    ],
+  },
+
+  // ---------- SCHEDULE REVIEW (SUGGESTED SCHEDULE) ----------
+  {
+    id: "schedule-review",
+    path: "/schedule-review/:draftId",
+    label: "Suggested Schedule",
+    icon: "calendar",
+    type: "page",
+    description: "View/edit AI suggested schedule in timeline Day/Week.",
+    showInMenu: false,
+    guard: { requiredData: ["draftId"], fallbackHandler: "openLatestDraftOrCreate" },
+    actions: [
+      { id: "edit", label: "Edit", handler: "toggleEditMode", icon: "edit" },
+      { id: "save-to-life-system", label: "Save to Life System", handler: "commitDraftToPlan", icon: "save" },
+      { id: "add-selected-calendar", label: "Add selected to Calendar", handler: "confirmAddSelectedToCalendar", icon: "calendar-plus" },
+      { id: "back-to-chat", label: "Back to chat", to: "/" },
+    ],
+  },
+
+  // ---------- SCHEDULE BLOCK DETAILS ----------
+  {
+    id: "schedule-block",
+    path: "/schedule-block/:blockId",
+    label: "Schedule Block",
+    icon: "edit",
+    type: "modal",
+    description: "Edit a single schedule block (time/category/notes/link/recurrence).",
+    showInMenu: false,
+    guard: { requiredData: ["blockId"], fallbackTo: "/daily-schedule" },
+    actions: [
+      { id: "save-block", label: "Save", handler: "saveScheduleBlock" },
+      { id: "delete-block", label: "Delete", handler: "deleteScheduleBlock" },
+      { id: "cancel", label: "Cancel", handler: "closeModal" },
+    ],
+  },
+
+  // ---------- CALENDAR ROOT (DROPDOWN PARENT) ----------
+  {
+    id: "calendar-root",
+    path: "/calendar-root",
+    label: "Calendar",
+    icon: "calendar",
+    type: "page",
+    description: "Menu parent only (should not navigate).",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 2,
+  },
+  {
+    id: "daily-schedule",
+    path: "/daily-schedule",
+    label: "Today",
+    icon: "sun",
+    type: "page",
+    description: "Today list/timeline view. Clicking event deep-links.",
+    showInMenu: true,
+    menuSection: "calendar",
+    menuOrder: 10,
+    menuParentId: "calendar-root",
+  },
+  {
+    id: "calendar-week",
+    path: "/calendar",
+    label: "Week",
+    icon: "calendar-week",
+    type: "page",
+    description: "Week view calendar with day selection and deep links.",
+    showInMenu: true,
+    menuSection: "calendar",
+    menuOrder: 11,
+    menuParentId: "calendar-root",
+  },
+  {
+    id: "calendar-month",
+    path: "/calendar/month",
+    label: "Month",
+    icon: "calendar-month",
+    type: "page",
+    description: "Month view calendar; tap day -> day list; deep links.",
+    showInMenu: true,
+    menuSection: "calendar",
+    menuOrder: 12,
+    menuParentId: "calendar-root",
+  },
+  {
+    id: "calendar-list",
+    path: "/calendar/schedule",
+    label: "Schedule",
+    icon: "list",
+    type: "page",
+    description: "All events list view with filters.",
+    showInMenu: true,
+    menuSection: "calendar",
+    menuOrder: 13,
+    menuParentId: "calendar-root",
+  },
+
+  // ---------- WORKOUTS ----------
+  {
+    id: "workout",
+    path: "/workout",
+    label: "Workouts",
+    icon: "dumbbell",
+    type: "page",
+    description: "Browse workouts + AI pick flow + add to schedule.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 20,
+    supportsSelectedQuery: true, // ?selected=<id>
+    linkedType: "workout",
+    actions: [
+      { id: "pick-workout", label: "Pick my workout", handler: "openPickWorkout", icon: "sparkles" },
+    ],
+  },
+
+  // ---------- NUTRITION ----------
+  {
+    id: "meal-prep",
+    path: "/meal-prep",
+    label: "Nutrition",
+    icon: "utensils",
+    type: "page",
+    description: "Meal plans + meal suggestions + add to schedule.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 30,
+    supportsSelectedQuery: true, // ?selected=<id>
+    linkedType: "meal",
+    actions: [
+      { id: "suggest-meals", label: "Suggest meals", handler: "openSuggestMeals", icon: "sparkles" },
+    ],
+  },
+
+  // ---------- ROUTINES ----------
+  {
+    id: "routines",
+    path: "/routines",
+    label: "Routines",
+    icon: "checklist",
+    type: "page",
+    description: "Step-by-step routines + add to schedule.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 40,
+    supportsSelectedQuery: true,
+    linkedType: "routine",
+  },
+
+  // ---------- TASKS ----------
+  {
+    id: "tasks",
+    path: "/tasks",
+    label: "Tasks",
+    icon: "checkbox",
+    type: "page",
+    description: "To-dos linked to plans and schedule.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 50,
+  },
+
+  // ---------- JOURNAL / MEDITATION / TALK ----------
+  {
+    id: "journal",
+    path: "/journal",
+    label: "Journal",
+    icon: "book",
+    type: "page",
+    description: "Journal entries + prompts + AI reflections.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 55,
+  },
+  {
+    id: "meditation",
+    path: "/meditation",
+    label: "Meditation",
+    icon: "lotus",
+    type: "page",
+    description: "Meditation library (Netflix-style later) + guided breathing.",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 60,
+  },
+  {
+    id: "talk",
+    path: "/talk",
+    label: "Talk it out",
+    icon: "message",
+    type: "page",
+    description: "Emotion processing mode (calm + real talk).",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 65,
+  },
+
+  // ---------- CHALLENGES ----------
+  {
+    id: "challenges",
+    path: "/challenges",
+    label: "Challenges",
+    icon: "trophy",
+    type: "page",
+    description: "Challenge library (workout/mental/meal/social/financial).",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 70,
+  },
+
+  // ---------- IMPORTS ----------
+  {
+    id: "import",
+    path: "/import",
+    label: "Import",
+    icon: "upload",
+    type: "page",
+    description: "Document import flow (upload -> analyze -> preview -> commit).",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 75,
+  },
+
+  // ---------- APP TOUR / FEEDBACK / SETTINGS ----------
+  {
+    id: "app-tour",
+    path: "/app-tour",
+    label: "App Tour",
+    icon: "map",
+    type: "page",
+    description: "Re-run interactive tutorials anytime.",
+    showInMenu: true,
+    menuSection: "bottom",
+    menuOrder: 98,
+  },
+  {
+    id: "feedback",
+    path: "/feedback",
+    label: "Feedback",
+    icon: "flag",
+    type: "page",
+    description: "Quick feedback + Typeform link.",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 90,
+  },
+  {
+    id: "settings",
+    path: "/settings",
+    label: "Settings",
+    icon: "gear",
+    type: "page",
+    description: "Preferences, units, notifications, privacy.",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 95,
+  },
+
+  // ---------- MORE (ASTROLOGY MOVED HERE) ----------
+  {
+    id: "astrology",
+    path: "/astrology",
+    label: "Astrology",
+    icon: "stars",
+    type: "page",
+    description: "Astrology insights; must always allow navigation back home/menu.",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 85,
+  },
+
+  // ---------- EXPORT ----------
+  {
+    id: "export",
+    path: "/export/:planId",
+    label: "Export",
+    icon: "download",
+    type: "page",
+    description: "Export plan as ICS/PDF/share link.",
+    showInMenu: false,
+    guard: { requiredData: ["planId"], fallbackTo: "/plans" },
+  },
+
+  // ---------- DEV / QA ----------
+  {
+    id: "dev-routes",
+    path: "/dev/routes",
+    label: "Route Audit",
+    icon: "bug",
+    type: "dev",
+    description: "Lists all routes + all nav/button targets; flags missing ones.",
+    showInMenu: false,
+  },
+
+  // ---------- FALLBACKS ----------
+  {
+    id: "not-found",
+    path: "/404",
+    label: "Not Found",
+    icon: "warning",
+    type: "page",
+    description: "Never blank. Shows navigation + feedback link.",
+    showInMenu: false,
+    actions: [
+      { id: "go-home", label: "Go Home", to: "/" },
+      { id: "feedback", label: "Report an issue", to: "/feedback" },
+    ],
+  },
+];
+
+How to use this registry (high level)
+	•	Build the hamburger menu from showInMenu + menuSection + menuOrder
+	•	Build dropdowns using menuParentId
+	•	When user clicks a route/button:
+	•	if path exists → navigate
+	•	else → navigate to /404 (never blank)
+	•	For deep links: pages with supportsSelectedQuery must support ?selected=<id> highlight/scroll
+
+Next step (so this actually enforces “no dead ends”)
+
+Tell your dev/Replit:
+
+Use the Route Registry as the single source of truth. Render the menu and home actions from it. Add a /dev/routes audit page that compares registered router routes vs registry paths and flags any missing routes. Ensure /404 exists and is used for unknown routes.
+
+If you want, I can also give you the exact acceptance test script (“tap every menu item, every home CTA, verify no blank screen”) in a checklist format you can hand to testers.
