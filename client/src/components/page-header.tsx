@@ -138,21 +138,37 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-4">
-                      {calendarFeatures.map((feature) => {
-                        const Icon = MENU_ICON_MAP[feature.id] || Calendar;
-                        return (
-                          <Link key={feature.path} href={feature.path || "/"}>
-                            <button
-                              className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
-                              onClick={() => setMenuOpen(false)}
-                              data-testid={`menu-item-${feature.id}`}
-                            >
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">{feature.name}</span>
-                            </button>
-                          </Link>
-                        );
-                      })}
+                      {/* Standard Views */}
+                      <Link href="/daily-schedule">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Today</span>
+                        </button>
+                      </Link>
+                      <Link href="/calendar">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Month</span>
+                        </button>
+                      </Link>
+                      <Link href="/calendar?view=week">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Week</span>
+                        </button>
+                      </Link>
+                      <Link href="/daily-schedule">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
+                          <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Schedule</span>
+                        </button>
+                      </Link>
+                      <Link href="/routines">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
+                          <History className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Routines</span>
+                        </button>
+                      </Link>
                     </div>
                   </details>
                 )}
