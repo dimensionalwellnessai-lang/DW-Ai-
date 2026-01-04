@@ -104,6 +104,8 @@ export const goals = pgTable("goals", {
   progress: integer("progress").default(0),
   targetValue: integer("target_value").default(100),
   isActive: boolean("is_active").default(true),
+  dataSource: text("data_source").default("user"),
+  explainWhy: text("explain_why"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -123,6 +125,8 @@ export const habits = pgTable("habits", {
   reminderTime: text("reminder_time"),
   isActive: boolean("is_active").default(true),
   streak: integer("streak").default(0),
+  dataSource: text("data_source").default("user"),
+  explainWhy: text("explain_why"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -400,6 +404,8 @@ export const routines = pgTable("routines", {
   mode: text("mode").default("guided"),
   projectId: varchar("project_id"),
   isActive: boolean("is_active").default(true),
+  dataSource: text("data_source").default("user"),
+  explainWhy: text("explain_why"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -982,6 +988,32 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
   lastMessageAt: true,
 });
 
+export const userFeedback = pgTable("user_feedback", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  category: text("category").notNull(),
+  message: text("message").notNull(),
+  pageContext: text("page_context"),
+  energyLevel: text("energy_level"),
+  status: text("status").default("new"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userFeedbackRelations = relations(userFeedback, ({ one }) => ({
+  user: one(users, {
+    fields: [userFeedback.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertUserFeedbackSchema = createInsertSchema(userFeedback).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1056,3 +1088,5 @@ export type MealPlan = typeof mealPlans.$inferSelect;
 export type InsertMealPlan = z.infer<typeof insertMealPlanSchema>;
 export type Meal = typeof meals.$inferSelect;
 export type InsertMeal = z.infer<typeof insertMealSchema>;
+export type UserFeedback = typeof userFeedback.$inferSelect;
+export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
