@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -363,6 +363,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
       });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       toast({
         title: "Added to your schedule",
         description: `${pendingWorkout?.title} has been added to today's calendar.`,

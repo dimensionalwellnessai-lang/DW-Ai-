@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, MessageSquareText, Upload, ChefHat, Utensils, Clock } from "lucide-react";
+import { ArrowLeft, MessageSquareText, Upload, ChefHat, Utensils, Clock, CalendarPlus } from "lucide-react";
 import { MealPlanImport } from "@/components/meal-plan-import";
 import { useSelectedItem } from "@/hooks/use-selected-item";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { MealPlan, Meal } from "@shared/schema";
 
 export function MealsPage() {
   const [importOpen, setImportOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: mealPlans, isLoading: plansLoading } = useQuery<MealPlan[]>({
     queryKey: ["/api/meal-plans"],
@@ -23,6 +26,50 @@ export function MealsPage() {
   });
 
   const { isHighlighted, getHighlightProps } = useSelectedItem(activeMeals);
+
+  const addToTodayMutation = useMutation({
+    mutationFn: async (meal: Meal) => {
+      const now = new Date();
+      const mealTimes: Record<string, string> = {
+        breakfast: "08:00",
+        lunch: "12:30",
+        dinner: "19:00",
+        snack: "15:00",
+        other: "12:00",
+      };
+      const startTime = mealTimes[meal.mealType || "other"] || "12:00";
+      const [hours, minutes] = startTime.split(":").map(Number);
+      const endHours = hours + 1;
+      const endTime = `${endHours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+
+      return apiRequest("POST", "/api/calendar", {
+        title: meal.title,
+        description: meal.notes || `${meal.mealType || "Meal"} from ${activePlan?.title}`,
+        startTime,
+        endTime,
+        eventType: "meal",
+        dimensionTags: ["nutrition"],
+        linkedType: "meal",
+        linkedId: meal.id,
+        linkedRoute: `/meal-prep?selected=${meal.id}`,
+        linkedMeta: { title: meal.title, mealType: meal.mealType, planId: activePlan?.id, planTitle: activePlan?.title },
+      });
+    },
+    onSuccess: (_, meal) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      toast({
+        title: "Added to your schedule",
+        description: `${meal.title} has been added to today's calendar.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Could not add to calendar",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const mealsByType = activeMeals?.reduce((acc, meal) => {
     const type = meal.mealType || "other";
@@ -122,10 +169,22 @@ export function MealsPage() {
                                   )}
                                 </div>
                                 {meal.tags && meal.tags.length > 0 && (
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-xs text-muted-foreground mr-2">
                                     {meal.tags[0]}
                                   </span>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    addToTodayMutation.mutate(meal);
+                                  }}
+                                  disabled={addToTodayMutation.isPending}
+                                  data-testid={`button-add-meal-today-${meal.id}`}
+                                >
+                                  <CalendarPlus className="w-4 h-4" />
+                                </Button>
                               </CardContent>
                             </Card>
                           );
