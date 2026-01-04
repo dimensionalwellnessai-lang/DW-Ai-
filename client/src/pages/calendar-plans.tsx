@@ -135,7 +135,7 @@ export function CalendarPlansPage() {
       startTime: new Date(e.startTime),
       endTime: e.endTime ? new Date(e.endTime) : null,
       isAllDay: e.isAllDay,
-      dimensionTags: e.dimension ? [e.dimension] : [],
+      dimensionTags: [...(e.dimension ? [e.dimension] : []), ...(e.tags || [])],
       location: e.location,
       meetingLink: e.virtualLink,
       recurring: e.recurring,
