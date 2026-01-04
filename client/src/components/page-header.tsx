@@ -242,11 +242,12 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                 variant="outline" 
                 className="w-full" 
                 size="sm" 
-                onClick={() => {
-                  apiRequest("POST", "/api/auth/logout").then(() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-                    window.location.href = "/login";
-                  });
+                onClick={async () => {
+                  await apiRequest("POST", "/api/auth/logout");
+                  queryClient.setQueryData(["/api/auth/me"], null);
+                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  setMenuOpen(false);
+                  setLocation("/login");
                 }}
                 data-testid="button-signout"
               >

@@ -16,18 +16,30 @@ export function TutorialOverlay() {
   const { state, currentStep, nextStep, prevStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<ElementRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  const [clonedElement, setClonedElement] = useState<string | null>(null);
+  const highlightedElementRef = useRef<HTMLElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const updateTargetPosition = useCallback(() => {
     if (!currentStep) {
       setTargetRect(null);
+      // Cleanup previous highlighted element
+      if (highlightedElementRef.current) {
+        highlightedElementRef.current.style.removeProperty('position');
+        highlightedElementRef.current.style.removeProperty('z-index');
+        highlightedElementRef.current = null;
+      }
       return;
     }
 
     const element = document.querySelector(`[data-testid="${currentStep.targetTestId}"]`);
     if (!element) {
       setTargetRect(null);
+      // Cleanup previous highlighted element when target not found
+      if (highlightedElementRef.current) {
+        highlightedElementRef.current.style.removeProperty('position');
+        highlightedElementRef.current.style.removeProperty('z-index');
+        highlightedElementRef.current = null;
+      }
       return;
     }
 
@@ -44,8 +56,18 @@ export function TutorialOverlay() {
         height: rect.height + padding * 2
       });
       
-      // Clone the element's HTML to render above the mask
-      setClonedElement(element.outerHTML);
+      // Raise the z-index of the highlighted element to appear above the mask
+      if (highlightedElementRef.current && highlightedElementRef.current !== element) {
+        highlightedElementRef.current.style.removeProperty('position');
+        highlightedElementRef.current.style.removeProperty('z-index');
+      }
+      highlightedElementRef.current = element as HTMLElement;
+      const htmlElement = element as HTMLElement;
+      const computedStyle = window.getComputedStyle(htmlElement);
+      if (computedStyle.position === 'static') {
+        htmlElement.style.position = 'relative';
+      }
+      htmlElement.style.zIndex = '10000';
 
       const tooltipWidth = 300;
       const tooltipHeight = 180;
@@ -106,6 +128,15 @@ export function TutorialOverlay() {
       resizeObserver.disconnect();
     };
   }, [state.isActive, updateTargetPosition]);
+
+  // Cleanup z-index when tutorial ends
+  useEffect(() => {
+    if (!state.isActive && highlightedElementRef.current) {
+      highlightedElementRef.current.style.removeProperty('position');
+      highlightedElementRef.current.style.removeProperty('z-index');
+      highlightedElementRef.current = null;
+    }
+  }, [state.isActive]);
 
   useEffect(() => {
     if (!state.isActive) return;
@@ -171,21 +202,6 @@ export function TutorialOverlay() {
           onClick={(e) => e.stopPropagation()}
         />
       </svg>
-
-      {/* Cloned element rendered above the mask for visibility */}
-      {targetRect && clonedElement && (
-        <div
-          className="absolute flex items-center justify-center pointer-events-none"
-          style={{
-            top: targetRect.top,
-            left: targetRect.left,
-            width: targetRect.width,
-            height: targetRect.height,
-            zIndex: 10000,
-          }}
-          dangerouslySetInnerHTML={{ __html: clonedElement }}
-        />
-      )}
 
       {targetRect && (
         <div

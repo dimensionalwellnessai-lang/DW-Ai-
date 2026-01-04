@@ -180,9 +180,10 @@ export async function registerRoutes(
       cookie: {
         secure: isProduction,
         httpOnly: true,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
       },
+      rolling: true,
     })
   );
 
@@ -223,10 +224,12 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       req.session.userId = user.id;
-      // Always set a longer maxAge by default if rememberMe is not specified
-      // but if rememberMe is provided, we can use it to determine the duration
-      if (rememberMe !== undefined) {
-        req.session.cookie.maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+      // Set session duration based on rememberMe preference
+      // Rolling sessions will extend this on each request
+      if (rememberMe === true) {
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+      } else if (rememberMe === false) {
+        req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
       } else {
         // Default to 30 days for better UX if not specified
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;

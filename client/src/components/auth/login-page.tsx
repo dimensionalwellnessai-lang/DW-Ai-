@@ -78,7 +78,8 @@ export function LoginPage() {
       const res = await apiRequest("POST", "/api/auth/login", data);
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      queryClient.setQueryData(["/api/auth/me"], { user: data.user });
       queryClient.invalidateQueries();
       toast({ title: "Welcome back!" });
       setLocation("/");
