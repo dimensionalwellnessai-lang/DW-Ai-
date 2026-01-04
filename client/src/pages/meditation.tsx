@@ -153,14 +153,25 @@ export function MeditationPage() {
   const handleAddToCalendar = (item: MeditationItem) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(7, 0, 0, 0);
+    
+    const endTime = new Date(tomorrow);
+    endTime.setMinutes(endTime.getMinutes() + item.duration);
     
     saveCalendarEvent({
       title: item.title,
       description: item.description,
-      eventDate: tomorrow.getTime(),
-      startTime: "07:00",
-      linkedType: "routine",
-      linkedId: item.title,
+      dimension: "spiritual",
+      startTime: tomorrow.getTime(),
+      endTime: endTime.getTime(),
+      isAllDay: false,
+      location: null,
+      virtualLink: null,
+      reminders: [],
+      recurring: false,
+      recurrencePattern: null,
+      relatedFoundationIds: [],
+      tags: [item.category, "meditation"],
     });
     
     toast({

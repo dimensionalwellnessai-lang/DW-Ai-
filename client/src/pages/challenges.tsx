@@ -134,14 +134,25 @@ export function ChallengesPage() {
     
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    
+    const endTime = new Date(tomorrow);
+    endTime.setHours(10, 0, 0, 0);
     
     saveCalendarEvent({
       title: selectedChallenge.title,
       description: `Challenge: ${selectedChallenge.title}`,
-      eventDate: tomorrow.getTime(),
-      startTime: "09:00",
-      linkedType: "routine",
-      linkedId: selectedChallenge.title,
+      dimension: null,
+      startTime: tomorrow.getTime(),
+      endTime: endTime.getTime(),
+      isAllDay: false,
+      location: null,
+      virtualLink: null,
+      reminders: [],
+      recurring: false,
+      recurrencePattern: null,
+      relatedFoundationIds: [],
+      tags: ["challenge", selectedChallenge.category],
     });
     
     toast({

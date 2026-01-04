@@ -163,7 +163,13 @@ export function AIWorkspace() {
   });
   const activeConversation = startedFresh ? null : getActiveConversation();
   const messages: ChatMessage[] = activeConversation?.messages || [];
-  const conversationsByCategory = getConversationsByCategory();
+  
+  // Re-fetch conversations when conversationVersion changes (after sending messages)
+  const [conversationsByCategory, setConversationsByCategory] = useState(() => getConversationsByCategory());
+  
+  useEffect(() => {
+    setConversationsByCategory(getConversationsByCategory());
+  }, [conversationVersion]);
   
   useEffect(() => {
     if (typeof window !== "undefined" && messages.length > 0) {
