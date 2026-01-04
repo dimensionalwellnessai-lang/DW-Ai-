@@ -225,16 +225,14 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           </details>
         </nav>
         <div className="pt-4 space-y-2">
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            size="sm" 
+          <button
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
             onClick={handleStartTutorial}
             data-testid="button-start-tutorial"
           >
-            <GraduationCap className="h-4 w-4 mr-2" />
-            Take a Tour
-          </Button>
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">How to Use</span>
+          </button>
           {user ? (
             <div className="space-y-2">
               <div className="px-2 py-1 text-xs text-muted-foreground truncate border-t pt-3">
