@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useLocation } from "wouter";
+import { useState, useRef, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -214,6 +214,10 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
 
 export default function WorkoutPage() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const selectedWorkoutParam = searchParams.get("selected");
+  
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
   const [bodyProfile, setBodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [savedWorkouts, setSavedWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
@@ -221,6 +225,8 @@ export default function WorkoutPage() {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(null);
   const [expandedWorkout, setExpandedWorkout] = useState<number | null>(null);
   const [pickWorkoutOpen, setPickWorkoutOpen] = useState(false);
+  const [highlightedWorkout, setHighlightedWorkout] = useState<string | null>(null);
+  const workoutRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
   const { 
     horizon: planningHorizon, 
@@ -257,6 +263,35 @@ export default function WorkoutPage() {
   const workoutRequestId = useRef(0);
   
   const { toast } = useToast();
+  
+  useEffect(() => {
+    if (selectedWorkoutParam) {
+      const decodedTitle = decodeURIComponent(selectedWorkoutParam);
+      const matchingIndex = SAMPLE_WORKOUTS.findIndex(w => w.title === decodedTitle);
+      
+      if (matchingIndex !== -1) {
+        setHighlightedWorkout(decodedTitle);
+        setExpandedWorkout(matchingIndex);
+        
+        setTimeout(() => {
+          const ref = workoutRefs.current[decodedTitle];
+          if (ref) {
+            ref.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 100);
+        
+        setTimeout(() => {
+          setHighlightedWorkout(null);
+        }, 3000);
+      } else {
+        toast({
+          title: "Workout not found",
+          description: `Could not find "${decodedTitle}"`,
+          variant: "destructive",
+        });
+      }
+    }
+  }, [selectedWorkoutParam, toast]);
   
   // AI-powered workout suggestion when user asks
   const workoutAiMutation = useMutation({
@@ -307,36 +342,62 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
     setConfirmAddOpen(true);
   };
 
+  const addToCalendarMutation = useMutation({
+    mutationFn: async (workout: WorkoutData) => {
+      const now = new Date();
+      const endTime = new Date(now.getTime() + workout.duration * 60 * 1000);
+      
+      const formatTime = (d: Date) => `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+      
+      return apiRequest("POST", "/api/calendar", {
+        title: workout.title,
+        description: workout.description,
+        startTime: formatTime(now),
+        endTime: formatTime(endTime),
+        eventType: "workout",
+        dimensionTags: ["physical"],
+        linkedType: "workout",
+        linkedId: workout.title,
+        linkedRoute: `/workout?selected=${encodeURIComponent(workout.title)}`,
+        linkedMeta: { duration: workout.duration, intensity: workout.intensity },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Added to your schedule",
+        description: `${pendingWorkout?.title} has been added to today's calendar.`,
+      });
+      setConfirmAddOpen(false);
+      setPendingWorkout(null);
+    },
+    onError: () => {
+      saveCalendarEvent({
+        title: pendingWorkout?.title || "",
+        description: pendingWorkout?.description || "",
+        dimension: "physical",
+        startTime: Date.now(),
+        endTime: Date.now() + (pendingWorkout?.duration || 30) * 60 * 1000,
+        isAllDay: false,
+        location: null,
+        virtualLink: null,
+        reminders: [],
+        recurring: false,
+        recurrencePattern: null,
+        relatedFoundationIds: [],
+        tags: pendingWorkout?.tags || [],
+      });
+      toast({
+        title: "Added to your schedule",
+        description: `${pendingWorkout?.title} has been added locally.`,
+      });
+      setConfirmAddOpen(false);
+      setPendingWorkout(null);
+    },
+  });
+
   const confirmAddToCalendar = () => {
     if (!pendingWorkout) return;
-    
-    const now = new Date();
-    const startTime = now.getTime();
-    const endTime = startTime + pendingWorkout.duration * 60 * 1000;
-    
-    saveCalendarEvent({
-      title: pendingWorkout.title,
-      description: pendingWorkout.description,
-      dimension: "physical",
-      startTime,
-      endTime,
-      isAllDay: false,
-      location: null,
-      virtualLink: null,
-      reminders: [],
-      recurring: false,
-      recurrencePattern: null,
-      relatedFoundationIds: [],
-      tags: pendingWorkout.tags,
-    });
-    
-    toast({
-      title: "Added to your schedule",
-      description: `${pendingWorkout.title} has been added to today's calendar.`,
-    });
-    
-    setConfirmAddOpen(false);
-    setPendingWorkout(null);
+    addToCalendarMutation.mutate(pendingWorkout);
   };
 
   const getAISuggestions = (): WorkoutData[] => {
@@ -764,8 +825,9 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           <div className="space-y-2">
             {filteredWorkouts.map((workout, index) => (
               <Card 
-                key={index} 
-                className="hover-elevate cursor-pointer"
+                key={index}
+                ref={(el) => { workoutRefs.current[workout.title] = el; }}
+                className={`hover-elevate cursor-pointer transition-all duration-300 ${highlightedWorkout === workout.title ? "ring-2 ring-primary ring-offset-2" : ""}`}
                 data-testid={`card-workout-${index}`}
                 onClick={() => setExpandedWorkout(expandedWorkout === index ? null : index)}
               >

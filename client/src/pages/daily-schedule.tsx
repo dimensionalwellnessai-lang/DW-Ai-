@@ -17,11 +17,17 @@ import {
   Dumbbell,
   Plus,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { type ScheduleEvent, type SystemType } from "@/lib/guest-storage";
+import type { CalendarEvent } from "@shared/schema";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -35,11 +41,44 @@ const SYSTEM_INFO: Record<SystemType, { name: string; icon: typeof Sun; route: s
   spiritual: { name: "Spiritual", icon: Sparkles, route: "/spiritual", color: "text-pink-500" },
 };
 
+const LINKED_TYPE_ICONS: Record<string, typeof Dumbbell> = {
+  workout: Dumbbell,
+  meal: Utensils,
+  routine: Sparkles,
+  meditation: Sparkles,
+  none: Calendar,
+};
+
+const LINKED_TYPE_COLORS: Record<string, string> = {
+  workout: "text-blue-500",
+  meal: "text-emerald-500",
+  routine: "text-purple-500",
+  meditation: "text-pink-500",
+  none: "text-muted-foreground",
+};
+
+interface DisplayScheduleEvent {
+  id: string;
+  title: string;
+  description?: string | null;
+  startTime: string;
+  endTime?: string | null;
+  linkedType?: string | null;
+  linkedId?: string | null;
+  linkedRoute?: string | null;
+  systemType?: SystemType | null;
+  scheduledTime: string;
+  source: "db" | "local";
+}
+
 export default function DailySchedulePage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const today = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(today);
   const [addEventOpen, setAddEventOpen] = useState(false);
+  const [eventDetailOpen, setEventDetailOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     scheduledTime: "09:00",
@@ -49,10 +88,59 @@ export default function DailySchedulePage() {
   });
   
   const { prefs, isLoading: prefsLoading, isSystemEnabled: checkSystemEnabled } = useSystemPreferences();
-  const { events, isLoading: eventsLoading, createEvent } = useScheduleEvents(selectedDay);
+  const { events: localEvents, isLoading: eventsLoading, createEvent } = useScheduleEvents(selectedDay);
   
-  const dayEvents = events
-    .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+  const { data: dbEvents = [], isLoading: dbEventsLoading } = useQuery<CalendarEvent[]>({
+    queryKey: ["/api/calendar"],
+  });
+
+  const deleteEventMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/calendar/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      toast({ title: "Event deleted" });
+      setEventDetailOpen(false);
+      setSelectedEvent(null);
+    },
+  });
+
+  const todaysDbEvents = dbEvents.filter(e => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    if (e.startTime.includes("T") || e.startTime.includes("-")) {
+      return e.startTime.startsWith(todayStr);
+    }
+    return true;
+  });
+
+  const allEvents: DisplayScheduleEvent[] = [
+    ...todaysDbEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      startTime: e.startTime,
+      endTime: e.endTime,
+      linkedType: e.linkedType,
+      linkedId: e.linkedId,
+      linkedRoute: e.linkedRoute,
+      source: "db" as const,
+      scheduledTime: e.startTime.includes(":") ? e.startTime.split("T").pop()?.slice(0, 5) || e.startTime : e.startTime,
+    })),
+    ...localEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.notes || "",
+      startTime: e.scheduledTime,
+      endTime: e.endTime || "",
+      linkedType: e.systemType || "none",
+      linkedRoute: e.systemReference || null,
+      systemType: e.systemType,
+      source: "local" as const,
+      scheduledTime: e.scheduledTime,
+    })),
+  ].sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
 
   const handleAddEvent = () => {
     if (!newEvent.title || !newEvent.scheduledTime) return;
@@ -73,9 +161,38 @@ export default function DailySchedulePage() {
     setNewEvent({ title: "", scheduledTime: "09:00", endTime: "", systemType: "", notes: "" });
   };
 
-  const handleEventClick = (event: ScheduleEvent) => {
+  const handleEventClick = (event: DisplayScheduleEvent) => {
+    if (event.linkedRoute) {
+      setLocation(event.linkedRoute);
+      return;
+    }
+    
+    if (event.linkedType && event.linkedType !== "none") {
+      const typeRoutes: Record<string, string> = {
+        workout: "/workout",
+        meal: "/meal-prep",
+        routine: "/routines",
+        meditation: "/spiritual",
+      };
+      const route = typeRoutes[event.linkedType];
+      if (route) {
+        const targetRoute = event.linkedId ? `${route}?selected=${event.linkedId}` : route;
+        setLocation(targetRoute);
+        return;
+      }
+    }
+    
     if (event.systemType && SYSTEM_INFO[event.systemType]) {
       setLocation(SYSTEM_INFO[event.systemType].route);
+      return;
+    }
+    
+    if (event.source === "db") {
+      const dbEvent = dbEvents.find(e => e.id === event.id);
+      if (dbEvent) {
+        setSelectedEvent(dbEvent);
+        setEventDetailOpen(true);
+      }
     }
   };
 
@@ -87,6 +204,26 @@ export default function DailySchedulePage() {
     { time: "19:00", system: "meals" as SystemType, title: "Dinner" },
     { time: (parseInt(prefs.preferredSleepTime?.split(":")[0] || "22") - 1).toString().padStart(2, "0") + ":00", system: "wind_down" as SystemType, title: "Wind Down" },
   ].filter(s => checkSystemEnabled(s.system));
+
+  const getEventIcon = (event: DisplayScheduleEvent) => {
+    if (event.systemType && SYSTEM_INFO[event.systemType]) {
+      return SYSTEM_INFO[event.systemType].icon;
+    }
+    const linkedType = event.linkedType || "none";
+    return LINKED_TYPE_ICONS[linkedType] || Calendar;
+  };
+
+  const getEventColor = (event: DisplayScheduleEvent) => {
+    if (event.systemType && SYSTEM_INFO[event.systemType]) {
+      return SYSTEM_INFO[event.systemType].color;
+    }
+    const linkedType = event.linkedType || "none";
+    return LINKED_TYPE_COLORS[linkedType] || "text-muted-foreground";
+  };
+
+  const hasDeepLink = (event: DisplayScheduleEvent) => {
+    return !!(event.linkedRoute || (event.linkedType && event.linkedType !== "none") || event.systemType);
+  };
 
   return (
     <ScrollArea className="h-full">
@@ -120,7 +257,7 @@ export default function DailySchedulePage() {
           ))}
         </div>
 
-        {dayEvents.length === 0 && (
+        {allEvents.length === 0 && !dbEventsLoading && !eventsLoading && (
           <Card className="border-dashed">
             <CardContent className="p-6 text-center space-y-4">
               <Calendar className="w-12 h-12 mx-auto text-muted-foreground" />
@@ -146,20 +283,21 @@ export default function DailySchedulePage() {
           </Card>
         )}
 
-        {dayEvents.length > 0 && (
+        {allEvents.length > 0 && (
           <div className="space-y-3">
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
               {DAYS[selectedDay]}'s Schedule
             </h2>
             <div className="space-y-2">
-              {dayEvents.map((event) => {
-                const systemInfo = event.systemType ? SYSTEM_INFO[event.systemType] : null;
-                const Icon = systemInfo?.icon || Calendar;
+              {allEvents.map((event) => {
+                const Icon = getEventIcon(event);
+                const color = getEventColor(event);
+                const isClickable = hasDeepLink(event) || event.source === "db";
                 
                 return (
                   <Card 
                     key={event.id}
-                    className={`hover-elevate ${event.systemType ? "cursor-pointer" : ""}`}
+                    className={`hover-elevate ${isClickable ? "cursor-pointer" : ""}`}
                     onClick={() => handleEventClick(event)}
                     data-testid={`card-event-${event.id}`}
                   >
@@ -172,17 +310,17 @@ export default function DailySchedulePage() {
                           )}
                         </div>
                         <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center`}>
-                          <Icon className={`w-5 h-5 ${systemInfo?.color || "text-muted-foreground"}`} />
+                          <Icon className={`w-5 h-5 ${color}`} />
                         </div>
                         <div className="flex-1">
                           <h3 className="font-medium">{event.title}</h3>
-                          {event.systemType && (
-                            <p className="text-sm text-muted-foreground">
-                              References: {systemInfo?.name}
+                          {event.linkedType && event.linkedType !== "none" && (
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {event.linkedType}
                             </p>
                           )}
                         </div>
-                        {event.systemType && (
+                        {isClickable && (
                           <ChevronRight className="w-5 h-5 text-muted-foreground" />
                         )}
                       </div>
@@ -292,6 +430,48 @@ export default function DailySchedulePage() {
                 Add Event
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={eventDetailOpen} onOpenChange={setEventDetailOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Event Details</DialogTitle>
+              <DialogDescription>
+                View or manage this event
+              </DialogDescription>
+            </DialogHeader>
+            {selectedEvent && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedEvent.title}</h3>
+                  {selectedEvent.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{selectedEvent.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>{selectedEvent.startTime}</span>
+                  {selectedEvent.endTime && (
+                    <>
+                      <span>-</span>
+                      <span>{selectedEvent.endTime}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => deleteEventMutation.mutate(selectedEvent.id)}
+                    data-testid="button-delete-event"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
