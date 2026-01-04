@@ -29,6 +29,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "routines", name: "Routines", path: "/routines", visibility: "primary", description: "Saved routines", enabled: true, group: "calendar" },
   { id: "finances", name: "Finances", path: "/finances", visibility: "more", description: "Budget", enabled: true },
   { id: "feedback", name: "Feedback", path: "/feedback", visibility: "more", description: "Share thoughts", enabled: true },
+  { id: "weekly-checkin", name: "Weekly Check-In", path: "/weekly-checkin", visibility: "more", description: "Weekly feedback", enabled: true },
   { id: "settings", name: "Settings", path: "/settings", visibility: "more", description: "Preferences", enabled: true },
   { id: "app-tour", name: "App Tour", path: "/app-tour", visibility: "dormant", description: "App guide", enabled: false },
   

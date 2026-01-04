@@ -29,6 +29,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/routines", name: "Routines", enabled: true },
   { path: "/finances", name: "Finances", enabled: true },
   { path: "/feedback", name: "Feedback", enabled: true },
+  { path: "/weekly-checkin", name: "Weekly Check-In", enabled: true },
   { path: "/journal", name: "Journal", enabled: true },
   { path: "/settings", name: "Settings", enabled: true },
   { path: "/app-tour", name: "App Tour", enabled: true },

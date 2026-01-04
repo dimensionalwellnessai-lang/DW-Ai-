@@ -31,6 +31,7 @@ import WelcomePage from "@/pages/welcome";
 import ResetPasswordPage from "@/pages/reset-password";
 import AppTourPage from "@/pages/app-tour";
 import JournalPage from "@/pages/journal";
+import WeeklyCheckinPage from "@/pages/weekly-checkin";
 import { TasksPage } from "@/pages/tasks";
 
 import PlansPage from "@/pages/plans";
@@ -69,6 +70,7 @@ function Router() {
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
       {isRouteEnabled("/finances") && <Route path="/finances" component={FinancesPage} />}
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
+      {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}

@@ -29,6 +29,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "astrology": Sparkles,
   "talk-it-out": MessageCircle,
   "feedback": MessageCircleHeart,
+  "weekly-checkin": Calendar,
   "app-tour": HelpCircle,
   "journal": BookOpen,
 };
