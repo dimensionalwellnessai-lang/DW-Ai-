@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Dumbbell, 
   Utensils, 
@@ -27,7 +28,7 @@ import {
   type SavedRoutine,
   type RoutineType
 } from "@/lib/guest-storage";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 
 const TYPE_ICONS: Record<RoutineType, typeof Dumbbell> = {
   workout: Dumbbell,
@@ -82,12 +83,37 @@ const SUGGESTED_ROUTINES = [
 
 export default function RoutinesPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const selectedRoutineParam = searchParams.get("selected");
+  
   const [workouts, setWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
   const [mealPlans, setMealPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("meal_plan"));
   const [meditations, setMeditations] = useState<SavedRoutine[]>(getSavedRoutinesByType("meditation"));
   const [budgetPlans, setBudgetPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("budget_plan"));
   const [spiritualPractices, setSpiritualPractices] = useState<SavedRoutine[]>(getSavedRoutinesByType("spiritual_practice"));
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const highlightedRef = useRef<HTMLDivElement>(null);
   const gtky = getGettingToKnowYou();
+
+  useEffect(() => {
+    if (selectedRoutineParam) {
+      const decodedId = decodeURIComponent(selectedRoutineParam);
+      setHighlightedId(decodedId);
+      
+      setTimeout(() => {
+        highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      
+      toast({
+        title: "Routine highlighted",
+        description: "Scrolled to your selected routine.",
+      });
+      
+      setTimeout(() => setHighlightedId(null), 5000);
+    }
+  }, [selectedRoutineParam, toast]);
 
   const handleDelete = (type: RoutineType, id: string) => {
     deleteRoutine(id);
@@ -123,13 +149,20 @@ export default function RoutinesPage() {
 
     return (
       <div className="space-y-2">
-        {routines.map((routine) => (
-          <Card key={routine.id} className="hover-elevate" data-testid={`card-routine-${routine.id}`}>
+        {routines.map((routine) => {
+          const isHighlighted = highlightedId === routine.id;
+          return (
+          <Card 
+            key={routine.id} 
+            ref={isHighlighted ? highlightedRef : undefined}
+            className={`hover-elevate transition-all duration-300 ${isHighlighted ? 'ring-2 ring-primary shadow-lg' : ''}`} 
+            data-testid={`card-routine-${routine.id}`}
+          >
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1">
-                  <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-primary" />
+                  <div className={`w-10 h-10 rounded-md flex items-center justify-center shrink-0 ${isHighlighted ? 'bg-primary text-primary-foreground' : 'bg-primary/10'}`}>
+                    <Icon className={`w-5 h-5 ${isHighlighted ? '' : 'text-primary'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{routine.title}</h3>
@@ -167,7 +200,8 @@ export default function RoutinesPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
         <div className="pt-2">
           <Button 
             variant="outline" 

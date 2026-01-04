@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { SplashScreen, useSplashScreen } from "@/components/splash-screen";
-import { isRouteEnabled } from "@/lib/routes";
+import { isRouteEnabled } from "@/routes/registry";
 import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
@@ -30,6 +30,17 @@ import WelcomePage from "@/pages/welcome";
 import ResetPasswordPage from "@/pages/reset-password";
 import AppTourPage from "@/pages/app-tour";
 import JournalPage from "@/pages/journal";
+import { TasksPage } from "@/pages/tasks";
+
+import PlansPage from "@/pages/plans";
+import PlanBuilderPage from "@/pages/plan-builder";
+import ScheduleReviewPage from "@/pages/schedule-review";
+import ImportPage from "@/pages/import";
+import ExportPage from "@/pages/export";
+import CalendarMonthPage from "@/pages/calendar-month";
+import CalendarSchedulePage from "@/pages/calendar-schedule";
+import DevRoutesPage from "@/pages/dev-routes";
+import NotFound404Page from "@/pages/not-found-404";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -42,6 +53,8 @@ function Router() {
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
       {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
+      {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
+      {isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
@@ -58,7 +71,17 @@ function Router() {
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
-      <Route component={NotFound} />
+      {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
+      {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
+      <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
+      {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
+      {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}
+      <Route path="/export/:planId" component={ExportPage} />
+      
+      <Route path="/dev/routes" component={DevRoutesPage} />
+      <Route path="/404" component={NotFound404Page} />
+      
+      <Route component={NotFound404Page} />
     </Switch>
   );
 }

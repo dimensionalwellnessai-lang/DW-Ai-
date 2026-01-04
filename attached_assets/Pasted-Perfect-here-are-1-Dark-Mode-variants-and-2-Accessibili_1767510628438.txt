@@ -1,0 +1,219 @@
+Perfect — here are (1) Dark Mode variants and (2) Accessibility & contrast rules, designed so your app stays calm, premium, readable, and compliant without losing the emotional tone you want.
+
+You can hand this straight to Replit or a designer/dev.
+
+⸻
+
+1️⃣ Dark Mode Color System (Exact Values)
+
+Design goals
+	•	Reduce eye strain
+	•	Avoid “neon on black”
+	•	Keep emotional meaning intact
+	•	Pass accessibility contrast
+
+⸻
+
+🎯 Button Hierarchy — Dark Mode
+
+🔵 Primary Action (Commit)
+
+Primary Blue (Dark UI): #6D83F2
+Primary Blue Hover: #7D91FF
+Text: #FFFFFF
+
+
+⸻
+
+🟢 Growth / Improvement
+
+Growth Green (Dark UI): #5FCFA5
+Hover: #6FE0B5
+Text: #0F172A
+
+
+⸻
+
+🟡 Neutral / Exploratory
+
+Explore Amber (Dark UI): #F4D35E
+Hover: #FFE28A
+Text: #1F2937
+
+
+⸻
+
+⚪ Secondary / Exit
+
+Neutral Outline: #374151
+Text: #D1D5DB
+Hover BG: #1F2937
+
+
+⸻
+
+🔴 Destructive
+
+Soft Red (Dark UI): #E07A73
+Hover: #F08C85
+Text: #1F2937
+
+
+⸻
+
+🗓️ Calendar Event Colors — Dark Mode
+
+These are tuned to sit softly on dark backgrounds, not scream.
+
+💪 Workout / Training
+
+Strength Blue (Dark): #5B7CFA
+
+🥘 Nutrition
+
+Nutrition Green (Dark): #6FD28A
+
+🧘 Recovery / Meditation
+
+Recovery Purple (Dark): #B9A7FF
+
+📝 Journal / Talk It Out
+
+Reflection Teal (Dark): #4FD1C5
+
+🧠 Work / Study
+
+Focus Slate (Dark): #94A3B8
+
+👥 Social
+
+Social Orange (Dark): #FBBF24
+
+💰 Financial
+
+Finance Olive (Dark): #A3B18A
+
+🔁 Routines
+
+Same color as category
+Dashed outline
+Transparent fill
+
+
+⸻
+
+🌑 Background + Text (Dark Mode Base)
+
+App Background: #0F172A
+Surface / Cards: #111827
+Elevated Surface: #1F2937
+
+Primary Text: #E5E7EB
+Secondary Text: #9CA3AF
+Muted Text: #6B7280
+Divider / Border: #374151
+
+
+⸻
+
+2️⃣ Accessibility & Contrast Rules (Critical)
+
+These rules prevent eye fatigue, confusion, and accessibility issues — especially important for neurodivergent users.
+
+⸻
+
+✅ Contrast Requirements (WCAG-inspired)
+	•	Text on background: minimum 4.5:1
+	•	Large text (18px+): minimum 3:1
+	•	Icon-only buttons: must have tooltips or labels
+	•	Calendar blocks: text must pass contrast against the block color
+
+⸻
+
+🧠 Color Is Never the Only Signal
+
+Every important state must include at least one non-color cue:
+
+Examples
+	•	Selected calendar block → color + border glow
+	•	Active plan → color + “Active” badge
+	•	Disabled button → reduced opacity + cursor change
+	•	Routines → dashed outline (not just color)
+
+⸻
+
+🧭 Focus & Keyboard Navigation
+
+Even if mobile-first, this matters:
+	•	Focused elements must have:
+
+Focus Ring: 2px solid #93C5FD
+
+	•	No focus traps in modals
+	•	Esc closes modals
+	•	Tab order follows visual layout
+
+⸻
+
+👁️ Motion & Sensory Safety
+	•	Avoid fast flashing or pulsing
+	•	Animations < 300ms
+	•	Respect prefers-reduced-motion
+	•	Tutorial highlights should fade, not bounce
+
+⸻
+
+🧩 Cognitive Load Rules (Your philosophy)
+	•	No more than 1 primary button per screen
+	•	Max 2 bright colors visible at once
+	•	Calendar views should allow color filtering
+	•	Weekly Balance view is descriptive, not evaluative
+
+⸻
+
+🛟 Safety Copy (When things fail)
+
+Never show harsh error language.
+
+Replace:
+
+❌ “Error: failed to load”
+
+With:
+
+✅ “Something didn’t load — you can try again or come back later.”
+
+⸻
+
+Copy/Paste Instructions for Replit
+
+Use this exactly:
+
+Implement dark mode using the provided hex values. Ensure button intent colors and calendar category colors adapt correctly in dark mode.
+
+Enforce accessibility rules:
+	•	Minimum contrast ratios
+	•	Color is never the only indicator
+	•	Visible focus states
+	•	Respect reduced motion preferences
+
+Calendar blocks must remain readable in both light and dark modes. Routines must use dashed outlines. No screen should have more than one primary action.
+
+⸻
+
+Why this matters (big picture)
+
+This makes your app:
+	•	emotionally safe
+	•	visually calm
+	•	accessible
+	•	premium
+	•	trustworthy
+
+It stops the app from feeling “busy” or “clinical” and makes it feel like a real personal assistant.
+
+If you want next, I can:
+	•	map these colors to Tailwind tokens / CSS variables
+	•	or create a handoff checklist for QA (“dark mode pass/fail”)
+
+Just tell me.

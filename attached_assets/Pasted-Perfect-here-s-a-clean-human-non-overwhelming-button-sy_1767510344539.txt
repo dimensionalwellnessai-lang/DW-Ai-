@@ -1,0 +1,164 @@
+Perfect — here’s a clean, human, non-overwhelming button system that matches how you think and keeps the app from feeling like a rigid scheduler.
+
+I’ll group them by screen and explain the intent behind each so Replit doesn’t improvise.
+
+⸻
+
+🔘 Button Names (Final)
+
+1️⃣ Home / AI Chat (Primary Entry)
+
+Primary buttons (cards or quick actions):
+	•	Make a Plan
+	•	Suggested Schedule
+	•	Talk It Out
+	•	Challenges
+	•	Import a Document
+	•	Continue Where I Left Off
+
+👉 These feel invitational, not demanding.
+
+⸻
+
+2️⃣ Suggested Schedule (Review Screen)
+
+This is the most important screen.
+
+Primary actions (top or bottom)
+	•	Add to Calendar
+(quick path, no plan created)
+	•	Save as Plan
+(Life System path, optional but powerful)
+
+Secondary actions
+	•	Edit Schedule
+	•	Select Items
+	•	Back to Chat
+
+Consent modal buttons
+	•	Confirm & Add
+	•	Edit First
+	•	Cancel
+
+⸻
+
+3️⃣ Plan (Life System) Screens
+
+On a Draft Plan
+	•	Activate Plan
+	•	Edit Plan
+	•	Add to Calendar
+	•	Delete Draft
+
+On an Active Plan
+	•	Adjust Plan
+	•	Pause Plan
+	•	Export Plan
+	•	Archive Plan
+
+👉 “Activate” feels intentional, not scary.
+👉 “Pause” avoids guilt language.
+
+⸻
+
+4️⃣ Block / Event Editing (Calendar or Schedule Block)
+
+Primary
+	•	Save Changes
+
+Secondary
+	•	Duplicate
+	•	Remove from Schedule
+	•	Cancel
+
+⸻
+
+5️⃣ Calendar (Day / Week / Month Views)
+
+Floating / Quick actions
+	•	Add Something
+	•	Optimize My Day
+	•	View Plan
+
+Event tap actions
+	•	View Details
+	•	Edit Event
+	•	Remove Event
+
+⸻
+
+6️⃣ Workouts / Nutrition / Routines
+
+On item cards
+	•	Add to Calendar
+	•	Add to Plan
+	•	View Details
+
+AI-assisted actions
+	•	Pick for Me
+	•	Suggest an Alternative
+	•	Adjust for Today
+
+⸻
+
+7️⃣ Import Flow (Documents / Meal Plans)
+
+Step actions
+	•	Analyze Document
+	•	Review Items
+	•	Select What to Keep
+
+Final actions
+	•	Add to Calendar
+	•	Save as Plan
+	•	Finish Later
+
+👉 “Finish Later” is key for ADHD-friendly flow.
+
+⸻
+
+8️⃣ App Tour / Tutorials
+	•	Start Tour
+	•	Next
+	•	Try It
+	•	Skip Tour
+	•	Don’t Show Again
+
+⸻
+
+9️⃣ Auth / Menu
+
+Auth button (single dynamic button)
+	•	Logged out: Sign In / Sign Up
+	•	Logged in: Log Out
+
+Menu utility
+	•	App Tour
+	•	Feedback
+	•	Settings
+
+⸻
+
+🧠 Why this works (important)
+	•	No button sounds permanent or punishing
+	•	Every action feels reversible
+	•	“Plan” is optional, never forced
+	•	Calendar is a tool, not the boss
+	•	AI feels like a guide, not a controller
+
+This matches your personal assistant + life coach vision perfectly.
+
+⸻
+
+Copy/paste instruction for Replit
+
+If you want one last clean directive, use this:
+
+Please implement the following button labels exactly as specified to maintain clarity and consistency. Plans must be optional, Calendar actions must always require consent, and language should feel invitational (not rigid or scheduling-heavy). Use “Add to Calendar” for quick actions and “Save as Plan / Activate Plan” for Life System actions.
+
+If you want next:
+	•	🎨 Button hierarchy & color meaning
+	•	🧭 Microcopy for tooltips
+	•	🧠 AI decision text (“why I suggested this”)
+
+Just tell me.

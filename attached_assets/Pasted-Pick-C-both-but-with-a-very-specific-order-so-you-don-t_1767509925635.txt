@@ -1,0 +1,49 @@
+Pick C — both, but with a very specific order so you don’t break what’s already working.
+
+Here’s the exact reply you should send back (copy/paste):
+
+⸻
+
+Reply to Replit:
+
+Yes — C (Both).
+But please do it in this order to avoid breaking the current app:
+
+Phase 1 — Implement the Route Registry as the single source of truth (no UI changes yet)
+	1.	Add ROUTE_REGISTRY and make it the canonical list of routes, menu items, and actions.
+	2.	Keep current routing working during the transition (don’t rip out everything at once).
+	3.	Add a Navigation Guard so no button ever leads to a blank page. Unknown/missing routes must go to /404 (never blank).
+	4.	Add /dev/routes Route Audit to compare:
+	•	registered router routes
+	•	registry paths
+	•	menu button targets
+and flag anything missing.
+
+✅ Acceptance: I can tap every menu item and home CTA and never hit a blank screen.
+
+Phase 2 — Build the missing pages with functional minimum content (not placeholders)
+
+For each missing page, build a functional minimum version that works end-to-end:
+	•	/plans (Life System dashboard: Draft/Active/Archived)
+	•	/plan-builder (simple 3-step wizard → generates a draft schedule)
+	•	/schedule-review/:draftId (view/edit/save suggested schedule)
+	•	/tasks (basic tasks list + add/edit)
+	•	/import (connect to existing import flow)
+	•	/export/:planId (ICS export at minimum)
+	•	/calendar/month and /calendar/schedule
+	•	/404 (friendly recovery + feedback link)
+
+✅ Acceptance: each page must have back/home/menu and at least one working primary action.
+
+Phase 3 — Deep linking + selected highlighting (finish the loop)
+	•	Ensure ?selected= highlighting works on Workouts/Nutrition/Routines
+	•	Calendar events must open the linked item page properly
+	•	Suggested Schedule must save into Plans (Life System) and then optionally commit to Calendar with consent
+
+✅ Acceptance: Home → Suggested schedule → Edit → Save to Life System → Commit selected → Tap calendar block → opens correct page + highlights item.
+
+Also: please share the list of files changed and a short screen recording proving the Phase 3 loop works.
+
+⸻
+
+If you want it even shorter, tell me and I’ll compress it—but this version is the clearest way to get what you want without more “it’s fixed” but nothing changed.
