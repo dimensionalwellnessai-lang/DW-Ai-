@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Download, Bell, Share, Plus, Check } from "lucide-react";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useTutorial } from "@/contexts/tutorial-context";
 
 const PROMPT_DISMISSED_KEY = "fts_pwa_prompt_dismissed";
 const PROMPT_DELAY_MS = 5000;
@@ -14,10 +15,14 @@ export function PWAInstallPrompt() {
   const [step, setStep] = useState<"install" | "notifications" | "done">("install");
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
+  const { state: tutorialState, hasSeenNavigationTutorial } = useTutorial();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isInstalled) return;
+    
+    // Don't show if tutorial is active or hasn't been completed
+    if (tutorialState.isActive || !hasSeenNavigationTutorial()) return;
     
     try {
       const dismissed = localStorage.getItem(PROMPT_DISMISSED_KEY);
@@ -37,7 +42,7 @@ export function PWAInstallPrompt() {
     }, PROMPT_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, [isInstallable, isInstalled]);
+  }, [isInstallable, isInstalled, tutorialState.isActive, hasSeenNavigationTutorial]);
 
   const handleInstall = async () => {
     if (isIOS) {
