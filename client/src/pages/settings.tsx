@@ -1,4 +1,3 @@
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -6,8 +5,8 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   User,
   Bell,
   Shield,
@@ -25,19 +24,8 @@ export function SettingsPage() {
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   
   return (
-    <div className="min-h-screen bg-background gradient-bg">
-      <header className="sticky top-0 z-50 border-b dark:border-white/5 bg-background/95 glass-subtle backdrop-blur">
-        <div className="flex items-center justify-between gap-4 p-4 max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-xl font-display font-semibold">Settings</h1>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Settings" backPath="/" />
 
       <main className="p-4 max-w-2xl mx-auto space-y-4">
         <Card>

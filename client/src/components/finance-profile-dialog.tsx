@@ -146,7 +146,7 @@ export function FinanceProfileDialog({ open, onClose, onComplete }: FinanceProfi
           <div className="space-y-4">
             <div className="text-center mb-4">
               <h3 className="text-lg font-display font-semibold">How does your budget feel right now?</h3>
-              <p className="text-sm text-muted-foreground">No judgment here - just understanding where you are</p>
+              <p className="text-sm text-muted-foreground">No judgment here - simply understanding where you are</p>
             </div>
             <div className="space-y-2">
               {BUDGET_TIERS.map((tier) => (

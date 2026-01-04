@@ -1,8 +1,9 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ArrowLeft, BarChart3, TrendingUp, Activity } from "lucide-react";
+import { BarChart3, TrendingUp, Activity, ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { PageHeader } from "@/components/page-header";
 
 export function InsightsPage() {
   const { data: insight } = useQuery<{ insight: string }>({
@@ -10,24 +11,10 @@ export function InsightsPage() {
   });
 
   return (
-    <div className="min-h-screen">
-      <div className="fixed inset-0 -z-10 bg-gradient-to-b from-background via-background to-muted/30" />
+    <div className="min-h-screen bg-background">
+      <PageHeader title="Insights" backPath="/" />
       
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <header className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-display font-bold">Insights</h1>
-            <p className="text-muted-foreground font-body mt-1">
-              Patterns across your wellness dimensions
-            </p>
-          </div>
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-        </header>
-
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -52,7 +39,7 @@ export function InsightsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground font-body text-sm mb-4">
-                Visual dimension tracking coming soon. For now, the AI can help you reflect on your balance.
+                This is on its way. For now, the AI can help you reflect on your balance.
               </p>
               <Link href="/">
                 <Button variant="outline" size="sm" data-testid="button-reflect-with-ai">
@@ -69,9 +56,9 @@ export function InsightsPage() {
               <BarChart3 className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <h3 className="font-display font-semibold">Deeper Insights Coming</h3>
+              <h3 className="font-display font-semibold">Deeper Insights On the Way</h3>
               <p className="text-muted-foreground font-body text-sm mt-1">
-                As you use Flip the Switch more, we'll surface patterns about your energy, mood, and activity across all wellness dimensions. No grades or scores - just gentle observations.
+                As you use Flip the Switch more, we'll surface patterns about your energy, mood, and activity across all wellness dimensions. No grades or scores - gentle observations.
               </p>
             </div>
           </div>

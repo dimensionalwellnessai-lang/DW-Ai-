@@ -15,12 +15,12 @@ const TUTORIAL_STEPS = [
   {
     icon: MessageSquare,
     title: "Start with a conversation",
-    description: "The AI companion is your main way to interact. Share how you're feeling, ask for guidance, or just talk through your day.",
+    description: "The AI companion is your main way to interact. Share how you're feeling, ask for guidance, or talk through your day.",
   },
   {
     icon: Calendar,
     title: "Plan at your own pace",
-    description: "Use the calendar to schedule what matters to you. No pressure, no streaks - just a gentle way to organize your time.",
+    description: "Use the calendar to schedule what matters to you. No pressure, no streaks - a gentle way to organize your time.",
   },
   {
     icon: Heart,

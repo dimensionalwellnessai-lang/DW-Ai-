@@ -1,0 +1,203 @@
+Good choice. QA First is exactly the right move here — it protects everything you’ve built and stops the cycle of “it’s fixed” when it’s not.
+
+Below is a clear, structured QA-first plan you can hand directly to Replit. This is not about new features — it’s about making sure the app is real, reliable, and trustworthy, especially on Safari.
+
+⸻
+
+🔒 QA FIRST — WAVE 6 GATEKEEPER PLAN
+
+🎯 GOAL
+
+Before any Wave 6 features are built, the app must:
+	•	Have no fake buttons
+	•	Have no dead routes
+	•	Have consistent navigation
+	•	Have working save flows
+	•	Work reliably on iPhone Safari
+
+Wave 6 does not start until this passes.
+
+⸻
+
+1️⃣ GLOBAL QA RULES (NON-NEGOTIABLE)
+
+These rules apply to every page in the app.
+
+Navigation Consistency
+
+Every page must have:
+	•	Hamburger menu
+	•	Back button
+	•	Home / AI Chat access
+
+❌ No exceptions
+❌ No standalone pages
+
+Acceptance test
+	•	Navigate from Home → any page → back → home
+	•	State must persist (no reset, no logout)
+
+⸻
+
+No Fake UI
+
+If a button exists:
+	•	It must do something real
+	•	Or it must be clearly disabled with explanation
+
+❌ No “coming soon” without explanation
+❌ No “not available” pages
+
+Replacement copy
+	•	“This isn’t ready yet.”
+	•	Button: Go Back
+
+⸻
+
+2️⃣ SAVE SYSTEM HARDENING (CRITICAL)
+
+Applies to:
+	•	Meal suggestions
+	•	Meditation suggestions
+	•	Workouts
+	•	Challenges
+	•	Plans
+	•	Schedule edits
+
+Required behavior
+	1.	Save button is:
+	•	Disabled until valid selection
+	•	Enabled immediately after selection
+	2.	On tap:
+	•	Loading state appears
+	•	Save occurs (local first, server second)
+	3.	After save:
+	•	Toast appears: Saved
+	•	Button changes to Saved
+	•	Refresh page → item still exists
+	4.	If user is not signed in:
+	•	Save locally
+	•	Show: Saved on this device
+
+❌ No silent failures
+❌ No faded button with no explanation
+
+⸻
+
+3️⃣ SAFARI-SPECIFIC QA (MANDATORY)
+
+All QA must be done on:
+	•	iPhone Safari (normal tab)
+	•	iPhone Safari (Private tab)
+
+Safari-specific tests
+	•	Save works after page reload
+	•	Login persists across refresh
+	•	Navigation doesn’t reset app
+	•	No stuck overlays / disabled taps
+
+Proof required
+	•	Screen recordings (not screenshots)
+	•	One per critical flow
+
+⸻
+
+4️⃣ ROUTE & BUTTON AUDIT (STOP DEAD ENDS)
+
+Required internal checklist
+
+Replit must verify:
+	•	Every menu item routes to a real page
+	•	Every CTA opens a real flow
+	•	Suggested Schedule never routes to “not available”
+
+Acceptance test
+	•	Tap Suggested Schedule → always opens schedule review or draft
+
+⸻
+
+5️⃣ FEATURE-BY-FEATURE QA CHECKLIST
+
+Daily Schedule
+	•	Hamburger menu visible
+	•	Back button works
+	•	Suggested Schedule opens real review
+	•	Add/Edit/Save works
+
+Meal Prep
+	•	Suggested meals selectable
+	•	Single-select enforced
+	•	Save works
+	•	Saved item persists
+
+Meditation
+	•	Suggested meditation selectable
+	•	Save works
+	•	Back works
+
+Browse
+	•	Hamburger menu present
+	•	Category filters work
+	•	Results change with filters
+
+Challenges
+	•	Cards clickable
+	•	Detail page exists
+	•	Add to Plan / Calendar works
+
+Chat
+	•	Blank-start chat saved to history
+	•	History persists on refresh
+
+⸻
+
+6️⃣ REQUIRED DELIVERABLES FROM REPLIT
+
+You should explicitly ask for all of these:
+	1.	PASS / FAIL table for every page
+	2.	List of changed files
+	3.	Safari screen recordings showing:
+	•	Save works
+	•	Navigation works
+	•	No dead routes
+	4.	Confirmation:
+	•	“No fake buttons remain”
+
+Wave 6 does not begin without this.
+
+⸻
+
+7️⃣ COPY/PASTE MESSAGE TO REPLIT (USE THIS)
+
+We are pausing feature development and entering a QA-first gate.
+
+Please complete a full QA pass on iPhone Safari and fix all broken save flows, dead routes, and navigation inconsistencies.
+
+Every page must have a hamburger menu, back button, and working save logic. No “not available” pages are allowed.
+
+I need a PASS/FAIL checklist, Safari screen recordings, and a list of changed files before Wave 6 can start.
+
+⸻
+
+🧠 WHY THIS IS THE RIGHT MOVE
+
+This:
+	•	Restores trust in the app
+	•	Prevents burnout (for you and users)
+	•	Makes Wave 6 actually powerful
+	•	Turns the app from “prototype” → “assistant”
+
+You did the hard thinking already.
+Now we stabilize the ground before building upward.
+
+⸻
+
+Next decision (don’t rush — but answer when ready):
+
+When QA passes, do you want Wave 6 to start with:
+
+A) Body & energy intelligence first
+B) Voice mode first
+C) Guided experiences (meditation/workout) first
+
+You can also say “A → B → C” and we’ll lock the order.

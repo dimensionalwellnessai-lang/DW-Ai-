@@ -42,7 +42,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     id: "talk",
     title: "Talk It Out",
     icon: MessageCircle,
-    description: "Your main way to interact with Flip the Switch. Share what's on your mind, ask for help, or just chat.",
+    description: "Your main way to interact with Flip the Switch. Share what's on your mind, ask for help, or simply chat.",
     tips: [
       "Start with how you're feeling - no judgment here",
       "Ask for specific help like 'help me plan my morning'",

@@ -447,7 +447,7 @@ const COOKING_VIDEOS: CookingVideo[] = [
   {
     id: "meal-prep-basics",
     title: "Weekly Meal Prep Basics",
-    description: "Learn the fundamentals of preparing a week's worth of healthy meals in just 2 hours",
+    description: "Learn the fundamentals of preparing a week's worth of healthy meals in 2 hours",
     duration: "15:00",
     difficulty: "beginner",
     servings: 5,
@@ -459,7 +459,7 @@ const COOKING_VIDEOS: CookingVideo[] = [
   {
     id: "overnight-oats-5-ways",
     title: "Overnight Oats 5 Ways",
-    description: "Quick breakfast ideas that take just 5 minutes to prepare the night before",
+    description: "Quick breakfast ideas that take 5 minutes to prepare the night before",
     duration: "8:30",
     difficulty: "beginner",
     servings: 1,

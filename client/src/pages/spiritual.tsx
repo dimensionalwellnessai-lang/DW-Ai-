@@ -105,7 +105,7 @@ const SAMPLE_PRACTICES: PracticeData[] = [
       "Feel your whole body as one - rest here for a moment",
       "Gently wiggle fingers and toes, open eyes slowly"
     ],
-    guidance: "Simply notice without judging. If you find tension, don't force it away - just acknowledge it with kindness."
+    guidance: "Simply notice without judging. If you find tension, don't force it away - acknowledge it with kindness."
   },
   {
     title: "Evening Reflection",
@@ -139,7 +139,7 @@ const SAMPLE_PRACTICES: PracticeData[] = [
       "Continue walking mindfully for remaining time",
       "End by standing still and expressing silent gratitude"
     ],
-    guidance: "Nature has a way of resetting our nervous system. Let the natural world do the work - you just need to be present."
+    guidance: "Nature has a way of resetting our nervous system. Let the natural world do the work - you only need to be present."
   },
   {
     title: "Gentle Morning Yoga",

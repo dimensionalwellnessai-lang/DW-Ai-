@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
-import { ArrowLeft, Send, Loader2, Sparkles, Heart } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Send, Loader2, Heart } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,7 +42,7 @@ export function TalkItOutPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: "This is a space just for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can just sit with that for a moment too.",
+      content: "This is a space for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.",
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
@@ -127,23 +126,16 @@ export function TalkItOutPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background gradient-bg-animated">
-      <header className="flex items-center justify-between gap-4 p-4 border-b dark:border-white/5 glass-subtle">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-full bg-pink-500/10">
-              <Heart className="h-4 w-4 text-pink-500" />
-            </div>
-            <h1 className="font-display font-bold text-xl">Talk It Out</h1>
+    <div className="flex flex-col h-screen bg-background">
+      <PageHeader 
+        title="Talk It Out" 
+        backPath="/"
+        rightContent={
+          <div className="p-2 rounded-full bg-pink-500/10">
+            <Heart className="h-4 w-4 text-pink-500" />
           </div>
-        </div>
-        <ThemeToggle />
-      </header>
+        }
+      />
 
       <ScrollArea className="flex-1 px-4">
         <div className="space-y-6 max-w-2xl mx-auto py-4">

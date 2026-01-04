@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Link } from "wouter";
-import { ArrowLeft, Send, Heart, CheckCircle } from "lucide-react";
+import { Send, Heart, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/page-header";
 
 export default function FeedbackPage() {
   const { toast } = useToast();
@@ -28,13 +28,13 @@ export default function FeedbackPage() {
       
       setSubmitted(true);
       toast({
-        title: "Thank you",
-        description: "Your feedback means a lot to us.",
+        title: "Noted.",
+        description: "Your feedback means a lot.",
       });
     } catch {
       toast({
-        title: "Couldn't save feedback",
-        description: "Please try again.",
+        title: "That didn't save.",
+        description: "You can try again, or come back later.",
         variant: "destructive",
       });
     } finally {
@@ -44,15 +44,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="p-4 flex items-center justify-between border-b">
-        <Link href="/">
-          <Button variant="ghost" size="sm" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-        <ThemeToggle />
-      </header>
+      <PageHeader title="Feedback" backPath="/" />
 
       <main className="flex-1 flex items-center justify-center p-6">
         <Card className="w-full max-w-md">
