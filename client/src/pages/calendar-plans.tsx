@@ -27,6 +27,7 @@ import {
   FileText,
   Sparkles,
   Pencil,
+  Repeat,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -63,6 +64,8 @@ interface DisplayEvent {
   meetingLink?: string | null;
   linkedType?: string | null;
   linkedId?: string | null;
+  recurring?: boolean;
+  recurrencePattern?: string | null;
   source: "db" | "local";
 }
 
@@ -119,6 +122,8 @@ export function CalendarPlansPage() {
       dimensionTags: e.dimensionTags || [],
       linkedType: e.eventType,
       linkedId: e.routineId || e.projectId,
+      recurring: e.isRecurring || false,
+      recurrencePattern: e.recurrenceRule || null,
       source: "db" as const,
     })),
     ...localEvents.map(e => ({
@@ -131,6 +136,8 @@ export function CalendarPlansPage() {
       dimensionTags: e.dimension ? [e.dimension] : [],
       location: e.location,
       meetingLink: e.virtualLink,
+      recurring: e.recurring,
+      recurrencePattern: e.recurrencePattern,
       source: "local" as const,
     })),
   ];
@@ -337,6 +344,12 @@ export function CalendarPlansPage() {
                               {event.endTime && (
                                 <> - {format(new Date(event.endTime), "h:mm a")}</>
                               )}
+                              {event.recurring && (
+                                <span className="ml-2 flex items-center gap-0.5">
+                                  <Repeat className="h-3 w-3" />
+                                  <span className="capitalize">{event.recurrencePattern}</span>
+                                </span>
+                              )}
                             </div>
                           )}
                           {event.dimensionTags && event.dimensionTags.length > 0 && (
@@ -403,6 +416,7 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
   const [isAllDay, setIsAllDay] = useState(false);
   const [location, setLocation] = useState("");
   const [virtualLink, setVirtualLink] = useState("");
+  const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly" | "monthly">("none");
   const { toast } = useToast();
 
   const handleSave = () => {
@@ -432,8 +446,8 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
       location: location.trim() || null,
       virtualLink: virtualLink.trim() || null,
       reminders: [],
-      recurring: false,
-      recurrencePattern: null,
+      recurring: recurrence !== "none",
+      recurrencePattern: recurrence !== "none" ? recurrence : null,
       relatedFoundationIds: [],
       tags: [],
     });
@@ -448,6 +462,7 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
     setIsAllDay(false);
     setLocation("");
     setVirtualLink("");
+    setRecurrence("none");
 
     toast({
       title: "Event added",
@@ -559,6 +574,21 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
               </div>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Recurrence</Label>
+            <Select value={recurrence} onValueChange={(v) => setRecurrence(v as "none" | "daily" | "weekly" | "monthly")}>
+              <SelectTrigger data-testid="select-recurrence">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Does not repeat</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="space-y-2">
             <Label>Dimension (optional)</Label>
