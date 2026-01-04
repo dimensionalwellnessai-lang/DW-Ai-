@@ -36,6 +36,7 @@ interface WeekContent {
     text: string;
     options?: string[];
     required?: boolean;
+    showWhen?: { parentId: string; values: string[] };
   }[];
 }
 
@@ -45,12 +46,12 @@ const WEEK_CONTENT: Record<number, WeekContent> = {
     questions: [
       { id: "q1", type: "text", text: "In your own words, what do you think this app is for?", required: true },
       { id: "q2", type: "single-select", text: "How did you feel the first time you opened it?", options: ["Calm", "Curious", "Overwhelmed", "Neutral", "Other"], required: true },
-      { id: "q2_other", type: "text", text: "If other, please explain:" },
+      { id: "q2_other", type: "text", text: "If other, please explain:", showWhen: { parentId: "q2", values: ["Other"] } },
       { id: "q3", type: "text", text: "What did you naturally explore first?" },
       { id: "q4", type: "text", text: "What felt confusing or unclear?" },
       { id: "q5", type: "text", text: "Was there anything that felt unnecessary or distracting?" },
       { id: "q6", type: "single-select-with-other", text: "After using it once or twice, did you feel like coming back?", options: ["Yes", "Maybe", "No"] },
-      { id: "q6_why", type: "text", text: "If no, why?" },
+      { id: "q6_why", type: "text", text: "If not, what held you back?", showWhen: { parentId: "q6", values: ["No", "Maybe"] } },
     ],
   },
   2: {
@@ -58,7 +59,7 @@ const WEEK_CONTENT: Record<number, WeekContent> = {
     questions: [
       { id: "q1", type: "single-select", text: "How did you end up using the app this week?", options: ["Quick check-ins", "Planning", "Reflection", "Just exploring"], required: true },
       { id: "q2", type: "single-select-with-other", text: "Did the app ever feel like it was asking too much of you?", options: ["Never", "A little", "Yes"], required: true },
-      { id: "q2_explain", type: "text", text: "If yes, please explain:" },
+      { id: "q2_explain", type: "text", text: "What felt like too much?", showWhen: { parentId: "q2", values: ["A little", "Yes"] } },
       { id: "q3", type: "text", text: "Did anything in the app feel grounding or supportive?" },
       { id: "q4", type: "text", text: "What did you skip entirely?" },
       { id: "q5", type: "text", text: "Did anything feel repetitive, annoying, or forced?" },
@@ -70,11 +71,11 @@ const WEEK_CONTENT: Record<number, WeekContent> = {
     questions: [
       { id: "q1", type: "single-select", text: "Did the app feel supportive, neutral, or intrusive?", options: ["Supportive", "Neutral", "Intrusive"], required: true },
       { id: "q2", type: "single-select-with-other", text: "Did you ever feel judged, rushed, or pressured by it?", options: ["No", "Slightly", "Yes"], required: true },
-      { id: "q2_explain", type: "text", text: "If yes, please explain:" },
+      { id: "q2_explain", type: "text", text: "What felt that way?", showWhen: { parentId: "q2", values: ["Slightly", "Yes"] } },
       { id: "q3", type: "text", text: "Was there a moment where the app felt genuinely helpful?" },
       { id: "q4", type: "text", text: "Did anything feel 'off' emotionally or energetically?" },
       { id: "q5", type: "single-select-with-other", text: "Do you trust the app with your information and plans?", options: ["Yes", "Unsure", "No"] },
-      { id: "q5_why", type: "text", text: "If no, why?" },
+      { id: "q5_why", type: "text", text: "What would help build more trust?", showWhen: { parentId: "q5", values: ["Unsure", "No"] } },
       { id: "q6", type: "single-select", text: "Would you feel comfortable using this on a hard day?", options: ["Yes", "Maybe", "No"] },
     ],
   },
@@ -85,7 +86,7 @@ const WEEK_CONTENT: Record<number, WeekContent> = {
       { id: "q2", type: "text", text: "What is the most valuable part of it for you?", required: true },
       { id: "q3", type: "text", text: "What is the least valuable part?" },
       { id: "q4", type: "single-select-with-other", text: "Does this feel like something you'd return to on your own?", options: ["Yes", "Maybe", "No"] },
-      { id: "q4_why", type: "text", text: "If no, why?" },
+      { id: "q4_why", type: "text", text: "What would bring you back more often?", showWhen: { parentId: "q4", values: ["Maybe", "No"] } },
       { id: "q5", type: "text", text: "What would you remove before adding anything new?" },
       { id: "q6", type: "text", text: "One sentence: How did this app make you feel overall?" },
       { id: "q7", type: "single-select", text: "Did this app make life feel heavier, lighter, or the same?", options: ["Heavier", "Lighter", "The same"] },
@@ -412,11 +413,11 @@ export default function WeeklyCheckinPage() {
           </Card>
 
           {weekContent?.questions.map((question, index) => {
-            if (question.id.includes("_other") || question.id.includes("_why") || question.id.includes("_explain")) {
-              const parentId = question.id.replace(/_other|_why|_explain/, "");
-              const parentAnswer = answers[parentId];
-              const shouldShow = parentAnswer === "Other" || parentAnswer === "No" || parentAnswer === "Yes";
-              if (!shouldShow) return null;
+            if (question.showWhen) {
+              const parentAnswer = answers[question.showWhen.parentId];
+              if (!parentAnswer || !question.showWhen.values.includes(parentAnswer)) {
+                return null;
+              }
             }
 
             return (
