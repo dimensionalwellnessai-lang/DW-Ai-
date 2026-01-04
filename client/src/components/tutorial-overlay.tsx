@@ -16,6 +16,7 @@ export function TutorialOverlay() {
   const { state, currentStep, nextStep, prevStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<ElementRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const [clonedElement, setClonedElement] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const updateTargetPosition = useCallback(() => {
@@ -42,6 +43,9 @@ export function TutorialOverlay() {
         width: rect.width + padding * 2,
         height: rect.height + padding * 2
       });
+      
+      // Clone the element's HTML to render above the mask
+      setClonedElement(element.outerHTML);
 
       const tooltipWidth = 300;
       const tooltipHeight = 180;
@@ -167,6 +171,21 @@ export function TutorialOverlay() {
           onClick={(e) => e.stopPropagation()}
         />
       </svg>
+
+      {/* Cloned element rendered above the mask for visibility */}
+      {targetRect && clonedElement && (
+        <div
+          className="absolute flex items-center justify-center pointer-events-none"
+          style={{
+            top: targetRect.top,
+            left: targetRect.left,
+            width: targetRect.width,
+            height: targetRect.height,
+            zIndex: 10000,
+          }}
+          dangerouslySetInnerHTML={{ __html: clonedElement }}
+        />
+      )}
 
       {targetRect && (
         <div

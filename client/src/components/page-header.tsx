@@ -7,7 +7,7 @@ import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Sun, Sparkles, Heart, Dumbbell, Utensils, Wallet,
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
@@ -244,6 +244,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                 size="sm" 
                 onClick={() => {
                   apiRequest("POST", "/api/auth/logout").then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                     window.location.href = "/login";
                   });
                 }}
