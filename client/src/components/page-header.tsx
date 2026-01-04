@@ -43,6 +43,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, showBack = true, backPath, rightContent }: PageHeaderProps) {
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [calendarDropdownOpen, setCalendarDropdownOpen] = useState(false);
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
   const { 
@@ -139,46 +140,52 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                 )}
                 
                 {calendarFeatures.length > 0 && (
-                  <details className="group" open>
-                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+                  <div>
+                    <button
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      onClick={() => setCalendarDropdownOpen(!calendarDropdownOpen)}
+                      aria-expanded={calendarDropdownOpen}
+                      data-testid="menu-calendar-dropdown"
+                    >
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm flex-1">Calendar</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="mt-1 space-y-1 ml-4">
-                      {/* Standard Views */}
-                      <Link href="/daily-schedule">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Today</span>
-                        </button>
-                      </Link>
-                      <Link href="/calendar">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Month</span>
-                        </button>
-                      </Link>
-                      <Link href="/calendar?view=week">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Week</span>
-                        </button>
-                      </Link>
-                      <Link href="/daily-schedule">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
-                          <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Schedule</span>
-                        </button>
-                      </Link>
-                      <Link href="/routines">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)}>
-                          <History className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Routines</span>
-                        </button>
-                      </Link>
-                    </div>
-                  </details>
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${calendarDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {calendarDropdownOpen && (
+                      <div className="mt-1 space-y-1 ml-4">
+                        <Link href="/daily-schedule">
+                          <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Today</span>
+                          </button>
+                        </Link>
+                        <Link href="/calendar">
+                          <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Month</span>
+                          </button>
+                        </Link>
+                        <Link href="/calendar?view=week">
+                          <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-week">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Week</span>
+                          </button>
+                        </Link>
+                        <Link href="/daily-schedule">
+                          <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-schedule">
+                            <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Schedule</span>
+                          </button>
+                        </Link>
+                        <Link href="/routines">
+                          <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
+                            <History className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Routines</span>
+                          </button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 )}
                 
                 {otherFeatures.map((feature) => {
