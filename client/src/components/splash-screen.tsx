@@ -15,11 +15,11 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   useEffect(() => {
     const timer1 = setTimeout(() => setPhase("opening"), 300);
     const timer2 = setTimeout(() => setPhase("open"), 1200);
-    const timer3 = setTimeout(() => setPhase("fading"), 2500);
+    const timer3 = setTimeout(() => setPhase("fading"), 3800);
     const timer4 = setTimeout(() => {
       localStorage.setItem(SPLASH_SHOWN_KEY, "true");
       onComplete();
-    }, 3200);
+    }, 4500);
 
     return () => {
       clearTimeout(timer1);
