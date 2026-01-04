@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -425,9 +425,16 @@ interface CookingVideo {
   difficulty: "beginner" | "intermediate" | "advanced";
   servings: number;
   category: string;
-  thumbnail: string;
+  youtubeVideoId?: string;
+  youtubeSearch: string;
   tags: string[];
 }
+
+// Helper to construct YouTube thumbnail URL from video ID
+const getYouTubeThumbnail = (videoId: string, size: "default" | "medium" | "high" = "medium") => {
+  const sizeMap = { default: "default", medium: "mqdefault", high: "hqdefault" };
+  return `https://i.ytimg.com/vi/${videoId}/${sizeMap[size]}.jpg`;
+};
 
 const COOKING_VIDEOS: CookingVideo[] = [
   {
@@ -438,7 +445,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 5,
     category: "Meal Prep",
-    thumbnail: "meal-prep",
+    youtubeVideoId: "86dLBiKpuUw",
+    youtubeSearch: "weekly meal prep basics healthy beginner",
     tags: ["beginner", "time-saving", "batch-cooking"],
   },
   {
@@ -449,7 +457,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 1,
     category: "Breakfast",
-    thumbnail: "breakfast",
+    youtubeVideoId: "hLYofk9gkGc",
+    youtubeSearch: "overnight oats recipe easy breakfast",
     tags: ["quick", "breakfast", "no-cook"],
   },
   {
@@ -460,7 +469,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 2,
     category: "Lunch",
-    thumbnail: "protein-bowl",
+    youtubeVideoId: "aQvpPxQxoqo",
+    youtubeSearch: "healthy protein bowl recipe meal prep",
     tags: ["high-protein", "balanced", "customizable"],
   },
   {
@@ -471,7 +481,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 4,
     category: "Dinner",
-    thumbnail: "sheet-pan",
+    youtubeVideoId: "UErCfP2OEMY",
+    youtubeSearch: "sheet pan dinner recipes easy healthy",
     tags: ["easy", "family-friendly", "minimal-cleanup"],
   },
   {
@@ -482,7 +493,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "intermediate",
     servings: 4,
     category: "Plant-Based",
-    thumbnail: "plant-based",
+    youtubeVideoId: "RKiDKRo_1ec",
+    youtubeSearch: "plant based protein cooking tofu tempeh",
     tags: ["vegan", "vegetarian", "protein"],
   },
   {
@@ -493,7 +505,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 1,
     category: "Smoothies",
-    thumbnail: "smoothie",
+    youtubeVideoId: "H2fL2BjpPkM",
+    youtubeSearch: "healthy smoothie recipes energy boost",
     tags: ["quick", "breakfast", "energy"],
   },
   {
@@ -504,7 +517,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 4,
     category: "Budget",
-    thumbnail: "budget",
+    youtubeVideoId: "UJXADdPDq6U",
+    youtubeSearch: "budget meal prep cheap healthy eating",
     tags: ["budget-friendly", "pantry", "affordable"],
   },
   {
@@ -515,7 +529,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "intermediate",
     servings: 2,
     category: "Quick Meals",
-    thumbnail: "stir-fry",
+    youtubeVideoId: "Ka_c8fQ3mJU",
+    youtubeSearch: "quick stir fry recipe healthy dinner",
     tags: ["quick", "asian-inspired", "vegetables"],
   },
   {
@@ -526,7 +541,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 4,
     category: "Snacks",
-    thumbnail: "snacks",
+    youtubeVideoId: "NxGSPmXnGKM",
+    youtubeSearch: "healthy snack ideas energy boost",
     tags: ["snacks", "energy", "portable"],
   },
   {
@@ -537,7 +553,8 @@ const COOKING_VIDEOS: CookingVideo[] = [
     difficulty: "beginner",
     servings: 8,
     category: "Basics",
-    thumbnail: "dressing",
+    youtubeVideoId: "P_BUWA1eTsU",
+    youtubeSearch: "homemade salad dressing recipes healthy",
     tags: ["basics", "homemade", "healthy"],
   },
 ];
@@ -1043,7 +1060,15 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   <CardContent className="p-0">
                     <div className="flex gap-4 p-4">
                       <div className="relative w-28 h-20 bg-muted rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
+                        {video.youtubeVideoId ? (
+                          <img 
+                            src={getYouTubeThumbnail(video.youtubeVideoId)} 
+                            alt={video.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
+                        )}
                         <div className="relative z-10 w-10 h-10 rounded-full bg-background/90 flex items-center justify-center">
                           <Play className="w-5 h-5 text-primary ml-0.5" />
                         </div>
@@ -1097,9 +1122,33 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           ))}
                         </div>
                         <div className="pt-2">
-                          <p className="text-xs text-muted-foreground italic">
-                            Video tutorials coming soon. Save this to revisit later.
-                          </p>
+                          {video.youtubeVideoId ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`https://www.youtube.com/watch?v=${video.youtubeVideoId}`, '_blank');
+                              }}
+                              data-testid={`button-watch-video-${video.id}`}
+                            >
+                              <Play className="w-4 h-4 mr-2" />
+                              Watch on YouTube
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(video.youtubeSearch)}`, '_blank');
+                              }}
+                              data-testid={`button-search-video-${video.id}`}
+                            >
+                              <Search className="w-4 h-4 mr-2" />
+                              Find on YouTube
+                            </Button>
+                          )}
                         </div>
                       </div>
                     )}

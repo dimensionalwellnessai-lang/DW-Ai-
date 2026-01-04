@@ -81,11 +81,18 @@ interface WorkoutData {
   duration: number;
   intensity: string;
   tags: string[];
+  youtubeVideoId?: string;
   youtubeSearch: string;
   steps: string[];
   equipment?: string[];
   tips?: string[];
 }
+
+// Helper to construct YouTube thumbnail URL from video ID
+const getYouTubeThumbnail = (videoId: string, size: "default" | "medium" | "high" = "medium") => {
+  const sizeMap = { default: "default", medium: "mqdefault", high: "hqdefault" };
+  return `https://i.ytimg.com/vi/${videoId}/${sizeMap[size]}.jpg`;
+};
 
 const SAMPLE_WORKOUTS: WorkoutData[] = [
   {
@@ -94,6 +101,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 15,
     intensity: "gentle",
     tags: ["full-body", "energizing", "no-equipment"],
+    youtubeVideoId: "cbKkB3POqaY",
     youtubeSearch: "15 minute morning energy workout no equipment",
     steps: [
       "Warm-up: 2 min light jogging in place",
@@ -111,6 +119,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 20,
     intensity: "steady",
     tags: ["core", "strength", "beginner-friendly"],
+    youtubeVideoId: "AnYl6Nk9QgY",
     youtubeSearch: "20 minute core strength workout beginner",
     steps: [
       "Plank hold: 30 seconds x 3 sets",
@@ -128,6 +137,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 30,
     intensity: "focused",
     tags: ["upper-body", "strength", "dumbbells"],
+    youtubeVideoId: "UBMk30rjy0o",
     youtubeSearch: "30 minute upper body workout dumbbells",
     steps: [
       "Push-ups: 12 reps x 3 sets",
@@ -146,6 +156,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 25,
     intensity: "focused",
     tags: ["lower-body", "strength", "toning"],
+    youtubeVideoId: "Midk7fMh9rU",
     youtubeSearch: "25 minute lower body workout at home",
     steps: [
       "Bodyweight squats: 15 reps x 3 sets",
@@ -163,6 +174,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 20,
     intensity: "athlete",
     tags: ["cardio", "endurance", "high-energy"],
+    youtubeVideoId: "ml6cT4AZdqI",
     youtubeSearch: "20 minute HIIT cardio workout",
     steps: [
       "Warm-up: 3 min light cardio",
@@ -180,6 +192,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
     duration: 25,
     intensity: "gentle",
     tags: ["yoga", "mindfulness", "flexibility", "calm"],
+    youtubeVideoId: "oBu-pQG6sTY",
     youtubeSearch: "25 minute gentle yoga flow relaxation",
     steps: [
       "Child's pose: 1 minute",
