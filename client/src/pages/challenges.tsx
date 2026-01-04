@@ -21,6 +21,7 @@ import {
   Clock,
 } from "lucide-react";
 import { getGettingToKnowYou, getBodyProfile, getFinanceProfile, saveCalendarEvent, getSoftOnboardingMood } from "@/lib/guest-storage";
+import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
 
 function getChallengeCategories(userNeeds: string[], bodyGoal: string | null, financialStress: boolean) {
   return [
@@ -116,55 +117,104 @@ interface AIPick {
   duration: string;
 }
 
-function getAIPicks(userNeeds: string[], bodyGoal: string | null, financialStress: boolean, userMood: string | null): AIPick[] {
-  const picks: AIPick[] = [];
-  
-  if (userMood === "scattered" || userMood === "overwhelmed" || userNeeds.includes("calm")) {
-    picks.push({
+// Energy-adaptive AI Picks with "Notice" phrasing (3 picks per energy level)
+const ENERGY_ADAPTIVE_PICKS: Record<EnergyLevel, AIPick[]> = {
+  low: [
+    {
       title: "5-minute daily meditation",
       category: "mental",
-      why: "I'm suggesting this because it matches where your energy is today.",
+      why: "Notice how small moments of stillness can restore your energy without demanding more from you.",
       duration: "7 days"
-    });
-  }
-  
-  if (bodyGoal === "build_muscle" || bodyGoal === "slim_fit") {
-    picks.push({
-      title: "7-day morning stretch",
-      category: "workout",
-      why: "This aligns with your body goals and builds consistency.",
-      duration: "7 days"
-    });
-  }
-  
-  if (financialStress) {
-    picks.push({
-      title: "Track all spending for a week",
-      category: "financial",
-      why: "Awareness is the first step to peace of mind with money.",
-      duration: "7 days"
-    });
-  }
-  
-  if (picks.length < 2) {
-    picks.push({
+    },
+    {
       title: "Gratitude journaling",
       category: "mental",
-      why: "A gentle way to shift perspective and build awareness.",
+      why: "Notice how gentle reflection supports a shift in perspective when energy is low.",
       duration: "7 days"
-    });
-  }
-  
-  if (picks.length < 2) {
-    picks.push({
+    },
+    {
+      title: "Hydration challenge",
+      category: "nutrition",
+      why: "Notice how staying hydrated supports your body when energy feels low.",
+      duration: "7 days"
+    },
+  ],
+  medium: [
+    {
+      title: "7-day morning stretch",
+      category: "workout",
+      why: "Notice how consistent morning movement builds sustainable energy over time.",
+      duration: "7 days"
+    },
+    {
+      title: "Mindful eating week",
+      category: "nutrition",
+      why: "Notice how paying attention to nourishment shifts your relationship with food.",
+      duration: "7 days"
+    },
+    {
+      title: "Digital detox evening",
+      category: "mental",
+      why: "Notice how stepping away from screens in the evening supports better rest.",
+      duration: "7 days"
+    },
+  ],
+  high: [
+    {
       title: "10K steps daily",
       category: "workout",
-      why: "Movement supports both body and mind.",
+      why: "Notice how channeling high energy into movement creates a positive momentum.",
+      duration: "7 days"
+    },
+    {
+      title: "Reach out to 3 friends",
+      category: "social",
+      why: "Notice how connecting with others amplifies the energy you're already feeling.",
+      duration: "7 days"
+    },
+    {
+      title: "Try one new recipe weekly",
+      category: "nutrition",
+      why: "Notice how creative cooking channels high energy into nourishing yourself.",
+      duration: "7 days"
+    },
+  ],
+};
+
+function getAIPicks(userNeeds: string[], bodyGoal: string | null, financialStress: boolean, userMood: string | null, energyLevel: EnergyLevel): AIPick[] {
+  const basePicks: AIPick[] = [...ENERGY_ADAPTIVE_PICKS[energyLevel]];
+  const result: AIPick[] = [];
+  
+  // Priority 1: Add personalized financial pick if stressed (replaces one base pick)
+  if (financialStress) {
+    result.push({
+      title: "Track all spending for a week",
+      category: "financial",
+      why: "Notice how awareness of spending patterns brings clarity and reduces stress.",
       duration: "7 days"
     });
   }
   
-  return picks.slice(0, 3);
+  // Priority 2: Add personalized body goal pick if building muscle and not low energy
+  if (bodyGoal === "build_muscle" && energyLevel !== "low" && result.length < 3) {
+    result.push({
+      title: "Progressive pushup challenge",
+      category: "workout",
+      why: "Notice how consistent strength work aligns with your body goals.",
+      duration: "14 days"
+    });
+  }
+  
+  // Fill remaining slots with energy-based picks
+  for (const pick of basePicks) {
+    if (result.length >= 3) break;
+    // Avoid duplicating categories already covered by personalized picks
+    if (!result.some(r => r.title === pick.title)) {
+      result.push(pick);
+    }
+  }
+  
+  return result.slice(0, 3);
 }
 
 export function ChallengesPage() {
@@ -184,8 +234,11 @@ export function ChallengesPage() {
   const bodyGoal = bodyProfile?.bodyGoal || null;
   const financialStress = financeProfile?.moneyEmotion === "anxious";
   
+  const energyContext = getCurrentEnergyContext();
+  const currentEnergy = energyContext?.energy || "medium";
+  
   const categories = getChallengeCategories(userNeeds, bodyGoal, financialStress);
-  const aiPicks = getAIPicks(userNeeds, bodyGoal, financialStress, userMood);
+  const aiPicks = getAIPicks(userNeeds, bodyGoal, financialStress, userMood, currentEnergy);
 
   const handleChallengeClick = (categoryId: string, challengeTitle: string) => {
     setSelectedChallenge({ category: categoryId, title: challengeTitle });
@@ -219,8 +272,8 @@ export function ChallengesPage() {
     });
     
     toast({
-      title: "Added to your system.",
-      description: `"${selectedChallenge.title}" starts tomorrow.`,
+      title: "Added to calendar.",
+      description: `"${selectedChallenge.title}" starts tomorrow. Notice how planning ahead shifts the mental load.`,
     });
     setDetailDialogOpen(false);
   };
@@ -289,8 +342,8 @@ export function ChallengesPage() {
                   onClick={() => {
                     if (selectedAIPick) {
                       toast({
-                        title: "Saved.",
-                        description: `"${selectedAIPick.title}" added to your challenges.`,
+                        title: "Added to your system.",
+                        description: `"${selectedAIPick.title}" added. Notice how this challenge matches your current energy.`,
                       });
                       setSelectedAIPick(null);
                     }

@@ -1,0 +1,156 @@
+Perfect — then we’ll do both, but not at the same time.
+We’ll do them back-to-back in a controlled order, so nothing breaks and nothing gets sloppy.
+
+Here’s the exact execution plan so you, Replit, and the agent are aligned.
+
+⸻
+
+✅ FINAL EXECUTION ORDER (LOCKED)
+
+Wave 6A.1 — Nutrition (/meal-prep)
+
+⬅️ First
+
+Wave 6A.2 — Recovery (/recovery)
+
+⬅️ Immediately after
+
+Then we move to B (Polish/Stabilization), then C (Soft Complete + Wave 7).
+
+⸻
+
+🥗 WAVE 6A.1 — NUTRITION (GUIDED EXPERIENCE)
+
+Goal
+
+Bring Nutrition fully into the Wave 6.3 Guided Experience system so it feels equal to Meditation, Workouts, and Challenges.
+
+Required Changes (No Deviation)
+
+Page: /meal-prep
+
+Layout (must use GuidedExperienceLayout)
+	•	AI Picks (2–3 max, with Why)
+	•	Category thumbnails
+	•	Filters
+	•	Single-select save pattern
+
+Categories (thumbnails)
+	•	Meal Plans
+	•	Meal Prep Ideas
+	•	Ingredient Alternatives
+	•	Grocery Builder
+
+If Grocery Builder is not implemented:
+	•	Route to a real explainer page
+	•	Include buttons: “Browse Meal Prep Ideas”, “Back”, “Home”
+	•	❌ No “not available” pages
+
+Filters (must affect results)
+	•	Diet (Regular / Vegan / Vegetarian / Gluten-Free)
+	•	Prep Time (Quick / Medium / Longer)
+	•	Focus (High-Protein / Balanced / Light)
+
+Save Rules
+	•	Save disabled until one item selected
+	•	Helper text: “Pick 1 option to save.”
+	•	Save → toast “Saved.”
+	•	Persists after refresh
+	•	Optional Add to Calendar → confirmation dialog required
+	•	Calendar deep-links back to Nutrition item
+
+Acceptance Gate
+
+Nutrition must pass:
+	•	Single-select enforcement
+	•	Save persistence (Safari)
+	•	Calendar confirmation
+	•	No dead routes
+
+⸻
+
+🌿 WAVE 6A.2 — RECOVERY (NEW PAGE)
+
+Goal
+
+Create a dedicated Recovery space that is calm, embodied, and not buried inside Meditation.
+
+Page
+	•	Route: /recovery
+	•	Must be linked from:
+	•	Browse
+	•	Hamburger menu
+	•	AI suggestions
+
+Layout
+
+Use same GuidedExperienceLayout as other Wave 6.3 pages.
+
+Prompt
+“What kind of recovery would help you today?”
+
+Categories (thumbnails)
+	•	Breathwork
+	•	Stretch & Mobility
+	•	Grounding
+	•	Sleep Wind-Down
+	•	Stress Reset
+
+Filters
+	•	Time (5 / 10 / 20)
+	•	Style (Guided / Text)
+	•	Intensity (Gentle / Moderate – optional)
+
+Save Rules (same everywhere)
+	•	Single-select
+	•	Helper text
+	•	Save to My System
+	•	Optional Add to Calendar → confirmation
+	•	Deep-link back to Recovery item
+
+Acceptance Gate
+
+Recovery must:
+	•	Feel distinct from Meditation
+	•	Have no fake buttons
+	•	Save + calendar work on Safari
+	•	Be fully navigable
+
+⸻
+
+📌 COPY/PASTE TO REPLIT (SHORT & CLEAR)
+
+Proceed with Wave 6A in this order:
+
+1) Update Nutrition (/meal-prep) to full Guided Experience layout
+2) Create Recovery (/recovery) using the same layout and rules
+
+Both must:
+	•	Enforce single-select
+	•	Disable Save until selection with helper text
+	•	Persist saves after refresh
+	•	Require confirmation before calendar adds
+	•	Have no dead routes or “not available” pages
+
+Provide updated PASS/FAIL and Safari recordings for Nutrition and Recovery when complete.
+
+⸻
+
+What happens after this (so you’re not wondering)
+
+Once Nutrition + Recovery pass:
+	•	Wave 6 = functionally complete
+	•	We move into B: Polish/Stabilization
+	•	Then C: Soft-complete Wave 6 + Wave 7 planning
+
+No looping back. No redefining the philosophy again.
+
+⸻
+
+One last confirmation (yes/no)
+
+When Nutrition is done, do you want:
+	•	You to test Recovery first, or
+	•	Replit/agent to implement Recovery immediately after Nutrition?
+
+Just answer “Me” or “Them.”

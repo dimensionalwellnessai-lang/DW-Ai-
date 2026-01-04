@@ -37,7 +37,8 @@ import {
   Loader2,
   Wand2,
   Search,
-  X
+  X,
+  Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -366,8 +367,8 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       toast({
-        title: "Added to your schedule",
-        description: `${pendingWorkout?.title} has been added to today's calendar.`,
+        title: "Added to calendar.",
+        description: `"${pendingWorkout?.title}" scheduled for today. Notice how planning your workout supports momentum.`,
       });
       setConfirmAddOpen(false);
       setPendingWorkout(null);
@@ -389,8 +390,8 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
         tags: pendingWorkout?.tags || [],
       });
       toast({
-        title: "Added to your schedule",
-        description: `${pendingWorkout?.title} has been added locally.`,
+        title: "Added to calendar.",
+        description: `"${pendingWorkout?.title}" scheduled for today. Notice how planning your workout supports momentum.`,
       });
       setConfirmAddOpen(false);
       setPendingWorkout(null);
@@ -654,8 +655,8 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   if (selectedPickedWorkout) {
                     handleSaveWorkout(selectedPickedWorkout);
                     toast({
-                      title: "Saved.",
-                      description: `"${selectedPickedWorkout.title}" added to your workouts.`,
+                      title: "Added to your system.",
+                      description: `"${selectedPickedWorkout.title}" added. Notice how this matches your current energy.`,
                     });
                     setSelectedPickedWorkout(null);
                   }
