@@ -772,8 +772,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     });
     
     toast({
-      title: "Added to today.",
-      description: `${pendingMeal.name} scheduled for today.`,
+      title: "Added to calendar.",
+      description: `"${pendingMeal.name}" scheduled for today. Notice how planning meals ahead shifts the mental load.`,
     });
     
     setConfirmMealOpen(false);
@@ -871,8 +871,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     });
     
     toast({
-      title: "Added to today.",
-      description: `"${pendingAIPick.title}" scheduled for today.`,
+      title: "Added to calendar.",
+      description: `"${pendingAIPick.title}" scheduled for today. Notice how nourishing yourself shifts your energy.`,
     });
     
     setAiPickCalendarOpen(false);
@@ -891,7 +891,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     setSavedMeals([saved, ...savedMeals]);
     toast({
       title: "Saved.",
-      description: `"${plan.title}" added to your system.`,
+      description: `"${plan.title}" added. Notice how meal planning supports your energy throughout the day.`,
     });
   };
 

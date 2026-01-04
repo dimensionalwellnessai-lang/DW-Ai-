@@ -246,8 +246,8 @@ export function RecoveryPage() {
     });
     setSavedRecovery([saved, ...savedRecovery]);
     toast({
-      title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports rest and nervous system balance.`,
+      title: "Added to your system.",
+      description: `"${item.title}" (${item.duration} min). Notice how this matches your current energy and supports recovery.`,
     });
   };
 
@@ -261,8 +261,8 @@ export function RecoveryPage() {
     });
     setSavedRecovery([saved, ...savedRecovery]);
     toast({
-      title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports rest and recovery.`,
+      title: "Saved.",
+      description: `"${item.title}" (${item.duration} min) added. Notice how rest supports your resilience.`,
     });
   };
 
@@ -305,7 +305,7 @@ export function RecoveryPage() {
     
     toast({
       title: "Added to calendar.",
-      description: `"${pendingCalendarItem.title}" scheduled for this evening.`,
+      description: `"${pendingCalendarItem.title}" scheduled for this evening. Notice how planning ahead shifts the mental load.`,
     });
     setCalendarConfirmOpen(false);
     setPendingCalendarItem(null);

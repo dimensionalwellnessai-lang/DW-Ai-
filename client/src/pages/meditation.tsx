@@ -258,8 +258,8 @@ export function MeditationPage() {
     });
     setSavedMeditations([saved, ...savedMeditations]);
     toast({
-      title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports calm and balance.`,
+      title: "Added to your system.",
+      description: `"${item.title}" (${item.duration} min). Notice how this matches your current energy and supports nervous system balance.`,
     });
   };
 
@@ -273,8 +273,8 @@ export function MeditationPage() {
     });
     setSavedMeditations([saved, ...savedMeditations]);
     toast({
-      title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports calm and balance.`,
+      title: "Saved.",
+      description: `"${item.title}" (${item.duration} min) added. Notice how stillness supports your wellbeing.`,
     });
   };
 
@@ -318,7 +318,7 @@ export function MeditationPage() {
     
     toast({
       title: "Added to calendar.",
-      description: `"${pendingCalendarItem.title}" scheduled for tomorrow morning.`,
+      description: `"${pendingCalendarItem.title}" scheduled for tomorrow morning. Notice how planning ahead shifts the mental load.`,
     });
     setCalendarConfirmOpen(false);
     setPendingCalendarItem(null);
