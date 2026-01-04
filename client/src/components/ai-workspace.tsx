@@ -9,7 +9,7 @@ import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
-import { useTutorialStart } from "@/contexts/tutorial-context";
+import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { 
   getGuestData, 
   initGuestData, 
@@ -116,6 +116,7 @@ export function AIWorkspace() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
+  const { state: tutorialState, hasSeenNavigationTutorial } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
@@ -133,6 +134,11 @@ export function AIWorkspace() {
   const { events: scheduleEvents } = useScheduleEvents();
 
   useEffect(() => {
+    // Don't show onboarding dialogs until navigation tutorial is completed
+    if (tutorialState.isActive || !hasSeenNavigationTutorial()) {
+      return;
+    }
+    
     if (shouldShowSoftOnboarding()) {
       markSoftOnboardingShownThisSession();
       setShowSoftOnboarding(true);
@@ -144,7 +150,7 @@ export function AIWorkspace() {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [tutorialState.isActive, hasSeenNavigationTutorial]);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
