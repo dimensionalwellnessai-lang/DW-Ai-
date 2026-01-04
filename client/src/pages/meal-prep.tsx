@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -582,12 +582,15 @@ export default function MealPrepPage() {
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("meal_plan"));
   const [aiIngredientSuggestion, setAiIngredientSuggestion] = useState<string | null>(null);
+  const ingredientRequestId = useRef(0);
   
   const { toast } = useToast();
 
   // AI-powered ingredient suggestion when search has no results
   const ingredientAiMutation = useMutation({
+    mutationKey: ["ai-ingredient-swap"],
     mutationFn: async (query: string) => {
+      const requestId = ++ingredientRequestId.current;
       const restrictions = prefs?.restrictions?.join(", ") || "none specified";
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: `The user is looking for ingredient substitutions for "${query}". Their dietary restrictions are: ${restrictions}.
@@ -595,12 +598,19 @@ export default function MealPrepPage() {
 Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief list. Max 60 words total. Don't say "you should" - use "notice" or "try" instead.`,
         conversationHistory: [],
       });
-      return response.json();
+      const data = await response.json();
+      return { ...data, requestId };
+    },
+    onMutate: () => {
+      setAiIngredientSuggestion(null);
     },
     onSuccess: (data) => {
-      setAiIngredientSuggestion(data.response);
+      if (data.requestId === ingredientRequestId.current) {
+        setAiIngredientSuggestion(data.response);
+      }
     },
     onError: () => {
+      setAiIngredientSuggestion(null);
       toast({
         title: "Could not get suggestions",
         description: "We can try again in a moment.",
@@ -1141,6 +1151,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && ingredientSearch.trim()) {
+                        ingredientAiMutation.reset();
                         ingredientAiMutation.mutate(ingredientSearch.trim());
                       }
                     }}
@@ -1155,6 +1166,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       onClick={() => {
                         setIngredientSearch("");
                         setAiIngredientSuggestion(null);
+                        ingredientAiMutation.reset();
                       }}
                     >
                       <X className="w-4 h-4" />
@@ -1221,7 +1233,10 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setAiIngredientSuggestion(null)}
+                    onClick={() => {
+                      setAiIngredientSuggestion(null);
+                      ingredientAiMutation.reset();
+                    }}
                     data-testid="button-dismiss-ai-suggestion"
                   >
                     <X className="w-3 h-3 mr-1" />
@@ -1242,7 +1257,10 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => ingredientAiMutation.mutate(ingredientSearch.trim())}
+                    onClick={() => {
+                      ingredientAiMutation.reset();
+                      ingredientAiMutation.mutate(ingredientSearch.trim());
+                    }}
                     data-testid="button-ask-ai-ingredient"
                   >
                     <Wand2 className="w-4 h-4 mr-2" />

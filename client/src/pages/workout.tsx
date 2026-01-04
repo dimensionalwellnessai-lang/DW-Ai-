@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -218,12 +218,15 @@ export default function WorkoutPage() {
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("workout"));
   const [workoutSearch, setWorkoutSearch] = useState("");
   const [aiWorkoutSuggestion, setAiWorkoutSuggestion] = useState<string | null>(null);
+  const workoutRequestId = useRef(0);
   
   const { toast } = useToast();
   
   // AI-powered workout suggestion when user asks
   const workoutAiMutation = useMutation({
+    mutationKey: ["ai-workout-search"],
     mutationFn: async (query: string) => {
+      const requestId = ++workoutRequestId.current;
       const energyDesc = energyLevel || "not specified";
       const bodyInfo = bodyProfile ? `focusing on ${bodyProfile.fitnessGoal || "general fitness"}` : "";
       const response = await apiRequest("POST", "/api/chat/smart", {
@@ -232,12 +235,19 @@ export default function WorkoutPage() {
 Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and actionable. Max 80 words. Don't say "you should" - use "notice" or "try" instead.`,
         conversationHistory: [],
       });
-      return response.json();
+      const data = await response.json();
+      return { ...data, requestId };
+    },
+    onMutate: () => {
+      setAiWorkoutSuggestion(null);
     },
     onSuccess: (data) => {
-      setAiWorkoutSuggestion(data.response);
+      if (data.requestId === workoutRequestId.current) {
+        setAiWorkoutSuggestion(data.response);
+      }
     },
     onError: () => {
+      setAiWorkoutSuggestion(null);
       toast({
         title: "Could not get suggestions",
         description: "We can try again in a moment.",
@@ -564,6 +574,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && workoutSearch.trim()) {
+                  workoutAiMutation.reset();
                   workoutAiMutation.mutate(workoutSearch.trim());
                 }
               }}
@@ -578,6 +589,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 onClick={() => {
                   setWorkoutSearch("");
                   setAiWorkoutSuggestion(null);
+                  workoutAiMutation.reset();
                 }}
               >
                 <X className="w-4 h-4" />
@@ -655,7 +667,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setAiWorkoutSuggestion(null)}
+                  onClick={() => {
+                    setAiWorkoutSuggestion(null);
+                    workoutAiMutation.reset();
+                  }}
                   data-testid="button-dismiss-workout-ai"
                 >
                   <X className="w-3 h-3 mr-1" />
@@ -676,7 +691,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => workoutAiMutation.mutate(workoutSearch.trim())}
+                  onClick={() => {
+                    workoutAiMutation.reset();
+                    workoutAiMutation.mutate(workoutSearch.trim());
+                  }}
                   data-testid="button-ask-ai-workout"
                 >
                   <Wand2 className="w-4 h-4 mr-2" />
