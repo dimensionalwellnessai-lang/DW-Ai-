@@ -199,3 +199,29 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 - Unit toggle (imperial/metric) persists globally
 - Clarity level saves to localStorage (fts_current_clarity) when mood is logged
 - Leaving app does not reset scan
+
+## Guided Experiences (Wave 6.3)
+
+### Netflix-Style Layout Pattern
+All guided experience pages (Meditation, Workouts, Challenges, Recovery) follow a consistent pattern:
+- **AI Picks Section**: Max 2-3 personalized recommendations at top
+- **"Why" Explanations**: Each AI recommendation includes transparent reasoning
+- **Single-Select Pattern**: Only one item can be selected at a time
+- **Save Disabled Until Selection**: Helper text "Pick 1 option to save" when nothing selected
+- **Calendar Confirmation**: All calendar additions require explicit confirmation dialog
+
+### Updated Pages
+- **Meditation**: `client/src/pages/meditation.tsx` - AI Picks with "Why", single-select, calendar confirmation
+- **Challenges**: `client/src/pages/challenges.tsx` - AI Picks with "Why", Browse by Category, calendar confirmation
+- **Workouts**: `client/src/pages/workout.tsx` - "Picked for You" with "Why", calendar confirmation dialog
+
+### Reusable Component
+- **GuidedExperienceLayout**: `client/src/components/guided-experience-layout.tsx` - Netflix-style shell with AI Picks, categories, filters
+
+### Wave 6.3 Rules
+- Never auto-save or auto-schedule
+- Always show "Why" reasoning for AI suggestions
+- Maximum 2-3 AI picks to avoid overwhelm
+- Single selection enforced (toggle off by re-clicking)
+- Calendar additions always confirmed via dialog
+- Safari-compatible (no experimental APIs)

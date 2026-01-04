@@ -223,6 +223,7 @@ export default function WorkoutPage() {
   const [savedWorkouts, setSavedWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
   const [hasBodyScan, setHasBodyScan] = useState(hasCompletedBodyScan());
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(null);
+  const [selectedPickedWorkout, setSelectedPickedWorkout] = useState<WorkoutData | null>(null);
   const [expandedWorkout, setExpandedWorkout] = useState<number | null>(null);
   const [pickWorkoutOpen, setPickWorkoutOpen] = useState(false);
   const [highlightedWorkout, setHighlightedWorkout] = useState<string | null>(null);
@@ -469,27 +470,41 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
     setSavedWorkouts([saved, ...savedWorkouts]);
   };
 
-  const getPersonalizedRecommendation = () => {
+  const getPersonalizedRecommendation = (): { workout: typeof SAMPLE_WORKOUTS[0]; why: string } | null => {
     if (seeksCalmOrMindfulness) {
-      return SAMPLE_WORKOUTS.find(w => w.tags.includes("yoga"));
+      const workout = SAMPLE_WORKOUTS.find(w => w.tags.includes("yoga"));
+      if (workout) {
+        return { workout, why: "I'm suggesting this because you mentioned wanting calm or mindfulness." };
+      }
     }
     
     if (!bodyProfile?.bodyGoal) return null;
     
     const goal = bodyProfile.bodyGoal;
     if (goal === "slim_fit" || goal === "endurance") {
-      return SAMPLE_WORKOUTS.find(w => w.tags.includes("cardio"));
+      const workout = SAMPLE_WORKOUTS.find(w => w.tags.includes("cardio"));
+      if (workout) {
+        return { workout, why: "This aligns with your fitness goal and helps build endurance." };
+      }
     }
     if (goal === "build_muscle") {
-      return SAMPLE_WORKOUTS.find(w => w.tags.includes("strength"));
+      const workout = SAMPLE_WORKOUTS.find(w => w.tags.includes("strength"));
+      if (workout) {
+        return { workout, why: "This supports your goal to build muscle strength." };
+      }
     }
     if (goal === "tone") {
-      return SAMPLE_WORKOUTS.find(w => w.tags.includes("toning") || w.tags.includes("core"));
+      const workout = SAMPLE_WORKOUTS.find(w => w.tags.includes("toning") || w.tags.includes("core"));
+      if (workout) {
+        return { workout, why: "This matches your toning goals and targets core areas." };
+      }
     }
-    return SAMPLE_WORKOUTS[0];
+    return { workout: SAMPLE_WORKOUTS[0], why: "A balanced workout to get you moving today." };
   };
 
-  const recommendedWorkout = getPersonalizedRecommendation();
+  const recommendation = getPersonalizedRecommendation();
+  const recommendedWorkout = recommendation?.workout || null;
+  const recommendedWhy = recommendation?.why || "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -594,18 +609,24 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
         )}
 
         {(hasBodyScan || seeksCalmOrMindfulness) && recommendedWorkout && (
-          <div className="space-y-3">
+          <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold">Recommended for You</h2>
+              <h2 className="font-semibold">Picked for You</h2>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedPickedWorkout ? "Tap Save to add this workout" : "Pick 1 option to save."}
+            </p>
             <Card 
-              className="hover-elevate cursor-pointer" 
+              className={`cursor-pointer transition-all ${selectedPickedWorkout?.title === recommendedWorkout.title ? "ring-2 ring-primary bg-primary/5" : "hover-elevate"}`}
               data-testid="card-recommended-workout"
-              onClick={() => setSelectedWorkout(recommendedWorkout)}
+              onClick={() => setSelectedPickedWorkout(selectedPickedWorkout?.title === recommendedWorkout.title ? null : recommendedWorkout)}
             >
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  {selectedPickedWorkout?.title === recommendedWorkout.title && (
+                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                  )}
                   <div className="flex-1">
                     <h3 className="font-medium mb-1">{recommendedWorkout.title}</h3>
                     <p className="text-sm text-muted-foreground mb-2">
@@ -618,21 +639,48 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                       </span>
                       <span className="capitalize">{recommendedWorkout.intensity}</span>
                     </div>
+                    {recommendedWhy && (
+                      <p className="text-xs text-primary mt-2 italic">{recommendedWhy}</p>
+                    )}
                   </div>
-                  <Button 
-                    size="icon" 
-                    data-testid="button-play-recommended"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openYouTubeSearch(recommendedWorkout);
-                    }}
-                  >
-                    <Play className="w-4 h-4" />
-                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                disabled={!selectedPickedWorkout}
+                onClick={() => {
+                  if (selectedPickedWorkout) {
+                    handleSaveWorkout(selectedPickedWorkout);
+                    toast({
+                      title: "Saved.",
+                      description: `"${selectedPickedWorkout.title}" added to your workouts.`,
+                    });
+                    setSelectedPickedWorkout(null);
+                  }
+                }}
+                data-testid="button-save-picked-workout"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={!selectedPickedWorkout}
+                onClick={() => {
+                  if (selectedPickedWorkout) {
+                    promptAddToCalendar(selectedPickedWorkout);
+                  }
+                }}
+                data-testid="button-calendar-picked-workout"
+              >
+                <Calendar className="w-4 h-4 mr-1" />
+                Add to Calendar
+              </Button>
+            </div>
+          </section>
         )}
 
         <Card className="bg-primary/5 border-primary/20">
