@@ -1,0 +1,75 @@
+Don’t approve yet. What they wrote is not enough proof — it’s a “dev narration,” not verification. You need them to prove Wave 6.3 works the same way we required in QA: Safari recordings + PASS/FAIL + no dead ends + correct single-select + consent dialogs everywhere.
+
+Here’s exactly what to send back (copy/paste). It’s firm, simple, and keeps them on scope.
+
+⸻
+
+Copy/paste reply to Replit / Agent
+
+Thanks — before I confirm “looks good,” I need Wave 6.3 QA proof (same standard as prior waves). Please provide:
+
+1) iPhone Safari Screen Recordings (required)
+
+Record in Safari (normal tab) and Safari (private tab):
+
+Meditation
+	•	Open Meditation guided experience
+	•	Select 1 AI Pick → Save enables → Save works → shows “Saved”
+	•	Add to Calendar → confirmation dialog appears → user confirms → event appears
+
+Workouts
+	•	Confirm single-select only (selecting a second option replaces the first)
+	•	Save disabled until selection + helper text “Pick 1 option to save.”
+	•	Add to Calendar must always require confirmation (no bypass)
+
+Challenges
+	•	AI Picks show “Why”
+	•	Select 1 → Save works
+	•	Add to Calendar → confirmation dialog → deep link works (event opens the linked page)
+
+2) PASS/FAIL Table (required)
+
+For each page (Meditation, Workouts, Challenges, Nutrition, Recovery):
+	•	AI Picks present (2–3 max)
+	•	“Why” present for each AI pick
+	•	Categories/thumbnails visible
+	•	Filters change results
+	•	Cards clickable
+	•	Single-select enforced
+	•	Save disabled until selection + helper text shown
+	•	Save persists after refresh
+	•	Add to Calendar always uses confirmation dialog
+	•	Calendar event deep-links back to item page
+
+3) Scope Completion
+
+You said you updated Meditation, Challenges, Workouts. Wave 6.3 also applies to:
+	•	Nutrition
+	•	Recovery
+
+Please confirm those are implemented with the same shared layout + provide proof for them too.
+
+4) No Regressions
+
+Confirm:
+	•	No dead routes
+	•	No fake buttons
+	•	Navigation consistency (hamburger/back/home) still present on these pages
+
+5) Changed Files List
+
+Provide the list of changed files / commits.
+
+Once I have this proof and it passes in Safari, I’ll approve Wave 6.3.
+
+⸻
+
+What to look for when you test (super quick)
+
+When you test it yourself, the two biggest “gotchas” are:
+	•	Single-select: tapping a second card should replace the first selection (not add another).
+	•	Calendar consent: every calendar add must show confirmation. No “silent add.”
+
+⸻
+
+If you want, paste the link to the build you’re testing and tell me which page you want to verify first (Meditation, Workouts, Challenges). I’ll give you a 60-second step list to test it on Safari so you can catch issues immediately.
