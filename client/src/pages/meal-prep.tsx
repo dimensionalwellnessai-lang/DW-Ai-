@@ -93,6 +93,13 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       duration: 5,
       tag: "Prep Ahead",
       why: "Notice if tomorrow feels heavy. Prep the night before so it's one less thing to think about."
+    },
+    {
+      id: "low-3",
+      title: "Simple Grain Bowl",
+      duration: 10,
+      tag: "Balanced",
+      why: "Notice how a quick, balanced meal can restore your energy without demanding too much."
     }
   ],
   medium: [
@@ -109,6 +116,13 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       duration: 25,
       tag: "Easy",
       why: "Notice if you want something easy. One pan, minimal cleanup works for steady energy days."
+    },
+    {
+      id: "med-3",
+      title: "Mediterranean Salad",
+      duration: 15,
+      tag: "Fresh",
+      why: "Notice how fresh ingredients can support your energy throughout the day."
     }
   ],
   high: [
@@ -125,9 +139,36 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       duration: 25,
       tag: "Plant-Based",
       why: "Notice if you have capacity for something more involved. This recipe is worth the effort."
+    },
+    {
+      id: "high-3",
+      title: "Batch Cooking Session",
+      duration: 45,
+      tag: "Prep Ahead",
+      why: "Notice how channeling high energy into batch prep sets you up for the week ahead."
     }
   ]
 };
+
+// Categories for Nutrition guided experience
+interface NutritionCategory {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+}
+
+const NUTRITION_CATEGORIES: NutritionCategory[] = [
+  { id: "meal-plans", title: "Meal Plans", description: "Full day meal planning", icon: "calendar" },
+  { id: "meal-prep", title: "Meal Prep Ideas", description: "Batch cooking & prep tips", icon: "chef" },
+  { id: "alternatives", title: "Ingredient Alternatives", description: "Swap suggestions", icon: "swap" },
+  { id: "grocery", title: "Grocery Builder", description: "Build your shopping list", icon: "cart" },
+];
+
+// Filter types for Nutrition
+type DietFilter = "any" | "vegan" | "vegetarian" | "gluten-free";
+type PrepTimeFilter = "any" | "quick" | "medium" | "longer";
+type FocusFilter = "any" | "high-protein" | "balanced" | "light";
 
 type EffortLevel = "any" | "minimal" | "moderate" | "involved";
 type MealType = "any" | "breakfast" | "lunch" | "dinner";
@@ -665,9 +706,14 @@ export default function MealPrepPage() {
   const [aiPickSelectedId, setAiPickSelectedId] = useState<string | null>(null);
   const [aiPickCalendarOpen, setAiPickCalendarOpen] = useState(false);
   const [pendingAIPick, setPendingAIPick] = useState<NutritionAIPick | null>(null);
+  // Wave 6A filters
+  const [dietFilter, setDietFilter] = useState<DietFilter>("any");
+  const [prepTimeFilter, setPrepTimeFilter] = useState<PrepTimeFilter>("any");
+  const [focusFilter, setFocusFilter] = useState<FocusFilter>("any");
+  const [selectedNutritionCategory, setSelectedNutritionCategory] = useState<string | null>(null);
   
   const energyContext = getCurrentEnergyContext();
-  const currentEnergy = energyContext.energy;
+  const currentEnergy = energyContext?.energy || "medium";
   const nutritionAIPicks = NUTRITION_AI_PICKS[currentEnergy];
   
   const { 
@@ -899,6 +945,37 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     return savedMeals.some(s => s.title === planTitle);
   };
 
+  // Wave 6A: Filter meal plans based on selected filters
+  const filteredMealPlans = SAMPLE_MEAL_PLANS.filter(plan => {
+    // Diet filter
+    if (dietFilter !== "any") {
+      const isDietMatch = 
+        (dietFilter === "vegan" && plan.tags.includes("plant-based")) ||
+        (dietFilter === "vegetarian" && (plan.tags.includes("plant-based") || plan.tags.includes("vegetarian"))) ||
+        (dietFilter === "gluten-free" && plan.tags.includes("gluten-free"));
+      if (!isDietMatch) return false;
+    }
+    
+    // Prep time filter (based on average meal prep time)
+    const avgPrepTime = plan.meals.reduce((sum, m) => sum + m.prepTime, 0) / plan.meals.length;
+    if (prepTimeFilter !== "any") {
+      if (prepTimeFilter === "quick" && avgPrepTime > 10) return false;
+      if (prepTimeFilter === "medium" && avgPrepTime > 20) return false;
+      // "longer" shows all
+    }
+    
+    // Focus filter
+    if (focusFilter !== "any") {
+      const isFocusMatch = 
+        (focusFilter === "high-protein" && plan.tags.includes("high-protein")) ||
+        (focusFilter === "balanced" && plan.tags.includes("balanced")) ||
+        (focusFilter === "light" && (plan.tags.includes("quick") || plan.tags.includes("minimal-prep")));
+      if (!isFocusMatch) return false;
+    }
+    
+    return true;
+  });
+
   const getPersonalizedRecommendation = () => {
     if (!prefs?.dietaryStyle && !bodyProfile?.bodyGoal && !isBudgetConscious) return null;
     
@@ -983,6 +1060,113 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </TabsList>
 
           <TabsContent value="plans" className="mt-4 space-y-6">
+            {/* Wave 6A: Category Thumbnails */}
+            <section className="space-y-3">
+              <h2 className="font-display font-semibold text-sm">Browse by Category</h2>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedNutritionCategory === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedNutritionCategory(null)}
+                  data-testid="button-nutrition-category-all"
+                >
+                  All
+                </Button>
+                <Button
+                  variant={selectedNutritionCategory === "meal-plans" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedNutritionCategory("meal-plans")}
+                  data-testid="button-nutrition-category-meal-plans"
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Meal Plans
+                </Button>
+                <Button
+                  variant={selectedNutritionCategory === "meal-prep" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedNutritionCategory("meal-prep")}
+                  data-testid="button-nutrition-category-meal-prep"
+                >
+                  <ChefHat className="h-4 w-4 mr-1" />
+                  Meal Prep Ideas
+                </Button>
+                <Button
+                  variant={selectedNutritionCategory === "alternatives" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedNutritionCategory("alternatives")}
+                  data-testid="button-nutrition-category-alternatives"
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  Alternatives
+                </Button>
+                <Button
+                  variant={selectedNutritionCategory === "grocery" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedNutritionCategory("grocery")}
+                  data-testid="button-nutrition-category-grocery"
+                >
+                  <ShoppingBag className="h-4 w-4 mr-1" />
+                  Grocery Builder
+                </Button>
+              </div>
+            </section>
+
+            {/* Wave 6A: Filters */}
+            <section className="space-y-3">
+              <h3 className="text-xs font-medium text-muted-foreground">Filters</h3>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Leaf className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Diet:</span>
+                  {(["any", "vegan", "vegetarian", "gluten-free"] as DietFilter[]).map((d) => (
+                    <Button
+                      key={d}
+                      variant={dietFilter === d ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setDietFilter(d)}
+                      data-testid={`button-diet-${d}`}
+                    >
+                      {d === "any" ? "Any" : d.charAt(0).toUpperCase() + d.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Time:</span>
+                  {(["any", "quick", "medium", "longer"] as PrepTimeFilter[]).map((t) => (
+                    <Button
+                      key={t}
+                      variant={prepTimeFilter === t ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPrepTimeFilter(t)}
+                      data-testid={`button-prep-time-${t}`}
+                    >
+                      {t === "any" ? "Any" : t === "quick" ? "Quick" : t === "medium" ? "Medium" : "Longer"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Focus:</span>
+                  {(["any", "high-protein", "balanced", "light"] as FocusFilter[]).map((f) => (
+                    <Button
+                      key={f}
+                      variant={focusFilter === f ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setFocusFilter(f)}
+                      data-testid={`button-focus-${f}`}
+                    >
+                      {f === "any" ? "Any" : f === "high-protein" ? "High-Protein" : f === "balanced" ? "Balanced" : "Light"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
             {/* Wave 6.3: AI Picks Section */}
             <section className="space-y-4" data-testid="section-ai-picks-nutrition">
               <div className="flex items-center gap-2">
@@ -1176,7 +1360,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 Browse Meal Plans
               </h2>
               <div className="space-y-2">
-                {SAMPLE_MEAL_PLANS.map((plan, index) => (
+                {filteredMealPlans.map((plan, index) => (
                   <Card 
                     key={index} 
                     className="hover-elevate cursor-pointer"

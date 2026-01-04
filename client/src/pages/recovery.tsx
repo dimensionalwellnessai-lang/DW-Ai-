@@ -62,6 +62,13 @@ const ENERGY_ADAPTIVE_PICKS: Record<EnergyLevel, EnergyAdaptivePick[]> = {
       duration: 10,
       tag: "Wind-Down",
       why: "Notice if you need nervous system balance. You can shorten or skip if needed."
+    },
+    {
+      id: "low-3",
+      title: "Restorative Breathwork",
+      duration: 5,
+      tag: "Breathwork",
+      why: "Notice how a few slow breaths can help your body shift into rest mode."
     }
   ],
   medium: [
@@ -78,6 +85,13 @@ const ENERGY_ADAPTIVE_PICKS: Record<EnergyLevel, EnergyAdaptivePick[]> = {
       duration: 5,
       tag: "Hydration",
       why: "Notice your body's basic needs. A quick reset can help."
+    },
+    {
+      id: "med-3",
+      title: "Grounding Practice",
+      duration: 10,
+      tag: "Grounding",
+      why: "Notice how reconnecting with your body supports overall recovery."
     }
   ],
   high: [
@@ -94,9 +108,30 @@ const ENERGY_ADAPTIVE_PICKS: Record<EnergyLevel, EnergyAdaptivePick[]> = {
       duration: 15,
       tag: "Stretch",
       why: "Notice if you want to support long-term recovery. This prevents tightness."
+    },
+    {
+      id: "high-3",
+      title: "Active Stretching Session",
+      duration: 20,
+      tag: "Stretch",
+      why: "Notice how channeling high energy into flexibility work supports long-term wellness."
     }
   ]
 };
+
+// Categories for Recovery guided experience
+const RECOVERY_CATEGORIES = [
+  { id: "breathwork", label: "Breathwork", icon: Wind },
+  { id: "stretch", label: "Stretch & Mobility", icon: Leaf },
+  { id: "grounding", label: "Grounding", icon: Waves },
+  { id: "wind-down", label: "Sleep Wind-Down", icon: Moon },
+  { id: "stress-reset", label: "Stress Reset", icon: Heart },
+];
+
+// Filter types for Recovery
+type TimeFilter = "any" | "5" | "10" | "20";
+type StyleFilter = "any" | "guided" | "text";
+type IntensityFilter = "any" | "gentle" | "moderate";
 
 const RECOVERY_LIBRARY: RecoveryItem[] = [
   {
@@ -225,9 +260,12 @@ export function RecoveryPage() {
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false);
   const [pendingCalendarItem, setPendingCalendarItem] = useState<EnergyAdaptivePick | RecoveryItem | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("any");
+  const [styleFilter, setStyleFilter] = useState<StyleFilter>("any");
+  const [intensityFilter, setIntensityFilter] = useState<IntensityFilter>("any");
   
   const energyContext = getCurrentEnergyContext();
-  const currentEnergy = energyContext.energy;
+  const currentEnergy = energyContext?.energy || "medium";
 
   useEffect(() => {
     const saved = getSavedRoutinesByType("workout").filter(r => 
@@ -318,17 +356,40 @@ export function RecoveryPage() {
 
   const energyAdaptivePicks = ENERGY_ADAPTIVE_PICKS[currentEnergy];
   
-  const filteredRecovery = selectedCategory 
-    ? RECOVERY_LIBRARY.filter(r => r.category === selectedCategory)
-    : RECOVERY_LIBRARY;
+  // Filter recovery items by category, time, and intensity
+  const filteredRecovery = RECOVERY_LIBRARY.filter(r => {
+    // Category mapping for Wave 6A categories
+    const matchesCategory = !selectedCategory || 
+      r.category === selectedCategory ||
+      (selectedCategory === "breathwork" && r.category === "breathwork") ||
+      (selectedCategory === "stretch" && r.category === "stretch") ||
+      (selectedCategory === "grounding" && (r.category === "rest" || r.tag.toLowerCase().includes("ground"))) ||
+      (selectedCategory === "wind-down" && r.category === "wind-down") ||
+      (selectedCategory === "stress-reset" && (r.category === "massage" || r.category === "hydration"));
+    
+    // Time filter
+    const matchesTime = timeFilter === "any" || 
+      (timeFilter === "5" && r.duration <= 5) ||
+      (timeFilter === "10" && r.duration <= 10) ||
+      (timeFilter === "20" && r.duration <= 20);
+    
+    // Intensity filter (gentle = shorter, moderate = longer)
+    const matchesIntensity = intensityFilter === "any" ||
+      (intensityFilter === "gentle" && r.duration <= 10) ||
+      (intensityFilter === "moderate" && r.duration > 10);
+    
+    return matchesCategory && matchesTime && matchesIntensity;
+  });
 
+  // Wave 6A categories for Recovery
   const categories = [
-    { id: "rest", label: "Rest", icon: Bed },
-    { id: "stretch", label: "Stretch", icon: Leaf },
-    { id: "hydration", label: "Hydration", icon: Droplets },
-    { id: "wind-down", label: "Wind-Down", icon: Moon },
-    { id: "massage", label: "Massage", icon: Heart },
+    { id: "breathwork", label: "Breathwork", icon: Wind },
+    { id: "stretch", label: "Stretch & Mobility", icon: Leaf },
+    { id: "grounding", label: "Grounding", icon: Waves },
+    { id: "wind-down", label: "Sleep Wind-Down", icon: Moon },
+    { id: "stress-reset", label: "Stress Reset", icon: Heart },
   ];
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -450,6 +511,38 @@ export function RecoveryPage() {
                 >
                   <cat.icon className="h-4 w-4 mr-1" />
                   {cat.label}
+                </Button>
+              ))}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Time:</span>
+              {(["any", "5", "10", "20"] as TimeFilter[]).map((t) => (
+                <Button
+                  key={t}
+                  variant={timeFilter === t ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTimeFilter(t)}
+                  data-testid={`button-time-${t}`}
+                >
+                  {t === "any" ? "Any" : `${t} min`}
+                </Button>
+              ))}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Intensity:</span>
+              {(["any", "gentle", "moderate"] as IntensityFilter[]).map((i) => (
+                <Button
+                  key={i}
+                  variant={intensityFilter === i ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIntensityFilter(i)}
+                  data-testid={`button-intensity-${i}`}
+                >
+                  {i === "any" ? "Any" : i.charAt(0).toUpperCase() + i.slice(1)}
                 </Button>
               ))}
             </div>
