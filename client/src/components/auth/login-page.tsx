@@ -103,7 +103,7 @@ export function LoginPage() {
     },
     onError: () => {
       toast({
-        title: "That didn't go through just yet.",
+        title: "That didn't go through.",
         description: "You can try again, or come back later.",
         variant: "destructive",
       });

@@ -92,7 +92,7 @@ export default function ScheduleReviewPage() {
       setLocation("/plans");
     } catch (error) {
       toast({
-        title: "That didn't save just yet.",
+        title: "That didn't save.",
         description: "You can try again, or come back later.",
         variant: "destructive",
       });

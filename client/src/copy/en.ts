@@ -7,14 +7,14 @@ export const COPY = {
 
   onboarding: {
     screen1Title: "Pause for a second.",
-    screen1Body: "You don't need to fix anything right now. This space is about noticing — then choosing.",
+    screen1Body: "You don't need to change anything right now. This space is about noticing — then choosing.",
     ctaStart: "Let's flip the switch",
 
     energyPrompt: "What's the energy right now?",
     energyOptions: ["Calm but alert", "Heavy and loud", "Scattered", "Pushing through", "I don't know yet"],
 
     backgroundPrompt: "What's running in the background?",
-    backgroundOptions: ["Stress / pressure", "Overthinking", "Low motivation", "Emotional weight", "Just observing"],
+    backgroundOptions: ["Stress / pressure", "Overthinking", "Low motivation", "Emotional weight", "Observing"],
 
     boundaryTitle: "You're in control.",
     boundaryBody: "I'm not here to tell you what to feel. I help you slow things down, look at what's happening, and choose how you want to respond.",
@@ -28,7 +28,7 @@ export const COPY = {
   states: {
     loading: "Hold on — pulling it together.",
     empty: "Nothing here yet. That's okay.",
-    error: "That didn't save just yet.",
+    error: "That didn't save.",
     errorSubtext: "You can try again, or come back later.",
     success: "Saved.",
     offline: "Saved on this device.",
