@@ -230,14 +230,111 @@
 
 ---
 
+## Button Labels (By Screen)
+
+**Home / AI Chat (Primary Entry)**:
+- Make a Plan
+- Suggested Schedule
+- Talk It Out
+- Challenges
+- Import a Document
+- Continue Where I Left Off
+
+**Suggested Schedule (Review Screen)**:
+- Primary: Add to Calendar, Save as Plan
+- Secondary: Edit Schedule, Select Items, Back to Chat
+- Consent modal: Confirm & Add, Edit First, Cancel
+
+**Plan (Life System) Screens**:
+- Draft Plan: Activate Plan, Edit Plan, Add to Calendar, Delete Draft
+- Active Plan: Adjust Plan, Pause Plan, Export Plan, Archive Plan
+
+**Block / Event Editing**:
+- Primary: Save Changes
+- Secondary: Duplicate, Remove from Schedule, Cancel
+
+**Calendar Views**:
+- Quick actions: Add Something, Optimize My Day, View Plan
+- Event tap: View Details, Edit Event, Remove Event
+
+**Workouts / Nutrition / Routines**:
+- On cards: Add to Calendar, Add to Plan, View Details
+- AI-assisted: Pick for Me, Suggest an Alternative, Adjust for Today
+
+**Import Flow**:
+- Steps: Analyze Document, Review Items, Select What to Keep
+- Final: Add to Calendar, Save as Plan, Finish Later
+
+**App Tour / Tutorials**:
+- Start Tour, Next, Try It, Skip Tour, Don't Show Again
+
+**Auth / Menu**:
+- Logged out: Sign In / Sign Up
+- Logged in: Log Out
+- Menu utility: App Tour, Feedback, Settings
+
+---
+
+## Button Intent Colors
+
+**Primary Action (Commit)**: #6D83F2 (blue) - For commitment actions
+**Growth / Improvement**: #5FCFA5 (green) - For positive progress
+**Neutral / Exploratory**: #F4D35E (amber) - For exploration
+**Secondary / Exit**: Outline style - For cancel/back actions
+**Destructive**: #E07A73 (soft red) - For delete/remove (use sparingly)
+
+---
+
+## Calendar Event Category Colors
+
+| Category | Light Mode | Dark Mode | Description |
+|----------|------------|-----------|-------------|
+| Workout | #5B7CFA | #5B7CFA | Training/exercise |
+| Nutrition | #4DAA6A | #6FD28A | Meals/cooking |
+| Recovery | #9C7AE8 | #B9A7FF | Meditation/rest |
+| Journal | #3BA89F | #4FD1C5 | Reflection/talk |
+| Focus | #7A8A9A | #94A3B8 | Work/study |
+| Social | #F59E0B | #FBBF24 | Social events |
+| Finance | #8A9A6A | #A3B18A | Budget/finance |
+| Routines | Same as category, dashed outline, transparent fill |
+
+---
+
 ## Accessibility
 
-- Interactive elements: min 44x44px tap targets
-- Focus states: ring-2 ring-purple-500/70 with glow
-- Text contrast: WCAG AA compliant (slate-100/200 on dark backgrounds)
-- Semantic HTML maintained
-- ARIA labels for icon buttons
-- Glass cards maintain sufficient text contrast via backdrop-blur strength
+**Contrast Requirements (WCAG)**:
+- Text on background: minimum 4.5:1
+- Large text (18px+): minimum 3:1
+- Icon-only buttons: must have tooltips or labels
+- Calendar blocks: text must pass contrast against block color
+
+**Color Is Never the Only Signal**:
+- Selected calendar block: color + border glow
+- Active plan: color + "Active" badge
+- Disabled button: reduced opacity + cursor change
+- Routines: dashed outline (not just color)
+
+**Focus & Keyboard Navigation**:
+- Focus ring: 2px solid #93C5FD (--focus-ring)
+- No focus traps in modals
+- Esc closes modals
+- Tab order follows visual layout
+
+**Motion & Sensory Safety**:
+- Avoid fast flashing or pulsing
+- Animations < 300ms
+- Respect prefers-reduced-motion
+- Tutorial highlights should fade, not bounce
+
+**Cognitive Load Rules**:
+- No more than 1 primary button per screen
+- Max 2 bright colors visible at once
+- Calendar views should allow color filtering
+- Weekly Balance view is descriptive, not evaluative
+
+**Safety Copy (Error Messages)**:
+- Never: "Error: failed to load"
+- Instead: "Something didn't load — you can try again or come back later."
 
 ---
 
@@ -249,3 +346,4 @@
 - Glass card entrance: Subtle scale-in with blur increase
 - NO scroll animations or excessive motion
 - Progress fills: Smooth gradient animations
+- Respect prefers-reduced-motion media query
