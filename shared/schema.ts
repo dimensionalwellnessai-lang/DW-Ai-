@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   systemName: text("system_name"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  trialStartAt: timestamp("trial_start_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1014,6 +1015,31 @@ export const insertUserFeedbackSchema = createInsertSchema(userFeedback).omit({
   status: true,
 });
 
+export const weeklyFeedbackResponses = pgTable("weekly_feedback_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  weekNumber: integer("week_number").notNull(),
+  status: text("status").default("draft"),
+  answers: jsonb("answers"),
+  trialStartAt: timestamp("trial_start_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const weeklyFeedbackResponsesRelations = relations(weeklyFeedbackResponses, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyFeedbackResponses.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertWeeklyFeedbackResponseSchema = createInsertSchema(weeklyFeedbackResponses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1090,3 +1116,5 @@ export type Meal = typeof meals.$inferSelect;
 export type InsertMeal = z.infer<typeof insertMealSchema>;
 export type UserFeedback = typeof userFeedback.$inferSelect;
 export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
+export type WeeklyFeedbackResponse = typeof weeklyFeedbackResponses.$inferSelect;
+export type InsertWeeklyFeedbackResponse = z.infer<typeof insertWeeklyFeedbackResponseSchema>;

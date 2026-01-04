@@ -1,0 +1,262 @@
+# WAVE: Weekly Feedback Check-ins (Week 1–4) — IMPLEMENTATION PACK (COPY/PASTE ALL)
+
+You are implementing **in-app weekly feedback forms** for a 30-day trial.
+Must be **calm, consent-based, skippable**, and **no pressure**. 
+Do NOT add new unrelated features.
+
+------------------------------------------------------------
+GOALS
+------------------------------------------------------------
+1) Add four weekly feedback check-ins (Week 1–4) inside the app.
+2) Each week has its own intro + questions (provided below).
+3) Users can:
+   - Start the week’s check-in
+   - Save + submit
+   - Skip / dismiss
+   - Return later
+4) The app should:
+   - Only show the current week (not future weeks early)
+   - Never force completion
+   - Persist progress (draft + submitted status)
+5) Store responses:
+   - If logged in: persist to DB via API
+   - If not logged in: store to localStorage (guest storage)
+   - Either way, user can submit.
+
+------------------------------------------------------------
+UX REQUIREMENTS (NON-NEGOTIABLE)
+------------------------------------------------------------
+- Add a new page: `/weekly-checkin`
+- Add a hamburger menu item:
+  Label: **Weekly Check-In**
+  Location: in the menu near Feedback (or just above it)
+- Each week:
+  - Shows intro text
+  - Shows form
+  - “Save Draft” + “Submit” buttons
+  - “Skip for now” button
+- Buttons:
+  - Submit disabled until required fields are answered (light requirements; don’t over-require)
+  - Show confirmation toast/snackbar on Save and Submit
+- After submit:
+  - Lock the week’s responses (read-only) BUT allow “Edit” for 15 minutes (optional)
+  - Or allow edit anytime if simpler; either is acceptable as long as status is clear.
+- Do not guilt users:
+  - No streaks
+  - No “you missed” language
+  - No red warnings
+- Keep tone calm and neutral.
+
+------------------------------------------------------------
+WEEK UNLOCK LOGIC
+------------------------------------------------------------
+We need a “trial start date.”
+- If user is logged in: store trialStartAt in DB user profile (or in a simple table).
+- If guest: store trialStartAt in localStorage.
+
+Week computation:
+- Week 1 = days 1–7
+- Week 2 = days 8–14
+- Week 3 = days 15–21
+- Week 4 = days 22–30 (or 22–28 if you want exactly 4 weeks; but user asked 30-day trial, so Week 4 covers remainder)
+
+Display:
+- Only show the current active week by default.
+- Allow viewing previous weeks (read-only) if submitted.
+- Do NOT show future weeks early.
+
+------------------------------------------------------------
+DATA MODEL (DRIZZLE / POSTGRES)
+------------------------------------------------------------
+Create a new table `weekly_feedback_responses`:
+
+Fields:
+- id (uuid or serial)
+- userId (nullable, if guest store only local)
+- trialStartAt (timestamp, nullable)
+- weekNumber (int, 1..4)
+- status (enum: 'draft' | 'submitted')
+- answers (jsonb)  // store all answers in one blob for flexibility
+- createdAt, updatedAt
+
+If you already have a users table, link userId FK.
+
+Also create a lightweight `user_trial_state` if needed:
+- userId
+- trialStartAt
+
+But simplest: store trialStartAt in user profile (or a table).
+
+------------------------------------------------------------
+API ENDPOINTS
+------------------------------------------------------------
+Implement these endpoints:
+
+1) GET `/api/weekly-checkin/state`
+Returns:
+{
+  trialStartAt,
+  currentWeekNumber,
+  submittedWeeks: number[]
+}
+
+2) GET `/api/weekly-checkin/:weekNumber`
+Returns saved draft/submission for that week (if exists)
+
+3) POST `/api/weekly-checkin/:weekNumber/save`
+Body:
+{
+  status: "draft" | "submitted",
+  answers: {...}
+}
+Behavior:
+- Upsert by (userId, weekNumber)
+- Update updatedAt
+- Return saved object
+
+4) POST `/api/weekly-checkin/start`
+Creates trialStartAt if missing and returns it
+
+Auth:
+- If user is logged in: use userId
+- If not logged in: API can reject OR accept with a guestId token
+Simplest implementation:
+- Logged-in users: DB persistence
+- Guests: client-only localStorage persistence (no API needed)
+
+------------------------------------------------------------
+CLIENT IMPLEMENTATION
+------------------------------------------------------------
+Add:
+- `client/src/pages/weekly-checkin.tsx`
+- `client/src/components/weekly-checkin-form.tsx` (optional split)
+
+Routing:
+- Add route to `/weekly-checkin`
+- Add menu item “Weekly Check-In” to open the route
+- Ensure back button + hamburger consistency
+
+Local storage keys (guest mode):
+- `trialStartAt`
+- `weeklyCheckin_week_1`, `weeklyCheckin_week_2`, etc
+Store:
+{
+  status: "draft" | "submitted",
+  answers: {...},
+  updatedAt: ISOString
+}
+
+When logged in:
+- Use API (React Query if already used)
+When guest:
+- Use localStorage helpers (reuse guest-storage.ts patterns)
+
+------------------------------------------------------------
+FORM CONTENT (USE EXACTLY)
+------------------------------------------------------------
+
+WEEK 1 — FIRST IMPRESSIONS
+Intro:
+“This is a quiet check-in. There are no right or wrong answers. I’m just trying to understand how the app feels to you.”
+
+Questions:
+Q1 (text): “In your own words, what do you think this app is for?”
+Q2 (single-select): “How did you feel the first time you opened it?”
+Options: Calm, Curious, Overwhelmed, Neutral, Other (explain)
+Q3 (text): “What did you naturally explore first?”
+Q4 (text): “What felt confusing or unclear?”
+Q5 (text): “Was there anything that felt unnecessary or distracting?”
+Q6 (single-select + optional text if No): “After using it once or twice, did you feel like coming back?”
+Options: Yes, Maybe, No (why?)
+
+WEEK 2 — USAGE & FLOW
+Intro:
+“This week is about how it fits into real life — not how often you used it.”
+
+Questions:
+Q1 (single-select): “How did you end up using the app this week?”
+Options: Quick check-ins, Planning, Reflection, Just exploring
+Q2 (single-select + optional text): “Did the app ever feel like it was asking too much of you?”
+Options: Never, A little, Yes (explain)
+Q3 (text): “Did anything in the app feel grounding or supportive?”
+Q4 (text): “What did you skip entirely?”
+Q5 (text): “Did anything feel repetitive, annoying, or forced?”
+Q6 (text): “If you stopped using it at any point, what was the reason?”
+
+WEEK 3 — VALUE & TRUST
+Intro:
+“This week is about trust and usefulness — not productivity.”
+
+Questions:
+Q1 (single-select): “Did the app feel supportive, neutral, or intrusive?”
+Options: Supportive, Neutral, Intrusive
+Q2 (single-select + optional text): “Did you ever feel judged, rushed, or pressured by it?”
+Options: No, Slightly, Yes (explain)
+Q3 (text): “Was there a moment where the app felt genuinely helpful?”
+Q4 (text): “Did anything feel ‘off’ emotionally or energetically?”
+Q5 (single-select + optional text): “Do you trust the app with your information and plans?”
+Options: Yes, Unsure, No (why?)
+Q6 (single-select): “Would you feel comfortable using this on a hard day?”
+Options: Yes, Maybe, No
+
+WEEK 4 — OVERALL REFLECTION
+Intro:
+“This is the last check-in. Thank you for being part of this.”
+
+Questions:
+Q1 (text): “How would you describe this app to a friend?”
+Q2 (text): “What is the most valuable part of it for you?”
+Q3 (text): “What is the least valuable part?”
+Q4 (single-select + optional text): “Does this feel like something you’d return to on your own?”
+Options: Yes, Maybe, No (why?)
+Q5 (text): “What would you remove before adding anything new?”
+Q6 (text): “One sentence: How did this app make you feel overall?”
+Optional final question (single-select):
+“Did this app make life feel heavier, lighter, or the same?”
+Options: Heavier, Lighter, The same
+
+------------------------------------------------------------
+VALIDATION RULES (LIGHT, NOT STRICT)
+------------------------------------------------------------
+To enable Submit:
+- Require Q1 + Q2 at minimum for each week
+- All other questions optional, BUT encourage completion with gentle microcopy:
+  “Answer what you feel like. You can leave anything blank.”
+
+No red error blocks. If needed, show a soft inline note.
+
+------------------------------------------------------------
+VISUAL/TONE NOTES
+------------------------------------------------------------
+- Keep same design system and button hierarchy
+- Use “Save Draft” (secondary) and “Submit” (primary)
+- Use calm microcopy:
+  - “Save Draft”
+  - “Submit”
+  - “Skip for now”
+  - “You can come back anytime.”
+
+------------------------------------------------------------
+ACCEPTANCE CHECKLIST (PASS/FAIL)
+------------------------------------------------------------
+[ ] Menu item “Weekly Check-In” appears and routes correctly
+[ ] Trial start date is created and persisted (user or guest)
+[ ] Only current week shows by default; future weeks hidden
+[ ] Draft saving persists (refresh + Safari)
+[ ] Submission persists (refresh + Safari)
+[ ] Guest mode works fully via localStorage
+[ ] Logged-in mode persists to DB via API
+[ ] No forced completion; skip works
+[ ] Copy matches exactly (intros + questions)
+[ ] No guilt language, streaks, or pressure mechanics
+
+------------------------------------------------------------
+DELIVERY REQUEST
+------------------------------------------------------------
+Deliver in one update:
+- Changed files list
+- Screenshots (only) of Weekly Check-In page Week 1:
+  - initial view
+  - after Save Draft
+  - after Submit
+- Confirm guest + logged-in paths tested
