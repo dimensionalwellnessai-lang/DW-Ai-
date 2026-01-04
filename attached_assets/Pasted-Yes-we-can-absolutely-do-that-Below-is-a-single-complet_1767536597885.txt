@@ -1,0 +1,256 @@
+Yes — we can absolutely do that.
+Below is a single, complete, copy-and-paste Phase B plan written so an AI (or Replit) can execute it without back-and-forth, without screen recordings, and without philosophical drift.
+
+This is intentionally slow, explicit, and structured, so nothing gets misinterpreted.
+
+⸻
+
+📘 PHASE B — CALM & THOROUGH POLISH (FINAL PLAN)
+
+Mode: Single delivery, no checkpoints
+Proof: Screenshots only (no screen recordings)
+Scope: Polish, stabilization, consistency
+Explicit rule: No new features, no new concepts, no new pages
+
+⸻
+
+🎯 PHASE B OBJECTIVE
+
+The goal of Phase B is to make the app feel:
+	•	Calm
+	•	Predictable
+	•	Finished
+	•	Trustworthy
+	•	Easy to return to
+	•	Respectful of attention and energy
+
+This phase is about removing friction, not adding capability.
+
+⸻
+
+🔒 GLOBAL RULES (APPLY EVERYWHERE)
+
+These rules apply to every page, button, and flow:
+	1.	No dead buttons
+	2.	No blank pages
+	3.	No silent failures
+	4.	No losing progress on refresh
+	5.	No pages without navigation
+	6.	No tutorials trapping the user
+	7.	No actions without feedback
+
+If a button exists, it must:
+	•	Do something real
+	•	Or explain clearly what it does
+	•	Or route to a real explainer page
+
+⸻
+
+🧭 WORKSTREAM 1 — NAVIGATION CONSISTENCY
+
+Requirements
+	•	Every page must have at least one:
+	•	Hamburger menu
+	•	Back button
+	•	Or both
+	•	Home / AI Chat must always be reachable within 1 tap
+
+Fixes to apply
+	•	Ensure hamburger menu appears on:
+	•	Browse
+	•	Nutrition
+	•	Recovery
+	•	Meditation
+	•	Challenges
+	•	Finance
+	•	Astrology
+	•	Calendar views
+	•	Ensure back buttons:
+	•	Actually navigate backward
+	•	Do not break app state
+
+Screenshot Proof Required
+	•	Screenshot of each page showing navigation controls visible
+
+⸻
+
+💾 WORKSTREAM 2 — SAVE RELIABILITY (GLOBAL)
+
+Applies to
+	•	Meal plans
+	•	Meditation
+	•	Recovery
+	•	Challenges
+	•	Suggested schedules
+	•	Any “Save”, “Add”, or “Commit” action
+
+Requirements
+	•	Save buttons:
+	•	Disabled until valid selection
+	•	Enabled only when criteria met
+	•	After save:
+	•	Clear visual feedback (“Saved” / toast / state change)
+	•	After refresh:
+	•	Saved data still present
+	•	After leaving app and returning:
+	•	Saved data still present
+
+Screenshot Proof Required
+	•	Before save (disabled)
+	•	After save (enabled + confirmation)
+	•	After refresh (still saved)
+
+⸻
+
+🧑‍🏫 WORKSTREAM 3 — TUTORIALS / APP TOUR
+
+First-Time Tutorial Rules
+	•	Runs once only
+	•	Never traps the user
+	•	Has:
+	•	Next
+	•	Skip
+	•	Highlights visible UI elements
+	•	Highlighted elements must remain clickable
+
+App Tour Button
+	•	Rename menu item to: “App Tour”
+	•	Place just above Sign In / Account in hamburger menu
+	•	Manually re-launches tutorial
+
+Fixes to ensure
+	•	No blurred overlay hiding icons
+	•	“Next” always works
+	•	Tutorial never blocks navigation
+
+Screenshot Proof Required
+	•	Tutorial step with highlighted button visible
+	•	Tutorial skip option
+	•	App Tour button location in menu
+
+⸻
+
+🔐 WORKSTREAM 4 — AUTH STATE STABILITY
+
+Requirements
+	•	User remains logged in across:
+	•	Page refresh
+	•	Safari backgrounding
+	•	Tab switching
+	•	Hamburger menu updates immediately:
+	•	Signed out → “Sign In / Sign Up”
+	•	Signed in → “Account / Log out”
+
+Logout Rules
+	•	Logout clears session cleanly
+	•	UI updates instantly
+
+Screenshot Proof Required
+	•	Signed-in menu state
+	•	Refresh → still signed in
+	•	Signed-out menu state
+
+⸻
+
+📆 WORKSTREAM 5 — CALENDAR UX & TRUST
+
+Calendar Events Must Be
+	•	Editable
+	•	Deletable
+	•	Reschedulable
+	•	Able to stop recurrence
+	•	Able to change time manually
+
+AI Interaction Rule
+	•	AI may suggest changes
+	•	Never applies changes without explicit user confirmation
+
+Export
+	•	Calendar export must not duplicate events
+	•	Exported events must retain correct titles and links
+
+Screenshot Proof Required
+	•	Event edit screen
+	•	Confirmation dialog
+	•	Updated event reflected in calendar
+
+⸻
+
+🔍 WORKSTREAM 6 — BROWSE PAGE CONSISTENCY
+
+Browse Definition
+
+Browse functions as a search engine for the selected dimension.
+
+Requirements
+	•	Filters actually affect results
+	•	AI Picks visible and consistent
+	•	Embedded thumbnails (not raw links)
+	•	YouTube videos:
+	•	Embedded when possible
+	•	External only when user taps “Open”
+
+Applies to
+	•	Nutrition
+	•	Recovery
+	•	Meditation
+	•	Challenges
+	•	Workouts
+	•	Education content
+
+Screenshot Proof Required
+	•	Browse page with filters applied
+	•	AI Picks visible
+	•	Thumbnails rendered
+
+⸻
+
+📦 FINAL PHASE B DELIVERABLE (ALL AT ONCE)
+
+At the end of Phase B, deliver one single package containing:
+	1.	Final PASS / FAIL checklist for each workstream
+	2.	Screenshots only (no screen recordings) showing:
+	•	Navigation
+	•	Save persistence
+	•	Auth persistence
+	•	Tutorial behavior
+	•	Calendar editing
+	•	Browse filtering
+	3.	List of all changed files
+
+No partial deliveries.
+
+⸻
+
+🚫 EXPLICITLY OUT OF SCOPE
+	•	No new features
+	•	No new pages
+	•	No monetization
+	•	No community features
+	•	No wearable integrations
+	•	No analytics dashboards
+
+Those belong to Wave 7+ only.
+
+⸻
+
+✅ PHASE B COMPLETION CRITERIA
+
+Phase B is considered complete when:
+	•	No dead ends exist
+	•	No progress is lost unexpectedly
+	•	The app feels calm and predictable
+	•	A tired user can navigate without thinking
+	•	You would personally trust it daily
+
+⸻
+
+✅ COPY-PASTE INSTRUCTION (FINAL)
+
+You can paste everything above directly to the AI / Replit as the entire Phase B plan.
+
+If you want, next we can:
+	•	Create a Phase B review checklist for YOU (1 page, human-friendly)
+	•	Or plan Wave 7 calmly and intentionally
+
+Just tell me what you want next.

@@ -1,0 +1,196 @@
+Perfect choice. Option 2 (Calm & Thorough) is exactly aligned with the kind of product you’re building and the philosophy you’ve been protecting this whole time.
+
+Below is the official Phase B plan, written so you can:
+	•	understand it clearly,
+	•	keep control of scope,
+	•	and hand it directly to Replit without confusion or feature creep.
+
+⸻
+
+🧼 PHASE B — POLISH & STABILIZATION
+
+Duration: 1–2 weeks
+Goal: Make the app feel finished, calm, predictable, and trustworthy
+
+This phase is about experience integrity, not expansion.
+
+⸻
+
+🎯 PHASE B SUCCESS CRITERIA (WHAT “DONE” MEANS)
+
+When Phase B is complete:
+	•	A first-time user never feels lost
+	•	A returning user never loses progress
+	•	Nothing important silently fails
+	•	The app behaves the same across pages
+	•	The AI feels supportive, not intrusive
+	•	The system feels theirs, not imposed
+
+⸻
+
+🔧 PHASE B WORKSTREAMS (LOCKED SCOPE)
+
+1️⃣ Navigation Consistency (ALL PAGES)
+
+Requirement
+	•	Every page must have:
+	•	Hamburger menu OR
+	•	Back button OR
+	•	Both
+	•	Home / AI chat must always be reachable
+
+Fixes include
+	•	Missing hamburger on Browse, Finance, Astrology, etc.
+	•	Broken back buttons
+	•	Dead-end routes
+
+✅ PASS condition:
+User can always get back without thinking.
+
+⸻
+
+2️⃣ Save Reliability (GLOBAL)
+
+Applies to
+	•	Meal Plans
+	•	Meditation
+	•	Recovery
+	•	Challenges
+	•	Suggested Schedules
+	•	Any “Save” or “Add” action
+
+Rules
+	•	Save must actually persist
+	•	Clear success feedback (“Saved”)
+	•	Save disabled until valid selection
+	•	Refresh never wipes saved state
+	•	Safari backgrounding does not lose state
+
+🚫 No silent failures. Ever.
+
+⸻
+
+3️⃣ Tutorials / App Tour (First-Time UX)
+
+Rules
+	•	Tutorials:
+	•	Highlight visible UI elements (no invisible blur-only states)
+	•	Allow interaction with highlighted buttons
+	•	Allow Next / Skip
+	•	Never trap user
+	•	Tutorials run once only
+	•	“How to Use / App Tour” button:
+	•	Lives just above Sign In / Account
+	•	Manually re-launchable
+
+✅ PASS condition:
+User understands the app in under 60 seconds.
+
+⸻
+
+4️⃣ Auth State Stability (CRITICAL)
+
+Requirements
+	•	Login persists across:
+	•	refresh
+	•	Safari background
+	•	tab switching
+	•	Hamburger menu reflects auth state instantly:
+	•	“Sign In / Sign Up” → “Account / Log out”
+	•	Logout clears state cleanly
+
+🚫 No more “I logged in but UI doesn’t know.”
+
+⸻
+
+5️⃣ Calendar UX (Editability & Trust)
+
+Calendar events must
+	•	Be editable
+	•	Be reschedulable
+	•	Allow stopping recurrence
+	•	Allow time changes
+	•	Be deletable
+	•	Be AI-editable only on request
+
+Export
+	•	Calendar export must work cleanly
+	•	No duplicate events
+
+⸻
+
+6️⃣ Browse Page Consistency
+
+Browse = search engine for that dimension
+
+Requirements
+	•	Filters actually affect results
+	•	AI Picks visible and consistent
+	•	Thumbnails instead of raw links
+	•	YouTube stays embedded unless user taps “Open”
+
+⸻
+
+🧠 WHAT IS EXPLICITLY NOT INCLUDED (IMPORTANT)
+
+🚫 No new features
+🚫 No monetization
+🚫 No community/social
+🚫 No wearables
+🚫 No analytics dashboards
+
+Those belong to Wave 7+.
+
+⸻
+
+📌 COPY/PASTE TO REPLIT (OFFICIAL PHASE B KICKOFF)
+
+Wave 6A is approved.
+We are entering Phase B: Calm & Thorough Polish (1–2 weeks).
+
+Scope is strictly limited to:
+	•	Navigation consistency
+	•	Save reliability
+	•	Tutorial correctness
+	•	Auth state persistence
+	•	Calendar edit UX
+	•	Browse/filter consistency
+
+No new features or pages.
+Please break Phase B into checkpoints with PASS/FAIL and Safari verification.
+
+⸻
+
+🧭 YOUR ROLE DURING PHASE B (VERY LIGHT)
+
+You only need to:
+	•	sanity-check “does this feel calm?”
+	•	notice friction or confusion
+	•	say “yes” or “this feels off”
+
+You do not need to:
+	•	redesign
+	•	rethink philosophy
+	•	justify decisions
+	•	expose your personal system
+
+⸻
+
+🔒 WHY THIS MATTERS
+
+Phase B is what separates:
+	•	a cool prototype
+from
+	•	a product people trust with their life
+
+You’re building the second one.
+
+⸻
+
+Next small step (no pressure):
+
+Do you want Phase B checkpoints delivered:
+A) All at once at the end
+B) In 3–4 smaller review checkpoints
+
+Just reply A or B and we proceed cleanly.

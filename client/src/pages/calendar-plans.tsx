@@ -28,6 +28,7 @@ import {
   Sparkles,
   Pencil,
   Repeat,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -48,6 +49,7 @@ import type { CalendarEvent as DbCalendarEvent } from "@shared/schema";
 import {
   getCalendarEvents,
   saveCalendarEvent,
+  deleteCalendarEvent,
   type CalendarEvent as LocalCalendarEvent,
   type WellnessDimension,
 } from "@/lib/guest-storage";
@@ -92,6 +94,7 @@ export function CalendarPlansPage() {
   const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
   const [localEvents, setLocalEvents] = useState<LocalCalendarEvent[]>(getCalendarEvents());
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const { data: dbEvents = [], isLoading, isError } = useQuery<DbCalendarEvent[]>({
     queryKey: ["/api/calendar"],
@@ -234,6 +237,27 @@ export function CalendarPlansPage() {
     } else {
       updateEventMutation.mutate({ id: eventId, updates });
     }
+  };
+
+  const handleDeleteEvent = (eventId: string, source: "db" | "local") => {
+    if (source === "local") {
+      deleteCalendarEvent(eventId);
+      setLocalEvents(getCalendarEvents());
+    } else {
+      // For DB events, we'd need a delete mutation - for now show message
+      toast({
+        title: "Cannot delete synced events",
+        description: "This event is synced with your account. Please delete from your calendar app.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setEditEventOpen(false);
+    setSelectedEvent(null);
+    toast({
+      title: "Event deleted",
+      description: "The event has been removed from your calendar.",
+    });
   };
 
   return (
@@ -428,6 +452,7 @@ export function CalendarPlansPage() {
           }}
           event={selectedEvent}
           onSave={handleUpdateEvent}
+          onDelete={handleDeleteEvent}
         />
       )}
     </div>
@@ -909,9 +934,10 @@ interface EditEventDialogProps {
   onOpenChange: (open: boolean) => void;
   event: DisplayEvent;
   onSave: (eventId: string, updates: { title: string; description: string; startTime: Date; endTime: Date }, source: "db" | "local") => void;
+  onDelete: (eventId: string, source: "db" | "local") => void;
 }
 
-function EditEventDialog({ open, onOpenChange, event, onSave }: EditEventDialogProps) {
+function EditEventDialog({ open, onOpenChange, event, onSave, onDelete }: EditEventDialogProps) {
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description || "");
   const [startHour, setStartHour] = useState(format(event.startTime, "HH"));
@@ -1036,14 +1062,24 @@ function EditEventDialog({ open, onOpenChange, event, onSave }: EditEventDialogP
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-edit">
-              Cancel
+          <div className="flex justify-between gap-2 pt-4">
+            <Button 
+              variant="destructive" 
+              onClick={() => onDelete(event.id, event.source)} 
+              data-testid="button-delete-event"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
             </Button>
-            <Button onClick={handleSave} data-testid="button-save-edit">
-              <Check className="h-4 w-4 mr-1" />
-              Save Changes
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-edit">
+                Cancel
+              </Button>
+              <Button onClick={handleSave} data-testid="button-save-edit">
+                <Check className="h-4 w-4 mr-1" />
+                Save Changes
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

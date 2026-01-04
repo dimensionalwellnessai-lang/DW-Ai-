@@ -76,7 +76,7 @@ import {
 } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@shared/schema";
 
@@ -361,6 +361,14 @@ export function AIWorkspace() {
   const greeting = "Hey. I'm here.";
   const subGreeting = "What would help most right now?";
   const hasConversations = Object.values(conversationsByCategory).flat().length > 0;
+  
+  // Auth state for menu
+  const { data: authData } = useQuery<{ user: any } | null>({ 
+    queryKey: ["/api/auth/me"],
+    retry: false
+  });
+  const user = authData?.user;
+  
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
 
@@ -522,11 +530,34 @@ export function AIWorkspace() {
             <HelpCircle className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm">App Tour</span>
           </button>
-          <Link href="/login">
-            <Button className="w-full" size="sm" data-testid="button-signup">
-              Sign in / Sign up
-            </Button>
-          </Link>
+          {user ? (
+            <div className="space-y-2">
+              <div className="px-2 py-1 text-xs text-muted-foreground truncate border-t pt-3">
+                {user.email}
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                size="sm" 
+                onClick={async () => {
+                  await apiRequest("POST", "/api/auth/logout");
+                  queryClient.setQueryData(["/api/auth/me"], null);
+                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  setMenuOpen(false);
+                  setLocation("/login");
+                }}
+                data-testid="button-signout"
+              >
+                Sign out
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button className="w-full" size="sm" data-testid="button-signup">
+                Sign in / Sign up
+              </Button>
+            </Link>
+          )}
         </div>
       </SwipeableDrawer>
 
