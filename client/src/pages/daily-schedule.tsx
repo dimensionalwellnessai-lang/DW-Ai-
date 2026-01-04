@@ -19,7 +19,7 @@ import {
   ChevronRight,
   Sparkles
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { type ScheduleEvent, type SystemType } from "@/lib/guest-storage";
 
@@ -125,10 +125,22 @@ export default function DailySchedulePage() {
             <CardContent className="p-6 text-center space-y-4">
               <Calendar className="w-12 h-12 mx-auto text-muted-foreground" />
               <div>
-                <h3 className="font-semibold mb-1">No Events Scheduled</h3>
+                <h3 className="font-semibold mb-1">Nothing scheduled yet</h3>
                 <p className="text-sm text-muted-foreground">
-                  Add events or use the suggested schedule below
+                  Want help planning your day?
                 </p>
+              </div>
+              <div className="flex justify-center gap-2 flex-wrap">
+                <Button onClick={() => setAddEventOpen(true)} data-testid="button-add-event-empty">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Event
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/">
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Ask AI
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>

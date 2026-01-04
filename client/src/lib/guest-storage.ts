@@ -1,5 +1,7 @@
 const GUEST_DATA_KEY = "fts_guest_data";
 const GUEST_SESSION_KEY = "fts_guest_session";
+const CHAT_DRAFT_KEY = "fts_chat_draft";
+const BODY_SCAN_DRAFT_KEY = "fts_body_scan_draft";
 
 export interface ChatMessage {
   role: "assistant" | "user";
@@ -1400,4 +1402,44 @@ export function deleteUserResource(resourceId: string): void {
   
   data.userResources = data.userResources.filter(r => r.id !== resourceId);
   saveGuestData(data);
+}
+
+// Draft auto-save functions
+export function saveChatDraft(draft: string): void {
+  if (typeof window === "undefined") return;
+  if (draft.trim()) {
+    localStorage.setItem(CHAT_DRAFT_KEY, draft);
+  } else {
+    localStorage.removeItem(CHAT_DRAFT_KEY);
+  }
+}
+
+export function getChatDraft(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(CHAT_DRAFT_KEY) || "";
+}
+
+export function clearChatDraft(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(CHAT_DRAFT_KEY);
+}
+
+export function saveBodyScanDraft(profile: Partial<BodyProfile>): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(BODY_SCAN_DRAFT_KEY, JSON.stringify({ ...profile, savedAt: Date.now() }));
+}
+
+export function getBodyScanDraft(): (Partial<BodyProfile> & { savedAt?: number }) | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const data = localStorage.getItem(BODY_SCAN_DRAFT_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearBodyScanDraft(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(BODY_SCAN_DRAFT_KEY);
 }

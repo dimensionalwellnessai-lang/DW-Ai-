@@ -30,6 +30,9 @@ import {
   getWorkoutPreferences,
   getImportedDocuments,
   saveChatFeedback,
+  saveChatDraft,
+  getChatDraft,
+  clearChatDraft,
   type GuestConversation,
   type ChatMessage,
   type SoftOnboardingMood,
@@ -121,7 +124,7 @@ export function AIWorkspace() {
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => getChatDraft() || "");
   const [conversationVersion, setConversationVersion] = useState(0);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
@@ -163,6 +166,14 @@ export function AIWorkspace() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, conversationVersion]);
+
+  // Auto-save chat draft as user types (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveChatDraft(input);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [input]);
 
   const buildLifeSystemContext = () => {
     const guestContext = getLifeSystemContext();
@@ -250,6 +261,7 @@ export function AIWorkspace() {
     addMessageToConversation("user", userMessage);
     setConversationVersion(v => v + 1);
     setInput("");
+    clearChatDraft(); // Clear immediately on send
     setIsTyping(true);
     chatMutation.mutate(userMessage);
   };
@@ -265,6 +277,7 @@ export function AIWorkspace() {
   const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
     const messageToSend = pendingCrisisMessage;
     setInput("");
+    clearChatDraft(); // Clear immediately on send
     setPendingCrisisMessage("");
     
     if (sendToAI && messageToSend) {

@@ -11,6 +11,9 @@ import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X
 import { 
   getBodyProfile, 
   saveBodyProfile,
+  saveBodyScanDraft,
+  getBodyScanDraft,
+  clearBodyScanDraft,
   type BodyProfile,
   type BodyGoal,
   type BodyPhoto
@@ -78,12 +81,34 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   useEffect(() => {
     if (open) {
       const existing = getBodyProfile();
-      if (existing) {
+      const draft = getBodyScanDraft();
+      // Prefer draft if it's more recent than saved profile
+      if (draft && draft.savedAt && (!existing?.updatedAt || draft.savedAt > existing.updatedAt)) {
+        setProfile({
+          currentState: draft.currentState || "",
+          bodyGoal: draft.bodyGoal || null,
+          focusAreas: draft.focusAreas || [],
+          measurements: draft.measurements || {},
+          energyLevel: draft.energyLevel || "",
+          notes: draft.notes || "",
+          photos: draft.photos || [],
+          updatedAt: draft.savedAt || Date.now(),
+        });
+      } else if (existing) {
         setProfile(existing);
       }
       setStep(0);
     }
   }, [open]);
+
+  // Auto-save body scan progress (debounced)
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      saveBodyScanDraft(profile);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [profile, open]);
 
   useEffect(() => {
     return () => {
@@ -96,12 +121,14 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   const handleComplete = () => {
     stopCamera();
     saveBodyProfile(profile);
+    clearBodyScanDraft();
     onComplete();
   };
 
   const handleSkipToEnd = () => {
     stopCamera();
     saveBodyProfile(profile);
+    clearBodyScanDraft();
     onClose();
   };
   

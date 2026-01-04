@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,8 @@ import {
   Plus,
   Link2,
   FileText,
-  Trash2
+  Trash2,
+  History
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
@@ -187,6 +189,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
 ];
 
 export default function WorkoutPage() {
+  const [, setLocation] = useLocation();
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
   const [bodyProfile, setBodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [savedWorkouts, setSavedWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
@@ -980,22 +983,44 @@ export default function WorkoutPage() {
         <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Add to today's schedule?</DialogTitle>
+              <DialogTitle>Add to schedule</DialogTitle>
               <DialogDescription>
                 {pendingWorkout?.title} - {pendingWorkout?.duration} minutes
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-4">
               <p className="text-sm text-muted-foreground">
-                This will add the workout to your calendar for today. You can always adjust the time later.
+                Choose where to add this workout:
               </p>
               <div className="flex flex-col gap-2">
-                <Button onClick={confirmAddToCalendar} data-testid="button-confirm-add">
+                <Button onClick={confirmAddToCalendar} data-testid="button-add-today">
                   <Calendar className="w-4 h-4 mr-2" />
                   Add to Today
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmAddOpen(false);
+                    setLocation("/calendar");
+                  }}
+                  data-testid="button-add-week"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add to Week
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmAddOpen(false);
+                    setLocation("/routines");
+                  }}
+                  data-testid="button-add-routine"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  Add to Routine
+                </Button>
+                <Button 
+                  variant="ghost" 
                   onClick={() => {
                     setConfirmAddOpen(false);
                     setPendingWorkout(null);

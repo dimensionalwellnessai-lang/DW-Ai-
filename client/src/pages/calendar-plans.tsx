@@ -316,9 +316,20 @@ export function CalendarPlansPage() {
             </CardHeader>
             <CardContent>
               {selectedDateEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  No events scheduled
-                </p>
+                <div className="py-6 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Nothing scheduled yet
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setAddEventOpen(true)}
+                    data-testid="button-add-event-empty"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add something
+                  </Button>
+                </div>
               ) : (
                 <ScrollArea className="h-64">
                   <div className="space-y-3">

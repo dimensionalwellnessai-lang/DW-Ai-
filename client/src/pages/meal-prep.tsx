@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,8 @@ import {
   Link2,
   FileText,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  History
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -550,6 +552,7 @@ const VIDEO_CATEGORIES = [
 ];
 
 export default function MealPrepPage() {
+  const [, setLocation] = useLocation();
   useTutorialStart("meal-prep", 1000);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
@@ -1445,22 +1448,44 @@ export default function MealPrepPage() {
         <Dialog open={confirmMealOpen} onOpenChange={setConfirmMealOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Add to today's schedule?</DialogTitle>
+              <DialogTitle>Add to schedule</DialogTitle>
               <DialogDescription>
                 {pendingMeal?.name} - {pendingMeal?.prepTime} min prep
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-4">
               <p className="text-sm text-muted-foreground">
-                This will add the meal to your calendar for today. You can always adjust the time later.
+                Choose where to add this meal:
               </p>
               <div className="flex flex-col gap-2">
-                <Button onClick={confirmAddMealToCalendar} data-testid="button-confirm-meal-add">
+                <Button onClick={confirmAddMealToCalendar} data-testid="button-add-meal-today">
                   <Calendar className="w-4 h-4 mr-2" />
                   Add to Today
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmMealOpen(false);
+                    setLocation("/calendar");
+                  }}
+                  data-testid="button-add-meal-week"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add to Week
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmMealOpen(false);
+                    setLocation("/routines");
+                  }}
+                  data-testid="button-add-meal-routine"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  Add to Routine
+                </Button>
+                <Button 
+                  variant="ghost" 
                   onClick={() => {
                     setConfirmMealOpen(false);
                     setPendingMeal(null);
