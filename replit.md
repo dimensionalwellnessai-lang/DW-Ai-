@@ -2,7 +2,38 @@
 
 ## Overview
 
-Flip the Switch (FTS) is a Dimensional Wellness AI - a nervous-system-aware life companion that helps users feel calmer, seen, and capable. The app uses AI-powered insights to provide energy-based guidance (not productivity-based), adapting to the user's current state rather than pushing for output.
+Flip the Switch (FTS) is a Dimensional Wellness AI - a consent-based personal assistant that helps users build their own life system through adaptive guidance — not prescriptive routines. The app uses AI-powered insights to provide energy-based guidance (not productivity-based), adapting to the user's current state rather than pushing for output.
+
+## Core Principles (Non-Negotiable)
+
+- No forced routines or "ideal life" templates
+- All actions (save, schedule, commit) require explicit user consent
+- The assistant supports user authorship, not dependency
+- The product is calm, optional, and energy-aware
+- The creator's personal life system is not encoded or replicated
+
+## Development Guardrails
+
+- Do not add new features unless explicitly requested
+- Do not introduce monetization that targets emotional relief or identity
+- Do not add social pressure, streaks, or guilt-based mechanics
+- Avoid medical or diagnostic claims
+- Maintain App Store compliance at all times
+
+**If there is ambiguity, default to**: user control, optionality, clarity, and calm.
+
+## Scope Status
+
+- Wave 6 (Guided Experiences, Body & Energy Intelligence) is complete
+- Phase B (Polish & Stabilization) is complete
+- We are now operating under Wave 7 (Growth, Trust & Sustainability)
+
+## Authoritative Documentation
+
+- `/docs/WAVE_7_ROADMAP.md` - What may be built
+- `/docs/ETHICAL_MONETIZATION.md` - Monetization boundaries
+- `/docs/USER_TRUST_AND_SAFETY.md` - Trust and consent enforcement
+- `/docs/APP_STORE_REVIEWER_NOTES.md` - Compliance requirements
 
 ## Core Philosophy
 
