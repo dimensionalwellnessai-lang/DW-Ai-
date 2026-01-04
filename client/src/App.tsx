@@ -8,6 +8,7 @@ import { SplashScreen, useSplashScreen } from "@/components/splash-screen";
 import { isRouteEnabled } from "@/lib/routes";
 import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/tutorial-overlay";
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -75,6 +76,7 @@ function App() {
               <>
                 <Toaster />
                 <TutorialOverlay />
+                <PWAInstallPrompt />
                 <Router />
               </>
             )}
