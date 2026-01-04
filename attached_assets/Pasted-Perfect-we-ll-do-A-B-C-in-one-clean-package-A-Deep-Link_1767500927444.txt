@@ -1,0 +1,134 @@
+Perfect — we’ll do A + B + C in one clean package.
+
+⸻
+
+A) Deep-Link Testing Plan (copy/paste checklist)
+
+Goal
+
+Tapping an item in Today’s Schedule / Calendar opens the correct page + correct item (highlighted), or opens event details if it’s unlinked.
+
+Test 1 — Workout deep link
+	1.	Go to /workout
+	2.	Add a workout to Today
+	3.	Go to /daily-schedule (Today schedule)
+	4.	Tap the workout block
+
+✅ Pass if:
+	•	It navigates to /workout?selected=
+	•	The exact workout is highlighted / scrolled into view
+
+❌ Fail if:
+	•	It stays on calendar
+	•	It opens wrong page
+	•	It opens the workout page but doesn’t select/highlight
+
+⸻
+
+Test 2 — Meal deep link
+	1.	Go to /meal-prep
+	2.	Add a meal to Today
+	3.	Go to /daily-schedule
+	4.	Tap the meal block
+
+✅ Pass if it navigates to /meal-prep?selected= and highlights it.
+
+⸻
+
+Test 3 — Routine deep link
+	1.	Go to /routines
+	2.	Add a routine to Today
+	3.	Go to /daily-schedule
+	4.	Tap the routine block
+
+✅ Pass if it navigates to /routines?selected= and highlights it.
+
+⸻
+
+Test 4 — Manual event behavior (should NOT deep link)
+	1.	Go to /daily-schedule or /calendar
+	2.	Add a manual event like “Call mom”
+	3.	Tap it
+
+✅ Pass if:
+	•	It opens an Event Details modal (edit, delete, recurrence)
+
+⸻
+
+Test 5 — Missing link fallback
+	1.	Add a workout to Today
+	2.	Delete that workout (or remove it from system)
+	3.	Tap the calendar event again
+
+✅ Pass if:
+	•	You see a friendly message like “That item was moved or deleted”
+	•	It falls back to Event Details instead of crashing
+
+⸻
+
+Send me the results like this:
+	•	Workout link: Pass/Fail
+	•	Meal link: Pass/Fail
+	•	Routine link: Pass/Fail
+	•	Manual event modal: Pass/Fail
+	•	Missing link fallback: Pass/Fail
+
+⸻
+
+B) Wave 4.1 Kickoff Plan (Upload + Preview ONLY)
+
+Wave 4.1 Deliverable (no saving yet)
+
+Users can upload one PDF meal plan → AI parses → Preview screen shows:
+
+Tabs:
+	•	Summary
+	•	Meals
+	•	Meal Prep Routine
+	•	Calendar Suggestions
+
+Preview lets user:
+	•	edit titles
+	•	include/exclude items
+	•	change destination mapping (Meals/Routine/Calendar)
+
+🚫 No commit/save yet (that’s Wave 4.2)
+
+Wave 4.1 Acceptance Tests
+
+✅ Upload PDF works
+✅ Preview shows meals + prep steps + calendar suggestions
+✅ User edits are reflected in preview state
+✅ If user leaves and returns, draft preview persists (nice-to-have but recommended)
+
+⸻
+
+C) Message to Replit (combines A + B cleanly)
+
+Copy/paste this:
+
+Next steps (please do in this order):
+
+1) Deep Linking from Calendar (Wave 3.2.1 mini-sprint)
+
+Implement calendar item click-through so tapping an event navigates to the linked source item:
+	•	Workouts → /workout?selected=<id>
+	•	Meals → /meal-prep?selected=<id>
+	•	Routines → /routines?selected=<id>
+Manual/unlinked events should open an Event Details modal.
+Destination pages must auto-scroll + highlight the selected item.
+Include a fallback if the linked item was deleted.
+
+2) Start Wave 4.1 (PDF import preview-only)
+
+Build PDF meal plan upload → AI parse → Preview screen with tabs (Summary / Meals / Routine / Calendar Suggestions).
+Users can edit + include/exclude + remap destinations in preview.
+Do NOT implement saving/commit yet in Wave 4.1.
+
+After both are done, please send a short screen recording showing:
+	•	Calendar deep link working for workout + meal + routine
+	•	PDF upload leading to the preview tabs
+
+⸻
+
+If you want, paste your deep-link test results (Pass/Fail list) and I’ll tell you exactly what to fix before Wave 4.1 starts.

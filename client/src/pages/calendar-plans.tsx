@@ -64,6 +64,7 @@ interface DisplayEvent {
   meetingLink?: string | null;
   linkedType?: string | null;
   linkedId?: string | null;
+  linkedRoute?: string | null;
   recurring?: boolean;
   recurrencePattern?: string | null;
   source: "db" | "local";
@@ -120,8 +121,9 @@ export function CalendarPlansPage() {
       endTime: e.endTime ? new Date(e.endTime) : null,
       isAllDay: false,
       dimensionTags: e.dimensionTags || [],
-      linkedType: e.eventType,
-      linkedId: e.routineId || e.projectId,
+      linkedType: e.linkedType || e.eventType,
+      linkedId: e.linkedId || e.routineId || e.projectId,
+      linkedRoute: e.linkedRoute,
       recurring: e.isRecurring || false,
       recurrencePattern: e.recurrenceRule || null,
       source: "db" as const,
@@ -167,10 +169,28 @@ export function CalendarPlansPage() {
   };
 
   const getEventDeepLink = (event: DisplayEvent): string | null => {
-    if (event.linkedType === "workout") return "/workout";
-    if (event.linkedType === "meal") return "/meal-prep";
-    if (event.linkedType === "routine") return "/routines";
-    if (event.linkedType === "meditation") return "/spiritual";
+    if (event.linkedRoute) {
+      return event.linkedRoute;
+    }
+    
+    if (event.linkedType && event.linkedType !== "none") {
+      const id = event.linkedId;
+      if (event.linkedType === "plan" && id) {
+        return `/plans/${id}`;
+      }
+      const typeRoutes: Record<string, string> = {
+        workout: "/workout",
+        meal: "/meal-prep",
+        routine: "/routines",
+        meditation: "/spiritual",
+        chat: "/",
+      };
+      const baseRoute = typeRoutes[event.linkedType];
+      if (baseRoute) {
+        return id ? `${baseRoute}?selected=${id}` : baseRoute;
+      }
+    }
+    
     const dimension = event.dimensionTags?.[0];
     if (dimension === "physical") return "/workout";
     if (dimension === "spiritual") return "/spiritual";

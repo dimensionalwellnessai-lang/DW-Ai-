@@ -2048,6 +2048,10 @@ export async function registerRoutes(
           recurrenceRule: suggestion.recurrence?.frequency && suggestion.recurrence.frequency !== "none" 
             ? suggestion.recurrence.frequency 
             : undefined,
+          linkedType: "meal",
+          linkedId: suggestion.mealId || null,
+          linkedRoute: suggestion.mealId ? `/meal-prep?selected=${suggestion.mealId}` : "/meal-prep",
+          linkedMeta: { source: "import", documentId: req.params.documentId },
         });
         created.push(event);
       }

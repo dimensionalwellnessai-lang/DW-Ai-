@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, MessageSquareText, Upload, ChefHat, Utensils, Clock } from "lucide-react";
 import { MealPlanImport } from "@/components/meal-plan-import";
+import { useSelectedItem } from "@/hooks/use-selected-item";
 import type { MealPlan, Meal } from "@shared/schema";
 
 export function MealsPage() {
@@ -20,6 +21,8 @@ export function MealsPage() {
     queryKey: ["/api/meal-plans", activePlan?.id, "meals"],
     enabled: !!activePlan?.id,
   });
+
+  const { isHighlighted, getHighlightProps } = useSelectedItem(activeMeals);
 
   const mealsByType = activeMeals?.reduce((acc, meal) => {
     const type = meal.mealType || "other";
@@ -101,24 +104,32 @@ export function MealsPage() {
                         {type}
                       </h3>
                       <div className="grid gap-2">
-                        {typeMeals.map(meal => (
-                          <Card key={meal.id} className="hover-elevate cursor-pointer">
-                            <CardContent className="py-3 flex items-center gap-3">
-                              <Utensils className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{meal.title}</p>
-                                {meal.weekLabel && (
-                                  <p className="text-xs text-muted-foreground">{meal.weekLabel}</p>
+                        {typeMeals.map(meal => {
+                          const highlightProps = getHighlightProps(meal.id);
+                          return (
+                            <Card 
+                              key={meal.id} 
+                              ref={highlightProps.ref as React.Ref<HTMLDivElement>}
+                              className={`hover-elevate cursor-pointer transition-all ${highlightProps.className}`}
+                              data-testid={`card-meal-${meal.id}`}
+                            >
+                              <CardContent className="py-3 flex items-center gap-3">
+                                <Utensils className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{meal.title}</p>
+                                  {meal.weekLabel && (
+                                    <p className="text-xs text-muted-foreground">{meal.weekLabel}</p>
+                                  )}
+                                </div>
+                                {meal.tags && meal.tags.length > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {meal.tags[0]}
+                                  </span>
                                 )}
-                              </div>
-                              {meal.tags && meal.tags.length > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  {meal.tags[0]}
-                                </span>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
                     </div>
                   );

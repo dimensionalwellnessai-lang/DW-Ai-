@@ -1,0 +1,169 @@
+Great — here’s the Deep Link Spec (calendar block → opens the exact related item page), written so Replit can implement it without guessing.
+
+⸻
+
+Deep Linking Spec: Calendar Event → Open Linked Item Page
+
+Goal
+
+When a user taps a calendar item (ex: “7:00 Workout”), the app navigates to the corresponding page and specific item (workout/meal/routine/plan/chat project), not just the calendar.
+
+⸻
+
+1) Data Model Changes (Minimum)
+
+Add these fields to calendarEvents (or equivalent)
+	•	linkedType: enum
+	•	"workout" | "meal" | "routine" | "plan" | "chat" | "custom" | "none"
+	•	linkedId: string (nullable)
+	•	linkedRoute: string (nullable)
+	•	example: "/workout?selected=abc123"
+	•	linkedMeta: JSON (nullable)
+	•	optional: store extra details like weekLabel, mealType, etc.
+
+Rule: If linkedRoute exists, use it. If not, construct from linkedType + linkedId.
+
+⸻
+
+2) Linking Rules (How links get created)
+
+A) When adding from Workouts
+
+When user taps Add to Today/Week/Routine:
+	•	Create event with:
+	•	linkedType = "workout"
+	•	linkedId = workout.id
+	•	linkedRoute = "/workout?selected=" + workout.id
+
+B) When adding from Meal Prep / Nutrition
+	•	linkedType = "meal"
+	•	linkedId = meal.id
+	•	linkedRoute = "/meal-prep?selected=" + meal.id
+
+C) When adding from Routines
+	•	linkedType = "routine"
+	•	linkedId = routine.id
+	•	linkedRoute = "/routines?selected=" + routine.id
+
+D) When adding from Document Import (Wave 4)
+
+If calendar suggestion was created from an imported plan:
+	•	linkedType = "plan"
+	•	linkedId = plan.id
+	•	linkedRoute = "/plans/" + plan.id
+Optional: also include linkedMeta like {"tab":"routine"}
+
+E) Manual Calendar Events
+
+If user manually creates an event:
+	•	default linkedType = "none"
+	•	allow user to optionally attach:
+	•	“Link to: Workout/Meal/Routine/Plan” (Phase 2)
+For now, it can remain unlinked.
+
+⸻
+
+3) UI Behavior: What happens on click
+
+Calendar List / Today Schedule click behavior
+
+When a calendar item is tapped:
+
+If event has linkedRoute
+
+✅ Navigate to linkedRoute
+
+Else if event has linkedType + linkedId
+
+✅ Navigate using default mapping:
+	•	workout → /workout?selected=<id>
+	•	meal → /meal-prep?selected=<id>
+	•	routine → /routines?selected=<id>
+	•	plan → /plans/<id>
+
+Else (no link)
+
+✅ Open Event Details modal with:
+	•	Edit
+	•	Add recurrence
+	•	Delete
+
+⸻
+
+4) Target Page Behavior (critical: landing on the exact item)
+
+Each destination page must support:
+
+Query param
+	•	?selected=<id>
+
+Page behavior
+
+When loaded with selected:
+	•	auto-scroll to the item card
+	•	visually highlight it (glow/border)
+	•	optionally auto-open details panel
+
+If item not found:
+	•	show toast: “That item was moved or deleted.”
+	•	fallback to page default view
+
+⸻
+
+5) Edit/Move Safety (link integrity)
+
+If a linked item is deleted:
+	•	leave the calendar event but set:
+	•	linkedType="none", linkedId=null, linkedRoute=null
+	•	OR show it as “Unlinked” in details
+
+If item is updated:
+	•	link remains stable because it’s ID-based
+
+⸻
+
+6) Acceptance Tests (must pass)
+
+Test 1 — Workout deep link
+	•	Add workout to Today
+	•	Go to Today schedule
+	•	Tap event
+	•	✅ Opens /workout and highlights the correct workout
+
+Test 2 — Meal deep link
+	•	Add a meal reminder to Today
+	•	Tap it in schedule
+	•	✅ Opens meal-prep page and highlights the meal
+
+Test 3 — Routine deep link
+	•	Add routine to calendar
+	•	Tap it
+	•	✅ Opens routines page and highlights routine
+
+Test 4 — Unlinked manual event
+	•	Create manual event
+	•	Tap it
+	•	✅ Opens event details modal (not a random page)
+
+Test 5 — Missing linked target
+	•	Delete the linked workout/meal
+	•	Tap calendar event
+	•	✅ User sees a friendly message + fallback behavior
+
+⸻
+
+7) Optional Upgrade (Phase 2: “Attach Link”)
+
+In the calendar event edit modal add:
+	•	“Attach to existing item” → search workouts/meals/routines/plans
+	•	Sets linkedType/linkedId/linkedRoute
+
+This lets users fix links without rebuilding events.
+
+⸻
+
+Copy/paste instruction for Replit (short)
+
+Implement deep linking from Calendar events. Add fields to calendarEvents: linkedType, linkedId, linkedRoute, linkedMeta. When events are created from workouts/meals/routines/plans, store the link. On calendar item click: if linkedRoute exists, navigate; else if linkedType+linkedId exists, route via mapping; else open event details modal. Destination pages must support ?selected=<id> and auto-scroll + highlight the item. Include fallback if the linked item no longer exists.
+
+If you want, I can also write the exact route-handling snippet (React/Next/Router style) once you tell me what framework your Replit project is using (React Router? Next.js? Remix?).
