@@ -1154,6 +1154,87 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               </div>
             </section>
 
+            {/* Grocery Builder Section - Shows when category selected */}
+            {selectedNutritionCategory === "grocery" && (
+              <section className="space-y-4" data-testid="section-grocery-builder">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-purple-500/10 rounded-lg">
+                    <ShoppingBag className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <h2 className="font-semibold">Grocery Builder</h2>
+                </div>
+                
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Build your shopping list based on your saved meal plans and recipes. 
+                      Notice how having a clear list can reduce decision fatigue at the store.
+                    </p>
+                    
+                    <div className="grid gap-3">
+                      <Card className="hover-elevate cursor-pointer" onClick={() => {
+                        toast({
+                          title: "Coming soon",
+                          description: "Grocery list generation will be available in the next update.",
+                        });
+                      }}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-emerald-500" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">Generate from Saved Plans</h4>
+                            <p className="text-xs text-muted-foreground">Create a list from your saved meal plans</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="hover-elevate cursor-pointer" onClick={() => {
+                        toast({
+                          title: "Coming soon",
+                          description: "Smart suggestions will be available in the next update.",
+                        });
+                      }}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <Sparkles className="h-5 w-5 text-blue-500" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">Smart Suggestions</h4>
+                            <p className="text-xs text-muted-foreground">AI-powered staples based on your preferences</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="hover-elevate cursor-pointer" onClick={() => {
+                        toast({
+                          title: "Coming soon",
+                          description: "Quick add feature will be available in the next update.",
+                        });
+                      }}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                            <Plus className="h-5 w-5 text-amber-500" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">Quick Add Items</h4>
+                            <p className="text-xs text-muted-foreground">Manually add items to your list</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground text-center pt-2">
+                      This feature is in development. Tap any option to be notified when ready.
+                    </p>
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+
             {/* Wave 6.3: AI Picks Section */}
             <section className="space-y-4" data-testid="section-ai-picks-nutrition">
               <div className="flex items-center gap-2">
