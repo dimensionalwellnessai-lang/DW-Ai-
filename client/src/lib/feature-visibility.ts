@@ -9,12 +9,13 @@ export interface FeatureConfig {
   description?: string;
   indent?: boolean;
   enabled?: boolean;
+  group?: string;
 }
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Your wellness hub", enabled: true },
-  { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
-  { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", indent: true, enabled: true },
+  { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true, group: "calendar" },
+  { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   { id: "meal-prep", name: "Meal Plans", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
   { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
   { id: "journal", name: "Journal", path: "/journal", visibility: "primary", description: "Daily reflections", enabled: true },

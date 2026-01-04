@@ -109,21 +109,72 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         title="Menu"
       >
         <nav className="space-y-1 flex-1 overflow-y-auto min-h-0">
-          {menuFeatures.map((feature) => {
-            const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
+          {(() => {
+            const regularFeatures = menuFeatures.filter(f => f.group !== "calendar");
+            const calendarFeatures = menuFeatures.filter(f => f.group === "calendar");
+            const lifeDashboard = regularFeatures.find(f => f.id === "life-dashboard");
+            const otherFeatures = regularFeatures.filter(f => f.id !== "life-dashboard");
+            
             return (
-              <Link key={feature.path} href={feature.path || "/"}>
-                <button
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left ${feature.indent ? "ml-6" : ""}`}
-                  onClick={() => setMenuOpen(false)}
-                  data-testid={`menu-item-${feature.id}`}
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{feature.name}</span>
-                </button>
-              </Link>
+              <>
+                {lifeDashboard && (
+                  <Link key={lifeDashboard.path} href={lifeDashboard.path || "/"}>
+                    <button
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid={`menu-item-${lifeDashboard.id}`}
+                    >
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{lifeDashboard.name}</span>
+                    </button>
+                  </Link>
+                )}
+                
+                {calendarFeatures.length > 0 && (
+                  <details className="group" open>
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm flex-1">Calendar</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-1 space-y-1 ml-4">
+                      {calendarFeatures.map((feature) => {
+                        const Icon = MENU_ICON_MAP[feature.id] || Calendar;
+                        return (
+                          <Link key={feature.path} href={feature.path || "/"}>
+                            <button
+                              className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                              onClick={() => setMenuOpen(false)}
+                              data-testid={`menu-item-${feature.id}`}
+                            >
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{feature.name}</span>
+                            </button>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+                
+                {otherFeatures.map((feature) => {
+                  const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
+                  return (
+                    <Link key={feature.path} href={feature.path || "/"}>
+                      <button
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                        onClick={() => setMenuOpen(false)}
+                        data-testid={`menu-item-${feature.id}`}
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{feature.name}</span>
+                      </button>
+                    </Link>
+                  );
+                })}
+              </>
             );
-          })}
+          })()}
           
           <details className="group">
             <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
