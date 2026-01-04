@@ -104,6 +104,9 @@ import {
   type InsertMeal,
   type UserFeedback,
   type InsertUserFeedback,
+  weeklyFeedbackResponses,
+  type WeeklyFeedbackResponse,
+  type InsertWeeklyFeedbackResponse,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -269,6 +272,11 @@ export interface IStorage {
   createMeals(meals: InsertMeal[]): Promise<Meal[]>;
   updateMeal(id: string, data: Partial<Meal>): Promise<Meal | undefined>;
   deleteMeal(id: string): Promise<void>;
+
+  getWeeklyFeedbackResponses(userId: string): Promise<WeeklyFeedbackResponse[]>;
+  getWeeklyFeedbackResponse(userId: string, weekNumber: number): Promise<WeeklyFeedbackResponse | undefined>;
+  saveWeeklyFeedbackResponse(data: InsertWeeklyFeedbackResponse): Promise<WeeklyFeedbackResponse>;
+  updateWeeklyFeedbackResponse(id: string, data: Partial<WeeklyFeedbackResponse>): Promise<WeeklyFeedbackResponse | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -974,6 +982,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMeal(id: string): Promise<void> {
     await db.delete(meals).where(eq(meals.id, id));
+  }
+
+  async getWeeklyFeedbackResponses(userId: string): Promise<WeeklyFeedbackResponse[]> {
+    return await db.select().from(weeklyFeedbackResponses)
+      .where(eq(weeklyFeedbackResponses.userId, userId))
+      .orderBy(weeklyFeedbackResponses.weekNumber);
+  }
+
+  async getWeeklyFeedbackResponse(userId: string, weekNumber: number): Promise<WeeklyFeedbackResponse | undefined> {
+    const [response] = await db.select().from(weeklyFeedbackResponses)
+      .where(and(
+        eq(weeklyFeedbackResponses.userId, userId),
+        eq(weeklyFeedbackResponses.weekNumber, weekNumber)
+      ));
+    return response || undefined;
+  }
+
+  async saveWeeklyFeedbackResponse(data: InsertWeeklyFeedbackResponse): Promise<WeeklyFeedbackResponse> {
+    const existing = data.userId 
+      ? await this.getWeeklyFeedbackResponse(data.userId, data.weekNumber)
+      : undefined;
+    
+    if (existing) {
+      const [updated] = await db.update(weeklyFeedbackResponses)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(weeklyFeedbackResponses.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [created] = await db.insert(weeklyFeedbackResponses).values(data).returning();
+    return created;
+  }
+
+  async updateWeeklyFeedbackResponse(id: string, data: Partial<WeeklyFeedbackResponse>): Promise<WeeklyFeedbackResponse | undefined> {
+    const [updated] = await db.update(weeklyFeedbackResponses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(weeklyFeedbackResponses.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 
