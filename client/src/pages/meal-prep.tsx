@@ -1706,6 +1706,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             </div>
           </DialogContent>
         </Dialog>
+        <PlanningScopeDialog {...PlanningScopeDialogProps} />
         </div>
       </ScrollArea>
     </div>

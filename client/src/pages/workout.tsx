@@ -264,7 +264,7 @@ export default function WorkoutPage() {
     mutationFn: async (query: string) => {
       const requestId = ++workoutRequestId.current;
       const energyDesc = energyLevel || "not specified";
-      const bodyInfo = bodyProfile ? `focusing on ${bodyProfile.fitnessGoal || "general fitness"}` : "";
+      const bodyInfo = bodyProfile ? `focusing on ${bodyProfile.bodyGoal || "general fitness"}` : "";
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: `The user is looking for a workout: "${query}". Their energy level is: ${energyDesc}. ${bodyInfo}
 
