@@ -61,6 +61,13 @@ import {
 } from "@/lib/guest-storage";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
+import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-scope-dialog";
+import { 
+  rotateContent, 
+  getRotationIndex,
+  getSoftOnboardingMood,
+  type PlanningHorizon
+} from "@/lib/guest-storage";
 
 type EffortLevel = "any" | "minimal" | "moderate" | "involved";
 type MealType = "any" | "breakfast" | "lunch" | "dinner";
@@ -594,6 +601,25 @@ export default function MealPrepPage() {
   const [suggestEnergy, setSuggestEnergy] = useState<"low" | "medium" | "high" | null>(null);
   const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
   const [confirmMealOpen, setConfirmMealOpen] = useState(false);
+  
+  const { 
+    horizon: planningHorizon, 
+    showScopeDialog, 
+    PlanningScopeDialogProps 
+  } = usePlanningScope("meals");
+
+  const [rotationIndex, setRotationIndex] = useState(() => getRotationIndex("meals"));
+
+  const rotateMeals = () => {
+    const mood = getSoftOnboardingMood();
+    const rotation = rotateContent("meals", "", mood || undefined);
+    setRotationIndex(rotation.currentIndex);
+    toast({
+      title: "Content Shifted",
+      description: "Notice the new options tailored to your energy.",
+    });
+  };
+
   const [pendingMeal, setPendingMeal] = useState<{ name: string; mealType: string; prepTime: number } | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
@@ -775,9 +801,30 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
       <PageHeader title="Meal Plans" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
-        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
+          {/* Planning Horizon & Energy Shift */}
+          <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-medium">Planning Horizon: {planningHorizon === "today" ? "Just Today" : planningHorizon === "week" ? "This Week" : "This Month"}</h2>
+                <p className="text-xs text-muted-foreground">Adjusting your focus helps reduce cognitive load.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={rotateMeals} data-testid="button-rotate-meals">
+                <Sparkles className="h-3 w-3 mr-1.5" />
+                Shift Energy
+              </Button>
+              <Button size="sm" className="h-8 text-xs" onClick={showScopeDialog} data-testid="button-change-horizon">
+                Change Horizon
+              </Button>
+            </div>
+          </section>
 
-        {isBudgetConscious && (
+          {isBudgetConscious && (
           <Card className="bg-emerald-500/5 border-emerald-500/20">
             <CardContent className="p-4 flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />

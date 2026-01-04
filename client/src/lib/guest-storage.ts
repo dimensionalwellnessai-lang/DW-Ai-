@@ -306,6 +306,23 @@ export interface SoftOnboarding {
   completedAt: number | null;
 }
 
+export type PlanningHorizon = "today" | "week" | "month";
+export type PlanningDomain = "meals" | "workouts" | "general";
+
+export interface PlanningScope {
+  domain: PlanningDomain;
+  horizon: PlanningHorizon;
+  setAt: number;
+}
+
+export interface ContentRotation {
+  domain: PlanningDomain;
+  lastRotatedAt: number;
+  currentIndex: number;
+  rotationHistory: string[];
+  moodBasedSeed: string | null;
+}
+
 export interface GuestData {
   conversations: GuestConversation[];
   activeConversationId: string | null;
@@ -330,6 +347,8 @@ export interface GuestData {
   chatFeedback?: ChatFeedback[];
   softOnboarding?: SoftOnboarding;
   userResources?: UserResource[];
+  planningScopes?: PlanningScope[];
+  contentRotations?: ContentRotation[];
   preferences: {
     themeMode: "accent-only" | "full-background";
   };
@@ -1442,4 +1461,72 @@ export function getBodyScanDraft(): (Partial<BodyProfile> & { savedAt?: number }
 export function clearBodyScanDraft(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(BODY_SCAN_DRAFT_KEY);
+}
+
+// Planning scope functions
+export function getPlanningScope(domain: PlanningDomain): PlanningScope | null {
+  const data = getGuestData();
+  if (!data?.planningScopes) return null;
+  return data.planningScopes.find(s => s.domain === domain) || null;
+}
+
+export function savePlanningScope(domain: PlanningDomain, horizon: PlanningHorizon): PlanningScope {
+  const data = getGuestData() || initGuestData();
+  if (!data.planningScopes) data.planningScopes = [];
+  
+  const existing = data.planningScopes.findIndex(s => s.domain === domain);
+  const scope: PlanningScope = { domain, horizon, setAt: Date.now() };
+  
+  if (existing >= 0) {
+    data.planningScopes[existing] = scope;
+  } else {
+    data.planningScopes.push(scope);
+  }
+  saveGuestData(data);
+  return scope;
+}
+
+// Content rotation functions
+export function getContentRotation(domain: PlanningDomain): ContentRotation | null {
+  const data = getGuestData();
+  if (!data?.contentRotations) return null;
+  return data.contentRotations.find(r => r.domain === domain) || null;
+}
+
+export function rotateContent(domain: PlanningDomain, currentItemId: string, moodSeed?: string): ContentRotation {
+  const data = getGuestData() || initGuestData();
+  if (!data.contentRotations) data.contentRotations = [];
+  
+  const existing = data.contentRotations.findIndex(r => r.domain === domain);
+  const now = Date.now();
+  
+  if (existing >= 0) {
+    const rotation = data.contentRotations[existing];
+    rotation.currentIndex = (rotation.currentIndex + 1);
+    rotation.lastRotatedAt = now;
+    if (currentItemId && !rotation.rotationHistory.includes(currentItemId)) {
+      rotation.rotationHistory.push(currentItemId);
+      if (rotation.rotationHistory.length > 20) {
+        rotation.rotationHistory = rotation.rotationHistory.slice(-10);
+      }
+    }
+    if (moodSeed) rotation.moodBasedSeed = moodSeed;
+    data.contentRotations[existing] = rotation;
+  } else {
+    data.contentRotations.push({
+      domain,
+      lastRotatedAt: now,
+      currentIndex: 0,
+      rotationHistory: currentItemId ? [currentItemId] : [],
+      moodBasedSeed: moodSeed || null,
+    });
+  }
+  
+  saveGuestData(data);
+  return data.contentRotations.find(r => r.domain === domain)!;
+}
+
+export function getRotationIndex(domain: PlanningDomain): number {
+  const rotation = getContentRotation(domain);
+  return rotation?.currentIndex || 0;
 }

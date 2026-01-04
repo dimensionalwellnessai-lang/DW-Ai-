@@ -3,7 +3,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { AIWorkspace } from "@/components/ai-workspace";
 import BrowsePage from "@/pages/browse";
 import { CalendarPlansPage } from "@/pages/calendar-plans";
-import { RoutinesPage } from "@/pages/routines";
+import RoutinesPage from "@/pages/routines";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const SCREENS = [

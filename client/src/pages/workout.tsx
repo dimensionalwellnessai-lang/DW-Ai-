@@ -54,11 +54,15 @@ import {
   saveCalendarEvent,
   getUserResourcesByType,
   deleteUserResource,
+  rotateContent,
+  getRotationIndex,
+  getSoftOnboardingMood,
   type BodyProfile,
   type WorkoutPreferences,
   type SavedRoutine,
   type UserResource
 } from "@/lib/guest-storage";
+import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-scope-dialog";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
 
@@ -217,6 +221,25 @@ export default function WorkoutPage() {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutData | null>(null);
   const [expandedWorkout, setExpandedWorkout] = useState<number | null>(null);
   const [pickWorkoutOpen, setPickWorkoutOpen] = useState(false);
+  
+  const { 
+    horizon: planningHorizon, 
+    showScopeDialog, 
+    PlanningScopeDialogProps 
+  } = usePlanningScope("workouts");
+
+  const [rotationIndex, setRotationIndex] = useState(() => getRotationIndex("workouts"));
+
+  const rotateWorkouts = () => {
+    const mood = getSoftOnboardingMood();
+    const rotation = rotateContent("workouts", "", mood || undefined);
+    setRotationIndex(rotation.currentIndex);
+    toast({
+      title: "Energy Shifted",
+      description: "Notice the new workout options tailored to your mood.",
+    });
+  };
+
   const [pickStep, setPickStep] = useState<"energy" | "time" | "results">("energy");
   const [energyLevel, setEnergyLevel] = useState<"low" | "medium" | "high" | null>(null);
   const [timeAvailable, setTimeAvailable] = useState<"10" | "20" | "30" | null>(null);
@@ -411,9 +434,30 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
       <PageHeader title="Workout" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
-        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
+          {/* Planning Horizon & Energy Shift */}
+          <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-medium">Planning Horizon: {planningHorizon === "today" ? "Just Today" : planningHorizon === "week" ? "This Week" : "This Month"}</h2>
+                <p className="text-xs text-muted-foreground">Focusing your training scope supports steady progress.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={rotateWorkouts} data-testid="button-rotate-workouts">
+                <Sparkles className="h-3 w-3 mr-1.5" />
+                Shift Energy
+              </Button>
+              <Button size="sm" className="h-8 text-xs" onClick={showScopeDialog} data-testid="button-change-horizon">
+                Change Horizon
+              </Button>
+            </div>
+          </section>
 
-        {seeksCalmOrMindfulness && (
+          {seeksCalmOrMindfulness && (
           <Card className="bg-violet-500/5 border-violet-500/20">
             <CardContent className="p-4 flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
@@ -1194,8 +1238,9 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             </div>
           </DialogContent>
         </Dialog>
-        </div>
-      </ScrollArea>
+        <PlanningScopeDialog {...PlanningScopeDialogProps} />
+      </div>
+    </ScrollArea>
     </div>
   );
 }
