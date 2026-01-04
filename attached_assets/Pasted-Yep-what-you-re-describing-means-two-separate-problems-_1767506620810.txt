@@ -1,0 +1,136 @@
+Yep — what you’re describing means two separate problems are happening:
+	1.	The changes you’re requesting are not actually being applied to the code you’re testing (or they’re being applied but you’re not seeing the updated build because of cache/deploy).
+	2.	The agent saying “zero changed files” usually means it didn’t write anything, wrote to the wrong place, or the changes got reverted/blocked.
+
+Let’s fix this cleanly.
+
+⸻
+
+1) First: prove you’re testing the latest code (this is usually the real issue)
+
+Do these 3 things in order
+	1.	Hard refresh the app page
+
+	•	Mac/Windows: Ctrl + Shift + R (or Cmd + Shift + R on Mac)
+	•	iPhone Safari: close the tab fully → reopen
+
+	2.	If it’s a PWA / “installed” web app:
+
+	•	delete the installed icon app
+	•	reopen in Safari
+
+	3.	If you have a Service Worker (common in some templates):
+
+	•	In browser DevTools → Application → Service Workers → Unregister
+	•	Then refresh
+
+Why: tutorial overlays and auth UI are classic “cached old bundle” issues.
+
+⸻
+
+2) “Zero changed files” = they didn’t actually change code
+
+This is not you. This is workflow.
+
+What to tell Replit/dev to do (copy/paste)
+
+I’m not seeing any of the requested changes. Also the system shows “0 changed files.”
+Please do the following and report back:
+	1.	Confirm you are editing the exact repl that is deployed at my public URL
+	2.	Show the latest commit/checkpoint id and the exact files modified
+	3.	If no files changed, explain why and re-apply the fixes with a real commit
+	4.	After commit, redeploy and send the updated deployment URL
+	5.	Include a 30-second screen recording proving:
+	•	tutorial icons are visible (not blurred)
+	•	“How to Use / App Tour” appears just above Sign In in the menu
+	•	Sign In becomes Logout immediately after login
+	•	user stays logged in after refresh/closing tab (Safari test)
+
+This forces them to stop “saying it’s fixed” and actually ship it.
+
+⸻
+
+3) Your exact issues → what the fixes should be
+
+A) Tutorial icons blurred / not visible
+
+What you’re seeing is almost always caused by one of these:
+	•	the overlay uses backdrop-filter: blur()
+	•	the highlight is being rendered under the overlay (z-index)
+	•	the highlight is being screenshot/cloned with CSS that applies blur
+
+Expected behavior:
+	•	the highlighted icon should appear crisp on top of the overlay
+	•	only the background should be dimmed, not the highlighted element
+
+Fix direction for dev:
+	•	ensure highlight layer has higher z-index than overlay
+	•	remove blur effects from the highlight container
+	•	ensure highlight uses the real element or a clean clone without filters
+
+⸻
+
+B) “App tour / How to Use” missing, and placement wrong
+
+You want:
+	•	“App Tour / How to Use” inside the hamburger menu
+	•	placed just above Sign In
+
+So the menu order should be like:
+	•	… menu items …
+	•	How to Use (App Tour)
+	•	Sign In / Logout
+
+⸻
+
+C) Sign In button not changing to Logout
+
+That is auth state not being reflected in the menu component.
+
+Expected behavior:
+	•	Immediately after login, menu shows user state and Logout
+	•	After logout, returns to Sign In
+	•	No “stuck state”
+
+Fix direction:
+	•	menu must subscribe to the same auth state store/query as the rest of the app
+	•	invalidate/refetch user session after login/logout
+
+⸻
+
+D) Not staying logged in (especially Safari)
+
+If you’re on iPhone Safari, common reasons:
+	•	session stored in memory only (clears on refresh)
+	•	cookie is missing SameSite, Secure, or correct domain scope
+	•	token not persisted in local storage / cookie properly
+	•	Safari storage restrictions if using third-party cookie patterns
+
+Expected behavior:
+	•	close tab → reopen → still logged in
+	•	refresh → still logged in
+
+Fix direction:
+	•	ensure session cookie is persistent (maxAge/expires)
+	•	ensure it’s set correctly for the deployed domain
+	•	confirm auth provider supports Safari correctly
+
+⸻
+
+4) What you should do right now (fast test)
+
+After they claim it’s fixed again, test only this:
+	1.	Open app → open hamburger menu
+✅ “How to Use” shows above Sign In
+	2.	Start tutorial
+✅ Highlighted icons are crisp and visible, not blurred
+	3.	Log in
+✅ Menu changes from Sign In to Logout immediately
+	4.	Close tab → reopen
+✅ Still logged in
+
+If any fail → it’s not fixed.
+
+⸻
+
+If you want, paste the public app URL you’re testing (the replit.app one) and tell me if you’re testing on iPhone Safari vs desktop, and I’ll give you the most likely root cause (cache vs auth cookie vs state store) and the exact “tell the dev” instruction for that specific setup.
