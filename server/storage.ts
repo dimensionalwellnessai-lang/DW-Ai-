@@ -33,6 +33,7 @@ import {
   importedDocumentItems,
   mealPlans,
   meals,
+  userFeedback,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -101,6 +102,8 @@ import {
   type InsertMealPlan,
   type Meal,
   type InsertMeal,
+  type UserFeedback,
+  type InsertUserFeedback,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -242,6 +245,8 @@ export interface IStorage {
   createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(id: string): Promise<void>;
+
+  createUserFeedback(data: InsertUserFeedback): Promise<UserFeedback>;
 
   getImportedDocuments(userId: string): Promise<ImportedDocument[]>;
   getImportedDocument(id: string): Promise<ImportedDocument | undefined>;
@@ -854,6 +859,11 @@ export class DatabaseStorage implements IStorage {
     await db.update(passwordResetTokens)
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.id, id));
+  }
+
+  async createUserFeedback(data: InsertUserFeedback): Promise<UserFeedback> {
+    const [feedback] = await db.insert(userFeedback).values(data).returning();
+    return feedback;
   }
 
   async getImportedDocuments(userId: string): Promise<ImportedDocument[]> {

@@ -2,14 +2,26 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Send, Heart, CheckCircle } from "lucide-react";
+import { Send, Heart, CheckCircle, HelpCircle, Frown, Zap, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/page-header";
+import { apiRequest } from "@/lib/queryClient";
+
+const FEEDBACK_CATEGORIES = [
+  { id: "confusion", label: "Confused about something", icon: HelpCircle },
+  { id: "friction", label: "Something felt hard to use", icon: Frown },
+  { id: "emotional_load", label: "Felt heavy or overwhelming", icon: Zap },
+  { id: "clarity", label: "Needs clearer explanation", icon: Eye },
+] as const;
+
+type FeedbackCategory = typeof FEEDBACK_CATEGORIES[number]["id"];
 
 export default function FeedbackPage() {
   const { toast } = useToast();
   const [feedback, setFeedback] = useState("");
+  const [category, setCategory] = useState<FeedbackCategory | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,11 +32,21 @@ export default function FeedbackPage() {
     setIsSubmitting(true);
     
     try {
-      localStorage.setItem("dw_feedback_" + Date.now(), JSON.stringify({
-        feedback: feedback.trim(),
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-      }));
+      const feedbackData = {
+        category: category || "general",
+        message: feedback.trim(),
+        pageContext: window.location.pathname,
+        metadata: { userAgent: navigator.userAgent },
+      };
+      
+      try {
+        await apiRequest("POST", "/api/feedback", feedbackData);
+      } catch {
+        localStorage.setItem("fts_feedback_" + Date.now(), JSON.stringify({
+          ...feedbackData,
+          timestamp: new Date().toISOString(),
+        }));
+      }
       
       setSubmitted(true);
       toast({
@@ -57,7 +79,7 @@ export default function FeedbackPage() {
             </CardTitle>
             <CardDescription>
               {submitted 
-                ? "Your thoughts help us make DW better for everyone."
+                ? "Your thoughts help us make Flip the Switch better for everyone."
                 : "We're in early beta. Your honest feedback helps us improve."}
             </CardDescription>
           </CardHeader>
@@ -70,17 +92,38 @@ export default function FeedbackPage() {
                 </p>
                 <Link href="/">
                   <Button className="w-full" data-testid="button-return-home">
-                    Return to DW
+                    Return Home
                   </Button>
                 </Link>
               </div>
             ) : (
               <div className="space-y-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">What best describes your feedback?</p>
+                    <div className="flex flex-wrap gap-2">
+                      {FEEDBACK_CATEGORIES.map((cat) => {
+                        const Icon = cat.icon;
+                        const isSelected = category === cat.id;
+                        return (
+                          <Badge
+                            key={cat.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className={`cursor-pointer transition-colors ${isSelected ? "" : "text-muted-foreground"}`}
+                            onClick={() => setCategory(isSelected ? null : cat.id)}
+                            data-testid={`badge-category-${cat.id}`}
+                          >
+                            <Icon className="h-3 w-3 mr-1" />
+                            {cat.label}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <Textarea
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="What's working? What's not? How do you feel using DW?"
+                    placeholder="What's working? What's not? How do you feel using Flip the Switch?"
                     className="min-h-[150px] resize-none"
                     data-testid="input-feedback"
                   />

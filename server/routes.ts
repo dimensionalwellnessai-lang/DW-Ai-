@@ -260,6 +260,31 @@ export async function registerRoutes(
     res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
   });
 
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      const { category, message, pageContext, energyLevel, metadata } = req.body;
+      if (!category || !message) {
+        return res.status(400).json({ error: "Category and message are required" });
+      }
+      
+      const feedbackData = {
+        userId: req.session.userId || null,
+        guestId: req.session.userId ? null : crypto.randomBytes(8).toString('hex'),
+        category,
+        message,
+        pageContext: pageContext || null,
+        energyLevel: energyLevel || null,
+        metadata: metadata || null,
+      };
+      
+      const result = await storage.createUserFeedback(feedbackData);
+      res.json({ success: true, id: result.id });
+    } catch (error) {
+      console.error("Feedback error:", error);
+      res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
