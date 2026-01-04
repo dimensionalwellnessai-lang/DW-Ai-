@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/page-header";
 import { 
   Calendar,
   Clock,
@@ -226,20 +227,18 @@ export default function DailySchedulePage() {
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-display font-bold">Daily Schedule</h1>
-            <p className="text-muted-foreground">
-              Your reference-based daily flow
-            </p>
-          </div>
-          <Button onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
+    <div className="min-h-screen bg-background">
+      <PageHeader 
+        title="Daily Schedule" 
+        rightContent={
+          <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
             <Plus className="w-4 h-4 mr-2" />
-            Add Event
+            Add Something
           </Button>
-        </div>
+        }
+      />
+      <ScrollArea className="h-[calc(100vh-57px)]">
+        <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
 
         <div className="flex gap-2 overflow-x-auto pb-2">
           {DAYS.map((day, idx) => (
@@ -474,7 +473,8 @@ export default function DailySchedulePage() {
             )}
           </DialogContent>
         </Dialog>
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

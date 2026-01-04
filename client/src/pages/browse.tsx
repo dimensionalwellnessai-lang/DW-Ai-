@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/page-header";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import {
-  ArrowLeft,
   Play,
   Clock,
   Dumbbell,
@@ -164,16 +164,9 @@ ${contentList}`,
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between gap-4 p-4">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-xl font-display font-semibold">Browse</h1>
-          </div>
+      <PageHeader
+        title="Browse"
+        rightContent={
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -182,7 +175,7 @@ ${contentList}`,
               data-testid="button-ai-customize"
             >
               <Wand2 className="h-4 w-4 mr-2" />
-              AI Picks
+              Pick for Me
             </Button>
             <Button
               variant="outline"
@@ -190,12 +183,13 @@ ${contentList}`,
               onClick={() => setShowFilters(!showFilters)}
               data-testid="button-filters"
             >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
+              <Filter className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-
+        }
+      />
+      
+      <div className="sticky top-[57px] z-40 bg-background border-b">
         <div className="overflow-x-auto">
           <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
             {aiRecommendations && (
@@ -240,7 +234,7 @@ ${contentList}`,
             ))}
           </div>
         </div>
-      </header>
+      </div>
 
       {userProfile && (
         <div className="p-4 border-b bg-muted/30">

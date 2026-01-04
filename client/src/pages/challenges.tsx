@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dumbbell,
   Brain,
@@ -13,8 +15,11 @@ import {
   DollarSign,
   ChevronRight,
   Sparkles,
+  Calendar,
+  Target,
+  Check,
 } from "lucide-react";
-import { getGettingToKnowYou, getBodyProfile, getFinanceProfile } from "@/lib/guest-storage";
+import { getGettingToKnowYou, getBodyProfile, getFinanceProfile, saveCalendarEvent } from "@/lib/guest-storage";
 
 function getChallengeCategories(userNeeds: string[], bodyGoal: string | null, financialStress: boolean) {
   return [
@@ -104,7 +109,11 @@ function getPersonalizedFinancialChallenges(hasStress: boolean): string[] {
 }
 
 export function ChallengesPage() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<{ category: string; title: string } | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const gtky = getGettingToKnowYou();
   const bodyProfile = getBodyProfile();
   const financeProfile = getFinanceProfile();
@@ -114,6 +123,39 @@ export function ChallengesPage() {
   const financialStress = financeProfile?.moneyEmotion === "anxious";
   
   const categories = getChallengeCategories(userNeeds, bodyGoal, financialStress);
+
+  const handleChallengeClick = (categoryId: string, challengeTitle: string) => {
+    setSelectedChallenge({ category: categoryId, title: challengeTitle });
+    setDetailDialogOpen(true);
+  };
+
+  const handleAddToCalendar = () => {
+    if (!selectedChallenge) return;
+    
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    saveCalendarEvent({
+      title: selectedChallenge.title,
+      description: `Challenge: ${selectedChallenge.title}`,
+      eventDate: tomorrow.getTime(),
+      startTime: "09:00",
+      linkedType: "routine",
+      linkedId: selectedChallenge.title,
+    });
+    
+    toast({
+      title: "Added to Calendar",
+      description: `"${selectedChallenge.title}" starts tomorrow.`,
+    });
+    setDetailDialogOpen(false);
+  };
+
+  const handleStartWithAI = () => {
+    if (!selectedChallenge) return;
+    setDetailDialogOpen(false);
+    setLocation(`/?challenge=${encodeURIComponent(selectedChallenge.title)}`);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,21 +191,21 @@ export function ChallengesPage() {
                           {category.description}
                         </p>
                         {selectedCategory === category.id && (
-                          <div className="mt-3 pt-3 border-t space-y-2">
-                            <p className="text-xs text-muted-foreground font-body">Example challenges:</p>
+                          <div className="mt-3 pt-3 border-t space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <p className="text-xs text-muted-foreground font-body">Tap a challenge to view details:</p>
                             <div className="flex flex-wrap gap-2">
                               {category.examples.map((example, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
+                                <Badge 
+                                  key={idx} 
+                                  variant="secondary" 
+                                  className="text-xs cursor-pointer hover-elevate"
+                                  onClick={() => handleChallengeClick(category.id, example)}
+                                  data-testid={`badge-challenge-${category.id}-${idx}`}
+                                >
                                   {example}
                                 </Badge>
                               ))}
                             </div>
-                            <Link href="/">
-                              <Button size="sm" className="mt-2" data-testid={`button-start-${category.id}`}>
-                                <Sparkles className="h-4 w-4 mr-1" />
-                                Start with AI
-                              </Button>
-                            </Link>
                           </div>
                         )}
                       </div>
@@ -175,6 +217,35 @@ export function ChallengesPage() {
           </div>
         </div>
       </ScrollArea>
+
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              {selectedChallenge?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Ready to take on this challenge? Choose how to proceed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              This challenge will help you build positive habits. You can add it to your calendar or get AI guidance to personalize it.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button onClick={handleAddToCalendar} className="w-full" data-testid="button-add-challenge-calendar">
+                <Calendar className="h-4 w-4 mr-2" />
+                Add to Calendar
+              </Button>
+              <Button variant="outline" onClick={handleStartWithAI} className="w-full" data-testid="button-start-challenge-ai">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Start with AI
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

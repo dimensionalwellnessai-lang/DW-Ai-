@@ -1,0 +1,56 @@
+Safari Major Checkpoint (iPhone Safari) — fix + prove it
+	1.	Confirm these issues in Safari (not just Chrome):
+
+	•	Meal plans: suggested meals Save doesn’t work
+	•	Meditation: suggested items Save doesn’t work
+	•	Daily schedule: no hamburger/back and Suggested Schedule opens “not available”
+	•	Browse: missing hamburger
+	•	Challenges: cards not clickable / cannot add to plan/calendar
+	•	Chat history: blank-start chat not saved
+
+	2.	Global Layout Shell (Required)
+Wrap every route in the same layout component that includes:
+
+	•	Hamburger menu
+	•	Back button
+	•	Home/AI button
+No exceptions (Daily Schedule, Browse, Finance, Astrology, etc.)
+
+✅ Acceptance: every page shows consistent header/nav.
+	3.	Fix Save Buttons (Meal + Meditation)
+
+	•	Save must persist the selection immediately (local + server if logged in)
+	•	After save, user must see a confirmation state (e.g., “Saved” badge)
+	•	Reload page → saved item remains
+
+✅ Acceptance: Save works in Safari, and persists after refresh.
+	4.	Suggested Schedule route must never be “not available”
+
+	•	If there is no draft, create one or route to plan builder.
+	•	If draft exists, open schedule-review.
+
+✅ Acceptance: tapping Suggested Schedule always opens a real review screen.
+	5.	Challenges page functionality
+
+	•	Card click opens a challenge detail page
+	•	Buttons: Add to Calendar (with consent), Add to Plan, View Details
+
+✅ Acceptance: full challenge flow works.
+	6.	Chat history persistence
+
+	•	Starting with an empty chat must still create a thread and appear in history.
+
+✅ Acceptance: open app → type nothing → send first message later → history shows that chat.
+	7.	Provide proof
+I need:
+
+	•	A PASS/FAIL checklist for each route in Safari
+	•	Screenshots of:
+	•	Daily Schedule (with header)
+	•	Meal Prep suggested meals + saved state
+	•	Meditation suggestion + saved state
+	•	Browse page with hamburger + filters
+	•	Challenges detail + add buttons
+	•	Suggested Schedule review page
+
+Also include the list of changed files (Safari fixes).

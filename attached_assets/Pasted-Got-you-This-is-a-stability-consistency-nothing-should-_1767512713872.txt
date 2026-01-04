@@ -1,0 +1,163 @@
+Got you. This is a stability + consistency + “nothing should be fake” moment. Before more features, you need a Major Checkpoint QA pass where Replit proves (with screenshots + route tests) that the app is functional end-to-end.
+
+Below is exactly what to send Replit: a checkpoint checklist, required screenshots, and the specific bugs you listed translated into dev tasks with acceptance criteria.
+
+⸻
+
+Copy/paste to Replit: Major Checkpoint QA + Fix Pack
+
+Major Checkpoint: App must be fully functional + consistent UI across all pages.
+Please run a full QA checklist and fix these issues. I need proof with screenshots (not just “fixed”).
+
+A) Non-negotiable Global Requirements (apply everywhere)
+	1.	Every page must show:
+	•	Hamburger menu
+	•	Back button
+	•	Home (AI Chat) access
+✅ No exceptions (Daily Schedule, Browse, etc.)
+	2.	No dead routes: no “Not available”, no blank screens.
+	3.	All Save buttons must work consistently across the app.
+	4.	Chat history: starting a chat with no prompt must still create a saved conversation thread.
+
+Proof required: screenshot of header/nav controls on every page listed below.
+
+⸻
+
+B) Critical Bugs to Fix (with acceptance tests)
+
+1) Meal Plans → Suggested Meals Save button not working
+Fix: user must be able to select one option and save it to:
+	•	Nutrition system (saved meals)
+	•	AND optionally calendar with consent
+✅ Acceptance:
+	•	Select a suggested meal → tap Save → it appears in “Saved” AND (if chosen) adds to calendar.
+
+2) Daily Schedule → Suggested Schedule opens “not available”
+Fix: /daily-schedule Suggested Schedule must route to real Schedule Review page (or open the draft schedule modal).
+✅ Acceptance:
+	•	Tap Suggested Schedule → opens schedule review and shows the schedule, editable, savable.
+
+3) Daily Schedule missing back button + hamburger menu
+Fix: Add consistent navigation header.
+✅ Acceptance:
+	•	Daily schedule shows hamburger + back + home.
+
+4) Meditation suggestions: Save button and Back button not working
+Fix: Save must store selected meditation to “Saved” and optionally schedule. Back must navigate properly.
+✅ Acceptance:
+	•	Select a meditation → Save → shows under saved and/or appears in schedule if chosen.
+	•	Back returns to previous page without breaking state.
+
+5) Browse page: missing hamburger menu; needs consistent nav
+Fix: Add hamburger menu to Browse.
+✅ Acceptance:
+	•	Browse has hamburger + back + home.
+
+6) Challenges page: challenges not clickable / not actionable
+Fix: Every challenge card must open a detail view and allow:
+	•	View details
+	•	Add to Plan
+	•	Add to Calendar (with consent)
+✅ Acceptance:
+	•	Tap challenge → details open → add works → appears in plan/calendar.
+
+⸻
+
+C) “Major Checkpoint QA Checklist” (run + report results)
+
+Please test every route and main CTA and confirm PASS/FAIL:
+
+Navigation/Routes
+	•	Home AI Chat
+	•	Daily Schedule
+	•	Calendar Week
+	•	Calendar Month
+	•	Workouts
+	•	Meal Prep / Nutrition
+	•	Meditation / Recovery
+	•	Browse
+	•	Challenges
+	•	Plans
+	•	Settings
+	•	Feedback
+
+Buttons must be tested on each relevant page
+	•	Back button
+	•	Hamburger menu open/close
+	•	Save button
+	•	Add to Calendar (with consent)
+	•	Add to Plan (if present)
+
+Deliverable: a table with PASS/FAIL + notes.
+
+⸻
+
+D) Screenshot Proof Required (must include UI header + page content)
+
+Please provide screenshots for:
+	1.	Daily Schedule (show hamburger + back + a schedule list)
+	2.	Suggested Schedule Review page (show edit + save controls)
+	3.	Meal Prep page with Suggested Meals + selection + Save result
+	4.	Meditation page with suggestions + Save result
+	5.	Browse page showing hamburger menu + filters
+	6.	Challenge detail page showing “Add to Plan” + “Add to Calendar”
+	7.	Calendar day where an added item appears
+	8.	Plans screen showing a saved plan OR saved items
+
+⸻
+
+E) Browse page improvements (scope clarification)
+
+I want Browse to be a category-specific search library (not random videos).
+	•	Each category must have smart filters relevant to that category.
+	•	Filters must control the results shown.
+	•	Results should be relevant and consistent.
+
+✅ Acceptance:
+	•	Choosing Nutrition shows nutrition content + nutrition filters only.
+	•	Choosing Recovery shows recovery content + recovery filters only.
+	•	Filters clearly change what’s displayed.
+
+⸻
+
+F) Astrology accuracy note (scope)
+
+Astrology should be based on the user’s chart/profile. If the user has many Cancer placements, the app should reflect that consistently (not random signs).
+✅ Acceptance:
+	•	Astrology screen references stored birth data or profile placements, not generic content.
+
+⸻
+
+What I recommend you do immediately (so this stops repeating)
+
+Ask Replit to add two internal tools:
+	1.	Route Audit page (/dev/routes)
+Compares:
+
+	•	route registry vs router
+	•	menu links vs real routes
+Flags missing routes.
+
+	2.	Save/Action Harness
+A simple internal test that clicks:
+
+	•	Save / Add / Back
+and logs whether state changed.
+
+This prevents “fixed but not fixed”.
+
+⸻
+
+Quick clarity on “Browse should be search engine”
+
+Just so we’re aligned: do you want Browse to:
+	•	Pull content from YouTube only, or
+	•	YouTube + articles, or
+	•	Your own curated library (best quality)?
+
+If you don’t answer, my default recommendation is:
+YouTube + curated sources, with the AI summarizing inside the app (safer + cleaner than dumping random links).
+
+⸻
+
+If you want, paste your current public app link and tell me what device you’re testing on (iPhone Safari vs Chrome). Not to “stall” — it helps because the missing nav/back button issues often come from layout wrappers not being applied consistently on certain routes.
