@@ -83,33 +83,55 @@ export default function FeedbackPage() {
                 </Link>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Textarea
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="What's working? What's not? How do you feel using DW?"
-                  className="min-h-[150px] resize-none"
-                  data-testid="input-feedback"
-                />
-                <div className="text-xs text-muted-foreground">
-                  Be honest. There are no wrong answers.
+              <div className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <Textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="What's working? What's not? How do you feel using DW?"
+                    className="min-h-[150px] resize-none"
+                    data-testid="input-feedback"
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    Be honest. There are no wrong answers.
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={!feedback.trim() || isSubmitting}
+                    data-testid="button-submit-feedback"
+                  >
+                    {isSubmitting ? (
+                      "Sending..."
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Feedback
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or</span>
+                  </div>
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={!feedback.trim() || isSubmitting}
-                  data-testid="button-submit-feedback"
+
+                <a 
+                  href="https://form.typeform.com/to/OqthU72n" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
                 >
-                  {isSubmitting ? (
-                    "Sending..."
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Feedback
-                    </>
-                  )}
-                </Button>
-              </form>
+                  <Button variant="outline" className="w-full" data-testid="link-typeform-feedback">
+                    Open Detailed Feedback Form
+                  </Button>
+                </a>
+              </div>
             )}
           </CardContent>
         </Card>
