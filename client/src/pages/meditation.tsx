@@ -128,6 +128,7 @@ export function MeditationPage() {
   const { toast } = useToast();
   const [savedMeditations, setSavedMeditations] = useState<SavedRoutine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   
   const userMood = getSoftOnboardingMood();
 
@@ -228,18 +229,24 @@ export function MeditationPage() {
                   </Badge>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                {selectedSuggestionId ? "Tap Save to add this practice" : "Pick one option"}
+              </p>
               <div className="space-y-2">
                 {suggestedMeditations.map((item) => {
                   const Icon = getCategoryIcon(item.category);
                   const saved = isSaved(item.id);
+                  const isSelected = selectedSuggestionId === item.id;
                   return (
                     <Card 
                       key={item.id} 
-                      className="hover-elevate"
+                      className={`hover-elevate cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+                      onClick={() => setSelectedSuggestionId(isSelected ? null : item.id)}
                       data-testid={`card-meditation-suggested-${item.id}`}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
+                          {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0 mt-1" />}
                           <div className={`p-2 rounded-lg bg-muted ${getCategoryColor(item.category)}`}>
                             <Icon className="h-5 w-5" />
                           </div>
@@ -251,36 +258,51 @@ export function MeditationPage() {
                                 <Clock className="h-3 w-3 mr-1" />
                                 {item.duration} min
                               </Badge>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Button 
-                              size="sm" 
-                              variant={saved ? "secondary" : "outline"}
-                              onClick={() => !saved && handleSaveMeditation(item)}
-                              disabled={saved}
-                              data-testid={`button-save-meditation-${item.id}`}
-                            >
-                              {saved ? (
-                                <><Check className="h-4 w-4 mr-1" /> Saved</>
-                              ) : (
-                                "Save"
+                              {saved && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Check className="h-3 w-3 mr-1" /> Saved
+                                </Badge>
                               )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleAddToCalendar(item)}
-                              data-testid={`button-calendar-meditation-${item.id}`}
-                            >
-                              <Calendar className="h-4 w-4" />
-                            </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   );
                 })}
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button 
+                  className="flex-1"
+                  disabled={!selectedSuggestionId}
+                  onClick={() => {
+                    const selected = suggestedMeditations.find(m => m.id === selectedSuggestionId);
+                    if (selected && !isSaved(selected.id)) {
+                      handleSaveMeditation(selected);
+                      setSelectedSuggestionId(null);
+                    }
+                  }}
+                  data-testid="button-save-suggestion"
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Save
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="flex-1"
+                  disabled={!selectedSuggestionId}
+                  onClick={() => {
+                    const selected = suggestedMeditations.find(m => m.id === selectedSuggestionId);
+                    if (selected) {
+                      handleAddToCalendar(selected);
+                      setSelectedSuggestionId(null);
+                    }
+                  }}
+                  data-testid="button-calendar-suggestion"
+                >
+                  <Calendar className="w-4 h-4 mr-1" />
+                  Add to Calendar
+                </Button>
               </div>
             </section>
           )}

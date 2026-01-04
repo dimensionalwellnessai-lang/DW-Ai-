@@ -600,6 +600,7 @@ export default function MealPrepPage() {
   const [suggestStep, setSuggestStep] = useState<"energy" | "mealType" | "results">("energy");
   const [suggestEnergy, setSuggestEnergy] = useState<"low" | "medium" | "high" | null>(null);
   const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [confirmMealOpen, setConfirmMealOpen] = useState(false);
   
   const { 
@@ -713,11 +714,12 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
   };
 
   const getMealSuggestions = () => {
-    let allMeals: { name: string; prepTime: number; planTitle: string; ingredients: string[] }[] = [];
+    let allMeals: { id: string; name: string; prepTime: number; planTitle: string; ingredients: string[] }[] = [];
     
     SAMPLE_MEAL_PLANS.forEach(plan => {
       plan.meals.forEach(meal => {
         allMeals.push({
+          id: `${plan.title}-${meal.name}`.replace(/\s+/g, '-').toLowerCase(),
           name: meal.name,
           prepTime: meal.prepTime,
           planTitle: plan.title,
@@ -1621,48 +1623,68 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             
             {suggestStep === "results" && (
               <div className="space-y-3 py-4">
-                {getMealSuggestions().map((meal, idx) => (
-                  <Card 
-                    key={idx} 
-                    className="hover-elevate cursor-pointer"
-                    data-testid={`card-meal-suggestion-${idx}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h4 className="font-medium">{meal.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {meal.prepTime} min prep - {meal.planTitle}
-                          </p>
+                <p className="text-xs text-muted-foreground text-center">
+                  {selectedSuggestionId ? "Tap Save to add to calendar" : "Pick one option"}
+                </p>
+                {getMealSuggestions().map((meal) => {
+                  const isSelected = selectedSuggestionId === meal.id;
+                  return (
+                    <Card 
+                      key={meal.id} 
+                      className={`hover-elevate cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+                      onClick={() => setSelectedSuggestionId(isSelected ? null : meal.id)}
+                      data-testid={`card-meal-suggestion-${meal.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0" />}
+                            <div>
+                              <h4 className="font-medium">{meal.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {meal.prepTime} min prep - {meal.planTitle}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            promptAddMealToCalendar(meal.name, "meal", meal.prepTime);
-                          }}
-                          data-testid={`button-add-meal-${idx}`}
-                        >
-                          <Calendar className="w-3.5 h-3.5 mr-1" />
-                          Add
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
                 
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => {
-                    setSuggestStep("energy");
-                    setSuggestEnergy(null);
-                  }}
-                  data-testid="button-different-meals"
-                >
-                  Different options
-                </Button>
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1"
+                    onClick={() => {
+                      setSuggestStep("energy");
+                      setSuggestEnergy(null);
+                      setSelectedSuggestionId(null);
+                    }}
+                    data-testid="button-different-meals"
+                  >
+                    Different options
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    disabled={!selectedSuggestionId}
+                    onClick={() => {
+                      const suggestions = getMealSuggestions();
+                      const selected = suggestions.find(m => m.id === selectedSuggestionId);
+                      if (selected) {
+                        promptAddMealToCalendar(selected.name, "meal", selected.prepTime);
+                        setSuggestMealsOpen(false);
+                        setSelectedSuggestionId(null);
+                        setSuggestStep("energy");
+                        setSuggestEnergy(null);
+                      }
+                    }}
+                    data-testid="button-save-meal-suggestion"
+                  >
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Save
+                  </Button>
+                </div>
               </div>
             )}
           </DialogContent>
