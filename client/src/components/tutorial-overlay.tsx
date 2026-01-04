@@ -134,7 +134,7 @@ export function TutorialOverlay() {
 
   const overlayContent = (
     <div 
-      className="fixed inset-0 z-[9999]"
+      className="fixed inset-0 z-[9999] pointer-events-none"
       data-testid="tutorial-overlay"
     >
       <svg
@@ -170,25 +170,51 @@ export function TutorialOverlay() {
 
       {targetRect && (
         <div
-          className="absolute rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-transparent animate-pulse"
+          className="absolute rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-transparent animate-pulse pointer-events-none"
           style={{
             top: targetRect.top,
             left: targetRect.left,
             width: targetRect.width,
             height: targetRect.height,
-            pointerEvents: "none"
           }}
+        />
+      )}
+
+      {/* Clickable area over the highlighted element */}
+      {targetRect && (
+        <div
+          className="absolute cursor-pointer"
+          style={{
+            top: targetRect.top,
+            left: targetRect.left,
+            width: targetRect.width,
+            height: targetRect.height,
+            pointerEvents: "auto",
+            zIndex: 10001,
+          }}
+          onClick={() => {
+            // Find and click the actual element
+            const element = document.querySelector(`[data-testid="${currentStep?.targetTestId}"]`) as HTMLElement;
+            if (element) {
+              element.click();
+            }
+            // Advance to next step after a small delay to let element action complete
+            setTimeout(() => {
+              nextStep();
+            }, 150);
+          }}
+          data-testid="tutorial-spotlight-click-area"
         />
       )}
 
       <Card
         ref={tooltipRef}
         tabIndex={-1}
-        className="fixed w-[300px] shadow-xl border-primary/20 outline-none"
+        className="fixed w-[300px] shadow-xl border-primary/20 outline-none pointer-events-auto"
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
-          zIndex: 10000
+          zIndex: 10002
         }}
         data-testid="tutorial-tooltip"
         role="dialog"
