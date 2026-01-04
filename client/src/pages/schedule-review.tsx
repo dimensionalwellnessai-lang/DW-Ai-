@@ -85,15 +85,15 @@ export default function ScheduleReviewPage() {
       }
       
       toast({
-        title: "Saved to Life System",
+        title: "Saved.",
         description: `${items.length} items saved to your active plan.`,
       });
       
       setLocation("/plans");
     } catch (error) {
       toast({
-        title: "Error saving",
-        description: "Could not save your plan. Please try again.",
+        title: "That didn't save just yet.",
+        description: "You can try again, or come back later.",
         variant: "destructive",
       });
     } finally {
@@ -104,8 +104,8 @@ export default function ScheduleReviewPage() {
   const handleAddToCalendar = async () => {
     if (selectedItems.length === 0) {
       toast({
-        title: "No items selected",
-        description: "Please select at least one item to add to your calendar.",
+        title: "Pick 1 option to save.",
+        description: "Select at least one item to continue.",
         variant: "destructive",
       });
       return;
@@ -116,7 +116,7 @@ export default function ScheduleReviewPage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     toast({
-      title: "Added to Calendar",
+      title: "Added to your system.",
       description: `${selectedItems.length} items added to your calendar.`,
     });
     

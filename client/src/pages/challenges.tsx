@@ -156,7 +156,7 @@ export function ChallengesPage() {
     });
     
     toast({
-      title: "Added to Calendar",
+      title: "Added to your system.",
       description: `"${selectedChallenge.title}" starts tomorrow.`,
     });
     setDetailDialogOpen(false);

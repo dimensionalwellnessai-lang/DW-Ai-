@@ -146,8 +146,8 @@ export function MeditationPage() {
     });
     setSavedMeditations([saved, ...savedMeditations]);
     toast({
-      title: "Meditation Saved",
-      description: `"${item.title}" added to your saved practices.`,
+      title: "Saved.",
+      description: `"${item.title}" added to your system.`,
     });
   };
 
@@ -176,7 +176,7 @@ export function MeditationPage() {
     });
     
     toast({
-      title: "Added to Calendar",
+      title: "Added to today.",
       description: `"${item.title}" scheduled for tomorrow morning.`,
     });
   };
@@ -230,7 +230,7 @@ export function MeditationPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                {selectedSuggestionId ? "Tap Save to add this practice" : "Choose 1 option to save"}
+                {selectedSuggestionId ? "Tap Save to add this practice" : "Pick 1 option to save."}
               </p>
               <div className="space-y-2">
                 {suggestedMeditations.map((item) => {

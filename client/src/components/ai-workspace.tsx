@@ -246,8 +246,8 @@ export function AIWorkspace() {
     },
     onError: () => {
       toast({
-        title: "Something went wrong",
-        description: "We can try again when you're ready.",
+        title: "That didn't save just yet.",
+        description: "You can try again, or come back later.",
         variant: "destructive",
       });
       setIsTyping(false);

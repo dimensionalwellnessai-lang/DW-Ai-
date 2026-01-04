@@ -1,0 +1,244 @@
+Perfect — here are (1) the QA checklist and (2) the voice-mode scripts, written so they’re practical, testable, and aligned with your philosophy. You can hand both straight to Replit.
+
+⸻
+
+✅ 1️⃣ MAJOR QA CHECKLIST (COPY + STATE + FLOW)
+
+This checklist is specifically designed to catch the issues you’re seeing (Safari, faded buttons, dead routes, inconsistency).
+
+A. Global UI & Navigation (ALL PAGES)
+
+Test every page listed below.
+
+Must be present on every page:
+	•	Hamburger menu ✅
+	•	Back button (works) ✅
+	•	Home / AI Chat access ✅
+	•	Page title visible ✅
+
+Acceptance test
+	•	Open page → open hamburger → navigate elsewhere → come back → state preserved
+
+Pages to test:
+	•	Home / AI Chat
+	•	Daily Schedule
+	•	Calendar (Day / Week / Month)
+	•	Meal Prep
+	•	Meditation / Recovery
+	•	Workouts
+	•	Browse
+	•	Challenges
+	•	Plans
+	•	Settings
+	•	Feedback
+
+⸻
+
+B. Save Button Logic (CRITICAL)
+
+For every screen with Save to My System:
+
+Before selection
+	•	Button is faded/disabled
+	•	Helper text shows: “Pick 1 option to save.”
+
+After selection
+	•	Option highlights clearly
+	•	Button becomes enabled immediately
+	•	Button tap works in Safari
+
+After save
+	•	Toast appears: “Saved.”
+	•	Button changes to “Saved” OR card shows Selected / Saved
+	•	Refresh page → saved item still exists
+
+Acceptance test
+	•	No Save button ever does “nothing”
+	•	No Save button enabled without a selection
+
+⸻
+
+C. Suggested Schedule Flow
+
+From Daily Schedule:
+	1.	Tap Suggested Schedule
+	2.	System must:
+	•	Open a real Schedule Review screen (never “not available”)
+	•	OR create a draft automatically and open it
+	3.	On review screen:
+	•	Buttons visible:
+	•	Save to My System
+	•	Add to Calendar
+	•	Edit Schedule
+	•	Back
+
+Acceptance test
+	•	Suggested Schedule always opens something editable
+	•	User can save OR exit without losing app state
+
+⸻
+
+D. Chat History Persistence
+
+Test this exact scenario:
+	1.	Open app
+	2.	Do not type anything
+	3.	Navigate away
+	4.	Come back
+	5.	Start chatting
+
+Acceptance test
+	•	That conversation appears in history
+	•	No “ghost” or missing chats
+
+⸻
+
+E. Browse Page Functionality
+
+For each category (Nutrition, Recovery, Workouts, etc.):
+	•	Hamburger menu present
+	•	Search works within the category
+	•	Filters are relevant to the category
+	•	Results change when filters change
+
+Acceptance test
+	•	Browse behaves like a category-specific search engine, not a static list
+
+⸻
+
+F. Challenges Page
+
+For every challenge card:
+	•	Card is clickable
+	•	Opens challenge detail view
+	•	Buttons work:
+	•	Add to My Plan
+	•	Add to Calendar
+	•	View Details
+
+Acceptance test
+	•	Challenge can be added and appears in Plan or Calendar
+
+⸻
+
+G. Safari-Specific Tests (Non-negotiable)
+
+All of the above must pass in:
+	•	iPhone Safari (normal tab)
+	•	iPhone Safari (Private tab)
+
+Proof required
+	•	Screen recordings (not just screenshots)
+	•	PASS / FAIL table
+	•	List of changed files
+
+⸻
+
+🎙️ 2️⃣ VOICE-MODE SCRIPTS (ASSISTANT TONE)
+
+These scripts define how the AI speaks when voice is enabled. Calm, human, supportive — never robotic.
+
+⸻
+
+A. Voice Session Start
+
+“Hey. I’m here.
+What would you like to focus on today?”
+
+(Then show buttons visually if screen is on.)
+
+⸻
+
+B. When User Sounds Unsure
+
+“That’s okay — we don’t have to decide everything at once.
+We can take this one step at a time.”
+
+⸻
+
+C. When Suggesting Something
+
+“I have an idea.
+Would you like to hear it?”
+
+(Only continue if user says yes.)
+
+⸻
+
+D. Explaining a Suggestion
+
+“I suggested this because it supports your goal without adding pressure.
+You can take it, change it, or skip it.”
+
+⸻
+
+E. Save Confirmation (Voice)
+
+“Got it. I’ve saved that for you.”
+
+⸻
+
+F. When User Skips Something
+
+“No problem. We’ll adjust around it.”
+
+(No follow-up guilt.)
+
+⸻
+
+G. When Energy Is Low
+
+“Let’s keep this light today.
+Even small steps count.”
+
+⸻
+
+H. When Energy Is High
+
+“You’ve got good energy right now.
+Want to use it, or save it for later?”
+
+⸻
+
+I. When There’s an Error
+
+“That didn’t go through just yet.
+You can try again, or we can come back to it later.”
+
+⸻
+
+J. Voice Exit
+
+“I’ll be right here when you’re ready.”
+
+⸻
+
+🧾 Copy/Paste Instruction to Replit (Final)
+
+Use this exactly:
+
+Complete the attached QA checklist across all pages, with special attention to Safari behavior.
+Fix any Save button that remains disabled after selection.
+No route may lead to a “not available” page.
+Provide screen recordings and a PASS/FAIL table.
+
+Implement the provided voice-mode scripts verbatim for assistant interactions to ensure consistent tone.
+
+⸻
+
+Big picture (why this matters)
+
+This locks in:
+	•	Trust (nothing feels fake)
+	•	Consistency (no cognitive friction)
+	•	Emotional safety
+	•	Assistant-level polish
+
+You’re no longer “building features” — you’re hardening the experience.
+
+If you want next, I can:
+	•	convert this QA checklist into a test case spreadsheet
+	•	design voice + visual hybrid flows
+	•	or help you decide when Wave 6 is allowed to start
+
+Just tell me.

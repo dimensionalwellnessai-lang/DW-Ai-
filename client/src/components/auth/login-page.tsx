@@ -103,8 +103,8 @@ export function LoginPage() {
     },
     onError: () => {
       toast({
-        title: "Something went wrong",
-        description: "Please try again later.",
+        title: "That didn't go through just yet.",
+        description: "You can try again, or come back later.",
         variant: "destructive",
       });
     },

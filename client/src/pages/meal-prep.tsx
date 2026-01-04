@@ -705,7 +705,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     });
     
     toast({
-      title: "Added to your calendar",
+      title: "Added to today.",
       description: `${pendingMeal.name} scheduled for today.`,
     });
     
@@ -772,8 +772,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     });
     setSavedMeals([saved, ...savedMeals]);
     toast({
-      title: "Meal Plan Saved",
-      description: `"${plan.title}" added to your saved plans.`,
+      title: "Saved.",
+      description: `"${plan.title}" added to your system.`,
     });
   };
 
@@ -1624,7 +1624,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {suggestStep === "results" && (
               <div className="space-y-3 py-4">
                 <p className="text-xs text-muted-foreground text-center">
-                  {selectedSuggestionId ? "Tap Save to add to calendar" : "Choose 1 option to save"}
+                  {selectedSuggestionId ? "Tap Save to add to calendar" : "Pick 1 option to save."}
                 </p>
                 {getMealSuggestions().map((meal) => {
                   const isSelected = selectedSuggestionId === meal.id;
