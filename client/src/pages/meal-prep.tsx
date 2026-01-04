@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +38,9 @@ import {
   FileText,
   Trash2,
   ExternalLink,
-  History
+  History,
+  Loader2,
+  Wand2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -577,8 +581,33 @@ export default function MealPrepPage() {
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("meal_plan"));
+  const [aiIngredientSuggestion, setAiIngredientSuggestion] = useState<string | null>(null);
   
   const { toast } = useToast();
+
+  // AI-powered ingredient suggestion when search has no results
+  const ingredientAiMutation = useMutation({
+    mutationFn: async (query: string) => {
+      const restrictions = prefs?.restrictions?.join(", ") || "none specified";
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: `The user is looking for ingredient substitutions for "${query}". Their dietary restrictions are: ${restrictions}.
+
+Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief list. Max 60 words total. Don't say "you should" - use "notice" or "try" instead.`,
+        conversationHistory: [],
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setAiIngredientSuggestion(data.response);
+    },
+    onError: () => {
+      toast({
+        title: "Could not get suggestions",
+        description: "We can try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
   const bodyProfile = getBodyProfile();
   const signals = getDimensionSignals();
   const hasPreferences = prefs?.dietaryStyle != null;
@@ -1106,7 +1135,15 @@ export default function MealPrepPage() {
                   <Input
                     placeholder="Search ingredient (milk, eggs, chicken...)"
                     value={ingredientSearch}
-                    onChange={(e) => setIngredientSearch(e.target.value)}
+                    onChange={(e) => {
+                      setIngredientSearch(e.target.value);
+                      setAiIngredientSuggestion(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && ingredientSearch.trim()) {
+                        ingredientAiMutation.mutate(ingredientSearch.trim());
+                      }
+                    }}
                     className="pl-10"
                     data-testid="input-ingredient-search"
                   />
@@ -1115,7 +1152,10 @@ export default function MealPrepPage() {
                       variant="ghost"
                       size="icon"
                       className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setIngredientSearch("")}
+                      onClick={() => {
+                        setIngredientSearch("");
+                        setAiIngredientSuggestion(null);
+                      }}
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -1156,6 +1196,60 @@ export default function MealPrepPage() {
                   <Badge key={r} variant="secondary" className="text-xs">{r}</Badge>
                 ))}
               </div>
+            )}
+
+            {/* AI Ingredient Suggestions - inline help */}
+            {ingredientAiMutation.isPending && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  <span className="text-sm">Looking up alternatives...</span>
+                </CardContent>
+              </Card>
+            )}
+            
+            {aiIngredientSuggestion && !ingredientAiMutation.isPending && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Suggestions for "{ingredientSearch}"</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                    {aiIngredientSuggestion}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAiIngredientSuggestion(null)}
+                    data-testid="button-dismiss-ai-suggestion"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Dismiss
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* No results prompt */}
+            {ingredientSearch.trim() && filteredIngredients.length === 0 && !aiIngredientSuggestion && !ingredientAiMutation.isPending && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center space-y-3">
+                  <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    No matches for "{ingredientSearch}"
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => ingredientAiMutation.mutate(ingredientSearch.trim())}
+                    data-testid="button-ask-ai-ingredient"
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Ask for suggestions
+                  </Button>
+                </CardContent>
+              </Card>
             )}
 
             <div className="space-y-3">

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,8 +33,13 @@ import {
   Link2,
   FileText,
   Trash2,
-  History
+  History,
+  Loader2,
+  Wand2,
+  Search,
+  X
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
 import { 
@@ -209,8 +216,35 @@ export default function WorkoutPage() {
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("workout"));
+  const [workoutSearch, setWorkoutSearch] = useState("");
+  const [aiWorkoutSuggestion, setAiWorkoutSuggestion] = useState<string | null>(null);
   
   const { toast } = useToast();
+  
+  // AI-powered workout suggestion when user asks
+  const workoutAiMutation = useMutation({
+    mutationFn: async (query: string) => {
+      const energyDesc = energyLevel || "not specified";
+      const bodyInfo = bodyProfile ? `focusing on ${bodyProfile.fitnessGoal || "general fitness"}` : "";
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: `The user is looking for a workout: "${query}". Their energy level is: ${energyDesc}. ${bodyInfo}
+
+Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and actionable. Max 80 words. Don't say "you should" - use "notice" or "try" instead.`,
+        conversationHistory: [],
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setAiWorkoutSuggestion(data.response);
+    },
+    onError: () => {
+      toast({
+        title: "Could not get suggestions",
+        description: "We can try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
   const spiritualProfile = getSpiritualProfile();
   const signals = getDimensionSignals();
   const seeksCalmOrMindfulness = signals.mindfulState === "calm" || 
@@ -277,6 +311,15 @@ export default function WorkoutPage() {
   };
 
   const filteredWorkouts = SAMPLE_WORKOUTS.filter(workout => {
+    // Text search filter
+    if (workoutSearch.trim()) {
+      const searchLower = workoutSearch.toLowerCase();
+      const matchesTitle = workout.title.toLowerCase().includes(searchLower);
+      const matchesDesc = workout.description.toLowerCase().includes(searchLower);
+      const matchesTags = workout.tags.some(tag => tag.toLowerCase().includes(searchLower));
+      if (!matchesTitle && !matchesDesc && !matchesTags) return false;
+    }
+    
     if (timeFilter !== "any") {
       const time = parseInt(timeFilter);
       if (workout.duration > time + 5) return false;
@@ -508,6 +551,39 @@ export default function WorkoutPage() {
               Filters
             </Button>
           </div>
+
+          {/* Search input with AI help */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search workouts (yoga, strength, cardio...)"
+              value={workoutSearch}
+              onChange={(e) => {
+                setWorkoutSearch(e.target.value);
+                setAiWorkoutSuggestion(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && workoutSearch.trim()) {
+                  workoutAiMutation.mutate(workoutSearch.trim());
+                }
+              }}
+              className="pl-10"
+              data-testid="input-workout-search"
+            />
+            {workoutSearch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => {
+                  setWorkoutSearch("");
+                  setAiWorkoutSuggestion(null);
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
           
           {showFilters && (
             <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
@@ -554,6 +630,60 @@ export default function WorkoutPage() {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* AI Workout Suggestions - inline help */}
+          {workoutAiMutation.isPending && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <span className="text-sm">Finding workout ideas...</span>
+              </CardContent>
+            </Card>
+          )}
+          
+          {aiWorkoutSuggestion && !workoutAiMutation.isPending && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Ideas for "{workoutSearch}"</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {aiWorkoutSuggestion}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAiWorkoutSuggestion(null)}
+                  data-testid="button-dismiss-workout-ai"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Dismiss
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No results prompt */}
+          {workoutSearch.trim() && filteredWorkouts.length === 0 && !aiWorkoutSuggestion && !workoutAiMutation.isPending && (
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center space-y-3">
+                <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  No matches for "{workoutSearch}"
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => workoutAiMutation.mutate(workoutSearch.trim())}
+                  data-testid="button-ask-ai-workout"
+                >
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Get suggestions
+                </Button>
+              </CardContent>
+            </Card>
           )}
           
           <div className="space-y-2">
