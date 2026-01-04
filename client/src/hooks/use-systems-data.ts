@@ -105,8 +105,12 @@ export function useSystemPreferences() {
 export function useScheduleEvents(dayOfWeek?: number) {
   const [guestEvents, setGuestEvents] = useState<ScheduleEvent[]>(() => getScheduleEvents());
 
+  const url = dayOfWeek !== undefined 
+    ? `/api/schedule-events?day=${dayOfWeek}` 
+    : "/api/schedule-events";
+
   const apiQuery = useQuery<DailyScheduleEvent[]>({
-    queryKey: ["/api/schedule-events", { day: dayOfWeek }],
+    queryKey: [url],
     retry: false,
     staleTime: 30000,
   });
