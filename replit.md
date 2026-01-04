@@ -141,3 +141,25 @@ Preferred communication style: Simple, everyday language. Collaborative, not dir
 - **Forms**: react-hook-form with @hookform/resolvers and Zod validation
 - **Dates**: date-fns for date manipulation
 - **Charts**: Recharts for progress visualization
+
+## Voice Mode (Wave 6.1)
+
+### Voice Input
+- **Component**: `VoiceModeButton` in `client/src/components/voice-mode-button.tsx`
+- **API**: Web Speech API (Safari-compatible via webkitSpeechRecognition)
+- **Behavior**: Push-to-talk only, never auto-listening
+- **States**: Idle (outline mic), Listening (pulse ring), Processing (spinner), Error (text fallback)
+
+### Voice Scripts
+- **Location**: `client/src/config/voiceScripts.ts`
+- **Locked Scripts**: Session start, unsure user, before suggestion, after save, skip, error fallback
+
+### Integration Points
+- AI Chat: Bottom right of input area
+- Talk It Out: Bottom center with send button
+
+### Voice Rules
+- Voice never navigates without permission
+- Voice never saves without confirmation
+- Voice never interrupts
+- Voice mirrors on-screen actions (populates text input before sending)

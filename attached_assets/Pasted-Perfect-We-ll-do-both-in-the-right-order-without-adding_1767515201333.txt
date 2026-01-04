@@ -1,0 +1,156 @@
+Perfect. We’ll do both, in the right order, without adding chaos.
+
+Below is a clean execution package you can immediately use.
+
+⸻
+
+✅ NEXT STEPS LOCKED
+
+Order:
+1️⃣ Run QA (Gatekeeper)
+2️⃣ Lock Voice UI (So Wave 6 can start cleanly)
+
+Nothing else moves until these are done.
+
+⸻
+
+1️⃣ RUN QA — FINAL GATE (WHAT YOU DO NOW)
+
+What you send to Replit (copy/paste)
+
+Use this exact message:
+
+We are entering a QA gate before Wave 6 begins.
+
+Please complete a full QA pass on iPhone Safari and fix all issues where:
+	•	Save buttons are faded or non-functional
+	•	Any route leads to “not available”
+	•	Navigation (hamburger, back, home) is missing on any page
+	•	Suggested Schedule does not open a real review/edit screen
+
+Every page must have consistent navigation and working save flows.
+
+I need the following before Wave 6 starts:
+	1.	A PASS/FAIL checklist for every major page
+	2.	Safari screen recordings proving Save + navigation works
+	3.	A list of changed files
+
+No Wave 6 features begin until this QA gate passes.
+
+Pages that must PASS
+	•	Home / AI Chat
+	•	Daily Schedule
+	•	Calendar (Day / Week / Month)
+	•	Meal Prep (Suggested Meals Save works)
+	•	Meditation (Suggested Save works)
+	•	Browse (hamburger + filters work)
+	•	Challenges (cards clickable + add works)
+	•	Plans
+	•	Settings / Feedback
+
+If any fail → Wave 6 pauses.
+
+⸻
+
+2️⃣ LOCK VOICE UI — FINAL SPEC (NO GUESSING)
+
+This prevents Replit from improvising voice UX.
+
+⸻
+
+🎙️ Voice UI Placement (Locked)
+
+AI Chat
+	•	Mic button: bottom-right
+	•	Text input remains usable at all times
+
+Meditation / Talk It Out
+	•	Mic button: bottom-center
+	•	Does NOT block navigation
+
+⸻
+
+🎛️ Mic States (Exact)
+
+State	UI
+Idle	Outline mic icon
+Listening	Soft pulse ring (slow, subtle)
+Processing	Small spinner
+Error	Text fallback (no silent failure)
+
+❌ No flashing
+❌ No bouncing
+❌ No auto-start
+
+⸻
+
+🧠 Voice Behavior Rules (Non-Negotiable)
+	•	Push-to-talk only
+	•	Never saves without confirmation
+	•	Never navigates without permission
+	•	Never interrupts the user
+	•	Voice + UI always mirror each other
+
+⸻
+
+🗣️ Locked Voice Scripts (Verbatim)
+
+Session start
+
+“Hey. I’m here.
+What would you like to focus on today?”
+
+User unsure
+
+“That’s okay.
+We can take this one step at a time.”
+
+Before suggesting
+
+“I have an idea.
+Would you like to hear it?”
+
+After save
+
+“Got it. I’ve saved that for you.”
+
+Skip
+
+“No problem.
+We’ll adjust around it.”
+
+Error
+
+“That didn’t go through just yet.
+We can try again or come back to it.”
+
+⸻
+
+✅ Voice Acceptance Criteria
+	•	Works in iPhone Safari
+	•	Can be stopped anytime
+	•	App still usable without voice
+	•	No dead states
+
+Voice does not ship until QA passes.
+
+⸻
+
+🧭 WHAT HAPPENS AFTER THIS
+
+Once QA is green:
+	•	Voice UI is implemented exactly as locked
+	•	Then we move to Wave 6.2 (Body & Energy Intelligence)
+	•	Then Wave 6.3 (Guided Experiences)
+
+No rework. No backtracking.
+
+⸻
+
+One quick check from you (yes/no)
+
+When Replit sends QA proof, do you want:
+	•	You to review it first, or
+	•	Me to help you review it line-by-line?
+
+Just answer “Me” or “You” and we’ll proceed cleanly.

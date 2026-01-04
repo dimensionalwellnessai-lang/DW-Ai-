@@ -1,0 +1,294 @@
+Perfect — here is ALL THREE, delivered in a way you can hand directly to Replit and also use yourself to sanity-check the app.
+
+This is the Wave 6 Execution Pack:
+	1.	Voice UX (locked)
+	2.	Safari QA Gate (final)
+	3.	Guided Experience layouts (Netflix-style, but calm)
+
+Nothing here adds chaos. Everything here removes friction.
+
+⸻
+
+🔊 1️⃣ WAVE 6.1 — VOICE UX (LOCKED)
+
+🎙️ Voice Placement (UI)
+	•	Mic icon appears:
+	•	Bottom right of AI Chat
+	•	Bottom center in Meditation / Talk It Out
+	•	Push-to-talk only
+	•	Never auto-listening
+
+Mic states
+	•	Idle: outline mic icon
+	•	Listening: soft pulse ring (no flashing)
+	•	Processing: subtle spinner
+	•	Error: short text fallback (never silence)
+
+⸻
+
+🧠 Voice Behavior Rules (non-negotiable)
+	•	Voice never navigates without permission
+	•	Voice never saves without confirmation
+	•	Voice never interrupts
+	•	Voice mirrors on-screen actions
+
+⸻
+
+🗣️ Locked Voice Scripts (verbatim)
+
+Session start
+
+“Hey. I’m here.
+What would you like to focus on today?”
+
+Unsure user
+
+“That’s okay.
+We can take this one step at a time.”
+
+Before suggestion
+
+“I have an idea.
+Would you like to hear it?”
+
+After save
+
+“Got it. I’ve saved that for you.”
+
+Skip
+
+“No problem.
+We’ll adjust around it.”
+
+Error fallback
+
+“That didn’t go through just yet.
+We can try again or come back to it.”
+
+⸻
+
+✅ Voice Acceptance Criteria
+	•	Works on iPhone Safari
+	•	Can be stopped anytime
+	•	UI still usable without voice
+	•	No dead states
+
+🚦 Gate: Voice must pass Safari QA before Wave 6.2.
+
+⸻
+
+🔒 2️⃣ SAFARI QA FINAL GATE (MANDATORY)
+
+This is the stop-everything checklist.
+
+A. Global App Rules (ALL pages)
+
+Every page must show:
+	•	Hamburger menu
+	•	Back button
+	•	Home / AI Chat access
+
+❌ No exceptions
+❌ No blank headers
+❌ No standalone pages
+
+⸻
+
+B. Save Button Rules (CRITICAL)
+
+Applies to:
+	•	Meals
+	•	Meditation
+	•	Workouts
+	•	Challenges
+	•	Plans
+	•	Schedule edits
+
+Before selection
+	•	Button faded
+	•	Helper text: “Pick 1 option to save.”
+
+After selection
+	•	Button enables immediately
+	•	Tap works on Safari
+
+After save
+	•	Toast: Saved
+	•	Button → Saved
+	•	Refresh → item still exists
+
+❌ No “does nothing”
+❌ No silent failures
+
+⸻
+
+C. Safari-Specific Tests
+
+Must pass on:
+	•	iPhone Safari (normal)
+	•	iPhone Safari (private)
+
+Test:
+	•	Save works after refresh
+	•	Login persists
+	•	Navigation does not reset state
+	•	No stuck overlays
+	•	No disabled taps
+
+⸻
+
+D. Route Audit (NO DEAD ENDS)
+	•	Suggested Schedule never routes to “not available”
+	•	Every button routes somewhere real
+	•	If data doesn’t exist → create draft or show clear next step
+
+⸻
+
+E. Required Proof from Replit
+	1.	PASS / FAIL table
+	2.	List of changed files
+	3.	Safari screen recordings:
+	•	Meal save
+	•	Meditation save
+	•	Suggested Schedule
+	•	Navigation consistency
+
+🚦 Wave 6 does not continue without this.
+
+⸻
+
+🧘 3️⃣ WAVE 6.3 — GUIDED EXPERIENCES (DESIGN FLOWS)
+
+This turns categories into experiences, not lists.
+
+⸻
+
+🎬 Layout Pattern (All Categories)
+
+Same structure everywhere:
+
+Header
+	•	“What would you like today?”
+
+Sections
+	•	AI Picks (with “Why”)
+	•	Categories (thumbnails)
+	•	Smart filters
+	•	Results grid
+
+No scrolling walls. No clutter.
+
+⸻
+
+🧘 Meditation (Example)
+
+Categories
+	•	Calm
+	•	Stress
+	•	Grief
+	•	Manifestation
+	•	Sleep
+
+Filters
+	•	Time (5 / 10 / 20)
+	•	Guided vs Silent
+	•	Voice vs Text
+
+Save Flow
+	•	Pick one
+	•	Save to My System
+	•	Optional: Add to Calendar
+
+⸻
+
+💪 Workouts
+
+Categories
+	•	Strength
+	•	Mobility
+	•	Recovery
+	•	Cardio (light emphasis)
+
+Filters
+	•	Goal (beefy / general)
+	•	Duration
+	•	Equipment
+
+⸻
+
+🥗 Nutrition
+
+Categories
+	•	Meal Plans
+	•	Meal Prep Ideas
+	•	Alternatives (e.g., chickpea tofu)
+
+Filters
+	•	Diet
+	•	Prep time
+	•	Protein focus
+
+⸻
+
+🧩 Challenges
+
+Categories
+	•	Mental
+	•	Physical
+	•	Social
+	•	Financial
+
+Each challenge:
+	•	Detail view
+	•	Add to Plan
+	•	Add to Calendar
+	•	Clear description
+
+⸻
+
+🧠 AI Behavior in Guided Experiences
+
+AI may:
+	•	Highlight picks
+	•	Explain “Why”
+	•	Suggest alternatives
+
+AI must never override browsing.
+
+⸻
+
+📌 FINAL COPY/PASTE TO REPLIT (ALL IN ONE)
+
+Use this exactly:
+
+We are proceeding with Wave 6 using a QA-first gate.
+
+Wave 6 order is locked:
+6.1 Voice Mode → 6.2 Body & Energy → 6.3 Guided Experiences
+
+Before Wave 6 begins, complete Safari QA:
+	•	Fix all Save buttons (no faded dead states)
+	•	Ensure navigation consistency on all pages
+	•	Remove all dead routes (“not available”)
+	•	Provide Safari screen recordings + PASS/FAIL table
+
+Voice Mode must be push-to-talk, assistant-like, and never force actions.
+
+Guided experiences must follow a Netflix-style card layout with smart filters and working save flows.
+
+No feature begins without passing the QA gate.
+
+⸻
+
+🧭 Where you are (important)
+
+You are no longer “figuring it out.”
+You are directing a product.
+
+You did the right thing by stopping and hardening.
+
+Next step (simple choice):
+	•	“Run QA” → we wait for proof
+	•	“Lock Voice UI” → I give you exact component specs
+
+Just say which one.

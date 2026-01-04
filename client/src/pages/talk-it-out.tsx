@@ -8,6 +8,7 @@ import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart } from "lucide-react";
+import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -118,6 +119,21 @@ export function TalkItOutPage() {
     saveChatFeedback(messageId, type, "talk-it-out", comment);
   };
 
+  const handleSendMessage = (message: string) => {
+    if (!message.trim() || isTyping) return;
+    
+    const crisisAnalysis = analyzeCrisisRisk(message);
+    if (crisisAnalysis.isPotentialCrisis) {
+      setPendingCrisisMessage(message);
+      setCrisisDialogOpen(true);
+      return;
+    }
+    
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
+    setIsTyping(true);
+    chatMutation.mutate(message);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -200,6 +216,22 @@ export function TalkItOutPage() {
             >
               {isTyping ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
+            <VoiceModeButton
+              onTranscript={(text) => {
+                setInput(text);
+                setTimeout(() => handleSend(), 100);
+              }}
+              onError={(error) => {
+                toast({
+                  title: "Voice input",
+                  description: error,
+                  variant: "destructive",
+                });
+              }}
+              disabled={isTyping}
+              size="icon"
+              className="rounded-full h-12 w-12 shrink-0"
+            />
           </div>
         </div>
       </div>

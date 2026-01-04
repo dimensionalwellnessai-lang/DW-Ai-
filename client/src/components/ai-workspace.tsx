@@ -73,6 +73,7 @@ import {
   Paperclip,
   X,
 } from "lucide-react";
+import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -721,6 +722,21 @@ export function AIWorkspace() {
               >
                 <Send className="w-4 h-4" />
               </Button>
+              <VoiceModeButton
+                onTranscript={(text) => {
+                  setInput(text);
+                  setTimeout(() => handleSend(), 100);
+                }}
+                onError={(error) => {
+                  toast({
+                    title: "Voice input",
+                    description: error,
+                    variant: "destructive",
+                  });
+                }}
+                disabled={isTyping}
+                className="shrink-0"
+              />
             </div>
           </div>
         </div>
