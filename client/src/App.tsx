@@ -18,6 +18,7 @@ import { CalendarPlansPage } from "@/pages/calendar-plans";
 import BrowsePage from "@/pages/browse";
 import RoutinesPage from "@/pages/routines";
 import WorkoutPage from "@/pages/workout";
+import { RecoveryPage } from "@/pages/recovery";
 import MealPrepPage from "@/pages/meal-prep";
 import FinancesPage from "@/pages/finances";
 import SpiritualPage from "@/pages/spiritual";
@@ -57,6 +58,7 @@ function Router() {
       {isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
+      {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
       {isRouteEnabled("/astrology") && <Route path="/astrology" component={AstrologyPage} />}
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}

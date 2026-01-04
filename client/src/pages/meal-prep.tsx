@@ -68,6 +68,66 @@ import {
   getSoftOnboardingMood,
   type PlanningHorizon
 } from "@/lib/guest-storage";
+import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
+
+interface NutritionAIPick {
+  id: string;
+  title: string;
+  duration: number;
+  tag: string;
+  why: string;
+}
+
+const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
+  low: [
+    {
+      id: "low-1",
+      title: "Quick Smoothie Bowl",
+      duration: 5,
+      tag: "Quick",
+      why: "Notice if your energy feels low. This takes minimal effort and still supports your nutrition."
+    },
+    {
+      id: "low-2", 
+      title: "Overnight Oats",
+      duration: 5,
+      tag: "Prep Ahead",
+      why: "Notice if tomorrow feels heavy. Prep the night before so it's one less thing to think about."
+    }
+  ],
+  medium: [
+    {
+      id: "med-1",
+      title: "Balanced Protein Bowl",
+      duration: 20,
+      tag: "Balanced",
+      why: "Notice that you have enough energy to engage without pushing. This keeps things balanced."
+    },
+    {
+      id: "med-2",
+      title: "Sheet Pan Dinner",
+      duration: 25,
+      tag: "Easy",
+      why: "Notice if you want something easy. One pan, minimal cleanup works for steady energy days."
+    }
+  ],
+  high: [
+    {
+      id: "high-1",
+      title: "High-Protein Meal Prep",
+      duration: 30,
+      tag: "Protein",
+      why: "Notice that your energy is up. Use it to prep meals that support your goals."
+    },
+    {
+      id: "high-2",
+      title: "Buddha Bowl with Tofu",
+      duration: 25,
+      tag: "Plant-Based",
+      why: "Notice if you have capacity for something more involved. This recipe is worth the effort."
+    }
+  ]
+};
 
 type EffortLevel = "any" | "minimal" | "moderate" | "involved";
 type MealType = "any" | "breakfast" | "lunch" | "dinner";
@@ -602,6 +662,13 @@ export default function MealPrepPage() {
   const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [confirmMealOpen, setConfirmMealOpen] = useState(false);
+  const [aiPickSelectedId, setAiPickSelectedId] = useState<string | null>(null);
+  const [aiPickCalendarOpen, setAiPickCalendarOpen] = useState(false);
+  const [pendingAIPick, setPendingAIPick] = useState<NutritionAIPick | null>(null);
+  
+  const energyContext = getCurrentEnergyContext();
+  const currentEnergy = energyContext.energy;
+  const nutritionAIPicks = NUTRITION_AI_PICKS[currentEnergy];
   
   const { 
     horizon: planningHorizon, 
@@ -762,6 +829,57 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     setPrefsOpen(false);
   };
 
+  const handleAIPickSelect = (pick: NutritionAIPick) => {
+    if (aiPickSelectedId === pick.id) {
+      setAiPickSelectedId(null);
+    } else {
+      setAiPickSelectedId(pick.id);
+    }
+  };
+
+  const handleSaveAIPick = () => {
+    const selectedPick = nutritionAIPicks.find(p => p.id === aiPickSelectedId);
+    if (!selectedPick) return;
+    setPendingAIPick(selectedPick);
+    setAiPickCalendarOpen(true);
+  };
+
+  const confirmSaveAIPick = () => {
+    if (!pendingAIPick) return;
+    
+    const now = new Date();
+    const startHour = pendingAIPick.title.toLowerCase().includes("breakfast") || pendingAIPick.title.toLowerCase().includes("oat") || pendingAIPick.title.toLowerCase().includes("smoothie") ? 8 :
+                      pendingAIPick.title.toLowerCase().includes("dinner") ? 18 : 12;
+    
+    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0).getTime();
+    const endTime = startTime + pendingAIPick.duration * 60 * 1000;
+    
+    saveCalendarEvent({
+      title: pendingAIPick.title,
+      description: `${pendingAIPick.duration} min prep - ${pendingAIPick.tag}`,
+      dimension: "physical",
+      startTime,
+      endTime,
+      isAllDay: false,
+      location: null,
+      virtualLink: null,
+      reminders: [],
+      recurring: false,
+      recurrencePattern: null,
+      relatedFoundationIds: [],
+      tags: ["meal", "ai-pick", pendingAIPick.tag.toLowerCase()],
+    });
+    
+    toast({
+      title: "Added to today.",
+      description: `"${pendingAIPick.title}" scheduled for today.`,
+    });
+    
+    setAiPickCalendarOpen(false);
+    setPendingAIPick(null);
+    setAiPickSelectedId(null);
+  };
+
   const handleSaveMealPlan = (plan: typeof SAMPLE_MEAL_PLANS[0]) => {
     const saved = saveRoutine({
       type: "meal_plan",
@@ -865,6 +983,79 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </TabsList>
 
           <TabsContent value="plans" className="mt-4 space-y-6">
+            {/* Wave 6.3: AI Picks Section */}
+            <section className="space-y-4" data-testid="section-ai-picks-nutrition">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-primary/10 rounded-lg">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <h2 className="font-semibold">Picked for You</h2>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Based on your {currentEnergy} energy
+                </span>
+              </div>
+              
+              <div className="grid gap-3">
+                {nutritionAIPicks.map((pick) => {
+                  const isSelected = aiPickSelectedId === pick.id;
+                  return (
+                    <Card
+                      key={pick.id}
+                      className={`cursor-pointer transition-all ${
+                        isSelected 
+                          ? "ring-2 ring-primary bg-primary/5" 
+                          : "hover-elevate"
+                      }`}
+                      onClick={() => handleAIPickSelect(pick)}
+                      data-testid={`card-ai-pick-${pick.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium">{pick.title}</h3>
+                              <Badge variant="secondary" className="text-xs">
+                                {pick.tag}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {pick.why}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>{pick.duration} min</span>
+                            </div>
+                          </div>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isSelected 
+                              ? "border-primary bg-primary" 
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+              
+              <div className="flex items-center justify-between gap-4">
+                {!aiPickSelectedId && (
+                  <span className="text-sm text-muted-foreground">Pick 1 option to save</span>
+                )}
+                <Button
+                  disabled={!aiPickSelectedId}
+                  onClick={handleSaveAIPick}
+                  className={aiPickSelectedId ? "" : "ml-auto"}
+                  data-testid="button-save-ai-pick-nutrition"
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Add to Today
+                </Button>
+              </div>
+            </section>
+
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -1743,6 +1934,54 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Wave 6.3: AI Pick Calendar Confirmation Dialog */}
+        <Dialog open={aiPickCalendarOpen} onOpenChange={setAiPickCalendarOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add to Your Calendar</DialogTitle>
+              <DialogDescription>
+                This will schedule "{pendingAIPick?.title}" for today. You can always adjust it later.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-3">
+              {pendingAIPick && (
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-medium">{pendingAIPick.title}</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Clock className="h-3 w-3" />
+                      {pendingAIPick.duration} min prep time
+                    </div>
+                  </div>
+                  <Badge variant="secondary">{pendingAIPick.tag}</Badge>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setAiPickCalendarOpen(false);
+                  setPendingAIPick(null);
+                }}
+                data-testid="button-ai-pick-nutrition-cancel"
+              >
+                Not Now
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={confirmSaveAIPick}
+                data-testid="button-ai-pick-nutrition-confirm"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Add to Today
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <PlanningScopeDialog {...PlanningScopeDialogProps} />
         </div>
       </ScrollArea>

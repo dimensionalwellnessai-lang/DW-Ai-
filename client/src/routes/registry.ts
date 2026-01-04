@@ -197,6 +197,21 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     ],
   },
   {
+    id: "recovery",
+    path: "/recovery",
+    label: "Recovery",
+    icon: "moon",
+    type: "page",
+    description: "Rest & restore",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 21,
+    enabled: true,
+    actions: [
+      { id: "pick-recovery", label: "Find recovery routine", handler: "openPickRecovery", icon: "sparkles" },
+    ],
+  },
+  {
     id: "meal-prep",
     path: "/meal-prep",
     label: "Nutrition",

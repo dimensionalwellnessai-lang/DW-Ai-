@@ -18,6 +18,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   { id: "meal-prep", name: "Meal Plans", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
   { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
+  { id: "recovery", name: "Recovery", path: "/recovery", visibility: "primary", description: "Rest & restore", enabled: true },
   { id: "journal", name: "Journal", path: "/journal", visibility: "primary", description: "Daily reflections", enabled: true },
   { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "primary", description: "Inner peace", enabled: true },
   { id: "astrology", name: "Astrology", path: "/astrology", visibility: "more", description: "Cosmic insights", enabled: true },

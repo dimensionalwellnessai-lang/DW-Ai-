@@ -1,0 +1,220 @@
+Perfect. Below is ALL THREE, cleanly packaged so you can drop this straight into Replit as logic + copy + behavior.
+This locks Wave 6.3 so it feels intelligent, calm, and consistent — not random.
+
+⸻
+
+🧘‍♂️ 1️⃣ MEDITATION — AI PICKS (ENERGY-ADAPTIVE)
+
+Section label: AI Picks
+Helper text: “Recommended based on how you’re feeling today.”
+
+LOW ENERGY (overwhelmed, tired, scattered)
+
+AI Pick 1
+
+Title: Gentle Grounding Breath
+Duration: 5 min
+Tag: Calm
+
+Why:
+“Your energy feels low right now. This helps you settle without needing focus or effort.”
+
+⸻
+
+AI Pick 2
+
+Title: Body Awareness Reset
+Duration: 10 min
+Tag: Grounding
+
+Why:
+“This is supportive when your mind feels busy but your body needs rest.”
+
+⸻
+
+MEDIUM ENERGY (present, steady)
+
+AI Pick 1
+
+Title: Balanced Breath & Focus
+Duration: 10 min
+Tag: Focus
+
+Why:
+“You have enough energy to engage without pushing. This keeps things balanced.”
+
+⸻
+
+AI Pick 2
+
+Title: Calm Visualization
+Duration: 15 min
+Tag: Manifestation
+
+Why:
+“This works well when you’re open to reflection but don’t want intensity.”
+
+⸻
+
+HIGH ENERGY (activated, motivated)
+
+AI Pick 1
+
+Title: Intentional Focus Meditation
+Duration: 10 min
+Tag: Focus
+
+Why:
+“Your energy is up. This helps channel it instead of letting it scatter.”
+
+⸻
+
+AI Pick 2
+
+Title: Manifestation Clarity Session
+Duration: 15 min
+Tag: Manifestation
+
+Why:
+“This supports direction and intention when you feel ready to engage.”
+
+⸻
+
+Meditation Categories (thumbnails)
+	•	Calm
+	•	Stress
+	•	Grief
+	•	Manifestation
+	•	Sleep
+
+Filters:
+	•	Time: 5 / 10 / 20
+	•	Style: Guided / Silent
+	•	Voice: Voice / Text
+
+⸻
+
+⚙️ 2️⃣ FILTER LOGIC (EXACT RULES)
+
+Use these rules across Meditation, Workouts, Nutrition, Recovery, Challenges.
+
+Energy → Default Filtering
+
+IF energy = low:
+  - Show durations ≤ 10 min first
+  - Prioritize Calm, Recovery, Grounding
+  - Hide high-intensity options unless user opens filters
+
+IF energy = medium:
+  - Show balanced durations (10–20 min)
+  - Mix effort + recovery
+
+IF energy = high:
+  - Show full range
+  - Prioritize strength, focus, manifestation
+
+Goal → Content Bias (Beefy)
+
+IF bodyGoal = beefy:
+  - Prioritize Strength workouts
+  - Prioritize High-protein Nutrition
+  - De-prioritize cardio-only content
+
+AI Picks Selection Rules
+	•	Max 3 AI Picks
+	•	Never repeat the same category twice in a row
+	•	Must include a Why explanation
+	•	AI Picks are suggestions, not defaults
+
+Save Button Logic (global)
+	•	Disabled until exactly 1 item selected
+	•	Helper text shown when disabled:
+“Pick 1 option to save.”
+	•	Selecting another card replaces previous selection
+	•	Save → toast “Saved.” → persists after refresh
+
+⸻
+
+🧭 3️⃣ PLAN SUMMARY COPY (WHEN SAVED TO “MY SYSTEM”)
+
+This appears after a user saves anything (meditation, workout, meal, recovery, challenge).
+
+Plan Summary Header
+
+Added to My System
+
+⸻
+
+Plan Summary Body (dynamic template)
+
+Meditation example
+
+You added “Gentle Grounding Breath (5 min)”.
+
+This supports calm and balance.
+You can repeat it anytime or adjust later.
+
+⸻
+
+Workout example
+
+You added “Upper Body Strength Builder (30 min)”.
+
+This supports strength and mass.
+Adjust intensity based on how you feel that day.
+
+⸻
+
+Nutrition example
+
+You added “High-Protein Meal Prep (30 min)”.
+
+This supports your current goal.
+Ingredients and timing can be changed anytime.
+
+⸻
+
+Recovery example
+
+You added “Evening Wind-Down (10 min)”.
+
+This supports rest and nervous system balance.
+You can shorten or skip if needed.
+
+⸻
+
+Optional Actions (buttons)
+	•	Add to Calendar (confirmation required)
+	•	Edit Later
+	•	Done
+
+⸻
+
+📌 FINAL COPY/PASTE TO REPLIT (ALL-IN-ONE)
+
+Implement the following for Wave 6.3:
+
+• Add energy-adaptive Meditation AI Picks (low / medium / high energy) with “Why” explanations.
+• Apply unified filter logic across all guided experiences (Meditation, Workouts, Nutrition, Recovery, Challenges).
+• Enforce single-select behavior with disabled Save + helper text “Pick 1 option to save.”
+• Use provided Plan Summary copy when items are saved to “My System.”
+• All saves must persist after refresh and require confirmation before calendar adds.
+
+No AI Pick is a default action. Everything is optional and adjustable.
+
+⸻
+
+🧠 Where you are now (important)
+
+At this point:
+	•	Wave 6.3 is fully specified
+	•	Your app now has coherent intelligence
+	•	Nothing feels random, fake, or preachy
+	•	You’re building a real personal assistant
+
+Next (only if you want):
+	•	🔹 Investor demo flow (5-minute walkthrough)
+	•	🔹 Soft-launch tester script
+	•	🔹 Monetization ideas that don’t break trust
+
+Just tell me which one.

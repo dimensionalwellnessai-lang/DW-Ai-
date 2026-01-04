@@ -10,35 +10,33 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   MessageSquareText, 
   Clock, 
-  Play, 
   Check, 
-  Brain,
-  Heart,
   Sparkles,
   Moon,
   Sun,
-  Wind,
   Calendar,
   Leaf,
-  Target
+  Heart,
+  Waves,
+  Wind,
+  Bed,
+  Droplets
 } from "lucide-react";
 import { 
   getSavedRoutinesByType, 
   saveRoutine, 
   saveCalendarEvent,
-  getSoftOnboardingMood,
   type SavedRoutine 
 } from "@/lib/guest-storage";
 import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
 
-interface MeditationItem {
+interface RecoveryItem {
   id: string;
   title: string;
   description: string;
   duration: number;
-  category: "calm" | "stress" | "grief" | "manifestation" | "sleep" | "grounding" | "focus";
+  category: "rest" | "stretch" | "hydration" | "wind-down" | "massage" | "breathwork";
   tag: string;
-  mood: string[];
 }
 
 interface EnergyAdaptivePick {
@@ -53,232 +51,222 @@ const ENERGY_ADAPTIVE_PICKS: Record<EnergyLevel, EnergyAdaptivePick[]> = {
   low: [
     {
       id: "low-1",
-      title: "Gentle Grounding Breath",
-      duration: 5,
-      tag: "Calm",
-      why: "Notice if your energy feels low. This helps you settle without needing focus or effort."
+      title: "Gentle Rest & Reset",
+      duration: 10,
+      tag: "Rest",
+      why: "Notice if your energy feels low. This gives your body time to recover without effort."
     },
     {
       id: "low-2", 
-      title: "Body Awareness Reset",
+      title: "Evening Wind-Down",
       duration: 10,
-      tag: "Grounding",
-      why: "Notice if your mind feels busy but your body needs rest. This can help."
+      tag: "Wind-Down",
+      why: "Notice if you need nervous system balance. You can shorten or skip if needed."
     }
   ],
   medium: [
     {
       id: "med-1",
-      title: "Balanced Breath & Focus",
-      duration: 10,
-      tag: "Focus",
-      why: "Notice that you have enough energy to engage without pushing. This keeps things balanced."
+      title: "Active Recovery Stretch",
+      duration: 15,
+      tag: "Stretch",
+      why: "Notice that you have enough energy for gentle movement. This keeps things balanced."
     },
     {
       id: "med-2",
-      title: "Calm Visualization",
-      duration: 15,
-      tag: "Manifestation",
-      why: "Notice if you're open to reflection but want something gentle. This might fit."
+      title: "Hydration & Rest Check",
+      duration: 5,
+      tag: "Hydration",
+      why: "Notice your body's basic needs. A quick reset can help."
     }
   ],
   high: [
     {
       id: "high-1",
-      title: "Intentional Focus Meditation",
-      duration: 10,
-      tag: "Focus",
-      why: "Notice that your energy is up. This helps channel it instead of letting it scatter."
+      title: "Deep Tissue Self-Massage",
+      duration: 20,
+      tag: "Massage",
+      why: "Notice that your energy is up. Use some of it to release tension and support recovery."
     },
     {
       id: "high-2",
-      title: "Manifestation Clarity Session",
+      title: "Mobility Flow",
       duration: 15,
-      tag: "Manifestation",
-      why: "Notice if you feel ready to engage. This supports direction and intention."
+      tag: "Stretch",
+      why: "Notice if you want to support long-term recovery. This prevents tightness."
     }
   ]
 };
 
-const MEDITATION_LIBRARY: MeditationItem[] = [
+const RECOVERY_LIBRARY: RecoveryItem[] = [
   {
     id: "1",
-    title: "Gentle Grounding Breath",
-    description: "A calming breath pattern to help you settle without effort",
-    duration: 5,
-    category: "calm",
-    tag: "Calm",
-    mood: ["anxious", "overwhelmed", "scattered", "tired"]
+    title: "Gentle Rest & Reset",
+    description: "A quiet pause to let your body recover without effort",
+    duration: 10,
+    category: "rest",
+    tag: "Rest"
   },
   {
     id: "2",
-    title: "Body Awareness Reset",
-    description: "Release tension from head to toe with gentle awareness",
+    title: "Evening Wind-Down",
+    description: "Prepare for restful sleep with calming activities",
     duration: 10,
-    category: "grounding",
-    tag: "Grounding",
-    mood: ["tired", "tense", "stressed", "busy"]
+    category: "wind-down",
+    tag: "Wind-Down"
   },
   {
     id: "3",
-    title: "Balanced Breath & Focus",
-    description: "Equal breath counts to center and engage your mind",
-    duration: 10,
-    category: "focus",
-    tag: "Focus",
-    mood: ["neutral", "steady", "present"]
+    title: "Active Recovery Stretch",
+    description: "Gentle movement to ease tension and improve flexibility",
+    duration: 15,
+    category: "stretch",
+    tag: "Stretch"
   },
   {
     id: "4",
-    title: "Calm Visualization",
-    description: "Gentle imagery to support reflection and openness",
-    duration: 15,
-    category: "manifestation",
-    tag: "Manifestation",
-    mood: ["open", "reflective", "curious"]
+    title: "Hydration & Rest Check",
+    description: "Check in with your body's basic needs",
+    duration: 5,
+    category: "hydration",
+    tag: "Hydration"
   },
   {
     id: "5",
-    title: "Intentional Focus Meditation",
-    description: "Channel your energy with clarity and direction",
-    duration: 10,
-    category: "focus",
-    tag: "Focus",
-    mood: ["motivated", "activated", "ready"]
+    title: "Deep Tissue Self-Massage",
+    description: "Release tension in tight muscles with targeted pressure",
+    duration: 20,
+    category: "massage",
+    tag: "Massage"
   },
   {
     id: "6",
-    title: "Manifestation Clarity Session",
-    description: "Set intentions when you feel ready to engage",
+    title: "Mobility Flow",
+    description: "Dynamic stretches to improve range of motion",
     duration: 15,
-    category: "manifestation",
-    tag: "Manifestation",
-    mood: ["energized", "motivated", "clear"]
+    category: "stretch",
+    tag: "Stretch"
   },
   {
     id: "7",
-    title: "Sleep Wind-Down",
-    description: "Ease into rest with a soothing body relaxation",
-    duration: 12,
-    category: "sleep",
-    tag: "Sleep",
-    mood: ["tired", "restless", "wired"]
+    title: "Legs Up the Wall",
+    description: "Restorative pose to reduce swelling and calm the mind",
+    duration: 10,
+    category: "rest",
+    tag: "Rest"
   },
   {
     id: "8",
-    title: "Stress Release Breathwork",
-    description: "Focused breathing to release accumulated tension",
+    title: "Recovery Breathwork",
+    description: "Focused breathing to activate your parasympathetic system",
     duration: 8,
-    category: "stress",
-    tag: "Stress",
-    mood: ["stressed", "anxious", "overwhelmed"]
+    category: "breathwork",
+    tag: "Breathwork"
   },
   {
     id: "9",
-    title: "Grief & Loss Meditation",
-    description: "Gentle space for processing difficult emotions",
-    duration: 15,
-    category: "grief",
-    tag: "Grief",
-    mood: ["sad", "grieving", "heavy"]
+    title: "Cold Exposure Prep",
+    description: "Mental and physical preparation for cold therapy",
+    duration: 5,
+    category: "hydration",
+    tag: "Hydration"
   },
   {
     id: "10",
-    title: "Deep Calm Practice",
-    description: "Extended relaxation for nervous system reset",
-    duration: 20,
-    category: "calm",
-    tag: "Calm",
-    mood: ["tense", "overwhelmed", "need rest"]
+    title: "Full Body Foam Rolling",
+    description: "Comprehensive self-massage for major muscle groups",
+    duration: 25,
+    category: "massage",
+    tag: "Massage"
   },
 ];
 
 const getCategoryIcon = (category: string) => {
   switch (category) {
-    case "calm": return Wind;
-    case "stress": return Heart;
-    case "grief": return Moon;
-    case "manifestation": return Sparkles;
-    case "sleep": return Moon;
-    case "grounding": return Leaf;
-    case "focus": return Target;
-    default: return Brain;
+    case "rest": return Bed;
+    case "stretch": return Leaf;
+    case "hydration": return Droplets;
+    case "wind-down": return Moon;
+    case "massage": return Heart;
+    case "breathwork": return Wind;
+    default: return Waves;
   }
 };
 
 const getCategoryColor = (category: string) => {
   switch (category) {
-    case "calm": return "text-sky-500";
-    case "stress": return "text-rose-500";
-    case "grief": return "text-indigo-400";
-    case "manifestation": return "text-violet-500";
-    case "sleep": return "text-indigo-500";
-    case "grounding": return "text-emerald-500";
-    case "focus": return "text-amber-500";
-    default: return "text-violet-500";
+    case "rest": return "text-indigo-500";
+    case "stretch": return "text-emerald-500";
+    case "hydration": return "text-sky-500";
+    case "wind-down": return "text-violet-500";
+    case "massage": return "text-rose-500";
+    case "breathwork": return "text-cyan-500";
+    default: return "text-teal-500";
   }
 };
 
 const getTagIcon = (tag: string) => {
   switch (tag.toLowerCase()) {
-    case "calm": return Wind;
-    case "grounding": return Leaf;
-    case "focus": return Target;
-    case "manifestation": return Sparkles;
-    case "sleep": return Moon;
-    case "stress": return Heart;
-    case "grief": return Moon;
-    default: return Brain;
+    case "rest": return Bed;
+    case "stretch": return Leaf;
+    case "hydration": return Droplets;
+    case "wind-down": return Moon;
+    case "massage": return Heart;
+    case "breathwork": return Wind;
+    default: return Waves;
   }
 };
 
-export function MeditationPage() {
+export function RecoveryPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [savedMeditations, setSavedMeditations] = useState<SavedRoutine[]>([]);
+  const [savedRecovery, setSavedRecovery] = useState<SavedRoutine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false);
-  const [pendingCalendarItem, setPendingCalendarItem] = useState<EnergyAdaptivePick | MeditationItem | null>(null);
+  const [pendingCalendarItem, setPendingCalendarItem] = useState<EnergyAdaptivePick | RecoveryItem | null>(null);
   
   const energyContext = getCurrentEnergyContext();
   const currentEnergy = energyContext.energy;
 
   useEffect(() => {
-    setSavedMeditations(getSavedRoutinesByType("meditation"));
+    const saved = getSavedRoutinesByType("workout").filter(r => 
+      r.tags?.some(t => ["recovery", "rest", "stretch", "massage"].includes(t.toLowerCase()))
+    );
+    setSavedRecovery(saved);
   }, []);
 
   const handleSaveAIPick = (item: EnergyAdaptivePick) => {
     const saved = saveRoutine({
-      type: "meditation",
+      type: "workout",
       title: item.title,
       description: item.why,
       data: { duration: item.duration, tag: item.tag },
-      tags: [item.tag.toLowerCase(), "meditation"],
+      tags: [item.tag.toLowerCase(), "recovery"],
     });
-    setSavedMeditations([saved, ...savedMeditations]);
+    setSavedRecovery([saved, ...savedRecovery]);
     toast({
       title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports calm and balance.`,
+      description: `You added "${item.title} (${item.duration} min)". This supports rest and nervous system balance.`,
     });
   };
 
-  const handleSaveMeditation = (item: MeditationItem) => {
+  const handleSaveRecovery = (item: RecoveryItem) => {
     const saved = saveRoutine({
-      type: "meditation",
+      type: "workout",
       title: item.title,
       description: item.description,
       data: { duration: item.duration, category: item.category },
-      tags: item.mood,
+      tags: [item.tag.toLowerCase(), "recovery"],
     });
-    setSavedMeditations([saved, ...savedMeditations]);
+    setSavedRecovery([saved, ...savedRecovery]);
     toast({
       title: "Added to My System",
-      description: `You added "${item.title} (${item.duration} min)". This supports calm and balance.`,
+      description: `You added "${item.title} (${item.duration} min)". This supports rest and recovery.`,
     });
   };
 
-  const handleAddToCalendar = (item: EnergyAdaptivePick | MeditationItem) => {
+  const handleAddToCalendar = (item: EnergyAdaptivePick | RecoveryItem) => {
     setPendingCalendarItem(item);
     setCalendarConfirmOpen(true);
   };
@@ -286,25 +274,24 @@ export function MeditationPage() {
   const confirmAddToCalendar = () => {
     if (!pendingCalendarItem) return;
     
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(7, 0, 0, 0);
+    const today = new Date();
+    today.setHours(20, 0, 0, 0);
     
-    const endTime = new Date(tomorrow);
+    const endTime = new Date(today);
     endTime.setMinutes(endTime.getMinutes() + pendingCalendarItem.duration);
     
     const description = 'why' in pendingCalendarItem 
       ? pendingCalendarItem.why 
-      : (pendingCalendarItem as MeditationItem).description;
+      : (pendingCalendarItem as RecoveryItem).description;
     const tags = 'tag' in pendingCalendarItem 
-      ? [pendingCalendarItem.tag.toLowerCase(), "meditation"]
-      : [(pendingCalendarItem as MeditationItem).category, "meditation"];
+      ? [pendingCalendarItem.tag.toLowerCase(), "recovery"]
+      : [(pendingCalendarItem as RecoveryItem).category, "recovery"];
     
     saveCalendarEvent({
       title: pendingCalendarItem.title,
       description,
-      dimension: "spiritual",
-      startTime: tomorrow.getTime(),
+      dimension: "physical",
+      startTime: today.getTime(),
       endTime: endTime.getTime(),
       isAllDay: false,
       location: null,
@@ -318,7 +305,7 @@ export function MeditationPage() {
     
     toast({
       title: "Added to calendar.",
-      description: `"${pendingCalendarItem.title}" scheduled for tomorrow morning.`,
+      description: `"${pendingCalendarItem.title}" scheduled for this evening.`,
     });
     setCalendarConfirmOpen(false);
     setPendingCalendarItem(null);
@@ -326,34 +313,26 @@ export function MeditationPage() {
   };
 
   const isSaved = (title: string) => {
-    return savedMeditations.some(s => s.title === title);
+    return savedRecovery.some(s => s.title === title);
   };
 
   const energyAdaptivePicks = ENERGY_ADAPTIVE_PICKS[currentEnergy];
   
-  const getEnergyLabel = (energy: EnergyLevel): string => {
-    switch (energy) {
-      case "low": return "Low Energy";
-      case "medium": return "Steady";
-      case "high": return "High Energy";
-    }
-  };
-  
-  const filteredMeditations = selectedCategory 
-    ? MEDITATION_LIBRARY.filter(m => m.category === selectedCategory)
-    : MEDITATION_LIBRARY;
+  const filteredRecovery = selectedCategory 
+    ? RECOVERY_LIBRARY.filter(r => r.category === selectedCategory)
+    : RECOVERY_LIBRARY;
 
   const categories = [
-    { id: "calm", label: "Calm", icon: Wind },
-    { id: "stress", label: "Stress", icon: Heart },
-    { id: "grief", label: "Grief", icon: Moon },
-    { id: "manifestation", label: "Manifestation", icon: Sparkles },
-    { id: "sleep", label: "Sleep", icon: Moon },
+    { id: "rest", label: "Rest", icon: Bed },
+    { id: "stretch", label: "Stretch", icon: Leaf },
+    { id: "hydration", label: "Hydration", icon: Droplets },
+    { id: "wind-down", label: "Wind-Down", icon: Moon },
+    { id: "massage", label: "Massage", icon: Heart },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Meditation" />
+      <PageHeader title="Recovery" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
@@ -380,7 +359,7 @@ export function MeditationPage() {
                     key={item.id} 
                     className={`hover-elevate cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
                     onClick={() => setSelectedSuggestionId(isSelected ? null : item.id)}
-                    data-testid={`card-meditation-suggested-${item.id}`}
+                    data-testid={`card-recovery-suggested-${item.id}`}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
@@ -419,7 +398,7 @@ export function MeditationPage() {
                 className="flex-1"
                 disabled={!selectedSuggestionId}
                 onClick={() => {
-                  const selected = energyAdaptivePicks.find(m => m.id === selectedSuggestionId);
+                  const selected = energyAdaptivePicks.find(r => r.id === selectedSuggestionId);
                   if (selected && !isSaved(selected.title)) {
                     handleSaveAIPick(selected);
                     setSelectedSuggestionId(null);
@@ -435,7 +414,7 @@ export function MeditationPage() {
                 className="flex-1"
                 disabled={!selectedSuggestionId}
                 onClick={() => {
-                  const selected = energyAdaptivePicks.find(m => m.id === selectedSuggestionId);
+                  const selected = energyAdaptivePicks.find(r => r.id === selectedSuggestionId);
                   if (selected) {
                     handleAddToCalendar(selected);
                   }
@@ -476,14 +455,14 @@ export function MeditationPage() {
             </div>
             
             <div className="space-y-2">
-              {filteredMeditations.map((item) => {
+              {filteredRecovery.map((item) => {
                 const Icon = getCategoryIcon(item.category);
                 const saved = isSaved(item.title);
                 return (
                   <Card 
                     key={item.id} 
                     className="hover-elevate"
-                    data-testid={`card-meditation-${item.id}`}
+                    data-testid={`card-recovery-${item.id}`}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
@@ -507,9 +486,9 @@ export function MeditationPage() {
                           <Button 
                             size="sm" 
                             variant={saved ? "secondary" : "outline"}
-                            onClick={() => !saved && handleSaveMeditation(item)}
+                            onClick={() => !saved && handleSaveRecovery(item)}
                             disabled={saved}
-                            data-testid={`button-save-meditation-browse-${item.id}`}
+                            data-testid={`button-save-recovery-browse-${item.id}`}
                           >
                             {saved ? (
                               <><Check className="h-4 w-4 mr-1" /> Saved</>
@@ -521,7 +500,7 @@ export function MeditationPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleAddToCalendar(item)}
-                            data-testid={`button-calendar-meditation-browse-${item.id}`}
+                            data-testid={`button-calendar-recovery-browse-${item.id}`}
                           >
                             <Calendar className="h-4 w-4" />
                           </Button>
@@ -544,12 +523,12 @@ export function MeditationPage() {
                   <div className="flex-1">
                     <h3 className="font-medium text-sm">Need something specific?</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Ask the AI assistant to find or create a meditation that fits your current state.
+                      Ask the AI assistant to find a recovery routine that fits your current state.
                     </p>
                     <Link href="/">
-                      <Button size="sm" className="mt-3" data-testid="button-ask-ai-meditation">
+                      <Button size="sm" className="mt-3" data-testid="button-ask-ai-recovery">
                         <MessageSquareText className="h-4 w-4 mr-2" />
-                        Ask AI for a meditation
+                        Ask AI for recovery ideas
                       </Button>
                     </Link>
                   </div>
@@ -565,7 +544,7 @@ export function MeditationPage() {
           <DialogHeader>
             <DialogTitle>Add to Calendar</DialogTitle>
             <DialogDescription>
-              Would you like to schedule "{pendingCalendarItem?.title}" for tomorrow at 7 AM?
+              Would you like to schedule "{pendingCalendarItem?.title}" for this evening at 8 PM?
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 mt-4">
