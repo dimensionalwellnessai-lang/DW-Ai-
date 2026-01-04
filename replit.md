@@ -224,4 +224,23 @@ All guided experience pages (Meditation, Workouts, Challenges, Recovery) follow 
 - Maximum 2-3 AI picks to avoid overwhelm
 - Single selection enforced (toggle off by re-clicking)
 - Calendar additions always confirmed via dialog
+
+## Wave 7: Transparency & Trust (Current)
+
+### 7.1 System Ownership/Transparency
+- **Data Origin Labels**: Goals, habits, and routines display origin badges ("You Created", "AI Suggested", "Imported")
+- **Explain Why Toggle**: Collapsible "Why this?" button shows AI reasoning for suggestions
+- **Schema Fields**: `dataSource` and `explainWhy` columns on goals, habits, routines tables
+- **My Life System Section**: Life Dashboard shows all user's items with origin counts
+
+### 7.3 Feedback Queue
+- **User Feedback Table**: `userFeedback` with category tags (confusion, friction, emotional_load, clarity)
+- **Feedback API**: POST /api/feedback endpoint for submitting feedback
+- **Page Context**: Feedback captures which page the user was on
+
+### 7.4 Pattern Awareness (Energy-Adaptive AI)
+- **Energy Patterns**: `ENERGY_ADAPTIVE_PATTERNS` in voiceGuide.ts for low/medium/high energy
+- **Transparency Phrases**: AI explains why it's adjusting guidance based on energy
+- **Consent Reminders**: Phrases that reinforce user autonomy ("You're always in control")
+- **No Dark Patterns**: Never auto-schedule, never restrict options, always ask permission
 - Safari-compatible (no experimental APIs)
