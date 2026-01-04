@@ -769,6 +769,14 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
       tags: plan.tags,
     });
     setSavedMeals([saved, ...savedMeals]);
+    toast({
+      title: "Meal Plan Saved",
+      description: `"${plan.title}" added to your saved plans.`,
+    });
+  };
+
+  const isMealPlanSaved = (planTitle: string) => {
+    return savedMeals.some(s => s.title === planTitle);
   };
 
   const getPersonalizedRecommendation = () => {
@@ -1006,14 +1014,21 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                         </div>
                         <Button 
                           size="sm" 
-                          variant="outline"
+                          variant={isMealPlanSaved(plan.title) ? "secondary" : "outline"}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSaveMealPlan(plan);
+                            if (!isMealPlanSaved(plan.title)) {
+                              handleSaveMealPlan(plan);
+                            }
                           }}
+                          disabled={isMealPlanSaved(plan.title)}
                           data-testid={`button-save-meal-${index}`}
                         >
-                          Save
+                          {isMealPlanSaved(plan.title) ? (
+                            <><Check className="h-4 w-4 mr-1" /> Saved</>
+                          ) : (
+                            "Save"
+                          )}
                         </Button>
                       </div>
                       

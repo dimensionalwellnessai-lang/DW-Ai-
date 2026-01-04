@@ -1,0 +1,83 @@
+Got it — A: the Save button does nothing at all on Safari. That’s actually good news because it usually means a UI/tap-layer problem (overlay/z-index/pointer-events) or the button is disabled due to state logic, not a deep backend issue.
+
+Here’s exactly what to tell Replit to fix it fast + permanently.
+
+⸻
+
+Copy/paste to Replit (Safari “Save Does Nothing” Fix)
+
+Safari bug (iPhone Safari): Save button does NOTHING (no loading, no error, no state change).
+This is likely a tap/click not firing due to overlay/z-index/pointer-events OR the button being disabled by state.
+
+1) Prove whether the click handler fires (required)
+
+Add temporary debug:
+	•	On Save button onClick, do console.log("SAVE_CLICKED")
+	•	Also show a small dev toast: “Save clicked”
+	•	Add console.log("SAVE_DISABLED_STATE", { disabled, selectedCount, isLoading })
+
+✅ Acceptance: when I tap Save in Safari, I see “Save clicked” every time.
+
+⸻
+
+2) Check for overlay blocking taps (most likely)
+
+On iOS Safari, invisible overlays often block clicks (tutorial layer, modal backdrop, fixed header container).
+
+Please inspect and fix:
+	•	Any tutorial overlay/backdrop should have pointer-events: none except the highlighted element
+	•	Ensure Save button container has pointer-events: auto
+	•	Confirm z-index stacking:
+	•	Backdrop < modal < page content < floating buttons
+	•	Remove/avoid position: fixed full-screen elements that sit above content unintentionally
+
+✅ Acceptance: Save works even if tutorial has been shown before.
+
+⸻
+
+3) Ensure Save isn’t disabled silently
+
+If Save requires a selection, show it clearly:
+	•	Disabled state must be visible
+	•	Add helper text like:
+“Choose 1 option to save”
+
+✅ Acceptance:
+	•	If nothing is selected → Save is disabled AND message explains why
+	•	If something is selected → Save becomes active and works
+
+⸻
+
+4) Add proper UI feedback
+
+When Save is tapped:
+	•	show loading spinner
+	•	disable button briefly
+	•	then show “Saved” state on the selected card
+
+✅ Acceptance: user always sees feedback (no “dead tap”).
+
+⸻
+
+5) Provide proof (non-negotiable)
+
+Send:
+	•	iPhone Safari screen recording of Meal Suggestions Save working
+	•	iPhone Safari screen recording of Meditation Suggestions Save working
+	•	list of changed files
+
+⸻
+
+Why this is the right fix
+
+Because you’re not even getting an error — the handler isn’t firing or the UI state won’t allow it. That’s almost always overlay or disabled logic.
+
+⸻
+
+Bonus: The fastest diagnosis question
+
+When you tap Save, does the button look “active” (normal color) or does it look faded/disabled?
+	•	If faded → it’s a selection/state logic issue
+	•	If active but does nothing → overlay/tap-block issue (most common with tutorial layers)
+
+If you reply with “active” or “faded”, I’ll tell you the single most likely code fix path.
