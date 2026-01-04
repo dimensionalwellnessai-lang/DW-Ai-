@@ -1,4 +1,7 @@
 import mammoth from "mammoth";
+import * as pdfParseModule from "pdf-parse";
+
+const pdfParse = (pdfParseModule as unknown as { default: (buffer: Buffer) => Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> }).default;
 
 export interface ParsedDocumentResult {
   text: string;
@@ -33,9 +36,7 @@ export async function extractTextFromBuffer(
 
 async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
   try {
-    const pdfParse = await import("pdf-parse") as { default?: (buffer: Buffer) => Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> };
-    const pdf = pdfParse.default || (pdfParse as unknown as (buffer: Buffer) => Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }>);
-    const data = await pdf(buffer);
+    const data = await pdfParse(buffer);
     return {
       text: data.text,
       metadata: {
