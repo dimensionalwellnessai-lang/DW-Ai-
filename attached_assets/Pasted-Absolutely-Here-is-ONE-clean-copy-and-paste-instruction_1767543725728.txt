@@ -1,0 +1,55 @@
+Absolutely.
+Here is ONE clean copy-and-paste instruction that covers everything, without extra explanation or confusion. You can drop this directly into Replit or any AI/dev instruction box.
+
+⸻
+
+📌 REPLIT CONTEXT INSTRUCTION (COPY & PASTE)
+
+This project is Dimensional Wellness AI, a consent-based personal assistant that helps users build their own life system through adaptive guidance — not prescriptive routines.
+
+Core principles (non-negotiable):
+	•	No forced routines or “ideal life” templates
+	•	All actions (save, schedule, commit) require explicit user consent
+	•	The assistant supports user authorship, not dependency
+	•	The product is calm, optional, and energy-aware
+	•	The creator’s personal life system is not encoded or replicated
+
+Scope status:
+	•	Wave 6 (Guided Experiences, Body & Energy Intelligence) is complete
+	•	Phase B (Polish & Stabilization) is complete
+	•	We are now operating under Wave 7 (Growth, Trust & Sustainability)
+
+Development guardrails:
+	•	Do not add new features unless explicitly requested
+	•	Do not introduce monetization that targets emotional relief or identity
+	•	Do not add social pressure, streaks, or guilt-based mechanics
+	•	Avoid medical or diagnostic claims
+	•	Maintain App Store compliance at all times
+
+Uploaded documentation (authoritative):
+	•	/docs/WAVE_7_ROADMAP.md
+	•	/docs/ETHICAL_MONETIZATION.md
+	•	/docs/USER_TRUST_AND_SAFETY.md
+	•	/docs/APP_STORE_REVIEWER_NOTES.md
+	•	/docs/INVESTOR_NARRATIVE.md
+
+These documents define:
+	•	What may be built
+	•	What must never be built
+	•	How the AI should behave
+	•	How trust, safety, and consent are enforced
+
+If there is ambiguity, default to:
+user control, optionality, clarity, and calm.
+
+⸻
+
+That’s it.
+This single block gives Replit full context, boundaries, and direction without exposing your personal life system or causing scope creep.
+
+If you want, next I can:
+	•	Shorten this further (ultra-minimal version)
+	•	Adapt it for a README.md
+	•	Rewrite it as a system prompt for the AI itself
+
+Just say the word.

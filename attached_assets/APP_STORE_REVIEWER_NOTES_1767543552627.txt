@@ -1,0 +1,2 @@
+This app does not provide medical diagnosis or treatment.
+All actions are user-controlled and consent-based.
