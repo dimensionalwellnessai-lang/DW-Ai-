@@ -642,7 +642,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -664,6 +664,23 @@ export async function registerRoutes(
         storage.getUserProfile(userId),
       ]);
       
+      let documentContext = "";
+      if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+        const docs = await Promise.all(
+          documentIds.map((id: string) => storage.getImportedDocument(id))
+        );
+        const validDocs = docs.filter(d => d && d.userId === userId);
+        if (validDocs.length > 0) {
+          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d => 
+            `--- ${d!.fileName} ---\n${d!.rawText?.slice(0, 3000) || "(no content)"}\n---`
+          ).join("\n");
+        }
+      }
+      
+      const enhancedMessage = documentContext 
+        ? `${message}\n${documentContext}`
+        : message;
+      
       const userContext = {
         category: context,
         systemName: user?.systemName || undefined,
@@ -681,7 +698,7 @@ export async function registerRoutes(
       };
       
       const result = await detectIntentAndRespond(
-        message,
+        enhancedMessage,
         conversationHistory || [],
         userContext
       );

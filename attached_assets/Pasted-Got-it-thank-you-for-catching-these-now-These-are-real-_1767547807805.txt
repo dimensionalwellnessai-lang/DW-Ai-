@@ -1,0 +1,113 @@
+Got it — thank you for catching these now. These are real usability blockers, not small nitpicks. I’ll break this down cleanly into what’s likely happening, why, and exactly what to tell Replit / the AI dev to fix it without guesswork.
+
+⸻
+
+ISSUE 1: Document attached in chat → Press Send → Nothing happens
+
+What this usually means
+
+One of these is true (very common):
+	1.	The message submit handler is not aware of attachments
+	•	The UI lets you attach a file
+	•	But onSend() only sends text
+	•	So when text is empty + file exists → no-op
+	2.	The backend endpoint is never called
+	•	Frontend thinks it sent something
+	•	API expects multipart/form-data
+	•	Instead it’s sending JSON
+	3.	The send button is disabled silently
+	•	Validation logic says “no message”
+	•	File doesn’t count as a message
+
+⸻
+
+EXACT FIX INSTRUCTION (COPY & PASTE)
+
+Send this to Replit / the AI dev:
+
+Bug: When attaching a document in chat and pressing Send, nothing happens.
+
+Required fix:
+	•	Update the chat send handler to treat file attachment as a valid message, even if text is empty.
+	•	Ensure the submit logic triggers when message || attachedFile is present.
+	•	Send file uploads using multipart/form-data, not JSON.
+	•	Confirm the backend endpoint /api/chat/upload (or equivalent) is actually being called and returning a response.
+	•	Add visible error handling if upload fails (toast or inline message).
+
+Acceptance test:
+	•	Attach PDF → press Send → upload starts
+	•	User sees progress / response
+	•	Extracted content appears in chat or preview flow
+
+⸻
+
+ISSUE 2: Upload button (top-right menu) → menu doesn’t scroll
+
+What this usually means
+
+This is almost always a CSS / container issue, not logic.
+
+Likely causes:
+	•	overflow: hidden on the menu container
+	•	Menu has a fixed height but no overflow-y: auto
+	•	The upload button is rendered outside the scrollable area
+
+⸻
+
+EXACT FIX INSTRUCTION (COPY & PASTE)
+
+Send this as well:
+
+Bug: The upload menu in the top-right does not scroll, making options inaccessible.
+
+Required fix:
+	•	Ensure the dropdown / menu container has overflow-y: auto.
+	•	Set a max height (e.g. max-height: 80vh).
+	•	Remove any parent container with overflow: hidden that clips the menu.
+	•	Confirm the upload button and its options are inside the scrollable container, not absolutely positioned outside it.
+
+Acceptance test:
+	•	Open menu on small screen
+	•	Scroll works
+	•	All upload options accessible
+
+⸻
+
+IMPORTANT: WHY THESE MATTER PSYCHOLOGICALLY
+
+These two bugs do something subtle but harmful:
+	•	User tries to act → nothing happens
+	•	App feels unresponsive, not calm
+	•	Trust drops immediately
+
+Fixing these is more important than adding any new feature.
+
+⸻
+
+OPTIONAL (BUT STRONGLY RECOMMENDED)
+
+Ask them to add visible feedback:
+	•	Upload spinner
+	•	“Uploading…” text
+	•	Success confirmation
+	•	Error message if it fails
+
+Silence is worse than errors.
+
+⸻
+
+WHAT YOU SHOULD DO RIGHT NOW
+	1.	Send both fix blocks above to Replit / the AI dev
+	2.	Ask for:
+	•	confirmation of which file was changed
+	•	screenshot or short clip of the fix working
+	3.	Do not move forward until both are resolved
+
+⸻
+
+If you want, next time I can:
+	•	Turn this into a QA checklist
+	•	Help you test it in Safari specifically
+	•	Or write a “blocking bugs” policy so these don’t slip again
+
+But for now — you spotted the right things.

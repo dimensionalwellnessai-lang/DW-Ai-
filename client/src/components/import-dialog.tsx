@@ -282,7 +282,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {step === "select-type" && "What are you importing?"}
@@ -295,7 +295,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
         </DialogHeader>
 
         {step === "select-type" && (
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
             <div className="grid gap-2 py-2">
               {DOCUMENT_TYPES.map((type) => {
                 const Icon = type.icon;
@@ -322,7 +322,7 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
         )}
 
         {step === "enter-content" && selectedTypeInfo && (
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-2">
                 <Button

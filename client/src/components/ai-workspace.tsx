@@ -126,6 +126,8 @@ export function AIWorkspace() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState(() => getChatDraft() || "");
   const [conversationVersion, setConversationVersion] = useState(0);
@@ -230,8 +232,28 @@ export function AIWorkspace() {
     };
   };
 
+  const uploadFileMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload failed");
+      }
+      
+      return response.json();
+    },
+  });
+
   const chatMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, documentIds }: { message: string; documentIds?: string[] }) => {
       const lifeContext = buildLifeSystemContext();
       const energyContext = getEnergyContextForAPI();
       const response = await apiRequest("POST", "/api/chat/smart", {
@@ -240,6 +262,7 @@ export function AIWorkspace() {
         userProfile: userProfile || undefined,
         lifeSystemContext: lifeContext,
         energyContext,
+        documentIds: documentIds || [],
       });
       return response.json();
     },
@@ -247,6 +270,7 @@ export function AIWorkspace() {
       addMessageToConversation("assistant", data.response);
       setConversationVersion(v => v + 1);
       setIsTyping(false);
+      setPendingDocumentIds([]);
     },
     onError: () => {
       toast({
@@ -255,25 +279,64 @@ export function AIWorkspace() {
         variant: "destructive",
       });
       setIsTyping(false);
+      setPendingDocumentIds([]);
     },
   });
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const hasInput = input.trim();
     const hasFiles = attachedFiles.length > 0;
     
-    if ((!hasInput && !hasFiles) || isTyping) return;
+    if ((!hasInput && !hasFiles) || isTyping || isUploading) return;
 
     let userMessage = input.trim();
     
-    if (hasFiles && !hasInput) {
-      const fileNames = attachedFiles.map(f => f.name).join(", ");
-      userMessage = attachedFiles.length === 1
-        ? `I'm sharing a file with you: ${fileNames}. Please analyze it and let me know what you find.`
-        : `I'm sharing ${attachedFiles.length} files with you: ${fileNames}. Please analyze them and let me know what you find.`;
-    } else if (hasFiles) {
-      const fileNames = attachedFiles.map(f => f.name).join(", ");
-      userMessage = `[Attached: ${fileNames}] ${userMessage}`;
+    let documentIds: string[] = [];
+    
+    if (hasFiles) {
+      if (!user) {
+        toast({
+          title: "Account needed",
+          description: "Create an account to share files in chat.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsUploading(true);
+      try {
+        const uploadedDocs: { id: string; name: string }[] = [];
+        for (const file of attachedFiles) {
+          const result = await uploadFileMutation.mutateAsync(file);
+          uploadedDocs.push({ id: result.documentId, name: file.name });
+        }
+        
+        documentIds = uploadedDocs.map(d => d.id);
+        const fileNames = uploadedDocs.map(d => d.name).join(", ");
+        if (!hasInput) {
+          userMessage = uploadedDocs.length === 1
+            ? `I'm sharing a file with you: ${fileNames}. Please analyze it and let me know what you find.`
+            : `I'm sharing ${uploadedDocs.length} files with you: ${fileNames}. Please analyze them and let me know what you find.`;
+        } else {
+          userMessage = `[Attached: ${fileNames}] ${userMessage}`;
+        }
+        
+        toast({
+          title: "Files uploaded",
+          description: uploadedDocs.length === 1 
+            ? `${uploadedDocs[0].name} is ready.`
+            : `${uploadedDocs.length} files uploaded.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: error instanceof Error ? error.message : "Could not upload files. Try again.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
     }
     
     setAttachedFiles([]);
@@ -281,6 +344,7 @@ export function AIWorkspace() {
     const crisisAnalysis = analyzeCrisisRisk(userMessage);
     if (crisisAnalysis.isPotentialCrisis) {
       setPendingCrisisMessage(userMessage);
+      setPendingDocumentIds(documentIds);
       setCrisisDialogOpen(true);
       return;
     }
@@ -288,9 +352,9 @@ export function AIWorkspace() {
     addMessageToConversation("user", userMessage);
     setConversationVersion(v => v + 1);
     setInput("");
-    clearChatDraft(); // Clear immediately on send
+    clearChatDraft();
     setIsTyping(true);
-    chatMutation.mutate(userMessage);
+    chatMutation.mutate({ message: userMessage, documentIds });
   };
 
   const handleSendMessage = (message: string) => {
@@ -298,20 +362,22 @@ export function AIWorkspace() {
     addMessageToConversation("user", message);
     setConversationVersion(v => v + 1);
     setIsTyping(true);
-    chatMutation.mutate(message);
+    chatMutation.mutate({ message });
   };
 
   const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
     const messageToSend = pendingCrisisMessage;
+    const docIds = pendingDocumentIds;
     setInput("");
-    clearChatDraft(); // Clear immediately on send
+    clearChatDraft();
     setPendingCrisisMessage("");
+    setPendingDocumentIds([]);
     
     if (sendToAI && messageToSend) {
       addMessageToConversation("user", messageToSend);
       setConversationVersion(v => v + 1);
       setIsTyping(true);
-      chatMutation.mutate(messageToSend);
+      chatMutation.mutate({ message: messageToSend, documentIds: docIds });
     } else if (responseMessage) {
       if (messageToSend) {
         addMessageToConversation("user", messageToSend);
@@ -686,21 +752,29 @@ export function AIWorkspace() {
           <div className="max-w-2xl mx-auto space-y-2">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
-                <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
+                ) : (
+                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                )}
                 <span className="flex-1 truncate">
-                  {attachedFiles.length === 1 
-                    ? attachedFiles[0].name 
-                    : `${attachedFiles.length} files selected`}
+                  {isUploading 
+                    ? "Uploading..."
+                    : attachedFiles.length === 1 
+                      ? attachedFiles[0].name 
+                      : `${attachedFiles.length} files selected`}
                 </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 shrink-0"
-                  onClick={() => setAttachedFiles([])}
-                  data-testid="button-remove-attachment"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
+                {!isUploading && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => setAttachedFiles([])}
+                    data-testid="button-remove-attachment"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
             )}
             <div className="flex gap-2">
@@ -726,7 +800,18 @@ export function AIWorkspace() {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (!user) {
+                    toast({
+                      title: "Account needed",
+                      description: "Create an account to share files in chat.",
+                    });
+                    setLocation("/login");
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }}
+                disabled={isUploading}
                 className="shrink-0"
                 data-testid="button-attach"
               >
@@ -738,7 +823,7 @@ export function AIWorkspace() {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type a message..."
                 className="resize-none min-h-[44px] max-h-32 rounded-2xl"
-                disabled={isTyping}
+                disabled={isTyping || isUploading}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -750,11 +835,11 @@ export function AIWorkspace() {
               <Button
                 size="icon"
                 onClick={handleSend}
-                disabled={(!input.trim() && attachedFiles.length === 0) || isTyping}
+                disabled={(!input.trim() && attachedFiles.length === 0) || isTyping || isUploading}
                 className="rounded-full shrink-0"
                 data-testid="button-send"
               >
-                <Send className="w-4 h-4" />
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
               <VoiceModeButton
                 onTranscript={(text) => {
