@@ -1,0 +1,172 @@
+Got you. You don’t want “Coming Soon.” You want the AI to enforce that every button leads to a working experience, even if it has to generate a new page/flow on the spot. And specifically: Suggested Schedule must be viewable → editable → savable into your Life System.
+
+Here’s the process + logic to make that true, plus a copy/paste spec for Replit.
+
+⸻
+
+The rule: “No Dead Ends”
+
+Every route + button must do one of these:
+	1.	Open a real tool page (Calendar / Tasks / Routines / Workouts / Nutrition / Journal)
+	2.	Open a “generator flow” that creates the content (AI generates → you edit → you save)
+	3.	Open a working settings/info screen
+
+Never: blank page, “not built,” dead route, nothing happening.
+
+⸻
+
+System Process (how the app guarantees this)
+
+1) Route Registry (single source of truth)
+
+Create a single list that defines every route and what it does:
+	•	id
+	•	path
+	•	label
+	•	icon
+	•	type = page | generator | modal
+	•	handler = what happens when opened
+	•	requiredData = what must exist
+	•	fallbackHandler = what to do if required data is missing
+
+Result: the app can validate itself.
+
+⸻
+
+2) Navigation Guard (prevents dead routes)
+
+Any time a user clicks a button/link:
+
+Guard logic
+	•	If route exists → open it
+	•	If route missing → create the page automatically using a standard template (same layout + back + save)
+	•	If route exists but feature data missing → route opens anyway and triggers generator flow (“Let’s set this up”)
+
+So users never hit a wall.
+
+⸻
+
+3) “Functional Minimum Page Template”
+
+When a page is created (or missing parts), it must still be functional with:
+	•	Title + description
+	•	One main action
+	•	Save/Cancel
+	•	AI help button
+	•	Back/Home/Hamburger available
+
+This is what keeps everything “real” even before you add fancy content.
+
+⸻
+
+The specific feature you asked for: Suggested Schedule must be real
+
+✅ Suggested Schedule: Required behavior
+
+When the AI generates a schedule, the user must be able to:
+
+A) Click “Suggested Schedule”
+
+Opens Schedule Review screen (not chat)
+
+B) See it in a real timeline
+	•	Day view and week view
+	•	Blocks show: title, time, category, notes
+	•	Expand block for details
+
+C) Edit it
+	•	Drag/drop time (mobile friendly)
+	•	Change duration
+	•	Change category (work/wellness/etc.)
+	•	Add notes
+	•	Delete block
+	•	Add new block
+
+D) Save it into “Life System”
+
+When they tap Save, the schedule becomes:
+	•	Calendar events (or routines + calendar events depending on type)
+	•	Stored as a “Plan Version”:
+	•	name: “Week Plan — Jan 6”
+	•	source: “AI Suggested”
+	•	status: Draft → Active when user confirms
+
+E) Consent step (legal safety)
+
+Before writing to calendar:
+	•	“This will add X blocks to your calendar. Proceed?”
+	•	Buttons: Add / Edit / Cancel
+
+⸻
+
+What “Save to Life System” means (data model)
+
+Minimum models:
+
+Plan
+	•	id
+	•	name
+	•	startDate / endDate
+	•	createdFrom (AI/manual/import)
+	•	status (draft/active/archived)
+
+PlanItem
+	•	planId
+	•	type (event/routine/task)
+	•	title
+	•	startTime/endTime
+	•	category
+	•	linkedRoute (optional deep link)
+	•	notes
+	•	sourceConfidence (optional)
+
+So now “Suggested Schedule” is a real object, not chat text.
+
+⸻
+
+Copy/paste spec for Replit (what to tell them)
+
+Use this:
+
+Goal: Zero dead-end pages. No “not built” routes. Every button must be functional.
+
+1) Implement a Route Registry + Navigation Guard
+	•	Create a single registry listing every route/button in the app (id/path/label/icon/type/handler/fallback).
+	•	On click/navigation, validate route exists. If missing, auto-create a functional page using a standard page template.
+	•	If route exists but required data is missing, page should still load and trigger an AI setup flow (not block user).
+
+2) Implement Suggested Schedule as a real editable tool
+	•	Clicking “Suggested Schedule” must open a Schedule Review page (not just chat).
+	•	Show schedule in a timeline (day/week).
+	•	Allow edits: change time/duration/category/notes, delete/add blocks.
+	•	Add “Save to Life System” which creates a Plan + PlanItems and then (with consent) commits to calendar.
+	•	Store saved schedules as plan versions (Draft/Active) so user can revisit and modify later.
+
+Acceptance Tests
+	•	Tap every menu item and every home button: no blank screens, no “page not built.”
+	•	Suggested Schedule: open → view → edit → save → appears in calendar + retrievable under Plans/Life System.
+	•	If user cancels consent, nothing is written to calendar, but plan can remain as Draft.
+
+⸻
+
+Quick decision I’ll make for you (so we don’t stall)
+
+To keep it simple and not “turn into just a scheduling app”:
+	•	The app becomes a life system
+	•	The calendar is the “display layer”
+	•	The “Life System” is the “source layer” (plans, routines, tasks)
+	•	The AI is the “builder layer”
+
+That’s clean.
+
+⸻
+
+If you want, I can also write the exact UI flow screens (names + buttons) so Replit can build it fast:
+	•	Home (AI Chat)
+	•	Plans (Life System)
+	•	Schedule Review (AI Suggested)
+	•	Plan Editor
+	•	Commit Confirmation
+	•	Calendar View (Day/Week/Month)
+
+Just say: “Yes, write the UI screens.”

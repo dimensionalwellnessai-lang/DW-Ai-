@@ -167,14 +167,14 @@ const QUICK_TIPS = [
   { icon: Target, text: "Focus on one dimension at a time for best results" }
 ];
 
-export default function HowToUsePage() {
+export default function AppTourPage() {
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();
   const totalTime = getTotalSetupTime();
   
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="How to Use" />
+      <PageHeader title="App Tour" />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">

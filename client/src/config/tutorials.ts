@@ -70,9 +70,9 @@ export const NAVIGATION_TUTORIAL: TutorialStep[] = [
     requiresMenuOpen: true
   },
   {
-    targetTestId: "menu-item-how-to-use",
-    title: "How to Use",
-    description: "Come back here anytime you want a refresher.",
+    targetTestId: "button-start-tutorial",
+    title: "App Tour",
+    description: "Come back here anytime you want a refresher on how to use the app.",
     placement: "right",
     requiresMenuOpen: true
   }

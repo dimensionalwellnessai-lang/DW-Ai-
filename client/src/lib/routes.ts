@@ -30,7 +30,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/feedback", name: "Feedback", enabled: true },
   { path: "/journal", name: "Journal", enabled: true },
   { path: "/settings", name: "Settings", enabled: true },
-  { path: "/how-to-use", name: "How to Use", enabled: true },
+  { path: "/app-tour", name: "App Tour", enabled: true },
   
   { path: "/body-scan", name: "Body Scan", enabled: true },
   { path: "/blueprint", name: "Blueprint", enabled: false },

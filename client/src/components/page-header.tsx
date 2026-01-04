@@ -29,7 +29,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "astrology": Sparkles,
   "talk-it-out": MessageCircle,
   "feedback": MessageCircleHeart,
-  "how-to-use": HelpCircle,
+  "app-tour": HelpCircle,
   "journal": BookOpen,
 };
 
@@ -231,7 +231,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             data-testid="button-start-tutorial"
           >
             <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">How to Use</span>
+            <span className="text-sm">App Tour</span>
           </button>
           {user ? (
             <div className="space-y-2">
@@ -257,7 +257,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           ) : (
             <Link href="/login">
               <Button className="w-full" size="sm" data-testid="button-signin">
-                Sign in
+                Sign in / Sign up
               </Button>
             </Link>
           )}

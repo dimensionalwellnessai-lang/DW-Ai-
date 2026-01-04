@@ -116,7 +116,7 @@ export function AIWorkspace() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
-  const { state: tutorialState, hasSeenNavigationTutorial } = useTutorial();
+  const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
@@ -501,9 +501,20 @@ export function AIWorkspace() {
           </details>
         </nav>
         <div className="pt-4 space-y-2">
+          <button
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+            onClick={() => {
+              setMenuOpen(false);
+              startNavigationTutorial(true);
+            }}
+            data-testid="button-start-tutorial"
+          >
+            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">App Tour</span>
+          </button>
           <Link href="/login">
             <Button className="w-full" size="sm" data-testid="button-signup">
-              Sign in
+              Sign in / Sign up
             </Button>
           </Link>
         </div>

@@ -29,7 +29,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "finances", name: "Finances", path: "/finances", visibility: "more", description: "Budget", enabled: true },
   { id: "feedback", name: "Feedback", path: "/feedback", visibility: "more", description: "Share thoughts", enabled: true },
   { id: "settings", name: "Settings", path: "/settings", visibility: "more", description: "Preferences", enabled: true },
-  { id: "how-to-use", name: "How to Use", path: "/how-to-use", visibility: "primary", description: "App guide", enabled: true },
+  { id: "app-tour", name: "App Tour", path: "/app-tour", visibility: "dormant", description: "App guide", enabled: false },
   
   { id: "body-scan", name: "Body Scan", visibility: "dormant", aiUnlockable: true, description: "Camera features", enabled: false },
   { id: "advanced-challenges", name: "Advanced Challenges", visibility: "dormant", aiUnlockable: true, enabled: false },

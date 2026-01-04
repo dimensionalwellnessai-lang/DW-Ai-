@@ -28,7 +28,7 @@ import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
 import ResetPasswordPage from "@/pages/reset-password";
-import HowToUsePage from "@/pages/how-to-use";
+import AppTourPage from "@/pages/app-tour";
 import JournalPage from "@/pages/journal";
 import NotFound from "@/pages/not-found";
 
@@ -56,7 +56,7 @@ function Router() {
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
-      {isRouteEnabled("/how-to-use") && <Route path="/how-to-use" component={HowToUsePage} />}
+      {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       <Route component={NotFound} />
     </Switch>

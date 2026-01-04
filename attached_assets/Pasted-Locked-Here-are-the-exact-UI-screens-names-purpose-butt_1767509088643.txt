@@ -1,0 +1,334 @@
+Locked. Here are the exact UI screens (names, purpose, buttons, and what happens) so Replit can build it fast and consistently — with zero dead ends and a real Suggested Schedule → Edit → Save to Life System flow.
+
+⸻
+
+UI Screens Pack (Wave “No Dead Ends” + Suggested Schedule)
+
+Global Rules (apply to every screen)
+
+Every screen must have:
+	•	Hamburger menu
+	•	Home icon (returns to AI Chat)
+	•	Back button
+	•	Help (AI) button (opens contextual assistance)
+
+Every button must lead to:
+	•	a working page, OR
+	•	a generator flow, OR
+	•	a functional editor page
+Never “page not built.”
+
+⸻
+
+1) Home Screen — AI Chat (Main)
+
+Route: /
+Purpose: The assistant is the main interface, like ChatGPT.
+
+Layout
+	•	Minimal chat window (no clutter)
+	•	Top bar: Hamburger (left), Home (optional), Profile icon (right)
+
+Primary Starter Cards (top of chat)
+	•	Make a plan
+	•	Suggested schedule
+	•	Talk it out
+	•	Challenges
+	•	Import a document
+	•	Continue my progress
+
+What each does
+	•	Make a plan → opens Plan Builder (Screen 5)
+	•	Suggested schedule → opens Suggested Schedule Review (Screen 6)
+	•	Talk it out → opens chat mode with “talk it out” tone + journaling capture
+	•	Challenges → opens Challenges Library (Screen 9)
+	•	Import a document → Document Import Flow (Screen 10)
+	•	Continue my progress → opens last Draft Plan / last open flow
+
+⸻
+
+2) Hamburger Menu — Navigation Panel
+
+Component: NavMenu
+Rules:
+	•	Must show icons clearly (no blur behind tutorial)
+	•	Must show App Tour just above auth
+
+Sections
+
+Top:
+	•	Home (AI)
+	•	Calendar ▸ (dropdown)
+	•	Plans (Life System)
+	•	Tasks
+	•	Routines
+	•	Workouts
+	•	Nutrition
+	•	Journal
+	•	Meditation
+	•	Talk it out
+	•	Challenges
+	•	More ▸ (dropdown)
+
+Calendar dropdown items
+	•	Today
+	•	Week
+	•	Month
+	•	Schedule (list view)
+	•	Routines view (optional)
+
+More dropdown items
+	•	Astrology (moved here)
+	•	Settings
+	•	Feedback
+	•	About
+
+Bottom fixed
+	•	App Tour
+	•	Auth button:
+	•	Logged out: Sign in / Sign up
+	•	Logged in: Logout + show user email/name above
+
+⸻
+
+3) App Tour Screen — Interactive Tutorial Hub
+
+Route: /app-tour
+Purpose: Users can re-run tutorials anytime.
+
+Contents
+
+Cards:
+	•	“Tour the Menu”
+	•	“Tour Calendar”
+	•	“Tour AI Chat”
+	•	“Tour Plans”
+	•	“Tour Import”
+
+Buttons:
+	•	Start / Skip / Don’t show again
+
+Must fix: tutorial highlight shows the actual icon element, not blurred.
+
+⸻
+
+4) Profile Screen — Get to Know You (Assessment)
+
+Route: /profile
+Purpose: collects baseline data without being annoying.
+
+Trigger rules
+	•	Auto prompt only if:
+	•	profile completion < threshold AND
+	•	user hasn’t dismissed in 7 days AND
+	•	user is not mid-flow (import, plan edit, calendar edit)
+
+UI
+
+Sections:
+	•	Basics (sleep/wake/work)
+	•	Body goals (beefy, recomp, lean, etc.)
+	•	Equipment (home / bands / dumbbells)
+	•	Nutrition preferences
+	•	Stress baseline
+
+Buttons:
+	•	Save
+	•	Not now (cooldown)
+	•	Remind me later
+
+⸻
+
+5) Plans Screen — Life System Dashboard
+
+Route: /plans
+Purpose: where saved schedules live. This is the “system layer.”
+
+Layout
+
+Tabs:
+	•	Drafts
+	•	Active
+	•	Archived
+
+Plan cards show:
+	•	Plan name
+	•	Date range
+	•	Created from: AI / import / manual
+	•	Status
+	•	Buttons: View / Edit / Activate / Export
+
+Primary button:
+	•	Create new plan → Plan Builder (Screen 8)
+
+⸻
+
+6) Suggested Schedule Review — (The screen you asked for)
+
+Route: /schedule-review/:draftId
+Purpose: View the AI suggested schedule as a real timeline.
+
+Must-have UI
+
+Top:
+	•	Title: “Suggested Schedule”
+	•	Status: Draft
+	•	Confidence meter (optional)
+	•	Buttons:
+	•	Edit
+	•	Save to Life System
+	•	Add selected to Calendar
+	•	Back to chat
+
+Main area:
+	•	Toggle: Day / Week
+	•	Timeline view:
+	•	Each block shows:
+	•	time, title, category icon
+	•	optional deep link icon
+	•	Multi-select mode:
+	•	Select blocks
+	•	Select all
+
+Actions
+	•	Tap a block → opens Block Details (Screen 7)
+	•	Select blocks → Add selected to Calendar (consent step)
+
+⸻
+
+7) Block Details — Edit One Schedule Block
+
+Route: modal OR /schedule-block/:id
+Purpose: edit a schedule item.
+
+Editable fields:
+	•	title
+	•	start time
+	•	duration
+	•	category (workout/meal/routine/task/custom)
+	•	notes
+	•	link target (optional): workout/meal/routine/plan
+	•	recurrence (optional)
+
+Buttons:
+	•	Save changes
+	•	Delete block
+	•	Duplicate
+	•	Cancel
+
+⸻
+
+8) Plan Builder — AI Plan Creation Wizard
+
+Route: /plan-builder
+Purpose: AI creates a plan from your life and goals.
+
+Flow (max 3 steps)
+	1.	“What are we building?”
+	•	Week plan / Month plan / Routine / Meal plan
+	2.	“How’s your energy?”
+	•	low / medium / high
+	3.	“Any constraints?”
+	•	work schedule auto-known, user adds exceptions
+
+Output:
+	•	creates a Draft schedule → opens Suggested Schedule Review (Screen 6)
+
+⸻
+
+9) Challenges Screen — Challenge Library
+
+Route: /challenges
+Purpose: structured challenges to empower users.
+
+Categories:
+	•	Workout challenges
+	•	Mental health challenges
+	•	Meal challenges
+	•	Social challenges
+	•	Financial challenges
+
+Each challenge has:
+	•	preview
+	•	difficulty
+	•	duration
+	•	“Add to my plan” button
+
+⸻
+
+10) Document Import Flow — Upload → Analyze → Preview → Commit
+
+Route: /import
+Purpose: import docs and create meals/workouts/routines/calendar suggestions.
+
+Tabs:
+	•	Summary
+	•	Meals
+	•	Routine
+	•	Calendar suggestions
+
+Buttons:
+	•	Save plan
+	•	Add selected to calendar (consent)
+	•	Back
+
+⸻
+
+11) Calendar Views
+
+These are display layers — not the source of truth.
+
+Today Schedule (List)
+
+Route: /daily-schedule
+	•	Tapping an event deep links to the source:
+	•	workout → /workout?selected=id
+	•	meal → /meal-prep?selected=id
+	•	routine → /routines?selected=id
+	•	plan → /plans/:id
+
+Week View
+
+Route: /calendar
+	•	Tap day → list opens
+	•	Tap event → deep link
+
+Month View
+
+Route: /calendar/month
+	•	Tap day → day list
+	•	Tap event → deep link
+
+⸻
+
+12) Export / Share Screen
+
+Route: /export/:planId
+Export options:
+	•	Calendar export (ICS)
+	•	PDF summary
+	•	Share link (private)
+
+⸻
+
+“No Dead Ends” Implementation Rule (must be enforced)
+
+Add an internal Route Audit page for developer use
+
+Route: /dev/routes
+Shows:
+	•	every registered route
+	•	every menu button and home CTA
+	•	highlights any missing route mapping
+
+⸻
+
+Copy/paste instruction to Replit
+
+Here’s the message you can paste:
+
+Please implement the UI screens and flows exactly as specified: Home AI Chat as main screen, hamburger menu with Calendar dropdown and App Tour above auth, Life System Plans screen, Suggested Schedule Review page (view/edit/save), Block Details editor, Plan Builder wizard that outputs draft schedules, and enforce “No Dead Ends” by ensuring every button routes to a working page or generator flow. Add deep links from calendar events to source pages and add a /dev/routes route audit tool to ensure no broken routes.
+
+⸻
+
+If you want, I can also write the route map table (Route → Component → Purpose → Buttons → Next Routes) so it’s basically plug-and-play for their router.
