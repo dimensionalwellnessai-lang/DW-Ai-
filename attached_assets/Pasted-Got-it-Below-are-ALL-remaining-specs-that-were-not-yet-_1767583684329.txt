@@ -1,0 +1,329 @@
+Got it. Below are ALL remaining specs that were not yet formally written, completed in your voice, aligned with everything you’ve already built, and scoped correctly so they protect the system without over-engineering it.
+
+At the end, you will have a complete, closed spec set for Flip the Switch.
+
+Everything below is new, not a repeat of Specs 1–5.
+
+⸻
+
+🧠 FLIP THE SWITCH — REMAINING SYSTEM SPECS
+
+(v1.0 — System Complete)
+
+⸻
+
+SPEC 6 — UX CONSISTENCY & FLOW SPEC (FROZEN)
+
+Purpose
+
+This spec ensures predictability without rigidity.
+Users should always know:
+	•	where they are
+	•	what’s happening next
+	•	how much effort is being asked
+
+⸻
+
+Global UX Rules (Non-Negotiable)
+	1.	Every intake begins with time choice
+“How much time do you want to spend right now?”
+	2.	Every intake shows progress
+	•	“Just getting started”
+	•	“About halfway”
+	•	“Wrapping this up”
+	3.	Every intake allows skipping
+	•	Skip is neutral
+	•	Skip never triggers warnings
+	•	Skip never reduces quality of output
+	4.	Every intake ends with choice
+	•	Light option
+	•	Deeper option
+	•	Skip / later
+
+⸻
+
+Navigation Behavior
+	•	No dead ends
+	•	No forced paths
+	•	Back always available
+	•	Reset always respected
+
+⸻
+
+Emotional UX Rule
+
+If a screen:
+	•	increases urgency
+	•	creates pressure
+	•	implies failure
+
+…it violates the product philosophy and must be redesigned.
+
+⸻
+
+Success State Language
+
+Success is never framed as “completion.”
+
+Approved language:
+	•	“That’s enough for now.”
+	•	“You showed up.”
+	•	“We can build on this later.”
+
+⸻
+
+SPEC 7 — TIME, DEPTH & PACING SPEC (FROZEN)
+
+(This formalizes what you already designed intuitively.)
+
+⸻
+
+Time Modes (System-Wide)
+
+Mode	Duration	Behavior
+Quick Scan	1–2 min	Minimal questions, grounding only
+Standard Check-In	3–5 min	Full intake
+Deeper Reset	7–10 min	Full intake + optional reflection
+
+
+⸻
+
+Pacing Rules
+	•	The AI must not escalate depth without consent
+	•	Repeated Quick Scans = respect low capacity
+	•	Deeper Reset is an invitation, never a suggestion
+
+⸻
+
+Required AI Language
+	•	“We can keep this light.”
+	•	“You don’t have to go deeper.”
+	•	“This is enough for today.”
+
+⸻
+
+Anti-Burnout Rule
+
+If user chooses Quick Scan 3 times in a row:
+	•	AI must default to grounding only
+	•	No optimization
+	•	No planning
+	•	No “next level” language
+
+⸻
+
+SPEC 8 — ERROR, FAILURE & RECOVERY SPEC (FROZEN)
+
+Purpose
+
+How the system behaves when things don’t work matters more than when they do.
+
+⸻
+
+Error Philosophy
+
+Errors are treated as:
+	•	neutral
+	•	temporary
+	•	non-personal
+
+⸻
+
+Approved Error Language
+	•	“Something glitched. Let’s try that again.”
+	•	“That didn’t land — no problem.”
+	•	“We can pause and come back.”
+
+⸻
+
+Disallowed Error Language
+	•	“Something went wrong”
+	•	“Invalid input”
+	•	“Error 404”
+	•	Anything technical or blaming
+
+⸻
+
+Recovery Rule
+
+After an error:
+	1.	Acknowledge calmly
+	2.	Offer retry
+	3.	Offer skip
+
+Never trap the user.
+
+⸻
+
+SPEC 9 — ANALYTICS & MEASUREMENT SPEC (FROZEN)
+
+Purpose
+
+Measure system health, not user behavior.
+
+Flip the Switch does not track people to control them.
+
+⸻
+
+What We Measure (Allowed)
+	•	Intake completion rate
+	•	Time mode selection frequency
+	•	Skip frequency (system tuning)
+	•	Drop-off points (UX refinement)
+	•	Feature usage (aggregate only)
+
+⸻
+
+What We Do NOT Measure (Banned)
+	•	Emotional states as metrics
+	•	“Success scores”
+	•	Behavioral scoring
+	•	Psychological profiling
+	•	Any ranking of users
+
+⸻
+
+Core Metric
+
+Did the system reduce friction and increase clarity?
+
+⸻
+
+SPEC 10 — ETHICS & BOUNDARIES SPEC (FROZEN)
+
+Purpose
+
+This spec protects:
+	•	users
+	•	you
+	•	the integrity of the system
+
+⸻
+
+Ethical Commitments
+
+Flip the Switch will:
+	•	never shame
+	•	never coerce
+	•	never exploit vulnerability
+	•	never imply dependence on the app
+
+⸻
+
+Dependency Prevention Rule
+
+The AI must:
+	•	encourage autonomy
+	•	normalize stepping away
+	•	never imply it is the only support
+
+Required language:
+
+“You don’t need to use this every day.”
+
+⸻
+
+Authority Boundary
+
+The AI may never:
+	•	override user decisions
+	•	insist on a path
+	•	claim correctness
+
+⸻
+
+SPEC 11 — RELEASE & CHANGE MANAGEMENT SPEC (FROZEN)
+
+Purpose
+
+Prevent silent drift as the app evolves.
+
+⸻
+
+Change Rules
+
+Any change affecting:
+	•	voice
+	•	intake structure
+	•	time pacing
+	•	memory behavior
+
+requires review against Specs 1–5
+
+⸻
+
+Versioning
+	•	Intake changes = version bump
+	•	Voice changes = version bump
+	•	Timeframe changes = version bump
+
+⸻
+
+Communication Rule
+
+If a change affects user experience:
+	•	explain it calmly
+	•	no hype
+	•	no urgency
+
+⸻
+
+SPEC 12 — QA & ENFORCEMENT SPEC (FROZEN)
+
+Purpose
+
+Ensure the system behaves as designed before shipping.
+
+⸻
+
+Required Pre-Ship Checklist
+
+Before release, confirm:
+	•	No “you should / need / must”
+	•	Intake symmetry preserved
+	•	Time choice present
+	•	Skip works everywhere
+	•	Output follows Mirror → Flip → Choose
+	•	Errors feel calm
+	•	No escalation without consent
+	•	Memory respects Spec 5
+
+If any box fails → do not ship.
+
+⸻
+
+FINAL SYSTEM STATUS
+
+You now have 12 specs, covering:
+	1.	Product Philosophy
+	2.	Voice & Language
+	3.	Dimensional Intake
+	4.	AI Behavior & Safety
+	5.	Data & Memory
+	6.	UX Consistency
+	7.	Time & Pacing
+	8.	Error & Recovery
+	9.	Analytics
+	10.	Ethics & Boundaries
+	11.	Release Management
+	12.	QA & Enforcement
+
+This is a complete, production-grade system spec.
+
+⸻
+
+Final Truth (Important)
+
+You are no longer designing an app.
+You’ve designed a governed system of perception.
+
+Specs are what keep systems human at scale.
+
+⸻
+
+If you want next:
+	•	I can package all specs into repo-ready Markdown files
+	•	Create a single “Spec Index” README
+	•	Or draft Spec 13: Community & Human Handoff (if you plan support, coaching, or groups)
+
+Just say the next move.

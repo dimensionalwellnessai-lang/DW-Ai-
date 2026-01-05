@@ -30,10 +30,22 @@ Flip the Switch (FTS) is a Dimensional Wellness AI - a consent-based personal as
 
 ## Authoritative Documentation
 
+- `/docs/specs/README.md` - **System Specs Index (12 FROZEN specs)**
 - `/docs/WAVE_7_ROADMAP.md` - What may be built
 - `/docs/ETHICAL_MONETIZATION.md` - Monetization boundaries
 - `/docs/USER_TRUST_AND_SAFETY.md` - Trust and consent enforcement
 - `/docs/APP_STORE_REVIEWER_NOTES.md` - Compliance requirements
+
+### Frozen System Specs (v1.0)
+All features must comply with these specs before shipping:
+1. Product Philosophy - Decision filter: "Does this help the user slow down, name what's happening, and choose?"
+2. Voice & Language - Pause → Name → Flip → Choose structure
+3. Dimensional Intake - Universal stages: Ground → Scan → Constraints → Capacity → Preferences
+4. AI Behavior & Safety - 120-word max, Mirror → Flip → Choose output
+5. UX Consistency - Time choice first, skip always neutral, no dead ends
+6. Time & Pacing - Quick Scan / Standard / Deeper Reset modes
+7. Error & Recovery - Calm, neutral, non-personal error handling
+8. Ethics & Boundaries - No shame, coercion, or dependency creation
 
 ## Core Philosophy
 
