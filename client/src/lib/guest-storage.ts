@@ -222,6 +222,49 @@ export interface CalendarEvent {
   updatedAt: number;
 }
 
+export interface SavedRecipe {
+  id: string;
+  title: string;
+  description: string;
+  source: string | null;
+  sourceUrl: string | null;
+  servings: number;
+  prepTime: number;
+  cookTime: number;
+  ingredients: { name: string; amount: string; unit: string; category: string }[];
+  instructions: string[];
+  tags: string[];
+  dietaryTags: string[];
+  notes: string;
+  isFavorite: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  amount: string;
+  unit: string;
+  category: string;
+  isChecked: boolean;
+  isInPantry: boolean;
+  sourceRecipeIds: string[];
+  sourceMealPlanIds: string[];
+  notes: string;
+  addedAt: number;
+}
+
+export interface GroceryList {
+  id: string;
+  name: string;
+  items: GroceryItem[];
+  isActive: boolean;
+  shoppingDate: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface DimensionWellnessProfile {
   id: string;
   dimension: WellnessDimension;
@@ -352,6 +395,8 @@ export interface GuestData {
   userResources?: UserResource[];
   planningScopes?: PlanningScope[];
   contentRotations?: ContentRotation[];
+  savedRecipes?: SavedRecipe[];
+  groceryLists?: GroceryList[];
   preferences: {
     themeMode: "accent-only" | "full-background";
     useMetricUnits?: boolean;
@@ -787,6 +832,33 @@ export function shouldShowSoftOnboarding(): boolean {
 export function getSoftOnboardingMood(): SoftOnboardingMood | null {
   const data = getGuestData();
   return data?.softOnboarding?.mood || null;
+}
+
+const SOFT_ONBOARDING_PROGRESS_KEY = "fts_soft_onboarding_progress";
+
+export interface SoftOnboardingProgress {
+  step: number;
+  selectedEnergies: SoftOnboardingMood[];
+  selectedBackgrounds: string[];
+  selectedResponse: string | null;
+}
+
+export function getSoftOnboardingProgress(): SoftOnboardingProgress | null {
+  const stored = localStorage.getItem(SOFT_ONBOARDING_PROGRESS_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSoftOnboardingProgress(progress: SoftOnboardingProgress | null): void {
+  if (progress === null) {
+    localStorage.removeItem(SOFT_ONBOARDING_PROGRESS_KEY);
+  } else {
+    localStorage.setItem(SOFT_ONBOARDING_PROGRESS_KEY, JSON.stringify(progress));
+  }
 }
 
 export function getBodyProfile(): BodyProfile | null {
@@ -1608,4 +1680,201 @@ export function rotateContent(domain: PlanningDomain, currentItemId: string, moo
 export function getRotationIndex(domain: PlanningDomain): number {
   const rotation = getContentRotation(domain);
   return rotation?.currentIndex || 0;
+}
+
+// Recipe functions
+export function getSavedRecipes(): SavedRecipe[] {
+  const data = getGuestData();
+  return data?.savedRecipes || [];
+}
+
+export function getSavedRecipeById(id: string): SavedRecipe | null {
+  const recipes = getSavedRecipes();
+  return recipes.find(r => r.id === id) || null;
+}
+
+export function saveRecipe(recipe: Omit<SavedRecipe, "id" | "createdAt" | "updatedAt">): SavedRecipe {
+  const data = getGuestData() || initGuestData();
+  if (!data.savedRecipes) data.savedRecipes = [];
+  
+  const newRecipe: SavedRecipe = {
+    ...recipe,
+    id: generateId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  
+  data.savedRecipes.unshift(newRecipe);
+  saveGuestData(data);
+  return newRecipe;
+}
+
+export function updateRecipe(id: string, updates: Partial<SavedRecipe>): SavedRecipe | null {
+  const data = getGuestData();
+  if (!data?.savedRecipes) return null;
+  
+  const index = data.savedRecipes.findIndex(r => r.id === id);
+  if (index < 0) return null;
+  
+  data.savedRecipes[index] = { 
+    ...data.savedRecipes[index], 
+    ...updates, 
+    updatedAt: Date.now() 
+  };
+  saveGuestData(data);
+  return data.savedRecipes[index];
+}
+
+export function deleteRecipe(id: string): void {
+  const data = getGuestData();
+  if (!data?.savedRecipes) return;
+  
+  data.savedRecipes = data.savedRecipes.filter(r => r.id !== id);
+  saveGuestData(data);
+}
+
+export function toggleRecipeFavorite(id: string): SavedRecipe | null {
+  const data = getGuestData();
+  if (!data?.savedRecipes) return null;
+  
+  const recipe = data.savedRecipes.find(r => r.id === id);
+  if (!recipe) return null;
+  
+  return updateRecipe(id, { isFavorite: !recipe.isFavorite });
+}
+
+// Grocery list functions
+export function getGroceryLists(): GroceryList[] {
+  const data = getGuestData();
+  return data?.groceryLists || [];
+}
+
+export function getActiveGroceryList(): GroceryList | null {
+  const lists = getGroceryLists();
+  return lists.find(l => l.isActive) || null;
+}
+
+export function createGroceryList(name: string): GroceryList {
+  const data = getGuestData() || initGuestData();
+  if (!data.groceryLists) data.groceryLists = [];
+  
+  data.groceryLists.forEach(l => l.isActive = false);
+  
+  const newList: GroceryList = {
+    id: generateId(),
+    name,
+    items: [],
+    isActive: true,
+    shoppingDate: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  
+  data.groceryLists.unshift(newList);
+  saveGuestData(data);
+  return newList;
+}
+
+export function addItemToGroceryList(
+  listId: string, 
+  item: Omit<GroceryItem, "id" | "addedAt">
+): GroceryItem | null {
+  const data = getGuestData();
+  if (!data?.groceryLists) return null;
+  
+  const list = data.groceryLists.find(l => l.id === listId);
+  if (!list) return null;
+  
+  const existingItem = list.items.find(
+    i => i.name.toLowerCase() === item.name.toLowerCase() && i.unit === item.unit
+  );
+  
+  if (existingItem) {
+    const existingAmount = parseFloat(existingItem.amount) || 0;
+    const newAmount = parseFloat(item.amount) || 0;
+    existingItem.amount = String(existingAmount + newAmount);
+    existingItem.sourceRecipeIds = [...new Set([...existingItem.sourceRecipeIds, ...item.sourceRecipeIds])];
+    existingItem.sourceMealPlanIds = [...new Set([...existingItem.sourceMealPlanIds, ...item.sourceMealPlanIds])];
+    saveGuestData(data);
+    return existingItem;
+  }
+  
+  const newItem: GroceryItem = {
+    ...item,
+    id: generateId(),
+    addedAt: Date.now(),
+  };
+  
+  list.items.push(newItem);
+  list.updatedAt = Date.now();
+  saveGuestData(data);
+  return newItem;
+}
+
+export function toggleGroceryItemChecked(listId: string, itemId: string): void {
+  const data = getGuestData();
+  if (!data?.groceryLists) return;
+  
+  const list = data.groceryLists.find(l => l.id === listId);
+  if (!list) return;
+  
+  const item = list.items.find(i => i.id === itemId);
+  if (!item) return;
+  
+  item.isChecked = !item.isChecked;
+  list.updatedAt = Date.now();
+  saveGuestData(data);
+}
+
+export function toggleGroceryItemPantry(listId: string, itemId: string): void {
+  const data = getGuestData();
+  if (!data?.groceryLists) return;
+  
+  const list = data.groceryLists.find(l => l.id === listId);
+  if (!list) return;
+  
+  const item = list.items.find(i => i.id === itemId);
+  if (!item) return;
+  
+  item.isInPantry = !item.isInPantry;
+  list.updatedAt = Date.now();
+  saveGuestData(data);
+}
+
+export function removeGroceryItem(listId: string, itemId: string): void {
+  const data = getGuestData();
+  if (!data?.groceryLists) return;
+  
+  const list = data.groceryLists.find(l => l.id === listId);
+  if (!list) return;
+  
+  list.items = list.items.filter(i => i.id !== itemId);
+  list.updatedAt = Date.now();
+  saveGuestData(data);
+}
+
+export function addRecipeIngredientsToGroceryList(recipeId: string, listId?: string): GroceryList | null {
+  const recipe = getSavedRecipeById(recipeId);
+  if (!recipe) return null;
+  
+  let list = listId ? getGroceryLists().find(l => l.id === listId) : getActiveGroceryList();
+  if (!list) {
+    list = createGroceryList("Shopping List");
+  }
+  
+  for (const ing of recipe.ingredients) {
+    addItemToGroceryList(list.id, {
+      name: ing.name,
+      amount: ing.amount,
+      unit: ing.unit,
+      category: ing.category,
+      isChecked: false,
+      isInPantry: false,
+      sourceRecipeIds: [recipeId],
+      sourceMealPlanIds: [],
+      notes: "",
+    });
+  }
+  
+  return getGroceryLists().find(l => l.id === list!.id) || null;
 }

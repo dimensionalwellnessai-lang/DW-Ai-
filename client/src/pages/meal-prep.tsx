@@ -54,10 +54,24 @@ import {
   saveCalendarEvent,
   getUserResourcesByType,
   deleteUserResource,
+  getSavedRecipes,
+  saveRecipe,
+  deleteRecipe,
+  toggleRecipeFavorite,
+  getActiveGroceryList,
+  createGroceryList,
+  addItemToGroceryList,
+  toggleGroceryItemChecked,
+  toggleGroceryItemPantry,
+  removeGroceryItem,
+  addRecipeIngredientsToGroceryList,
   type MealPrepPreferences,
   type DietaryStyle,
   type SavedRoutine,
-  type UserResource
+  type UserResource,
+  type SavedRecipe,
+  type GroceryList,
+  type GroceryItem
 } from "@/lib/guest-storage";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
@@ -741,6 +755,11 @@ export default function MealPrepPage() {
   const [aiIngredientSuggestion, setAiIngredientSuggestion] = useState<string | null>(null);
   const ingredientRequestId = useRef(0);
   
+  const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>(getSavedRecipes());
+  const [groceryList, setGroceryList] = useState<GroceryList | null>(getActiveGroceryList());
+  const [quickAddItem, setQuickAddItem] = useState("");
+  const [recipeBoxOpen, setRecipeBoxOpen] = useState(false);
+  
   const { toast } = useToast();
 
   // AI-powered ingredient suggestion when search has no results
@@ -941,6 +960,38 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     });
   };
 
+  const handleSaveMealAsRecipe = (meal: { name: string; prepTime: number; ingredients: string[] }, planTitle: string) => {
+    const newRecipe = saveRecipe({
+      title: meal.name,
+      description: `From ${planTitle}`,
+      source: planTitle,
+      sourceUrl: null,
+      servings: 2,
+      prepTime: meal.prepTime,
+      cookTime: 0,
+      ingredients: meal.ingredients.map(ing => ({
+        name: ing,
+        amount: "1",
+        unit: "",
+        category: "Other",
+      })),
+      instructions: [],
+      tags: [],
+      dietaryTags: [],
+      notes: "",
+      isFavorite: false,
+    });
+    setSavedRecipes([newRecipe, ...savedRecipes]);
+    toast({
+      title: "Recipe saved",
+      description: `"${meal.name}" added to your Recipe Box.`,
+    });
+  };
+
+  const isRecipeSaved = (mealName: string) => {
+    return savedRecipes.some(r => r.title === mealName);
+  };
+
   const isMealPlanSaved = (planTitle: string) => {
     return savedMeals.some(s => s.title === planTitle);
   };
@@ -1000,6 +1051,90 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     setSavedVideos(newSaved);
     localStorage.setItem("fts_saved_videos", JSON.stringify(newSaved));
   };
+
+  const handleQuickAddGroceryItem = () => {
+    if (!quickAddItem.trim()) return;
+    
+    let list = groceryList;
+    if (!list) {
+      list = createGroceryList("Shopping List");
+    }
+    
+    addItemToGroceryList(list.id, {
+      name: quickAddItem.trim(),
+      amount: "1",
+      unit: "",
+      category: "Other",
+      isChecked: false,
+      isInPantry: false,
+      sourceRecipeIds: [],
+      sourceMealPlanIds: [],
+      notes: "",
+    });
+    
+    setGroceryList(getActiveGroceryList());
+    setQuickAddItem("");
+    toast({ title: "Added to list", description: `"${quickAddItem}" added to your grocery list.` });
+  };
+
+  const handleToggleGroceryCheck = (itemId: string) => {
+    if (!groceryList) return;
+    toggleGroceryItemChecked(groceryList.id, itemId);
+    setGroceryList(getActiveGroceryList());
+  };
+
+  const handleTogglePantry = (itemId: string) => {
+    if (!groceryList) return;
+    toggleGroceryItemPantry(groceryList.id, itemId);
+    setGroceryList(getActiveGroceryList());
+  };
+
+  const handleRemoveGroceryItem = (itemId: string) => {
+    if (!groceryList) return;
+    removeGroceryItem(groceryList.id, itemId);
+    setGroceryList(getActiveGroceryList());
+    toast({ title: "Removed", description: "Item removed from your list." });
+  };
+
+  const handleAddMealPlanToGrocery = (plan: typeof SAMPLE_MEAL_PLANS[0]) => {
+    let list = groceryList;
+    if (!list) {
+      list = createGroceryList("Shopping List");
+    }
+    
+    for (const meal of plan.meals) {
+      for (const ing of meal.ingredients) {
+        addItemToGroceryList(list.id, {
+          name: ing,
+          amount: "1",
+          unit: "",
+          category: "Other",
+          isChecked: false,
+          isInPantry: false,
+          sourceRecipeIds: [],
+          sourceMealPlanIds: [plan.title],
+          notes: `From ${meal.name}`,
+        });
+      }
+    }
+    
+    setGroceryList(getActiveGroceryList());
+    toast({ 
+      title: "Added to grocery list", 
+      description: `Ingredients from "${plan.title}" added to your list.` 
+    });
+  };
+
+  const groceryItemsByCategory = groceryList?.items.reduce((acc, item) => {
+    const cat = item.category || "Other";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {} as Record<string, GroceryItem[]>) || {};
+
+  const uncheckedCount = groceryList?.items.filter(i => !i.isChecked && !i.isInPantry).length || 0;
+  const checkedCount = groceryList?.items.filter(i => i.isChecked).length || 0;
+  const pantryCount = groceryList?.items.filter(i => i.isInPantry).length || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -1162,79 +1297,249 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {/* Grocery Builder Section - Shows when category selected */}
             {selectedNutritionCategory === "grocery" && (
               <section className="space-y-4" data-testid="section-grocery-builder">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-purple-500/10 rounded-lg">
-                    <ShoppingBag className="h-4 w-4 text-purple-500" />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-purple-500/10 rounded-lg">
+                      <ShoppingBag className="h-4 w-4 text-purple-500" />
+                    </div>
+                    <h2 className="font-semibold">Grocery Builder</h2>
                   </div>
-                  <h2 className="font-semibold">Grocery Builder</h2>
+                  {groceryList && groceryList.items.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {uncheckedCount} to buy
+                    </Badge>
+                  )}
+                </div>
+                
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Quick add item..."
+                        value={quickAddItem}
+                        onChange={(e) => setQuickAddItem(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleQuickAddGroceryItem()}
+                        className="flex-1"
+                        data-testid="input-quick-add-grocery"
+                      />
+                      <Button onClick={handleQuickAddGroceryItem} size="icon" data-testid="button-add-grocery-item">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {savedMeals.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Add from saved plans:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {savedMeals.slice(0, 3).map((meal) => (
+                            <Button
+                              key={meal.id}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const plan = SAMPLE_MEAL_PLANS.find(p => p.title === meal.title);
+                                if (plan) handleAddMealPlanToGrocery(plan);
+                              }}
+                              data-testid={`button-add-plan-${meal.id}`}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              {meal.title.substring(0, 20)}{meal.title.length > 20 ? "..." : ""}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(!groceryList || groceryList.items.length === 0) ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Your grocery list is empty.</p>
+                        <p className="text-xs mt-1">Add items above or generate from meal plans.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {uncheckedCount > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                              To Buy ({uncheckedCount})
+                            </h4>
+                            <div className="space-y-1">
+                              {groceryList.items.filter(i => !i.isChecked && !i.isInPantry).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover-elevate group"
+                                >
+                                  <button
+                                    onClick={() => handleToggleGroceryCheck(item.id)}
+                                    className="w-5 h-5 rounded border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary transition-colors"
+                                    data-testid={`button-check-${item.id}`}
+                                  />
+                                  <span className="flex-1 text-sm">{item.name}</span>
+                                  {item.amount !== "1" && (
+                                    <Badge variant="outline" className="text-xs">{item.amount} {item.unit}</Badge>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleTogglePantry(item.id)}
+                                    data-testid={`button-pantry-${item.id}`}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                                    onClick={() => handleRemoveGroceryItem(item.id)}
+                                    data-testid={`button-remove-${item.id}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {checkedCount > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                              Got It ({checkedCount})
+                            </h4>
+                            <div className="space-y-1">
+                              {groceryList.items.filter(i => i.isChecked).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 group"
+                                >
+                                  <button
+                                    onClick={() => handleToggleGroceryCheck(item.id)}
+                                    className="w-5 h-5 rounded border-2 border-primary bg-primary flex items-center justify-center"
+                                    data-testid={`button-uncheck-${item.id}`}
+                                  >
+                                    <Check className="h-3 w-3 text-primary-foreground" />
+                                  </button>
+                                  <span className="flex-1 text-sm line-through text-muted-foreground">{item.name}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                                    onClick={() => handleRemoveGroceryItem(item.id)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {pantryCount > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                              Already in Pantry ({pantryCount})
+                            </h4>
+                            <div className="space-y-1">
+                              {groceryList.items.filter(i => i.isInPantry).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 group"
+                                >
+                                  <div className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center">
+                                    <Check className="h-3 w-3 text-emerald-600" />
+                                  </div>
+                                  <span className="flex-1 text-sm text-muted-foreground">{item.name}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleTogglePantry(item.id)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+            
+            {/* Recipe Box Section */}
+            {selectedNutritionCategory === "meal-prep" && (
+              <section className="space-y-4" data-testid="section-recipe-box">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-amber-500/10 rounded-lg">
+                      <ChefHat className="h-4 w-4 text-amber-500" />
+                    </div>
+                    <h2 className="font-semibold">Recipe Box</h2>
+                  </div>
+                  {savedRecipes.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {savedRecipes.length} saved
+                    </Badge>
+                  )}
                 </div>
                 
                 <Card>
                   <CardContent className="p-4 space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Build your shopping list based on your saved meal plans and recipes. 
-                      Notice how having a clear list can reduce decision fatigue at the store.
+                      Save recipes from meal plans or add your own favorites. 
+                      Add ingredients directly to your grocery list.
                     </p>
                     
-                    <div className="grid gap-3">
-                      <Card className="hover-elevate cursor-pointer" onClick={() => {
-                        toast({
-                          title: "Coming soon",
-                          description: "Grocery list generation will be available in the next update.",
-                        });
-                      }}>
-                        <CardContent className="p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                            <FileText className="h-5 w-5 text-emerald-500" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">Generate from Saved Plans</h4>
-                            <p className="text-xs text-muted-foreground">Create a list from your saved meal plans</p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="hover-elevate cursor-pointer" onClick={() => {
-                        toast({
-                          title: "Coming soon",
-                          description: "Smart suggestions will be available in the next update.",
-                        });
-                      }}>
-                        <CardContent className="p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                            <Sparkles className="h-5 w-5 text-blue-500" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">Smart Suggestions</h4>
-                            <p className="text-xs text-muted-foreground">AI-powered staples based on your preferences</p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="hover-elevate cursor-pointer" onClick={() => {
-                        toast({
-                          title: "Coming soon",
-                          description: "Quick add feature will be available in the next update.",
-                        });
-                      }}>
-                        <CardContent className="p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                            <Plus className="h-5 w-5 text-amber-500" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm">Quick Add Items</h4>
-                            <p className="text-xs text-muted-foreground">Manually add items to your list</p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </CardContent>
-                      </Card>
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground text-center pt-2">
-                      This feature is in development. Tap any option to be notified when ready.
-                    </p>
+                    {savedRecipes.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Heart className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No saved recipes yet.</p>
+                        <p className="text-xs mt-1">Save recipes from meal plans to see them here.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {savedRecipes.slice(0, 5).map((recipe) => (
+                          <Card key={recipe.id} className="hover-elevate">
+                            <CardContent className="p-3 flex items-center gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-sm truncate">{recipe.title}</h4>
+                                  {recipe.isFavorite && (
+                                    <Heart className="h-3 w-3 text-red-500 fill-red-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{recipe.prepTime + recipe.cookTime} min</span>
+                                  <span className="text-muted-foreground/50">|</span>
+                                  <span>{recipe.ingredients.length} ingredients</span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  addRecipeIngredientsToGroceryList(recipe.id);
+                                  setGroceryList(getActiveGroceryList());
+                                  toast({ 
+                                    title: "Added to grocery list", 
+                                    description: `${recipe.ingredients.length} ingredients added.` 
+                                  });
+                                }}
+                                data-testid={`button-add-recipe-to-grocery-${recipe.id}`}
+                              >
+                                <ShoppingBag className="h-3 w-3 mr-1" />
+                                Add
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </section>
@@ -1532,6 +1837,70 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                         <li key={instIdx} className="text-xs text-muted-foreground">{inst}</li>
                                       ))}
                                     </ol>
+                                  </div>
+                                  
+                                  <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSaveMealAsRecipe(meal, plan.title);
+                                      }}
+                                      disabled={isRecipeSaved(meal.name)}
+                                      data-testid={`button-save-recipe-${index}-${mealIdx}`}
+                                    >
+                                      {isRecipeSaved(meal.name) ? (
+                                        <><Check className="h-3 w-3 mr-1" /> In Recipe Box</>
+                                      ) : (
+                                        <><Heart className="h-3 w-3 mr-1" /> Save Recipe</>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        let list = groceryList;
+                                        if (!list) {
+                                          list = createGroceryList("Shopping List");
+                                        }
+                                        for (const ing of meal.ingredients) {
+                                          addItemToGroceryList(list.id, {
+                                            name: ing,
+                                            amount: "1",
+                                            unit: "",
+                                            category: "Other",
+                                            isChecked: false,
+                                            isInPantry: false,
+                                            sourceRecipeIds: [],
+                                            sourceMealPlanIds: [plan.title],
+                                            notes: `From ${meal.name}`,
+                                          });
+                                        }
+                                        setGroceryList(getActiveGroceryList());
+                                        toast({
+                                          title: "Added to grocery list",
+                                          description: `${meal.ingredients.length} ingredients added.`,
+                                        });
+                                      }}
+                                      data-testid={`button-add-ingredients-${index}-${mealIdx}`}
+                                    >
+                                      <ShoppingBag className="h-3 w-3 mr-1" />
+                                      Add Ingredients
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        promptAddMealToCalendar(meal.name, "meal", meal.prepTime);
+                                      }}
+                                      data-testid={`button-schedule-meal-${index}-${mealIdx}`}
+                                    >
+                                      <Calendar className="h-3 w-3 mr-1" />
+                                      Schedule
+                                    </Button>
                                   </div>
                                 </div>
                               )}

@@ -1,0 +1,132 @@
+UPGRADE REQUEST: Make the app feel like ONE coherent personal assistant (not separate mini-tools)
+
+CORE GOAL:
+The app should behave like a proactive assistant that keeps everything in sync:
+Chat ↔ Categories ↔ Plans ↔ Calendar ↔ Recipes ↔ Grocery Builder
+Any choice made in one place should show up in the right place automatically (with consent where needed).
+
+---------------------------------------------------
+A) POP-UP FLOWS: PAUSE + NOTICE YOURSELF
+---------------------------------------------------
+1) Multi-select support (IMPORTANT)
+- In the “Pause / Notice Yourself” popup questions that have multiple-choice answers, allow selecting MULTIPLE options (not single-select).
+- UI:
+  - Each option becomes a toggle pill / card.
+  - Selected states are highlighted.
+  - Add helper text: “Pick as many as apply.”
+- Save button:
+  - Disabled until at least 1 option selected.
+  - When saved, write the selected tags into the user’s state (moodTags / stressTags / currentStateTags).
+
+2) Navigation behavior (no trapping)
+- The user must be able to:
+  - go back to the previous step
+  - move forward
+  - close the popup and return later
+- If the user leaves the app and returns, their progress should be saved and restored.
+
+3) “In Control” screen fix (it falls flat)
+- Current issue: It asks “How do you want to respond?” but doesn’t explain what each choice DOES.
+- Fix: Each response option must create a real action outcome (not just words).
+  - Example options:
+    • Anchor (grounding) → starts a 60–120 sec guided breathing/grounding (audio or text) + offers “Add to routine”
+    • Reframe (flip the script) → gives a perspective shift + one action step
+    • Plan (take control) → creates a tiny plan (next 30–60 minutes) and offers to add to schedule
+    • Talk it out → opens chat mode and logs the topic tag
+- After the user picks one, show:
+  - “Here’s what we’re doing” + Start button
+  - Optional: “Add this to a routine” and/or “Add to today”
+
+---------------------------------------------------
+B) NUTRITION / MEAL PLANS PAGE MUST BE FULLY BUILT OUT
+---------------------------------------------------
+The nutrition section must become a real tool with 4 tabs (or subpages):
+
+1) Meal Plans (AI + Filters + Save)
+- Generate meal plan suggestions
+- Filters:
+  - Diet (vegan, vegetarian, pescatarian, keto, etc.)
+  - Goal (bulk/beefy, maintain, cut)
+  - Prep time
+  - Budget
+  - Allergies
+- Meal plan outputs must be saveable as:
+  - A “Meal Plan” object
+  - With linked “Meals” and “Recipes”
+
+2) Meal Prep Ideas (Netflix-style browsing)
+- A feed of meal prep ideas with thumbnails
+- Filters by:
+  - minutes
+  - protein focus
+  - diet restriction
+  - comfort / quick / high-calorie bulk / light
+- “AI Picks” section must explain why it picked it (Notice phrasing).
+
+3) Ingredient Alternatives (search tool)
+- A search bar where user can type:
+  - “Swap eggs”
+  - “No dairy alternative for ___”
+  - “Chickpea tofu recipe”
+- Results must include:
+  - short answer
+  - how to use it in recipes
+  - optional links (if browsing enabled)
+- The AI should be embedded in the search experience (not only in chat).
+
+4) Recipe Box (saved recipes)
+- Allow saving recipes from:
+  - meal plans
+  - meal prep ideas
+  - user pasted recipes
+  - document import
+- Saved recipe includes:
+  - title, ingredients, steps, servings, macros optional, tags
+- Add “Add ingredients to Grocery Builder” button.
+
+---------------------------------------------------
+C) GROCERY BUILDER MUST CONNECT TO RECIPES
+---------------------------------------------------
+- Grocery Builder should allow:
+  - add items manually
+  - add items from a saved recipe
+  - add items from a meal plan (auto aggregate)
+- Must de-duplicate items:
+  - combine quantities if same ingredient
+- Must support “pantry” vs “buy” toggles.
+
+---------------------------------------------------
+D) SYSTEM HARMONY / SYNC RULES (MOST IMPORTANT)
+---------------------------------------------------
+1) Single Source of Truth objects:
+- Plan (life system plan)
+- CalendarEvent
+- Routine
+- Recipe
+- MealPlan
+- GroceryList
+
+2) Linking rules:
+- MealPlan links to Recipes and CalendarEvents
+- Recipes link to Grocery items
+- CalendarEvents deep-link back to the source page:
+  - meal → /meal-prep?selected=
+  - workout → /workout?selected=
+  - recovery → /recovery?selected=
+  - routine → /routines?selected=
+
+3) Proactive assistant behavior:
+- AI should offer next actions based on context:
+  - “Want to add this to today or your weekly plan?”
+  - “Want to save this recipe or add ingredients to grocery list?”
+  - “Want a bulk-friendly version of this plan?”
+
+4) Consent rules:
+- Nothing is saved to calendar, plans, or routines without confirmation.
+
+DONE WHEN:
+- Pause popup supports multi-select and doesn’t trap the user
+- “In Control” options each trigger a real outcome (Anchor = guided grounding, Plan = schedule options, etc.)
+- Nutrition is fully built with meal plans, meal prep ideas, alternatives search, recipe saving
+- Grocery Builder aggregates from recipes/meal plans
+- Everything feels like ONE assistant, not separate apps
