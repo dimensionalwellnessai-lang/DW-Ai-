@@ -2249,6 +2249,235 @@ export async function registerRoutes(
     }
   });
 
+  // ========== SHOPPING LISTS & MEAL PREP PREFERENCES ==========
+
+  // Get meal prep preferences
+  app.get("/api/meal-prep-preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await storage.getMealPrepPreferences(req.session.userId!);
+      res.json(prefs || null);
+    } catch (error) {
+      console.error("Get meal prep preferences error:", error);
+      res.status(500).json({ error: "Failed to load preferences" });
+    }
+  });
+
+  // Create or update meal prep preferences
+  app.post("/api/meal-prep-preferences", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getMealPrepPreferences(req.session.userId!);
+      if (existing) {
+        const updated = await storage.updateMealPrepPreferences(req.session.userId!, req.body);
+        res.json(updated);
+      } else {
+        const created = await storage.createMealPrepPreferences({
+          userId: req.session.userId!,
+          ...req.body,
+        });
+        res.json(created);
+      }
+    } catch (error) {
+      console.error("Save meal prep preferences error:", error);
+      res.status(500).json({ error: "Failed to save preferences" });
+    }
+  });
+
+  // Get shopping lists
+  app.get("/api/shopping-lists", requireAuth, async (req, res) => {
+    try {
+      const lists = await storage.getShoppingLists(req.session.userId!);
+      res.json(lists);
+    } catch (error) {
+      console.error("Get shopping lists error:", error);
+      res.status(500).json({ error: "Failed to load shopping lists" });
+    }
+  });
+
+  // Get single shopping list with items
+  app.get("/api/shopping-lists/:id", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      const items = await storage.getShoppingListItems(req.params.id);
+      res.json({ ...list, items });
+    } catch (error) {
+      console.error("Get shopping list error:", error);
+      res.status(500).json({ error: "Failed to load shopping list" });
+    }
+  });
+
+  // Create shopping list
+  app.post("/api/shopping-lists", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.createShoppingList({
+        userId: req.session.userId!,
+        title: req.body.title || "Shopping List",
+        mealPlanId: req.body.mealPlanId || null,
+        weekLabel: req.body.weekLabel || null,
+        status: "active",
+      });
+      res.json(list);
+    } catch (error) {
+      console.error("Create shopping list error:", error);
+      res.status(500).json({ error: "Failed to create shopping list" });
+    }
+  });
+
+  // Update shopping list
+  app.patch("/api/shopping-lists/:id", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      const updated = await storage.updateShoppingList(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update shopping list error:", error);
+      res.status(500).json({ error: "Failed to update shopping list" });
+    }
+  });
+
+  // Delete shopping list
+  app.delete("/api/shopping-lists/:id", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      await storage.deleteShoppingList(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete shopping list error:", error);
+      res.status(500).json({ error: "Failed to delete shopping list" });
+    }
+  });
+
+  // Add items to shopping list
+  app.post("/api/shopping-lists/:id/items", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.id);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      
+      const items = Array.isArray(req.body) ? req.body : [req.body];
+      const itemsWithListId = items.map((item: { ingredient: string; quantity?: string; unit?: string; category?: string; notes?: string }) => ({
+        shoppingListId: req.params.id,
+        ingredient: item.ingredient,
+        quantity: item.quantity || null,
+        unit: item.unit || null,
+        category: item.category || "other",
+        notes: item.notes || null,
+      }));
+      
+      const created = await storage.createShoppingListItems(itemsWithListId);
+      res.json(created);
+    } catch (error) {
+      console.error("Add shopping list items error:", error);
+      res.status(500).json({ error: "Failed to add items" });
+    }
+  });
+
+  // Update shopping list item (toggle checked, edit)
+  app.patch("/api/shopping-lists/:listId/items/:itemId", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.listId);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      const updated = await storage.updateShoppingListItem(req.params.itemId, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update shopping list item error:", error);
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
+  // Delete shopping list item
+  app.delete("/api/shopping-lists/:listId/items/:itemId", requireAuth, async (req, res) => {
+    try {
+      const list = await storage.getShoppingList(req.params.listId);
+      if (!list || list.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Shopping list not found" });
+      }
+      await storage.deleteShoppingListItem(req.params.itemId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete shopping list item error:", error);
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
+  // Generate shopping list from meal plan
+  app.post("/api/shopping-lists/generate-from-plan/:planId", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getMealPlan(req.params.planId);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Meal plan not found" });
+      }
+      
+      const meals = await storage.getMeals(req.session.userId!, req.params.planId);
+      if (meals.length === 0) {
+        return res.status(400).json({ error: "No meals in this plan" });
+      }
+      
+      // Create the shopping list
+      const list = await storage.createShoppingList({
+        userId: req.session.userId!,
+        title: `Shopping List - ${plan.name}`,
+        mealPlanId: plan.id,
+        weekLabel: plan.weekLabel || null,
+        status: "active",
+      });
+      
+      // Extract ingredients from all meals and deduplicate
+      const ingredientMap = new Map<string, { quantity: string; unit: string; category: string; sources: string[] }>();
+      
+      for (const meal of meals) {
+        if (meal.ingredients && Array.isArray(meal.ingredients)) {
+          for (const ing of meal.ingredients) {
+            const key = ing.toLowerCase().trim();
+            if (!ingredientMap.has(key)) {
+              ingredientMap.set(key, {
+                quantity: "",
+                unit: "",
+                category: categorizeIngredient(ing),
+                sources: [meal.id],
+              });
+            } else {
+              ingredientMap.get(key)?.sources.push(meal.id);
+            }
+          }
+        }
+      }
+      
+      // Create items
+      const items = Array.from(ingredientMap.entries()).map(([ingredient, data]) => ({
+        shoppingListId: list.id,
+        ingredient,
+        quantity: data.quantity,
+        unit: data.unit,
+        category: data.category,
+        sourceMealId: data.sources[0],
+        notes: data.sources.length > 1 ? `Used in ${data.sources.length} meals` : null,
+      }));
+      
+      if (items.length > 0) {
+        await storage.createShoppingListItems(items);
+      }
+      
+      // Return list with items
+      const createdItems = await storage.getShoppingListItems(list.id);
+      res.json({ ...list, items: createdItems });
+    } catch (error) {
+      console.error("Generate shopping list error:", error);
+      res.status(500).json({ error: "Failed to generate shopping list" });
+    }
+  });
+
   return httpServer;
 }
 
@@ -2258,4 +2487,26 @@ function calculateEndTime(startTime: string, durationMinutes: number): string {
   const endHours = Math.floor(totalMinutes / 60) % 24;
   const endMinutes = totalMinutes % 60;
   return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
+}
+
+function categorizeIngredient(ingredient: string): string {
+  const lower = ingredient.toLowerCase();
+  
+  const categories: { [key: string]: string[] } = {
+    produce: ["lettuce", "tomato", "onion", "garlic", "pepper", "carrot", "celery", "spinach", "kale", "broccoli", "cucumber", "avocado", "lemon", "lime", "apple", "banana", "orange", "berries", "potato", "sweet potato"],
+    protein: ["chicken", "beef", "pork", "turkey", "fish", "salmon", "tuna", "shrimp", "tofu", "tempeh", "eggs", "egg"],
+    dairy: ["milk", "cheese", "yogurt", "butter", "cream", "sour cream"],
+    grains: ["rice", "pasta", "bread", "quinoa", "oats", "flour", "tortilla", "noodles"],
+    pantry: ["oil", "vinegar", "soy sauce", "honey", "maple", "sugar", "salt", "pepper", "spice", "sauce", "broth", "stock", "beans", "lentils", "chickpeas"],
+    frozen: ["frozen", "ice cream"],
+    beverages: ["juice", "coffee", "tea", "water", "soda", "wine", "beer"],
+  };
+  
+  for (const [category, keywords] of Object.entries(categories)) {
+    if (keywords.some(keyword => lower.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  return "other";
 }
