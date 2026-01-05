@@ -781,6 +781,11 @@ export const importedDocuments = pgTable("imported_documents", {
   summary: text("summary"),
   confidence: integer("confidence"),
   status: text("status").default("pending"),
+  extractionMethod: text("extraction_method"),
+  ocrConfidence: integer("ocr_confidence"),
+  errorMessage: text("error_message"),
+  primaryCategory: text("primary_category"),
+  processingTimeMs: integer("processing_time_ms"),
   createdAt: timestamp("created_at").defaultNow(),
   savedAt: timestamp("saved_at"),
 });
