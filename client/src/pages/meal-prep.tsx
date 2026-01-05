@@ -1101,55 +1101,60 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {/* Wave 6A: Filters */}
             <section className="space-y-3">
               <h3 className="text-xs font-medium text-muted-foreground">Filters</h3>
-              <div className="flex flex-wrap gap-4">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Leaf className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Diet:</span>
-                  {(["any", "vegan", "vegetarian", "gluten-free"] as DietFilter[]).map((d) => (
-                    <Button
-                      key={d}
-                      variant={dietFilter === d ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setDietFilter(d)}
-                      data-testid={`button-diet-${d}`}
-                    >
-                      {d === "any" ? "Any" : d.charAt(0).toUpperCase() + d.slice(1)}
-                    </Button>
-                  ))}
+                  <Leaf className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground flex-shrink-0">Diet:</span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {(["any", "vegan", "vegetarian", "gluten-free"] as DietFilter[]).map((d) => (
+                      <Button
+                        key={d}
+                        variant={dietFilter === d ? "default" : "outline"}
+                        size="sm"
+                        className="flex-shrink-0"
+                        onClick={() => setDietFilter(d)}
+                        data-testid={`button-diet-${d}`}
+                      >
+                        {d === "any" ? "Any" : d.charAt(0).toUpperCase() + d.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Time:</span>
-                  {(["any", "quick", "medium", "longer"] as PrepTimeFilter[]).map((t) => (
-                    <Button
-                      key={t}
-                      variant={prepTimeFilter === t ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPrepTimeFilter(t)}
-                      data-testid={`button-prep-time-${t}`}
-                    >
-                      {t === "any" ? "Any" : t === "quick" ? "Quick" : t === "medium" ? "Medium" : "Longer"}
-                    </Button>
-                  ))}
+                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground flex-shrink-0">Time:</span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {(["any", "quick", "medium", "longer"] as PrepTimeFilter[]).map((t) => (
+                      <Button
+                        key={t}
+                        variant={prepTimeFilter === t ? "default" : "outline"}
+                        size="sm"
+                        className="flex-shrink-0"
+                        onClick={() => setPrepTimeFilter(t)}
+                        data-testid={`button-prep-time-${t}`}
+                      >
+                        {t === "any" ? "Any" : t === "quick" ? "Quick" : t === "medium" ? "Medium" : "Longer"}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Focus:</span>
-                  {(["any", "high-protein", "balanced", "light"] as FocusFilter[]).map((f) => (
-                    <Button
-                      key={f}
-                      variant={focusFilter === f ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setFocusFilter(f)}
-                      data-testid={`button-focus-${f}`}
-                    >
-                      {f === "any" ? "Any" : f === "high-protein" ? "High-Protein" : f === "balanced" ? "Balanced" : "Light"}
-                    </Button>
-                  ))}
+                  <Zap className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground flex-shrink-0">Focus:</span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {(["any", "high-protein", "balanced", "light"] as FocusFilter[]).map((f) => (
+                      <Button
+                        key={f}
+                        variant={focusFilter === f ? "default" : "outline"}
+                        size="sm"
+                        className="flex-shrink-0"
+                        onClick={() => setFocusFilter(f)}
+                        data-testid={`button-focus-${f}`}
+                      >
+                        {f === "any" ? "Any" : f === "high-protein" ? "High-Protein" : f === "balanced" ? "Balanced" : "Light"}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </section>
@@ -1237,12 +1242,12 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
 
             {/* Wave 6.3: AI Picks Section */}
             <section className="space-y-4" data-testid="section-ai-picks-nutrition">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-primary/10 rounded-lg">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="p-1.5 bg-primary/10 rounded-lg flex-shrink-0">
                   <Sparkles className="h-4 w-4 text-primary" />
                 </div>
-                <h2 className="font-semibold">Picked for You</h2>
-                <span className="text-xs text-muted-foreground ml-auto">
+                <h2 className="font-semibold flex-shrink-0">Picked for You</h2>
+                <span className="text-xs text-muted-foreground">
                   Based on your {currentEnergy} energy
                 </span>
               </div>

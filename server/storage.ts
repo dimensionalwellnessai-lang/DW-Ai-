@@ -116,6 +116,12 @@ import {
   weeklyFeedbackResponses,
   type WeeklyFeedbackResponse,
   type InsertWeeklyFeedbackResponse,
+  workoutPlans,
+  exercises,
+  type WorkoutPlan,
+  type InsertWorkoutPlan,
+  type Exercise,
+  type InsertExercise,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -302,6 +308,19 @@ export interface IStorage {
   getWeeklyFeedbackResponse(userId: string, weekNumber: number): Promise<WeeklyFeedbackResponse | undefined>;
   saveWeeklyFeedbackResponse(data: InsertWeeklyFeedbackResponse): Promise<WeeklyFeedbackResponse>;
   updateWeeklyFeedbackResponse(id: string, data: Partial<WeeklyFeedbackResponse>): Promise<WeeklyFeedbackResponse | undefined>;
+
+  getWorkoutPlans(userId: string): Promise<WorkoutPlan[]>;
+  getWorkoutPlan(id: string): Promise<WorkoutPlan | undefined>;
+  createWorkoutPlan(plan: InsertWorkoutPlan): Promise<WorkoutPlan>;
+  updateWorkoutPlan(id: string, data: Partial<WorkoutPlan>): Promise<WorkoutPlan | undefined>;
+  deleteWorkoutPlan(id: string): Promise<void>;
+
+  getExercises(userId: string, workoutPlanId?: string): Promise<Exercise[]>;
+  getExercise(id: string): Promise<Exercise | undefined>;
+  createExercise(exercise: InsertExercise): Promise<Exercise>;
+  createExercises(exercises: InsertExercise[]): Promise<Exercise[]>;
+  updateExercise(id: string, data: Partial<Exercise>): Promise<Exercise | undefined>;
+  deleteExercise(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1116,6 +1135,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(weeklyFeedbackResponses.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async getWorkoutPlans(userId: string): Promise<WorkoutPlan[]> {
+    return await db.select().from(workoutPlans)
+      .where(eq(workoutPlans.userId, userId))
+      .orderBy(desc(workoutPlans.createdAt));
+  }
+
+  async getWorkoutPlan(id: string): Promise<WorkoutPlan | undefined> {
+    const [plan] = await db.select().from(workoutPlans).where(eq(workoutPlans.id, id));
+    return plan || undefined;
+  }
+
+  async createWorkoutPlan(plan: InsertWorkoutPlan): Promise<WorkoutPlan> {
+    const [created] = await db.insert(workoutPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateWorkoutPlan(id: string, data: Partial<WorkoutPlan>): Promise<WorkoutPlan | undefined> {
+    const [updated] = await db.update(workoutPlans).set(data).where(eq(workoutPlans.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteWorkoutPlan(id: string): Promise<void> {
+    await db.delete(exercises).where(eq(exercises.workoutPlanId, id));
+    await db.delete(workoutPlans).where(eq(workoutPlans.id, id));
+  }
+
+  async getExercises(userId: string, workoutPlanId?: string): Promise<Exercise[]> {
+    if (workoutPlanId) {
+      return await db.select().from(exercises)
+        .where(and(eq(exercises.userId, userId), eq(exercises.workoutPlanId, workoutPlanId)))
+        .orderBy(exercises.dayLabel);
+    }
+    return await db.select().from(exercises)
+      .where(eq(exercises.userId, userId))
+      .orderBy(exercises.dayLabel);
+  }
+
+  async getExercise(id: string): Promise<Exercise | undefined> {
+    const [exercise] = await db.select().from(exercises).where(eq(exercises.id, id));
+    return exercise || undefined;
+  }
+
+  async createExercise(exercise: InsertExercise): Promise<Exercise> {
+    const [created] = await db.insert(exercises).values(exercise).returning();
+    return created;
+  }
+
+  async createExercises(exerciseList: InsertExercise[]): Promise<Exercise[]> {
+    if (exerciseList.length === 0) return [];
+    return await db.insert(exercises).values(exerciseList).returning();
+  }
+
+  async updateExercise(id: string, data: Partial<Exercise>): Promise<Exercise | undefined> {
+    const [updated] = await db.update(exercises).set(data).where(eq(exercises.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteExercise(id: string): Promise<void> {
+    await db.delete(exercises).where(eq(exercises.id, id));
   }
 }
 

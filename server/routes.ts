@@ -1938,6 +1938,39 @@ export async function registerRoutes(
       
       const committed: Array<{ itemId: string; entityType: string; entityId: string }> = [];
 
+      // Pre-create parent plans if we have grouped items
+      const workoutItems = selectedItems.filter(item => item.destinationSystem === "workout");
+      const mealItems = selectedItems.filter(item => item.destinationSystem === "nutrition");
+      
+      let workoutPlanId: string | undefined;
+      let mealPlanId: string | undefined;
+      
+      // Create a workout plan if we have workout items
+      if (workoutItems.length > 0) {
+        const workoutPlan = await storage.createWorkoutPlan({
+          userId: req.session.userId!,
+          title: doc.documentTitle || "Imported Workout Plan",
+          summary: doc.summary || undefined,
+          source: "import",
+          importedDocumentId: doc.id,
+          isActive: true,
+        });
+        workoutPlanId = workoutPlan.id;
+      }
+      
+      // Create a meal plan if we have meal items
+      if (mealItems.length > 0) {
+        const mealPlan = await storage.createMealPlan({
+          userId: req.session.userId!,
+          title: doc.documentTitle || "Imported Meal Plan",
+          summary: doc.summary || undefined,
+          source: "import",
+          importedDocumentId: doc.id,
+          isActive: true,
+        });
+        mealPlanId = mealPlan.id;
+      }
+
       for (const item of selectedItems) {
         let entityId: string | undefined;
         let entityType: string = item.destinationSystem || "";
@@ -1971,17 +2004,40 @@ export async function registerRoutes(
           entityId = routine.id;
           entityType = "routine";
         }
-        // For meal and workout items, we store them as category entries
-        else if (item.destinationSystem === "nutrition" || item.destinationSystem === "workout") {
-          const entry = await storage.createCategoryEntry({
+        else if (item.destinationSystem === "nutrition") {
+          const details = item.details as { mealType?: string; weekLabel?: string; ingredients?: string[]; instructions?: string[]; tags?: string[] };
+          const meal = await storage.createMeal({
             userId: req.session.userId!,
-            category: item.destinationSystem,
+            mealPlanId: mealPlanId,
             title: item.title,
-            content: item.description || "",
-            metadata: item.details as Record<string, unknown> | null,
+            mealType: details.mealType || "other",
+            weekLabel: details.weekLabel,
+            notes: item.description || undefined,
+            ingredients: details.ingredients,
+            instructions: details.instructions,
+            tags: details.tags,
           });
-          entityId = entry.id;
-          entityType = item.destinationSystem;
+          entityId = meal.id;
+          entityType = "meal";
+        }
+        else if (item.destinationSystem === "workout") {
+          const details = item.details as { exerciseType?: string; dayLabel?: string; sets?: string; reps?: string; duration?: string; equipment?: string[]; instructions?: string[]; tags?: string[] };
+          const exercise = await storage.createExercise({
+            userId: req.session.userId!,
+            workoutPlanId: workoutPlanId,
+            title: item.title,
+            exerciseType: details.exerciseType || "other",
+            dayLabel: details.dayLabel,
+            notes: item.description || undefined,
+            sets: details.sets,
+            reps: details.reps,
+            duration: details.duration,
+            equipment: details.equipment,
+            instructions: details.instructions,
+            tags: details.tags,
+          });
+          entityId = exercise.id;
+          entityType = "exercise";
         }
 
         if (entityId) {
@@ -2001,6 +2057,8 @@ export async function registerRoutes(
       res.json({
         success: true,
         committed,
+        workoutPlanId,
+        mealPlanId,
         message: `Saved ${committed.length} items to your systems.`
       });
     } catch (error) {
@@ -2162,6 +2220,62 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/import/workout/:documentId", requireAuth, async (req, res) => {
+    try {
+      const doc = await storage.getImportedDocument(req.params.documentId);
+      if (!doc || doc.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (doc.status === "saved") {
+        return res.status(400).json({ error: "This plan has already been saved" });
+      }
+
+      const { exercises: exerciseList, planTitle } = req.body;
+
+      const workoutPlan = await storage.createWorkoutPlan({
+        userId: req.session.userId!,
+        title: planTitle || doc.documentTitle || "Imported Workout Plan",
+        summary: doc.summary || undefined,
+        source: "import",
+        importedDocumentId: doc.id,
+        isActive: true,
+      });
+
+      const selectedExercises = (exerciseList || []).filter((e: { isSelected?: boolean }) => e.isSelected === true);
+      const createdExercises = await storage.createExercises(
+        selectedExercises.map((e: { title: string; exerciseType?: string; dayLabel?: string; tags?: string[]; notes?: string; sets?: string; reps?: string; duration?: string; equipment?: string[]; instructions?: string[] }) => ({
+          userId: req.session.userId!,
+          workoutPlanId: workoutPlan.id,
+          title: e.title,
+          exerciseType: e.exerciseType || "other",
+          dayLabel: e.dayLabel,
+          tags: e.tags,
+          notes: e.notes,
+          sets: e.sets,
+          reps: e.reps,
+          duration: e.duration,
+          equipment: e.equipment,
+          instructions: e.instructions,
+        }))
+      );
+
+      await storage.updateImportedDocument(doc.id, {
+        status: "saved",
+        savedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        workoutPlan: workoutPlan,
+        exercisesCount: createdExercises.length,
+      });
+    } catch (error) {
+      console.error("Workout commit error:", error);
+      res.status(500).json({ error: "Failed to save workout plan" });
+    }
+  });
+
   app.post("/api/import/calendar/:documentId", requireAuth, async (req, res) => {
     try {
       // Verify document ownership and status
@@ -2226,6 +2340,32 @@ export async function registerRoutes(
     }
   });
 
+  // Update a meal plan (activate/deactivate)
+  app.patch("/api/meal-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getMealPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Meal plan not found" });
+      }
+      
+      // If activating this plan, deactivate others first
+      if (req.body.isActive === true) {
+        const allPlans = await storage.getMealPlans(req.session.userId!);
+        for (const p of allPlans) {
+          if (p.id !== req.params.id && p.isActive) {
+            await storage.updateMealPlan(p.id, { isActive: false });
+          }
+        }
+      }
+      
+      const updated = await storage.updateMealPlan(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update meal plan error:", error);
+      res.status(500).json({ error: "Failed to update meal plan" });
+    }
+  });
+
   // Get meals for a plan
   app.get("/api/meal-plans/:id/meals", requireAuth, async (req, res) => {
     try {
@@ -2240,6 +2380,37 @@ export async function registerRoutes(
     }
   });
 
+  // Update a meal
+  app.patch("/api/meals/:id", requireAuth, async (req, res) => {
+    try {
+      const meal = await storage.getMeal(req.params.id);
+      if (!meal || meal.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Meal not found" });
+      }
+      
+      const updateSchema = z.object({
+        title: z.string().min(1).max(200).optional(),
+        mealType: z.string().optional(),
+        weekLabel: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+        ingredients: z.array(z.string()).optional(),
+        instructions: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+      });
+      
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      
+      const updated = await storage.updateMeal(req.params.id, parsed.data);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update meal error:", error);
+      res.status(500).json({ error: "Failed to update meal" });
+    }
+  });
+
   // Get draft imports
   app.get("/api/import/drafts", requireAuth, async (req, res) => {
     try {
@@ -2248,6 +2419,139 @@ export async function registerRoutes(
       res.json(drafts);
     } catch (error) {
       res.status(500).json({ error: "Failed to load drafts" });
+    }
+  });
+
+  // ========== WORKOUT PLANS & EXERCISES ==========
+
+  app.get("/api/workout-plans", requireAuth, async (req, res) => {
+    try {
+      const plans = await storage.getWorkoutPlans(req.session.userId!);
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout plans" });
+    }
+  });
+
+  app.get("/api/workout-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout plan" });
+    }
+  });
+
+  app.post("/api/workout-plans", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.createWorkoutPlan({
+        userId: req.session.userId!,
+        title: req.body.title || "New Workout Plan",
+        summary: req.body.summary,
+        source: req.body.source || "manual",
+        importedDocumentId: req.body.importedDocumentId,
+        isActive: req.body.isActive ?? true,
+      });
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Create workout plan error:", error);
+      res.status(500).json({ error: "Failed to create workout plan" });
+    }
+  });
+
+  app.patch("/api/workout-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout plan not found" });
+      }
+      
+      const updateData: Partial<typeof plan> = {};
+      if (req.body.title !== undefined) updateData.title = req.body.title;
+      if (req.body.summary !== undefined) updateData.summary = req.body.summary;
+      if (req.body.isActive !== undefined) {
+        updateData.isActive = req.body.isActive;
+        if (req.body.isActive) {
+          updateData.activatedAt = new Date();
+        }
+      }
+      
+      const updated = await storage.updateWorkoutPlan(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update workout plan error:", error);
+      res.status(500).json({ error: "Failed to update workout plan" });
+    }
+  });
+
+  app.delete("/api/workout-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout plan not found" });
+      }
+      await storage.deleteWorkoutPlan(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete workout plan" });
+    }
+  });
+
+  app.get("/api/workout-plans/:id/exercises", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan || plan.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout plan not found" });
+      }
+      const planExercises = await storage.getExercises(req.session.userId!, req.params.id);
+      res.json(planExercises);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load exercises" });
+    }
+  });
+
+  app.get("/api/exercises", requireAuth, async (req, res) => {
+    try {
+      const allExercises = await storage.getExercises(req.session.userId!);
+      res.json(allExercises);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load exercises" });
+    }
+  });
+
+  app.patch("/api/exercises/:id", requireAuth, async (req, res) => {
+    try {
+      const exercise = await storage.getExercise(req.params.id);
+      if (!exercise || exercise.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Exercise not found" });
+      }
+      
+      const updateSchema = z.object({
+        title: z.string().min(1).max(200).optional(),
+        exerciseType: z.string().optional(),
+        dayLabel: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+        sets: z.string().optional().nullable(),
+        reps: z.string().optional().nullable(),
+        duration: z.string().optional().nullable(),
+        equipment: z.array(z.string()).optional(),
+        instructions: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+      });
+      
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      
+      const updated = await storage.updateExercise(req.params.id, parsed.data);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update exercise error:", error);
+      res.status(500).json({ error: "Failed to update exercise" });
     }
   });
 

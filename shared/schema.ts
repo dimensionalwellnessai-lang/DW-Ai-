@@ -654,6 +654,56 @@ export const mealsRelations = relations(meals, ({ one }) => ({
   }),
 }));
 
+// Workout Plans - Similar structure to Meal Plans
+export const workoutPlans = pgTable("workout_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  source: text("source").default("import"),
+  importedDocumentId: varchar("imported_document_id"),
+  isActive: boolean("is_active").default(true),
+  activatedAt: timestamp("activated_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const workoutPlansRelations = relations(workoutPlans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [workoutPlans.userId],
+    references: [users.id],
+  }),
+  exercises: many(exercises),
+}));
+
+// Exercises - Individual exercises within a workout plan
+export const exercises = pgTable("exercises", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  workoutPlanId: varchar("workout_plan_id").references(() => workoutPlans.id),
+  title: text("title").notNull(),
+  exerciseType: text("exercise_type").default("other"),
+  dayLabel: text("day_label"),
+  tags: text("tags").array(),
+  notes: text("notes"),
+  sets: text("sets"),
+  reps: text("reps"),
+  duration: text("duration"),
+  equipment: text("equipment").array(),
+  instructions: text("instructions").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const exercisesRelations = relations(exercises, ({ one }) => ({
+  user: one(users, {
+    fields: [exercises.userId],
+    references: [users.id],
+  }),
+  workoutPlan: one(workoutPlans, {
+    fields: [exercises.workoutPlanId],
+    references: [workoutPlans.id],
+  }),
+}));
+
 // Meal Prep Preferences - User settings for meal prep patterns
 export const mealPrepPreferences = pgTable("meal_prep_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -936,6 +986,17 @@ export const insertMealPrepPreferencesSchema = createInsertSchema(mealPrepPrefer
   updatedAt: true,
 });
 
+export const insertWorkoutPlanSchema = createInsertSchema(workoutPlans).omit({
+  id: true,
+  createdAt: true,
+  activatedAt: true,
+});
+
+export const insertExerciseSchema = createInsertSchema(exercises).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
   id: true,
   createdAt: true,
@@ -1206,3 +1267,7 @@ export type UserFeedback = typeof userFeedback.$inferSelect;
 export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
 export type WeeklyFeedbackResponse = typeof weeklyFeedbackResponses.$inferSelect;
 export type InsertWeeklyFeedbackResponse = z.infer<typeof insertWeeklyFeedbackResponseSchema>;
+export type WorkoutPlan = typeof workoutPlans.$inferSelect;
+export type InsertWorkoutPlan = z.infer<typeof insertWorkoutPlanSchema>;
+export type Exercise = typeof exercises.$inferSelect;
+export type InsertExercise = z.infer<typeof insertExerciseSchema>;

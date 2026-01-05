@@ -202,6 +202,10 @@ export function DocumentImportFlow({
       queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       queryClient.invalidateQueries({ queryKey: ["/api/routines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/category-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/workout-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meal-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meals"] });
       setStep("complete");
       onComplete?.();
     },
