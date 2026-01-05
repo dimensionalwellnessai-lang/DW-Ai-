@@ -37,6 +37,13 @@ export async function extractTextFromBuffer(
 async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
   try {
     const data = await pdfParse(buffer);
+    
+    // Check if we got meaningful text (scanned PDFs return empty or whitespace-only)
+    const cleanText = data.text?.trim() || "";
+    if (cleanText.length < 20) {
+      throw new Error("SCANNED_PDF");
+    }
+    
     return {
       text: data.text,
       metadata: {
@@ -45,9 +52,15 @@ async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
         author: data.info?.Author,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("PDF extraction error:", error);
-    throw new Error("Failed to extract text from PDF");
+    
+    const errorMessage = error instanceof Error ? error.message : "";
+    if (errorMessage === "SCANNED_PDF" || errorMessage.includes("encrypted")) {
+      throw new Error("This PDF appears to be a scanned image or protected file. Try saving it as a Word document, or copy the text and paste it directly.");
+    }
+    
+    throw new Error("Could not read this PDF. Try a Word document (.docx) or paste the text directly.");
   }
 }
 
