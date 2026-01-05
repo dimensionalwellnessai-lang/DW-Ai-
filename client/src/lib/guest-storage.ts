@@ -3,6 +3,8 @@ const GUEST_SESSION_KEY = "fts_guest_session";
 const CHAT_DRAFT_KEY = "fts_chat_draft";
 const BODY_SCAN_DRAFT_KEY = "fts_body_scan_draft";
 const SESSION_STARTED_KEY = "fts_session_started";
+const LAST_ACTIVITY_KEY = "fts_last_activity";
+const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes - if gap is longer, treat as new session
 
 export interface ChatMessage {
   role: "assistant" | "user";
@@ -586,17 +588,39 @@ export function clearActiveConversation(): void {
 }
 
 export function isNewSession(): boolean {
-  return sessionStorage.getItem(SESSION_STARTED_KEY) !== "true";
+  // Check if sessionStorage flag is set (covers tab close/open)
+  if (sessionStorage.getItem(SESSION_STARTED_KEY) !== "true") {
+    return true;
+  }
+  
+  // Also check time gap since last activity (covers app being idle)
+  const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
+  if (lastActivity) {
+    const gap = Date.now() - parseInt(lastActivity, 10);
+    if (gap > SESSION_GAP_MS) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 export function markSessionStarted(): void {
   sessionStorage.setItem(SESSION_STARTED_KEY, "true");
+  updateLastActivity();
+}
+
+export function updateLastActivity(): void {
+  localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
 }
 
 export function startFreshSession(): void {
   if (isNewSession()) {
     clearActiveConversation();
     markSessionStarted();
+  } else {
+    // Update activity timestamp even for continuing sessions
+    updateLastActivity();
   }
 }
 

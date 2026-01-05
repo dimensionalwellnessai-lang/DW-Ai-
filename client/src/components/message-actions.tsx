@@ -229,7 +229,7 @@ Can you tell me more about this?`);
           <Button
             size="icon"
             variant="ghost"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-6 w-6 opacity-40 hover:opacity-100 transition-opacity shrink-0"
             data-testid={`button-message-actions-${messageIndex}`}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
