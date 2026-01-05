@@ -3142,6 +3142,183 @@ Rules:
             });
             
             saved++;
+          } else if (item.type === "workout") {
+            // Create a workout exercise
+            const exercise = await storage.createExercise({
+              userId,
+              title: item.title,
+              notes: item.description || item.notes || null,
+              exerciseType: item.exerciseType || "strength",
+              sets: item.sets || null,
+              reps: item.reps || null,
+              duration: item.duration || null,
+              dayLabel: item.dayLabel || null,
+              workoutPlanId: null,
+            });
+            
+            // Create calendar event if day and time specified
+            if (item.dayOfWeek !== undefined && item.scheduleTime) {
+              const now = new Date();
+              const currentDayOfWeek = now.getDay();
+              const targetDayOfWeek = item.dayOfWeek;
+              const [startHour, startMin] = (item.scheduleTime as string).split(":").map(Number);
+              
+              // Calculate days until target, handling same-day future times
+              let daysUntil = targetDayOfWeek - currentDayOfWeek;
+              if (targetDayOfWeek === currentDayOfWeek) {
+                const eventTimeMinutes = startHour * 60 + startMin;
+                const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+                if (eventTimeMinutes <= currentTimeMinutes) {
+                  daysUntil = 7;
+                } else {
+                  daysUntil = 0;
+                }
+              } else if (daysUntil < 0) {
+                daysUntil += 7;
+              }
+              
+              const eventDate = new Date(now);
+              eventDate.setDate(now.getDate() + daysUntil);
+              
+              const startDateTime = new Date(eventDate);
+              startDateTime.setHours(startHour, startMin, 0, 0);
+              
+              const durationMinutes = item.durationMinutes || 45;
+              const endDateTime = new Date(startDateTime);
+              endDateTime.setMinutes(endDateTime.getMinutes() + durationMinutes);
+              
+              await storage.createCalendarEvent({
+                userId,
+                title: item.title,
+                description: item.description || null,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                eventType: "workout",
+                isRecurring: true,
+                recurrenceRule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][targetDayOfWeek]}`,
+                linkedType: "workout",
+                linkedId: exercise.id,
+                linkedRoute: "/workouts",
+              });
+            }
+            saved++;
+          } else if (item.type === "meal") {
+            // Create a meal entry
+            const meal = await storage.createMeal({
+              userId,
+              title: item.title,
+              notes: item.description || item.notes || null,
+              mealType: item.mealType || "lunch",
+              ingredients: item.ingredients || [],
+              instructions: item.recipe ? [item.recipe] : item.instructions || [],
+            });
+            
+            // Create calendar event if time specified
+            if (item.dayOfWeek !== undefined && item.scheduleTime) {
+              const now = new Date();
+              const currentDayOfWeek = now.getDay();
+              const targetDayOfWeek = item.dayOfWeek;
+              const [startHour, startMin] = (item.scheduleTime as string).split(":").map(Number);
+              
+              // Calculate days until target, handling same-day future times
+              let daysUntil = targetDayOfWeek - currentDayOfWeek;
+              if (targetDayOfWeek === currentDayOfWeek) {
+                const eventTimeMinutes = startHour * 60 + startMin;
+                const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+                if (eventTimeMinutes <= currentTimeMinutes) {
+                  daysUntil = 7;
+                } else {
+                  daysUntil = 0;
+                }
+              } else if (daysUntil < 0) {
+                daysUntil += 7;
+              }
+              
+              const eventDate = new Date(now);
+              eventDate.setDate(now.getDate() + daysUntil);
+              
+              const startDateTime = new Date(eventDate);
+              startDateTime.setHours(startHour, startMin, 0, 0);
+              
+              const endDateTime = new Date(startDateTime);
+              endDateTime.setMinutes(endDateTime.getMinutes() + 30);
+              
+              await storage.createCalendarEvent({
+                userId,
+                title: item.title,
+                description: item.description || null,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                eventType: "meal",
+                isRecurring: true,
+                recurrenceRule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][targetDayOfWeek]}`,
+                linkedType: "meal",
+                linkedId: meal.id,
+                linkedRoute: "/meal-prep",
+              });
+            }
+            saved++;
+          } else if (item.type === "spiritual" || item.type === "practice") {
+            // Create a spiritual practice routine
+            const routine = await storage.createRoutine({
+              userId,
+              name: item.title,
+              dimensionTags: ["spiritual", ...(item.dimensionTags || [])],
+              steps: item.steps || [],
+              totalDurationMinutes: item.durationMinutes || 10,
+              scheduleOptions: item.scheduleTime ? { time: item.scheduleTime } : null,
+              mode: "guided",
+              isActive: true,
+              dataSource: "ai-extracted",
+              explainWhy: "Spiritual practice extracted from AI conversation",
+            });
+            
+            // Create calendar event if time specified
+            if (item.dayOfWeek !== undefined && item.scheduleTime) {
+              const now = new Date();
+              const currentDayOfWeek = now.getDay();
+              const targetDayOfWeek = item.dayOfWeek;
+              const [startHour, startMin] = (item.scheduleTime as string).split(":").map(Number);
+              
+              // Calculate days until target, handling same-day future times
+              let daysUntil = targetDayOfWeek - currentDayOfWeek;
+              if (targetDayOfWeek === currentDayOfWeek) {
+                const eventTimeMinutes = startHour * 60 + startMin;
+                const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+                if (eventTimeMinutes <= currentTimeMinutes) {
+                  daysUntil = 7;
+                } else {
+                  daysUntil = 0;
+                }
+              } else if (daysUntil < 0) {
+                daysUntil += 7;
+              }
+              
+              const eventDate = new Date(now);
+              eventDate.setDate(now.getDate() + daysUntil);
+              
+              const startDateTime = new Date(eventDate);
+              startDateTime.setHours(startHour, startMin, 0, 0);
+              
+              const durationMinutes = item.durationMinutes || 15;
+              const endDateTime = new Date(startDateTime);
+              endDateTime.setMinutes(endDateTime.getMinutes() + durationMinutes);
+              
+              await storage.createCalendarEvent({
+                userId,
+                title: item.title,
+                description: item.description || null,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                eventType: "routine",
+                isRecurring: true,
+                recurrenceRule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][targetDayOfWeek]}`,
+                linkedType: "routine",
+                linkedId: routine.id,
+                linkedRoute: "/spiritual",
+              });
+            }
+            saved++;
           }
         } catch (itemError) {
           console.error("Error saving item:", item, itemError);
