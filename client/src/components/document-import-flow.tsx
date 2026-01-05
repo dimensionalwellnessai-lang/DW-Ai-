@@ -56,6 +56,13 @@ interface DocumentImportFlowProps {
 
 type FlowStep = "upload" | "analyzing" | "preview" | "saving" | "complete";
 
+interface UploadError {
+  code: string;
+  userMessage: string;
+  suggestions: string[];
+  isRecoverable: boolean;
+}
+
 const getDestinationIcon = (system: string) => {
   switch (system) {
     case "calendar":
@@ -101,6 +108,7 @@ export function DocumentImportFlow({
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("summary");
+  const [uploadError, setUploadError] = useState<UploadError | null>(null);
 
   const resetFlow = () => {
     setStep("upload");
@@ -108,6 +116,7 @@ export function DocumentImportFlow({
     setAnalysisResult(null);
     setSelectedItems(new Set());
     setActiveTab("summary");
+    setUploadError(null);
   };
 
   const handleClose = () => {
@@ -130,22 +139,46 @@ export function DocumentImportFlow({
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Upload failed");
+        const errorData = await response.json();
+        const err: UploadError = {
+          code: errorData.error || "UPLOAD_FAILED",
+          userMessage: errorData.userMessage || errorData.error || "Upload failed",
+          suggestions: errorData.suggestions || [],
+          isRecoverable: errorData.isRecoverable !== false,
+        };
+        throw err;
       }
       
       return response.json();
     },
     onSuccess: async (data) => {
+      setUploadError(null);
       setStep("analyzing");
       await analyzeMutation.mutateAsync(data.documentId);
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: unknown) => {
+      if (error && typeof error === "object" && "userMessage" in error) {
+        const uploadErr = error as UploadError;
+        setUploadError(uploadErr);
+        toast({
+          title: "Couldn't process that file",
+          description: uploadErr.userMessage,
+          variant: "destructive",
+        });
+      } else {
+        const message = error instanceof Error ? error.message : "Upload failed";
+        setUploadError({
+          code: "UNKNOWN",
+          userMessage: message,
+          suggestions: ["Try uploading again", "Try a different file"],
+          isRecoverable: true,
+        });
+        toast({
+          title: "Upload failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
       setStep("upload");
     },
   });
@@ -227,21 +260,27 @@ export function DocumentImportFlow({
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "text/plain",
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/gif",
+      "image/webp",
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+    const isImage = file.type.startsWith("image/");
+    if (!allowedTypes.includes(file.type) && !isImage) {
       toast({
         title: "Unsupported file type",
-        description: "Please upload a PDF, Word document (.docx), or text file.",
+        description: "Please upload a PDF, Word document, image (PNG, JPG), or text file.",
         variant: "destructive",
       });
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please upload a file smaller than 10MB.",
+        description: "Please upload a file smaller than 5MB.",
         variant: "destructive",
       });
       return;
@@ -326,7 +365,7 @@ export function DocumentImportFlow({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
-                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                  accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
                   onChange={handleFileSelect}
                   data-testid="input-file-upload"
                 />
@@ -335,7 +374,7 @@ export function DocumentImportFlow({
                   Click to upload or drag and drop
                 </p>
                 <p className="text-xs text-muted-foreground/70">
-                  PDF, Word (.docx), or Text files up to 10MB
+                  PDF, Word, images (PNG, JPG), or text files up to 5MB
                 </p>
               </div>
 
@@ -356,6 +395,26 @@ export function DocumentImportFlow({
                   >
                     <X className="h-4 w-4" />
                   </Button>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4 space-y-2" data-testid="upload-error">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-destructive">{uploadError.userMessage}</p>
+                      {uploadError.suggestions.length > 0 && (
+                        <ul className="text-xs text-muted-foreground space-y-0.5">
+                          {uploadError.suggestions.map((suggestion, i) => (
+                            <li key={i} className="flex items-center gap-1">
+                              <span className="text-muted-foreground/50">•</span> {suggestion}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

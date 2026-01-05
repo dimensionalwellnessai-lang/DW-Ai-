@@ -16,6 +16,11 @@ import type { Wave4Import, ImportMeal, ImportCalendarSuggestion, ImportRoutineSt
 
 type ImportStep = "upload" | "scanning" | "preview" | "saving" | "done";
 
+interface UploadError {
+  message: string;
+  suggestions: string[];
+}
+
 interface MealPlanImportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,7 +35,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
   const [meals, setMeals] = useState<ImportMeal[]>([]);
   const [routine, setRoutine] = useState<{ title: string; steps: ImportRoutineStep[] }>({ title: "Meal Prep Routine", steps: [] });
   const [calendarSuggestions, setCalendarSuggestions] = useState<ImportCalendarSuggestion[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UploadError | null>(null);
   const [savedData, setSavedData] = useState<{ mealsCount: number; hasRoutine: boolean; calendarCount: number } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,18 +50,34 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
         credentials: "include",
       });
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Upload failed");
+        const errData = await response.json();
+        const uploadErr: UploadError = {
+          message: errData.userMessage || errData.error || "Upload failed",
+          suggestions: errData.suggestions || [],
+        };
+        throw uploadErr;
       }
       return response.json();
     },
     onSuccess: (data) => {
       setDocumentId(data.documentId);
+      setError(null);
       setStep("scanning");
       analyzeMutation.mutate(data.documentId);
     },
-    onError: (err: Error) => {
-      setError(err.message);
+    onError: (err: unknown) => {
+      if (err && typeof err === "object" && "message" in err) {
+        const uploadErr = err as UploadError;
+        setError({
+          message: uploadErr.message,
+          suggestions: uploadErr.suggestions || [],
+        });
+      } else {
+        setError({
+          message: err instanceof Error ? err.message : "Upload failed",
+          suggestions: ["Try uploading again", "Try a different file"],
+        });
+      }
       setStep("upload");
     },
   });
@@ -75,7 +96,10 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
       setStep("preview");
     },
     onError: (err: Error) => {
-      setError(err.message);
+      setError({
+        message: err.message || "Analysis failed",
+        suggestions: ["Try a clearer document", "Make sure the content is readable"],
+      });
       setStep("upload");
     },
   });
@@ -122,8 +146,13 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (!selectedFile.type.includes("pdf")) {
-        setError("Please upload a PDF file.");
+      const validTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"];
+      const isValid = validTypes.includes(selectedFile.type) || selectedFile.type.startsWith("image/");
+      if (!isValid) {
+        setError({
+          message: "Unsupported file type",
+          suggestions: ["Please upload a PDF or image file (PNG, JPG)"],
+        });
         return;
       }
       setFile(selectedFile);
@@ -225,9 +254,22 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
             </p>
 
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{error}</span>
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-destructive">{error.message}</p>
+                    {error.suggestions.length > 0 && (
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {error.suggestions.map((suggestion, i) => (
+                          <li key={i} className="flex items-center gap-1">
+                            <span className="text-muted-foreground/50">•</span> {suggestion}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
