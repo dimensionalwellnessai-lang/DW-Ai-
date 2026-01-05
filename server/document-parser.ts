@@ -1,5 +1,6 @@
 import mammoth from "mammoth";
 import * as pdfParseModule from "pdf-parse";
+import Tesseract from "tesseract.js";
 
 const pdfParse = (pdfParseModule as unknown as { default: (buffer: Buffer) => Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> }).default;
 
@@ -31,36 +32,107 @@ export async function extractTextFromBuffer(
     return { text: buffer.toString("utf-8") };
   }
   
+  if (type.includes("image") || type.includes("png") || type.includes("jpeg") || type.includes("jpg")) {
+    return extractFromImage(buffer);
+  }
+  
   throw new Error(`Unsupported file type: ${mimeType}`);
+}
+
+async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
+  try {
+    console.log("Starting OCR on image...");
+    const { data: { text } } = await Tesseract.recognize(buffer, "eng", {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          console.log(`OCR progress: ${Math.round(m.progress * 100)}%`);
+        }
+      },
+    });
+    
+    const cleanText = text?.trim() || "";
+    if (cleanText.length < 10) {
+      throw new Error("Could not read text from this image. Make sure the text is clear and readable.");
+    }
+    
+    console.log(`OCR complete. Extracted ${cleanText.length} characters.`);
+    return { text: cleanText };
+  } catch (error) {
+    console.error("Image OCR error:", error);
+    throw new Error("Could not read text from this image. Try a clearer photo or type the content directly.");
+  }
 }
 
 async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
   try {
     const data = await pdfParse(buffer);
     
-    // Check if we got meaningful text (scanned PDFs return empty or whitespace-only)
     const cleanText = data.text?.trim() || "";
-    if (cleanText.length < 20) {
-      throw new Error("SCANNED_PDF");
+    if (cleanText.length >= 50) {
+      return {
+        text: data.text,
+        metadata: {
+          pages: data.numpages,
+          title: data.info?.Title,
+          author: data.info?.Author,
+        },
+      };
     }
     
-    return {
-      text: data.text,
-      metadata: {
-        pages: data.numpages,
-        title: data.info?.Title,
-        author: data.info?.Author,
-      },
-    };
+    console.log("PDF has little/no text, attempting OCR...");
+    return await ocrPdfFallback(buffer, data.numpages);
+    
   } catch (error: unknown) {
     console.error("PDF extraction error:", error);
     
     const errorMessage = error instanceof Error ? error.message : "";
-    if (errorMessage === "SCANNED_PDF" || errorMessage.includes("encrypted")) {
-      throw new Error("This PDF appears to be a scanned image or protected file. Try saving it as a Word document, or copy the text and paste it directly.");
+    if (errorMessage.includes("OCR") || errorMessage.includes("image")) {
+      throw error;
     }
     
-    throw new Error("Could not read this PDF. Try a Word document (.docx) or paste the text directly.");
+    throw new Error("Could not read this PDF. Try taking a photo of the page instead, or type the content directly.");
+  }
+}
+
+async function ocrPdfFallback(buffer: Buffer, numPages: number): Promise<ParsedDocumentResult> {
+  try {
+    const { pdf } = await import("pdf-to-img");
+    const pages: string[] = [];
+    let pageNum = 0;
+    
+    console.log(`Converting ${numPages} PDF pages to images for OCR...`);
+    
+    for await (const image of await pdf(buffer, { scale: 2 })) {
+      pageNum++;
+      console.log(`Processing page ${pageNum}...`);
+      
+      const imageBuffer = Buffer.from(image);
+      const { data: { text } } = await Tesseract.recognize(imageBuffer, "eng");
+      
+      if (text?.trim()) {
+        pages.push(text.trim());
+      }
+      
+      if (pageNum >= 10) {
+        console.log("Limiting to first 10 pages for OCR");
+        break;
+      }
+    }
+    
+    const fullText = pages.join("\n\n---\n\n");
+    
+    if (fullText.length < 20) {
+      throw new Error("Could not read text from this scanned PDF. Try a clearer scan or type the content directly.");
+    }
+    
+    console.log(`OCR complete. Extracted ${fullText.length} characters from ${pages.length} pages.`);
+    return {
+      text: fullText,
+      metadata: { pages: numPages },
+    };
+  } catch (error) {
+    console.error("PDF OCR fallback error:", error);
+    throw new Error("Could not scan this PDF. Try taking a photo of the pages instead, or type the content directly.");
   }
 }
 
