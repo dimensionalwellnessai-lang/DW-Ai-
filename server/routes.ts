@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument } from "./openai";
-import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, type DocumentAnalysisResult } from "./document-parser";
+import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -1772,27 +1772,40 @@ export async function registerRoutes(
   });
 
   app.post("/api/documents/upload", requireAuth, upload.single("file"), async (req, res) => {
+    const startTime = Date.now();
+    
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No file provided" });
+        return res.status(400).json({ 
+          error: "No file provided",
+          userMessage: "Please select a file to upload.",
+          suggestions: ["Choose a PDF, image, or Word document"]
+        });
       }
 
       const { buffer, originalname, mimetype } = req.file;
       
-      // Extract text from document
       const extracted = await extractTextFromBuffer(buffer, mimetype, originalname);
       
       if (!extracted.text || extracted.text.trim().length < 10) {
-        return res.status(400).json({ error: "Could not extract meaningful text from this document" });
+        return res.status(400).json({ 
+          error: "Could not extract meaningful text from this document",
+          userMessage: "This file doesn't seem to have readable text.",
+          suggestions: ["Try a different file", "Make sure the document contains text"]
+        });
       }
 
-      // Save the document record
+      const processingTimeMs = Date.now() - startTime;
+
       const docRecord = await storage.createImportedDocument({
         userId: req.session.userId!,
         fileName: originalname,
         fileType: mimetype,
         rawText: extracted.text,
         status: "pending",
+        extractionMethod: extracted.extractionMethod,
+        ocrConfidence: extracted.ocrConfidence,
+        processingTimeMs,
       });
 
       res.json({ 
@@ -1800,11 +1813,30 @@ export async function registerRoutes(
         fileName: originalname,
         textLength: extracted.text.length,
         metadata: extracted.metadata,
+        extractionMethod: extracted.extractionMethod,
+        ocrConfidence: extracted.ocrConfidence,
+        processingTimeMs,
         message: "Document uploaded. Ready for analysis."
       });
     } catch (error) {
       console.error("Document upload error:", error);
-      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to process document" });
+      
+      if (isProcessingError(error)) {
+        const processingError = error as DocumentProcessingError;
+        return res.status(422).json({
+          error: processingError.code,
+          userMessage: processingError.userMessage,
+          suggestions: processingError.suggestions,
+          isRecoverable: processingError.isRecoverable,
+        });
+      }
+      
+      res.status(500).json({ 
+        error: "UPLOAD_FAILED",
+        userMessage: "Something went wrong while processing your file.",
+        suggestions: ["Try uploading again", "Try a different file format"],
+        isRecoverable: true,
+      });
     }
   });
 
@@ -1851,16 +1883,17 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Failed to analyze document structure" });
       }
 
-      // Save analysis to document
+      const primaryCategory = analysisResult.primaryCategory || detectPrimaryCategory(analysisResult.items);
+      
       await storage.updateImportedDocument(docId, {
         analysisJson: analysisResult as unknown as Record<string, unknown>,
         documentTitle: analysisResult.documentTitle,
         summary: analysisResult.summary,
         confidence: analysisResult.confidence,
+        primaryCategory,
         status: "analyzed",
       });
 
-      // Save individual items
       for (const item of analysisResult.items) {
         await storage.createImportedDocumentItem({
           documentId: docId,
@@ -1874,16 +1907,35 @@ export async function registerRoutes(
         });
       }
 
+      const previewRoute = getPreviewRoute(primaryCategory);
+
       res.json({
         documentId: docId,
         analysis: analysisResult,
+        primaryCategory,
+        previewRoute,
         message: "Document analyzed. Review the items before saving."
       });
     } catch (error) {
       console.error("Document analysis error:", error);
-      res.status(500).json({ error: "Failed to analyze document" });
+      res.status(500).json({ 
+        error: "ANALYSIS_FAILED",
+        userMessage: "We couldn't analyze this document.",
+        suggestions: ["Try uploading a clearer document", "Make sure the content is readable"],
+        isRecoverable: true,
+      });
     }
   });
+
+  function getPreviewRoute(category: string): string {
+    switch (category) {
+      case "meals": return "/meals?import=pending";
+      case "workouts": return "/workout?import=pending";
+      case "routines": return "/routines?import=pending";
+      case "calendar": return "/calendar?import=pending";
+      default: return "/import/preview";
+    }
+  }
 
   app.get("/api/documents/:id", requireAuth, async (req, res) => {
     try {
@@ -2078,39 +2130,69 @@ export async function registerRoutes(
 
   // Wave 4: Meal Plan Import Endpoints
   app.post("/api/import/upload", requireAuth, upload.single("file"), async (req, res) => {
+    const startTime = Date.now();
+    
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+        return res.status(400).json({ 
+          error: "No file uploaded",
+          userMessage: "Please select a file to upload.",
+          suggestions: ["Choose a PDF, image, or Word document"]
+        });
       }
 
       const { buffer, mimetype, originalname } = req.file;
       
-      // Extract text from PDF/document
       const extracted = await extractTextFromBuffer(buffer, mimetype, originalname);
       
       if (!extracted.text || extracted.text.trim().length < 50) {
         return res.status(400).json({ 
-          error: "I couldn't read that file. Sometimes PDFs are scanned images. Try a different PDF, or copy/paste the text version." 
+          error: "INSUFFICIENT_CONTENT",
+          userMessage: "This file doesn't have enough readable text.",
+          suggestions: ["Try a different file", "Make sure the document has content"]
         });
       }
 
-      // Create draft import document
+      const processingTimeMs = Date.now() - startTime;
+
       const doc = await storage.createImportedDocument({
         userId: req.session.userId!,
         fileName: originalname,
         fileType: mimetype,
         rawText: extracted.text,
         status: "draft",
+        extractionMethod: extracted.extractionMethod,
+        ocrConfidence: extracted.ocrConfidence,
+        processingTimeMs,
       });
 
       res.json({ 
         documentId: doc.id,
         fileName: originalname,
         textLength: extracted.text.length,
+        extractionMethod: extracted.extractionMethod,
+        ocrConfidence: extracted.ocrConfidence,
+        processingTimeMs,
       });
     } catch (error) {
       console.error("Upload error:", error);
-      res.status(500).json({ error: "Failed to process file" });
+      
+      if (isProcessingError(error)) {
+        const processingError = error as DocumentProcessingError;
+        return res.status(422).json({
+          error: processingError.code,
+          userMessage: processingError.userMessage,
+          suggestions: processingError.suggestions,
+          isRecoverable: processingError.isRecoverable,
+        });
+      }
+      
+      res.status(500).json({ 
+        error: "UPLOAD_FAILED",
+        userMessage: "Something went wrong while processing your file.",
+        suggestions: ["Try uploading again", "Try a different file format"],
+        isRecoverable: true,
+      });
     }
   });
 
