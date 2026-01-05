@@ -18,6 +18,8 @@ import {
   addMessageToConversation,
   setActiveConversation,
   getConversationsByCategory,
+  getAllConversations,
+  startFreshSession,
   shouldShowOnboardingDialog,
   dismissOnboardingDialog,
   shouldShowSoftOnboarding,
@@ -162,14 +164,17 @@ export function AIWorkspace() {
 
   const [startedFresh, setStartedFresh] = useState(() => {
     if (typeof window === "undefined") return true;
-    const hasNavigatedBack = sessionStorage.getItem("fts_chat_active") === "true";
-    return !hasNavigatedBack;
+    startFreshSession();
+    const active = getActiveConversation();
+    return !active || active.messages.length === 0;
   });
   
   // Use state for activeConversation so it updates when conversationVersion changes
   const [activeConversation, setActiveConversationState] = useState<GuestConversation | null>(() => 
-    startedFresh ? null : getActiveConversation()
+    getActiveConversation()
   );
+  
+  const hasConversationHistory = getAllConversations().length > 0;
   const messages: ChatMessage[] = activeConversation?.messages || [];
   
   // Re-fetch conversations when conversationVersion changes (after sending messages)
@@ -185,11 +190,6 @@ export function AIWorkspace() {
     }
   }, [conversationVersion]);
   
-  useEffect(() => {
-    if (typeof window !== "undefined" && messages.length > 0) {
-      sessionStorage.setItem("fts_chat_active", "true");
-    }
-  }, [messages.length]);
   
   const [isTyping, setIsTyping] = useState(false);
   
@@ -428,7 +428,6 @@ export function AIWorkspace() {
   };
 
   const handleSelectConversation = (convo: GuestConversation) => {
-    sessionStorage.setItem("fts_chat_active", "true");
     setActiveConversation(convo.id);
     setConversationVersion(v => v + 1);
     setHistoryOpen(false);
@@ -709,11 +708,23 @@ export function AIWorkspace() {
                     );
                   })}
                 </div>
-                <Link href="/daily-schedule">
-                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
-                    View today's schedule
-                  </button>
-                </Link>
+                <div className="flex flex-col items-center gap-2">
+                  {hasConversationHistory && (
+                    <button
+                      onClick={() => setHistoryOpen(true)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      data-testid="button-view-history"
+                    >
+                      <History className="h-3 w-3" />
+                      View past conversations
+                    </button>
+                  )}
+                  <Link href="/daily-schedule">
+                    <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
+                      View today's schedule
+                    </button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

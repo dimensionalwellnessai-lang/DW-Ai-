@@ -2,6 +2,7 @@ const GUEST_DATA_KEY = "fts_guest_data";
 const GUEST_SESSION_KEY = "fts_guest_session";
 const CHAT_DRAFT_KEY = "fts_chat_draft";
 const BODY_SCAN_DRAFT_KEY = "fts_body_scan_draft";
+const SESSION_STARTED_KEY = "fts_session_started";
 
 export interface ChatMessage {
   role: "assistant" | "user";
@@ -554,6 +555,29 @@ export function setActiveConversation(conversationId: string): void {
   if (data) {
     data.activeConversationId = conversationId;
     saveGuestData(data);
+  }
+}
+
+export function clearActiveConversation(): void {
+  const data = getGuestData();
+  if (data) {
+    data.activeConversationId = null;
+    saveGuestData(data);
+  }
+}
+
+export function isNewSession(): boolean {
+  return sessionStorage.getItem(SESSION_STARTED_KEY) !== "true";
+}
+
+export function markSessionStarted(): void {
+  sessionStorage.setItem(SESSION_STARTED_KEY, "true");
+}
+
+export function startFreshSession(): void {
+  if (isNewSession()) {
+    clearActiveConversation();
+    markSessionStarted();
   }
 }
 
