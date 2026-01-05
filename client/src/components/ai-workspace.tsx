@@ -8,6 +8,7 @@ import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { MessageActions } from "@/components/message-actions";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { 
@@ -17,6 +18,7 @@ import {
   createNewConversation,
   addMessageToConversation,
   setActiveConversation,
+  deleteMessageFromConversation,
   getConversationsByCategory,
   getAllConversations,
   startFreshSession,
@@ -35,6 +37,7 @@ import {
   saveChatDraft,
   getChatDraft,
   clearChatDraft,
+  clearActiveConversation,
   type GuestConversation,
   type ChatMessage,
   type SoftOnboardingMood,
@@ -731,20 +734,47 @@ export function AIWorkspace() {
                 {messages.map((message, index) => (
                   <div
                     key={index}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
                   >
                     <div className={`max-w-[80%] ${message.role === "assistant" ? "space-y-0" : ""}`}>
-                      <div
-                        className={`px-4 py-3 rounded-2xl ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground glow-purple-sm"
-                            : "bg-muted glass"
-                        }`}
-                        data-testid={`message-${index}`}
-                      >
-                        <p className="text-sm leading-relaxed whitespace-pre-line">
-                          {message.content}
-                        </p>
+                      <div className={`flex items-start gap-1 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                        <div
+                          className={`px-4 py-3 rounded-2xl ${
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground glow-purple-sm"
+                              : "bg-muted glass"
+                          }`}
+                          data-testid={`message-${index}`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-line">
+                            {message.content}
+                          </p>
+                        </div>
+                        <MessageActions
+                          messageIndex={index}
+                          messageContent={message.content}
+                          isUserMessage={message.role === "user"}
+                          onEdit={(content) => {
+                            setInput(content);
+                            inputRef.current?.focus();
+                          }}
+                          onDelete={() => {
+                            const updated = deleteMessageFromConversation(index);
+                            if (updated) {
+                              setActiveConversationState(updated);
+                              if (updated.messages.length === 0) {
+                                clearActiveConversation();
+                                setActiveConversationState(null);
+                                setStartedFresh(true);
+                              }
+                            }
+                          }}
+                          onAskFollowUp={(content) => {
+                            setInput(content);
+                            inputRef.current?.focus();
+                          }}
+                          isLoggedIn={!!user}
+                        />
                       </div>
                       {message.role === "assistant" && index > 0 && (
                         <ChatFeedbackBar 

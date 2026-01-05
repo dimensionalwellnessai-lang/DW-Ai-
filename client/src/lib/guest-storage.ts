@@ -558,6 +558,25 @@ export function setActiveConversation(conversationId: string): void {
   }
 }
 
+export function deleteMessageFromConversation(messageIndex: number): GuestConversation | null {
+  const data = getGuestData();
+  if (!data || !data.activeConversationId) return null;
+  
+  const conversation = data.conversations.find(c => c.id === data.activeConversationId);
+  if (!conversation) return null;
+  
+  conversation.messages = conversation.messages.filter((_, i) => i !== messageIndex);
+  conversation.lastMessageAt = Date.now();
+  
+  if (conversation.messages.length > 0) {
+    conversation.title = generateTitle(conversation.messages);
+    conversation.category = detectCategory(conversation.messages);
+  }
+  
+  saveGuestData(data);
+  return conversation;
+}
+
 export function clearActiveConversation(): void {
   const data = getGuestData();
   if (data) {

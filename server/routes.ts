@@ -2893,6 +2893,134 @@ export async function registerRoutes(
     }
   });
 
+  // Life System - Extract actionable items from AI message
+  app.post("/api/life-system/extract", requireAuth, async (req, res) => {
+    try {
+      const { content } = req.body;
+      if (!content || typeof content !== "string") {
+        return res.status(400).json({ error: "Content is required" });
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const systemPrompt = `You are an AI that extracts actionable life system items from conversation content.
+Analyze the message and extract any:
+- Goals (things to achieve, targets, objectives)
+- Habits (recurring activities to build or maintain)
+- Schedule items (specific time-bound activities)
+
+Return a JSON array of items with this structure:
+{
+  "items": [
+    {
+      "type": "goal" | "habit" | "schedule",
+      "title": "Brief title (max 50 chars)",
+      "description": "Optional description",
+      "frequency": "daily" | "weekly" | "monthly" (for habits only),
+      "dayOfWeek": 0-6 (for schedule, 0=Sunday),
+      "startTime": "HH:MM" (for schedule),
+      "endTime": "HH:MM" (for schedule),
+      "category": "wellness" | "fitness" | "nutrition" | "mindfulness" | "productivity" | "relationships" | "finance" | "other",
+      "wellnessDimension": "physical" | "mental" | "emotional" | "spiritual" | "social" | "financial" (for goals)
+    }
+  ]
+}
+
+Rules:
+- Only extract concrete, actionable items
+- Keep titles concise and action-oriented
+- If no actionable items found, return { "items": [] }
+- Be conservative - only extract clear commitments or plans
+- Prefer habits for recurring activities, goals for achievements, schedule for specific times`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Extract actionable items from this message:\n\n${content}` }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || '{"items":[]}';
+      const parsed = JSON.parse(responseText);
+      
+      res.json({ items: parsed.items || [] });
+    } catch (error) {
+      console.error("Extract life system items error:", error);
+      res.status(500).json({ error: "Failed to extract items" });
+    }
+  });
+
+  // Life System - Save extracted items
+  app.post("/api/life-system/save-items", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { items } = req.body;
+      
+      if (!items || !Array.isArray(items)) {
+        return res.status(400).json({ error: "Items array is required" });
+      }
+
+      let saved = 0;
+
+      for (const item of items) {
+        try {
+          if (item.type === "goal") {
+            await storage.createGoal({
+              userId,
+              title: item.title,
+              description: item.description || null,
+              wellnessDimension: item.wellnessDimension || null,
+              progress: 0,
+              targetValue: 100,
+              isActive: true,
+              dataSource: "ai-extracted",
+              explainWhy: "Extracted from AI conversation",
+            });
+            saved++;
+          } else if (item.type === "habit") {
+            await storage.createHabit({
+              userId,
+              title: item.title,
+              description: item.description || null,
+              frequency: item.frequency || "daily",
+              reminderTime: null,
+              isActive: true,
+              streak: 0,
+              dataSource: "ai-extracted",
+              explainWhy: "Extracted from AI conversation",
+            });
+            saved++;
+          } else if (item.type === "schedule") {
+            await storage.createScheduleBlock({
+              userId,
+              dayOfWeek: item.dayOfWeek ?? 1,
+              startTime: item.startTime || "09:00",
+              endTime: item.endTime || "10:00",
+              title: item.title,
+              category: item.category || null,
+              color: null,
+            });
+            saved++;
+          }
+        } catch (itemError) {
+          console.error("Error saving item:", item, itemError);
+        }
+      }
+
+      res.json({ saved, total: items.length });
+    } catch (error) {
+      console.error("Save life system items error:", error);
+      res.status(500).json({ error: "Failed to save items" });
+    }
+  });
+
   return httpServer;
 }
 
