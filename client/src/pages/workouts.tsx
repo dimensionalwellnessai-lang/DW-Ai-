@@ -44,7 +44,7 @@ export function WorkoutsPage() {
 
   const unscheduledExercises = planExercises.filter(e => !e.dayLabel || !DAYS_OF_WEEK.map(d => d.toLowerCase()).includes(e.dayLabel.toLowerCase()));
 
-  const exerciseTypes = [...new Set(planExercises.map(e => e.exerciseType || "other"))];
+  const exerciseTypes = Array.from(new Set(planExercises.map(e => e.exerciseType || "other")));
   const exercisesByType = exerciseTypes.reduce((acc, type) => {
     acc[type] = planExercises.filter(e => (e.exerciseType || "other") === type);
     return acc;
@@ -238,7 +238,7 @@ export function WorkoutsPage() {
                   <div key={type} className="space-y-2">
                     <h3 className="font-display font-medium text-sm text-muted-foreground capitalize">{type}</h3>
                     <div className="grid gap-2">
-                      {exercisesByType[type].map((exercise) => (
+                      {exercisesByType[type].map((exercise: Exercise) => (
                         <Card 
                           key={exercise.id} 
                           className="p-3 hover-elevate cursor-pointer"

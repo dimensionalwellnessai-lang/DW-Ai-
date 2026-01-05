@@ -1547,12 +1547,12 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </TabsContent>
 
           <TabsContent value="videos" className="mt-4 space-y-6">
-            <div className="flex overflow-x-auto gap-2 pb-2 -mx-1 px-1">
+            <div className="flex flex-wrap gap-2">
               {VIDEO_CATEGORIES.map((cat) => (
                 <Badge
                   key={cat}
                   variant={videoCategory === cat ? "default" : "outline"}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer"
                   onClick={() => setVideoCategory(cat)}
                   data-testid={`badge-video-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
                 >
@@ -1607,14 +1607,14 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{video.description}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Timer className="w-3 h-3" />
                             {video.duration}
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {video.servings} serving{video.servings > 1 ? 's' : ''}
+                            {video.servings}
                           </span>
                           <Badge variant="secondary" className="text-xs capitalize">
                             {video.difficulty}

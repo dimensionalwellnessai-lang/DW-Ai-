@@ -83,7 +83,7 @@ export default function CalendarSchedulePage() {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               variant={filterType === null ? "default" : "outline"}
@@ -98,7 +98,7 @@ export default function CalendarSchedulePage() {
                 size="sm"
                 variant={filterType === type ? "default" : "outline"}
                 onClick={() => setFilterType(filterType === type ? null : type)}
-                className="gap-1 shrink-0"
+                className="gap-1"
                 data-testid={`filter-${type}`}
               >
                 <config.icon className="w-3 h-3" />
