@@ -1,11 +1,6 @@
 import mammoth from "mammoth";
 import Tesseract from "tesseract.js";
-
-async function parsePdf(buffer: Buffer): Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> {
-  const pdfParseLib = await import("pdf-parse") as any;
-  const pdfParse = pdfParseLib.default || pdfParseLib;
-  return pdfParse(buffer);
-}
+import { googleVisionService } from "./google-vision";
 
 export interface ParsedDocumentResult {
   text: string;
@@ -14,6 +9,35 @@ export interface ParsedDocumentResult {
     title?: string;
     author?: string;
   };
+  extractionMethod: "native" | "tesseract" | "google_vision" | "hybrid";
+  ocrConfidence?: number;
+}
+
+export interface DocumentProcessingError {
+  code: string;
+  message: string;
+  userMessage: string;
+  isRecoverable: boolean;
+  suggestions: string[];
+}
+
+const MIN_VALID_TEXT_LENGTH = 30;
+const TESSERACT_CONFIDENCE_THRESHOLD = 60;
+
+async function parsePdf(buffer: Buffer): Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> {
+  const pdfParseLib = await import("pdf-parse") as any;
+  const pdfParse = pdfParseLib.default || pdfParseLib;
+  return pdfParse(buffer);
+}
+
+export function createProcessingError(
+  code: string,
+  message: string,
+  userMessage: string,
+  isRecoverable: boolean = false,
+  suggestions: string[] = []
+): DocumentProcessingError {
+  return { code, message, userMessage, isRecoverable, suggestions };
 }
 
 export async function extractTextFromBuffer(
@@ -22,56 +46,158 @@ export async function extractTextFromBuffer(
   fileName: string
 ): Promise<ParsedDocumentResult> {
   const type = mimeType.toLowerCase();
+  const startTime = Date.now();
   
-  if (type.includes("pdf")) {
-    return extractFromPdf(buffer);
+  console.log(`[DocumentParser] Processing file: ${fileName} (${mimeType}, ${buffer.length} bytes)`);
+  
+  try {
+    if (type.includes("pdf")) {
+      return await extractFromPdf(buffer);
+    }
+    
+    if (type.includes("word") || type.includes("docx") || type.includes("doc") || 
+        fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
+      return await extractFromDocx(buffer);
+    }
+    
+    if (type.includes("text") || type.includes("plain") || 
+        fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".csv")) {
+      const text = buffer.toString("utf-8");
+      if (text.length < MIN_VALID_TEXT_LENGTH) {
+        throw createProcessingError(
+          "EMPTY_FILE",
+          "Text file contains insufficient content",
+          "This file appears to be empty or has very little text.",
+          false,
+          ["Try a different file", "Make sure the file has content"]
+        );
+      }
+      return { text, extractionMethod: "native" };
+    }
+    
+    if (type.includes("image") || type.includes("png") || type.includes("jpeg") || 
+        type.includes("jpg") || type.includes("gif") || type.includes("webp") ||
+        type.includes("bmp") || type.includes("tiff")) {
+      return await extractFromImage(buffer);
+    }
+
+    if (type.includes("heic") || type.includes("heif")) {
+      throw createProcessingError(
+        "UNSUPPORTED_IMAGE_FORMAT",
+        `HEIC/HEIF format not supported`,
+        "This iPhone photo format isn't directly supported.",
+        true,
+        ["Take a screenshot of the image instead", "Convert to JPEG before uploading", "Use a different photo"]
+      );
+    }
+    
+    throw createProcessingError(
+      "UNSUPPORTED_FILE_TYPE",
+      `Unsupported file type: ${mimeType}`,
+      `We can't read ${fileName.split('.').pop()?.toUpperCase() || 'this type of'} files yet.`,
+      true,
+      ["Try PDF, Word, or image files", "Take a photo of the document", "Copy and paste the text directly"]
+    );
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    console.error(`[DocumentParser] Failed after ${elapsed}ms:`, error);
+    
+    if (isProcessingError(error)) {
+      throw error;
+    }
+    
+    throw createProcessingError(
+      "EXTRACTION_FAILED",
+      error instanceof Error ? error.message : "Unknown error",
+      "Something went wrong while reading this file.",
+      true,
+      ["Try uploading again", "Try a different file format", "Take a photo of the document"]
+    );
   }
-  
-  if (type.includes("word") || type.includes("docx") || type.includes("doc")) {
-    return extractFromDocx(buffer);
-  }
-  
-  if (type.includes("text") || type.includes("plain") || fileName.endsWith(".txt") || fileName.endsWith(".md")) {
-    return { text: buffer.toString("utf-8") };
-  }
-  
-  if (type.includes("image") || type.includes("png") || type.includes("jpeg") || type.includes("jpg")) {
-    return extractFromImage(buffer);
-  }
-  
-  throw new Error(`Unsupported file type: ${mimeType}`);
 }
 
 async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
+  console.log("[DocumentParser] Starting image OCR...");
+  
+  let tesseractResult: { text: string; confidence: number } | null = null;
+  let tesseractError: Error | null = null;
+
   try {
-    console.log("Starting OCR on image...");
-    const { data: { text } } = await Tesseract.recognize(buffer, "eng", {
+    const result = await Tesseract.recognize(buffer, "eng", {
       logger: (m) => {
         if (m.status === "recognizing text") {
-          console.log(`OCR progress: ${Math.round(m.progress * 100)}%`);
+          console.log(`[Tesseract] Progress: ${Math.round(m.progress * 100)}%`);
         }
       },
     });
     
-    const cleanText = text?.trim() || "";
-    if (cleanText.length < 10) {
-      throw new Error("Could not read text from this image. Make sure the text is clear and readable.");
-    }
+    tesseractResult = {
+      text: result.data.text?.trim() || "",
+      confidence: result.data.confidence || 0,
+    };
     
-    console.log(`OCR complete. Extracted ${cleanText.length} characters.`);
-    return { text: cleanText };
+    console.log(`[Tesseract] Completed: ${tesseractResult.text.length} chars, ${tesseractResult.confidence}% confidence`);
   } catch (error) {
-    console.error("Image OCR error:", error);
-    throw new Error("Could not read text from this image. Try a clearer photo or type the content directly.");
+    tesseractError = error instanceof Error ? error : new Error("Tesseract failed");
+    console.error("[Tesseract] Error:", tesseractError.message);
   }
+
+  const tesseractGood = tesseractResult && 
+    tesseractResult.text.length >= MIN_VALID_TEXT_LENGTH && 
+    tesseractResult.confidence >= TESSERACT_CONFIDENCE_THRESHOLD;
+
+  if (tesseractGood) {
+    return {
+      text: tesseractResult!.text,
+      extractionMethod: "tesseract",
+      ocrConfidence: tesseractResult!.confidence,
+    };
+  }
+
+  if (googleVisionService.isConfigured()) {
+    console.log("[DocumentParser] Trying Google Vision fallback...");
+    try {
+      const visionResult = await googleVisionService.extractText(buffer, "image");
+      
+      if (visionResult.text.length >= MIN_VALID_TEXT_LENGTH) {
+        return {
+          text: visionResult.text,
+          extractionMethod: "google_vision",
+          ocrConfidence: visionResult.confidence,
+        };
+      }
+    } catch (error) {
+      console.error("[GoogleVision] Fallback error:", error);
+    }
+  }
+
+  if (tesseractResult && tesseractResult.text.length >= 10) {
+    return {
+      text: tesseractResult.text,
+      extractionMethod: "tesseract",
+      ocrConfidence: tesseractResult.confidence,
+    };
+  }
+
+  throw createProcessingError(
+    "OCR_FAILED",
+    "Could not extract text from image",
+    "We couldn't read the text in this image clearly.",
+    true,
+    ["Make sure the photo is well-lit and in focus", "Try taking a straighter photo", "Type the content directly instead"]
+  );
 }
 
 async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
+  console.log("[DocumentParser] Processing PDF...");
+  
   try {
     const data = await parsePdf(buffer);
-    
     const cleanText = data.text?.trim() || "";
-    if (cleanText.length >= 50) {
+    
+    console.log(`[PDF] Native extraction: ${cleanText.length} chars, ${data.numpages} pages`);
+    
+    if (cleanText.length >= MIN_VALID_TEXT_LENGTH) {
       return {
         text: data.text,
         metadata: {
@@ -79,77 +205,167 @@ async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
           title: data.info?.Title,
           author: data.info?.Author,
         },
+        extractionMethod: "native",
       };
     }
     
-    console.log("PDF has little/no text, attempting OCR...");
+    console.log("[PDF] Insufficient native text, attempting OCR...");
     return await ocrPdfFallback(buffer, data.numpages);
     
-  } catch (error: unknown) {
-    console.error("PDF extraction error:", error);
+  } catch (error) {
+    console.error("[PDF] Extraction error:", error);
     
-    const errorMessage = error instanceof Error ? error.message : "";
-    if (errorMessage.includes("OCR") || errorMessage.includes("image")) {
+    if (isProcessingError(error)) {
       throw error;
     }
     
-    throw new Error("Could not read this PDF. Try taking a photo of the page instead, or type the content directly.");
+    console.log("[PDF] Native extraction failed, trying OCR...");
+    try {
+      return await ocrPdfFallback(buffer, 1);
+    } catch (ocrError) {
+      throw createProcessingError(
+        "PDF_EXTRACTION_FAILED",
+        error instanceof Error ? error.message : "PDF parsing failed",
+        "This PDF couldn't be read. It might be protected or corrupted.",
+        true,
+        ["Try taking a screenshot of each page", "Try a different PDF", "Copy and paste the text directly"]
+      );
+    }
   }
 }
 
 async function ocrPdfFallback(buffer: Buffer, numPages: number): Promise<ParsedDocumentResult> {
+  const maxPages = Math.min(numPages, 10);
+  console.log(`[PDF-OCR] Converting up to ${maxPages} pages to images...`);
+  
   try {
     const { pdf } = await import("pdf-to-img");
     const pages: string[] = [];
     let pageNum = 0;
-    
-    console.log(`Converting ${numPages} PDF pages to images for OCR...`);
+    let totalConfidence = 0;
     
     for await (const image of await pdf(buffer, { scale: 2 })) {
       pageNum++;
-      console.log(`Processing page ${pageNum}...`);
+      console.log(`[PDF-OCR] Processing page ${pageNum}/${maxPages}...`);
       
       const imageBuffer = Buffer.from(image);
-      const { data: { text } } = await Tesseract.recognize(imageBuffer, "eng");
       
-      if (text?.trim()) {
-        pages.push(text.trim());
+      let pageText = "";
+      let pageConfidence = 0;
+      
+      try {
+        const result = await Tesseract.recognize(imageBuffer, "eng");
+        pageText = result.data.text?.trim() || "";
+        pageConfidence = result.data.confidence || 0;
+      } catch (tesseractError) {
+        console.error(`[PDF-OCR] Tesseract failed on page ${pageNum}:`, tesseractError);
+        
+        if (googleVisionService.isConfigured()) {
+          try {
+            const visionResult = await googleVisionService.extractText(imageBuffer, "image/png");
+            pageText = visionResult.text;
+            pageConfidence = visionResult.confidence;
+          } catch (visionError) {
+            console.error(`[PDF-OCR] Google Vision failed on page ${pageNum}:`, visionError);
+          }
+        }
       }
       
-      if (pageNum >= 10) {
-        console.log("Limiting to first 10 pages for OCR");
+      if (pageText) {
+        pages.push(pageText);
+        totalConfidence += pageConfidence;
+      }
+      
+      if (pageNum >= maxPages) {
+        console.log(`[PDF-OCR] Reached page limit (${maxPages})`);
         break;
       }
     }
     
     const fullText = pages.join("\n\n---\n\n");
+    const avgConfidence = pages.length > 0 ? Math.round(totalConfidence / pages.length) : 0;
     
-    if (fullText.length < 20) {
-      throw new Error("Could not read text from this scanned PDF. Try a clearer scan or type the content directly.");
+    console.log(`[PDF-OCR] Complete: ${fullText.length} chars from ${pages.length} pages, avg confidence ${avgConfidence}%`);
+    
+    if (fullText.length < MIN_VALID_TEXT_LENGTH) {
+      throw createProcessingError(
+        "PDF_OCR_FAILED",
+        "Could not extract readable text from scanned PDF",
+        "This PDF seems to be scanned but we couldn't read the text clearly.",
+        true,
+        ["Try taking clearer photos of each page", "Make sure the scan is high quality", "Type the content directly"]
+      );
     }
     
-    console.log(`OCR complete. Extracted ${fullText.length} characters from ${pages.length} pages.`);
     return {
       text: fullText,
       metadata: { pages: numPages },
+      extractionMethod: pages.length > 0 ? "tesseract" : "hybrid",
+      ocrConfidence: avgConfidence,
     };
   } catch (error) {
-    console.error("PDF OCR fallback error:", error);
-    throw new Error("Could not scan this PDF. Try taking a photo of the pages instead, or type the content directly.");
+    if (isProcessingError(error)) {
+      throw error;
+    }
+    
+    console.error("[PDF-OCR] Fallback failed:", error);
+    throw createProcessingError(
+      "PDF_OCR_FAILED",
+      error instanceof Error ? error.message : "PDF OCR failed",
+      "We couldn't scan this PDF. It might have security restrictions.",
+      true,
+      ["Try taking screenshots of the pages", "Try a different PDF file", "Copy the text manually"]
+    );
   }
 }
 
 async function extractFromDocx(buffer: Buffer): Promise<ParsedDocumentResult> {
+  console.log("[DocumentParser] Processing Word document...");
+  
   try {
     const result = await mammoth.extractRawText({ buffer });
+    const text = result.value?.trim() || "";
+    
+    if (text.length < MIN_VALID_TEXT_LENGTH) {
+      throw createProcessingError(
+        "EMPTY_DOCUMENT",
+        "Word document contains insufficient content",
+        "This document appears to be empty or has very little text.",
+        false,
+        ["Try a different file", "Make sure the document has content"]
+      );
+    }
+    
+    console.log(`[DOCX] Extracted ${text.length} characters`);
     return {
       text: result.value,
       metadata: {},
+      extractionMethod: "native",
     };
   } catch (error) {
-    console.error("DOCX extraction error:", error);
-    throw new Error("Failed to extract text from Word document");
+    if (isProcessingError(error)) {
+      throw error;
+    }
+    
+    console.error("[DOCX] Extraction error:", error);
+    throw createProcessingError(
+      "DOCX_EXTRACTION_FAILED",
+      error instanceof Error ? error.message : "Word document parsing failed",
+      "We couldn't read this Word document. It might be corrupted or an older format.",
+      true,
+      ["Try saving as .docx format", "Try exporting as PDF", "Copy and paste the text directly"]
+    );
   }
+}
+
+export function isProcessingError(error: unknown): error is DocumentProcessingError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    "userMessage" in error &&
+    "suggestions" in error
+  );
 }
 
 export interface DocumentAnalysisItem {
@@ -168,7 +384,43 @@ export interface DocumentAnalysisResult {
   summary: string;
   confidence: number;
   items: DocumentAnalysisItem[];
+  primaryCategory: "meals" | "workouts" | "routines" | "calendar" | "mixed";
   clarifyingQuestions?: string[];
+}
+
+export function detectPrimaryCategory(items: DocumentAnalysisItem[]): "meals" | "workouts" | "routines" | "calendar" | "mixed" {
+  if (items.length === 0) return "mixed";
+  
+  const counts: Record<string, number> = {
+    meals: 0,
+    workouts: 0,
+    routines: 0,
+    calendar: 0,
+  };
+  
+  for (const item of items) {
+    const type = item.itemType.toLowerCase();
+    if (type === "meal" || item.destinationSystem === "nutrition") {
+      counts.meals++;
+    } else if (type === "workout" || item.destinationSystem === "workout") {
+      counts.workouts++;
+    } else if (type === "routine" || item.destinationSystem === "routines") {
+      counts.routines++;
+    } else if (type === "calendar" || item.destinationSystem === "calendar") {
+      counts.calendar++;
+    }
+  }
+  
+  const total = items.length;
+  const threshold = 0.6;
+  
+  for (const [category, count] of Object.entries(counts)) {
+    if (count / total >= threshold) {
+      return category as "meals" | "workouts" | "routines" | "calendar";
+    }
+  }
+  
+  return "mixed";
 }
 
 export function generateDocumentAnalysisPrompt(text: string): string {
@@ -181,18 +433,21 @@ INSTRUCTIONS:
 1. Read the entire document carefully
 2. Identify repeating patterns, schedules, or structured content
 3. Extract items into the following categories:
-   - meals: Recipes, meal plans, food preparation steps, portion rules
-   - workouts: Exercise routines, workout days, movement types, rest days
-   - routines: Step-by-step processes, morning/evening routines, prep flows
+   - meal: Recipes, meal plans, food preparation steps, portion rules, ingredients
+   - workout: Exercise routines, workout days, movement types, sets/reps, rest periods
+   - routine: Step-by-step processes, morning/evening routines, prep flows, habits
    - calendar: Specific dates, recurring events, reminders, scheduled blocks
    - plan: Overall system name if this is a named program (e.g., "4-Week Meal Prep")
 
 4. For each item, provide:
+   - id: unique identifier (use format: item_1, item_2, etc.)
+   - itemType: meal, workout, routine, calendar, or plan
    - title: Clear, concise name
    - description: 1-2 sentence summary
    - details: Specific information (ingredients, sets/reps, times, etc.)
-   - destinationSystem: Where it should go (nutrition, workout, routines, calendar)
+   - destinationSystem: nutrition, workout, routines, or calendar
    - confidence: 0-100 how sure you are this extraction is correct
+   - isSelected: true (default to selecting all items)
 
 5. If confidence is below 60 for any major section, include clarifying questions.
 
@@ -203,7 +458,7 @@ RESPOND WITH VALID JSON ONLY:
   "confidence": 0-100,
   "items": [
     {
-      "id": "unique-id-1",
+      "id": "item_1",
       "itemType": "meal|workout|routine|calendar|plan",
       "title": "Item title",
       "description": "Brief description",
@@ -247,11 +502,14 @@ export function validateAnalysisResult(data: unknown): DocumentAnalysisResult | 
     });
   }
   
+  const primaryCategory = detectPrimaryCategory(validItems);
+  
   return {
     documentTitle: obj.documentTitle,
     summary: obj.summary,
     confidence: obj.confidence,
     items: validItems,
+    primaryCategory,
     clarifyingQuestions: Array.isArray(obj.clarifyingQuestions) 
       ? obj.clarifyingQuestions.map(String) 
       : undefined,
