@@ -33,6 +33,9 @@ import {
   importedDocumentItems,
   mealPlans,
   meals,
+  mealPrepPreferences,
+  shoppingLists,
+  shoppingListItems,
   userFeedback,
   type User,
   type InsertUser,
@@ -102,6 +105,12 @@ import {
   type InsertMealPlan,
   type Meal,
   type InsertMeal,
+  type MealPrepPreferences,
+  type InsertMealPrepPreferences,
+  type ShoppingList,
+  type InsertShoppingList,
+  type ShoppingListItem,
+  type InsertShoppingListItem,
   type UserFeedback,
   type InsertUserFeedback,
   weeklyFeedbackResponses,
@@ -272,6 +281,22 @@ export interface IStorage {
   createMeals(meals: InsertMeal[]): Promise<Meal[]>;
   updateMeal(id: string, data: Partial<Meal>): Promise<Meal | undefined>;
   deleteMeal(id: string): Promise<void>;
+
+  getMealPrepPreferences(userId: string): Promise<MealPrepPreferences | undefined>;
+  createMealPrepPreferences(prefs: InsertMealPrepPreferences): Promise<MealPrepPreferences>;
+  updateMealPrepPreferences(userId: string, data: Partial<MealPrepPreferences>): Promise<MealPrepPreferences | undefined>;
+
+  getShoppingLists(userId: string): Promise<ShoppingList[]>;
+  getShoppingList(id: string): Promise<ShoppingList | undefined>;
+  createShoppingList(list: InsertShoppingList): Promise<ShoppingList>;
+  updateShoppingList(id: string, data: Partial<ShoppingList>): Promise<ShoppingList | undefined>;
+  deleteShoppingList(id: string): Promise<void>;
+
+  getShoppingListItems(listId: string): Promise<ShoppingListItem[]>;
+  createShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem>;
+  createShoppingListItems(items: InsertShoppingListItem[]): Promise<ShoppingListItem[]>;
+  updateShoppingListItem(id: string, data: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined>;
+  deleteShoppingListItem(id: string): Promise<void>;
 
   getWeeklyFeedbackResponses(userId: string): Promise<WeeklyFeedbackResponse[]>;
   getWeeklyFeedbackResponse(userId: string, weekNumber: number): Promise<WeeklyFeedbackResponse | undefined>;
@@ -982,6 +1007,75 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMeal(id: string): Promise<void> {
     await db.delete(meals).where(eq(meals.id, id));
+  }
+
+  async getMealPrepPreferences(userId: string): Promise<MealPrepPreferences | undefined> {
+    const [prefs] = await db.select().from(mealPrepPreferences).where(eq(mealPrepPreferences.userId, userId));
+    return prefs || undefined;
+  }
+
+  async createMealPrepPreferences(prefs: InsertMealPrepPreferences): Promise<MealPrepPreferences> {
+    const [created] = await db.insert(mealPrepPreferences).values(prefs).returning();
+    return created;
+  }
+
+  async updateMealPrepPreferences(userId: string, data: Partial<MealPrepPreferences>): Promise<MealPrepPreferences | undefined> {
+    const [updated] = await db.update(mealPrepPreferences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(mealPrepPreferences.userId, userId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getShoppingLists(userId: string): Promise<ShoppingList[]> {
+    return await db.select().from(shoppingLists)
+      .where(eq(shoppingLists.userId, userId))
+      .orderBy(desc(shoppingLists.createdAt));
+  }
+
+  async getShoppingList(id: string): Promise<ShoppingList | undefined> {
+    const [list] = await db.select().from(shoppingLists).where(eq(shoppingLists.id, id));
+    return list || undefined;
+  }
+
+  async createShoppingList(list: InsertShoppingList): Promise<ShoppingList> {
+    const [created] = await db.insert(shoppingLists).values(list).returning();
+    return created;
+  }
+
+  async updateShoppingList(id: string, data: Partial<ShoppingList>): Promise<ShoppingList | undefined> {
+    const [updated] = await db.update(shoppingLists).set(data).where(eq(shoppingLists.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteShoppingList(id: string): Promise<void> {
+    await db.delete(shoppingListItems).where(eq(shoppingListItems.shoppingListId, id));
+    await db.delete(shoppingLists).where(eq(shoppingLists.id, id));
+  }
+
+  async getShoppingListItems(listId: string): Promise<ShoppingListItem[]> {
+    return await db.select().from(shoppingListItems)
+      .where(eq(shoppingListItems.shoppingListId, listId))
+      .orderBy(shoppingListItems.category);
+  }
+
+  async createShoppingListItem(item: InsertShoppingListItem): Promise<ShoppingListItem> {
+    const [created] = await db.insert(shoppingListItems).values(item).returning();
+    return created;
+  }
+
+  async createShoppingListItems(items: InsertShoppingListItem[]): Promise<ShoppingListItem[]> {
+    if (items.length === 0) return [];
+    return await db.insert(shoppingListItems).values(items).returning();
+  }
+
+  async updateShoppingListItem(id: string, data: Partial<ShoppingListItem>): Promise<ShoppingListItem | undefined> {
+    const [updated] = await db.update(shoppingListItems).set(data).where(eq(shoppingListItems.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteShoppingListItem(id: string): Promise<void> {
+    await db.delete(shoppingListItems).where(eq(shoppingListItems.id, id));
   }
 
   async getWeeklyFeedbackResponses(userId: string): Promise<WeeklyFeedbackResponse[]> {
