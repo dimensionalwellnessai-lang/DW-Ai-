@@ -58,6 +58,14 @@ const LINKED_TYPE_COLORS: Record<string, string> = {
   none: "text-muted-foreground",
 };
 
+function formatTime12Hour(time24: string): string {
+  if (!time24) return "";
+  const [hours, minutes] = time24.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
 interface DisplayScheduleEvent {
   id: string;
   title: string;
@@ -319,25 +327,25 @@ export default function DailySchedulePage() {
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
-                        <div className="text-center min-w-[50px]">
-                          <p className="text-lg font-semibold">{event.scheduledTime}</p>
-                          {event.endTime && (
-                            <p className="text-xs text-muted-foreground">to {event.endTime}</p>
-                          )}
-                        </div>
-                        <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center`}>
+                        <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0`}>
                           <Icon className={`w-5 h-5 ${color}`} />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{event.title}</h3>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium truncate">{event.title}</h3>
                           {event.linkedType && event.linkedType !== "none" && (
                             <p className="text-sm text-muted-foreground capitalize">
                               {event.linkedType}
                             </p>
                           )}
                         </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-medium">{formatTime12Hour(event.scheduledTime)}</p>
+                          {event.endTime && (
+                            <p className="text-xs text-muted-foreground">{formatTime12Hour(event.endTime)}</p>
+                          )}
+                        </div>
                         {isClickable && (
-                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
                         )}
                       </div>
                     </CardContent>

@@ -2911,20 +2911,24 @@ export async function registerRoutes(
 Analyze the message and extract any:
 - Goals (things to achieve, targets, objectives)
 - Habits (recurring activities to build or maintain)
+- Routines (multi-step flows like morning routine, evening routine, workout routine)
 - Schedule items (specific time-bound activities)
 
 Return a JSON array of items with this structure:
 {
   "items": [
     {
-      "type": "goal" | "habit" | "schedule",
+      "type": "goal" | "habit" | "routine" | "schedule",
       "title": "Brief title (max 50 chars)",
       "description": "Optional description",
       "frequency": "daily" | "weekly" | "monthly" (for habits only),
-      "dayOfWeek": 0-6 (for schedule, 0=Sunday),
+      "dayOfWeek": 0-6 (for schedule/routine, 0=Sunday),
       "startTime": "HH:MM" (for schedule),
       "endTime": "HH:MM" (for schedule),
-      "category": "wellness" | "fitness" | "nutrition" | "mindfulness" | "productivity" | "relationships" | "finance" | "other",
+      "scheduleTime": "HH:MM" (for routines - when routine starts),
+      "durationMinutes": number (for routines - total duration),
+      "steps": [{"title": "Step name", "durationMinutes": 5}] (for routines only),
+      "category": "wellness" | "fitness" | "nutrition" | "mindfulness" | "productivity" | "relationships" | "finance" | "morning" | "evening" | "workout" | "other",
       "wellnessDimension": "physical" | "mental" | "emotional" | "spiritual" | "social" | "financial" (for goals)
     }
   ]
@@ -2935,7 +2939,11 @@ Rules:
 - Keep titles concise and action-oriented
 - If no actionable items found, return { "items": [] }
 - Be conservative - only extract clear commitments or plans
-- Prefer habits for recurring activities, goals for achievements, schedule for specific times`;
+- Use "routine" for multi-step flows (morning routine, evening wind-down, etc.)
+- Use "schedule" for single time-block events
+- Use "habit" for recurring activities without specific time
+- Use "goal" for achievements or targets
+- For routines, include the steps array with individual steps and their durations`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -2996,6 +3004,68 @@ Rules:
               dataSource: "ai-extracted",
               explainWhy: "Extracted from AI conversation",
             });
+            saved++;
+          } else if (item.type === "routine") {
+            // Create routine
+            const routine = await storage.createRoutine({
+              userId,
+              name: item.title,
+              dimensionTags: item.dimensionTags || [],
+              steps: item.steps || [],
+              totalDurationMinutes: item.durationMinutes || null,
+              scheduleOptions: item.scheduleTime ? { time: item.scheduleTime } : null,
+              mode: "guided",
+              isActive: true,
+              dataSource: "ai-extracted",
+              explainWhy: "Extracted from AI conversation",
+            });
+            
+            // Also create a calendar event if there's a schedule time
+            if (item.scheduleTime && item.dayOfWeek !== undefined) {
+              const now = new Date();
+              const currentDayOfWeek = now.getDay();
+              const targetDayOfWeek = item.dayOfWeek;
+              
+              const [startHour, startMin] = (item.scheduleTime as string).split(":").map(Number);
+              
+              let daysUntil = targetDayOfWeek - currentDayOfWeek;
+              if (targetDayOfWeek === currentDayOfWeek) {
+                const eventTimeMinutes = startHour * 60 + startMin;
+                const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+                if (eventTimeMinutes <= currentTimeMinutes) {
+                  daysUntil = 7;
+                } else {
+                  daysUntil = 0;
+                }
+              } else if (daysUntil < 0) {
+                daysUntil += 7;
+              }
+              
+              const eventDate = new Date(now);
+              eventDate.setDate(now.getDate() + daysUntil);
+              
+              const startDateTime = new Date(eventDate);
+              startDateTime.setHours(startHour, startMin, 0, 0);
+              
+              const durationMinutes = item.durationMinutes || 30;
+              const endDateTime = new Date(startDateTime);
+              endDateTime.setMinutes(endDateTime.getMinutes() + durationMinutes);
+              
+              await storage.createCalendarEvent({
+                userId,
+                title: item.title,
+                description: item.description || null,
+                startTime: startDateTime.toISOString(),
+                endTime: endDateTime.toISOString(),
+                eventType: "routine",
+                isRecurring: true,
+                recurrenceRule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][targetDayOfWeek]}`,
+                linkedType: "routine",
+                linkedId: routine.id,
+                linkedRoute: "/routines",
+              });
+            }
+            
             saved++;
           } else if (item.type === "schedule") {
             // Create schedule block
