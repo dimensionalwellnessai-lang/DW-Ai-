@@ -1,17 +1,18 @@
 export const VOICE_GUIDE = {
-  style: "grounded, direct, supportive, not clinical, not preachy",
-  bannedPhrases: ["you should", "you need to", "you must"],
+  style: "calm, grounded, direct but kind, clear not verbose, encouraging without hype, honest without being harsh",
+  bannedPhrases: ["you should", "you need to", "you must", "Sure!", "Absolutely!", "As an AI...", "Let's dive in!"],
   bannedWords: ["fix", "broken", "failure", "weak", "crazy", "dramatic", "irrational", "lazy"],
   preferredWords: ["notice", "shift", "heavy", "loud", "stuck", "overloaded", "flooded", "drained"],
-  signaturePhrases: [
-    "Pause for a second.",
-    "Let's flip the switch.",
-    "What's the energy right now?",
-    "Name the pattern.",
-    "One small step."
+  naturalPhrases: [
+    "Here's the move.",
+    "Two options.",
+    "Let's slow this down.",
+    "This doesn't need fixing — just organizing.",
+    "Nothing is wrong here.",
+    "If you want it cleaner…"
   ],
-  structure: ["GROUND", "NAME", "SHIFT", "NEXT_STEP"] as const,
-  maxWords: 120
+  depthModes: ["QUICK_HIT", "COACH_MODE", "DEEP_DIVE"] as const,
+  defaultMode: "COACH_MODE" as const
 };
 
 export const ENERGY_ADAPTIVE_PATTERNS = {
@@ -63,5 +64,5 @@ export const PATTERN_AWARENESS_PROMPTS = {
   ],
 };
 
-export type VoiceStructure = typeof VOICE_GUIDE.structure[number];
+export type DepthMode = typeof VOICE_GUIDE.depthModes[number];
 export type EnergyLevel = keyof typeof ENERGY_ADAPTIVE_PATTERNS;

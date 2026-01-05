@@ -1,0 +1,201 @@
+PROJECT: Dimensional Wellness AI — Chat System Upgrade (ChatGPT-level UX without copying ChatGPT)
+
+GOAL (REAL SIMPLE):
+Make the AI chat feel premium and powerful like ChatGPT (edit, stop, regenerate, deeper dives, memory options, file reading), BUT with our own vibe and product language.
+
+NON-NEGOTIABLE:
+- Never silent-fail. If something breaks, show a clear message.
+- Everything must be mobile-first, Safari-safe.
+- User control + consent: no auto-saving into calendar/system without confirm.
+
+--------------------------------------------
+1) CORE CHAT FEATURES (MUST HAVE)
+--------------------------------------------
+Chat actions on every assistant + user message:
+- Edit message (user messages at minimum; assistant optional)
+- Regenerate response (“Run it back”)
+- Continue response (“Keep going”)
+- Stop generating (“Pause”) — must cancel stream instantly
+- Streaming output (so it feels alive)
+- Copy message button
+- Share / Export (later ok but plan for it)
+- History list (“Chats”) with search
+- Temporary chat mode toggle (doesn’t save)
+- Memory toggle: OFF by default until user chooses ON
+
+UI language (OUR VIBE):
+- Regenerate = “Run it back”
+- Stop = “Pause”
+- Deep mode = “Deep Dive”
+- Quick mode = “Quick Hit”
+- Standard = “Coach Mode”
+- If user stuck: “Here’s the move…”
+
+--------------------------------------------
+2) EDIT MESSAGES THE RIGHT WAY
+--------------------------------------------
+We do NOT overwrite messages silently.
+
+Data model MUST support revisions:
+messages:
+- id
+- conversationId
+- role: "user" | "assistant"
+- content
+- createdAt
+- editedAt (nullable)
+- version (int, default 1)
+- parentMessageId (nullable, for revisions)
+- isStale (bool, default false)
+
+Editing behavior:
+- When user edits a past user message:
+  - Create a NEW message version (version+1), link parentMessageId
+  - Mark all messages AFTER that point as isStale=true
+  - Replay from that edited message forward and generate new assistant response
+This matches what users expect: editing changes the future.
+
+UI:
+- Show small “edited” label
+- Allow “view previous versions” (optional, but at least store them)
+
+--------------------------------------------
+3) PAUSE / STOP GENERATING (MUST FEEL REAL)
+--------------------------------------------
+Stop means CANCEL the generation mid-stream.
+
+Backend must support abort:
+- Streaming endpoint supports AbortController or server-side cancel flag.
+- When user taps Pause:
+  - stop stream immediately
+  - keep partial assistant message
+  - show “Stopped” label
+  - show actions: [Keep going] [Run it back] [Shorter] [Deep Dive]
+
+--------------------------------------------
+4) DEPTH MODES (REAL BEHAVIOR CHANGE)
+--------------------------------------------
+Add a depth setting per request:
+depth = "quick" | "standard" | "deep"
+
+Behavior:
+- Quick Hit: short answers, minimal steps, fast
+- Coach Mode: normal helpful, recommended path
+- Deep Dive: structured, checks assumptions, edge cases, tradeoffs, can use tools when enabled
+
+Implementation knobs:
+- max tokens changes by depth
+- temperature changes slightly
+- deep can auto-ask ONE clarifying question only if needed
+- deep can auto-run tools if enabled (search/docs parsing)
+
+UI:
+- Depth selector visible in chat header (3 options)
+- Default = Coach Mode
+
+--------------------------------------------
+5) CRITICAL THINKING WITHOUT BEING ROBOTIC
+--------------------------------------------
+Every response should silently run this rubric (internal only):
+1) What is the user actually trying to accomplish?
+2) What’s missing (ask only if blocking)?
+3) 2–3 approaches
+4) Tradeoffs/risks
+5) Best recommendation + next step
+
+Output style must stay natural. No “As an AI…” talk.
+
+--------------------------------------------
+6) FILE UPLOAD + DOCUMENT READING (MUST BE RELIABLE)
+--------------------------------------------
+Users must be able to upload:
+- PDF, DOCX, TXT, MD
+- Scanned PDFs MUST work via OCR fallback (Google Vision already enabled)
+
+Pipeline:
+Upload -> extract text -> if empty -> OCR -> AI extract structured items -> preview -> commit
+
+Never fail silently:
+- show upload progress
+- show “OCR running…” status when needed
+- if OCR returns empty: message that tells user exactly what to do next
+
+After scanning:
+Auto-sort extracted items into correct categories:
+- Nutrition/Meal Plans
+- Workouts
+- Routines
+- Calendar suggestions
+- Recovery
+- Challenges
+- Finance
+- Journal
+
+Preview UI:
+- items grouped by category
+- toggle select
+- edit quick fields (title/time/category)
+- show confidence badge
+- low confidence -> ask clarifying question
+Commit always requires user confirmation.
+
+--------------------------------------------
+7) API ENDPOINTS (BACKEND)
+--------------------------------------------
+Chat:
+- POST /api/chat/stream  (streaming responses)
+- POST /api/chat/cancel  (cancel by conversationId + messageId)
+
+Messages:
+- PATCH /api/messages/:id/edit (creates new version, marks future stale, triggers replay)
+
+Files:
+- POST /api/documents/upload
+- POST /api/documents/:id/analyze
+- POST /api/documents/:id/commit
+- POST /api/ocr  (Vision OCR fallback)
+
+Auth:
+- GET /api/auth/me must return null on 401 (don’t poison UI)
+
+--------------------------------------------
+8) SAFETY + LEGAL PROTECTION (LIGHT BUT REAL)
+--------------------------------------------
+In chat footer, show a calm disclaimer (non-medical):
+- “This is support + planning, not medical advice.”
+If user expresses self-harm intent:
+- show confirm choice:
+  - Continue chat
+  - Call support line
+  - View resources
+Do not diagnose. Do not claim clinical treatment.
+
+--------------------------------------------
+9) QUALITY + RELIABILITY (PRO FEATURES)
+--------------------------------------------
+Must have:
+- retries (1 retry max) + friendly error UI
+- logs for upload + analyze errors
+- rate limiting
+- clear “I’m not sure” language when uncertain
+- auto-summarize long chats (optional later)
+
+--------------------------------------------
+10) OUR SIGNATURE FEEL (NOT A CHATGPT CLONE)
+--------------------------------------------
+Voice rules:
+- grounded, direct, uplifting, not corny
+- don’t over-explain
+- always give the “move” (recommended next step)
+- keep it calm, but not scared to be honest
+- use short checkpoints:
+  - “Here’s the move:”
+  - “Two options:”
+  - “If you want it cleaner:”
+- end with a simple next step
+
+DONE WHEN:
+- edit/stop/regenerate/continue works smoothly
+- file upload works on Safari and scanned PDFs extract via OCR
+- extracted items auto-sort into correct categories with preview+consent
+- no dead buttons, no blank pages, no silent failures

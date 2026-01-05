@@ -1,0 +1,134 @@
+*** BEGIN PATCH
+*** Update File: server/routes.ts
+@@
+-  const upload = multer({ 
+-    storage: multer.memoryStorage(),
+-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+-  });
++  const upload = multer({ 
++    storage: multer.memoryStorage(),
++    // More realistic for PDFs (meal plans often include images)
++    limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
++  });
+
+*** Update File: server/document-parser.ts
+@@
+-import mammoth from "mammoth";
+-import Tesseract from "tesseract.js";
++import mammoth from "mammoth";
++import Tesseract from "tesseract.js";
++
++/**
++ * Optional Google Cloud Vision fallback (API key based).
++ * Set GOOGLE_CLOUD_VISION_API_KEY in Replit Secrets.
++ */
++async function visionOcrImage(imageBuffer: Buffer): Promise<string> {
++  const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
++  if (!apiKey) return "";
++
++  const base64 = imageBuffer.toString("base64");
++  const body = {
++    requests: [
++      {
++        image: { content: base64 },
++        features: [{ type: "TEXT_DETECTION" }],
++      },
++    ],
++  };
++
++  // Node 18+ has global fetch in most environments (Replit does)
++  const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
++    method: "POST",
++    headers: { "Content-Type": "application/json" },
++    body: JSON.stringify(body),
++  });
++
++  if (!res.ok) return "";
++  const json = await res.json();
++  const text =
++    json?.responses?.[0]?.fullTextAnnotation?.text ||
++    json?.responses?.[0]?.textAnnotations?.[0]?.description ||
++    "";
++  return (text || "").trim();
++}
+@@
+ async function ocrPdfFallback(buffer: Buffer, numPages: number): Promise<ParsedDocumentResult> {
+   try {
+     const { pdf } = await import("pdf-to-img");
+     const pages: string[] = [];
+     let pageNum = 0;
+     
+     console.log(`Converting ${numPages} PDF pages to images for OCR...`);
+     
+     for await (const image of await pdf(buffer, { scale: 2 })) {
+       pageNum++;
+       console.log(`Processing page ${pageNum}...`);
+       
+       const imageBuffer = Buffer.from(image);
+-      const { data: { text } } = await Tesseract.recognize(imageBuffer, "eng");
+-      
+-      if (text?.trim()) {
+-        pages.push(text.trim());
+-      }
++      // 1) Try local OCR (free)
++      let pageText = "";
++      try {
++        const { data: { text } } = await Tesseract.recognize(imageBuffer, "eng");
++        pageText = (text || "").trim();
++      } catch {
++        pageText = "";
++      }
++
++      // 2) If local OCR weak, try Google Vision (more reliable for scans)
++      if (pageText.length < 30) {
++        const visionText = await visionOcrImage(imageBuffer);
++        if (visionText.length > pageText.length) {
++          pageText = visionText;
++        }
++      }
++
++      if (pageText.trim()) pages.push(pageText.trim());
+       
+       if (pageNum >= 10) {
+         console.log("Limiting to first 10 pages for OCR");
+         break;
+       }
+     }
+@@
+     const fullText = pages.join("\n\n---\n\n");
+     
+     if (fullText.length < 20) {
+       throw new Error("Could not read text from this scanned PDF. Try a clearer scan or type the content directly.");
+     }
+@@
+     const cleanText = fullText.trim();
+     console.log(`OCR complete. Extracted ${cleanText.length} characters.`);
+     return { text: cleanText };
+   } catch (error) {
+     console.error("PDF OCR error:", error);
+     throw new Error("Could not read text from this scanned PDF. Try a clearer scan or type the content directly.");
+   }
+ }
+
+*** Update File: client/src/components/ai-workspace.tsx
+@@
+-  const { data: authData } = useQuery<{ user: any } | null>({ 
+-    queryKey: ["/api/auth/me"],
+-    retry: false
+-  });
++  // IMPORTANT: /api/auth/me should not "throw" on 401 or it gets stuck forever (staleTime Infinity).
++  // Return null instead so UI can recover and reflect login state.
++  const { data: authData } = useQuery<{ user: any } | null>({
++    queryKey: ["/api/auth/me"],
++    queryFn: getQueryFn({ on401: "returnNull" }),
++    retry: false,
++    refetchOnMount: true,
++    staleTime: 0,
++  });
+
+*** Update File: client/src/components/ai-workspace.tsx
+@@
+-import { apiRequest } from "@/lib/queryClient";
++import { apiRequest, getQueryFn } from "@/lib/queryClient";
+
+*** END PATCH
