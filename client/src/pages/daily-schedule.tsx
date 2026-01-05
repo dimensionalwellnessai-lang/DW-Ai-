@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -74,12 +74,15 @@ interface DisplayScheduleEvent {
 
 export default function DailySchedulePage() {
   const [, setLocation] = useLocation();
+  const searchParams = useSearch();
+  const selectedId = new URLSearchParams(searchParams).get("selected");
   const { toast } = useToast();
   const today = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(today);
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     scheduledTime: "09:00",
@@ -94,6 +97,20 @@ export default function DailySchedulePage() {
   const { data: dbEvents = [], isLoading: dbEventsLoading } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar"],
   });
+
+  // Handle deep link to specific event
+  useEffect(() => {
+    if (selectedId && dbEvents.length > 0) {
+      const event = dbEvents.find(e => e.id === selectedId || e.linkedId === selectedId);
+      if (event) {
+        setSelectedEvent(event);
+        setEventDetailOpen(true);
+        setHighlightedId(event.id);
+        // Clear highlight after animation
+        setTimeout(() => setHighlightedId(null), 3000);
+      }
+    }
+  }, [selectedId, dbEvents]);
 
   const deleteEventMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -296,7 +313,7 @@ export default function DailySchedulePage() {
                 return (
                   <Card 
                     key={event.id}
-                    className={`hover-elevate ${isClickable ? "cursor-pointer" : ""}`}
+                    className={`hover-elevate ${isClickable ? "cursor-pointer" : ""} ${highlightedId === event.id ? "ring-2 ring-primary animate-pulse" : ""}`}
                     onClick={() => handleEventClick(event)}
                     data-testid={`card-event-${event.id}`}
                   >

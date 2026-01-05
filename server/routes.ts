@@ -2998,7 +2998,8 @@ Rules:
             });
             saved++;
           } else if (item.type === "schedule") {
-            await storage.createScheduleBlock({
+            // Create schedule block
+            const scheduleBlock = await storage.createScheduleBlock({
               userId,
               dayOfWeek: item.dayOfWeek ?? 1,
               startTime: item.startTime || "09:00",
@@ -3007,6 +3008,69 @@ Rules:
               category: item.category || null,
               color: null,
             });
+            
+            // Also create a calendar event for this schedule block
+            // Calculate the next occurrence date based on dayOfWeek
+            const now = new Date();
+            const currentDayOfWeek = now.getDay(); // 0 = Sunday
+            const targetDayOfWeek = item.dayOfWeek ?? 1;
+            
+            const startTimeStr = item.startTime || "09:00";
+            const endTimeStr = item.endTime || "10:00";
+            const [startHour, startMin] = startTimeStr.split(":").map(Number);
+            const [endHour, endMin] = endTimeStr.split(":").map(Number);
+            
+            // Check if target day is today and the time is still upcoming
+            let daysUntil = targetDayOfWeek - currentDayOfWeek;
+            if (targetDayOfWeek === currentDayOfWeek) {
+              // Same day - check if time has passed
+              const eventTimeMinutes = startHour * 60 + startMin;
+              const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+              if (eventTimeMinutes <= currentTimeMinutes) {
+                // Time has passed, schedule for next week
+                daysUntil = 7;
+              } else {
+                // Time is still upcoming, schedule for today
+                daysUntil = 0;
+              }
+            } else if (daysUntil < 0) {
+              // Day has passed this week, schedule for next week
+              daysUntil += 7;
+            }
+            
+            const eventDate = new Date(now);
+            eventDate.setDate(now.getDate() + daysUntil);
+            
+            const startDateTime = new Date(eventDate);
+            startDateTime.setHours(startHour, startMin, 0, 0);
+            
+            const endDateTime = new Date(eventDate);
+            endDateTime.setHours(endHour, endMin, 0, 0);
+            
+            // Determine event type based on category
+            let eventType = "event";
+            if (item.category === "workout" || item.title.toLowerCase().includes("workout")) {
+              eventType = "workout";
+            } else if (item.category === "meal" || item.title.toLowerCase().includes("meal") || item.title.toLowerCase().includes("eat") || item.title.toLowerCase().includes("breakfast") || item.title.toLowerCase().includes("lunch") || item.title.toLowerCase().includes("dinner")) {
+              eventType = "meal";
+            } else if (item.category === "routine" || item.title.toLowerCase().includes("routine") || item.title.toLowerCase().includes("meditation") || item.title.toLowerCase().includes("journal")) {
+              eventType = "routine";
+            }
+            
+            await storage.createCalendarEvent({
+              userId,
+              title: item.title,
+              description: item.description || null,
+              startTime: startDateTime.toISOString(),
+              endTime: endDateTime.toISOString(),
+              eventType,
+              isRecurring: true,
+              recurrenceRule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][targetDayOfWeek]}`,
+              linkedType: "schedule",
+              linkedId: scheduleBlock.id,
+              linkedRoute: "/daily-schedule",
+            });
+            
             saved++;
           }
         } catch (itemError) {

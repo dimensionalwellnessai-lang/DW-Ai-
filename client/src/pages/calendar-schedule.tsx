@@ -26,7 +26,7 @@ export default function CalendarSchedulePage() {
   const [showPast, setShowPast] = useState(false);
 
   const { data: events, isLoading } = useQuery<CalendarEvent[]>({
-    queryKey: ["/api/calendar/events"],
+    queryKey: ["/api/calendar"],
   });
 
   const today = startOfToday();
