@@ -265,18 +265,20 @@ export default function DailySchedulePage() {
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="grid grid-cols-7 gap-1 w-full">
           {DAYS.map((day, idx) => (
             <Button
               key={day}
               variant={selectedDay === idx ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedDay(idx)}
-              className="flex-shrink-0"
+              className="px-1 text-xs w-full"
               data-testid={`button-day-${idx}`}
             >
-              {day.slice(0, 3)}
-              {idx === today && <Badge variant="secondary" className="ml-1 text-xs">Today</Badge>}
+              <span className="flex flex-col items-center">
+                <span>{day.slice(0, 3)}</span>
+                {idx === today && <span className="text-[10px] opacity-70">Today</span>}
+              </span>
             </Button>
           ))}
         </div>
