@@ -160,19 +160,29 @@ export function AIWorkspace() {
     queryKey: ["/api/profile"],
   });
 
-  const [startedFresh] = useState(() => {
+  const [startedFresh, setStartedFresh] = useState(() => {
     if (typeof window === "undefined") return true;
     const hasNavigatedBack = sessionStorage.getItem("fts_chat_active") === "true";
     return !hasNavigatedBack;
   });
-  const activeConversation = startedFresh ? null : getActiveConversation();
+  
+  // Use state for activeConversation so it updates when conversationVersion changes
+  const [activeConversation, setActiveConversationState] = useState<GuestConversation | null>(() => 
+    startedFresh ? null : getActiveConversation()
+  );
   const messages: ChatMessage[] = activeConversation?.messages || [];
   
   // Re-fetch conversations when conversationVersion changes (after sending messages)
   const [conversationsByCategory, setConversationsByCategory] = useState(() => getConversationsByCategory());
   
   useEffect(() => {
+    // Re-read the active conversation after messages are added
+    const updated = getActiveConversation();
+    setActiveConversationState(updated);
     setConversationsByCategory(getConversationsByCategory());
+    if (updated && updated.messages.length > 0) {
+      setStartedFresh(false);
+    }
   }, [conversationVersion]);
   
   useEffect(() => {
