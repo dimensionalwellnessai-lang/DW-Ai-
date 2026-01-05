@@ -654,6 +654,71 @@ export const mealsRelations = relations(meals, ({ one }) => ({
   }),
 }));
 
+// Meal Prep Preferences - User settings for meal prep patterns
+export const mealPrepPreferences = pgTable("meal_prep_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  weekdayPrepEnabled: boolean("weekday_prep_enabled").default(true),
+  prepDays: text("prep_days").array().default(sql`ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday']`),
+  freshDays: text("fresh_days").array().default(sql`ARRAY['saturday', 'sunday']`),
+  autoGenerateShoppingList: boolean("auto_generate_shopping_list").default(true),
+  defaultServings: integer("default_servings").default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const mealPrepPreferencesRelations = relations(mealPrepPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [mealPrepPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+// Shopping Lists
+export const shoppingLists = pgTable("shopping_lists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  mealPlanId: varchar("meal_plan_id").references(() => mealPlans.id),
+  weekLabel: text("week_label"),
+  status: text("status").default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const shoppingListsRelations = relations(shoppingLists, ({ one, many }) => ({
+  user: one(users, {
+    fields: [shoppingLists.userId],
+    references: [users.id],
+  }),
+  mealPlan: one(mealPlans, {
+    fields: [shoppingLists.mealPlanId],
+    references: [mealPlans.id],
+  }),
+  items: many(shoppingListItems),
+}));
+
+// Shopping List Items
+export const shoppingListItems = pgTable("shopping_list_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  shoppingListId: varchar("shopping_list_id").notNull().references(() => shoppingLists.id),
+  ingredient: text("ingredient").notNull(),
+  quantity: text("quantity"),
+  unit: text("unit"),
+  category: text("category").default("other"),
+  sourceMealId: varchar("source_meal_id"),
+  isChecked: boolean("is_checked").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const shoppingListItemsRelations = relations(shoppingListItems, ({ one }) => ({
+  shoppingList: one(shoppingLists, {
+    fields: [shoppingListItems.shoppingListId],
+    references: [shoppingLists.id],
+  }),
+}));
+
 // Imported Documents - Wave 3 Document Intelligence
 export const importedDocuments = pgTable("imported_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -861,6 +926,23 @@ export const insertMealPlanSchema = createInsertSchema(mealPlans).omit({
 });
 
 export const insertMealSchema = createInsertSchema(meals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMealPrepPreferencesSchema = createInsertSchema(mealPrepPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertShoppingListItemSchema = createInsertSchema(shoppingListItems).omit({
   id: true,
   createdAt: true,
 });
@@ -1114,6 +1196,12 @@ export type MealPlan = typeof mealPlans.$inferSelect;
 export type InsertMealPlan = z.infer<typeof insertMealPlanSchema>;
 export type Meal = typeof meals.$inferSelect;
 export type InsertMeal = z.infer<typeof insertMealSchema>;
+export type MealPrepPreferences = typeof mealPrepPreferences.$inferSelect;
+export type InsertMealPrepPreferences = z.infer<typeof insertMealPrepPreferencesSchema>;
+export type ShoppingList = typeof shoppingLists.$inferSelect;
+export type InsertShoppingList = z.infer<typeof insertShoppingListSchema>;
+export type ShoppingListItem = typeof shoppingListItems.$inferSelect;
+export type InsertShoppingListItem = z.infer<typeof insertShoppingListItemSchema>;
 export type UserFeedback = typeof userFeedback.$inferSelect;
 export type InsertUserFeedback = z.infer<typeof insertUserFeedbackSchema>;
 export type WeeklyFeedbackResponse = typeof weeklyFeedbackResponses.$inferSelect;
