@@ -33,6 +33,8 @@ import {
   insertSystemModuleSchema,
   insertDailyScheduleEventSchema,
   insertUserSystemPreferencesSchema,
+  insertShoppingListSchema,
+  insertShoppingListItemSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -2311,11 +2313,22 @@ export async function registerRoutes(
   // Create shopping list
   app.post("/api/shopping-lists", requireAuth, async (req, res) => {
     try {
+      const createSchema = z.object({
+        title: z.string().min(1, "Title is required").max(200),
+        mealPlanId: z.string().nullable().optional(),
+        weekLabel: z.string().nullable().optional(),
+      });
+      
+      const parsed = createSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      
       const list = await storage.createShoppingList({
         userId: req.session.userId!,
-        title: req.body.title || "Shopping List",
-        mealPlanId: req.body.mealPlanId || null,
-        weekLabel: req.body.weekLabel || null,
+        title: parsed.data.title,
+        mealPlanId: parsed.data.mealPlanId || null,
+        weekLabel: parsed.data.weekLabel || null,
         status: "active",
       });
       res.json(list);
@@ -2363,17 +2376,33 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Shopping list not found" });
       }
       
-      const items = Array.isArray(req.body) ? req.body : [req.body];
-      const itemsWithListId = items.map((item: { ingredient: string; quantity?: string; unit?: string; category?: string; notes?: string }) => ({
-        shoppingListId: req.params.id,
-        ingredient: item.ingredient,
-        quantity: item.quantity || null,
-        unit: item.unit || null,
-        category: item.category || "other",
-        notes: item.notes || null,
-      }));
+      const itemSchema = z.object({
+        ingredient: z.string().min(1, "Ingredient name is required").max(500),
+        quantity: z.string().optional().nullable(),
+        unit: z.string().optional().nullable(),
+        category: z.string().optional().default("other"),
+        notes: z.string().optional().nullable(),
+      });
       
-      const created = await storage.createShoppingListItems(itemsWithListId);
+      const items = Array.isArray(req.body) ? req.body : [req.body];
+      const validatedItems = [];
+      
+      for (const item of items) {
+        const parsed = itemSchema.safeParse(item);
+        if (!parsed.success) {
+          return res.status(400).json({ error: parsed.error.errors[0].message });
+        }
+        validatedItems.push({
+          shoppingListId: req.params.id,
+          ingredient: parsed.data.ingredient,
+          quantity: parsed.data.quantity || null,
+          unit: parsed.data.unit || null,
+          category: parsed.data.category,
+          notes: parsed.data.notes || null,
+        });
+      }
+      
+      const created = await storage.createShoppingListItems(validatedItems);
       res.json(created);
     } catch (error) {
       console.error("Add shopping list items error:", error);
@@ -2427,9 +2456,9 @@ export async function registerRoutes(
       // Create the shopping list
       const list = await storage.createShoppingList({
         userId: req.session.userId!,
-        title: `Shopping List - ${plan.name}`,
+        title: `Shopping List - ${plan.title}`,
         mealPlanId: plan.id,
-        weekLabel: plan.weekLabel || null,
+        weekLabel: null,
         status: "active",
       });
       

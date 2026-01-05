@@ -20,6 +20,7 @@ import RoutinesPage from "@/pages/routines";
 import WorkoutPage from "@/pages/workout";
 import { RecoveryPage } from "@/pages/recovery";
 import MealPrepPage from "@/pages/meal-prep";
+import ShoppingListPage from "@/pages/shopping-list";
 import FinancesPage from "@/pages/finances";
 import SpiritualPage from "@/pages/spiritual";
 import LifeDashboardPage from "@/pages/life-dashboard";
@@ -68,6 +69,7 @@ function Router() {
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}
       {isRouteEnabled("/routines") && <Route path="/routines" component={RoutinesPage} />}
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
+      {isRouteEnabled("/shopping-list") && <Route path="/shopping-list" component={ShoppingListPage} />}
       {isRouteEnabled("/finances") && <Route path="/finances" component={FinancesPage} />}
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}

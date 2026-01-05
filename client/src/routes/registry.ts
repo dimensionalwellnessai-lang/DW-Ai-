@@ -229,6 +229,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     ],
   },
   {
+    id: "shopping-list",
+    path: "/shopping-list",
+    label: "Shopping List",
+    icon: "shopping-cart",
+    type: "page",
+    description: "Manage shopping lists from meal plans",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 31,
+    enabled: true,
+  },
+  {
     id: "routines",
     path: "/routines",
     label: "Routines",
