@@ -1,8 +1,11 @@
 import mammoth from "mammoth";
-import * as pdfParseModule from "pdf-parse";
 import Tesseract from "tesseract.js";
 
-const pdfParse = (pdfParseModule as unknown as { default: (buffer: Buffer) => Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> }).default;
+async function parsePdf(buffer: Buffer): Promise<{ text: string; numpages: number; info?: { Title?: string; Author?: string } }> {
+  const pdfParseLib = await import("pdf-parse") as any;
+  const pdfParse = pdfParseLib.default || pdfParseLib;
+  return pdfParse(buffer);
+}
 
 export interface ParsedDocumentResult {
   text: string;
@@ -65,7 +68,7 @@ async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
 
 async function extractFromPdf(buffer: Buffer): Promise<ParsedDocumentResult> {
   try {
-    const data = await pdfParse(buffer);
+    const data = await parsePdf(buffer);
     
     const cleanText = data.text?.trim() || "";
     if (cleanText.length >= 50) {
