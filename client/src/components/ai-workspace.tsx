@@ -462,16 +462,14 @@ export function AIWorkspace() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          {hasConversations && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setHistoryOpen(true)}
-              data-testid="button-history"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setHistoryOpen(true)}
+            data-testid="button-history"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
         </div>
         <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">FTS</span>
         <div className="flex items-center gap-1">
@@ -657,27 +655,35 @@ export function AIWorkspace() {
         </Button>
         <ScrollArea className="flex-1">
           <div className="space-y-4">
-            {Object.entries(conversationsByCategory).map(([category, convos]) => (
-              <div key={category}>
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                  {CATEGORY_LABELS[category] || category}
-                </h3>
-                <div className="space-y-1">
-                  {convos.map((convo) => (
-                    <button
-                      key={convo.id}
-                      onClick={() => handleSelectConversation(convo)}
-                      className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
-                        activeConversation?.id === convo.id ? "bg-muted" : ""
-                      }`}
-                      data-testid={`conversation-${convo.id}`}
-                    >
-                      {convo.title}
-                    </button>
-                  ))}
-                </div>
+            {Object.keys(conversationsByCategory).length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No conversations yet</p>
+                <p className="text-xs mt-1">Start a new one above</p>
               </div>
-            ))}
+            ) : (
+              Object.entries(conversationsByCategory).map(([category, convos]) => (
+                <div key={category}>
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    {CATEGORY_LABELS[category] || category}
+                  </h3>
+                  <div className="space-y-1">
+                    {convos.map((convo) => (
+                      <button
+                        key={convo.id}
+                        onClick={() => handleSelectConversation(convo)}
+                        className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
+                          activeConversation?.id === convo.id ? "bg-muted" : ""
+                        }`}
+                        data-testid={`conversation-${convo.id}`}
+                      >
+                        {convo.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </ScrollArea>
       </SwipeableDrawer>
@@ -712,16 +718,14 @@ export function AIWorkspace() {
                   })}
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  {hasConversationHistory && (
-                    <button
-                      onClick={() => setHistoryOpen(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                      data-testid="button-view-history"
-                    >
-                      <History className="h-3 w-3" />
-                      View past conversations
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setHistoryOpen(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    data-testid="button-view-history"
+                  >
+                    <History className="h-3 w-3" />
+                    {hasConversationHistory ? "View past conversations" : "No conversation history yet"}
+                  </button>
                   <Link href="/daily-schedule">
                     <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
                       View today's schedule
