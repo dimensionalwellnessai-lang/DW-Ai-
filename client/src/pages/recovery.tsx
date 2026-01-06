@@ -627,7 +627,7 @@ export function RecoveryPage() {
                   <div className="flex-1">
                     <h3 className="font-medium text-sm">Need something specific?</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Ask the AI assistant to find a recovery routine that fits your current state.
+                      Ask DW to find a recovery routine that fits your current state.
                     </p>
                     <Link href="/">
                       <Button size="sm" className="mt-3" data-testid="button-ask-ai-recovery">

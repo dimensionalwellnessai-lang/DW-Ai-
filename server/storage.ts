@@ -37,6 +37,9 @@ import {
   shoppingLists,
   shoppingListItems,
   userFeedback,
+  conversations,
+  type Conversation,
+  type InsertConversation,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -321,6 +324,12 @@ export interface IStorage {
   createExercises(exercises: InsertExercise[]): Promise<Exercise[]>;
   updateExercise(id: string, data: Partial<Exercise>): Promise<Exercise | undefined>;
   deleteExercise(id: string): Promise<void>;
+
+  getConversations(userId: string): Promise<Conversation[]>;
+  getConversation(id: string): Promise<Conversation | undefined>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  updateConversation(id: string, data: Partial<Conversation>): Promise<Conversation | undefined>;
+  deleteConversation(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1196,6 +1205,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExercise(id: string): Promise<void> {
     await db.delete(exercises).where(eq(exercises.id, id));
+  }
+
+  async getConversations(userId: string): Promise<Conversation[]> {
+    return await db.select().from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.lastMessageAt));
+  }
+
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conversation || undefined;
+  }
+
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const [created] = await db.insert(conversations).values(conversation).returning();
+    return created;
+  }
+
+  async updateConversation(id: string, data: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [updated] = await db.update(conversations).set(data).where(eq(conversations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteConversation(id: string): Promise<void> {
+    await db.delete(conversations).where(eq(conversations.id, id));
   }
 }
 

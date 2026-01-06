@@ -440,6 +440,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
 
   {
+    id: "weekly-checkin",
+    path: "/weekly-checkin",
+    label: "Beta Feedback",
+    icon: "clipboard-list",
+    type: "page",
+    description: "Weekly beta check-in",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 91,
+    enabled: true,
+  },
+  {
     id: "feedback",
     path: "/feedback",
     label: "Feedback",

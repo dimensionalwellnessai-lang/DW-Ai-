@@ -359,7 +359,7 @@ export function BodyScanPage() {
             <div className="flex flex-col gap-3 pt-4">
               <Link href="/">
                 <Button className="w-full" data-testid="button-back-home">
-                  Back to Assistant
+                  Back to DW
                 </Button>
               </Link>
               <Button

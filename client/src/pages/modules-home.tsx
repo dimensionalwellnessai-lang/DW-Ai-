@@ -93,7 +93,7 @@ export function ModulesHome() {
             Your Wellness System
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl font-body">
-            Tools first. AI second. Use the modules directly — or ask the assistant to connect everything into a plan.
+            Tools first. AI second. Use the modules directly — or ask DW to connect everything into a plan.
           </p>
         </div>
 

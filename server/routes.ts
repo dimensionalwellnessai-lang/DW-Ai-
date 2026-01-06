@@ -7,7 +7,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument } from "./openai";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -182,7 +182,7 @@ export async function registerRoutes(
       cookie: {
         secure: isProduction,
         httpOnly: true,
-        sameSite: isProduction ? "none" : "lax",
+        sameSite: "lax",
         maxAge: 30 * 24 * 60 * 60 * 1000,
       },
       rolling: true,
@@ -259,7 +259,7 @@ export async function registerRoutes(
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
+    res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
   });
 
   app.post("/api/feedback", async (req, res) => {
@@ -269,9 +269,16 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Category and message are required" });
       }
       
+      const userId = req.session.userId || null;
+      let userEmail: string | null = null;
+      if (userId) {
+        const user = await storage.getUser(userId);
+        userEmail = user?.email || null;
+      }
+      
       const feedbackData = {
-        userId: req.session.userId || null,
-        guestId: req.session.userId ? null : crypto.randomBytes(8).toString('hex'),
+        userId,
+        guestId: userId ? null : crypto.randomBytes(8).toString('hex'),
         category,
         message,
         pageContext: pageContext || null,
@@ -280,10 +287,85 @@ export async function registerRoutes(
       };
       
       const result = await storage.createUserFeedback(feedbackData);
+      
+      sendFeedbackEmail(userEmail, userId, message, category, pageContext, metadata).catch(err => {
+        console.error("Failed to send feedback email:", err);
+      });
+      
       res.json({ success: true, id: result.id });
     } catch (error) {
       console.error("Feedback error:", error);
       res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+
+  app.get("/api/conversations", requireAuth, async (req, res) => {
+    try {
+      const conversations = await storage.getConversations(req.session.userId!);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Get conversations error:", error);
+      res.status(500).json({ error: "Failed to get conversations" });
+    }
+  });
+
+  app.post("/api/conversations", requireAuth, async (req, res) => {
+    try {
+      const { title, category } = req.body;
+      const conversation = await storage.createConversation({
+        userId: req.session.userId!,
+        title: title || "New Chat",
+        category: category || "general",
+        messages: [],
+      });
+      res.json(conversation);
+    } catch (error) {
+      console.error("Create conversation error:", error);
+      res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  app.get("/api/conversations/:id", requireAuth, async (req, res) => {
+    try {
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation || conversation.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      console.error("Get conversation error:", error);
+      res.status(500).json({ error: "Failed to get conversation" });
+    }
+  });
+
+  app.patch("/api/conversations/:id", requireAuth, async (req, res) => {
+    try {
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation || conversation.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      const updated = await storage.updateConversation(req.params.id, {
+        ...req.body,
+        lastMessageAt: new Date(),
+      });
+      res.json(updated);
+    } catch (error) {
+      console.error("Update conversation error:", error);
+      res.status(500).json({ error: "Failed to update conversation" });
+    }
+  });
+
+  app.delete("/api/conversations/:id", requireAuth, async (req, res) => {
+    try {
+      const conversation = await storage.getConversation(req.params.id);
+      if (!conversation || conversation.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      await storage.deleteConversation(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete conversation error:", error);
+      res.status(500).json({ error: "Failed to delete conversation" });
     }
   });
 

@@ -38,6 +38,62 @@ export async function getResendClient() {
   };
 }
 
+export async function sendFeedbackEmail(
+  userEmail: string | null,
+  userId: string | null,
+  message: string,
+  category: string,
+  pageContext: string | null,
+  metadata: Record<string, any> | null
+): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      dateStyle: 'full',
+      timeStyle: 'long'
+    });
+    
+    await client.emails.send({
+      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
+      to: 'rbisbigred@gmail.com',
+      subject: 'Feedback',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #6366f1;">New Feedback Received</h2>
+          
+          <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p><strong>Category:</strong> ${category}</p>
+            <p><strong>User:</strong> ${userEmail || 'Guest'} ${userId ? `(ID: ${userId})` : ''}</p>
+            <p><strong>Page:</strong> ${pageContext || 'Not specified'}</p>
+            <p><strong>Time:</strong> ${timestamp}</p>
+            ${metadata?.device ? `<p><strong>Device:</strong> ${metadata.device}</p>` : ''}
+            ${metadata?.browser ? `<p><strong>Browser:</strong> ${metadata.browser}</p>` : ''}
+          </div>
+          
+          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+            <h3 style="margin-top: 0;">Message:</h3>
+            <p style="white-space: pre-wrap;">${message}</p>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to send feedback email:', error);
+    return false;
+  }
+}
+
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string): Promise<boolean> {
   try {
     const { client, fromEmail } = await getResendClient();

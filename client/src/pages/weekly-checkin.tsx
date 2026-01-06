@@ -279,7 +279,7 @@ export default function WeeklyCheckinPage() {
   if (stateLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <PageHeader title="Weekly Check-In" backPath="/" />
+        <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-muted-foreground">Loading...</div>
         </main>
@@ -290,14 +290,14 @@ export default function WeeklyCheckinPage() {
   if (!trialStartAt) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <PageHeader title="Weekly Check-In" backPath="/" />
+        <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 flex items-center justify-center p-6">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
                 <Calendar className="h-8 w-8 text-muted-foreground" />
               </div>
-              <CardTitle className="font-display text-xl">Weekly Check-Ins</CardTitle>
+              <CardTitle className="font-display text-xl">Beta Feedback</CardTitle>
               <CardDescription>
                 Over the next 30 days, you'll have 4 brief check-ins. Each one takes just a few minutes and helps us understand how the app feels to you.
               </CardDescription>
@@ -324,7 +324,7 @@ export default function WeeklyCheckinPage() {
   if (!selectedWeek) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <PageHeader title="Weekly Check-In" backPath="/" />
+        <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 p-6">
           <div className="max-w-md mx-auto space-y-4">
             <p className="text-sm text-muted-foreground text-center mb-6">

@@ -1,0 +1,230 @@
+DWAI PHASE: STABILITY + FLOW CONFIG (MUST FIX)
+
+GOAL:
+Make the app feel seamless, persistent, and proactive.
+Users should stay logged in, keep chat history + saved items, upload multiple documents reliably, and never hit dead ends.
+
+Rename assistant: The AI assistant should be called "DW" everywhere in UI.
+
+========================================================
+1) AUTH: KEEP USERS LOGGED IN (STOP FORCING LOGIN)
+========================================================
+Current problem:
+Safari + Replit production often requires trust proxy + correct cookie settings, or secure cookies will not persist.
+
+Required fixes:
+A) In server/index.ts (or wherever Express app is created):
+- Add: app.set("trust proxy", 1);
+
+B) In session config (server/routes.ts):
+- Ensure cookie config is production-safe:
+  - secure: true in production
+  - sameSite: "lax" (preferred for same-site apps on replit.app)
+  - maxAge: 30 days
+  - rolling: true ok
+
+C) Add an auth state endpoint and use it on client to render menu properly:
+- GET /api/auth/me -> returns { user } or 401
+- Client should query /api/auth/me on app load and update menu:
+  - If signed in: show "Hello, {firstName}" + "Log out"
+  - If signed out: show "Sign in / Sign up"
+
+D) Add Sign in options (not required now, but plan):
+- Email + password first
+- Later optional: "Sign in with Google" (OAuth)
+
+========================================================
+2) ONBOARDING + HELLO USERNAME
+========================================================
+When user signs up:
+- Collect first name (required)
+- After login, show greeting:
+  - "Hello, {firstName}" on the home screen and in hamburger menu
+
+Add simple onboarding steps:
+- Step 1: Name + timezone
+- Step 2: Wellness assessment (short)
+- Step 3: Preferences (diet, workout, sleep)
+This should not block app use; allow “Skip for now”.
+
+========================================================
+3) CHAT HISTORY IS MISSING (MUST PERSIST)
+========================================================
+Current problem:
+History appears to rely on guest storage and/or session state, so it disappears.
+
+Required behavior:
+- If signed in, store chats in DB (not only localStorage).
+- If guest, store in localStorage, and offer “Save my chats” after signup.
+
+Implement:
+A) Database-backed conversations:
+- conversations table: id, userId, title, createdAt, updatedAt
+- messages table: id, conversationId, role, content, createdAt
+
+B) API endpoints:
+- GET /api/conversations
+- POST /api/conversations (create new, optional title)
+- GET /api/conversations/:id
+- POST /api/conversations/:id/messages
+
+C) UI:
+- Chat starts empty (like ChatGPT)
+- Add button: “History” (or 3 dots → History)
+- Show list of past chats, tap to open
+- Keep drafts: if user typed but didn’t send, restore draft after app backgrounding.
+
+========================================================
+4) BROWSE SUGGESTIONS MUST ROTATE 3x PER DAY
+========================================================
+Requirement:
+Workouts, Meal Plans, Meal Prep, Recovery “AI Picks” rotate 3 times/day:
+- Morning
+- Afternoon
+- Evening
+
+Implementation:
+- Create a “timeBucket” function:
+  - morning: 5am–11:59am
+  - afternoon: 12pm–5:59pm
+  - evening: 6pm–4:59am
+- Use (date + timeBucket + category + userId) to seed picks
+- Cache picks per bucket so they don’t change every refresh
+- Force refresh when bucket changes
+
+========================================================
+5) DOCUMENT UPLOAD FLOW IS BROKEN (QUEUE + ANALYZE ERRORS)
+========================================================
+Problems:
+- Upload queue overwrites instead of appending
+- Analyze endpoint returns error every time
+- Upload menu is overwhelming and not scrollable
+- Need ability to upload docs while sending a message
+
+Fixes:
+A) Upload queue behavior:
+- Maintain an array queue of uploaded documents
+- “Add more” should append, not replace
+- Show queue list with remove item (X) per doc
+- Allow select multiple docs at once + keep prior queue
+
+B) Messaging + upload together:
+- In chat input, allow attaching docs and sending a message in the same action:
+  - message text + documents[] -> /api/chat
+- Backend:
+  - extract text from docs
+  - pass extracted text + user message to DW
+  - return response + extracted structured preview
+
+C) Restore consent preview (like meal plan flow):
+- After analyze, show “Preview extracted items”
+- User can:
+  - Select/deselect items
+  - Edit item fields manually
+  - Ask DW to tweak (“make this more beefy”, “move to next week”, etc.)
+- Only commit after confirmation
+
+D) Analyze error hardening:
+- Return clear errors to UI (not silent fails)
+- Add server logging + retry logic for OCR calls
+- If OCR unavailable, fallback to text extraction where possible
+- Surface progress state: Uploading → Extracting → Analyzing → Building Preview
+
+E) Performance and wait anxiety:
+- Show progress bar + estimated time range
+- For large docs: chunk + stream progress events
+- Always show “Still working…” state; never leave user hanging
+
+========================================================
+6) UPLOAD BUTTON MENU UX + SCROLL BUG
+========================================================
+Current problem:
+Menu doesn’t scroll, and form is too much.
+
+Fix:
+Replace the upload dropdown with a dedicated screen:
+- Route: /import
+- Simple layout:
+  - Upload area
+  - Queue list
+  - Analyze button
+  - Preview extracted items
+  - Commit button
+
+Also fix scroll:
+- Ensure the container has:
+  - max-height: 80vh
+  - overflow-y: auto
+  - prevent overlay from blocking scrolling
+
+========================================================
+7) WEEKLY CHECK-IN PAGE DOESN’T EXIST
+========================================================
+Create page:
+- Route: /weekly-checkin
+
+Rename:
+Instead of “Weekly Check-In”, use:
+- “Weekly Feedback (Beta)” OR
+- “Beta Check-In”
+
+Purpose:
+This is specifically for user testing feedback.
+
+Inside it:
+- Short guided form
+- Same questions every week
+- Submit saves to DB + sends email
+
+========================================================
+8) FEEDBACK MUST EMAIL YOU (SUBJECT: “Feedback”)
+========================================================
+Requirement:
+Every feedback submission sends an email to you with subject:
+- "Feedback"
+
+Implement:
+- POST /api/feedback
+- Server uses email service already in code to send:
+  - To: your support email
+  - Subject: Feedback
+  - Body: userId/email + page + message + device/browser + timestamp
+
+Also keep Typeform link on page as “Detailed Feedback”.
+
+========================================================
+9) DW PERSONALITY REQUIREMENTS (FEELINGS + HIGHER PERSPECTIVE)
+========================================================
+DW must:
+- Validate feelings
+- Identify underlying energy pattern
+- Offer higher perspective gently
+- Call the user out softly when needed
+- Always end with a next step
+
+Add voice mode:
+- User can talk by audio
+- DW can respond by audio (TTS)
+- Keep conversations saved even if user leaves app
+
+========================================================
+10) NO DEAD ENDS
+========================================================
+Implement a Route Audit:
+- Run an internal checklist that every button/route resolves to a real page.
+- If a page is not built, show a “Coming Soon” page with:
+  - what it will do
+  - a button to return home
+  - and optionally “Tell DW what you wanted to do” to route them correctly
+
+DEFINITION OF DONE:
+- Users stay logged in across browser restarts
+- Menu correctly reflects signed-in state (Hello + Logout)
+- Chat history persists and is accessible
+- Browse suggestions rotate 3x/day
+- Document upload supports multi-doc queue + analyze without errors
+- Preview/edit/consent commit works for docs
+- Upload flow is its own screen (/import) and scroll works
+- Weekly feedback page exists (/weekly-checkin)
+- Feedback emails you with subject “Feedback”
+- App feels consistent, not choppy

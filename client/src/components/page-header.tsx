@@ -236,8 +236,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           </button>
           {user ? (
             <div className="space-y-2">
-              <div className="px-2 py-1 text-xs text-muted-foreground truncate border-t pt-3">
-                {user.email}
+              <div className="px-2 py-1 text-sm font-medium border-t pt-3">
+                Hello, {user.firstName || user.email?.split('@')[0] || 'there'}
               </div>
               <Button 
                 variant="outline" 
@@ -252,7 +252,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                 }}
                 data-testid="button-signout"
               >
-                Sign out
+                Log out
               </Button>
             </div>
           ) : (
