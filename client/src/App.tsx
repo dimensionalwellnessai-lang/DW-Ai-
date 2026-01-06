@@ -42,6 +42,12 @@ import ImportPage from "@/pages/import";
 import ExportPage from "@/pages/export";
 import CalendarMonthPage from "@/pages/calendar-month";
 import CalendarSchedulePage from "@/pages/calendar-schedule";
+import SystemsHubPage from "@/pages/systems-hub";
+import CommunityPage from "@/pages/community";
+import { BlueprintPage } from "@/pages/blueprint";
+import TrainingSystemPage from "@/pages/systems/training";
+import WakeUpSystemPage from "@/pages/systems/wake-up";
+import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import NotFound from "@/pages/not-found";
@@ -83,6 +89,13 @@ function Router() {
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}
       <Route path="/export/:planId" component={ExportPage} />
+      
+      {isRouteEnabled("/systems") && <Route path="/systems" component={SystemsHubPage} />}
+      {isRouteEnabled("/systems/training") && <Route path="/systems/training" component={TrainingSystemPage} />}
+      {isRouteEnabled("/systems/wake-up") && <Route path="/systems/wake-up" component={WakeUpSystemPage} />}
+      {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
+      {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
+      {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/404" component={NotFound404Page} />

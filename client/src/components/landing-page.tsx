@@ -179,7 +179,7 @@ export function LandingPage() {
             <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto font-serif">
               Start with a simple conversation about your life. In minutes, you'll have a personalized wellness plan.
             </p>
-            <Link href="/onboarding">
+            <Link href="/welcome">
               <Button size="lg" variant="secondary" className="rounded-full px-8 text-lg" data-testid="button-cta-start">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />

@@ -214,7 +214,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
 
   const handleViewMeals = () => {
     handleClose();
-    setLocation("/meals");
+    setLocation("/meal-prep");
   };
 
   const handleViewRoutines = () => {

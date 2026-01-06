@@ -326,7 +326,7 @@ export function OnboardingFlow() {
         title: "Your life system is ready!",
         description: "Let's start building your best life.",
       });
-      setLocation("/dashboard");
+      setLocation("/life-dashboard");
     },
     onError: () => {
       toast({

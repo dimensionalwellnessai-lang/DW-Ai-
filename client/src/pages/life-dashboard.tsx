@@ -348,7 +348,7 @@ function MyLifeSystemSection() {
               />
             ))}
             {goals.length > 5 && (
-              <Link href="/goals">
+              <Link href="/challenges">
                 <Button variant="ghost" size="sm" className="w-full text-xs">
                   View all {goals.length} goals
                 </Button>
