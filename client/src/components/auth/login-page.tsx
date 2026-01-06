@@ -365,7 +365,7 @@ export function LoginPage() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[50vh]">
-            <div className="text-sm whitespace-pre-wrap pr-4">
+            <div className="text-sm whitespace-pre-wrap break-words pr-4">
               {TERMS_OF_USE}
             </div>
           </ScrollArea>

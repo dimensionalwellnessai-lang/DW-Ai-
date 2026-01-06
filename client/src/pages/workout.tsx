@@ -829,7 +829,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   <Wand2 className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium">Ideas for "{workoutSearch}"</span>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
                   {aiWorkoutSuggestion}
                 </p>
                 <Button

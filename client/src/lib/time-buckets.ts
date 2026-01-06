@@ -12,10 +12,8 @@ export function getTimeBucket(date: Date = new Date()): TimeBucket {
   }
 }
 
-export function getTimeBucketKey(category: string, userId?: string | null): string {
-  const date = new Date();
-  const dateStr = date.toISOString().split('T')[0];
-  const bucket = getTimeBucket(date);
+export function getTimeBucketKey(category: string, bucket: TimeBucket, userId?: string | null): string {
+  const dateStr = new Date().toISOString().split('T')[0];
   const userPart = userId || 'guest';
   return `${category}_${dateStr}_${bucket}_${userPart}`;
 }
@@ -38,8 +36,8 @@ export function seededShuffle<T>(array: T[], seed: string): T[] {
   return shuffled;
 }
 
-export function getRotatedItems<T>(items: T[], category: string, userId?: string | null, count: number = 3): T[] {
-  const bucketKey = getTimeBucketKey(category, userId);
+export function getRotatedItems<T>(items: T[], category: string, bucket: TimeBucket, userId?: string | null, count: number = 3): T[] {
+  const bucketKey = getTimeBucketKey(category, bucket, userId);
   const shuffled = seededShuffle(items, bucketKey);
   return shuffled.slice(0, count);
 }

@@ -73,7 +73,7 @@ export function useTimeBucketPicks<T>({
       return items;
     }
     
-    return getRotatedItems(items, category, userId, count);
+    return getRotatedItems(items, category, bucket, userId, count);
   }, [items, category, userId, count, enabled, bucket]);
   
   return {

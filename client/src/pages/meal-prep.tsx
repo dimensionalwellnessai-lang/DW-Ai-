@@ -2157,7 +2157,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     <Wand2 className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium">Suggestions for "{ingredientSearch}"</span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
                     {aiIngredientSuggestion}
                   </p>
                   <Button

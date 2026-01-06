@@ -259,14 +259,14 @@ export function CheckInPage() {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] p-4 rounded-2xl ${
+                    className={`max-w-[85%] min-w-0 p-4 rounded-2xl ${
                       message.role === "user"
                         ? "bg-chart-1 text-primary-foreground"
                         : "bg-muted"
                     }`}
                     data-testid={`message-${index}`}
                   >
-                    <p className={message.role === "assistant" ? "font-serif leading-relaxed" : ""}>
+                    <p className={`break-words ${message.role === "assistant" ? "font-serif leading-relaxed" : ""}`}>
                       {message.content}
                     </p>
                   </div>
