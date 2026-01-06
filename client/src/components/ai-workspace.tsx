@@ -736,7 +736,7 @@ export function AIWorkspace() {
                     key={index}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
                   >
-                    <div className={`max-w-[80%] ${message.role === "assistant" ? "space-y-0" : ""}`}>
+                    <div className={`max-w-[85%] min-w-0 ${message.role === "assistant" ? "space-y-0" : ""}`}>
                       <div className={`flex items-start gap-1 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                         <div
                           className={`px-4 py-3 rounded-2xl ${
@@ -746,7 +746,7 @@ export function AIWorkspace() {
                           }`}
                           data-testid={`message-${index}`}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-line">
+                          <p className="text-sm leading-relaxed whitespace-pre-line break-words">
                             {message.content}
                           </p>
                         </div>
