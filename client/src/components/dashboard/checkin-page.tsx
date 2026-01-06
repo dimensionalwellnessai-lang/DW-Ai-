@@ -104,7 +104,7 @@ export function CheckInPage() {
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest("POST", "/api/chat", { message, messages });
-      return response;
+      return response.json() as Promise<{ reply: string }>;
     },
     onSuccess: (response: { reply: string }) => {
       setMessages((prev) => [
