@@ -9,6 +9,7 @@ import { isRouteEnabled } from "@/routes/registry";
 import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
+import { SyncTray } from "@/components/sync-tray";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -119,6 +120,7 @@ function App() {
                 <Toaster />
                 <TutorialOverlay />
                 <PWAInstallPrompt />
+                <SyncTray />
                 <Router />
               </>
             )}
