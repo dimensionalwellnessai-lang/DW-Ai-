@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights } from "./openai";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
   insertUserSchema,
@@ -699,6 +699,18 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Get patterns error:", error);
       res.status(500).json({ error: "Failed to get patterns" });
+    }
+  });
+
+  app.get("/api/ai/insights", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const aggregatedData = await storage.getAggregatedInteractionData(userId);
+      const insights = await generateInteractionInsights(aggregatedData);
+      res.json(insights);
+    } catch (error) {
+      console.error("Get AI insights error:", error);
+      res.status(500).json({ error: "Failed to get AI insights" });
     }
   });
 

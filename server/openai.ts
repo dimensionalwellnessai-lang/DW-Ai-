@@ -1291,3 +1291,113 @@ RESPOND WITH VALID JSON ONLY in this exact format:
     throw new Error("Failed to analyze meal plan document");
   }
 }
+
+export interface InteractionPattern {
+  patternType: string;
+  insight: string;
+  confidence: number;
+  dimension?: string;
+  actionable?: boolean;
+  suggestedAction?: string;
+}
+
+export async function generateInteractionInsights(interactionData: {
+  pageVisits: { page: string; count: number; avgDuration: number }[];
+  featureUsage: { feature: string; count: number; recentCount: number }[];
+  timePatterns: { hourOfDay: number; dayOfWeek: number; count: number }[];
+  moodCorrelations?: { energyLevel: number; activeFeatures: string[] }[];
+  totalDays: number;
+}): Promise<{ insights: InteractionPattern[]; summary: string }> {
+  if (interactionData.totalDays < 3 || 
+      (interactionData.pageVisits.length === 0 && interactionData.featureUsage.length === 0)) {
+    return {
+      insights: [],
+      summary: "Continue using the app for a few days and I'll start noticing your patterns."
+    };
+  }
+  
+  const topPages = interactionData.pageVisits
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(p => `${p.page}: ${p.count} visits, avg ${Math.round(p.avgDuration / 1000)}s`);
+  
+  const topFeatures = interactionData.featureUsage
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(f => `${f.feature}: ${f.count} uses`);
+  
+  const peakHours = interactionData.timePatterns
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map(t => {
+      const hour = t.hourOfDay > 12 ? `${t.hourOfDay - 12}pm` : `${t.hourOfDay}am`;
+      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return `${days[t.dayOfWeek]} ${hour}`;
+    });
+  
+  const prompt = `Analyze these app usage patterns and provide gentle, non-judgmental insights.
+
+USER INTERACTION DATA (${interactionData.totalDays} days of data):
+
+Most Visited Pages:
+${topPages.join("\n") || "No page data yet"}
+
+Feature Usage:
+${topFeatures.join("\n") || "No feature data yet"}
+
+Peak Activity Times:
+${peakHours.join(", ") || "Not enough data"}
+
+Generate insights that:
+1. Notice positive patterns without praising
+2. Offer gentle observations, not judgments
+3. Suggest ONE optional action if relevant
+4. Stay curious, not prescriptive
+
+Respond with valid JSON:
+{
+  "insights": [
+    {
+      "patternType": "usage_timing",
+      "insight": "You tend to check in during mornings - that's when you're creating space for yourself.",
+      "confidence": 0.8,
+      "dimension": "mindfulness",
+      "actionable": true,
+      "suggestedAction": "Morning might be a good time to add a 5-minute practice if you ever want to."
+    }
+  ],
+  "summary": "A brief, grounded 1-2 sentence observation about their overall patterns."
+}
+
+Generate 1-3 insights max. Only include insights you're confident about (0.7+).
+VOICE: Calm, observational, never pushy. Use phrases like "I noticed..." or "It seems like..."`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 600,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return {
+        insights: [],
+        summary: "I'm still learning your patterns. Keep doing what you're doing."
+      };
+    }
+
+    const parsed = JSON.parse(content);
+    return {
+      insights: Array.isArray(parsed.insights) ? parsed.insights : [],
+      summary: parsed.summary || "Your patterns are emerging. More to share soon."
+    };
+  } catch (error) {
+    console.error("Failed to generate interaction insights:", error);
+    return {
+      insights: [],
+      summary: "I'm still learning how you use the app. Check back soon."
+    };
+  }
+}

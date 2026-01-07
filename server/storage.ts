@@ -358,6 +358,12 @@ export interface IStorage {
 
   createInteractionEvent(event: InsertInteractionEvent): Promise<InteractionEvent>;
   getRecentInteractionEvents(userId: string, limit?: number): Promise<InteractionEvent[]>;
+  getAggregatedInteractionData(userId: string): Promise<{
+    pageVisits: { page: string; count: number; avgDuration: number }[];
+    featureUsage: { feature: string; count: number; recentCount: number }[];
+    timePatterns: { hourOfDay: number; dayOfWeek: number; count: number }[];
+    totalDays: number;
+  }>;
 
   getPatternSnapshots(userId: string, dimension?: string): Promise<AiPatternSnapshot[]>;
   createPatternSnapshot(snapshot: InsertAiPatternSnapshot): Promise<AiPatternSnapshot>;
@@ -1370,6 +1376,79 @@ export class DatabaseStorage implements IStorage {
       .where(eq(aiPatternSnapshots.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async getAggregatedInteractionData(userId: string): Promise<{
+    pageVisits: { page: string; count: number; avgDuration: number }[];
+    featureUsage: { feature: string; count: number; recentCount: number }[];
+    timePatterns: { hourOfDay: number; dayOfWeek: number; count: number }[];
+    totalDays: number;
+  }> {
+    const events = await this.getRecentInteractionEvents(userId, 500);
+    
+    if (events.length === 0) {
+      return { pageVisits: [], featureUsage: [], timePatterns: [], totalDays: 0 };
+    }
+    
+    const pageMap = new Map<string, { count: number; totalDuration: number }>();
+    const featureMap = new Map<string, { count: number; recentCount: number }>();
+    const timeMap = new Map<string, number>();
+    const uniqueDays = new Set<string>();
+    
+    const now = Date.now();
+    const recentThreshold = 7 * 24 * 60 * 60 * 1000;
+    
+    for (const event of events) {
+      const eventDate = event.createdAt ? new Date(event.createdAt) : new Date();
+      const dateKey = eventDate.toISOString().split('T')[0];
+      uniqueDays.add(dateKey);
+      
+      const isRecent = (now - eventDate.getTime()) < recentThreshold;
+      
+      if (event.eventType === 'page_view' && event.pagePath) {
+        const current = pageMap.get(event.pagePath) || { count: 0, totalDuration: 0 };
+        current.count++;
+        current.totalDuration += event.durationMs || 0;
+        pageMap.set(event.pagePath, current);
+      }
+      
+      const featureKey = event.actionTarget || event.actionValue;
+      if ((event.eventType === 'feature_use' || event.eventType === 'click') && featureKey) {
+        const current = featureMap.get(featureKey) || { count: 0, recentCount: 0 };
+        current.count++;
+        if (isRecent) current.recentCount++;
+        featureMap.set(featureKey, current);
+      }
+      
+      const hourOfDay = eventDate.getHours();
+      const dayOfWeek = eventDate.getDay();
+      const timeKey = `${dayOfWeek}-${hourOfDay}`;
+      timeMap.set(timeKey, (timeMap.get(timeKey) || 0) + 1);
+    }
+    
+    const pageVisits = Array.from(pageMap.entries()).map(([page, data]) => ({
+      page,
+      count: data.count,
+      avgDuration: data.count > 0 ? data.totalDuration / data.count : 0
+    }));
+    
+    const featureUsage = Array.from(featureMap.entries()).map(([feature, data]) => ({
+      feature,
+      count: data.count,
+      recentCount: data.recentCount
+    }));
+    
+    const timePatterns = Array.from(timeMap.entries()).map(([key, count]) => {
+      const [dayOfWeek, hourOfDay] = key.split('-').map(Number);
+      return { dayOfWeek, hourOfDay, count };
+    });
+    
+    return {
+      pageVisits,
+      featureUsage,
+      timePatterns,
+      totalDays: uniqueDays.size
+    };
   }
 }
 
