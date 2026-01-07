@@ -1,0 +1,79 @@
+PHASE B PATCH (ADD-ONLY) — Make app reliable + unify logic + add in-page DW Search
+DO NOT redesign existing UI. Do NOT remove features. Only add missing functionality and fix broken flows.
+
+A) AUTH PERSISTENCE + MENU SYNC
+1) Ensure frontend always calls GET /api/auth/me on app load and uses that to render the hamburger menu state.
+2) After login success:
+   - invalidate auth query/cache (so menu instantly changes to “Logout”)
+   - show greeting “Hello, <name/email>”
+3) After logout:
+   - call POST /api/auth/logout
+   - invalidate auth query/cache
+   - return user to Home/AI
+4) Goal: Safari users remain signed in across refresh/close for up to 30 days (server already sets cookie maxAge=30d).
+
+B) DOCUMENT IMPORT MUST ALWAYS WORK (QUEUE + NEVER SILENT FAIL)
+Current issue: import is single-file and replaces previously selected file.
+1) Upgrade DocumentImportFlow to support multiple files:
+   - selectedFiles: File[]
+   - Add button: “Add more files”
+   - Allow selecting multiple files at once (input multiple)
+   - Keep existing files in queue when user adds more later (append, don’t replace)
+2) Run upload/analyze sequentially per file:
+   - Show progress: “File 2 of 5”
+   - After analysis, user can toggle items and commit, then proceed to next file
+3) Add client-side size checks before upload:
+   - show “File too large (max 5MB)” before calling API
+4) Improve error messaging:
+   - Never fail silently (always show toast + inline error)
+   - If OCR fails, show options:
+     “Try a clearer PDF / Upload DOCX / Paste text / Screenshot pages”
+5) Add optional: allow attaching a document while sending a message (chat + upload in one flow).
+   - This can be a “Attach file” button inside chat input that opens the import flow.
+
+C) OCR / GOOGLE VISION SETUP
+1) OCR already exists: Tesseract (free) + Google Vision (optional fallback).
+2) Add Replit Secrets:
+   - GOOGLE_VISION_API_KEY = <your key>
+   - SESSION_SECRET = <random long string>
+   - DATABASE_URL = <postgres connection>
+3) If GOOGLE_VISION_API_KEY is present, prefer Google Vision fallback for scanned PDFs/images.
+
+D) DW SEARCH (ONLINE) INSIDE PAGES (NOT CHAT)
+Add a reusable component <InPageDWSearch context="..."> and embed it in:
+- Nutrition/Meal Plans
+- Workouts
+- Meditation
+- Recovery
+- Challenges
+Placement: add a collapsible panel “Search with DW” below each page header. Default collapsed.
+
+Backend endpoints (server-side only):
+- GET /api/search?q=...&context=...
+- POST /api/extract { url, context }
+Return normalized cards with source attribution.
+
+E) UNIVERSAL PLAN ↔ CALENDAR ↔ ROUTINE LOGIC (CONSISTENT ACTIONS)
+Definitions:
+- Save = store content in the correct library
+- Plan = container/blueprint
+- Calendar/Schedule = execution (time)
+- Routine = repeating pattern
+
+Action hierarchy used everywhere:
+1) Save
+2) Add to Plan (optional)
+3) Add to Schedule (calendar)
+4) Add to Routine (optional)
+
+Rule:
+- Never auto-add anything to calendar.
+- Always confirm via one consistent “Add to Schedule” modal:
+  Today / This week / Pick date & time / Recurring / Confirm
+
+F) QA / ROUTE AUDIT
+Add a basic “Route Audit” checklist for developers:
+- No buttons lead to blank “not made” pages.
+- Every Save button works (Workout/Nutrition/Meditation/etc.).
+- Every page has consistent navigation (Back + Hamburger where required).
+- Import flow works end-to-end on Safari.

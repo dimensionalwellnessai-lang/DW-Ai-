@@ -1,0 +1,207 @@
+Locked in. I fully reviewed your Dimensional-wellness-ai 1.1.1.zip and I can confirm what you’re running + exactly what to change (without redesigning anything).
+
+What your app is built with (from the zip)
+	•	Frontend: React + Vite + TypeScript + Tailwind
+	•	Backend: Express (Node)
+	•	DB: PostgreSQL + Drizzle ORM
+	•	Auth: express-session stored in Postgres via connect-pg-simple (cookie name: fts.sid, maxAge 30 days)
+	•	Docs/OCR:
+	•	Native PDF extraction (pdf-parse)
+	•	OCR via Tesseract (free, local)
+	•	Optional OCR via Google Cloud Vision (key-based, not free forever but has free tier)
+
+So yes: OCR is already in the code (Tesseract + Google Vision fallback).
+
+⸻
+
+FULL VERIFY PACK (Fixes + Test Checklist)
+
+1) Why your “upload → send → nothing happens” / “analyze error” keeps happening
+
+In your current build, Document Import is single-file only and it’s easy to hit failure paths with PDFs:
+	•	Server upload limit is 5MB (multer limit).
+	•	If a PDF has little/no extractable text (scanned PDF), it falls back to OCR using pdf-to-img per page (up to 10 pages). This can fail depending on the PDF and environment and then you see ANALYSIS_FAILED / “couldn’t analyze”.
+
+Fix (required)
+
+Add hard UI feedback + progress + “why it failed” error messages so it never fails silently.
+Add a “file too large” blocker before upload.
+Add a fallback path when PDF OCR fails: “Open in source / paste text / upload clearer PDF”.
+
+✅ This is an “add-only” fix (no redesign).
+
+⸻
+
+2) Why you can’t select multiple files / why adding another file replaces the first
+
+Your current component uses:
+	•	selectedFile: File | null
+
+So every time you add another file, you overwrite the one in memory.
+
+Fix (required)
+
+Upgrade import to a queue:
+	•	selectedFiles: File[]
+	•	“Add more” appends to the queue (never replaces)
+	•	Upload/analyze runs sequentially
+	•	After each analyze, user confirms selections → commit → next file
+
+✅ This directly matches what you asked: multi-file, consistent, always works.
+
+⸻
+
+3) Why login “doesn’t stick” / menu still shows Sign In
+
+Backend sessions are configured correctly for 30 days in theory, but in practice the experience breaks when:
+	•	the frontend doesn’t consistently re-check /api/auth/me after login,
+	•	the UI doesn’t invalidate auth cache after login/logout,
+	•	Safari/iOS sometimes drops cookies when the environment/domain changes or if the app is opened differently (especially between preview/dev/replit.app).
+
+Fix (required)
+
+Do all three (minimal changes):
+	1.	On app load: always query /api/auth/me and drive the menu from that state
+	2.	On login success: invalidate the auth query and update UI instantly
+	3.	On logout: destroy session + invalidate auth query + redirect/refresh state
+
+✅ You already have /api/auth/me and session cookie maxAge set. The missing piece is consistent client-side state + invalidation.
+
+⸻
+
+YOUR “BOTH SPECS TOGETHER” — IMPLEMENTATION PLAN (ADD-ONLY)
+
+This is the exact copy/paste you can give Replit. It combines:
+	•	DW Search (online, inside pages)
+	•	Plan ↔ Calendar logic
+	•	Document Import queue
+	•	Auth persistence + UI syncing
+	•	Reliability: no silent failures
+
+⸻
+
+✅ COPY/PASTE: Phase B Execution Spec (Add-only, no redesign)
+
+PHASE B PATCH (ADD-ONLY) — Make app reliable + unify logic + add in-page DW Search
+DO NOT redesign existing UI. Do NOT remove features. Only add missing functionality and fix broken flows.
+
+A) AUTH PERSISTENCE + MENU SYNC
+1) Ensure frontend always calls GET /api/auth/me on app load and uses that to render the hamburger menu state.
+2) After login success:
+   - invalidate auth query/cache (so menu instantly changes to “Logout”)
+   - show greeting “Hello, <name/email>”
+3) After logout:
+   - call POST /api/auth/logout
+   - invalidate auth query/cache
+   - return user to Home/AI
+4) Goal: Safari users remain signed in across refresh/close for up to 30 days (server already sets cookie maxAge=30d).
+
+B) DOCUMENT IMPORT MUST ALWAYS WORK (QUEUE + NEVER SILENT FAIL)
+Current issue: import is single-file and replaces previously selected file.
+1) Upgrade DocumentImportFlow to support multiple files:
+   - selectedFiles: File[]
+   - Add button: “Add more files”
+   - Allow selecting multiple files at once (input multiple)
+   - Keep existing files in queue when user adds more later (append, don’t replace)
+2) Run upload/analyze sequentially per file:
+   - Show progress: “File 2 of 5”
+   - After analysis, user can toggle items and commit, then proceed to next file
+3) Add client-side size checks before upload:
+   - show “File too large (max 5MB)” before calling API
+4) Improve error messaging:
+   - Never fail silently (always show toast + inline error)
+   - If OCR fails, show options:
+     “Try a clearer PDF / Upload DOCX / Paste text / Screenshot pages”
+5) Add optional: allow attaching a document while sending a message (chat + upload in one flow).
+   - This can be a “Attach file” button inside chat input that opens the import flow.
+
+C) OCR / GOOGLE VISION SETUP
+1) OCR already exists: Tesseract (free) + Google Vision (optional fallback).
+2) Add Replit Secrets:
+   - GOOGLE_VISION_API_KEY = <your key>
+   - SESSION_SECRET = <random long string>
+   - DATABASE_URL = <postgres connection>
+3) If GOOGLE_VISION_API_KEY is present, prefer Google Vision fallback for scanned PDFs/images.
+
+D) DW SEARCH (ONLINE) INSIDE PAGES (NOT CHAT)
+Add a reusable component <InPageDWSearch context="..."> and embed it in:
+- Nutrition/Meal Plans
+- Workouts
+- Meditation
+- Recovery
+- Challenges
+Placement: add a collapsible panel “Search with DW” below each page header. Default collapsed.
+
+Backend endpoints (server-side only):
+- GET /api/search?q=...&context=...
+- POST /api/extract { url, context }
+Return normalized cards with source attribution.
+
+E) UNIVERSAL PLAN ↔ CALENDAR ↔ ROUTINE LOGIC (CONSISTENT ACTIONS)
+Definitions:
+- Save = store content in the correct library
+- Plan = container/blueprint
+- Calendar/Schedule = execution (time)
+- Routine = repeating pattern
+
+Action hierarchy used everywhere:
+1) Save
+2) Add to Plan (optional)
+3) Add to Schedule (calendar)
+4) Add to Routine (optional)
+
+Rule:
+- Never auto-add anything to calendar.
+- Always confirm via one consistent “Add to Schedule” modal:
+  Today / This week / Pick date & time / Recurring / Confirm
+
+F) QA / ROUTE AUDIT
+Add a basic “Route Audit” checklist for developers:
+- No buttons lead to blank “not made” pages.
+- Every Save button works (Workout/Nutrition/Meditation/etc.).
+- Every page has consistent navigation (Back + Hamburger where required).
+- Import flow works end-to-end on Safari.
+
+
+⸻
+
+VERIFICATION CHECKLIST (Screenshots to request from Replit)
+
+Tell them: “No screen recording, screenshots only.”
+
+Auth / session
+	•	Login once → refresh page → still logged in
+	•	Close tab → reopen → still logged in
+	•	Menu changes from “Sign in” to “Logout” immediately
+	•	/api/auth/me returns user when logged in
+
+Document import
+	•	Select multiple files at once
+	•	Add more files later → previous files still in queue
+	•	Upload shows progress “File X of Y”
+	•	Analyze always shows a result or a clear error (never silent)
+	•	Commit saves selected items correctly into the right systems
+
+OCR
+	•	Upload scanned PDF (image-based) → extraction works or gives clear fallback steps
+	•	Google Vision enabled via API key → improves scanned PDF performance
+
+DW Search in pages
+	•	“Search with DW” panel exists on Nutrition/Workouts/Meditation/Recovery/Challenges
+	•	Searching returns cards with sources
+	•	Actions work: Save / Add to Plan / Add to Schedule / Add to Grocery where relevant
+
+Plan ↔ Calendar logic
+	•	Any “Add to Schedule” always opens the same modal
+	•	No item gets scheduled without confirmation
+	•	Calendar items link back to their source page correctly
+
+⸻
+
+Quick answer on “free OCR”
+	•	Tesseract = free (already in your codebase)
+	•	Google Cloud Vision = paid service but has a free tier; cost depends on usage
+
+⸻
+
+If you want, I can also generate a single “Replit prompt” that tells their agent exactly how to implement B + C (multi-file queue + OCR reliability) first, because that’s the biggest “it must always work” blocker right now.
