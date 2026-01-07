@@ -264,6 +264,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   const isProduction = process.env.NODE_ENV === "production";
   
+  // Trust the first proxy (Replit's proxy) for secure cookies to work
+  app.set("trust proxy", 1);
+  
   if (isProduction && !process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET environment variable is required in production");
   }
@@ -637,16 +640,19 @@ export async function registerRoutes(
       
       const items = await storage.getSyncItemsByGroup(req.params.sessionId, req.params.groupKey);
       for (const item of items) {
-        if (item.itemType === "event" && item.startTime) {
+        if (item.itemType === "event" && item.startTime && item.title) {
+          const startTimeStr = item.startTime.toISOString();
+          const endTimeStr = item.endTime 
+            ? item.endTime.toISOString() 
+            : new Date(item.startTime.getTime() + 60 * 60 * 1000).toISOString();
           await storage.createCalendarEvent({
             userId: req.session.userId!,
             title: item.title,
             description: item.description || undefined,
-            startTime: item.startTime,
-            endTime: item.endTime || undefined,
-            isAllDay: false,
-            recurring: !!item.recurrencePattern,
-            recurrencePattern: item.recurrencePattern || undefined,
+            startTime: startTimeStr,
+            endTime: endTimeStr,
+            isRecurring: !!item.recurrencePattern,
+            recurrenceRule: item.recurrencePattern || undefined,
             dimensionTags: item.dimensionTags || undefined,
           });
         }
