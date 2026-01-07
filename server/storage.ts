@@ -38,8 +38,20 @@ import {
   shoppingListItems,
   userFeedback,
   conversations,
+  aiSyncSessions,
+  aiSyncItems,
+  interactionEvents,
+  aiPatternSnapshots,
   type Conversation,
   type InsertConversation,
+  type AiSyncSession,
+  type InsertAiSyncSession,
+  type AiSyncItem,
+  type InsertAiSyncItem,
+  type InteractionEvent,
+  type InsertInteractionEvent,
+  type AiPatternSnapshot,
+  type InsertAiPatternSnapshot,
   type User,
   type InsertUser,
   type OnboardingProfile,
@@ -330,6 +342,26 @@ export interface IStorage {
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, data: Partial<Conversation>): Promise<Conversation | undefined>;
   deleteConversation(id: string): Promise<void>;
+
+  getSyncSessions(userId: string): Promise<AiSyncSession[]>;
+  getActiveSyncSession(userId: string): Promise<AiSyncSession | undefined>;
+  getSyncSession(id: string): Promise<AiSyncSession | undefined>;
+  createSyncSession(session: InsertAiSyncSession): Promise<AiSyncSession>;
+  updateSyncSession(id: string, data: Partial<AiSyncSession>): Promise<AiSyncSession | undefined>;
+
+  getSyncItems(sessionId: string): Promise<AiSyncItem[]>;
+  getSyncItemsByGroup(sessionId: string, groupKey: string): Promise<AiSyncItem[]>;
+  createSyncItem(item: InsertAiSyncItem): Promise<AiSyncItem>;
+  createSyncItems(items: InsertAiSyncItem[]): Promise<AiSyncItem[]>;
+  updateSyncItem(id: string, data: Partial<AiSyncItem>): Promise<AiSyncItem | undefined>;
+  updateSyncItemsByGroup(sessionId: string, groupKey: string, data: Partial<AiSyncItem>): Promise<void>;
+
+  createInteractionEvent(event: InsertInteractionEvent): Promise<InteractionEvent>;
+  getRecentInteractionEvents(userId: string, limit?: number): Promise<InteractionEvent[]>;
+
+  getPatternSnapshots(userId: string, dimension?: string): Promise<AiPatternSnapshot[]>;
+  createPatternSnapshot(snapshot: InsertAiPatternSnapshot): Promise<AiPatternSnapshot>;
+  updatePatternSnapshot(id: string, data: Partial<AiPatternSnapshot>): Promise<AiPatternSnapshot | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1230,6 +1262,114 @@ export class DatabaseStorage implements IStorage {
 
   async deleteConversation(id: string): Promise<void> {
     await db.delete(conversations).where(eq(conversations.id, id));
+  }
+
+  async getSyncSessions(userId: string): Promise<AiSyncSession[]> {
+    return await db.select().from(aiSyncSessions)
+      .where(eq(aiSyncSessions.userId, userId))
+      .orderBy(desc(aiSyncSessions.startedAt));
+  }
+
+  async getActiveSyncSession(userId: string): Promise<AiSyncSession | undefined> {
+    const [session] = await db.select().from(aiSyncSessions)
+      .where(and(
+        eq(aiSyncSessions.userId, userId),
+        eq(aiSyncSessions.status, "processing")
+      ))
+      .orderBy(desc(aiSyncSessions.startedAt));
+    return session || undefined;
+  }
+
+  async getSyncSession(id: string): Promise<AiSyncSession | undefined> {
+    const [session] = await db.select().from(aiSyncSessions).where(eq(aiSyncSessions.id, id));
+    return session || undefined;
+  }
+
+  async createSyncSession(session: InsertAiSyncSession): Promise<AiSyncSession> {
+    const [created] = await db.insert(aiSyncSessions).values(session).returning();
+    return created;
+  }
+
+  async updateSyncSession(id: string, data: Partial<AiSyncSession>): Promise<AiSyncSession | undefined> {
+    const [updated] = await db.update(aiSyncSessions).set(data).where(eq(aiSyncSessions.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async getSyncItems(sessionId: string): Promise<AiSyncItem[]> {
+    return await db.select().from(aiSyncItems)
+      .where(eq(aiSyncItems.sessionId, sessionId))
+      .orderBy(aiSyncItems.createdAt);
+  }
+
+  async getSyncItemsByGroup(sessionId: string, groupKey: string): Promise<AiSyncItem[]> {
+    return await db.select().from(aiSyncItems)
+      .where(and(
+        eq(aiSyncItems.sessionId, sessionId),
+        eq(aiSyncItems.recurrenceGroupKey, groupKey)
+      ));
+  }
+
+  async createSyncItem(item: InsertAiSyncItem): Promise<AiSyncItem> {
+    const [created] = await db.insert(aiSyncItems).values(item).returning();
+    return created;
+  }
+
+  async createSyncItems(items: InsertAiSyncItem[]): Promise<AiSyncItem[]> {
+    if (items.length === 0) return [];
+    return await db.insert(aiSyncItems).values(items).returning();
+  }
+
+  async updateSyncItem(id: string, data: Partial<AiSyncItem>): Promise<AiSyncItem | undefined> {
+    const [updated] = await db.update(aiSyncItems).set(data).where(eq(aiSyncItems.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async updateSyncItemsByGroup(sessionId: string, groupKey: string, data: Partial<AiSyncItem>): Promise<void> {
+    await db.update(aiSyncItems)
+      .set(data)
+      .where(and(
+        eq(aiSyncItems.sessionId, sessionId),
+        eq(aiSyncItems.recurrenceGroupKey, groupKey)
+      ));
+  }
+
+  async createInteractionEvent(event: InsertInteractionEvent): Promise<InteractionEvent> {
+    const [created] = await db.insert(interactionEvents).values(event).returning();
+    return created;
+  }
+
+  async getRecentInteractionEvents(userId: string, limit: number = 100): Promise<InteractionEvent[]> {
+    return await db.select().from(interactionEvents)
+      .where(eq(interactionEvents.userId, userId))
+      .orderBy(desc(interactionEvents.createdAt))
+      .limit(limit);
+  }
+
+  async getPatternSnapshots(userId: string, dimension?: string): Promise<AiPatternSnapshot[]> {
+    if (dimension) {
+      return await db.select().from(aiPatternSnapshots)
+        .where(and(
+          eq(aiPatternSnapshots.userId, userId),
+          eq(aiPatternSnapshots.dimension, dimension)
+        ))
+        .orderBy(desc(aiPatternSnapshots.lastUpdated));
+    }
+    return await db.select().from(aiPatternSnapshots)
+      .where(eq(aiPatternSnapshots.userId, userId))
+      .orderBy(desc(aiPatternSnapshots.lastUpdated));
+  }
+
+  async createPatternSnapshot(snapshot: InsertAiPatternSnapshot): Promise<AiPatternSnapshot> {
+    const [created] = await db.insert(aiPatternSnapshots).values(snapshot).returning();
+    return created;
+  }
+
+  async updatePatternSnapshot(id: string, data: Partial<AiPatternSnapshot>): Promise<AiPatternSnapshot | undefined> {
+    const [updated] = await db.update(aiPatternSnapshots)
+      .set({ ...data, lastUpdated: new Date() })
+      .where(eq(aiPatternSnapshots.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 
