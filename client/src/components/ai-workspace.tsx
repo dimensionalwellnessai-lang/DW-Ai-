@@ -89,6 +89,7 @@ const FIRST_TIME_ACTIONS = [
   { id: "talk", text: "I want to talk", icon: MessageCircle, action: "talk" },
   { id: "decide", text: "Help me decide my day", icon: Calendar, action: "decide" },
   { id: "calm", text: "Calm my body", icon: Wind, action: "breathing" },
+  { id: "lifesystem", text: "Build my life system", icon: LayoutGrid, action: "lifesystem" },
   { id: "unsure", text: "I'm not sure", icon: HelpCircle, action: "unsure" },
 ];
 
@@ -620,6 +621,10 @@ export function AIWorkspace() {
         break;
       case "breathing":
         setBreathingPlayerOpen(true);
+        break;
+      case "lifesystem":
+        setInput("Help me build my life system. What is it and how do I start?");
+        inputRef.current?.focus();
         break;
       case "unsure":
         setInput("I'm not sure what I need right now.");

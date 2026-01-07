@@ -49,7 +49,7 @@ export function DashboardHome() {
   const habits = data?.habits || [];
   const todaysMood = data?.todaysMood;
 
-  const completedHabitsToday = habits.filter((h) => h.streak > 0).length;
+  const completedHabitsToday = habits.filter((h) => (h.streak ?? 0) > 0).length;
   const totalHabits = habits.length;
   const habitProgress = totalHabits > 0 ? (completedHabitsToday / totalHabits) * 100 : 0;
 
