@@ -195,12 +195,21 @@ export function AIWorkspace() {
     }
   }, [activeDbConversationId]);
 
-  // Initialize activeDbConversationId from server data when conversations load
+  // Initialize or validate activeDbConversationId from server data when conversations load
   useEffect(() => {
-    if (isUserAuthenticated && dbConversations.length > 0 && !activeDbConversationId) {
-      setActiveDbConversationId(dbConversations[0].id);
+    if (isUserAuthenticated && dbConversations.length > 0) {
+      // Check if current ID is valid (exists in loaded conversations)
+      const idExists = activeDbConversationId && dbConversations.some(c => c.id === activeDbConversationId);
+      if (!idExists) {
+        // Clear stale ID and set to first conversation
+        setActiveDbConversationId(dbConversations[0].id);
+      }
+    } else if (isUserAuthenticated && dbConversations.length === 0 && activeDbConversationId) {
+      // Clear stale ID if no conversations exist
+      localStorage.removeItem("fts_active_conversation_id");
+      setActiveDbConversationId(null);
     }
-  }, [isUserAuthenticated, dbConversations, activeDbConversationId]);
+  }, [isUserAuthenticated, dbConversations]);
 
   // Get the active database conversation
   const activeDbConversation = dbConversations.find(c => c.id === activeDbConversationId) || 
@@ -369,31 +378,53 @@ export function AIWorkspace() {
     },
   });
 
+  // Track optimistic messages for authenticated users (user message added immediately, before AI responds)
+  const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
+  
   const chatMutation = useMutation({
-    mutationFn: async ({ message, documentIds }: { message: string; documentIds?: string[] }) => {
+    mutationFn: async ({ message, userMsg, conversationId, documentIds }: { 
+      message: string; 
+      userMsg: ChatMessage;
+      conversationId?: string;
+      documentIds?: string[] 
+    }) => {
       const lifeContext = buildLifeSystemContext();
       const energyContext = getEnergyContextForAPI();
+      
+      // Include the user message we just added in the conversation history
+      const currentMessages = isUserAuthenticated && activeDbConversation 
+        ? [...(activeDbConversation.messages as ChatMessage[] || []), userMsg]
+        : [...messages, userMsg];
+      
       const response = await apiRequest("POST", "/api/chat/smart", {
         message,
-        conversationHistory: messages.slice(-10),
+        conversationHistory: currentMessages.slice(-10),
         userProfile: userProfile || undefined,
         lifeSystemContext: lifeContext,
         energyContext,
         documentIds: documentIds || [],
       });
-      return response.json();
+      const data = await response.json();
+      return { data, userMsg, conversationId };
     },
-    onSuccess: async (data) => {
-      if (isUserAuthenticated && activeDbConversation) {
-        const newMessages = [
-          ...(activeDbConversation.messages as ChatMessage[] || []),
-          { role: "assistant" as const, content: data.response, timestamp: Date.now() }
-        ];
-        await updateDbConversationMutation.mutateAsync({
-          id: activeDbConversation.id,
-          messages: newMessages,
-        });
+    onSuccess: async ({ data, userMsg, conversationId }) => {
+      const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now() };
+      
+      if (isUserAuthenticated) {
+        // Persist both user and assistant messages to database
+        const baseMessages = activeDbConversation?.messages as ChatMessage[] || [];
+        const updatedMessages = [...baseMessages, userMsg, assistantMsg];
+        
+        if (conversationId) {
+          await updateDbConversationMutation.mutateAsync({
+            id: conversationId,
+            messages: updatedMessages,
+          });
+        }
+        // Clear optimistic messages after successful save
+        setOptimisticMessages([]);
       } else {
+        // For guests, add assistant message to local storage
         addMessageToConversation("assistant", data.response);
         setConversationVersion(v => v + 1);
       }
@@ -401,6 +432,8 @@ export function AIWorkspace() {
       setPendingDocumentIds([]);
     },
     onError: () => {
+      // Clear optimistic messages on error
+      setOptimisticMessages([]);
       toast({
         title: "That didn't save.",
         description: "You can try again, or come back later.",
@@ -477,33 +510,26 @@ export function AIWorkspace() {
       return;
     }
     
-    // Add user message to conversation
+    // Create user message object
+    const userMsg: ChatMessage = { role: "user", content: userMessage, timestamp: Date.now() };
+    
+    let conversationId = activeDbConversationId || undefined;
+    
     if (isUserAuthenticated) {
-      // For authenticated users, save to database
-      let conversationId = activeDbConversationId;
-      
+      // Create conversation if none exists for authenticated users
       if (!conversationId) {
-        // Create a new conversation if none exists
         const newConvo = await createDbConversationMutation.mutateAsync({
           title: userMessage.slice(0, 50),
           category: "general",
-          messages: [{ role: "user", content: userMessage, timestamp: Date.now() }]
+          messages: [], // Start empty, messages will be added after AI responds
         });
         conversationId = newConvo.id;
         setActiveDbConversationId(newConvo.id);
-      } else if (activeDbConversation) {
-        // Add message to existing conversation
-        const newMessages = [
-          ...(activeDbConversation.messages as ChatMessage[] || []),
-          { role: "user" as const, content: userMessage, timestamp: Date.now() }
-        ];
-        await updateDbConversationMutation.mutateAsync({
-          id: conversationId,
-          messages: newMessages,
-          title: newMessages.length === 1 ? userMessage.slice(0, 50) : undefined,
-        });
       }
+      // Add optimistic user message for immediate display
+      setOptimisticMessages([userMsg]);
     } else {
+      // For guests, add to local storage immediately
       addMessageToConversation("user", userMessage);
       setConversationVersion(v => v + 1);
     }
@@ -511,41 +537,36 @@ export function AIWorkspace() {
     setInput("");
     clearChatDraft();
     setIsTyping(true);
-    chatMutation.mutate({ message: userMessage, documentIds });
+    chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds });
   };
 
   const handleSendMessage = async (message: string) => {
     if (isTyping) return;
     
+    const userMsg: ChatMessage = { role: "user", content: message, timestamp: Date.now() };
+    let conversationId = activeDbConversationId || undefined;
+    
     if (isUserAuthenticated) {
-      let conversationId = activeDbConversationId;
       if (!conversationId) {
         const newConvo = await createDbConversationMutation.mutateAsync({
           title: message.slice(0, 50),
           category: "general",
-          messages: [{ role: "user", content: message, timestamp: Date.now() }]
+          messages: [],
         });
+        conversationId = newConvo.id;
         setActiveDbConversationId(newConvo.id);
-      } else if (activeDbConversation) {
-        const newMessages = [
-          ...(activeDbConversation.messages as ChatMessage[] || []),
-          { role: "user" as const, content: message, timestamp: Date.now() }
-        ];
-        await updateDbConversationMutation.mutateAsync({
-          id: conversationId,
-          messages: newMessages,
-        });
       }
+      setOptimisticMessages([userMsg]);
     } else {
       addMessageToConversation("user", message);
       setConversationVersion(v => v + 1);
     }
     
     setIsTyping(true);
-    chatMutation.mutate({ message });
+    chatMutation.mutate({ message, userMsg, conversationId });
   };
 
-  const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
+  const handleCrisisResume = async (responseMessage?: string, sendToAI?: boolean) => {
     const messageToSend = pendingCrisisMessage;
     const docIds = pendingDocumentIds;
     setInput("");
@@ -554,10 +575,26 @@ export function AIWorkspace() {
     setPendingDocumentIds([]);
     
     if (sendToAI && messageToSend) {
-      addMessageToConversation("user", messageToSend);
-      setConversationVersion(v => v + 1);
+      const userMsg: ChatMessage = { role: "user", content: messageToSend, timestamp: Date.now() };
+      let conversationId = activeDbConversationId || undefined;
+      
+      if (isUserAuthenticated) {
+        if (!conversationId) {
+          const newConvo = await createDbConversationMutation.mutateAsync({
+            title: messageToSend.slice(0, 50),
+            category: "general",
+            messages: [],
+          });
+          conversationId = newConvo.id;
+          setActiveDbConversationId(newConvo.id);
+        }
+        setOptimisticMessages([userMsg]);
+      } else {
+        addMessageToConversation("user", messageToSend);
+        setConversationVersion(v => v + 1);
+      }
       setIsTyping(true);
-      chatMutation.mutate({ message: messageToSend, documentIds: docIds });
+      chatMutation.mutate({ message: messageToSend, userMsg, conversationId, documentIds: docIds });
     } else if (responseMessage) {
       if (messageToSend) {
         addMessageToConversation("user", messageToSend);
@@ -916,7 +953,8 @@ export function AIWorkspace() {
               </div>
             ) : (
               <div className="space-y-4">
-                {messages.map((message, index) => (
+                {/* Combine DB/local messages with optimistic messages for display */}
+                {[...messages, ...optimisticMessages].map((message, index) => (
                   <div
                     key={index}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
