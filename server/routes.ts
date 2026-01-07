@@ -177,13 +177,16 @@ export async function registerRoutes(
         createTableIfMissing: true,
       }),
       secret: sessionSecret,
+      name: "fts.sid",
       resave: false,
       saveUninitialized: false,
+      proxy: isProduction,
       cookie: {
         secure: isProduction,
         httpOnly: true,
         sameSite: "lax",
         maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: "/",
       },
       rolling: true,
     })
