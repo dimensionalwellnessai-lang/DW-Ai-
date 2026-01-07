@@ -255,6 +255,92 @@ export const aiLearningsRelations = relations(aiLearnings, ({ one }) => ({
   }),
 }));
 
+export const aiSyncSessions = pgTable("ai_sync_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  conversationId: varchar("conversation_id").references(() => conversations.id),
+  status: text("status").notNull().default("processing"),
+  totalItems: integer("total_items").default(0),
+  processedItems: integer("processed_items").default(0),
+  acceptedItems: integer("accepted_items").default(0),
+  rejectedItems: integer("rejected_items").default(0),
+  sourceType: text("source_type").default("chat"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const aiSyncSessionsRelations = relations(aiSyncSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [aiSyncSessions.userId],
+    references: [users.id],
+  }),
+  items: many(aiSyncItems),
+}));
+
+export const aiSyncItems = pgTable("ai_sync_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => aiSyncSessions.id),
+  itemType: text("item_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  recurrenceGroupKey: text("recurrence_group_key"),
+  recurrencePattern: text("recurrence_pattern"),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  dimensionTags: text("dimension_tags").array(),
+  metadata: jsonb("metadata"),
+  status: text("status").notNull().default("pending"),
+  aiConfidence: integer("ai_confidence").default(80),
+  userDecision: text("user_decision"),
+  decidedAt: timestamp("decided_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiSyncItemsRelations = relations(aiSyncItems, ({ one }) => ({
+  session: one(aiSyncSessions, {
+    fields: [aiSyncItems.sessionId],
+    references: [aiSyncSessions.id],
+  }),
+}));
+
+export const interactionEvents = pgTable("interaction_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  eventType: text("event_type").notNull(),
+  pagePath: text("page_path"),
+  actionTarget: text("action_target"),
+  actionValue: text("action_value"),
+  durationMs: integer("duration_ms"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const interactionEventsRelations = relations(interactionEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [interactionEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const aiPatternSnapshots = pgTable("ai_pattern_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  dimension: text("dimension"),
+  patternType: text("pattern_type").notNull(),
+  patternData: jsonb("pattern_data").notNull(),
+  confidence: integer("confidence").default(70),
+  evidenceCount: integer("evidence_count").default(1),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aiPatternSnapshotsRelations = relations(aiPatternSnapshots, ({ one }) => ({
+  user: one(users, {
+    fields: [aiPatternSnapshots.userId],
+    references: [users.id],
+  }),
+}));
+
 export const wellnessBlueprints = pgTable("wellness_blueprints", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -880,6 +966,27 @@ export const insertAiLearningSchema = createInsertSchema(aiLearnings).omit({
   updatedAt: true,
 });
 
+export const insertAiSyncSessionSchema = createInsertSchema(aiSyncSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+export const insertAiSyncItemSchema = createInsertSchema(aiSyncItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertInteractionEventSchema = createInsertSchema(interactionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAiPatternSnapshotSchema = createInsertSchema(aiPatternSnapshots).omit({
+  id: true,
+  createdAt: true,
+  lastUpdated: true,
+});
+
 export const insertWellnessBlueprintSchema = createInsertSchema(wellnessBlueprints).omit({
   id: true,
   createdAt: true,
@@ -1213,6 +1320,14 @@ export type ChatAttachment = typeof chatAttachments.$inferSelect;
 export type InsertChatAttachment = z.infer<typeof insertChatAttachmentSchema>;
 export type AiLearning = typeof aiLearnings.$inferSelect;
 export type InsertAiLearning = z.infer<typeof insertAiLearningSchema>;
+export type AiSyncSession = typeof aiSyncSessions.$inferSelect;
+export type InsertAiSyncSession = z.infer<typeof insertAiSyncSessionSchema>;
+export type AiSyncItem = typeof aiSyncItems.$inferSelect;
+export type InsertAiSyncItem = z.infer<typeof insertAiSyncItemSchema>;
+export type InteractionEvent = typeof interactionEvents.$inferSelect;
+export type InsertInteractionEvent = z.infer<typeof insertInteractionEventSchema>;
+export type AiPatternSnapshot = typeof aiPatternSnapshots.$inferSelect;
+export type InsertAiPatternSnapshot = z.infer<typeof insertAiPatternSnapshotSchema>;
 export type WellnessBlueprint = typeof wellnessBlueprints.$inferSelect;
 export type InsertWellnessBlueprint = z.infer<typeof insertWellnessBlueprintSchema>;
 export type BaselineProfile = typeof baselineProfiles.$inferSelect;

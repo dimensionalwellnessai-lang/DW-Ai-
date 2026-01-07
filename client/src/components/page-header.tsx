@@ -94,7 +94,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
               onClick={handleBack}
               data-testid="button-back"
             >
-              <ArrowLeft className="h-5 w-5 text-white" />
+              <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
           <Button 
@@ -103,7 +103,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
           >
-            <Menu className="h-5 w-5 text-white" />
+            <Menu className="h-5 w-5" />
           </Button>
         </div>
         <h1 className="font-display text-lg font-medium flex-1" data-testid="text-page-title">
