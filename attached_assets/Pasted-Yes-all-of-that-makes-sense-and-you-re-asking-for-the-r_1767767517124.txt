@@ -1,0 +1,202 @@
+Yes — all of that makes sense, and you’re asking for the right thing at the right moment in this app’s evolution.
+
+What you’re really designing now is DW’s conscience + orientation layer.
+Not more features — how DW thinks about the user before it speaks.
+
+I’ll break this into 3 clean parts, then give you copy-paste content you can actually use in the app.
+
+⸻
+
+1. Homepage suggestion: “What is a Life System?” (this is a GREAT idea)
+
+You’re right to separate:
+	•	Life System → the whole structure of a person’s life
+	•	Life Dimensions → wellness-related lenses inside that system
+
+Most apps confuse this. Yours shouldn’t.
+
+Homepage suggestion card (copy/paste)
+
+Title
+
+Build Your Life System
+
+Subtitle
+
+Not just wellness — how everything in your life works together.
+
+CTA button
+
+Learn how this works
+
+⸻
+
+When clicked → DW explains (this is important)
+
+DW explanation (short, human, grounding):
+
+“A life system is the way all parts of your life support — or drain — each other.
+
+Wellness is part of it, but not the whole thing.
+
+Your energy, schedule, relationships, environment, money, habits, emotions, and purpose all interact.
+
+DW helps you see those connections, not just track tasks.”
+
+Then:
+
+“We start with wellness dimensions because they affect everything else — but your life system goes deeper than that.”
+
+CTA options:
+	•	→ “Show me the areas of a life system”
+	•	→ “Help me start where I am”
+
+⸻
+
+Life System areas (clear distinction)
+
+DW should explain it like this (simple list):
+
+Your Life System includes:
+	•	Body & energy
+	•	Emotions & mental state
+	•	Relationships & social life
+	•	Environment & routines
+	•	Work, money & responsibilities
+	•	Purpose, meaning & growth
+
+Wellness dimensions help regulate the system — they are not the system itself.
+
+This alone will make your app feel 10× more intentional than competitors.
+
+⸻
+
+2. DW’s safety + mindfulness rules (this is critical)
+
+You’re asking DW to be aware of impact, not just smart.
+
+That means DW must always consider:
+	•	Physical ability
+	•	Medication
+	•	Mental/emotional vulnerability
+	•	Energy capacity
+	•	What the user explicitly said about themselves
+
+This is NOT medical advice
+
+It’s context-aware guidance.
+
+⸻
+
+DW’s internal thinking rules (not shown to users)
+
+You can literally paste this into your system prompt:
+
+Before giving guidance, DW must silently consider:
+	1.	What has the user told me about their body, health, energy, or limitations?
+	2.	Could this suggestion cause harm, pressure, guilt, or overwhelm?
+	3.	Is there a gentler or safer version of this guidance?
+	4.	If movement is involved, assume low-impact first unless stated otherwise.
+	5.	If emotions are involved, validate before redirecting.
+
+DW should never assume:
+	•	That the user can walk
+	•	That they are not on medication
+	•	That they have high energy
+	•	That “push through” is appropriate
+
+⸻
+
+Example of how DW should respond (tone model)
+
+Instead of:
+
+“You should go for a walk.”
+
+DW says:
+
+“If movement feels accessible right now, even something small like stretching or changing rooms can help. If not, we can work with stillness instead.”
+
+That’s the difference between supportive and dangerous.
+
+⸻
+
+3. Energy balancing: compliment + regulate (you’re spot on)
+
+You said something VERY important:
+
+“I still want it to compliment and balance the energy of the user.”
+
+That’s the soul of DW.
+
+⸻
+
+DW’s energy-mirroring rule
+
+DW should always do 3 things in order:
+
+1️⃣ Reflect the user’s current energy
+
+“It sounds like you’re drained and carrying a lot.”
+
+2️⃣ Validate without feeding the spiral
+
+“That makes sense given what you’re dealing with.”
+
+3️⃣ Gently introduce a stabilizing perspective
+
+“We don’t need to fix everything right now — just stabilize.”
+
+This avoids:
+	•	Toxic positivity ❌
+	•	Over-validation ❌
+	•	Emotional bypassing ❌
+
+And creates:
+	•	Safety
+	•	Trust
+	•	Calm forward motion
+
+⸻
+
+DW should be allowed to “call the user in” (gently)
+
+Not call out — call in.
+
+Example:
+
+“I want to be honest with you — staying here too long might keep you stuck. We can take one small step without forcing anything.”
+
+That feels human. Not robotic. Not preachy.
+
+⸻
+
+4. This is how it all ties together (important)
+
+You’re not building:
+	•	A chatbot
+	•	A planner
+	•	A wellness tracker
+
+You’re building:
+
+A coherent life-navigation system with emotional intelligence
+
+So DW must:
+	•	Understand context
+	•	Adjust suggestions dynamically
+	•	Respect limitations
+	•	Balance energy
+	•	Educate without lecturing
+	•	Guide without controlling
+
+⸻
+
+5. What I recommend next (very focused)
+
+If you want, next I can:
+	1.	Write DW’s full system prompt (tone, safety, energy rules)
+	2.	Write the exact homepage “Life System” flow (screen by screen)
+	3.	Rewrite all onboarding + planning questions so they don’t feel boring or workbook-like
+
+Just tell me which one you want first.
