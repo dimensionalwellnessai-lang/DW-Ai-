@@ -1,0 +1,60 @@
+REQUEST: Rewrite the wording + tone of all planning flows, assessments, and dimension questions to match “DW” voice.
+IMPORTANT: Do NOT change app functionality. Do NOT change database structure. Do NOT redesign. Text/UX copy only.
+
+GOAL:
+The app should feel premium, alive, and motivating — not like a boring workbook.
+Questions should be:
+- conversational
+- calm
+- modern
+- emotionally intelligent
+- slightly challenging (gentle call-out), but not harsh
+- focused on clarity and action
+- aligned with “Flip the Switch” and WRAP-style self-awareness
+
+STYLE RULES (“DW voice”):
+- avoid generic prompts like “Select one” / “Choose option”
+- use short, human phrasing
+- use a “why it matters” line when useful
+- reduce overwhelm by framing choices
+- feel supportive but real
+
+FORMAT FOR EACH QUESTION (standard):
+1) a short human question (1 sentence)
+2) a small helper line (“Pick what fits right now.” / “Choose as many as apply.”)
+3) optional micro-encouragement (“No pressure. We’re just getting clarity.”)
+4) optional “DW suggestion” line based on prior responses
+
+EXAMPLES TO APPLY THROUGHOUT APP:
+Instead of: “What is your goal?”
+Use: “What are we building right now?”
+Helper: “Pick the one that feels most true today.”
+
+Instead of: “Select your mood.”
+Use: “Where are you at, honestly?”
+Helper: “Pick as many as apply.”
+
+Instead of: “Create a plan.”
+Use: “Want me to map your next moves?”
+Helper: “We can keep it simple or go deeper.”
+
+DIMENSION FLOWS MUST FEEL LIKE A CONVERSATION:
+- the first question should not feel like a survey
+- it should feel like DW is “meeting” the user
+- use short “checkpoints”:
+  “Here’s the move.”
+  “Two options.”
+  “Let’s make it simple.”
+
+APPLY TO:
+- onboarding / assessment
+- body scan questions
+- dimension questions (nutrition, fitness, mental/emotional, social, financial, etc.)
+- plan builder questions
+- “talk it out” prompts
+- any area where the app asks users to pick options
+
+DONE WHEN:
+- questions feel like DW (not a workbook)
+- flows feel motivating and premium
+- user feels guided, not tested

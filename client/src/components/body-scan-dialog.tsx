@@ -28,30 +28,30 @@ interface BodyScanDialogProps {
 }
 
 const BODY_GOALS: { id: BodyGoal; label: string; description: string }[] = [
-  { id: "slim_fit", label: "Slim & Fit", description: "Lean physique, lower body fat" },
-  { id: "build_muscle", label: "Build Muscle", description: "Gain strength and muscle mass" },
-  { id: "tone", label: "Tone Up", description: "Define muscles, stay lean" },
-  { id: "maintain", label: "Maintain", description: "Keep current physique" },
-  { id: "endurance", label: "Endurance", description: "Cardio focus, stamina" },
-  { id: "custom", label: "Something else", description: "You have your own goals" },
+  { id: "slim_fit", label: "Lean & Fit", description: "Lower body fat, feel lighter" },
+  { id: "build_muscle", label: "Build Strength", description: "More muscle, more power" },
+  { id: "tone", label: "Tone Up", description: "Define what's there" },
+  { id: "maintain", label: "Stay Here", description: "Keep what's working" },
+  { id: "endurance", label: "Endurance", description: "Cardio, stamina, energy" },
+  { id: "custom", label: "Something Else", description: "You've got your own vision" },
 ];
 
 const FOCUS_AREAS = [
-  "Core & Abs",
+  "Core",
   "Upper Body",
   "Lower Body",
   "Full Body",
   "Back & Posture",
   "Arms",
   "Flexibility",
-  "Cardio Health",
+  "Cardio",
 ];
 
 const ENERGY_LEVELS = [
-  { id: "low", label: "Low energy lately", description: "Feeling tired or depleted" },
-  { id: "fluctuating", label: "Up and down", description: "Energy varies day to day" },
-  { id: "stable", label: "Pretty steady", description: "Consistent energy levels" },
-  { id: "high", label: "Energized", description: "Feeling strong and capable" },
+  { id: "low", label: "Running low", description: "Tired, depleted" },
+  { id: "fluctuating", label: "Up and down", description: "Varies day to day" },
+  { id: "stable", label: "Pretty steady", description: "Consistent" },
+  { id: "high", label: "Energized", description: "Feeling strong" },
 ];
 
 const POSE_INSTRUCTIONS = [
@@ -291,13 +291,13 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
               <User className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h3 className="text-xl font-display font-semibold mb-2">Body Scan</h3>
+              <h3 className="text-xl font-display font-semibold mb-2">Quick Body Check-In</h3>
               <p className="text-muted-foreground">
-                If you'd like, we can learn a bit about your body goals. This helps personalize your workouts and meal plans. Everything here is optional.
+                This helps me personalize your workouts and meal plans. Everything here is optional.
               </p>
             </div>
             <Button onClick={() => setStep(1)} className="w-full" data-testid="button-start-body-scan">
-              I'm open to that
+              Let's do it
             </Button>
             <button
               onClick={onClose}
@@ -313,8 +313,8 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
-              <h3 className="text-lg font-display font-semibold">How does your body feel lately?</h3>
-              <p className="text-sm text-muted-foreground">In your own words, describe how you've been feeling physically</p>
+              <h3 className="text-lg font-display font-semibold">How's your body feeling lately?</h3>
+              <p className="text-sm text-muted-foreground">Be honest. This helps me calibrate.</p>
             </div>
             <Textarea
               value={profile.currentState}
@@ -324,7 +324,7 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
               data-testid="input-current-state"
             />
             <div className="pt-2">
-              <p className="text-sm text-muted-foreground mb-3">How's your energy been?</p>
+              <p className="text-sm text-muted-foreground mb-3">How's your energy been lately?</p>
               <div className="grid grid-cols-2 gap-2">
                 {ENERGY_LEVELS.map((level) => (
                   <button
@@ -353,8 +353,8 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
           <div className="space-y-4">
             <div className="text-center mb-4">
               <Target className="w-8 h-8 mx-auto text-primary mb-2" />
-              <h3 className="text-lg font-display font-semibold">What feels right for your body?</h3>
-              <p className="text-sm text-muted-foreground">Pick what resonates, or skip if you're not sure</p>
+              <h3 className="text-lg font-display font-semibold">What are we working toward?</h3>
+              <p className="text-sm text-muted-foreground">Pick what feels right for now.</p>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {BODY_GOALS.map((goal) => (
@@ -382,8 +382,8 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
-              <h3 className="text-lg font-display font-semibold">Any areas you want to focus on?</h3>
-              <p className="text-sm text-muted-foreground">Pick as many as you'd like, or none at all</p>
+              <h3 className="text-lg font-display font-semibold">Where do you want to focus?</h3>
+              <p className="text-sm text-muted-foreground">Pick as many as apply.</p>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
               {FOCUS_AREAS.map((area) => (

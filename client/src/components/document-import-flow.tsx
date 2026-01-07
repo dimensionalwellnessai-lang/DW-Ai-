@@ -63,6 +63,13 @@ interface UploadError {
   isRecoverable: boolean;
 }
 
+interface FileQueueItem {
+  file: File;
+  status: "pending" | "uploading" | "analyzing" | "done" | "error";
+  documentId?: string;
+  error?: string;
+}
+
 const getDestinationIcon = (system: string) => {
   switch (system) {
     case "calendar":
@@ -102,17 +109,24 @@ export function DocumentImportFlow({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
   
   const [step, setStep] = useState<FlowStep>("upload");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileQueue, setFileQueue] = useState<FileQueueItem[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("summary");
   const [uploadError, setUploadError] = useState<UploadError | null>(null);
 
+  const currentFile = fileQueue[currentFileIndex]?.file || null;
+  const totalFiles = fileQueue.length;
+  const hasMoreFiles = currentFileIndex < totalFiles - 1;
+
   const resetFlow = () => {
     setStep("upload");
-    setSelectedFile(null);
+    setFileQueue([]);
+    setCurrentFileIndex(0);
     setAnalysisResult(null);
     setSelectedItems(new Set());
     setActiveTab("summary");
@@ -239,8 +253,21 @@ export function DocumentImportFlow({
       queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
       queryClient.invalidateQueries({ queryKey: ["/api/meal-plans"] });
       queryClient.invalidateQueries({ queryKey: ["/api/meals"] });
-      setStep("complete");
-      onComplete?.();
+      
+      if (currentFileIndex < fileQueue.length - 1) {
+        const nextIndex = currentFileIndex + 1;
+        setCurrentFileIndex(nextIndex);
+        setAnalysisResult(null);
+        setSelectedItems(new Set());
+        setStep("analyzing");
+        const nextFile = fileQueue[nextIndex]?.file;
+        if (nextFile) {
+          uploadMutation.mutate(nextFile);
+        }
+      } else {
+        setStep("complete");
+        onComplete?.();
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -252,10 +279,7 @@ export function DocumentImportFlow({
     },
   });
 
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const validateFile = (file: File): string | null => {
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -269,29 +293,76 @@ export function DocumentImportFlow({
 
     const isImage = file.type.startsWith("image/");
     if (!allowedTypes.includes(file.type) && !isImage) {
-      toast({
-        title: "Unsupported file type",
-        description: "Please upload a PDF, Word document, image (PNG, JPG), or text file.",
-        variant: "destructive",
-      });
-      return;
+      return "Unsupported file type. Use PDF, Word, image, or text files.";
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please upload a file smaller than 5MB.",
-        variant: "destructive",
-      });
-      return;
+      return "File too large (max 5MB).";
     }
 
-    setSelectedFile(file);
+    return null;
+  };
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>, append = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newItems: FileQueueItem[] = [];
+    const errors: string[] = [];
+
+    for (const file of Array.from(files)) {
+      const error = validateFile(file);
+      if (error) {
+        errors.push(`${file.name}: ${error}`);
+      } else {
+        newItems.push({ file, status: "pending" });
+      }
+    }
+
+    if (errors.length > 0) {
+      toast({
+        title: errors.length === 1 ? "File issue" : "Some files couldn't be added",
+        description: errors.slice(0, 2).join(" "),
+        variant: "destructive",
+      });
+    }
+
+    if (newItems.length > 0) {
+      if (append) {
+        setFileQueue(prev => [...prev, ...newItems]);
+      } else {
+        setFileQueue(newItems);
+      }
+    }
+
+    if (e.target) e.target.value = "";
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFileQueue(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = () => {
-    if (!selectedFile) return;
-    uploadMutation.mutate(selectedFile);
+    if (fileQueue.length === 0) return;
+    const file = fileQueue[currentFileIndex]?.file;
+    if (!file) return;
+    uploadMutation.mutate(file);
+  };
+
+  const handleProcessNextFile = () => {
+    if (hasMoreFiles) {
+      const nextIndex = currentFileIndex + 1;
+      setCurrentFileIndex(nextIndex);
+      setAnalysisResult(null);
+      setSelectedItems(new Set());
+      setStep("upload");
+      const nextFile = fileQueue[nextIndex]?.file;
+      if (nextFile) {
+        uploadMutation.mutate(nextFile);
+      }
+    } else {
+      setStep("complete");
+    }
   };
 
   const handleToggleItem = (itemId: string) => {
@@ -366,7 +437,8 @@ export function DocumentImportFlow({
                   type="file"
                   className="hidden"
                   accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
-                  onChange={handleFileSelect}
+                  onChange={(e) => handleFileSelect(e, false)}
+                  multiple
                   data-testid="input-file-upload"
                 />
                 <FileUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -378,23 +450,47 @@ export function DocumentImportFlow({
                 </p>
               </div>
 
-              {selectedFile && (
-                <div className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
-                    </p>
+              {fileQueue.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{fileQueue.length} file{fileQueue.length !== 1 ? "s" : ""} selected</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => addMoreInputRef.current?.click()}
+                      data-testid="button-add-more-files"
+                    >
+                      Add more
+                    </Button>
+                    <input
+                      ref={addMoreInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*"
+                      onChange={(e) => handleFileSelect(e, true)}
+                      multiple
+                      data-testid="input-add-more-files"
+                    />
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setSelectedFile(null)}
-                    data-testid="button-remove-file"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  {fileQueue.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.file.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(item.file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleRemoveFile(index)}
+                        data-testid={`button-remove-file-${index}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -424,7 +520,7 @@ export function DocumentImportFlow({
                 </Button>
                 <Button
                   onClick={handleUpload}
-                  disabled={!selectedFile || uploadMutation.isPending}
+                  disabled={fileQueue.length === 0 || uploadMutation.isPending}
                   data-testid="button-upload"
                 >
                   {uploadMutation.isPending ? (
@@ -432,7 +528,7 @@ export function DocumentImportFlow({
                   ) : (
                     <ArrowRight className="h-4 w-4 mr-2" />
                   )}
-                  Analyze Document
+                  {fileQueue.length > 1 ? `Analyze ${fileQueue.length} Files` : "Analyze Document"}
                 </Button>
               </div>
             </div>
@@ -444,8 +540,13 @@ export function DocumentImportFlow({
                 <Sparkles className="h-16 w-16 text-primary animate-pulse" />
               </div>
               <div>
+                {totalFiles > 1 && (
+                  <p className="text-sm font-medium mb-2">
+                    File {currentFileIndex + 1} of {totalFiles}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground mb-3">
-                  Reading your document and finding useful items...
+                  {currentFile ? `Analyzing ${currentFile.name}...` : "Finding useful items..."}
                 </p>
                 <Progress value={analyzeMutation.isPending ? 60 : 0} className="w-2/3 mx-auto" />
               </div>
@@ -454,6 +555,17 @@ export function DocumentImportFlow({
 
           {step === "preview" && analysisResult && (
             <div className="flex flex-col h-full">
+              {totalFiles > 1 && (
+                <div className="mb-3 pb-3 border-b">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">File {currentFileIndex + 1} of {totalFiles}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {currentFile?.name}
+                    </p>
+                  </div>
+                  <Progress value={((currentFileIndex + 1) / totalFiles) * 100} className="h-1 mt-2" />
+                </div>
+              )}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList className="grid w-full grid-cols-2 mb-3">
                   <TabsTrigger value="summary" data-testid="tab-summary">
@@ -565,6 +677,7 @@ export function DocumentImportFlow({
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Save {selectedItems.size} Item{selectedItems.size !== 1 ? "s" : ""}
+                  {hasMoreFiles && " & Next"}
                 </Button>
               </div>
             </div>
