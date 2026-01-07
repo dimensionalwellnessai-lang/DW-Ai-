@@ -114,6 +114,7 @@ export function DocumentImportFlow({
   const [step, setStep] = useState<FlowStep>("upload");
   const [fileQueue, setFileQueue] = useState<FileQueueItem[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [currentDocumentId, setCurrentDocumentId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("summary");
@@ -127,6 +128,7 @@ export function DocumentImportFlow({
     setStep("upload");
     setFileQueue([]);
     setCurrentFileIndex(0);
+    setCurrentDocumentId(null);
     setAnalysisResult(null);
     setSelectedItems(new Set());
     setActiveTab("summary");
@@ -167,13 +169,21 @@ export function DocumentImportFlow({
     },
     onSuccess: async (data) => {
       setUploadError(null);
+      setCurrentDocumentId(data.documentId);
+      setFileQueue(prev => prev.map((item, i) => 
+        i === currentFileIndex 
+          ? { ...item, status: "analyzing" as const, documentId: data.documentId }
+          : item
+      ));
       setStep("analyzing");
       await analyzeMutation.mutateAsync(data.documentId);
     },
     onError: (error: unknown) => {
+      let errorMessage = "Upload failed";
       if (error && typeof error === "object" && "userMessage" in error) {
         const uploadErr = error as UploadError;
         setUploadError(uploadErr);
+        errorMessage = uploadErr.userMessage;
         toast({
           title: "Couldn't process that file",
           description: uploadErr.userMessage,
@@ -181,6 +191,7 @@ export function DocumentImportFlow({
         });
       } else {
         const message = error instanceof Error ? error.message : "Upload failed";
+        errorMessage = message;
         setUploadError({
           code: "UNKNOWN",
           userMessage: message,
@@ -193,6 +204,9 @@ export function DocumentImportFlow({
           variant: "destructive",
         });
       }
+      setFileQueue(prev => prev.map((item, i) => 
+        i === currentFileIndex ? { ...item, status: "error" as const, error: errorMessage } : item
+      ));
       setStep("upload");
     },
   });
@@ -208,6 +222,9 @@ export function DocumentImportFlow({
         data.items.filter(item => item.confidence >= 0.7).map(item => item.id)
       );
       setSelectedItems(preSelectedIds);
+      setFileQueue(prev => prev.map((item, i) => 
+        i === currentFileIndex ? { ...item, status: "done" as const } : item
+      ));
       setStep("preview");
     },
     onError: (error: Error) => {
@@ -216,6 +233,9 @@ export function DocumentImportFlow({
         description: error.message,
         variant: "destructive",
       });
+      setFileQueue(prev => prev.map((item, i) => 
+        i === currentFileIndex ? { ...item, status: "error" as const, error: error.message } : item
+      ));
       setStep("upload");
     },
   });
@@ -257,12 +277,20 @@ export function DocumentImportFlow({
       if (currentFileIndex < fileQueue.length - 1) {
         const nextIndex = currentFileIndex + 1;
         setCurrentFileIndex(nextIndex);
+        setCurrentDocumentId(null);
         setAnalysisResult(null);
         setSelectedItems(new Set());
-        setStep("analyzing");
+        setActiveTab("summary");
         const nextFile = fileQueue[nextIndex]?.file;
         if (nextFile) {
+          setFileQueue(prev => prev.map((item, i) => 
+            i === nextIndex ? { ...item, status: "uploading" as const } : item
+          ));
+          setStep("analyzing");
           uploadMutation.mutate(nextFile);
+        } else {
+          setStep("complete");
+          onComplete?.();
         }
       } else {
         setStep("complete");
@@ -339,30 +367,27 @@ export function DocumentImportFlow({
   };
 
   const handleRemoveFile = (index: number) => {
-    setFileQueue(prev => prev.filter((_, i) => i !== index));
+    const item = fileQueue[index];
+    if (item?.status === "uploading" || item?.status === "analyzing" || item?.status === "done") return;
+    setFileQueue(prev => {
+      const newQueue = prev.filter((_, i) => i !== index);
+      if (index < currentFileIndex && currentFileIndex > 0) {
+        setCurrentFileIndex(curr => curr - 1);
+      }
+      return newQueue;
+    });
   };
+  
+  const isProcessing = step !== "upload" && step !== "complete";
 
   const handleUpload = () => {
     if (fileQueue.length === 0) return;
     const file = fileQueue[currentFileIndex]?.file;
     if (!file) return;
+    setFileQueue(prev => prev.map((item, i) => 
+      i === currentFileIndex ? { ...item, status: "uploading" as const } : item
+    ));
     uploadMutation.mutate(file);
-  };
-
-  const handleProcessNextFile = () => {
-    if (hasMoreFiles) {
-      const nextIndex = currentFileIndex + 1;
-      setCurrentFileIndex(nextIndex);
-      setAnalysisResult(null);
-      setSelectedItems(new Set());
-      setStep("upload");
-      const nextFile = fileQueue[nextIndex]?.file;
-      if (nextFile) {
-        uploadMutation.mutate(nextFile);
-      }
-    } else {
-      setStep("complete");
-    }
   };
 
   const handleToggleItem = (itemId: string) => {
@@ -387,10 +412,11 @@ export function DocumentImportFlow({
   };
 
   const handleCommit = () => {
-    if (!analysisResult || selectedItems.size === 0) return;
+    const documentId = analysisResult?.documentId || currentDocumentId;
+    if (!documentId || selectedItems.size === 0) return;
     setStep("saving");
     commitMutation.mutate({
-      documentId: analysisResult.documentId,
+      documentId,
       itemIds: Array.from(selectedItems),
     });
   };
@@ -472,25 +498,45 @@ export function DocumentImportFlow({
                       data-testid="input-add-more-files"
                     />
                   </div>
-                  {fileQueue.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 rounded-md bg-muted/50">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.file.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(item.file.size / 1024).toFixed(1)} KB
-                        </p>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleRemoveFile(index)}
-                        data-testid={`button-remove-file-${index}`}
+                  {fileQueue.map((item, index) => {
+                    const isActive = item.status === "uploading" || item.status === "analyzing";
+                    const isDone = item.status === "done";
+                    const isError = item.status === "error";
+                    return (
+                      <div 
+                        key={index} 
+                        className={`flex items-center gap-3 p-3 rounded-md ${
+                          isDone ? "bg-primary/10" : isError ? "bg-destructive/10" : "bg-muted/50"
+                        }`}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                        {isActive ? (
+                          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                        ) : isDone ? (
+                          <Check className="h-5 w-5 text-primary" />
+                        ) : isError ? (
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-primary" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{item.file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isActive ? "Processing..." : isDone ? "Ready" : isError ? item.error : `${(item.file.size / 1024).toFixed(1)} KB`}
+                          </p>
+                        </div>
+                        {!isActive && !isDone && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRemoveFile(index)}
+                            data-testid={`button-remove-file-${index}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
