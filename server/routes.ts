@@ -314,17 +314,63 @@ export async function registerRoutes(
 
   app.post("/api/conversations", requireAuth, async (req, res) => {
     try {
-      const { title, category } = req.body;
+      const { title, category, messages } = req.body;
       const conversation = await storage.createConversation({
         userId: req.session.userId!,
         title: title || "New Chat",
         category: category || "general",
-        messages: [],
+        messages: messages || [],
       });
       res.json(conversation);
     } catch (error) {
       console.error("Create conversation error:", error);
       res.status(500).json({ error: "Failed to create conversation" });
+    }
+  });
+
+  app.post("/api/conversations/sync", requireAuth, async (req, res) => {
+    try {
+      const { conversations: guestConvos } = req.body;
+      if (!Array.isArray(guestConvos)) {
+        return res.status(400).json({ error: "conversations array required" });
+      }
+      
+      // Get existing conversations to check for duplicates
+      const existingConvos = await storage.getConversations(req.session.userId!);
+      const existingTitles = new Set(existingConvos.map(c => c.title));
+      
+      const results = [];
+      for (const convo of guestConvos) {
+        if (!convo.messages || convo.messages.length === 0) continue;
+        
+        // Skip if a conversation with same title already exists (simple dedup)
+        if (existingTitles.has(convo.title)) continue;
+        
+        // Validate and sanitize messages
+        const validatedMessages = convo.messages
+          .filter((m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role))
+          .map((m: any) => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp || Date.now(),
+          }));
+        
+        if (validatedMessages.length === 0) continue;
+        
+        const conversation = await storage.createConversation({
+          userId: req.session.userId!,
+          title: convo.title || "Imported Chat",
+          category: convo.category || "general",
+          messages: validatedMessages,
+        });
+        results.push(conversation);
+        existingTitles.add(convo.title);
+      }
+      
+      res.json({ imported: results.length, conversations: results });
+    } catch (error) {
+      console.error("Sync conversations error:", error);
+      res.status(500).json({ error: "Failed to sync conversations" });
     }
   });
 

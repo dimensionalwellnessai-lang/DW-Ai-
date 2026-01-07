@@ -83,7 +83,7 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { UserProfile } from "@shared/schema";
+import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
   { id: "talk", text: "I want to talk", icon: MessageCircle, action: "talk" },
@@ -165,6 +165,47 @@ export function AIWorkspace() {
     queryKey: ["/api/profile"],
   });
 
+  // Auth state for conversation storage
+  const { data: authData } = useQuery<{ user: any } | null>({ 
+    queryKey: ["/api/auth/me"],
+    retry: false
+  });
+  const user = authData?.user;
+  const isUserAuthenticated = !!user;
+
+  // Database conversations for authenticated users
+  const { data: dbConversations = [], refetch: refetchDbConversations } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
+    enabled: isUserAuthenticated,
+    staleTime: 10000,
+  });
+
+  // Active database conversation ID - initialize from localStorage for persistence
+  const [activeDbConversationId, setActiveDbConversationId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("fts_active_conversation_id") || null;
+    }
+    return null;
+  });
+
+  // Persist active conversation ID to localStorage
+  useEffect(() => {
+    if (activeDbConversationId) {
+      localStorage.setItem("fts_active_conversation_id", activeDbConversationId);
+    }
+  }, [activeDbConversationId]);
+
+  // Initialize activeDbConversationId from server data when conversations load
+  useEffect(() => {
+    if (isUserAuthenticated && dbConversations.length > 0 && !activeDbConversationId) {
+      setActiveDbConversationId(dbConversations[0].id);
+    }
+  }, [isUserAuthenticated, dbConversations, activeDbConversationId]);
+
+  // Get the active database conversation
+  const activeDbConversation = dbConversations.find(c => c.id === activeDbConversationId) || 
+    (dbConversations.length > 0 ? dbConversations[0] : null);
+
   const [startedFresh, setStartedFresh] = useState(() => {
     if (typeof window === "undefined") return true;
     startFreshSession();
@@ -177,11 +218,74 @@ export function AIWorkspace() {
     getActiveConversation()
   );
   
-  const hasConversationHistory = getAllConversations().length > 0;
-  const messages: ChatMessage[] = activeConversation?.messages || [];
+  // Get current conversation based on auth state
+  const currentConversation = isUserAuthenticated ? activeDbConversation : activeConversation;
+  const hasConversationHistory = isUserAuthenticated 
+    ? dbConversations.length > 0 
+    : getAllConversations().length > 0;
+  const messages: ChatMessage[] = isUserAuthenticated 
+    ? (activeDbConversation?.messages as ChatMessage[] || [])
+    : (activeConversation?.messages || []);
   
   // Re-fetch conversations when conversationVersion changes (after sending messages)
   const [conversationsByCategory, setConversationsByCategory] = useState(() => getConversationsByCategory());
+  
+  // Compute DB conversations by category
+  const dbConversationsByCategory = (() => {
+    const grouped: Record<string, Conversation[]> = {};
+    for (const convo of dbConversations) {
+      const cat = convo.category || "general";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(convo);
+    }
+    return grouped;
+  })();
+
+  // Create new database conversation mutation
+  const createDbConversationMutation = useMutation({
+    mutationFn: async ({ title, category, messages }: { title: string; category: string; messages?: any[] }) => {
+      const res = await apiRequest("POST", "/api/conversations", { title, category, messages: messages || [] });
+      return res.json() as Promise<Conversation>;
+    },
+    onSuccess: () => {
+      refetchDbConversations();
+    },
+  });
+
+  // Update database conversation mutation  
+  const updateDbConversationMutation = useMutation({
+    mutationFn: async ({ id, messages, title }: { id: string; messages: any[]; title?: string }) => {
+      const res = await apiRequest("PATCH", `/api/conversations/${id}`, { messages, title });
+      return res.json() as Promise<Conversation>;
+    },
+    onSuccess: () => {
+      refetchDbConversations();
+    },
+  });
+
+  // Sync guest conversations to database on login
+  const syncConversationsMutation = useMutation({
+    mutationFn: async () => {
+      const guestConvos = getAllConversations();
+      if (guestConvos.length === 0) return { imported: 0 };
+      
+      const res = await apiRequest("POST", "/api/conversations/sync", { conversations: guestConvos });
+      return res.json() as Promise<{ imported: number }>;
+    },
+    onSuccess: (data) => {
+      if (data.imported > 0) {
+        toast({ title: `${data.imported} conversation(s) synced to your account` });
+        refetchDbConversations();
+      }
+    },
+  });
+
+  // Auto-sync guest conversations when user logs in
+  useEffect(() => {
+    if (isUserAuthenticated && getAllConversations().length > 0 && dbConversations.length === 0) {
+      syncConversationsMutation.mutate();
+    }
+  }, [isUserAuthenticated, dbConversations.length]);
   
   useEffect(() => {
     // Re-read the active conversation after messages are added
@@ -279,9 +383,20 @@ export function AIWorkspace() {
       });
       return response.json();
     },
-    onSuccess: (data) => {
-      addMessageToConversation("assistant", data.response);
-      setConversationVersion(v => v + 1);
+    onSuccess: async (data) => {
+      if (isUserAuthenticated && activeDbConversation) {
+        const newMessages = [
+          ...(activeDbConversation.messages as ChatMessage[] || []),
+          { role: "assistant" as const, content: data.response, timestamp: Date.now() }
+        ];
+        await updateDbConversationMutation.mutateAsync({
+          id: activeDbConversation.id,
+          messages: newMessages,
+        });
+      } else {
+        addMessageToConversation("assistant", data.response);
+        setConversationVersion(v => v + 1);
+      }
       setIsTyping(false);
       setPendingDocumentIds([]);
     },
@@ -362,18 +477,70 @@ export function AIWorkspace() {
       return;
     }
     
-    addMessageToConversation("user", userMessage);
-    setConversationVersion(v => v + 1);
+    // Add user message to conversation
+    if (isUserAuthenticated) {
+      // For authenticated users, save to database
+      let conversationId = activeDbConversationId;
+      
+      if (!conversationId) {
+        // Create a new conversation if none exists
+        const newConvo = await createDbConversationMutation.mutateAsync({
+          title: userMessage.slice(0, 50),
+          category: "general",
+          messages: [{ role: "user", content: userMessage, timestamp: Date.now() }]
+        });
+        conversationId = newConvo.id;
+        setActiveDbConversationId(newConvo.id);
+      } else if (activeDbConversation) {
+        // Add message to existing conversation
+        const newMessages = [
+          ...(activeDbConversation.messages as ChatMessage[] || []),
+          { role: "user" as const, content: userMessage, timestamp: Date.now() }
+        ];
+        await updateDbConversationMutation.mutateAsync({
+          id: conversationId,
+          messages: newMessages,
+          title: newMessages.length === 1 ? userMessage.slice(0, 50) : undefined,
+        });
+      }
+    } else {
+      addMessageToConversation("user", userMessage);
+      setConversationVersion(v => v + 1);
+    }
+    
     setInput("");
     clearChatDraft();
     setIsTyping(true);
     chatMutation.mutate({ message: userMessage, documentIds });
   };
 
-  const handleSendMessage = (message: string) => {
+  const handleSendMessage = async (message: string) => {
     if (isTyping) return;
-    addMessageToConversation("user", message);
-    setConversationVersion(v => v + 1);
+    
+    if (isUserAuthenticated) {
+      let conversationId = activeDbConversationId;
+      if (!conversationId) {
+        const newConvo = await createDbConversationMutation.mutateAsync({
+          title: message.slice(0, 50),
+          category: "general",
+          messages: [{ role: "user", content: message, timestamp: Date.now() }]
+        });
+        setActiveDbConversationId(newConvo.id);
+      } else if (activeDbConversation) {
+        const newMessages = [
+          ...(activeDbConversation.messages as ChatMessage[] || []),
+          { role: "user" as const, content: message, timestamp: Date.now() }
+        ];
+        await updateDbConversationMutation.mutateAsync({
+          id: conversationId,
+          messages: newMessages,
+        });
+      }
+    } else {
+      addMessageToConversation("user", message);
+      setConversationVersion(v => v + 1);
+    }
+    
     setIsTyping(true);
     chatMutation.mutate({ message });
   };
@@ -424,28 +591,35 @@ export function AIWorkspace() {
     }
   };
 
-  const handleNewConversation = () => {
-    createNewConversation();
-    setConversationVersion(v => v + 1);
+  const handleNewConversation = async () => {
+    if (isUserAuthenticated) {
+      const result = await createDbConversationMutation.mutateAsync({ 
+        title: "New conversation", 
+        category: "general" 
+      });
+      setActiveDbConversationId(result.id);
+    } else {
+      createNewConversation();
+      setConversationVersion(v => v + 1);
+    }
     setHistoryOpen(false);
   };
 
-  const handleSelectConversation = (convo: GuestConversation) => {
-    setActiveConversation(convo.id);
-    setConversationVersion(v => v + 1);
+  const handleSelectConversation = (convo: GuestConversation | Conversation) => {
+    if (isUserAuthenticated) {
+      setActiveDbConversationId(convo.id);
+    } else {
+      setActiveConversation(convo.id);
+      setConversationVersion(v => v + 1);
+    }
     setHistoryOpen(false);
   };
 
   const greeting = "Hey. I'm here.";
   const subGreeting = "What would help most right now?";
-  const hasConversations = Object.values(conversationsByCategory).flat().length > 0;
-  
-  // Auth state for menu
-  const { data: authData } = useQuery<{ user: any } | null>({ 
-    queryKey: ["/api/auth/me"],
-    retry: false
-  });
-  const user = authData?.user;
+  const hasConversations = isUserAuthenticated 
+    ? Object.values(dbConversationsByCategory).flat().length > 0
+    : Object.values(conversationsByCategory).flat().length > 0;
   
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
@@ -655,25 +829,32 @@ export function AIWorkspace() {
         </Button>
         <ScrollArea className="flex-1">
           <div className="space-y-4">
-            {Object.keys(conversationsByCategory).length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No conversations yet</p>
-                <p className="text-xs mt-1">Start a new one above</p>
-              </div>
-            ) : (
-              Object.entries(conversationsByCategory).map(([category, convos]) => (
+            {(() => {
+              const categoriesToShow = isUserAuthenticated ? dbConversationsByCategory : conversationsByCategory;
+              const currentActiveId = isUserAuthenticated ? activeDbConversationId : activeConversation?.id;
+              
+              if (Object.keys(categoriesToShow).length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No conversations yet</p>
+                    <p className="text-xs mt-1">Start a new one above</p>
+                  </div>
+                );
+              }
+              
+              return Object.entries(categoriesToShow).map(([category, convos]) => (
                 <div key={category}>
                   <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                     {CATEGORY_LABELS[category] || category}
                   </h3>
                   <div className="space-y-1">
-                    {convos.map((convo) => (
+                    {(convos as (GuestConversation | Conversation)[]).map((convo) => (
                       <button
                         key={convo.id}
                         onClick={() => handleSelectConversation(convo)}
                         className={`w-full text-left p-2 rounded-lg text-sm hover-elevate truncate ${
-                          activeConversation?.id === convo.id ? "bg-muted" : ""
+                          currentActiveId === convo.id ? "bg-muted" : ""
                         }`}
                         data-testid={`conversation-${convo.id}`}
                       >
@@ -682,8 +863,8 @@ export function AIWorkspace() {
                     ))}
                   </div>
                 </div>
-              ))
-            )}
+              ));
+            })()}
           </div>
         </ScrollArea>
       </SwipeableDrawer>
