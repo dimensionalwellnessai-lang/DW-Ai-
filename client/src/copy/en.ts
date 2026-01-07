@@ -174,4 +174,29 @@ export const COPY = {
     confirmPrompt: "Here's your plan.",
     confirmHelper: "We can tweak this anytime.",
   },
+
+  lifeSystem: {
+    cardTitle: "Build Your Life System",
+    cardSubtitle: "Not just wellness \u2014 how everything in your life works together.",
+    cardCTA: "Learn how this works",
+    explanation: `A life system is the way all parts of your life support \u2014 or drain \u2014 each other.
+
+Wellness is part of it, but not the whole thing.
+
+Your energy, schedule, relationships, environment, money, habits, emotions, and purpose all interact.
+
+DW helps you see those connections, not just track tasks.`,
+    dimensionsNote: "We start with wellness dimensions because they affect everything else \u2014 but your life system goes deeper than that.",
+    areas: [
+      "Body & energy",
+      "Emotions & mental state", 
+      "Relationships & social life",
+      "Environment & routines",
+      "Work, money & responsibilities",
+      "Purpose, meaning & growth",
+    ],
+    areasExplanation: "Wellness dimensions help regulate the system \u2014 they are not the system itself.",
+    ctaShowAreas: "Show me the areas of a life system",
+    ctaStartHere: "Help me start where I am",
+  },
 };
