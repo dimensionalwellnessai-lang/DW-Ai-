@@ -61,6 +61,109 @@ interface ExtractedCategoryData {
   metadata?: Record<string, unknown>;
 }
 
+interface ExtractedSyncItem {
+  itemType: "event" | "goal" | "habit" | "task";
+  title: string;
+  description?: string;
+  startTime?: Date;
+  endTime?: Date;
+  recurrencePattern?: string;
+  recurrenceGroupKey?: string;
+  dimensionTags?: string[];
+  rawExtraction?: string;
+}
+
+function extractSyncableItems(userMessage: string, aiResponse: string): ExtractedSyncItem[] {
+  const items: ExtractedSyncItem[] = [];
+  const combined = `${userMessage} ${aiResponse}`;
+  const lowerCombined = combined.toLowerCase();
+  
+  const hasRecurringIntent = 
+    /every\s+(day|week|month|morning|evening|night)/i.test(combined) ||
+    /every\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(combined) ||
+    /\b(daily|weekly|monthly|weekdays|weekends)\b/i.test(combined) ||
+    /every\s+other\s+(day|week)/i.test(combined);
+  
+  const hasScheduleIntent = 
+    /(?:schedule|add|create|set\s+up|plan|remind)\s+/i.test(combined);
+  
+  if (hasScheduleIntent && hasRecurringIntent) {
+    let eventTitle = "";
+    let recurrencePattern = "";
+    
+    const titleMatch = combined.match(/(?:schedule|add|create|set\s+up|plan|remind)\s+(?:me\s+to\s+)?(?:a\s+)?(?:recurring\s+)?([^,\.]+?)(?:\s+every|\s+daily|\s+weekly|\s+on\s+)/i);
+    if (titleMatch && titleMatch[1]) {
+      eventTitle = titleMatch[1].trim();
+    }
+    
+    if (!eventTitle) {
+      const simpleMatch = combined.match(/(?:schedule|add|create)\s+([a-zA-Z\s]+?)(?:\s+at\s+|\s+for\s+|\s+every\s+)/i);
+      if (simpleMatch && simpleMatch[1]) {
+        eventTitle = simpleMatch[1].trim();
+      }
+    }
+    
+    if (/every\s+day|daily|every\s+morning|every\s+evening|every\s+night/i.test(combined)) {
+      recurrencePattern = "Daily";
+    } else if (/weekdays|every\s+weekday|monday\s+through\s+friday/i.test(combined)) {
+      recurrencePattern = "Weekdays";
+    } else if (/weekends|every\s+weekend/i.test(combined)) {
+      recurrencePattern = "Weekends";
+    } else if (/every\s+other\s+day/i.test(combined)) {
+      recurrencePattern = "Every other day";
+    } else if (/every\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(combined)) {
+      const dayMatch = combined.match(/every\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
+      if (dayMatch) {
+        recurrencePattern = `Weekly on ${dayMatch[1].charAt(0).toUpperCase() + dayMatch[1].slice(1).toLowerCase()}`;
+      }
+    } else if (/every\s+week|weekly/i.test(combined)) {
+      recurrencePattern = "Weekly";
+    } else if (/every\s+month|monthly/i.test(combined)) {
+      recurrencePattern = "Monthly";
+    }
+    
+    let timeDescription = "";
+    const timeMatch = combined.match(/(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+    if (timeMatch) {
+      const hour = parseInt(timeMatch[1]);
+      const minute = timeMatch[2] || "00";
+      const ampm = timeMatch[3].toLowerCase();
+      timeDescription = `${hour}:${minute} ${ampm}`;
+    } else if (/\bmorning\b/i.test(lowerCombined)) {
+      timeDescription = "morning";
+    } else if (/\bevening\b/i.test(lowerCombined)) {
+      timeDescription = "evening";
+    } else if (/\bnight\b/i.test(lowerCombined)) {
+      timeDescription = "night";
+    }
+    
+    if (eventTitle && recurrencePattern) {
+      eventTitle = eventTitle.replace(/^(a|an|the|my)\s+/i, "").trim();
+      
+      if (eventTitle.length < 3 || eventTitle.length > 100) {
+        return items;
+      }
+      
+      const groupKey = `recurring-${eventTitle.toLowerCase().replace(/\s+/g, "-").slice(0, 30)}-${Date.now()}`;
+      
+      items.push({
+        itemType: "event",
+        title: eventTitle.slice(0, 100),
+        description: timeDescription 
+          ? `${recurrencePattern} at ${timeDescription}` 
+          : recurrencePattern,
+        recurrencePattern: timeDescription 
+          ? `${recurrencePattern} at ${timeDescription}` 
+          : recurrencePattern,
+        recurrenceGroupKey: groupKey,
+        rawExtraction: userMessage.slice(0, 300),
+      });
+    }
+  }
+  
+  return items;
+}
+
 function extractCategoryData(userMessage: string, aiResponse: string, context?: string): ExtractedCategoryData[] {
   const results: ExtractedCategoryData[] = [];
   const combined = `${userMessage} ${aiResponse}`.toLowerCase();
@@ -947,7 +1050,51 @@ export async function registerRoutes(
         }
       }
       
-      res.json({ response, updatedCategories });
+      const syncableItems = extractSyncableItems(message, response);
+      let syncSessionId: string | undefined;
+      
+      if (syncableItems.length > 0) {
+        try {
+          let session = await storage.getActiveSyncSession(userId);
+          
+          if (!session) {
+            session = await storage.createSyncSession({
+              userId,
+              status: "processing",
+              totalItems: syncableItems.length,
+              sourceType: "chat",
+            });
+          }
+          syncSessionId = session.id;
+          
+          const syncItems = syncableItems.map(item => ({
+            sessionId: session!.id,
+            itemType: item.itemType,
+            title: item.title,
+            description: item.description,
+            startTime: item.startTime ? item.startTime.toISOString() : undefined,
+            endTime: item.endTime ? item.endTime.toISOString() : undefined,
+            recurrencePattern: item.recurrencePattern,
+            recurrenceGroupKey: item.recurrenceGroupKey,
+            dimensionTags: item.dimensionTags,
+            rawExtraction: item.rawExtraction,
+            status: "pending" as const,
+          }));
+          
+          await storage.createSyncItems(syncItems as any);
+          
+          const currentItems = await storage.getSyncItems(session.id);
+          await storage.updateSyncSession(session.id, {
+            status: "awaiting_review",
+            totalItems: currentItems.length,
+            processedItems: currentItems.length,
+          });
+        } catch (err) {
+          console.error("Failed to create sync items:", err);
+        }
+      }
+      
+      res.json({ response, updatedCategories, syncSessionId });
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to get response" });
@@ -1017,7 +1164,51 @@ export async function registerRoutes(
         userContext
       );
       
-      res.json(result);
+      const syncableItems = extractSyncableItems(message, result.response || "");
+      let syncSessionId: string | undefined;
+      
+      if (syncableItems.length > 0) {
+        try {
+          let session = await storage.getActiveSyncSession(userId);
+          
+          if (!session) {
+            session = await storage.createSyncSession({
+              userId,
+              status: "processing",
+              totalItems: syncableItems.length,
+              sourceType: "chat",
+            });
+          }
+          syncSessionId = session.id;
+          
+          const syncItems = syncableItems.map(item => ({
+            sessionId: session!.id,
+            itemType: item.itemType,
+            title: item.title,
+            description: item.description,
+            startTime: item.startTime ? item.startTime.toISOString() : undefined,
+            endTime: item.endTime ? item.endTime.toISOString() : undefined,
+            recurrencePattern: item.recurrencePattern,
+            recurrenceGroupKey: item.recurrenceGroupKey,
+            dimensionTags: item.dimensionTags,
+            rawExtraction: item.rawExtraction,
+            status: "pending" as const,
+          }));
+          
+          await storage.createSyncItems(syncItems as any);
+          
+          const currentItems = await storage.getSyncItems(session.id);
+          await storage.updateSyncSession(session.id, {
+            status: "awaiting_review",
+            totalItems: currentItems.length,
+            processedItems: currentItems.length,
+          });
+        } catch (err) {
+          console.error("Failed to create sync items:", err);
+        }
+      }
+      
+      res.json({ ...result, syncSessionId });
     } catch (error) {
       console.error("Smart chat error:", error);
       res.status(500).json({ error: "Failed to get response" });
