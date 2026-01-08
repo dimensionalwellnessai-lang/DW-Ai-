@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,6 +10,7 @@ import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { SyncTray } from "@/components/sync-tray";
+import { BottomNav } from "@/components/bottom-nav";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -112,6 +113,26 @@ function Router() {
   );
 }
 
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/reset-password", "/app-tour"];
+
+function AppContent() {
+  const [location] = useLocation();
+  const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
+
+  return (
+    <>
+      <Toaster />
+      <TutorialOverlay />
+      <PWAInstallPrompt />
+      <SyncTray />
+      <div className={showBottomNav ? "pb-20" : ""}>
+        <Router />
+      </div>
+      {showBottomNav && <BottomNav />}
+    </>
+  );
+}
+
 function App() {
   const { showSplash, handleSplashComplete } = useSplashScreen();
 
@@ -121,15 +142,7 @@ function App() {
         <TooltipProvider>
           <TutorialProvider>
             {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-            {!showSplash && (
-              <>
-                <Toaster />
-                <TutorialOverlay />
-                <PWAInstallPrompt />
-                <SyncTray />
-                <Router />
-              </>
-            )}
+            {!showSplash && <AppContent />}
           </TutorialProvider>
         </TooltipProvider>
       </ThemeProvider>
