@@ -31,6 +31,8 @@ import {
   RefreshCw,
   Lightbulb,
   Send,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -80,6 +82,48 @@ export function MessageActions({
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleReadAloud = () => {
+    if (!("speechSynthesis" in window)) {
+      toast({
+        title: "Not supported",
+        description: "Text-to-speech is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(messageContent);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith("en") && v.name.includes("Natural")) 
+      || voices.find(v => v.lang.startsWith("en"));
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      toast({
+        title: "Could not read message",
+        description: "Text-to-speech encountered an error.",
+        variant: "destructive",
+      });
+    };
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleCopy = async () => {
     try {
@@ -248,6 +292,19 @@ Can you tell me more about this?`);
           <DropdownMenuItem onClick={handleCopy} data-testid={`action-copy-${messageIndex}`}>
             <Copy className="h-4 w-4 mr-2" />
             Copy
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleReadAloud} data-testid={`action-read-aloud-${messageIndex}`}>
+            {isSpeaking ? (
+              <>
+                <VolumeX className="h-4 w-4 mr-2" />
+                Stop reading
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-4 w-4 mr-2" />
+                Read aloud
+              </>
+            )}
           </DropdownMenuItem>
 
           {isUserMessage ? (
