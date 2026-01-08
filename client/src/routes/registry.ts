@@ -114,6 +114,19 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     menuOrder: 1,
     enabled: true,
   },
+  {
+    id: "today-hub",
+    path: "/today",
+    label: "Today",
+    navLabel: "Today",
+    icon: "sun",
+    type: "page",
+    description: "Your daily hub - schedule, routines, and energy",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 0,
+    enabled: true,
+  },
 
   {
     id: "calendar-root",

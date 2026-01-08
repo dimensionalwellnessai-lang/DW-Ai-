@@ -52,6 +52,7 @@ import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import NotFound from "@/pages/not-found";
+import TodayHubPage from "@/pages/today-hub";
 
 function Router() {
   return (
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/welcome" component={WelcomePage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
+      {isRouteEnabled("/today") && <Route path="/today" component={TodayHubPage} />}
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
