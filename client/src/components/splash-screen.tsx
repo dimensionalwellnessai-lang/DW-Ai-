@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoImage from "@assets/generated_images/minimalist_eye_wellness_logo.png";
 import { BRAND } from "@/config/brand";
 
-const SPLASH_SHOWN_KEY = "fts_splash_shown";
-
 interface SplashScreenProps {
   onComplete: () => void;
 }
@@ -17,7 +15,6 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     const timer2 = setTimeout(() => setPhase("open"), 1200);
     const timer3 = setTimeout(() => setPhase("fading"), 3800);
     const timer4 = setTimeout(() => {
-      localStorage.setItem(SPLASH_SHOWN_KEY, "true");
       onComplete();
     }, 4500);
 
@@ -112,10 +109,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 }
 
 export function useSplashScreen() {
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return !localStorage.getItem(SPLASH_SHOWN_KEY);
-  });
+  const [showSplash, setShowSplash] = useState(true);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
