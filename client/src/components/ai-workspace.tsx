@@ -89,7 +89,6 @@ const FIRST_TIME_ACTIONS = [
   { id: "talk", text: "I want to talk", icon: MessageCircle, action: "talk" },
   { id: "decide", text: "Help me decide my day", icon: Calendar, action: "decide" },
   { id: "calm", text: "Calm my body", icon: Wind, action: "breathing" },
-  { id: "lifesystem", text: "Build my life system", icon: LayoutGrid, action: "lifesystem" },
   { id: "unsure", text: "I'm not sure", icon: HelpCircle, action: "unsure" },
 ];
 
@@ -940,6 +939,14 @@ export function AIWorkspace() {
                     );
                   })}
                 </div>
+                <button
+                  onClick={() => handleFirstTimeAction("lifesystem")}
+                  className="w-full max-w-xs px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                  data-testid="button-action-lifesystem"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Build my life system
+                </button>
                 <div className="flex flex-col items-center gap-2">
                   <button
                     onClick={() => setHistoryOpen(true)}

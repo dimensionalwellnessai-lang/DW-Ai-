@@ -305,7 +305,7 @@ export default function TodayHubPage() {
                 </p>
               </div>
             </div>
-            <Link href="/chat">
+            <Link href="/">
               <Button data-testid="button-talk-it-out">
                 Talk it out
                 <ArrowRight className="ml-2 h-4 w-4" />

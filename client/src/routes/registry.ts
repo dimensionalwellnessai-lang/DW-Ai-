@@ -116,7 +116,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
   {
     id: "today-hub",
-    path: "/",
+    path: "/today",
     label: "Today",
     navLabel: "Today",
     icon: "sun",
@@ -125,19 +125,6 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     showInMenu: true,
     menuSection: "primary",
     menuOrder: 0,
-    enabled: true,
-  },
-  {
-    id: "chat",
-    path: "/chat",
-    label: "Talk to DW",
-    navLabel: "Chat",
-    icon: "message-square",
-    type: "page",
-    description: "Chat with your AI assistant",
-    showInMenu: true,
-    menuSection: "primary",
-    menuOrder: 5,
     enabled: true,
   },
 
