@@ -144,10 +144,10 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "daily-schedule",
     path: "/daily-schedule",
-    label: "Today",
-    icon: "sun",
+    label: "Daily Schedule",
+    icon: "list",
     type: "page",
-    description: "Today's schedule",
+    description: "Manage your daily schedule blocks",
     showInMenu: true,
     menuSection: "calendar",
     menuOrder: 10,

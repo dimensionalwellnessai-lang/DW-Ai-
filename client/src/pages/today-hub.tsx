@@ -74,12 +74,11 @@ export default function TodayHubPage() {
   const todaysBlocks = scheduleBlocks.filter((block) => block.dayOfWeek === dayOfWeek);
 
   const todaysEvents = calendarEvents.filter((event) => {
-    const eventDate = new Date(event.startTime);
-    return (
-      eventDate.getDate() === today.getDate() &&
-      eventDate.getMonth() === today.getMonth() &&
-      eventDate.getFullYear() === today.getFullYear()
-    );
+    const todayStr = today.toISOString().split("T")[0];
+    if (event.startTime.includes("T") || event.startTime.includes("-")) {
+      return event.startTime.startsWith(todayStr);
+    }
+    return true;
   });
 
   const morningRoutines = routines.filter((r) => {
