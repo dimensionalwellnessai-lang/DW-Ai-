@@ -217,7 +217,7 @@ export function SpiritualProfileDialog({ open, onClose, onComplete }: SpiritualP
           <div className="space-y-4">
             <div className="text-center mb-4">
               <h3 className="text-lg font-display font-semibold">What values guide you?</h3>
-              <p className="text-sm text-muted-foreground">Choose what matters most to you</p>
+              <p className="text-sm text-muted-foreground">Pick what resonates — there's no right answer</p>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
               {CORE_VALUES.map((value) => (
@@ -233,7 +233,7 @@ export function SpiritualProfileDialog({ open, onClose, onComplete }: SpiritualP
               ))}
             </div>
             <div className="space-y-3 pt-4">
-              <Label className="text-sm text-muted-foreground">How often would you like to practice?</Label>
+              <Label className="text-sm text-muted-foreground">What rhythm feels realistic for you right now?</Label>
               <div className="grid grid-cols-2 gap-2">
                 {CADENCES.map((cadence) => (
                   <button

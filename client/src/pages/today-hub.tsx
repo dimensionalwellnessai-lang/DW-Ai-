@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Brain,
   Target,
+  Layers,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -60,6 +61,7 @@ export default function TodayHubPage() {
   const today = new Date();
   const dayOfWeek = today.getDay();
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
+  const [showLifeSystemExplainer, setShowLifeSystemExplainer] = useState(false);
 
   const { data: moodData } = useQuery<MoodLog | null>({
     queryKey: ["/api/mood/today"],
@@ -197,6 +199,123 @@ export default function TodayHubPage() {
           </h1>
         </header>
 
+        {!showLifeSystemExplainer && (
+          <section data-testid="section-build-system">
+            <Card className="bg-gradient-to-br from-primary/5 via-primary/8 to-primary/10 border-primary/20">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Layers className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm mb-1">Build Your Life System</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Not just wellness — how everything in your life works together.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-3"
+                  onClick={() => setShowLifeSystemExplainer(true)}
+                  data-testid="button-learn-life-system"
+                >
+                  Learn how this works
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {showLifeSystemExplainer && (
+          <section data-testid="section-life-system-explainer">
+            <Card>
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                    <Layers className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold">Your Life System</h3>
+                </div>
+                
+                <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                  <p>
+                    A life system is the way all parts of your life support — or drain — each other.
+                  </p>
+                  <p>
+                    Wellness is part of it, but not the whole thing.
+                  </p>
+                  <p>
+                    Your energy, schedule, relationships, environment, money, habits, and purpose all interact.
+                  </p>
+                  <p>
+                    DW helps you organize those pieces so your life works with you, not against you.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Life dimensions help regulate your system. Your life system is how everything connects.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Body & energy</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Emotions & mental state</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Relationships & social life</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Environment & routines</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Work, money & responsibilities</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Circle className="h-2 w-2 text-primary" />
+                      <span>Meaning & direction</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      setShowLifeSystemExplainer(false);
+                      navigate("/chat");
+                    }}
+                    data-testid="button-start-where-i-am"
+                  >
+                    Help me start where I am
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => {
+                      setShowLifeSystemExplainer(false);
+                      navigate("/chat");
+                    }}
+                    data-testid="button-show-connections"
+                  >
+                    Show me how this connects
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {proactiveCards.length > 0 && (
           <section className="space-y-3" data-testid="section-proactive">
             {proactiveCards.map((card, index) => (
@@ -270,7 +389,7 @@ export default function TodayHubPage() {
               <CardContent className="py-8 text-center">
                 <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground mb-3">Nothing scheduled for today</p>
-                <Link href="/">
+                <Link href="/chat">
                   <Button variant="outline" size="sm" data-testid="button-ask-dw">
                     <Sparkles className="h-3 w-3 mr-2" />
                     Ask DW to plan my day
@@ -402,7 +521,7 @@ export default function TodayHubPage() {
                     Process thoughts, plan your day, or just chat
                   </p>
                 </div>
-                <Link href="/">
+                <Link href="/chat">
                   <Button size="sm" data-testid="button-talk-to-dw">
                     <ArrowRight className="h-4 w-4" />
                   </Button>

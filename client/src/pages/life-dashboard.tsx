@@ -837,7 +837,7 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
                     <Textarea 
                       value={coreIntention} 
                       onChange={(e) => setCoreIntention(e.target.value)}
-                      placeholder="Why is this dimension important to me?"
+                      placeholder="When this feels steady, what changes first?"
                       className="resize-none"
                       data-testid="input-intention"
                     />
