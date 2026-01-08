@@ -49,10 +49,21 @@ By continuing, you confirm that you have read, understood, and agree to these te
 `;
 
 const STORAGE_KEY = "fts_terms_accepted";
+const SPLASH_SHOWN_KEY = "fts_splash_shown";
 
 export function hasAcceptedTerms(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function shouldShowTerms(): boolean {
+  try {
+    const splashShown = localStorage.getItem(SPLASH_SHOWN_KEY) === "true";
+    const termsAccepted = localStorage.getItem(STORAGE_KEY) === "true";
+    return splashShown && !termsAccepted;
   } catch {
     return false;
   }

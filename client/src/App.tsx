@@ -138,16 +138,23 @@ function App() {
   const { showSplash, handleSplashComplete } = useSplashScreen();
   const [termsAccepted, setTermsAccepted] = useState(hasAcceptedTerms);
 
+  const onSplashComplete = () => {
+    handleSplashComplete();
+  };
+
+  const needsTerms = !showSplash && !termsAccepted;
+  const showApp = !showSplash && termsAccepted;
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <TutorialProvider>
-            {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-            {!showSplash && !termsAccepted && (
+            {showSplash && <SplashScreen onComplete={onSplashComplete} />}
+            {needsTerms && (
               <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
             )}
-            {!showSplash && termsAccepted && <AppContent />}
+            {showApp && <AppContent />}
           </TutorialProvider>
         </TooltipProvider>
       </ThemeProvider>
