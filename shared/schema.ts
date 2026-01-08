@@ -791,6 +791,33 @@ export const exercisesRelations = relations(exercises, ({ one }) => ({
   }),
 }));
 
+// Birth Charts - Astrology Engine
+export const birthCharts = pgTable("birth_charts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  birthDate: text("birth_date").notNull(),
+  birthTime: text("birth_time").notNull(),
+  birthCity: text("birth_city").notNull(),
+  birthState: text("birth_state"),
+  birthCountry: text("birth_country").notNull(),
+  timezone: text("timezone").notNull(),
+  daylightSavings: boolean("daylight_savings").default(false),
+  zodiacSystem: text("zodiac_system").default("tropical"),
+  houseSystem: text("house_system").default("placidus"),
+  placements: jsonb("placements"),
+  aspects: jsonb("aspects"),
+  interpretations: jsonb("interpretations"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const birthChartsRelations = relations(birthCharts, ({ one }) => ({
+  user: one(users, {
+    fields: [birthCharts.userId],
+    references: [users.id],
+  }),
+}));
+
 // Meal Prep Preferences - User settings for meal prep patterns
 export const mealPrepPreferences = pgTable("meal_prep_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1110,6 +1137,12 @@ export const insertExerciseSchema = createInsertSchema(exercises).omit({
   createdAt: true,
 });
 
+export const insertBirthChartSchema = createInsertSchema(birthCharts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertShoppingListSchema = createInsertSchema(shoppingLists).omit({
   id: true,
   createdAt: true,
@@ -1392,3 +1425,5 @@ export type WorkoutPlan = typeof workoutPlans.$inferSelect;
 export type InsertWorkoutPlan = z.infer<typeof insertWorkoutPlanSchema>;
 export type Exercise = typeof exercises.$inferSelect;
 export type InsertExercise = z.infer<typeof insertExerciseSchema>;
+export type BirthChart = typeof birthCharts.$inferSelect;
+export type InsertBirthChart = z.infer<typeof insertBirthChartSchema>;

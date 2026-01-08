@@ -42,6 +42,7 @@ import {
   aiSyncItems,
   interactionEvents,
   aiPatternSnapshots,
+  birthCharts,
   type Conversation,
   type InsertConversation,
   type AiSyncSession,
@@ -137,6 +138,8 @@ import {
   type InsertWorkoutPlan,
   type Exercise,
   type InsertExercise,
+  type BirthChart,
+  type InsertBirthChart,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
@@ -368,6 +371,10 @@ export interface IStorage {
   getPatternSnapshots(userId: string, dimension?: string): Promise<AiPatternSnapshot[]>;
   createPatternSnapshot(snapshot: InsertAiPatternSnapshot): Promise<AiPatternSnapshot>;
   updatePatternSnapshot(id: string, data: Partial<AiPatternSnapshot>): Promise<AiPatternSnapshot | undefined>;
+
+  getBirthChart(userId: string): Promise<BirthChart | undefined>;
+  createBirthChart(chart: InsertBirthChart): Promise<BirthChart>;
+  updateBirthChart(userId: string, data: Partial<BirthChart>): Promise<BirthChart | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1449,6 +1456,24 @@ export class DatabaseStorage implements IStorage {
       timePatterns,
       totalDays: uniqueDays.size
     };
+  }
+
+  async getBirthChart(userId: string): Promise<BirthChart | undefined> {
+    const [chart] = await db.select().from(birthCharts).where(eq(birthCharts.userId, userId));
+    return chart || undefined;
+  }
+
+  async createBirthChart(chart: InsertBirthChart): Promise<BirthChart> {
+    const [created] = await db.insert(birthCharts).values(chart).returning();
+    return created;
+  }
+
+  async updateBirthChart(userId: string, data: Partial<BirthChart>): Promise<BirthChart | undefined> {
+    const [updated] = await db.update(birthCharts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(birthCharts.userId, userId))
+      .returning();
+    return updated || undefined;
   }
 }
 
