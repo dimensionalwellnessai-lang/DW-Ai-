@@ -612,22 +612,19 @@ export function AIWorkspace() {
   const handleFirstTimeAction = (action: string) => {
     switch (action) {
       case "talk":
-        setLocation("/talk");
+        handleSendMessage("I want to talk. Just listen and help me process what's on my mind.");
         break;
       case "decide":
-        setInput("Help me figure out my day.");
-        inputRef.current?.focus();
+        setLocation("/today");
         break;
       case "breathing":
         setBreathingPlayerOpen(true);
         break;
       case "lifesystem":
-        setInput("Help me build my life system. What is it and how do I start?");
-        inputRef.current?.focus();
+        handleSendMessage("Help me build my life system. What is it and how do I start?");
         break;
       case "unsure":
-        setInput("I'm not sure what I need right now.");
-        inputRef.current?.focus();
+        handleSendMessage("I'm not sure what I need right now. Can you help me figure it out?");
         break;
     }
   };
