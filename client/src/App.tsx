@@ -57,7 +57,8 @@ import TodayHubPage from "@/pages/today-hub";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AIWorkspace} />
+      <Route path="/" component={TodayHubPage} />
+      <Route path="/chat" component={AIWorkspace} />
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/welcome" component={WelcomePage} />
