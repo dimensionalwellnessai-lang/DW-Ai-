@@ -316,6 +316,26 @@ export function AIWorkspace() {
     initGuestData();
   }, []);
 
+  // Check for fresh session when user returns after being away
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // startFreshSession returns true if session was actually reset
+        const wasReset = startFreshSession();
+        
+        if (wasReset) {
+          // Only update state when a true reset happened (gap > 5 min)
+          setActiveConversationState(null);
+          setStartedFresh(true);
+          setConversationVersion(v => v + 1);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, conversationVersion]);

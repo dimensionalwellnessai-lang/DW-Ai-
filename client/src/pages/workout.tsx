@@ -730,39 +730,52 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             </Button>
           </div>
 
-          {/* Search input with AI help */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search workouts (yoga, strength, cardio...)"
-              value={workoutSearch}
-              onChange={(e) => {
-                setWorkoutSearch(e.target.value);
-                setAiWorkoutSuggestion(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && workoutSearch.trim()) {
-                  workoutAiMutation.reset();
-                  workoutAiMutation.mutate(workoutSearch.trim());
-                }
-              }}
-              className="pl-10"
-              data-testid="input-workout-search"
-            />
-            {workoutSearch && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2"
-                onClick={() => {
-                  setWorkoutSearch("");
+          {/* Search input with AI help and online search */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search workouts (yoga, strength, cardio...)"
+                value={workoutSearch}
+                onChange={(e) => {
+                  setWorkoutSearch(e.target.value);
                   setAiWorkoutSuggestion(null);
-                  workoutAiMutation.reset();
                 }}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && workoutSearch.trim()) {
+                    workoutAiMutation.reset();
+                    workoutAiMutation.mutate(workoutSearch.trim());
+                  }
+                }}
+                className="pl-10"
+                data-testid="input-workout-search"
+              />
+              {workoutSearch && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
+                  onClick={() => {
+                    setWorkoutSearch("");
+                    setAiWorkoutSuggestion(null);
+                    workoutAiMutation.reset();
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const query = workoutSearch.trim() || "workout";
+                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + " workout")}`, "_blank");
+              }}
+              data-testid="button-online-search-workout"
+            >
+              <ExternalLink className="w-4 h-4 mr-1" />
+              Online
+            </Button>
           </div>
           
           {showFilters && (

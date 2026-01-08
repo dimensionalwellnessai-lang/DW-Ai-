@@ -659,13 +659,15 @@ export function updateLastActivity(): void {
   localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
 }
 
-export function startFreshSession(): void {
+export function startFreshSession(): boolean {
   if (isNewSession()) {
     clearActiveConversation();
     markSessionStarted();
+    return true; // Session was reset
   } else {
     // Update activity timestamp even for continuing sessions
     updateLastActivity();
+    return false; // Session continues
   }
 }
 

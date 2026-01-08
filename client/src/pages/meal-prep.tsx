@@ -759,6 +759,7 @@ export default function MealPrepPage() {
   const [groceryList, setGroceryList] = useState<GroceryList | null>(getActiveGroceryList());
   const [quickAddItem, setQuickAddItem] = useState("");
   const [recipeBoxOpen, setRecipeBoxOpen] = useState(false);
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
   
   const { toast } = useToast();
 
@@ -1195,6 +1196,51 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </TabsList>
 
           <TabsContent value="plans" className="mt-4 space-y-6">
+            {/* Online Recipe Search */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-display font-semibold text-sm">Find Recipes Online</h2>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search recipes (chicken, pasta, salad...)"
+                    value={recipeSearchQuery}
+                    onChange={(e) => setRecipeSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && recipeSearchQuery.trim()) {
+                        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(recipeSearchQuery.trim() + " recipe")}`, "_blank");
+                      }
+                    }}
+                    className="pl-10"
+                    data-testid="input-recipe-search"
+                  />
+                  {recipeSearchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      onClick={() => setRecipeSearchQuery("")}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const query = recipeSearchQuery.trim() || "healthy meal";
+                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + " recipe")}`, "_blank");
+                  }}
+                  data-testid="button-online-search-recipe"
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Online
+                </Button>
+              </div>
+            </section>
+
             {/* Wave 6A: Category Thumbnails */}
             <section className="space-y-3">
               <h2 className="font-display font-semibold text-sm">Browse by Category</h2>
