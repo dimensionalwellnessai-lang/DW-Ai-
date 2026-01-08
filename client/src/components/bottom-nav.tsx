@@ -1,17 +1,17 @@
 import { Link, useLocation } from "wouter";
-import { Home, CalendarDays, Sparkles, BookOpen, User } from "lucide-react";
+import { MessageCircle, CalendarDays, Sparkles, BookOpen, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
   path: string;
-  icon: typeof Home;
+  icon: typeof MessageCircle;
   label: string;
 }
 
 const navItems: NavItem[] = [
-  { path: "/", icon: CalendarDays, label: "Today" },
+  { path: "/chat", icon: MessageCircle, label: "Dw chat" },
   { path: "/plans", icon: Sparkles, label: "Plan" },
-  { path: "/chat", icon: Home, label: "Dw chat" },
+  { path: "/", icon: CalendarDays, label: "Today" },
   { path: "/journal", icon: BookOpen, label: "Journal" },
   { path: "/settings", icon: User, label: "Profile" },
 ];
