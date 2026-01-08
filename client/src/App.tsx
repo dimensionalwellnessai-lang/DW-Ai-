@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
+import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -134,6 +136,7 @@ function AppContent() {
 
 function App() {
   const { showSplash, handleSplashComplete } = useSplashScreen();
+  const [termsAccepted, setTermsAccepted] = useState(hasAcceptedTerms);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -141,7 +144,10 @@ function App() {
         <TooltipProvider>
           <TutorialProvider>
             {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
-            {!showSplash && <AppContent />}
+            {!showSplash && !termsAccepted && (
+              <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
+            )}
+            {!showSplash && termsAccepted && <AppContent />}
           </TutorialProvider>
         </TooltipProvider>
       </ThemeProvider>
