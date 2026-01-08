@@ -705,6 +705,14 @@ export function AIWorkspace() {
           >
             <MessageSquare className="h-5 w-5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNewConversation}
+            data-testid="button-new-chat"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
         </div>
         <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">FTS</span>
         <div className="flex items-center gap-1">
