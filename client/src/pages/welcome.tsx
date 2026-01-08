@@ -47,12 +47,12 @@ export default function Welcome() {
     if (currentStep < TUTORIAL_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      setLocation("/");
+      setLocation("/today");
     }
   };
 
   const handleSkip = () => {
-    setLocation("/");
+    setLocation("/today");
   };
 
   const step = TUTORIAL_STEPS[currentStep];

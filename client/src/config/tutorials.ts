@@ -81,7 +81,7 @@ export const NAVIGATION_TUTORIAL: TutorialStep[] = [
 export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
   chat: {
     pageId: "chat",
-    pageName: "Home",
+    pageName: "Dw chat",
     welcomeMessage: "Welcome to your wellness companion. This is your space to check in.",
     steps: [
       {
