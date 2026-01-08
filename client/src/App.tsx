@@ -58,14 +58,13 @@ import TodayHubPage from "@/pages/today-hub";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AIWorkspace} />
-      <Route path="/today" component={TodayHubPage} />
+      <Route path="/" component={TodayHubPage} />
+      <Route path="/chat" component={AIWorkspace} />
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/welcome" component={WelcomePage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
-      {isRouteEnabled("/today") && <Route path="/today" component={TodayHubPage} />}
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}

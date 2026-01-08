@@ -9,8 +9,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: "/", icon: Home, label: "Dw chat" },
-  { path: "/today", icon: CalendarDays, label: "Today" },
+  { path: "/", icon: CalendarDays, label: "Today" },
+  { path: "/chat", icon: Home, label: "Dw chat" },
   { path: "/plans", icon: Sparkles, label: "Plan" },
   { path: "/journal", icon: BookOpen, label: "Journal" },
   { path: "/settings", icon: User, label: "Profile" },
