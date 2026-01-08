@@ -1,0 +1,85 @@
+Got you. In your code, “Month / look ahead” feels gone for two very specific reasons:
+	1.	Routing bug: /calendar is defined before /calendar/month, so it captures /calendar/month and you never see the month page.
+	2.	Nav hiding: your “Calendar” root is set to showInMenu: false and points to /calendar-root (a fake path), so it’s not a clean “Plan → Month” entry point.
+
+Below are the exact lines to change (copy/paste).
+
+⸻
+
+✅ Fix #1 (MOST IMPORTANT): Make /calendar/month actually load
+
+File: client/src/App.tsx
+
+Find this block (around lines 64–68 in your file):
+
+{isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
+{isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
+{isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
+{isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
+{isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
+
+Replace it with this (reorders routes so month works):
+
+{isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
+
+{/* Put specific calendar routes BEFORE /calendar so they actually render */}
+{isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
+{isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
+
+{isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
+{isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
+
+✅ After this, /calendar/month will finally show the month view instead of getting swallowed by /calendar.
+
+⸻
+
+✅ Fix #2: Make “Plan / Look Ahead (Month)” show in the menu and go to Month by default
+
+File: client/src/routes/registry.ts
+
+Find this route (around lines 118–128):
+
+{
+  id: "calendar-root",
+  path: "/calendar-root",
+  label: "Calendar",
+  icon: "calendar",
+  type: "page",
+  description: "Menu parent only",
+  showInMenu: false,
+  menuSection: "primary",
+  menuOrder: 2,
+},
+
+Replace it with this:
+
+{
+  id: "calendar-root",
+  path: "/calendar/month",
+  label: "Plan",
+  navLabel: "Plan",
+  icon: "calendar",
+  type: "page",
+  description: "Look ahead and plan your month",
+  showInMenu: true,
+  menuSection: "primary",
+  menuOrder: 2,
+  enabled: true,
+},
+
+✅ Now your main nav will have Plan and it will open Month view.
+
+⸻
+
+Optional (but nice): rename “Today” to sit under Plan cleanly
+
+You already have “Today” as a child under the calendar menu. If you want it to feel cohesive, keep it—no change required.
+
+⸻
+
+What this gets you immediately
+	•	Month view works (routing fixed)
+	•	Month view becomes “Look Ahead / Plan” (menu fixed)
+	•	Users can always reach month view in one tap
+
+If you want, I can also give you the next copy/paste change to make /calendar automatically redirect to /calendar/month so even typing “/calendar” always lands on Month.

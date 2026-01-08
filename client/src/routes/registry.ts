@@ -117,14 +117,16 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
 
   {
     id: "calendar-root",
-    path: "/calendar-root",
-    label: "Calendar",
+    path: "/calendar/month",
+    label: "Plan",
+    navLabel: "Plan",
     icon: "calendar",
     type: "page",
-    description: "Menu parent only",
-    showInMenu: false,
+    description: "Look ahead and plan your month",
+    showInMenu: true,
     menuSection: "primary",
     menuOrder: 2,
+    enabled: true,
   },
   {
     id: "daily-schedule",

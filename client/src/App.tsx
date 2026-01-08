@@ -62,9 +62,12 @@ function Router() {
       <Route path="/welcome" component={WelcomePage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
-      {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
+
+      {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
       {isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
+
+      {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
