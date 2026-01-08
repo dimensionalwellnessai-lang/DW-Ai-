@@ -1096,8 +1096,8 @@ export function AIWorkspace() {
           </div>
         </ScrollArea>
 
-        <div className="p-4 border-t dark:border-white/5 glass-subtle">
-          <div className="max-w-2xl mx-auto space-y-2">
+        <div className="p-2 border-t dark:border-white/5 glass-subtle">
+          <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
                 {isUploading ? (
@@ -1170,7 +1170,7 @@ export function AIWorkspace() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type a message..."
-                className="resize-none min-h-[44px] max-h-32 rounded-2xl"
+                className="resize-none min-h-[36px] max-h-24 rounded-xl py-2"
                 disabled={isTyping || isUploading}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
