@@ -9,6 +9,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights } from "./openai";
+import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
   insertUserSchema,
@@ -1411,6 +1412,28 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to load dashboard" });
+    }
+  });
+
+  app.get("/api/proactive/nudges", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const nudges = await generateProactiveNudges(userId);
+      res.json(nudges);
+    } catch (error) {
+      console.error("Error generating proactive nudges:", error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/proactive/briefing", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const briefing = await generateMorningBriefing(userId);
+      res.json(briefing);
+    } catch (error) {
+      console.error("Error generating morning briefing:", error);
+      res.status(500).json({ error: "Failed to generate briefing" });
     }
   });
 
