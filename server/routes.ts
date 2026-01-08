@@ -1004,24 +1004,36 @@ export async function registerRoutes(
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, recentEntries, moodLogs] = await Promise.all([
+      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getCategoryEntries(userId),
         storage.getMoodLogs(userId),
+        storage.getScheduleBlocks(userId),
+        storage.getRoutines(userId),
+        storage.getCalendarEvents(userId),
+        storage.getLifeSystem(userId),
+        storage.getUserProfile(userId),
+        storage.getUserSystemPreferences(userId),
       ]);
+      
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const todayStr = today.toISOString().split('T')[0];
       
       const userContext = {
         category: context,
         systemName: user?.systemName || undefined,
         activeGoals: goals.filter(g => g.isActive).map(g => ({ 
           title: g.title, 
-          progress: g.progress || 0 
+          progress: g.progress || 0,
+          wellnessDimension: g.wellnessDimension || undefined
         })),
         habits: habits.filter(h => h.isActive).map(h => ({ 
           title: h.title, 
-          streak: h.streak || 0 
+          streak: h.streak || 0,
+          frequency: h.frequency || 'daily'
         })),
         upcomingEvents: recentEntries
           .filter(e => e.category === 'calendar' && e.date)
@@ -1030,6 +1042,7 @@ export async function registerRoutes(
         recentMoods: moodLogs.slice(0, 5).map(m => ({
           energy: m.energyLevel,
           mood: m.moodLevel,
+          clarity: m.clarityLevel || undefined,
           date: m.createdAt?.toISOString().split('T')[0] || ''
         })),
         categoryEntries: recentEntries.slice(0, 10).map(e => ({
@@ -1037,14 +1050,105 @@ export async function registerRoutes(
           title: e.title,
           content: e.content || '',
           date: e.date || undefined
-        }))
+        })),
+        todaySchedule: scheduleBlocks
+          .filter(b => b.dayOfWeek === dayOfWeek)
+          .map(b => ({
+            title: b.title,
+            startTime: b.startTime,
+            endTime: b.endTime,
+            category: b.category || undefined
+          })),
+        routines: routines.map(r => ({
+          title: r.name,
+          type: r.mode || 'routine',
+          isActive: r.isActive ?? true
+        })),
+        todayCalendarEvents: calendarEvents
+          .filter(e => e.startTime?.startsWith(todayStr))
+          .map(e => ({
+            title: e.title,
+            time: e.startTime?.split('T')[1]?.substring(0, 5) || undefined,
+            allDay: false
+          })),
+        lifeSystem: {
+          preferences: {
+            enabledSystems: systemPrefs?.enabledSystems || [],
+            preferredWakeTime: systemPrefs?.preferredWakeTime || undefined,
+            preferredSleepTime: systemPrefs?.preferredSleepTime || undefined,
+          },
+          scheduleEvents: scheduleBlocks
+            .filter(b => b.dayOfWeek === dayOfWeek)
+            .map(b => ({
+              title: b.title,
+              scheduledTime: b.startTime,
+              systemReference: b.category || undefined
+            })),
+        },
+        wellnessFocus: userProfile?.goals || [],
+        peakMotivationTime: systemPrefs?.preferredWakeTime || undefined,
       };
       
-      const response = await generateChatResponse(
+      const rawResponse = await generateChatResponse(
         message,
         conversationHistory || [],
         userContext
       );
+      
+      const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
+      const toolCalls = typeof rawResponse === 'object' && 'toolCalls' in rawResponse ? rawResponse.toolCalls : [];
+      
+      const actionsTaken: string[] = [];
+      for (const toolCall of toolCalls) {
+        try {
+          switch (toolCall.name) {
+            case 'create_schedule_block':
+              await storage.createScheduleBlock({
+                userId,
+                title: toolCall.arguments.title,
+                startTime: toolCall.arguments.startTime,
+                endTime: toolCall.arguments.endTime,
+                dayOfWeek: toolCall.arguments.dayOfWeek,
+                category: toolCall.arguments.category || 'personal',
+              });
+              actionsTaken.push(`Added "${toolCall.arguments.title}" to your schedule`);
+              break;
+            case 'log_mood':
+              await storage.createMoodLog({
+                userId,
+                energyLevel: toolCall.arguments.energyLevel,
+                moodLevel: toolCall.arguments.moodLevel,
+                clarityLevel: toolCall.arguments.clarityLevel,
+                notes: toolCall.arguments.notes,
+              });
+              actionsTaken.push(`Logged your mood (energy: ${toolCall.arguments.energyLevel}/5, mood: ${toolCall.arguments.moodLevel}/5)`);
+              break;
+            case 'create_goal':
+              await storage.createGoal({
+                userId,
+                title: toolCall.arguments.title,
+                description: toolCall.arguments.description,
+                wellnessDimension: toolCall.arguments.wellnessDimension,
+                isActive: true,
+              });
+              actionsTaken.push(`Created goal: "${toolCall.arguments.title}"`);
+              break;
+            case 'create_habit':
+              await storage.createHabit({
+                userId,
+                title: toolCall.arguments.title,
+                description: toolCall.arguments.description,
+                frequency: toolCall.arguments.frequency,
+                reminderTime: toolCall.arguments.reminderTime,
+                isActive: true,
+              });
+              actionsTaken.push(`Created habit: "${toolCall.arguments.title}"`);
+              break;
+          }
+        } catch (err) {
+          console.error(`Failed to execute tool ${toolCall.name}:`, err);
+        }
+      }
       
       let updatedCategories: string[] = [];
       
@@ -1112,7 +1216,7 @@ export async function registerRoutes(
         }
       }
       
-      res.json({ response, updatedCategories, syncSessionId });
+      res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Chat error:", error);
       res.status(500).json({ error: "Failed to get response" });

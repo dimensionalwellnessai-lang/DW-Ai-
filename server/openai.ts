@@ -34,9 +34,12 @@ interface UserLifeContext {
     date?: string;
   }[];
   upcomingEvents?: { title: string; date: string }[];
-  recentMoods?: { energy: number; mood: number; date: string }[];
-  activeGoals?: { title: string; progress: number }[];
-  habits?: { title: string; streak: number }[];
+  recentMoods?: { energy: number; mood: number; clarity?: number; date: string }[];
+  activeGoals?: { title: string; progress: number; wellnessDimension?: string }[];
+  habits?: { title: string; streak: number; frequency?: string }[];
+  todaySchedule?: { title: string; startTime: string; endTime: string; category?: string }[];
+  routines?: { title: string; type: string; isActive: boolean }[];
+  todayCalendarEvents?: { title: string; time?: string; allDay: boolean }[];
   lifeSystem?: {
     preferences?: {
       enabledSystems?: string[];
@@ -126,7 +129,7 @@ export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
   userContext?: UserLifeContext
-): Promise<string> {
+): Promise<string | ChatResponseWithTools> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   
@@ -320,12 +323,16 @@ ${userContext?.systemName ? `THEIR LIFE SYSTEM: "${userContext.systemName}"` : "
 ${userContext?.wellnessFocus?.length ? `WELLNESS FOCUS: ${userContext.wellnessFocus.join(", ")}` : ""}
 ${userContext?.peakMotivationTime ? `PEAK ENERGY TIME: ${userContext.peakMotivationTime}` : ""}
 ${userContext?.category ? `CURRENT CONTEXT: They're exploring ${userContext.category}` : ""}
-${userContext?.recentMoods?.length ? `RECENT ENERGY: ${userContext.recentMoods.slice(0, 3).map(m => `energy ${m.energy}/5, mood ${m.mood}/5`).join(", ")}` : ""}
-${userContext?.activeGoals?.length ? `INTENTIONS: ${userContext.activeGoals.map(g => g.title).join(", ")}` : ""}
+${userContext?.recentMoods?.length ? `RECENT ENERGY: ${userContext.recentMoods.slice(0, 3).map(m => `energy ${m.energy}/5, mood ${m.mood}/5${m.clarity ? `, clarity ${m.clarity}/5` : ''}`).join("; ")}` : ""}
+${userContext?.activeGoals?.length ? `ACTIVE GOALS: ${userContext.activeGoals.map(g => `${g.title} (${g.progress}% complete${g.wellnessDimension ? `, ${g.wellnessDimension}` : ''})`).join("; ")}` : ""}
+${userContext?.habits?.length ? `ACTIVE HABITS: ${userContext.habits.map(h => `${h.title} (${h.streak} day streak, ${h.frequency})`).join("; ")}` : ""}
+${userContext?.todaySchedule?.length ? `TODAY'S SCHEDULE BLOCKS: ${userContext.todaySchedule.map(b => `${b.startTime}-${b.endTime}: ${b.title}${b.category ? ` [${b.category}]` : ''}`).join("; ")}` : "NO SCHEDULE BLOCKS TODAY - offer to help create a schedule"}
+${userContext?.routines?.length ? `SAVED ROUTINES: ${userContext.routines.filter(r => r.isActive).map(r => `${r.title} (${r.type})`).join("; ")}` : ""}
+${userContext?.todayCalendarEvents?.length ? `TODAY'S CALENDAR: ${userContext.todayCalendarEvents.map(e => `${e.time || 'all day'}: ${e.title}`).join("; ")}` : ""}
 ${userContext?.lifeSystem?.preferences?.enabledSystems?.length ? `ENABLED SYSTEMS: ${userContext.lifeSystem.preferences.enabledSystems.join(", ")}` : ""}
 ${userContext?.lifeSystem?.preferences?.preferredWakeTime ? `WAKE TIME: ${userContext.lifeSystem.preferences.preferredWakeTime}` : ""}
 ${userContext?.lifeSystem?.preferences?.preferredSleepTime ? `SLEEP TIME: ${userContext.lifeSystem.preferences.preferredSleepTime}` : ""}
-${userContext?.lifeSystem?.scheduleEvents?.length ? `TODAY'S SCHEDULE: ${userContext.lifeSystem.scheduleEvents.slice(0, 5).map(e => `${e.scheduledTime} - ${e.title}`).join(", ")}` : ""}
+${userContext?.lifeSystem?.scheduleEvents?.length ? `SCHEDULED EVENTS: ${userContext.lifeSystem.scheduleEvents.slice(0, 5).map(e => `${e.scheduledTime} - ${e.title}`).join(", ")}` : ""}
 ${userContext?.lifeSystem?.mealPrepPreferences ? `HAS MEAL PREFERENCES: Yes` : ""}
 ${userContext?.lifeSystem?.workoutPreferences ? `HAS WORKOUT PREFERENCES: Yes` : ""}
 ${userContext?.lifeSystem?.importedDocuments?.length ? `IMPORTED DOCUMENTS: ${userContext.lifeSystem.importedDocuments.map(d => `${d.type}: ${d.title}`).join(", ")}` : ""}
@@ -614,20 +621,113 @@ Calm over speed.`;
     { role: "user", content: userMessage },
   ];
 
+  const tools: OpenAI.Chat.ChatCompletionTool[] = [
+    {
+      type: "function",
+      function: {
+        name: "create_schedule_block",
+        description: "Create a time block on the user's schedule. Use this when the user confirms they want to add something to their schedule. Always ask for confirmation first.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Name of the activity" },
+            startTime: { type: "string", description: "Start time in HH:MM format (24-hour)" },
+            endTime: { type: "string", description: "End time in HH:MM format (24-hour)" },
+            dayOfWeek: { type: "integer", description: "Day of week (0=Sunday, 1=Monday, ..., 6=Saturday)" },
+            category: { type: "string", enum: ["work", "wellness", "personal", "social", "rest", "routine"], description: "Category of the activity" }
+          },
+          required: ["title", "startTime", "endTime", "dayOfWeek"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "log_mood",
+        description: "Log the user's current energy and mood. Use when user shares how they're feeling and you want to save it for them.",
+        parameters: {
+          type: "object",
+          properties: {
+            energyLevel: { type: "integer", minimum: 1, maximum: 5, description: "Energy level from 1-5" },
+            moodLevel: { type: "integer", minimum: 1, maximum: 5, description: "Mood level from 1-5" },
+            clarityLevel: { type: "integer", minimum: 1, maximum: 5, description: "Mental clarity from 1-5" },
+            notes: { type: "string", description: "Brief note about the mood/state" }
+          },
+          required: ["energyLevel", "moodLevel"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_goal",
+        description: "Create a new goal or intention for the user. Use when user expresses a goal they want to track.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Short, clear goal title" },
+            description: { type: "string", description: "Brief description of the goal" },
+            wellnessDimension: { type: "string", enum: ["physical", "mental", "emotional", "spiritual", "social", "financial", "career", "creative"], description: "Which life area this goal belongs to" }
+          },
+          required: ["title"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_habit",
+        description: "Create a new habit for the user to track. Use when user wants to build a recurring practice.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Name of the habit" },
+            description: { type: "string", description: "What the habit involves" },
+            frequency: { type: "string", enum: ["daily", "weekly", "weekdays", "weekends"], description: "How often to do this habit" },
+            reminderTime: { type: "string", description: "Preferred reminder time in HH:MM format" }
+          },
+          required: ["title", "frequency"]
+        }
+      }
+    }
+  ];
+
   try {
-    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages,
+      tools,
+      tool_choice: "auto",
       max_completion_tokens: 800,
       temperature: 0.7,
     });
 
-    return response.choices[0]?.message?.content || "I'm here with you. Take your time - there's no rush.";
+    const message = response.choices[0]?.message;
+    
+    if (message?.tool_calls && message.tool_calls.length > 0) {
+      return {
+        content: message.content || "Let me help you with that.",
+        toolCalls: message.tool_calls.map(tc => ({
+          name: (tc as any).function?.name || tc.type,
+          arguments: JSON.parse((tc as any).function?.arguments || '{}')
+        }))
+      };
+    }
+
+    return message?.content || "I'm here with you. Take your time - there's no rush.";
   } catch (error) {
     console.error("OpenAI API error:", error);
     throw error;
   }
+}
+
+export type ChatResponseWithTools = {
+  content: string;
+  toolCalls: { name: string; arguments: Record<string, any> }[];
+};
+
+export function isChatResponseWithTools(response: string | ChatResponseWithTools): response is ChatResponseWithTools {
+  return typeof response === 'object' && 'toolCalls' in response;
 }
 
 export async function generateLifeSystemRecommendations(profile: {
@@ -973,6 +1073,7 @@ export async function detectIntentAndRespond(
   workoutPlan?: { plan: WorkoutDay[]; summary: string };
   meditationSuggestions?: MeditationSuggestion[];
   learnedFacts?: { topic: string; details: Record<string, unknown> }[];
+  toolCalls?: { name: string; arguments: Record<string, any> }[];
 }> {
   const lowerMessage = userMessage.toLowerCase();
   
@@ -1030,13 +1131,16 @@ export async function detectIntentAndRespond(
     intent = isWorkoutIntent ? "workout" : "meditation";
   }
   
-  const response = await generateChatResponse(userMessage, conversationHistory, userContext);
+  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext);
+  const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
+  const toolCalls = typeof rawResponse === 'object' && 'toolCalls' in rawResponse ? rawResponse.toolCalls : undefined;
   
   return {
     response,
     intent,
     workoutPlan,
     meditationSuggestions,
+    toolCalls,
   };
 }
 
