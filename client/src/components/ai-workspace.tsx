@@ -940,9 +940,9 @@ export function AIWorkspace() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
-          <div className="max-w-2xl mx-auto py-6">
+          <div className="max-w-2xl mx-auto py-4">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+              <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-6">
                 <div className="text-center space-y-2">
                   <h1 className="text-2xl font-display font-semibold" data-testid="text-greeting">
                     {greeting}
@@ -951,25 +951,25 @@ export function AIWorkspace() {
                     {subGreeting}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+                <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
                   {FIRST_TIME_ACTIONS.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
                         key={action.id}
                         onClick={() => handleFirstTimeAction(action.action)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
                         data-testid={`button-action-${action.id}`}
                       >
-                        <Icon className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm">{action.text}</span>
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs">{action.text}</span>
                       </button>
                     );
                   })}
                 </div>
                 <button
                   onClick={() => handleFirstTimeAction("lifesystem")}
-                  className="w-full max-w-xs px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                  className="w-full max-w-xs px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
                   data-testid="button-action-lifesystem"
                 >
                   <LayoutGrid className="h-4 w-4" />
