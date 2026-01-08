@@ -451,6 +451,26 @@ export function AIWorkspace() {
         addMessageToConversation("assistant", data.response);
         setConversationVersion(v => v + 1);
       }
+      
+      // Show toast notification for actions taken
+      if (data.actionsTaken && data.actionsTaken.length > 0) {
+        toast({
+          title: "Done",
+          description: data.actionsTaken.join(". "),
+        });
+        // Invalidate relevant queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/schedule-blocks"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/mood-logs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      }
+      
+      // Refresh sync session if items were created
+      if (data.syncSessionId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/sync/sessions/active"] });
+      }
+      
       setIsTyping(false);
       setPendingDocumentIds([]);
     },

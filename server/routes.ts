@@ -1287,6 +1287,79 @@ export async function registerRoutes(
         userContext
       );
       
+      // Execute tool calls if any
+      const actionsTaken: string[] = [];
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        for (const toolCall of result.toolCalls) {
+          try {
+            // Parse arguments if they're a string (defensive)
+            const args = typeof toolCall.arguments === 'string' 
+              ? JSON.parse(toolCall.arguments) 
+              : toolCall.arguments;
+            
+            if (!args || typeof args !== 'object') {
+              console.error(`Invalid tool arguments for ${toolCall.name}:`, toolCall.arguments);
+              continue;
+            }
+            
+            switch (toolCall.name) {
+              case 'create_schedule_block':
+                if (args.title && args.startTime && args.endTime) {
+                  await storage.createScheduleBlock({
+                    userId,
+                    title: args.title,
+                    startTime: args.startTime,
+                    endTime: args.endTime,
+                    dayOfWeek: args.dayOfWeek ?? new Date().getDay(),
+                    category: args.category || 'personal',
+                  });
+                  actionsTaken.push(`Added "${args.title}" to your schedule`);
+                }
+                break;
+              case 'log_mood':
+                if (args.energyLevel && args.moodLevel) {
+                  await storage.createMoodLog({
+                    userId,
+                    energyLevel: args.energyLevel,
+                    moodLevel: args.moodLevel,
+                    clarityLevel: args.clarityLevel,
+                    notes: args.notes,
+                  });
+                  actionsTaken.push(`Logged your mood (energy: ${args.energyLevel}/5, mood: ${args.moodLevel}/5)`);
+                }
+                break;
+              case 'create_goal':
+                if (args.title) {
+                  await storage.createGoal({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    wellnessDimension: args.wellnessDimension,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created goal: "${args.title}"`);
+                }
+                break;
+              case 'create_habit':
+                if (args.title) {
+                  await storage.createHabit({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    frequency: args.frequency || 'daily',
+                    reminderTime: args.reminderTime,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created habit: "${args.title}"`);
+                }
+                break;
+            }
+          } catch (err) {
+            console.error(`Failed to execute tool ${toolCall.name}:`, err);
+          }
+        }
+      }
+      
       const syncableItems = extractSyncableItems(message, result.response || "");
       let syncSessionId: string | undefined;
       
@@ -1331,7 +1404,7 @@ export async function registerRoutes(
         }
       }
       
-      res.json({ ...result, syncSessionId });
+      res.json({ ...result, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Smart chat error:", error);
       res.status(500).json({ error: "Failed to get response" });
