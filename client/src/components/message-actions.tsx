@@ -28,6 +28,9 @@ import {
   MoreHorizontal,
   Check,
   Loader2,
+  RefreshCw,
+  Lightbulb,
+  Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -54,6 +57,9 @@ interface MessageActionsProps {
   onEdit?: (content: string) => void;
   onDelete?: () => void;
   onAskFollowUp?: (content: string) => void;
+  onResend?: (content: string) => void;
+  onThinkDeeper?: (originalResponse: string) => void;
+  onRegenerate?: () => void;
   isLoggedIn: boolean;
 }
 
@@ -64,6 +70,9 @@ export function MessageActions({
   onEdit,
   onDelete,
   onAskFollowUp,
+  onResend,
+  onThinkDeeper,
+  onRegenerate,
   isLoggedIn,
 }: MessageActionsProps) {
   const { toast } = useToast();
@@ -246,7 +255,16 @@ Can you tell me more about this?`);
               {onEdit && (
                 <DropdownMenuItem onClick={handleEdit} data-testid={`action-edit-${messageIndex}`}>
                   <Pencil className="h-4 w-4 mr-2" />
-                  Edit and resend
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {onResend && (
+                <DropdownMenuItem 
+                  onClick={() => onResend(messageContent)} 
+                  data-testid={`action-resend-${messageIndex}`}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Resend
                 </DropdownMenuItem>
               )}
               {onDelete && (
@@ -265,6 +283,25 @@ Can you tell me more about this?`);
             </>
           ) : (
             <>
+              {onThinkDeeper && (
+                <DropdownMenuItem 
+                  onClick={() => onThinkDeeper(messageContent)} 
+                  data-testid={`action-think-deeper-${messageIndex}`}
+                >
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Think deeper
+                </DropdownMenuItem>
+              )}
+              {onRegenerate && (
+                <DropdownMenuItem 
+                  onClick={onRegenerate} 
+                  data-testid={`action-regenerate-${messageIndex}`}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Regenerate
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={handleSaveToLifeSystem}
                 disabled={isExtracting}

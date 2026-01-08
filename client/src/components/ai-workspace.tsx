@@ -382,19 +382,22 @@ export function AIWorkspace() {
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   
   const chatMutation = useMutation({
-    mutationFn: async ({ message, userMsg, conversationId, documentIds }: { 
+    mutationFn: async ({ message, userMsg, conversationId, documentIds, messagesOverride }: { 
       message: string; 
       userMsg: ChatMessage;
       conversationId?: string;
-      documentIds?: string[] 
+      documentIds?: string[];
+      messagesOverride?: ChatMessage[];
     }) => {
       const lifeContext = buildLifeSystemContext();
       const energyContext = getEnergyContextForAPI();
       
       // Include the user message we just added in the conversation history
-      const currentMessages = isUserAuthenticated && activeDbConversation 
-        ? [...(activeDbConversation.messages as ChatMessage[] || []), userMsg]
-        : [...messages, userMsg];
+      const currentMessages = messagesOverride 
+        ? [...messagesOverride, userMsg]
+        : isUserAuthenticated && activeDbConversation 
+          ? [...(activeDbConversation.messages as ChatMessage[] || []), userMsg]
+          : [...messages, userMsg];
       
       const response = await apiRequest("POST", "/api/chat/smart", {
         message,
@@ -405,14 +408,14 @@ export function AIWorkspace() {
         documentIds: documentIds || [],
       });
       const data = await response.json();
-      return { data, userMsg, conversationId };
+      return { data, userMsg, conversationId, messagesOverride };
     },
-    onSuccess: async ({ data, userMsg, conversationId }) => {
+    onSuccess: async ({ data, userMsg, conversationId, messagesOverride }) => {
       const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now() };
       
       if (isUserAuthenticated) {
-        // Persist both user and assistant messages to database
-        const baseMessages = activeDbConversation?.messages as ChatMessage[] || [];
+        // Use messagesOverride if provided (for regenerate), otherwise use activeDbConversation
+        const baseMessages = messagesOverride || (activeDbConversation?.messages as ChatMessage[] || []);
         const updatedMessages = [...baseMessages, userMsg, assistantMsg];
         
         if (conversationId) {
@@ -540,7 +543,7 @@ export function AIWorkspace() {
     chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds });
   };
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string, messagesOverride?: ChatMessage[]) => {
     if (isTyping) return;
     
     const userMsg: ChatMessage = { role: "user", content: message, timestamp: Date.now() };
@@ -563,7 +566,7 @@ export function AIWorkspace() {
     }
     
     setIsTyping(true);
-    chatMutation.mutate({ message, userMsg, conversationId });
+    chatMutation.mutate({ message, userMsg, conversationId, messagesOverride });
   };
 
   const handleCrisisResume = async (responseMessage?: string, sendToAI?: boolean) => {
@@ -1004,6 +1007,40 @@ export function AIWorkspace() {
                           onAskFollowUp={(content) => {
                             setInput(content);
                             inputRef.current?.focus();
+                          }}
+                          onResend={(content) => {
+                            handleSendMessage(content);
+                          }}
+                          onThinkDeeper={(originalResponse) => {
+                            const thinkDeeperPrompt = `I'd like you to think more deeply about your last response. Can you expand on this with more detail, nuance, or alternative perspectives?\n\nYour previous response was: "${originalResponse.slice(0, 300)}${originalResponse.length > 300 ? '...' : ''}"`;
+                            handleSendMessage(thinkDeeperPrompt);
+                          }}
+                          onRegenerate={() => {
+                            const allMsgs = [...messages, ...optimisticMessages];
+                            const lastUserMsgIndex = allMsgs.map(m => m.role).lastIndexOf("user");
+                            if (lastUserMsgIndex >= 0 && index > lastUserMsgIndex) {
+                              const lastUserMsg = allMsgs[lastUserMsgIndex].content;
+                              let prunedMessages: ChatMessage[];
+                              if (isUserAuthenticated && activeDbConversation) {
+                                prunedMessages = (activeDbConversation.messages as ChatMessage[]).filter((_, i) => i !== index);
+                                queryClient.setQueryData<Conversation[]>(["/api/conversations"], (old) =>
+                                  (old || []).map((c) =>
+                                    c.id === activeDbConversation.id ? { ...c, messages: prunedMessages } : c
+                                  )
+                                );
+                                updateDbConversationMutation.mutate({
+                                  id: activeDbConversation.id,
+                                  messages: prunedMessages,
+                                });
+                              } else {
+                                prunedMessages = messages.filter((_, i) => i !== index);
+                                const updated = deleteMessageFromConversation(index);
+                                if (updated) {
+                                  setActiveConversationState(updated);
+                                }
+                              }
+                              handleSendMessage(lastUserMsg, prunedMessages);
+                            }
                           }}
                           isLoggedIn={!!user}
                         />
