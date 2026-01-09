@@ -22,6 +22,8 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
+import { InAppSearch, type SearchResult } from "@/components/in-app-search";
+import { useToast } from "@/hooks/use-toast";
 import {
   getCommunityProfile,
   saveCommunityProfile,
@@ -99,6 +101,7 @@ export default function CommunityPage() {
   const [profile, setProfile] = useState<CommunityProfile | null>(getCommunityProfile());
   const opportunities = getCommunityOpportunities();
   const hasProfile = hasCompletedCommunityProfile();
+  const { toast } = useToast();
 
   const handleSaveProfile = (newProfile: CommunityProfile) => {
     saveCommunityProfile(newProfile);
@@ -195,13 +198,27 @@ export default function CommunityPage() {
             </Card>
           )}
 
+          {/* AI-Powered Community Search */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-display font-semibold text-sm">Find Community Resources</h2>
+              <Badge variant="outline" className="text-xs">
+                <Sparkles className="w-3 h-3 mr-1" />
+                AI-Powered
+              </Badge>
+            </div>
+            <InAppSearch 
+              category="community"
+              placeholder="Search volunteering, support groups, community help..."
+              onResultSave={(result: SearchResult) => {
+                toast({ title: "Resource noted", description: `${result.title} - ${result.description.slice(0, 50)}...` });
+              }}
+            />
+          </section>
+
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Opportunities for You</h2>
-              <Button variant="ghost" size="sm" data-testid="button-search-opportunities">
-                <Search className="w-4 h-4 mr-1" />
-                Find More
-              </Button>
             </div>
 
             <div className="space-y-3">

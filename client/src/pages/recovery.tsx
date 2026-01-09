@@ -29,6 +29,7 @@ import {
   type SavedRoutine 
 } from "@/lib/guest-storage";
 import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
+import { InAppSearch, type SearchResult } from "@/components/in-app-search";
 
 interface RecoveryItem {
   id: string;
@@ -486,6 +487,35 @@ export function RecoveryPage() {
                 Add to Calendar
               </Button>
             </div>
+          </section>
+
+          {/* AI-Powered Recovery Search */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-display font-semibold text-sm">Find Recovery Practices</h2>
+              <Badge variant="outline" className="text-xs">
+                <Sparkles className="w-3 h-3 mr-1" />
+                AI-Powered
+              </Badge>
+            </div>
+            <InAppSearch 
+              category="recovery"
+              placeholder="Search stretches, foam rolling, recovery..."
+              onResultSave={(result: SearchResult) => {
+                const routine = saveRoutine({
+                  type: "recovery",
+                  title: result.title,
+                  description: result.description,
+                  data: { 
+                    duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 10,
+                    steps: result.details || []
+                  },
+                  tags: result.tags,
+                });
+                setSavedRecovery([routine, ...savedRecovery]);
+                toast({ title: "Recovery saved", description: `${result.title} added to your practices` });
+              }}
+            />
           </section>
 
           <section>

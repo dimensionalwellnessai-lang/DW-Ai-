@@ -24,6 +24,8 @@ import {
   type SpiritualProfile,
   type SavedRoutine
 } from "@/lib/guest-storage";
+import { InAppSearch, type SearchResult } from "@/components/in-app-search";
+import { useToast } from "@/hooks/use-toast";
 
 const PRACTICE_LABELS: Record<string, string> = {
   meditation: "Meditation",
@@ -404,6 +406,33 @@ export default function SpiritualPage() {
               </div>
             </div>
           )}
+
+          {/* AI-Powered Spiritual Search */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-display font-semibold text-sm">Find Practices</h2>
+              <Badge variant="outline" className="text-xs">
+                <Sparkles className="w-3 h-3 mr-1" />
+                AI-Powered
+              </Badge>
+            </div>
+            <InAppSearch 
+              category="spiritual"
+              placeholder="Search meditation, prayer, breathwork..."
+              onResultSave={(result: SearchResult) => {
+                const practice = {
+                  title: result.title,
+                  description: result.description,
+                  duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 10,
+                  practices: result.tags.filter(t => ['meditation', 'prayer', 'breathwork', 'yoga', 'journaling'].includes(t.toLowerCase())),
+                  forNeeds: result.tags.filter(t => ['calm', 'energy', 'connection', 'clarity'].includes(t.toLowerCase())),
+                  steps: result.details || [],
+                  guidance: result.description,
+                };
+                handleSavePractice(practice as PracticeData);
+              }}
+            />
+          </section>
 
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">All Practices</h2>

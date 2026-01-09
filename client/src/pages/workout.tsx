@@ -66,6 +66,7 @@ import {
 import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-scope-dialog";
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
+import { InAppSearch, type SearchResult } from "@/components/in-app-search";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -730,53 +731,24 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             </Button>
           </div>
 
-          {/* Search input with AI help and online search */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search workouts (yoga, strength, cardio...)"
-                value={workoutSearch}
-                onChange={(e) => {
-                  setWorkoutSearch(e.target.value);
-                  setAiWorkoutSuggestion(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && workoutSearch.trim()) {
-                    workoutAiMutation.reset();
-                    workoutAiMutation.mutate(workoutSearch.trim());
-                  }
-                }}
-                className="pl-10"
-                data-testid="input-workout-search"
-              />
-              {workoutSearch && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  onClick={() => {
-                    setWorkoutSearch("");
-                    setAiWorkoutSuggestion(null);
-                    workoutAiMutation.reset();
-                  }}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const query = workoutSearch.trim() || "workout";
-                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + " workout")}`, "_blank");
-              }}
-              data-testid="button-online-search-workout"
-            >
-              <ExternalLink className="w-4 h-4 mr-1" />
-              Online
-            </Button>
-          </div>
+          {/* AI-Powered Workout Search */}
+          <InAppSearch 
+            category="workouts"
+            placeholder="Search workouts (yoga, strength, cardio...)"
+            onResultSave={(result: SearchResult) => {
+              const workout: WorkoutData = {
+                title: result.title,
+                description: result.description,
+                duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 20,
+                intensity: result.tags.find(t => ['gentle', 'moderate', 'intense'].includes(t.toLowerCase())) || 'moderate',
+                tags: result.tags,
+                youtubeSearch: result.title + " workout",
+                steps: result.details || [],
+              };
+              handleSaveWorkout(workout);
+              toast({ title: "Workout saved", description: `${result.title} added to your routines` });
+            }}
+          />
           
           {showFilters && (
             <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">

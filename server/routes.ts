@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -985,6 +985,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Onboarding error:", error);
       res.status(500).json({ error: "Failed to complete onboarding" });
+    }
+  });
+
+  // AI-powered contextual search endpoint
+  app.post("/api/search", async (req, res) => {
+    try {
+      const { query, category, limit } = req.body;
+      
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ error: "Search query is required" });
+      }
+      
+      const validCategories: SearchCategory[] = ["meals", "workouts", "recovery", "spiritual", "community"];
+      if (!category || !validCategories.includes(category)) {
+        return res.status(400).json({ error: "Valid category is required: meals, workouts, recovery, spiritual, or community" });
+      }
+      
+      const searchLimit = Math.min(Math.max(limit || 5, 1), 10);
+      const results = await generateContextualSearch(query, category, searchLimit);
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Search error:", error);
+      res.status(500).json({ error: "Search failed" });
     }
   });
 

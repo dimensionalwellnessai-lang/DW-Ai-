@@ -76,6 +76,7 @@ import {
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
 import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-scope-dialog";
+import { InAppSearch, type SearchResult } from "@/components/in-app-search";
 import { 
   rotateContent, 
   getRotationIndex,
@@ -1196,49 +1197,40 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </TabsList>
 
           <TabsContent value="plans" className="mt-4 space-y-6">
-            {/* Online Recipe Search */}
+            {/* AI-Powered Recipe Search */}
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="font-display font-semibold text-sm">Find Recipes Online</h2>
+                <h2 className="font-display font-semibold text-sm">Find Recipes</h2>
+                <Badge variant="outline" className="text-xs">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI-Powered
+                </Badge>
               </div>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search recipes (chicken, pasta, salad...)"
-                    value={recipeSearchQuery}
-                    onChange={(e) => setRecipeSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && recipeSearchQuery.trim()) {
-                        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(recipeSearchQuery.trim() + " recipe")}`, "_blank");
-                      }
-                    }}
-                    className="pl-10"
-                    data-testid="input-recipe-search"
-                  />
-                  {recipeSearchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      onClick={() => setRecipeSearchQuery("")}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const query = recipeSearchQuery.trim() || "healthy meal";
-                    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + " recipe")}`, "_blank");
-                  }}
-                  data-testid="button-online-search-recipe"
-                >
-                  <ExternalLink className="w-4 h-4 mr-1" />
-                  Online
-                </Button>
-              </div>
+              <InAppSearch 
+                category="meals"
+                placeholder="Search recipes (chicken, pasta, salad...)"
+                onResultSave={(result: SearchResult) => {
+                  const now = Date.now();
+                  const recipe: Omit<SavedRecipe, 'id' | 'createdAt' | 'updatedAt'> = {
+                    title: result.title,
+                    description: result.description,
+                    source: "AI Generated",
+                    sourceUrl: null,
+                    servings: 2,
+                    prepTime: parseInt(result.duration?.replace(/\D/g, '') || '0') || 15,
+                    cookTime: 0,
+                    ingredients: (result.details || []).map(d => ({ name: d, amount: "", unit: "", category: "other" })),
+                    instructions: [],
+                    tags: result.tags,
+                    dietaryTags: [],
+                    notes: "",
+                    isFavorite: false
+                  };
+                  saveRecipe(recipe);
+                  setSavedRecipes(getSavedRecipes());
+                  toast({ title: "Recipe saved", description: `${result.title} added to your recipes` });
+                }}
+              />
             </section>
 
             {/* Wave 6A: Category Thumbnails */}

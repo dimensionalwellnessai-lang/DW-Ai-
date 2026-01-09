@@ -1620,3 +1620,133 @@ VOICE: Calm, observational, never pushy. Use phrases like "I noticed..." or "It 
     };
   }
 }
+
+export type SearchCategory = "meals" | "workouts" | "recovery" | "spiritual" | "community";
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  description: string;
+  duration?: string;
+  tags: string[];
+  details?: string[];
+  source: "ai-generated";
+  category: SearchCategory;
+}
+
+interface ContextualSearchResponse {
+  results: SearchResult[];
+  summary: string;
+}
+
+export async function generateContextualSearch(
+  query: string,
+  category: SearchCategory,
+  limit: number = 5
+): Promise<ContextualSearchResponse> {
+  const categoryPrompts: Record<SearchCategory, string> = {
+    meals: `Generate ${limit} recipe/meal suggestions based on this search: "${query}"
+    
+For each result include:
+- title: Name of the dish/meal
+- description: Brief description (1-2 sentences)
+- duration: Prep/cook time (e.g., "15 min", "30 min")
+- tags: 2-3 tags like ["quick", "healthy", "vegetarian"]
+- details: 3-5 key ingredients or steps`,
+
+    workouts: `Generate ${limit} workout/exercise suggestions based on this search: "${query}"
+
+For each result include:
+- title: Name of workout or exercise routine
+- description: Brief description (1-2 sentences)
+- duration: Workout duration (e.g., "20 min", "45 min")
+- tags: 2-3 tags like ["strength", "cardio", "beginner"]
+- details: 4-6 exercises or key movements included`,
+
+    recovery: `Generate ${limit} recovery/stretching/mobility suggestions based on this search: "${query}"
+
+For each result include:
+- title: Name of recovery routine or practice
+- description: Brief description (1-2 sentences)
+- duration: Duration (e.g., "10 min", "15 min")
+- tags: 2-3 tags like ["stretching", "foam rolling", "relaxation"]
+- details: 4-6 stretches or recovery techniques included`,
+
+    spiritual: `Generate ${limit} spiritual practice/prayer/devotional suggestions based on this search: "${query}"
+
+For each result include:
+- title: Name of practice, prayer, or reflection
+- description: Brief description (1-2 sentences)
+- duration: Duration if applicable (e.g., "5 min", "15 min")
+- tags: 2-3 tags like ["meditation", "prayer", "gratitude", "reflection"]
+- details: 3-5 elements or steps of the practice`,
+
+    community: `Generate ${limit} community resources, support services, or volunteer opportunities based on this search: "${query}"
+
+Include a mix of:
+- Volunteer opportunities and local events
+- Support groups and counseling resources
+- Food banks, shelters, and community services
+- Crisis hotlines and mental health resources
+
+For each result include:
+- title: Name of resource or opportunity
+- description: Brief description (1-2 sentences)
+- duration: Time commitment if relevant (e.g., "2 hours/week") or null
+- tags: 2-3 tags like ["volunteering", "support group", "food bank", "crisis help"]
+- details: 3-5 specific details like what's offered, who it helps, or how to get involved`
+  };
+
+  const prompt = `${categoryPrompts[category]}
+
+IMPORTANT: Generate helpful, realistic suggestions based on the search query. Make them practical and actionable.
+
+Respond with valid JSON:
+{
+  "results": [
+    {
+      "id": "unique-id-1",
+      "title": "Result Title",
+      "description": "Brief description",
+      "duration": "15 min",
+      "tags": ["tag1", "tag2"],
+      "details": ["detail 1", "detail 2", "detail 3"]
+    }
+  ],
+  "summary": "Brief 1-sentence summary of what was found"
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return { results: [], summary: "No results found. Try a different search." };
+    }
+
+    const parsed = JSON.parse(content);
+    const results: SearchResult[] = (parsed.results || []).map((r: any, i: number) => ({
+      id: r.id || `result-${i}`,
+      title: r.title || "Untitled",
+      description: r.description || "",
+      duration: r.duration || null,
+      tags: Array.isArray(r.tags) ? r.tags : [],
+      details: Array.isArray(r.details) ? r.details : [],
+      source: "ai-generated" as const,
+      category
+    }));
+
+    return {
+      results,
+      summary: parsed.summary || `Found ${results.length} results for "${query}"`
+    };
+  } catch (error) {
+    console.error("Failed to generate contextual search:", error);
+    return { results: [], summary: "Search failed. Please try again." };
+  }
+}
