@@ -29,6 +29,7 @@ import {
   skipSoftOnboarding,
   markSoftOnboardingShownThisSession,
   getSoftOnboardingMood,
+  isProfileSetupComplete,
   getLifeSystemContext,
   getMealPrepPreferences,
   getWorkoutPreferences,
@@ -48,6 +49,7 @@ import { getEnergyContextForAPI } from "@/lib/energy-context";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { SoftOnboardingModal, type OnboardingMood } from "@/components/soft-onboarding-modal";
+import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import { Link, useLocation } from "wouter";
 import {
   Send,
@@ -131,6 +133,7 @@ export function AIWorkspace() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
@@ -1318,18 +1321,60 @@ export function AIWorkspace() {
         onComplete={(mood: OnboardingMood) => {
           saveSoftOnboarding(mood as SoftOnboardingMood);
           setShowSoftOnboarding(false);
-          const moodMessages: Record<OnboardingMood, string> = {
-            calm: "I'm feeling calm today.",
-            heavy: "I'm feeling heavy today and could use some support.",
-            scattered: "My mind feels scattered right now.",
-            pushing: "I'm pushing through but could use some grounding.",
-            unsure: "I'm not quite sure how I'm feeling.",
-          };
-          handleSendMessage(moodMessages[mood]);
+          if (!isProfileSetupComplete()) {
+            setShowProfileSetup(true);
+          } else {
+            const moodMessages: Record<OnboardingMood, string> = {
+              calm: "I'm feeling calm today.",
+              heavy: "I'm feeling heavy today and could use some support.",
+              scattered: "My mind feels scattered right now.",
+              pushing: "I'm pushing through but could use some grounding.",
+              unsure: "I'm not quite sure how I'm feeling.",
+            };
+            handleSendMessage(moodMessages[mood]);
+          }
         }}
         onSkip={() => {
           skipSoftOnboarding();
           setShowSoftOnboarding(false);
+        }}
+        onOpenChat={() => {
+          setShowSoftOnboarding(false);
+          if (!isProfileSetupComplete()) {
+            setShowProfileSetup(true);
+          }
+        }}
+      />
+
+      <ProfileSetupModal
+        isOpen={showProfileSetup}
+        onComplete={() => {
+          setShowProfileSetup(false);
+          const mood = getSoftOnboardingMood();
+          if (mood) {
+            const moodMessages: Record<SoftOnboardingMood, string> = {
+              calm: "I'm feeling calm today.",
+              heavy: "I'm feeling heavy today and could use some support.",
+              scattered: "My mind feels scattered right now.",
+              pushing: "I'm pushing through but could use some grounding.",
+              unsure: "I'm not quite sure how I'm feeling.",
+            };
+            handleSendMessage(moodMessages[mood]);
+          }
+        }}
+        onOpenChat={() => {
+          setShowProfileSetup(false);
+          const mood = getSoftOnboardingMood();
+          if (mood) {
+            const moodMessages: Record<SoftOnboardingMood, string> = {
+              calm: "I'm feeling calm today.",
+              heavy: "I'm feeling heavy today and could use some support.",
+              scattered: "My mind feels scattered right now.",
+              pushing: "I'm pushing through but could use some grounding.",
+              unsure: "I'm not quite sure how I'm feeling.",
+            };
+            handleSendMessage(moodMessages[mood]);
+          }
         }}
       />
 
