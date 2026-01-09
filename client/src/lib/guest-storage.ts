@@ -405,6 +405,7 @@ export interface GuestData {
   contentRotations?: ContentRotation[];
   savedRecipes?: SavedRecipe[];
   groceryLists?: GroceryList[];
+  domainExclusions?: Record<string, { domain: string; exclusions: string[]; updatedAt: number }>;
   preferences: {
     themeMode: "accent-only" | "full-background";
     useMetricUnits?: boolean;
@@ -965,6 +966,73 @@ export function getAllExcludedIngredients(): string[] {
   prefs.dislikedIngredients.forEach(i => excluded.add(i.toLowerCase()));
   
   return Array.from(excluded);
+}
+
+export type AlternativesDomain = "meals" | "workouts" | "recovery" | "spiritual" | "community";
+
+export interface DomainExclusions {
+  domain: AlternativesDomain;
+  exclusions: string[];
+  updatedAt: number;
+}
+
+export function getDomainExclusions(domain: AlternativesDomain): string[] {
+  if (domain === "meals") {
+    return getAllExcludedIngredients();
+  }
+  
+  const data = getGuestData();
+  const domainData = data?.domainExclusions?.[domain];
+  return domainData?.exclusions || [];
+}
+
+export function addDomainExclusion(domain: AlternativesDomain, item: string): void {
+  if (domain === "meals") {
+    addBannedIngredient(item);
+    return;
+  }
+  
+  const data = getGuestData() || initGuestData();
+  if (!data.domainExclusions) {
+    data.domainExclusions = {};
+  }
+  
+  const normalized = item.toLowerCase().trim();
+  const existing = data.domainExclusions[domain] || { domain, exclusions: [], updatedAt: Date.now() };
+  
+  if (!existing.exclusions.includes(normalized)) {
+    existing.exclusions = [...existing.exclusions, normalized];
+    existing.updatedAt = Date.now();
+    data.domainExclusions[domain] = existing;
+    saveGuestData(data);
+  }
+}
+
+export function removeDomainExclusion(domain: AlternativesDomain, item: string): void {
+  if (domain === "meals") {
+    removeBannedIngredient(item);
+    return;
+  }
+  
+  const data = getGuestData();
+  if (!data?.domainExclusions?.[domain]) return;
+  
+  const normalized = item.toLowerCase().trim();
+  data.domainExclusions[domain].exclusions = data.domainExclusions[domain].exclusions.filter(
+    (i: string) => i !== normalized
+  );
+  data.domainExclusions[domain].updatedAt = Date.now();
+  saveGuestData(data);
+}
+
+export function getAllDomainExclusions(): Record<AlternativesDomain, string[]> {
+  return {
+    meals: getAllExcludedIngredients(),
+    workouts: getDomainExclusions("workouts"),
+    recovery: getDomainExclusions("recovery"),
+    spiritual: getDomainExclusions("spiritual"),
+    community: getDomainExclusions("community")
+  };
 }
 
 export function getWorkoutPreferences(): WorkoutPreferences | null {
