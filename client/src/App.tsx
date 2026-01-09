@@ -55,6 +55,7 @@ import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import TodayHubPage from "@/pages/today-hub";
+import PrivacyTermsPage from "@/pages/privacy-terms";
 
 function Router() {
   return (
@@ -106,6 +107,7 @@ function Router() {
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
+      <Route path="/privacy-terms" component={PrivacyTermsPage} />
       <Route path="/404" component={NotFound404Page} />
       
       <Route component={NotFound404Page} />

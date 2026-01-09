@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sparkles } from "lucide-react";
+import { Link } from "wouter";
 
 const TERMS_OF_USE = `
 Terms of Use & Disclaimer
@@ -119,7 +120,11 @@ export function FirstTimeAgreement({ onAccept }: FirstTimeAgreementProps) {
               data-testid="checkbox-first-time-terms"
             />
             <label htmlFor="agree-terms" className="text-sm text-muted-foreground leading-tight cursor-pointer">
-              I have read and agree to the Terms of Use and understand this is not a medical service
+              I have read and agree to the{" "}
+              <Link href="/privacy-terms" className="text-primary hover:underline" data-testid="link-terms-inline">
+                Privacy Policy & Terms of Use
+              </Link>{" "}
+              and understand this is not a medical service
             </label>
           </div>
 

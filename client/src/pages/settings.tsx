@@ -17,7 +17,10 @@ import {
   Check,
   BellRing,
   BellOff,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
+import { Link } from "wouter";
 
 export function SettingsPage() {
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
@@ -182,6 +185,15 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Your data is stored securely. You can delete your account and all associated data at any time.
             </p>
+            <Link href="/privacy-terms">
+              <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-privacy-terms">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Privacy Policy & Terms of Use</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </Link>
             <Button variant="destructive" size="sm" data-testid="button-delete-account">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete my data
