@@ -362,6 +362,16 @@ export interface SoftOnboarding {
 
 export type OnboardingLogType = "grounding_practice" | "perspective_shift" | "next_hour_plan" | "session_started";
 
+export type WeeklyRhythm = "structured" | "flexible" | "mixed" | "varies";
+export type LifeDimension = "physical" | "emotional" | "mental" | "spiritual" | "financial" | "career" | "relationships" | "family" | "social" | "creative" | "learning" | "environment" | "purpose";
+
+export interface ProfileSetup {
+  weeklyRhythm: WeeklyRhythm | null;
+  primaryFocus: LifeDimension | null;
+  metDW: boolean;
+  completedAt: number | null;
+}
+
 export interface OnboardingLog {
   id: string;
   type: OnboardingLogType;
@@ -414,6 +424,7 @@ export interface GuestData {
   importedDocuments?: ImportedDocument[];
   chatFeedback?: ChatFeedback[];
   softOnboarding?: SoftOnboarding;
+  profileSetup?: ProfileSetup;
   userResources?: UserResource[];
   planningScopes?: PlanningScope[];
   contentRotations?: ContentRotation[];
@@ -2062,4 +2073,25 @@ export function getTodayOnboardingLogs(): OnboardingLog[] {
   const todayStart = today.getTime();
   
   return getOnboardingLogs().filter(log => log.createdAt >= todayStart);
+}
+
+export function getProfileSetup(): ProfileSetup | null {
+  const data = getGuestData();
+  return data?.profileSetup || null;
+}
+
+export function saveProfileSetup(setup: Partial<ProfileSetup>): void {
+  const data = getGuestData() || initGuestData();
+  data.profileSetup = {
+    weeklyRhythm: setup.weeklyRhythm ?? data.profileSetup?.weeklyRhythm ?? null,
+    primaryFocus: setup.primaryFocus ?? data.profileSetup?.primaryFocus ?? null,
+    metDW: setup.metDW ?? data.profileSetup?.metDW ?? false,
+    completedAt: setup.completedAt ?? data.profileSetup?.completedAt ?? null,
+  };
+  saveGuestData(data);
+}
+
+export function isProfileSetupComplete(): boolean {
+  const setup = getProfileSetup();
+  return setup?.completedAt !== null && setup?.completedAt !== undefined;
 }
