@@ -25,6 +25,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import type { MoodLog, CalendarEvent, Routine, ScheduleBlock, Goal } from "@shared/schema";
+import { getLatestOnboardingLog, getTodayOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
+import { Anchor, RefreshCw, ListTodo, MessageCircle } from "lucide-react";
 
 function formatTime12Hour(time24: string): string {
   if (!time24) return "";
@@ -178,6 +180,31 @@ export default function TodayHubPage() {
   };
 
   const userName = user?.displayName || user?.username || "";
+  
+  const latestLog = useMemo(() => {
+    const todayLogs = getTodayOnboardingLogs();
+    return todayLogs.length > 0 ? todayLogs[0] : null;
+  }, []);
+
+  const getLogIcon = (type: OnboardingLog["type"]) => {
+    switch (type) {
+      case "grounding_practice": return Anchor;
+      case "perspective_shift": return RefreshCw;
+      case "next_hour_plan": return ListTodo;
+      case "session_started": return MessageCircle;
+      default: return Sparkles;
+    }
+  };
+
+  const getLogLabel = (type: OnboardingLog["type"]) => {
+    switch (type) {
+      case "grounding_practice": return "Grounding";
+      case "perspective_shift": return "Perspective Shift";
+      case "next_hour_plan": return "Next Hour Plan";
+      case "session_started": return "Talk Session";
+      default: return "Pause";
+    }
+  };
 
   if (isLoading) {
     return <TodayHubSkeleton />;
@@ -198,6 +225,43 @@ export default function TodayHubPage() {
             {getGreeting()}{userName ? `, ${userName}` : ""}
           </h1>
         </header>
+
+        {latestLog && (
+          <section data-testid="section-pause-snapshot">
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    {(() => {
+                      const LogIcon = getLogIcon(latestLog.type);
+                      return <LogIcon className="h-4 w-4 text-primary" />;
+                    })()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-primary">{getLogLabel(latestLog.type)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(latestLog.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {latestLog.content}
+                    </p>
+                    {latestLog.energyStates.length > 0 && (
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {latestLog.energyStates.slice(0, 3).map((state) => (
+                          <Badge key={state} variant="secondary" className="text-xs">
+                            {state}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
         {!showLifeSystemExplainer && (
           <section data-testid="section-build-system">

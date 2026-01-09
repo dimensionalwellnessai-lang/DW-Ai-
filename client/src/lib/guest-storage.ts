@@ -2095,3 +2095,8 @@ export function isProfileSetupComplete(): boolean {
   const setup = getProfileSetup();
   return setup?.completedAt !== null && setup?.completedAt !== undefined;
 }
+
+export function getLatestOnboardingLog(): OnboardingLog | null {
+  const logs = getOnboardingLogs();
+  return logs.length > 0 ? logs[0] : null;
+}
