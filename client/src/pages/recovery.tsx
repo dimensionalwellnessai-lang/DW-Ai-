@@ -518,14 +518,14 @@ export function RecoveryPage() {
               placeholder="Search stretches, foam rolling, recovery..."
               onResultSave={(result: SearchResult) => {
                 const routine = saveRoutine({
-                  type: "recovery",
+                  type: "workout",
                   title: result.title,
                   description: result.description,
                   data: { 
                     duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 10,
                     steps: result.details || []
                   },
-                  tags: result.tags,
+                  tags: [...(result.tags || []), "recovery"],
                 });
                 setSavedRecovery([routine, ...savedRecovery]);
                 toast({ title: "Recovery saved", description: `${result.title} added to your practices` });
