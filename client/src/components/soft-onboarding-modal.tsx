@@ -504,6 +504,16 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                     </div>
                   )}
                 </div>
+                
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                  <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    {selectedResponse === "anchor" && "90 seconds of breathwork can reduce acute arousal and help restore calm."}
+                    {selectedResponse === "reframe" && "Naming your state reduces mental swirl and creates space for perspective."}
+                    {selectedResponse === "plan" && "Small plans reduce cognitive load and help you feel more in control."}
+                    {selectedResponse === "talk" && "Processing thoughts out loud helps clarify what's really going on."}
+                  </p>
+                </div>
 
                 <div className="flex gap-2">
                   <Button 
@@ -551,6 +561,13 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                   <p className="text-sm font-medium">One small action:</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Take one breath and name one thing you can do in the next 10 minutes.
+                  </p>
+                </div>
+                
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                  <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Naming the state reduces the swirl. You've already shifted just by pausing here.
                   </p>
                 </div>
 
@@ -613,6 +630,13 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                       <li>Last 5 min: Quick pause before next thing</li>
                     </ul>
                   </div>
+                </div>
+                
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                  <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Small plans reduce mental load. You don't need the whole day figured out—just the next hour.
+                  </p>
                 </div>
 
                 <div className="flex gap-2 flex-wrap">
