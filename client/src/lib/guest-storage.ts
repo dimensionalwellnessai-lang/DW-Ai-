@@ -632,6 +632,17 @@ export function clearActiveConversation(): void {
   }
 }
 
+export function saveGuestConversation(conversation: GuestConversation): void {
+  const data = getGuestData();
+  if (!data) return;
+  
+  const index = data.conversations.findIndex(c => c.id === conversation.id);
+  if (index >= 0) {
+    data.conversations[index] = conversation;
+    saveGuestData(data);
+  }
+}
+
 export function isNewSession(): boolean {
   // Check if sessionStorage flag is set (covers tab close/open)
   if (sessionStorage.getItem(SESSION_STARTED_KEY) !== "true") {

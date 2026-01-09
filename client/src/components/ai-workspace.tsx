@@ -38,6 +38,7 @@ import {
   getChatDraft,
   clearChatDraft,
   clearActiveConversation,
+  saveGuestConversation,
   type GuestConversation,
   type ChatMessage,
   type SoftOnboardingMood,
@@ -138,6 +139,9 @@ export function AIWorkspace() {
   const [conversationVersion, setConversationVersion] = useState(0);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [longPressMenuIndex, setLongPressMenuIndex] = useState<number | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
   const { events: scheduleEvents } = useScheduleEvents();
@@ -557,6 +561,39 @@ export function AIWorkspace() {
     const userMsg: ChatMessage = { role: "user", content: userMessage, timestamp: Date.now() };
     
     let conversationId = activeDbConversationId || undefined;
+    let messagesOverride: ChatMessage[] | undefined;
+    
+    // Handle editing - truncate messages from edit point
+    if (editingMessageIndex !== null) {
+      if (isUserAuthenticated && activeDbConversation) {
+        // Truncate messages from edit index
+        const truncatedMessages = (activeDbConversation.messages as ChatMessage[]).slice(0, editingMessageIndex);
+        messagesOverride = truncatedMessages;
+        // Update local state immediately
+        queryClient.setQueryData<Conversation[]>(["/api/conversations"], (old) =>
+          (old || []).map((c) =>
+            c.id === activeDbConversation.id ? { ...c, messages: truncatedMessages } : c
+          )
+        );
+        // Persist truncated messages to database
+        updateDbConversationMutation.mutate({
+          id: activeDbConversation.id,
+          messages: truncatedMessages,
+        });
+      } else {
+        // For guests, truncate local storage
+        const currentConvo = getActiveConversation();
+        if (currentConvo) {
+          const truncatedMessages = currentConvo.messages.slice(0, editingMessageIndex);
+          messagesOverride = truncatedMessages;
+          // Update conversation with truncated messages and persist
+          currentConvo.messages = truncatedMessages;
+          saveGuestConversation(currentConvo);
+          setActiveConversationState(currentConvo);
+        }
+      }
+      setEditingMessageIndex(null);
+    }
     
     if (isUserAuthenticated) {
       // Create conversation if none exists for authenticated users
@@ -580,7 +617,7 @@ export function AIWorkspace() {
     setInput("");
     clearChatDraft();
     setIsTyping(true);
-    chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds });
+    chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds, messagesOverride });
   };
 
   const handleSendMessage = async (message: string, messagesOverride?: ChatMessage[]) => {
@@ -1014,7 +1051,20 @@ export function AIWorkspace() {
             ) : (
               <div className="space-y-4">
                 {/* Combine DB/local messages with optimistic messages for display */}
-                {[...messages, ...optimisticMessages].map((message, index) => (
+                {[...messages, ...optimisticMessages].map((message, index) => {
+                  const handleLongPressStart = () => {
+                    longPressTimerRef.current = setTimeout(() => {
+                      setLongPressMenuIndex(index);
+                    }, 500);
+                  };
+                  const handleLongPressEnd = () => {
+                    if (longPressTimerRef.current) {
+                      clearTimeout(longPressTimerRef.current);
+                      longPressTimerRef.current = null;
+                    }
+                  };
+                  
+                  return (
                   <div
                     key={index}
                     className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
@@ -1022,12 +1072,22 @@ export function AIWorkspace() {
                     <div className={`max-w-[85%] min-w-0 ${message.role === "assistant" ? "space-y-0" : ""}`}>
                       <div className={`flex items-start gap-1 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                         <div
-                          className={`px-4 py-3 rounded-2xl ${
+                          className={`px-4 py-3 rounded-2xl cursor-pointer select-none ${
                             message.role === "user"
                               ? "bg-primary text-primary-foreground glow-purple-sm"
                               : "bg-muted glass"
                           }`}
                           data-testid={`message-${index}`}
+                          onTouchStart={handleLongPressStart}
+                          onTouchEnd={handleLongPressEnd}
+                          onTouchCancel={handleLongPressEnd}
+                          onMouseDown={handleLongPressStart}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setLongPressMenuIndex(index);
+                          }}
                         >
                           <p className="text-sm leading-relaxed whitespace-pre-line break-words">
                             {message.content}
@@ -1037,9 +1097,16 @@ export function AIWorkspace() {
                           messageIndex={index}
                           messageContent={message.content}
                           isUserMessage={message.role === "user"}
+                          isOpen={longPressMenuIndex === index}
+                          onOpenChange={(open) => {
+                            if (!open) setLongPressMenuIndex(null);
+                          }}
+                          showTrigger={false}
                           onEdit={(content) => {
+                            setEditingMessageIndex(index);
                             setInput(content);
                             inputRef.current?.focus();
+                            setLongPressMenuIndex(null);
                           }}
                           onDelete={() => {
                             const updated = deleteMessageFromConversation(index);
@@ -1051,17 +1118,21 @@ export function AIWorkspace() {
                                 setStartedFresh(true);
                               }
                             }
+                            setLongPressMenuIndex(null);
                           }}
                           onAskFollowUp={(content) => {
                             setInput(content);
                             inputRef.current?.focus();
+                            setLongPressMenuIndex(null);
                           }}
                           onResend={(content) => {
                             handleSendMessage(content);
+                            setLongPressMenuIndex(null);
                           }}
                           onThinkDeeper={(originalResponse) => {
                             const thinkDeeperPrompt = `I'd like you to think more deeply about your last response. Can you expand on this with more detail, nuance, or alternative perspectives?\n\nYour previous response was: "${originalResponse.slice(0, 300)}${originalResponse.length > 300 ? '...' : ''}"`;
                             handleSendMessage(thinkDeeperPrompt);
+                            setLongPressMenuIndex(null);
                           }}
                           onRegenerate={() => {
                             const allMsgs = [...messages, ...optimisticMessages];
@@ -1089,6 +1160,7 @@ export function AIWorkspace() {
                               }
                               handleSendMessage(lastUserMsg, prunedMessages);
                             }
+                            setLongPressMenuIndex(null);
                           }}
                           isLoggedIn={!!user}
                         />
@@ -1101,7 +1173,8 @@ export function AIWorkspace() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {isTyping && (
                   <div className="flex justify-start">
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">

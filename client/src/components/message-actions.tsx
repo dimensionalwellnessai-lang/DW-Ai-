@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -7,6 +7,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +68,9 @@ interface MessageActionsProps {
   onThinkDeeper?: (originalResponse: string) => void;
   onRegenerate?: () => void;
   isLoggedIn: boolean;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }
 
 export function MessageActions({
@@ -76,13 +84,24 @@ export function MessageActions({
   onThinkDeeper,
   onRegenerate,
   isLoggedIn,
+  isOpen: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
 }: MessageActionsProps) {
   const { toast } = useToast();
+  const [internalOpen, setInternalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  const isControlled = controlledOpen !== undefined;
+  const menuOpen = isControlled ? controlledOpen : internalOpen;
+  const setMenuOpen = (open: boolean) => {
+    if (onOpenChange) onOpenChange(open);
+    if (!isControlled) setInternalOpen(open);
+  };
 
   const handleReadAloud = () => {
     if (!("speechSynthesis" in window)) {
@@ -277,18 +296,24 @@ Can you tell me more about this?`);
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 opacity-40 hover:opacity-100 transition-opacity shrink-0"
-            data-testid={`button-message-actions-${messageIndex}`}
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align={isUserMessage ? "end" : "start"}>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        {showTrigger ? (
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 opacity-40 hover:opacity-100 transition-opacity shrink-0"
+              data-testid={`button-message-actions-${messageIndex}`}
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuTrigger asChild>
+            <span className="sr-only" aria-hidden="true" />
+          </DropdownMenuTrigger>
+        )}
+        <DropdownMenuContent align={isUserMessage ? "end" : "start"} sideOffset={5}>
           <DropdownMenuItem onClick={handleCopy} data-testid={`action-copy-${messageIndex}`}>
             <Copy className="h-4 w-4 mr-2" />
             Copy
