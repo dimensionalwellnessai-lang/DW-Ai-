@@ -54,7 +54,6 @@ import WakeUpSystemPage from "@/pages/systems/wake-up";
 import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
-import NotFound from "@/pages/not-found";
 import TodayHubPage from "@/pages/today-hub";
 
 function Router() {
