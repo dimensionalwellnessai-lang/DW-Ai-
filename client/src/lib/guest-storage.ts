@@ -360,6 +360,20 @@ export interface SoftOnboarding {
   completedAt: number | null;
 }
 
+export type OnboardingLogType = "grounding_practice" | "perspective_shift" | "next_hour_plan" | "session_started";
+
+export interface OnboardingLog {
+  id: string;
+  type: OnboardingLogType;
+  title: string;
+  content: string;
+  actionStep?: string;
+  energyStates: string[];
+  backgroundContext: string[];
+  dimensionTags: string[];
+  createdAt: number;
+}
+
 export type PlanningHorizon = "today" | "week" | "month";
 export type PlanningDomain = "meals" | "workouts" | "general";
 
@@ -406,6 +420,7 @@ export interface GuestData {
   savedRecipes?: SavedRecipe[];
   groceryLists?: GroceryList[];
   domainExclusions?: Record<string, { domain: string; exclusions: string[]; updatedAt: number }>;
+  onboardingLogs?: OnboardingLog[];
   preferences: {
     themeMode: "accent-only" | "full-background";
     useMetricUnits?: boolean;
@@ -2013,4 +2028,38 @@ export function addRecipeIngredientsToGroceryList(recipeId: string, listId?: str
   }
   
   return getGroceryLists().find(l => l.id === list!.id) || null;
+}
+
+export function saveOnboardingLog(log: Omit<OnboardingLog, "id" | "createdAt">): OnboardingLog {
+  const data = getGuestData() || initGuestData();
+  if (!data.onboardingLogs) {
+    data.onboardingLogs = [];
+  }
+  
+  const newLog: OnboardingLog = {
+    ...log,
+    id: generateId(),
+    createdAt: Date.now(),
+  };
+  
+  data.onboardingLogs.unshift(newLog);
+  saveGuestData(data);
+  return newLog;
+}
+
+export function getOnboardingLogs(): OnboardingLog[] {
+  const data = getGuestData();
+  return data?.onboardingLogs || [];
+}
+
+export function getOnboardingLogsByType(type: OnboardingLogType): OnboardingLog[] {
+  return getOnboardingLogs().filter(log => log.type === type);
+}
+
+export function getTodayOnboardingLogs(): OnboardingLog[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStart = today.getTime();
+  
+  return getOnboardingLogs().filter(log => log.createdAt >= todayStart);
 }
