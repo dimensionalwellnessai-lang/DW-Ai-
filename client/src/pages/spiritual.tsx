@@ -26,6 +26,10 @@ import {
 } from "@/lib/guest-storage";
 import { InAppSearch, type SearchResult } from "@/components/in-app-search";
 import { useToast } from "@/hooks/use-toast";
+import { AlternativesDialog } from "@/components/alternatives-dialog";
+import { ExclusionsButton } from "@/components/exclusions-manager";
+import { getDomainExclusions } from "@/lib/guest-storage";
+import { ArrowRightLeft } from "lucide-react";
 
 const PRACTICE_LABELS: Record<string, string> = {
   meditation: "Meditation",
@@ -170,6 +174,19 @@ export default function SpiritualPage() {
   const [hasProfile, setHasProfile] = useState(hasCompletedSpiritualProfile());
   const [expandedPractice, setExpandedPractice] = useState<number | null>(null);
   const bodyProfile = getBodyProfile();
+  
+  const [alternativesOpen, setAlternativesOpen] = useState(false);
+  const [selectedStep, setSelectedStep] = useState("");
+  const [selectedContext, setSelectedContext] = useState("");
+  
+  const { toast } = useToast();
+  
+  const handleFindAlternatives = (step: string, practiceTitle: string) => {
+    const stepName = step.replace(/^[^a-zA-Z]*/, '').split('-')[0].trim();
+    setSelectedStep(stepName);
+    setSelectedContext(practiceTitle);
+    setAlternativesOpen(true);
+  };
 
   const handleProfileComplete = () => {
     setProfileOpen(false);
@@ -279,11 +296,22 @@ export default function SpiritualPage() {
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Play className="w-4 h-4 text-primary" />
                   Step-by-Step Guide
+                  <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
                 </h4>
-                <ol className="space-y-2 list-decimal list-inside">
+                <ol className="space-y-1">
                   {practice.steps.map((step, stepIdx) => (
-                    <li key={stepIdx} className="text-sm text-muted-foreground">
-                      {step}
+                    <li 
+                      key={stepIdx} 
+                      className="text-sm text-muted-foreground flex items-start gap-2 p-1.5 -ml-1.5 rounded hover-elevate cursor-pointer group"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFindAlternatives(step, practice.title);
+                      }}
+                      data-testid={`step-${testIdPrefix}-${index}-${stepIdx}`}
+                    >
+                      <span className="shrink-0 w-5 text-right">{stepIdx + 1}.</span>
+                      <span className="flex-1">{step}</span>
+                      <ArrowRightLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-70 shrink-0 mt-0.5" />
                     </li>
                   ))}
                 </ol>
@@ -409,12 +437,15 @@ export default function SpiritualPage() {
 
           {/* AI-Powered Spiritual Search */}
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="font-display font-semibold text-sm">Find Practices</h2>
-              <Badge variant="outline" className="text-xs">
-                <Sparkles className="w-3 h-3 mr-1" />
-                AI-Powered
-              </Badge>
+              <div className="flex gap-2">
+                <ExclusionsButton domain="spiritual" />
+                <Badge variant="outline" className="text-xs">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI-Powered
+                </Badge>
+              </div>
             </div>
             <InAppSearch 
               category="spiritual"
@@ -447,6 +478,15 @@ export default function SpiritualPage() {
             open={profileOpen}
             onClose={() => setProfileOpen(false)}
             onComplete={handleProfileComplete}
+          />
+          
+          <AlternativesDialog
+            open={alternativesOpen}
+            onOpenChange={setAlternativesOpen}
+            domain="spiritual"
+            item={selectedStep}
+            context={selectedContext}
+            excludedItems={getDomainExclusions("spiritual")}
           />
         </div>
       </ScrollArea>

@@ -30,6 +30,10 @@ import {
 } from "@/lib/guest-storage";
 import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
 import { InAppSearch, type SearchResult } from "@/components/in-app-search";
+import { AlternativesDialog } from "@/components/alternatives-dialog";
+import { ExclusionsButton } from "@/components/exclusions-manager";
+import { getDomainExclusions } from "@/lib/guest-storage";
+import { ArrowRightLeft } from "lucide-react";
 
 interface RecoveryItem {
   id: string;
@@ -265,6 +269,14 @@ export function RecoveryPage() {
   const [styleFilter, setStyleFilter] = useState<StyleFilter>("any");
   const [intensityFilter, setIntensityFilter] = useState<IntensityFilter>("any");
   
+  const [alternativesOpen, setAlternativesOpen] = useState(false);
+  const [selectedPractice, setSelectedPractice] = useState("");
+  
+  const handleFindAlternatives = (practice: string) => {
+    setSelectedPractice(practice);
+    setAlternativesOpen(true);
+  };
+  
   const energyContext = getCurrentEnergyContext();
   const currentEnergy = energyContext?.energy || "medium";
 
@@ -491,12 +503,15 @@ export function RecoveryPage() {
 
           {/* AI-Powered Recovery Search */}
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <h2 className="font-display font-semibold text-sm">Find Recovery Practices</h2>
-              <Badge variant="outline" className="text-xs">
-                <Sparkles className="w-3 h-3 mr-1" />
-                AI-Powered
-              </Badge>
+              <div className="flex gap-2">
+                <ExclusionsButton domain="recovery" />
+                <Badge variant="outline" className="text-xs">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI-Powered
+                </Badge>
+              </div>
             </div>
             <InAppSearch 
               category="recovery"
@@ -604,7 +619,14 @@ export function RecoveryPage() {
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm">{item.title}</h3>
+                          <h3 
+                            className="font-medium text-sm hover:text-primary cursor-pointer inline-flex items-center gap-1 group"
+                            onClick={() => handleFindAlternatives(item.title)}
+                            data-testid={`button-alternatives-${item.id}`}
+                          >
+                            {item.title}
+                            <ArrowRightLeft className="w-3 h-3 opacity-0 group-hover:opacity-70" />
+                          </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge variant="outline" className="text-xs">
@@ -691,6 +713,14 @@ export function RecoveryPage() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <AlternativesDialog
+        open={alternativesOpen}
+        onOpenChange={setAlternativesOpen}
+        domain="recovery"
+        item={selectedPractice}
+        excludedItems={getDomainExclusions("recovery")}
+      />
     </div>
   );
 }
