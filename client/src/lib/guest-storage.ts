@@ -364,12 +364,20 @@ export type OnboardingLogType = "grounding_practice" | "perspective_shift" | "ne
 
 export type WeeklyRhythm = "structured" | "flexible" | "mixed" | "varies";
 export type LifeDimension = "physical" | "emotional" | "mental" | "spiritual" | "financial" | "career" | "relationships" | "family" | "social" | "creative" | "learning" | "environment" | "purpose";
+export type ScheduleType = "9to5" | "nightShift" | "student" | "mixed" | "rebuilding";
+export type FocusArea = "body" | "food" | "mind" | "money" | "spirit" | "work";
 
 export interface ProfileSetup {
   weeklyRhythm: WeeklyRhythm | null;
   primaryFocus: LifeDimension | null;
   metDW: boolean;
   completedAt: number | null;
+  scheduleType: ScheduleType | null;
+  busiestDays: number[];
+  wakeTime: string | null;
+  windDownTime: string | null;
+  focusArea: FocusArea | null;
+  starterObjectId: string | null;
 }
 
 export interface OnboardingLog {
@@ -2086,6 +2094,12 @@ export function saveProfileSetup(setup: Partial<ProfileSetup>): void {
     weeklyRhythm: setup.weeklyRhythm ?? data.profileSetup?.weeklyRhythm ?? null,
     primaryFocus: setup.primaryFocus ?? data.profileSetup?.primaryFocus ?? null,
     metDW: setup.metDW ?? data.profileSetup?.metDW ?? false,
+    scheduleType: setup.scheduleType ?? data.profileSetup?.scheduleType ?? null,
+    busiestDays: setup.busiestDays ?? data.profileSetup?.busiestDays ?? [],
+    wakeTime: setup.wakeTime ?? data.profileSetup?.wakeTime ?? null,
+    windDownTime: setup.windDownTime ?? data.profileSetup?.windDownTime ?? null,
+    focusArea: setup.focusArea ?? data.profileSetup?.focusArea ?? null,
+    starterObjectId: setup.starterObjectId ?? data.profileSetup?.starterObjectId ?? null,
     completedAt: setup.completedAt ?? data.profileSetup?.completedAt ?? null,
   };
   saveGuestData(data);
