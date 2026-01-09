@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -991,7 +991,7 @@ export async function registerRoutes(
   // AI-powered contextual search endpoint
   app.post("/api/search", async (req, res) => {
     try {
-      const { query, category, limit } = req.body;
+      const { query, category, limit, excludedIngredients, includeSubstitutes } = req.body;
       
       if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Search query is required" });
@@ -1003,12 +1003,32 @@ export async function registerRoutes(
       }
       
       const searchLimit = Math.min(Math.max(limit || 5, 1), 10);
-      const results = await generateContextualSearch(query, category, searchLimit);
+      const excluded = Array.isArray(excludedIngredients) ? excludedIngredients : [];
+      const results = await generateContextualSearch(query, category, searchLimit, excluded, includeSubstitutes === true);
       
       res.json(results);
     } catch (error) {
       console.error("Search error:", error);
       res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  // AI-powered ingredient substitutes endpoint
+  app.post("/api/ingredient-substitutes", async (req, res) => {
+    try {
+      const { ingredient, context, excludedIngredients } = req.body;
+      
+      if (!ingredient || typeof ingredient !== "string") {
+        return res.status(400).json({ error: "Ingredient is required" });
+      }
+      
+      const excluded = Array.isArray(excludedIngredients) ? excludedIngredients : [];
+      const results = await generateIngredientSubstitutes(ingredient, context, excluded);
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Ingredient substitutes error:", error);
+      res.status(500).json({ error: "Failed to generate substitutes" });
     }
   });
 

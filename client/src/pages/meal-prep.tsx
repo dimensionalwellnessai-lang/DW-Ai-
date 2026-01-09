@@ -77,10 +77,13 @@ import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
 import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-scope-dialog";
 import { InAppSearch, type SearchResult } from "@/components/in-app-search";
+import { IngredientSubstitutesDialog } from "@/components/ingredient-substitutes-dialog";
+import { BannedIngredientsButton, BannedIngredientsManager } from "@/components/banned-ingredients-manager";
 import { 
   rotateContent, 
   getRotationIndex,
   getSoftOnboardingMood,
+  getAllExcludedIngredients,
   type PlanningHorizon
 } from "@/lib/guest-storage";
 import { getCurrentEnergyContext, type EnergyLevel } from "@/lib/energy-context";
@@ -761,6 +764,9 @@ export default function MealPrepPage() {
   const [quickAddItem, setQuickAddItem] = useState("");
   const [recipeBoxOpen, setRecipeBoxOpen] = useState(false);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState("");
+  const [substituteDialogOpen, setSubstituteDialogOpen] = useState(false);
+  const [substituteIngredient, setSubstituteIngredient] = useState("");
+  const [substituteContext, setSubstituteContext] = useState<string | undefined>(undefined);
   
   const { toast } = useToast();
 
@@ -1206,9 +1212,14 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   AI-Powered
                 </Badge>
               </div>
+              <div className="flex gap-2">
+                <BannedIngredientsButton />
+              </div>
               <InAppSearch 
                 category="meals"
                 placeholder="Search recipes (chicken, pasta, salad...)"
+                excludedIngredients={getAllExcludedIngredients()}
+                includeSubstitutes={true}
                 onResultSave={(result: SearchResult) => {
                   const now = Date.now();
                   const recipe: Omit<SavedRecipe, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -1220,6 +1231,10 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     prepTime: parseInt(result.duration?.replace(/\D/g, '') || '0') || 15,
                     cookTime: 0,
                     ingredients: (result.details || []).map(d => ({ name: d, amount: "", unit: "", category: "other" })),
+                    ingredientSubstitutes: result.substitutes ? Object.entries(result.substitutes).map(([original, alternatives]) => ({
+                      original,
+                      alternatives: alternatives
+                    })) : undefined,
                     instructions: [],
                     tags: result.tags,
                     dietaryTags: [],
@@ -2104,9 +2119,12 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           <TabsContent value="swap" className="mt-4 space-y-6">
             <Card>
               <CardContent className="p-4 space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Info className="w-4 h-4" />
-                  <span>Find alternatives based on your dietary restrictions</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Info className="w-4 h-4" />
+                    <span>Find alternatives based on your dietary restrictions</span>
+                  </div>
+                  <BannedIngredientsButton />
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -2119,8 +2137,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && ingredientSearch.trim()) {
-                        ingredientAiMutation.reset();
-                        ingredientAiMutation.mutate(ingredientSearch.trim());
+                        setSubstituteIngredient(ingredientSearch.trim());
+                        setSubstituteDialogOpen(true);
                       }
                     }}
                     className="pl-10"
@@ -2141,6 +2159,19 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     </Button>
                   )}
                 </div>
+                <Button
+                  onClick={() => {
+                    if (ingredientSearch.trim()) {
+                      setSubstituteIngredient(ingredientSearch.trim());
+                      setSubstituteDialogOpen(true);
+                    }
+                  }}
+                  disabled={!ingredientSearch.trim()}
+                  data-testid="button-find-substitutes"
+                >
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Find Substitutes
+                </Button>
                 <div className="flex gap-2">
                   <Badge 
                     variant={filterType === "all" ? "default" : "outline"}
@@ -2647,6 +2678,20 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
         </Dialog>
 
         <PlanningScopeDialog {...PlanningScopeDialogProps} />
+        
+        <IngredientSubstitutesDialog
+          open={substituteDialogOpen}
+          onOpenChange={setSubstituteDialogOpen}
+          ingredient={substituteIngredient}
+          context={substituteContext}
+          excludedIngredients={getAllExcludedIngredients()}
+          onSelectSubstitute={(original, substitute) => {
+            toast({ 
+              title: "Substitute selected", 
+              description: `Use ${substitute} instead of ${original}` 
+            });
+          }}
+        />
         </div>
       </ScrollArea>
     </div>
@@ -2667,6 +2712,7 @@ function MealPreferencesDialog({ open, onClose, onSave, initialPrefs, hasBodyPro
     restrictions: [],
     allergies: [],
     dislikedIngredients: [],
+    bannedIngredients: [],
     caloricTarget: null,
     mealsPerDay: 3,
     syncWithBodyGoal: true,

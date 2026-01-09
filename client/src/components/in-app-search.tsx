@@ -26,6 +26,7 @@ export interface SearchResult {
   duration?: string;
   tags: string[];
   details?: string[];
+  substitutes?: Record<string, string[]>;
   source: "ai-generated";
   category: SearchCategory;
 }
@@ -35,6 +36,8 @@ interface InAppSearchProps {
   placeholder?: string;
   onResultSelect?: (result: SearchResult) => void;
   onResultSave?: (result: SearchResult) => void;
+  excludedIngredients?: string[];
+  includeSubstitutes?: boolean;
   className?: string;
 }
 
@@ -43,6 +46,8 @@ export function InAppSearch({
   placeholder, 
   onResultSelect,
   onResultSave,
+  excludedIngredients = [],
+  includeSubstitutes = false,
   className = "" 
 }: InAppSearchProps) {
   const [query, setQuery] = useState("");
@@ -55,7 +60,9 @@ export function InAppSearch({
       const response = await apiRequest("POST", "/api/search", {
         query: searchQuery,
         category,
-        limit: 5
+        limit: 5,
+        excludedIngredients: excludedIngredients.length > 0 ? excludedIngredients : undefined,
+        includeSubstitutes: includeSubstitutes || undefined
       });
       return response.json();
     },

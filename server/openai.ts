@@ -1630,8 +1630,19 @@ export interface SearchResult {
   duration?: string;
   tags: string[];
   details?: string[];
+  substitutes?: Record<string, string[]>;
   source: "ai-generated";
   category: SearchCategory;
+}
+
+export interface IngredientSubstitute {
+  ingredient: string;
+  alternatives: {
+    name: string;
+    ratio: string;
+    notes: string;
+  }[];
+  reason: string;
 }
 
 interface ContextualSearchResponse {
@@ -1642,17 +1653,27 @@ interface ContextualSearchResponse {
 export async function generateContextualSearch(
   query: string,
   category: SearchCategory,
-  limit: number = 5
+  limit: number = 5,
+  excludedIngredients: string[] = [],
+  includeSubstitutes: boolean = false
 ): Promise<ContextualSearchResponse> {
+  const excludeClause = excludedIngredients.length > 0 
+    ? `\n\nCRITICAL: Do NOT include any of these ingredients: ${excludedIngredients.join(", ")}. Find alternatives that avoid these completely.`
+    : "";
+  
+  const substitutesClause = includeSubstitutes 
+    ? `\n- substitutes: For each key ingredient, provide 1-2 alternatives (e.g., {"butter": ["coconut oil", "olive oil"]})`
+    : "";
+
   const categoryPrompts: Record<SearchCategory, string> = {
-    meals: `Generate ${limit} recipe/meal suggestions based on this search: "${query}"
+    meals: `Generate ${limit} recipe/meal suggestions based on this search: "${query}"${excludeClause}
     
 For each result include:
 - title: Name of the dish/meal
 - description: Brief description (1-2 sentences)
 - duration: Prep/cook time (e.g., "15 min", "30 min")
 - tags: 2-3 tags like ["quick", "healthy", "vegetarian"]
-- details: 3-5 key ingredients or steps`,
+- details: 3-5 key ingredients or steps${substitutesClause}`,
 
     workouts: `Generate ${limit} workout/exercise suggestions based on this search: "${query}"
 
@@ -1737,6 +1758,7 @@ Respond with valid JSON:
       duration: r.duration || null,
       tags: Array.isArray(r.tags) ? r.tags : [],
       details: Array.isArray(r.details) ? r.details : [],
+      substitutes: r.substitutes || undefined,
       source: "ai-generated" as const,
       category
     }));
@@ -1748,5 +1770,71 @@ Respond with valid JSON:
   } catch (error) {
     console.error("Failed to generate contextual search:", error);
     return { results: [], summary: "Search failed. Please try again." };
+  }
+}
+
+export async function generateIngredientSubstitutes(
+  ingredient: string,
+  context?: string,
+  excludedIngredients: string[] = []
+): Promise<{ substitutes: IngredientSubstitute; suggestions: string[] }> {
+  const excludeClause = excludedIngredients.length > 0 
+    ? `\n\nDo NOT suggest any of these as alternatives: ${excludedIngredients.join(", ")}`
+    : "";
+
+  const contextClause = context 
+    ? `\nContext: This ingredient is being used in "${context}"`
+    : "";
+
+  const prompt = `Generate ingredient substitutes for: "${ingredient}"${contextClause}${excludeClause}
+
+Provide 3-5 practical alternatives that can replace this ingredient in cooking/baking.
+
+For each alternative, include:
+- name: The substitute ingredient
+- ratio: How much to use compared to original (e.g., "1:1", "use half as much")
+- notes: Brief tip on using this substitute
+
+Also provide a brief explanation of why someone might want to substitute this ingredient.
+
+Respond with valid JSON:
+{
+  "substitute": {
+    "ingredient": "${ingredient}",
+    "alternatives": [
+      { "name": "Alternative 1", "ratio": "1:1", "notes": "Works well in..." }
+    ],
+    "reason": "Common reasons to substitute include allergies, dietary preferences, or availability"
+  },
+  "suggestions": ["Quick tip 1", "Quick tip 2"]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 800,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return { 
+        substitutes: { ingredient, alternatives: [], reason: "No substitutes found" },
+        suggestions: []
+      };
+    }
+
+    const parsed = JSON.parse(content);
+    return {
+      substitutes: parsed.substitute || { ingredient, alternatives: [], reason: "" },
+      suggestions: parsed.suggestions || []
+    };
+  } catch (error) {
+    console.error("Failed to generate ingredient substitutes:", error);
+    return { 
+      substitutes: { ingredient, alternatives: [], reason: "Failed to generate substitutes" },
+      suggestions: []
+    };
   }
 }

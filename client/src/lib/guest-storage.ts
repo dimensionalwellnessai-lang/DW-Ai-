@@ -76,6 +76,7 @@ export interface MealPrepPreferences {
   restrictions: string[];
   allergies: string[];
   dislikedIngredients: string[];
+  bannedIngredients: string[];
   caloricTarget: number | null;
   mealsPerDay: number;
   syncWithBodyGoal: boolean;
@@ -222,6 +223,12 @@ export interface CalendarEvent {
   updatedAt: number;
 }
 
+export interface IngredientSubstitute {
+  original: string;
+  alternatives: string[];
+  reason?: string;
+}
+
 export interface SavedRecipe {
   id: string;
   title: string;
@@ -232,6 +239,7 @@ export interface SavedRecipe {
   prepTime: number;
   cookTime: number;
   ingredients: { name: string; amount: string; unit: string; category: string }[];
+  ingredientSubstitutes?: IngredientSubstitute[];
   instructions: string[];
   tags: string[];
   dietaryTags: string[];
@@ -910,6 +918,53 @@ export function saveMealPrepPreferences(prefs: MealPrepPreferences): void {
   const data = getGuestData() || initGuestData();
   data.mealPrepPreferences = { ...prefs, updatedAt: Date.now() };
   saveGuestData(data);
+}
+
+export function getBannedIngredients(): string[] {
+  const prefs = getMealPrepPreferences();
+  return prefs?.bannedIngredients || [];
+}
+
+export function addBannedIngredient(ingredient: string): void {
+  const prefs = getMealPrepPreferences() || {
+    dietaryStyle: null,
+    restrictions: [],
+    allergies: [],
+    dislikedIngredients: [],
+    bannedIngredients: [],
+    caloricTarget: null,
+    mealsPerDay: 3,
+    syncWithBodyGoal: false,
+    notes: "",
+    updatedAt: Date.now()
+  };
+  
+  const normalized = ingredient.toLowerCase().trim();
+  if (!prefs.bannedIngredients.includes(normalized)) {
+    prefs.bannedIngredients = [...prefs.bannedIngredients, normalized];
+    saveMealPrepPreferences(prefs);
+  }
+}
+
+export function removeBannedIngredient(ingredient: string): void {
+  const prefs = getMealPrepPreferences();
+  if (!prefs) return;
+  
+  const normalized = ingredient.toLowerCase().trim();
+  prefs.bannedIngredients = prefs.bannedIngredients.filter(i => i !== normalized);
+  saveMealPrepPreferences(prefs);
+}
+
+export function getAllExcludedIngredients(): string[] {
+  const prefs = getMealPrepPreferences();
+  if (!prefs) return [];
+  
+  const excluded = new Set<string>();
+  prefs.bannedIngredients.forEach(i => excluded.add(i.toLowerCase()));
+  prefs.allergies.forEach(i => excluded.add(i.toLowerCase()));
+  prefs.dislikedIngredients.forEach(i => excluded.add(i.toLowerCase()));
+  
+  return Array.from(excluded);
 }
 
 export function getWorkoutPreferences(): WorkoutPreferences | null {
