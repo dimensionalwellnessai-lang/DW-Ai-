@@ -1032,6 +1032,33 @@ export async function registerRoutes(
     }
   });
 
+  // Generalized alternatives endpoint for all domains
+  app.post("/api/alternatives", async (req, res) => {
+    try {
+      const { domain, item, context, excludedItems, constraints } = req.body;
+      
+      if (!item || typeof item !== "string") {
+        return res.status(400).json({ error: "Item is required" });
+      }
+      
+      const validDomains = ["meals", "workouts", "recovery", "spiritual", "community"];
+      if (!domain || !validDomains.includes(domain)) {
+        return res.status(400).json({ error: "Valid domain is required: meals, workouts, recovery, spiritual, or community" });
+      }
+      
+      const excluded = Array.isArray(excludedItems) ? excludedItems : [];
+      const userConstraints = Array.isArray(constraints) ? constraints : [];
+      
+      const { generateDomainAlternatives } = await import("./openai");
+      const results = await generateDomainAlternatives(domain, item, context, excluded, userConstraints);
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Alternatives error:", error);
+      res.status(500).json({ error: "Failed to generate alternatives" });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, conversationHistory, context } = req.body;

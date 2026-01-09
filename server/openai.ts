@@ -1838,3 +1838,151 @@ Respond with valid JSON:
     };
   }
 }
+
+export type AlternativesDomain = "meals" | "workouts" | "recovery" | "spiritual" | "community";
+
+export interface AlternativeOption {
+  name: string;
+  ratio?: string;
+  duration?: string;
+  intensity?: string;
+  notes: string;
+  tags?: string[];
+}
+
+export interface AlternativesResult {
+  original: string;
+  alternatives: AlternativeOption[];
+  reason: string;
+}
+
+const DOMAIN_PROMPTS: Record<AlternativesDomain, (item: string, context?: string, constraints?: string[]) => string> = {
+  meals: (item, context, constraints) => {
+    const constraintClause = constraints?.length ? `\nUser constraints: ${constraints.join(", ")}` : "";
+    const contextClause = context ? `\nContext: This ingredient is for "${context}"` : "";
+    return `Find cooking/ingredient substitutes for: "${item}"${contextClause}${constraintClause}
+
+For each alternative include:
+- name: The substitute ingredient
+- ratio: Conversion ratio (e.g., "1:1", "use half")
+- notes: Brief cooking tip for using this substitute
+
+Provide 3-5 alternatives.`;
+  },
+  
+  workouts: (item, context, constraints) => {
+    const constraintClause = constraints?.length ? `\nUser limitations: ${constraints.join(", ")}` : "";
+    const contextClause = context ? `\nContext: Part of "${context}"` : "";
+    return `Find exercise alternatives for: "${item}"${contextClause}${constraintClause}
+
+For each alternative include:
+- name: The alternative exercise
+- duration: Typical duration or reps
+- intensity: low/medium/high
+- notes: Brief form tip or benefit
+- tags: 1-2 muscle groups or categories
+
+Provide 3-5 alternatives that achieve similar results.`;
+  },
+  
+  recovery: (item, context, constraints) => {
+    const constraintClause = constraints?.length ? `\nUser constraints: ${constraints.join(", ")}` : "";
+    const contextClause = context ? `\nContext: Part of "${context}"` : "";
+    return `Find recovery/rest alternatives for: "${item}"${contextClause}${constraintClause}
+
+For each alternative include:
+- name: The alternative practice
+- duration: Typical duration
+- notes: Brief guidance or benefit
+- tags: 1-2 categories (stretching, relaxation, etc.)
+
+Provide 3-5 alternatives that provide similar recovery benefits.`;
+  },
+  
+  spiritual: (item, context, constraints) => {
+    const constraintClause = constraints?.length ? `\nUser preferences: ${constraints.join(", ")}` : "";
+    const contextClause = context ? `\nContext: Part of "${context}"` : "";
+    return `Find spiritual practice alternatives for: "${item}"${contextClause}${constraintClause}
+
+For each alternative include:
+- name: The alternative practice
+- duration: Typical duration
+- notes: Brief description of the practice
+- tags: 1-2 categories (meditation, prayer, reflection, etc.)
+
+Provide 3-5 alternatives that offer similar spiritual benefits.`;
+  },
+  
+  community: (item, context, constraints) => {
+    const constraintClause = constraints?.length ? `\nUser preferences: ${constraints.join(", ")}` : "";
+    const contextClause = context ? `\nContext: Part of "${context}"` : "";
+    return `Find community activity alternatives for: "${item}"${contextClause}${constraintClause}
+
+For each alternative include:
+- name: The alternative activity
+- duration: Typical time commitment
+- notes: Brief description of the activity
+- tags: 1-2 categories (social, service, learning, etc.)
+
+Provide 3-5 alternatives that offer similar connection or community benefits.`;
+  }
+};
+
+export async function generateDomainAlternatives(
+  domain: AlternativesDomain,
+  item: string,
+  context?: string,
+  excludedItems: string[] = [],
+  constraints: string[] = []
+): Promise<{ alternatives: AlternativesResult; suggestions: string[] }> {
+  const excludeClause = excludedItems.length > 0 
+    ? `\n\nDo NOT suggest any of these as alternatives: ${excludedItems.join(", ")}`
+    : "";
+
+  const basePrompt = DOMAIN_PROMPTS[domain](item, context, constraints);
+  
+  const prompt = `${basePrompt}${excludeClause}
+
+Also provide 2-3 quick tips related to this ${domain === "meals" ? "ingredient" : "activity"}.
+
+Respond with valid JSON:
+{
+  "alternatives": {
+    "original": "${item}",
+    "alternatives": [
+      { "name": "Alternative 1", "notes": "Brief tip...", "duration": "optional", "intensity": "optional", "ratio": "optional", "tags": ["optional"] }
+    ],
+    "reason": "Brief explanation of why someone might want alternatives"
+  },
+  "suggestions": ["Quick tip 1", "Quick tip 2"]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 1000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      return { 
+        alternatives: { original: item, alternatives: [], reason: "No alternatives found" },
+        suggestions: []
+      };
+    }
+
+    const parsed = JSON.parse(content);
+    return {
+      alternatives: parsed.alternatives || { original: item, alternatives: [], reason: "" },
+      suggestions: parsed.suggestions || []
+    };
+  } catch (error) {
+    console.error("Failed to generate domain alternatives:", error);
+    return { 
+      alternatives: { original: item, alternatives: [], reason: "Failed to generate alternatives" },
+      suggestions: []
+    };
+  }
+}
