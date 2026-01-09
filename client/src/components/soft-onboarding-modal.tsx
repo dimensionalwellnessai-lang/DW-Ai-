@@ -5,8 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, X, Anchor, RefreshCw, ListTodo, MessageCircle, Play, Plus, Calendar } from "lucide-react";
 import { COPY } from "@/copy/en";
 import { BreathingPlayer } from "./breathing-player";
-import { saveCalendarEvent, saveSoftOnboardingProgress, getSoftOnboardingProgress } from "@/lib/guest-storage";
+import { saveCalendarEvent, saveSoftOnboardingProgress, getSoftOnboardingProgress, saveOnboardingLog } from "@/lib/guest-storage";
 import { useToast } from "@/hooks/use-toast";
+import { Lightbulb } from "lucide-react";
 
 export type OnboardingMood = "calm" | "heavy" | "scattered" | "pushing" | "unsure";
 
@@ -159,6 +160,15 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
     } else if (selectedResponse === "plan") {
       setStep(6);
     } else if (selectedResponse === "talk") {
+      saveOnboardingLog({
+        type: "session_started",
+        title: "Talk Session Started",
+        content: "Started a conversation to process what's on your mind.",
+        energyStates: selectedEnergies,
+        backgroundContext: selectedBackgrounds,
+        dimensionTags: ["emotional", "mental"],
+      });
+      
       saveSoftOnboardingProgress(null);
       onOpenChat?.();
       onComplete(selectedEnergies[0] || "unsure", selectedEnergies, selectedBackgrounds, "talk");
@@ -167,7 +177,17 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
 
   const handleBreathingComplete = () => {
     setShowBreathing(false);
-    toast({ title: "Grounding complete", description: "Take this calm with you." });
+    
+    saveOnboardingLog({
+      type: "grounding_practice",
+      title: "Grounding Practice Complete",
+      content: "Completed a 60-90 second breathing exercise to reduce acute arousal and restore calm.",
+      energyStates: selectedEnergies,
+      backgroundContext: selectedBackgrounds,
+      dimensionTags: ["emotional", "physical"],
+    });
+    
+    toast({ title: "Grounding complete", description: "Take this calm with you. Saved to your log." });
     saveSoftOnboardingProgress(null);
     onComplete(selectedEnergies[0] || "calm", selectedEnergies, selectedBackgrounds, "anchor");
   };
@@ -196,11 +216,32 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
   };
 
   const handleFinishReframe = () => {
+    saveOnboardingLog({
+      type: "perspective_shift",
+      title: "Perspective Shift",
+      content: reframePerspective,
+      actionStep: "Take one breath and name one thing you can do in the next 10 minutes.",
+      energyStates: selectedEnergies,
+      backgroundContext: selectedBackgrounds,
+      dimensionTags: ["emotional", "mental"],
+    });
+    
+    toast({ title: "Perspective saved", description: "This shift is now in your log." });
     saveSoftOnboardingProgress(null);
     onComplete(selectedEnergies[0] || "unsure", selectedEnergies, selectedBackgrounds, "reframe");
   };
 
   const handleFinishPlan = () => {
+    saveOnboardingLog({
+      type: "next_hour_plan",
+      title: "Next Hour Plan",
+      content: "Created a 30-60 minute plan: 5 min to get settled, 20-40 min focused task, 5 min pause before next thing.",
+      energyStates: selectedEnergies,
+      backgroundContext: selectedBackgrounds,
+      dimensionTags: ["productivity", "mental"],
+    });
+    
+    toast({ title: "Plan saved", description: "Your next hour plan is logged." });
     saveSoftOnboardingProgress(null);
     onComplete(selectedEnergies[0] || "unsure", selectedEnergies, selectedBackgrounds, "plan");
   };
