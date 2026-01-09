@@ -67,6 +67,10 @@ import { PlanningScopeDialog, usePlanningScope } from "@/components/planning-sco
 import { ResourceFormDialog } from "@/components/resource-form-dialog";
 import { DocumentImportFlow } from "@/components/document-import-flow";
 import { InAppSearch, type SearchResult } from "@/components/in-app-search";
+import { AlternativesDialog } from "@/components/alternatives-dialog";
+import { ExclusionsButton } from "@/components/exclusions-manager";
+import { getDomainExclusions } from "@/lib/guest-storage";
+import { ArrowRightLeft } from "lucide-react";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -265,7 +269,18 @@ export default function WorkoutPage() {
   const [aiWorkoutSuggestion, setAiWorkoutSuggestion] = useState<string | null>(null);
   const workoutRequestId = useRef(0);
   
+  const [alternativesOpen, setAlternativesOpen] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState<string>("");
+  const [selectedExerciseContext, setSelectedExerciseContext] = useState<string>("");
+  
   const { toast } = useToast();
+  
+  const handleFindAlternatives = (exercise: string, workoutTitle: string) => {
+    const exerciseName = exercise.replace(/^[^a-zA-Z]*/, '').split(':')[0].trim();
+    setSelectedExercise(exerciseName);
+    setSelectedExerciseContext(workoutTitle);
+    setAlternativesOpen(true);
+  };
   
   useEffect(() => {
     if (selectedWorkoutParam) {
@@ -715,20 +730,23 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
         </Card>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h2 className="font-semibold flex items-center gap-2">
               <Dumbbell className="w-4 h-4" />
               Browse Workouts
             </h2>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              data-testid="button-toggle-filters"
-            >
-              <Filter className="w-4 h-4 mr-1" />
-              Filters
-            </Button>
+            <div className="flex gap-2">
+              <ExclusionsButton domain="workouts" />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                data-testid="button-toggle-filters"
+              >
+                <Filter className="w-4 h-4 mr-1" />
+                Filters
+              </Button>
+            </div>
           </div>
 
           {/* AI-Powered Workout Search */}
@@ -917,11 +935,24 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   {expandedWorkout === index && (
                     <div className="mt-4 pt-4 border-t space-y-4">
                       <div>
-                        <h4 className="text-sm font-medium mb-2">Workout Steps</h4>
-                        <ol className="space-y-1 list-decimal list-inside">
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          Workout Steps
+                          <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
+                        </h4>
+                        <ol className="space-y-1">
                           {workout.steps.map((step, stepIdx) => (
-                            <li key={stepIdx} className="text-sm text-muted-foreground">
-                              {step}
+                            <li 
+                              key={stepIdx} 
+                              className="text-sm text-muted-foreground flex items-start gap-2 p-1.5 -ml-1.5 rounded hover-elevate cursor-pointer group"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleFindAlternatives(step, workout.title);
+                              }}
+                              data-testid={`step-${index}-${stepIdx}`}
+                            >
+                              <span className="shrink-0 w-5 text-right">{stepIdx + 1}.</span>
+                              <span className="flex-1">{step}</span>
+                              <ArrowRightLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-70 shrink-0 mt-0.5" />
                             </li>
                           ))}
                         </ol>
@@ -1336,6 +1367,15 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           </DialogContent>
         </Dialog>
         <PlanningScopeDialog {...PlanningScopeDialogProps} />
+        
+        <AlternativesDialog
+          open={alternativesOpen}
+          onOpenChange={setAlternativesOpen}
+          domain="workouts"
+          item={selectedExercise}
+          context={selectedExerciseContext}
+          excludedItems={getDomainExclusions("workouts")}
+        />
       </div>
     </ScrollArea>
     </div>
