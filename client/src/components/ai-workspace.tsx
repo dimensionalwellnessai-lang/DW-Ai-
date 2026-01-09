@@ -1350,17 +1350,6 @@ export function AIWorkspace() {
         isOpen={showProfileSetup}
         onComplete={() => {
           setShowProfileSetup(false);
-          const mood = getSoftOnboardingMood();
-          if (mood) {
-            const moodMessages: Record<SoftOnboardingMood, string> = {
-              calm: "I'm feeling calm today.",
-              heavy: "I'm feeling heavy today and could use some support.",
-              scattered: "My mind feels scattered right now.",
-              pushing: "I'm pushing through but could use some grounding.",
-              unsure: "I'm not quite sure how I'm feeling.",
-            };
-            handleSendMessage(moodMessages[mood]);
-          }
         }}
         onOpenChat={() => {
           setShowProfileSetup(false);
