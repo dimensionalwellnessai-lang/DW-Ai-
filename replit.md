@@ -23,6 +23,7 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **Energy Context System**: The AI adapts its tone, pacing, and suggestions based on user energy levels (low, medium, high) derived from mood logs and body scans, always with transparent explanations and user consent.
 *   **Guided Experiences**: Follows a Netflix-style layout with AI-picked recommendations, "Why" explanations, single-selection patterns, and explicit calendar confirmations.
 *   **Transparency & Trust**: Implements data origin labels, an "Explain Why" toggle for AI suggestions, a user feedback queue, and energy-adaptive AI patterns with consent reminders to avoid dark patterns.
+*   **Ingredient Substitution System**: AI-powered ingredient substitutes with ratios and usage notes. Users can click any ingredient to find alternatives, manage banned/excluded ingredients that are automatically filtered from all AI meal suggestions, and view substitutes with contextual tips.
 
 ### Configuration Architecture
 *   **Centralized Voice & Copy**: `client/src/config/brand.ts` for app identity, `client/src/config/voiceGuide.ts` for AI voice rules, and `client/src/copy/en.ts` for all UI text.
