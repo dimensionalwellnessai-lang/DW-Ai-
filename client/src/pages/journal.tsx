@@ -104,8 +104,11 @@ export default function JournalPage() {
   useEffect(() => {
     if (!pendingHighlightId || highlightProcessedRef.current) return;
     
-    const logExists = momentumLogs.some(l => l.id === pendingHighlightId);
-    if (logExists) {
+    // Priority: momentumLogs first, then filteredEntries (if not found in momentumLogs)
+    const foundInMomentumLogs = momentumLogs.some(l => l.id === pendingHighlightId);
+    const foundInEntries = entries.some(e => e.id === pendingHighlightId);
+    
+    if (foundInMomentumLogs || foundInEntries) {
       highlightProcessedRef.current = true;
       setHighlightedId(pendingHighlightId);
       setTimeout(() => {
@@ -116,7 +119,7 @@ export default function JournalPage() {
         setPendingHighlightId(null);
       }, 3000);
     }
-  }, [momentumLogs, pendingHighlightId]);
+  }, [momentumLogs, entries, pendingHighlightId]);
 
   const filteredEntries = entries.filter(entry => {
     const matchesSearch = searchQuery === "" || 
@@ -315,56 +318,68 @@ export default function JournalPage() {
           )}
 
           <div className="space-y-3">
-            {filteredEntries.map(entry => (
-              <Card key={entry.id} className="hover-elevate cursor-pointer" data-testid={`card-entry-${entry.id}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0" onClick={() => handleEditEntry(entry)}>
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h4 className="font-medium truncate">{entry.title}</h4>
-                        {entry.mood && (
-                          <Badge variant="secondary" className="text-xs">
-                            {MOOD_OPTIONS.find(m => m.value === entry.mood)?.label || entry.mood}
-                          </Badge>
-                        )}
+            {filteredEntries.map(entry => {
+              const isHighlighted = highlightedId === entry.id;
+              return (
+                <div
+                  key={entry.id}
+                  ref={isHighlighted ? highlightRef : undefined}
+                >
+                  <Card 
+                    className={`hover-elevate cursor-pointer transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`} 
+                    data-testid={`card-entry-${entry.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0" onClick={() => handleEditEntry(entry)}>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
+                            <h4 className="font-medium truncate">{entry.title}</h4>
+                            {entry.mood && (
+                              <Badge variant="secondary" className="text-xs">
+                                {MOOD_OPTIONS.find(m => m.value === entry.mood)?.label || entry.mood}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                            {entry.content}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {format(new Date(entry.createdAt), "MMM d, yyyy")}
+                            </span>
+                            {entry.tags.map(tag => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleEditEntry(entry)}
+                            data-testid={`button-edit-${entry.id}`}
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            data-testid={`button-delete-${entry.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {entry.content}
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {format(new Date(entry.createdAt), "MMM d, yyyy")}
-                        </span>
-                        {entry.tags.map(tag => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEditEntry(entry)}
-                        data-testid={`button-edit-${entry.id}`}
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteEntry(entry.id)}
-                        data-testid={`button-delete-${entry.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
           </div>
 
           {filteredEntries.length === 0 && entries.length > 0 && (

@@ -1,0 +1,239 @@
+Perfect — we’ll do A + B together, in the correct order, so this actually feels finished and not just “feature-complete”.
+
+Below is the final execution plan and then two paste-ready specs you can hand to the Agent back-to-back.
+
+⸻
+
+✅ ORDER OF OPERATIONS (do not change)
+	1.	A — Finish polish + ship settings
+(stability, confidence, no leaks)
+	2.	B — Add Community tab (MVP, intentional placeholder)
+(completeness + future signal)
+
+When these are done, v1 is DONE. Not “almost”.
+
+⸻
+
+🔒 A) FINAL POLISH + SHIP SETTINGS (Release Lock)
+
+What this phase is about
+
+Not adding features — locking behavior so nothing surprises you or users.
+
+⸻
+
+📌 SPEC A: Final Polish + Ship Lock (v1)
+
+SPEC: Final Polish + Ship Lock (v1)
+
+GOAL
+Lock the app into a production-safe, predictable v1 state.
+No new features. Only tightening + safeguards.
+
+--------------------------------------------
+1) Highlight polish (final pass)
+--------------------------------------------
+
+PLANS (/plans):
+- Highlight supported lists:
+  ✓ momentumEvents
+  ✓ momentumRoutines
+  ✓ draftPlans
+  ✓ activePlans
+- DO NOT highlight archivedPlans
+
+Priority order (first match wins):
+1) momentumEvents
+2) momentumRoutines
+3) draftPlans
+4) activePlans
+
+Match-only rule:
+- Apply highlight ONLY if highlightId exists in that list
+- If no match anywhere → do nothing
+
+JOURNAL (/journal):
+- Highlight priority:
+  1) momentumLogs
+  2) filteredEntries (only if not found in momentumLogs)
+
+--------------------------------------------
+2) Card gating audit (NO regressions)
+--------------------------------------------
+
+Verify these rules are enforced:
+
+- D2 Nudge:
+  - only if NOT activated
+  - only once per day
+- Weekly Recap:
+  - only if activated
+  - only once per ISO week
+- Next Best Step:
+  - only if activated
+  - only once per day
+- Spotlight:
+  - only if starter object exists
+
+--------------------------------------------
+3) DEV / PROD boundary lock
+--------------------------------------------
+
+- Analytics Debug Panel:
+  - must be DEV-only
+  - must not be bundled or rendered in prod
+- Remove any temporary dev-only buttons (simulate day, clear keys)
+
+--------------------------------------------
+4) Error safety
+--------------------------------------------
+
+- Analytics helpers: wrapped in try/catch
+- Momentum creation helpers: show toast on failure, never crash
+- Highlight fallback clears itself after use
+
+--------------------------------------------
+5) Release Candidate tag
+--------------------------------------------
+
+- Create git tag: rc-1
+- No feature work after this without bumping version
+
+--------------------------------------------
+6) Acceptance tests (manual)
+--------------------------------------------
+
+Golden Path:
+1) Fresh reset
+2) Quick Setup → starter created
+3) DW Chat loads
+4) Spotlight → creates object → routes + highlights
+5) Send first manual message → activation fires
+6) Close app → reopen → retention fires
+7) New day → D2 Nudge appears (if not activated)
+8) Activate → no more nudges
+
+Output required:
+- Confirm highlight priority works
+- Confirm no cards repeat incorrectly
+- Confirm Debug hidden in prod build
+
+
+⸻
+
+🌱 B) COMMUNITY TAB (MVP, intentional, not fake)
+
+This is not social yet. It’s a signal, not a promise.
+
+⸻
+
+📌 SPEC B: Community Tab (Browse → Community)
+
+SPEC: Community Tab MVP (Browse)
+
+GOAL
+Add Community as a first-class destination without overbuilding.
+This signals direction without creating obligation.
+
+--------------------------------------------
+1) Navigation
+--------------------------------------------
+
+Location:
+- Browse screen → sub-tabs
+
+Add:
+- Community tab
+
+Order:
+Explore | Tools | Community
+
+--------------------------------------------
+2) Community Screen (MVP content)
+--------------------------------------------
+
+Title:
+- "Community"
+
+Subtitle:
+- "Build alongside others. More coming soon."
+
+Content blocks (static, non-interactive v1):
+
+Card 1:
+Title: "Weekly Wins"
+Body: "Short reflections from people building their life systems."
+
+Card 2:
+Title: "Focus Rooms"
+Body: "Shared intention blocks — coming soon."
+
+Card 3:
+Title: "Templates & Rituals"
+Body: "Community-created starting points."
+
+Footer text (small):
+- "Community features will unlock over time."
+
+--------------------------------------------
+3) Behavior rules
+--------------------------------------------
+
+- No posting
+- No comments
+- No accounts needed
+- No network calls
+- Screen must never error
+
+--------------------------------------------
+4) Feature flag (optional)
+--------------------------------------------
+
+If desired:
+- Add a simple `COMMUNITY_ENABLED = true`
+- So it can be hidden later without code removal
+
+--------------------------------------------
+5) Acceptance tests
+--------------------------------------------
+
+1) Open Browse
+2) Tap Community
+3) Screen loads instantly
+4) No empty/error states
+5) Back navigation works
+
+Output required:
+- Files changed
+- Route name
+- Confirmation no interactivity yet
+
+
+⸻
+
+🎯 When this is done, your app is finished v1
+
+Not “beta vibes”.
+Not “almost”.
+
+You will have:
+	•	A closed onboarding loop
+	•	A visible momentum system
+	•	Retention + activation signals
+	•	Debug visibility (dev only)
+	•	A future-facing Community surface
+
+At that point, the next work is distribution — not product.
+
+⸻
+
+What I want you to do now
+
+Send SPEC A to the Agent first.
+When that’s done, send SPEC B.
+
+When both are finished, come back and say:
+
+“RC ready.”
+
+I’ll then help you decide how to ship this publicly (Replit → web → stores) and what not to touch next.

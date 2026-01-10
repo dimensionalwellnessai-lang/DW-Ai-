@@ -1,0 +1,75 @@
+Yes — extend it, but with a tight rule so it stays clean and doesn’t highlight random stuff.
+
+Do this
+
+1) Plans: extend highlight to draftPlans + activePlans
+
+Because:
+	•	those are action surfaces users will keep using
+	•	it reinforces “I did something” when they create/activate a plan
+
+Rule: only highlight them if the highlight id matches an item in that list (no generic “first item” highlight).
+
+2) Plans: do not highlight archivedPlans (for now)
+
+Because:
+	•	it’s not a “momentum” destination
+	•	highlighting archived stuff feels confusing (“why are we celebrating something I put away?”)
+
+If later you add an “archive” action that routes there, we can enable it just for that flow.
+
+3) Journal: extend highlight to filteredEntries only when the highlight id came from an action that creates an entry
+
+Right now your One-Tap Momentum creates momentumLogs. So most of the time, highlighting filteredEntries isn’t needed.
+
+But it’s worth supporting it, because eventually you’ll create real journal entries from DW.
+
+Rule: highlight filteredEntries only if:
+	•	the id isn’t found in momentumLogs, AND
+	•	it exists in filteredEntries
+
+That way it never hijacks the UI.
+
+⸻
+
+Exact instruction to your Agent (paste this)
+
+Extend highlight support with safe rules.
+
+PLANS (/plans):
+- Add highlight scanning to draftPlans and activePlans.
+- Keep existing highlight for momentumEvents/momentumRoutines.
+- Do NOT add highlight for archivedPlans yet.
+
+Implementation rule:
+- Apply highlight only if highlightId matches an item in that list.
+- Priority for highlight match:
+  1) momentumEvents
+  2) momentumRoutines
+  3) draftPlans
+  4) activePlans
+- If no match anywhere, do nothing.
+
+JOURNAL (/journal):
+- Keep existing highlight for momentumLogs.
+- Extend to filteredEntries ONLY if:
+  - highlightId not found in momentumLogs
+  - highlightId exists in filteredEntries
+
+No /today page exists, do nothing there.
+
+Output required:
+- Confirm which lists now support highlighting
+- Confirm priority order and match-only behavior
+
+
+⸻
+
+Why this is the best approach
+	•	Users see the exact thing that was created
+	•	No “random highlight” bugs
+	•	No celebrating archives
+	•	Future-proof for when DW creates real journal entries
+
+If you want, the next step after this is making the highlight feel even more “magic” by adding a tiny label on the highlighted item for 2 seconds:
+“Just added” (DEV-safe, production-friendly).
