@@ -17,7 +17,9 @@ function getRelativeTime(ts: number): string {
 
 function EventCard({ event }: { event: StoredEvent }) {
   const [expanded, setExpanded] = useState(false);
-  const hasPayload = Object.keys(event.payload).length > 0;
+  const hasPayload = event.payload != null && 
+    typeof event.payload === "object" && 
+    Object.keys(event.payload as object).length > 0;
 
   return (
     <Card className="bg-card/50 border-border/50">

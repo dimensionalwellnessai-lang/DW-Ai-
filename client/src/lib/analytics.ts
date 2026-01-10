@@ -49,15 +49,18 @@ type EventPayloadMap = {
 };
 
 // Session metadata (in-memory only)
-const sessionId = typeof crypto !== "undefined" && crypto.randomUUID 
-  ? crypto.randomUUID() 
-  : String(Math.random());
+const sessionId =
+  globalThis.crypto &&
+  "randomUUID" in globalThis.crypto &&
+  typeof globalThis.crypto.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
 const env = import.meta.env.DEV ? "dev" : "prod";
 
 // Event structure stored in window
 export type StoredEvent = {
   name: AnalyticsEventName;
-  payload: Record<string, unknown>;
+  payload?: unknown;
   ts: number;
   sessionId: string;
   env: "dev" | "prod";
@@ -69,34 +72,29 @@ declare global {
   }
 }
 
-const ANALYTICS_DEBUG = import.meta.env.DEV;
-
 // Type-safe trackEvent with payload enforcement
 export function trackEvent<K extends AnalyticsEventName>(
   name: K,
   ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
 ): void {
   try {
-    const ts = Date.now();
-    const payload = args[0] ?? {};
-    
-    const eventData: StoredEvent = {
+    const payload = (args[0] as unknown) ?? undefined;
+
+    const event: StoredEvent = {
       name,
-      payload: payload as Record<string, unknown>,
-      ts,
+      payload,
+      ts: Date.now(),
       sessionId,
       env,
     };
 
-    if (ANALYTICS_DEBUG) {
-      console.log("[analytics]", name, payload, new Date(ts).toISOString());
-    }
+    window.__ftsEvents = window.__ftsEvents ?? [];
+    window.__ftsEvents.push(event);
 
-    if (typeof window !== "undefined") {
-      window.__ftsEvents = window.__ftsEvents || [];
-      window.__ftsEvents.push(eventData);
+    if (import.meta.env.DEV) {
+      console.log("[analytics]", name, event);
     }
   } catch {
-    // Never throw - analytics should never break the app
+    // Never throw from analytics
   }
 }

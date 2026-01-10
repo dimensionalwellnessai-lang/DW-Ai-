@@ -1,0 +1,109 @@
+Yep — you’re 90% there. What you pasted is the right structure, but there are 3 small fixes you should make so TypeScript stays happy and your debug panel stays clean.
+
+✅ Fix 1: StoredEvent.payload can’t always be a Record
+
+Right now you typed:
+
+payload: Record<string, unknown>;
+
+But some events have undefined payload (like quick_setup_started). That will force you to lie to TS or cast.
+
+Change it to:
+
+payload?: unknown;
+
+(or payload?: Record<string, unknown> | undefined)
+
+Best simple version:
+
+export type StoredEvent = {
+  name: AnalyticsEventName;
+  payload?: unknown;
+  ts: number;
+  sessionId: string;
+  env: "dev" | "prod";
+};
+
+
+⸻
+
+✅ Fix 2: tighten sessionId fallback (don’t use Math.random alone)
+
+Your fallback:
+
+String(Math.random())
+
+works, but it’s weak. Use a safer fallback:
+
+const sessionId =
+  (globalThis.crypto && "randomUUID" in globalThis.crypto && typeof globalThis.crypto.randomUUID === "function")
+    ? globalThis.crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`;
+
+
+⸻
+
+✅ Fix 3: implement trackEvent (right now it’s ...)
+
+You need to actually push to window.__ftsEvents with the metadata.
+
+Here’s the exact implementation that matches your types and keeps the “payload optional” behavior:
+
+declare global {
+  interface Window {
+    __ftsEvents?: StoredEvent[];
+  }
+}
+
+export function trackEvent<K extends AnalyticsEventName>(
+  name: K,
+  ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
+): void {
+  try {
+    const payload = (args[0] as unknown) ?? undefined;
+
+    const event: StoredEvent = {
+      name,
+      payload,
+      ts: Date.now(),
+      sessionId,
+      env,
+    };
+
+    window.__ftsEvents = window.__ftsEvents ?? [];
+    window.__ftsEvents.push(event);
+
+    if (import.meta.env.DEV) {
+      // Optional: nicer dev logging
+      console.log("[analytics]", name, event);
+    }
+  } catch {
+    // Never throw from analytics
+  }
+}
+
+
+⸻
+
+One more tiny improvement (optional but good)
+
+Your AnalyticsEventName is correct, but the generic constraint can be a little clearer if you use:
+
+export type AnalyticsEventName = typeof EVENTS[keyof typeof EVENTS];
+
+(what you already have is basically that — so you can leave it.)
+
+⸻
+
+What to do next (your exact next action)
+	1.	Make those 3 changes in client/src/lib/analytics.ts
+	2.	Open the Debug panel
+	3.	Confirm you see events like:
+
+	•	name
+	•	payload (sometimes empty)
+	•	ts
+	•	sessionId
+	•	env
+
+If you want, paste the current full analytics.ts (just that file) and I’ll mark the exact lines to replace so you can copy/paste cleanly.
