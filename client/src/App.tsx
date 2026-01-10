@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -56,6 +56,32 @@ import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import TodayHubPage from "@/pages/today-hub";
 import PrivacyTermsPage from "@/pages/privacy-terms";
+
+function isProfileSetupComplete(): boolean {
+  try {
+    const data = localStorage.getItem("fts_guest_data");
+    if (data) {
+      const parsed = JSON.parse(data);
+      return !!parsed.profileSetup?.completedAt;
+    }
+  } catch {}
+  return false;
+}
+
+function FirstRunGuard({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const setupComplete = isProfileSetupComplete();
+  
+  if (!setupComplete && location !== "/welcome") {
+    return <Redirect to="/welcome" />;
+  }
+  
+  if (setupComplete && location === "/welcome") {
+    return <Redirect to="/" />;
+  }
+  
+  return <>{children}</>;
+}
 
 function Router() {
   return (
@@ -128,7 +154,9 @@ function AppContent() {
       <PWAInstallPrompt />
       <SyncTray />
       <div className={showBottomNav ? "pb-20" : ""}>
-        <Router />
+        <FirstRunGuard>
+          <Router />
+        </FirstRunGuard>
       </div>
       {showBottomNav && <BottomNav />}
     </>
