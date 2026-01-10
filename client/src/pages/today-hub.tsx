@@ -21,12 +21,28 @@ import {
   Brain,
   Target,
   Layers,
+  Menu,
+  Settings,
+  Compass,
+  LayoutGrid,
+  History,
+  Dumbbell,
+  Utensils,
+  Wallet,
+  ChevronDown,
+  GraduationCap,
+  BookOpen,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import type { MoodLog, CalendarEvent, Routine, ScheduleBlock, Goal } from "@shared/schema";
 import { getLatestOnboardingLog, getTodayOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { Anchor, RefreshCw, ListTodo, MessageCircle } from "lucide-react";
+import { SwipeableDrawer } from "@/components/swipeable-drawer";
+import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
+import { APP_VERSION } from "@/lib/routes";
+import { useTutorial } from "@/contexts/tutorial-context";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 function formatTime12Hour(time24: string): string {
   if (!time24) return "";
@@ -58,12 +74,42 @@ function TodayHubSkeleton() {
   );
 }
 
+const MENU_ICON_MAP: Record<string, typeof Sun> = {
+  "daily-schedule": Clock,
+  "life-dashboard": LayoutGrid,
+  "meditation": Heart,
+  "workout": Dumbbell,
+  "meal-prep": Utensils,
+  "finances": Wallet,
+  "routines": History,
+  "settings": Settings,
+  "browse": Compass,
+  "challenges": Target,
+  "calendar": Calendar,
+  "astrology": Sparkles,
+  "talk-it-out": MessageCircle,
+  "feedback": Heart,
+  "weekly-checkin": Calendar,
+  "app-tour": GraduationCap,
+  "journal": BookOpen,
+};
+
 export default function TodayHubPage() {
   const [, navigate] = useLocation();
   const today = new Date();
   const dayOfWeek = today.getDay();
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [showLifeSystemExplainer, setShowLifeSystemExplainer] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuFeatures = getMenuFeatures();
+  const moreFeatures = getMoreMenuFeatures();
+  const { startNavigationTutorial } = useTutorial();
+
+  const { data: authData } = useQuery<{ user: any } | null>({
+    queryKey: ["/api/auth/me"],
+    retry: false
+  });
+  const authUser = authData?.user;
 
   const { data: moodData } = useQuery<MoodLog | null>({
     queryKey: ["/api/mood/today"],
@@ -213,17 +259,28 @@ export default function TodayHubPage() {
   return (
     <div className="min-h-screen">
       <div className="space-y-5 p-4 md:p-6 max-w-2xl mx-auto">
-        <header className="pt-2">
-          <p className="text-sm text-muted-foreground">
-            {today.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-          <h1 className="text-2xl font-bold mt-1" data-testid="text-greeting">
-            {getGreeting()}{userName ? `, ${userName}` : ""}
-          </h1>
+        <header className="flex items-start gap-3 pt-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setMenuOpen(true)}
+            data-testid="button-menu"
+            className="shrink-0 -ml-2"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground">
+              {today.toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+            <h1 className="text-2xl font-bold mt-1" data-testid="text-greeting">
+              {getGreeting()}{userName ? `, ${userName}` : ""}
+            </h1>
+          </div>
         </header>
 
         {latestLog && (
@@ -595,6 +652,153 @@ export default function TodayHubPage() {
           </Card>
         </section>
       </div>
+
+      <SwipeableDrawer 
+        open={menuOpen} 
+        onClose={() => setMenuOpen(false)} 
+        title="Menu"
+      >
+        <nav className="space-y-1 flex-1 overflow-y-auto min-h-0">
+          {(() => {
+            const regularFeatures = menuFeatures.filter(f => f.group !== "calendar");
+            const calendarFeatures = menuFeatures.filter(f => f.group === "calendar");
+            const lifeDashboard = regularFeatures.find(f => f.id === "life-dashboard");
+            const otherFeatures = regularFeatures.filter(f => f.id !== "life-dashboard");
+            
+            return (
+              <>
+                {lifeDashboard && (
+                  <Link key={lifeDashboard.path} href={lifeDashboard.path || "/"}>
+                    <button
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid={`menu-item-${lifeDashboard.id}`}
+                    >
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{lifeDashboard.name}</span>
+                    </button>
+                  </Link>
+                )}
+                
+                {calendarFeatures.length > 0 && (
+                  <details className="group">
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm flex-1">Calendar</span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-1 space-y-1 ml-4">
+                      <Link href="/daily-schedule">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Today</span>
+                        </button>
+                      </Link>
+                      <Link href="/calendar">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Month</span>
+                        </button>
+                      </Link>
+                      <Link href="/routines">
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
+                          <History className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Routines</span>
+                        </button>
+                      </Link>
+                    </div>
+                  </details>
+                )}
+                
+                {otherFeatures.map((feature) => {
+                  const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
+                  return (
+                    <Link key={feature.path} href={feature.path || "/"}>
+                      <button
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                        onClick={() => setMenuOpen(false)}
+                        data-testid={`menu-item-${feature.id}`}
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{feature.name}</span>
+                      </button>
+                    </Link>
+                  );
+                })}
+              </>
+            );
+          })()}
+          
+          <details className="group">
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm flex-1">More</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-1 space-y-1 ml-2">
+              {moreFeatures.map((feature) => {
+                const Icon = MENU_ICON_MAP[feature.id] || Sparkles;
+                return (
+                  <Link key={feature.path} href={feature.path || "/"}>
+                    <button
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid={`menu-item-${feature.id}`}
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{feature.name}</span>
+                    </button>
+                  </Link>
+                );
+              })}
+            </div>
+          </details>
+        </nav>
+        <div className="pt-4 space-y-2">
+          <button
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+            onClick={() => {
+              setMenuOpen(false);
+              setTimeout(() => startNavigationTutorial(true), 300);
+            }}
+            data-testid="button-start-tutorial"
+          >
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">App Tour</span>
+          </button>
+          {authUser ? (
+            <div className="space-y-2">
+              <div className="px-2 py-1 text-sm font-medium border-t pt-3">
+                Hello, {authUser.firstName || authUser.email?.split('@')[0] || 'there'}
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                size="sm" 
+                onClick={async () => {
+                  await apiRequest("POST", "/api/auth/logout");
+                  queryClient.setQueryData(["/api/auth/me"], null);
+                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  setMenuOpen(false);
+                  navigate("/login");
+                }}
+                data-testid="button-signout"
+              >
+                Log out
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button className="w-full" size="sm" data-testid="button-signin">
+                Sign in / Sign up
+              </Button>
+            </Link>
+          )}
+        </div>
+        <div className="pt-4 text-center">
+          <p className="text-sm text-muted-foreground">v{APP_VERSION}</p>
+        </div>
+      </SwipeableDrawer>
     </div>
   );
 }
