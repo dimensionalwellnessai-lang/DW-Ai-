@@ -109,6 +109,30 @@ npm run db:push
 - **Nervous system-aware** - adapts to user energy states
 - **Consent-based** - always asks before saving or scheduling
 
+## Current Status
+
+**🚧 Beta** - This app is in active development. Core features work but expect:
+- Occasional UI polish updates
+- New features being added weekly
+- Feedback-driven improvements
+
+### What Works
+- Quick Setup onboarding (creates starter calendar blocks)
+- AI chat with context-aware wellness guidance
+- Today Hub daily view
+- Calendar events and scheduling
+- Meal and workout planning
+- Guest mode (local storage) and authenticated accounts
+
+### Known Limitations
+- Analytics not yet instrumented
+- Premium features coming soon
+- Mobile responsiveness ongoing
+
+## Contributing
+
+This project is currently in private beta. For feedback or issues, use the in-app feedback button.
+
 ## License
 
-Proprietary - All rights reserved.
+MIT License - See [LICENSE](LICENSE) file.
