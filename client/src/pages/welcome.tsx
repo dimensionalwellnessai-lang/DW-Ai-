@@ -27,6 +27,7 @@ import {
   type ScheduleType, 
   type FocusArea,
 } from "@/lib/guest-storage";
+import { trackEvent } from "@/lib/analytics";
 
 const SCHEDULE_OPTIONS: { id: ScheduleType; label: string }[] = [
   { id: "9to5", label: COPY.quickSetup.schedules["9to5"] },
@@ -140,10 +141,17 @@ export default function Welcome() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [hasStarterObject, setHasStarterObject] = useState(false);
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const setupStartTimeRef = useRef<number>(Date.now());
+  const hasTrackedStartRef = useRef(false);
 
   if (isProfileSetupComplete() && !showSuccess) {
     setLocation("/chat");
     return null;
+  }
+  
+  if (!hasTrackedStartRef.current) {
+    hasTrackedStartRef.current = true;
+    trackEvent("quick_setup_started", { timestamp: Date.now() });
   }
   
   // Auto-advance from success screen after 3 seconds
@@ -209,12 +217,35 @@ export default function Welcome() {
       metDW: false,
     });
 
+    trackEvent("starter_object_created", {
+      focusArea,
+      objectType: "event",
+      starterObjectId: objectId,
+    });
+
+    const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
+    trackEvent("quick_setup_completed", {
+      scheduleType,
+      focusArea,
+      hasStarterObject: true,
+      timeToCompleteSeconds: timeToComplete,
+    });
+
     setHasStarterObject(true);
     setShowSuccess(true);
   };
 
   const handleSkipStarter = () => {
     saveProfileSetup({ completedAt: Date.now(), metDW: false });
+
+    const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
+    trackEvent("quick_setup_completed", {
+      scheduleType,
+      focusArea,
+      hasStarterObject: false,
+      timeToCompleteSeconds: timeToComplete,
+    });
+
     setHasStarterObject(false);
     setShowSuccess(true);
   };

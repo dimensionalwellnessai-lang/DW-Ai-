@@ -1,0 +1,151 @@
+SPEC: Lightweight Analytics (Stage 6 – MVP)
+
+GOAL
+Understand:
+1) Who finishes Quick Setup
+2) Where users drop off
+3) Whether the starter object actually gets used
+4) Whether DW Chat is doing its job
+
+This is visibility, NOT monetization yet.
+
+NON-GOALS
+- No payments
+- No subscriptions
+- No heavy dashboards
+- No new analytics SDK unless explicitly approved
+- No refactors
+
+--------------------------------------------
+1) Analytics strategy (important)
+--------------------------------------------
+
+Use a SIMPLE event logger that can:
+- console.log events in dev
+- be swapped later to Mixpanel / PostHog / Amplitude
+
+Implementation:
+- Create a small utility function: trackEvent(name, payload?)
+- For now: console.log OR push to window.__analyticsQueue
+
+DO NOT:
+- sprinkle console.logs everywhere
+- hardcode vendor calls inside components
+
+--------------------------------------------
+2) Events to track (ONLY these)
+--------------------------------------------
+
+EVENT 1: quick_setup_started
+When:
+- User enters /welcome for the first time
+
+Payload:
+- timestamp
+
+--------------------------------------------
+
+EVENT 2: quick_setup_completed
+When:
+- User finishes setup (Create OR Skip)
+- Right before routing to success screen or DW Chat
+
+Payload:
+- scheduleType
+- focusArea
+- hasStarterObject (boolean)
+- timeToCompleteSeconds (rough estimate is fine)
+
+--------------------------------------------
+
+EVENT 3: starter_object_created
+When:
+- Starter task/event/log is successfully saved
+
+Payload:
+- focusArea
+- objectType ("task" | "event" | "log")
+- starterObjectId
+
+--------------------------------------------
+
+EVENT 4: dw_first_message_shown
+When:
+- DW auto-sends the first welcome message after setup
+
+Payload:
+- focusArea
+- scheduleType
+
+--------------------------------------------
+
+EVENT 5: starter_spotlight_clicked
+When:
+- User taps “Take me to it”
+
+Payload:
+- focusArea
+- destination ("calendar" | "plan" | "journal" | etc)
+
+--------------------------------------------
+
+EVENT 6: starter_spotlight_dismissed
+When:
+- User taps “I’ll come back later”
+
+Payload:
+- focusArea
+
+--------------------------------------------
+3) Where to implement (MAX 3 files)
+--------------------------------------------
+
+1) client/src/lib/analytics.ts (NEW SMALL FILE)
+   - export function trackEvent(name, payload?)
+   - default behavior: console.log(`[analytics]`, name, payload)
+
+2) client/src/pages/welcome.tsx
+   - track quick_setup_started
+   - track quick_setup_completed
+   - track starter_object_created
+
+3) DW Chat screen component
+   - track dw_first_message_shown
+   - track starter_spotlight_clicked
+   - track starter_spotlight_dismissed
+
+--------------------------------------------
+4) Rules
+--------------------------------------------
+
+- Do NOT block UI on analytics
+- Fire-and-forget only
+- No try/catch spam
+- No user-identifying PII
+- Analytics must NEVER break onboarding
+
+--------------------------------------------
+5) Acceptance tests
+--------------------------------------------
+
+1) Reset app
+2) Open /welcome
+   → console shows: quick_setup_started
+3) Finish setup
+   → console shows: quick_setup_completed
+   → console shows: starter_object_created (if created)
+4) Land in DW Chat
+   → console shows: dw_first_message_shown
+5) Click “Take me to it”
+   → console shows: starter_spotlight_clicked
+6) Reset again, dismiss spotlight
+   → console shows: starter_spotlight_dismissed
+
+--------------------------------------------
+6) Output required from Agent
+--------------------------------------------
+
+- List files changed
+- Show analytics.ts content
+- List all event names fired + where
+- Confirm no new dependencies added
