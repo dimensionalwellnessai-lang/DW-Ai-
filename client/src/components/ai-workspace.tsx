@@ -45,6 +45,7 @@ import {
   type GuestConversation,
   type ChatMessage,
   type SoftOnboardingMood,
+  type FocusArea,
 } from "@/lib/guest-storage";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { getEnergyContextForAPI } from "@/lib/energy-context";
@@ -53,6 +54,8 @@ import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { SoftOnboardingModal, type OnboardingMood } from "@/components/soft-onboarding-modal";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import { Link, useLocation } from "wouter";
+import { COPY } from "@/copy/en";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Send,
   Loader2,
@@ -148,6 +151,37 @@ export function AIWorkspace() {
   const [longPressMenuIndex, setLongPressMenuIndex] = useState<number | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const welcomeMessageSentRef = useRef(false);
+  
+  // Starter Block Spotlight state
+  const [showStarterSpotlight, setShowStarterSpotlight] = useState(() => {
+    const profile = getProfileSetup();
+    return profile?.starterObjectId && !profile?.starterSpotlightDismissed;
+  });
+  
+  const handleDismissSpotlight = () => {
+    saveProfileSetup({ starterSpotlightDismissed: true });
+    setShowStarterSpotlight(false);
+  };
+  
+  const handleViewStarterBlock = () => {
+    const profile = getProfileSetup();
+    if (!profile?.focusArea) return;
+    
+    // Route based on focusArea
+    const routeMap: Record<FocusArea, string> = {
+      body: "/plans",
+      food: "/plans",
+      mind: "/journal",
+      money: "/plans",
+      spirit: "/journal",
+      work: "/plans",
+    };
+    
+    toast({ title: COPY.starterSpotlight.toastOnView });
+    saveProfileSetup({ starterSpotlightDismissed: true });
+    setShowStarterSpotlight(false);
+    setLocation(routeMap[profile.focusArea]);
+  };
 
   const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
   const { events: scheduleEvents } = useScheduleEvents();
@@ -338,35 +372,29 @@ export function AIWorkspace() {
     
     // Build personalized welcome message based on their setup
     const scheduleMap: Record<string, string> = {
-      "9to5": "9-to-5 rhythm",
-      "nightShift": "night shift schedule",
-      "student": "student schedule",
-      "mixed": "mixed schedule",
-      "rebuilding": "rebuilding phase",
+      "9to5": "9-to-5",
+      "nightShift": "night shift",
+      "student": "student",
+      "mixed": "mixed",
+      "rebuilding": "rebuilding",
     };
     const focusMap: Record<string, string> = {
-      "body": "Body/Movement",
-      "food": "Food/Nutrition",
-      "mind": "Mind/Mental Health",
-      "money": "Money/Finances",
-      "spirit": "Spirit/Purpose",
-      "work": "Work/Career",
+      "body": "body",
+      "food": "food",
+      "mind": "mind",
+      "money": "money",
+      "spirit": "spirit",
+      "work": "work",
     };
     
-    const schedule = profile.scheduleType ? scheduleMap[profile.scheduleType] || profile.scheduleType : "your rhythm";
+    const schedule = profile.scheduleType ? scheduleMap[profile.scheduleType] || profile.scheduleType : "your";
     const focus = profile.focusArea ? focusMap[profile.focusArea] || profile.focusArea : "getting started";
-    const wake = profile.wakeTime || "morning";
-    const wind = profile.windDownTime || "evening";
     const busyDays = profile.busiestDays?.length > 0 
       ? profile.busiestDays.map(d => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join("/")
-      : null;
+      : "weekdays";
     
-    let welcomeMsg = `Got you. ${schedule}`;
-    if (busyDays) welcomeMsg += `, busy on ${busyDays}`;
-    welcomeMsg += `, wake ~${wake.replace(":00 ", " ").replace("AM", "am").replace("PM", "pm")}`;
-    welcomeMsg += `, wind down ~${wind.replace(":00 ", " ").replace("AM", "am").replace("PM", "pm")}`;
-    welcomeMsg += `, starting with ${focus}. `;
-    welcomeMsg += "Want me to set up your first week or just tonight?";
+    // Use the tone-set welcome message from copy
+    const welcomeMsg = COPY.dwChat.welcomeAfterSetup(schedule, busyDays, focus);
     
     // Create a new conversation with the welcome message
     const convo = createNewConversation();
@@ -1058,6 +1086,51 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
           <div className="max-w-2xl mx-auto py-4">
+            {/* Starter Block Spotlight Card */}
+            {showStarterSpotlight && (() => {
+              const profile = getProfileSetup();
+              const focusArea = profile?.focusArea as FocusArea | null;
+              if (!focusArea) return null;
+              
+              return (
+                <Card className="mb-4 border-primary/20 bg-primary/5" data-testid="card-starter-spotlight">
+                  <CardContent className="p-4 space-y-3">
+                    <div>
+                      <h3 className="font-medium text-sm" data-testid="text-spotlight-title">
+                        {COPY.starterSpotlight.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {COPY.starterSpotlight.subtitle}
+                      </p>
+                    </div>
+                    <p className="text-sm" data-testid="text-spotlight-body">
+                      {COPY.starterSpotlight.bodyByFocus[focusArea]}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {COPY.starterSpotlight.meta}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={handleViewStarterBlock}
+                        data-testid="button-spotlight-view"
+                      >
+                        {COPY.starterSpotlight.ctaPrimary}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleDismissSpotlight}
+                        data-testid="button-spotlight-dismiss"
+                      >
+                        {COPY.starterSpotlight.ctaSecondary}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+            
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-6">
                 <div className="text-center space-y-2">

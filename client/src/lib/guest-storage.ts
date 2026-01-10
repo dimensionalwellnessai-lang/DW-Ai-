@@ -378,6 +378,7 @@ export interface ProfileSetup {
   windDownTime: string | null;
   focusArea: FocusArea | null;
   starterObjectId: string | null;
+  starterSpotlightDismissed: boolean;
 }
 
 export interface OnboardingLog {
@@ -2100,6 +2101,7 @@ export function saveProfileSetup(setup: Partial<ProfileSetup>): void {
     windDownTime: setup.windDownTime ?? data.profileSetup?.windDownTime ?? null,
     focusArea: setup.focusArea ?? data.profileSetup?.focusArea ?? null,
     starterObjectId: setup.starterObjectId ?? data.profileSetup?.starterObjectId ?? null,
+    starterSpotlightDismissed: setup.starterSpotlightDismissed ?? data.profileSetup?.starterSpotlightDismissed ?? false,
     completedAt: setup.completedAt ?? data.profileSetup?.completedAt ?? null,
   };
   saveGuestData(data);

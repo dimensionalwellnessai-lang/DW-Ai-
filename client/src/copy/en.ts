@@ -220,6 +220,28 @@ export const COPY = {
     },
   },
 
+  starterSpotlight: {
+    title: "Your first block is live.",
+    subtitle: "You're officially not starting from zero.",
+    bodyByFocus: {
+      body: "I set up a simple movement block. Nothing extreme — just enough to get your body back online.",
+      food: "I added a starter food check so meals don't turn into a last-minute scramble.",
+      mind: "I dropped in a short reset. Two minutes to slow things down and clear the noise.",
+      money: "I added a quick money check-in. Awareness first — decisions come easier after.",
+      spirit: "I set aside a small reflection moment. No pressure. Just space.",
+      work: "I created a focused work block so your energy has somewhere to go.",
+    },
+    meta: "Created just now.",
+    ctaPrimary: "Take me to it",
+    ctaSecondary: "I'll come back later",
+    toastOnView: "Here it is.",
+  },
+
+  dwChat: {
+    welcomeAfterSetup: (scheduleType: string, busyDays: string, focusArea: string) => 
+      `Alright. I've got a feel for your rhythm now.\nYou're on a ${scheduleType} flow, busiest on ${busyDays}, and you want to start with ${focusArea}.\nI set something small up so you're not starting from zero.\nWant to look at what I made — or do you want help with tonight first?`,
+  },
+
   lifeSystem: {
     cardTitle: "Build Your Life System",
     cardSubtitle: "Not just wellness \u2014 how everything in your life works together.",
