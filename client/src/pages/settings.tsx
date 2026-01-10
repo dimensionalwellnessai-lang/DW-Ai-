@@ -8,6 +8,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
+import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
 import {
   User,
   Bell,
@@ -22,6 +23,7 @@ import {
   FileText,
   ChevronRight,
   Settings2,
+  Bug,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -29,6 +31,7 @@ export function SettingsPage() {
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
   
   return (
     <div className="min-h-screen bg-background">
@@ -225,11 +228,40 @@ export function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {import.meta.env.DEV && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Bug className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <CardTitle className="text-base">Developer Tools</CardTitle>
+                  <CardDescription>Debug options (dev only)</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowAnalyticsDebug(true)}
+                data-testid="button-analytics-debug"
+              >
+                View Analytics Events
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <ProfileSetupModal
         isOpen={showProfileSetup}
         onComplete={() => setShowProfileSetup(false)}
+      />
+
+      <AnalyticsDebugPanel
+        open={showAnalyticsDebug}
+        onClose={() => setShowAnalyticsDebug(false)}
       />
     </div>
   );

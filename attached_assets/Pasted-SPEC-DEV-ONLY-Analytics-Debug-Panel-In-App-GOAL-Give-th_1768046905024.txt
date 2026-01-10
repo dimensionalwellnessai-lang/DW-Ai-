@@ -1,0 +1,145 @@
+SPEC: DEV-ONLY Analytics Debug Panel (In-App)
+
+GOAL
+Give the developer (you) a simple, in-app way to SEE analytics events as they happen
+without using browser devtools, shell, or external dashboards.
+
+This panel is:
+- DEV-ONLY
+- NON-USER-FACING
+- READ-ONLY
+- SAFE (no refactors, no deps)
+
+--------------------------------------------
+1) Scope & Visibility
+--------------------------------------------
+
+The Analytics Debug Panel must:
+- ONLY appear in development mode
+- NEVER appear in production builds
+- Be hidden behind an intentional action (not visible by default)
+
+Visibility trigger (pick ONE, simplest preferred):
+Option A (recommended):
+- Hidden button in Profile screen: “Debug”
+Option B:
+- Long-press (3 seconds) on the app logo
+Option C:
+- URL param ?debug=true
+
+--------------------------------------------
+2) Data Source (already exists)
+--------------------------------------------
+
+Use the existing analytics queue:
+- window.__ftsEvents (array)
+
+Each event object structure:
+{
+  name: string,
+  payload?: object,
+  ts: number | ISO string
+}
+
+DO NOT modify how events are logged.
+This panel is READ-ONLY.
+
+--------------------------------------------
+3) Panel UI (simple, fast)
+--------------------------------------------
+
+Layout:
+- Full-screen modal OR bottom sheet
+- Dark theme, same app styling
+
+Header:
+- Title: “Analytics (Dev)”
+- Subtitle: “Last session events”
+- Button: “Clear” (clears only the local queue, not storage)
+
+Body:
+- Scrollable list of events (most recent FIRST)
+- Each event card shows:
+  - Event name (bold)
+  - Timestamp (relative: “just now”, “3s ago”, etc.)
+  - Payload (collapsed by default, expandable)
+
+Event card example:
+--------------------------------
+starter_object_created
+2 seconds ago
+{ focusArea: "work", objectType: "event" }
+--------------------------------
+
+Footer (optional):
+- Count: “12 events logged this session”
+
+--------------------------------------------
+4) Behavior Rules
+--------------------------------------------
+
+- Panel must update live as new events are pushed
+- Clearing events:
+  - Only clears window.__ftsEvents
+  - Does NOT clear guest storage
+- Closing panel returns user to previous screen
+
+--------------------------------------------
+5) Files to change (MAX 3)
+--------------------------------------------
+
+1) client/src/components/AnalyticsDebugPanel.tsx
+   - New component
+   - Reads from window.__ftsEvents
+   - DEV-ONLY render guard
+
+2) client/src/lib/analytics.ts
+   - Ensure window.__ftsEvents exists and pushes events
+   - Do NOT change event names or payloads
+
+3) Profile screen OR root layout file
+   - Add hidden trigger to open AnalyticsDebugPanel
+   - DEV-ONLY guard
+
+--------------------------------------------
+6) DEV-ONLY GUARD (IMPORTANT)
+--------------------------------------------
+
+Panel must only render when:
+- import.meta.env.DEV === true
+OR
+- process.env.NODE_ENV === "development"
+
+If not DEV:
+- Component should return null
+- Trigger should not exist
+
+--------------------------------------------
+7) Acceptance Tests
+--------------------------------------------
+
+1) Run app in DEV
+2) Trigger analytics events:
+   - Reset
+   - Go through Quick Setup
+   - Enter DW Chat
+3) Open Analytics Debug Panel
+4) Verify:
+   - Events list is populated
+   - Order is newest → oldest
+   - Payloads expand/collapse
+5) Tap “Clear”
+   - Panel empties
+6) Trigger another event
+   - New event appears
+7) Build for prod / disable DEV
+   - Panel does NOT exist
+
+--------------------------------------------
+8) Output required from Agent
+--------------------------------------------
+
+- Files changed list
+- Screenshot or description of panel UI
+- Exact DEV guard used
+- Confirmation: “Panel is not accessible in production”
