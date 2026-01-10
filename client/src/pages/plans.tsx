@@ -6,8 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Trash2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { markPlanVisit } from "@/lib/analytics";
 import type { LifeSystem } from "@shared/schema";
 import {
   DropdownMenu,
@@ -45,6 +46,10 @@ function saveLocalPlans(plans: Plan[]) {
 export default function PlansPage() {
   const [, setLocation] = useLocation();
   const [localPlans, setLocalPlans] = useState<Plan[]>(getLocalPlans);
+  
+  useEffect(() => {
+    markPlanVisit();
+  }, []);
 
   const { data: lifeSystemData } = useQuery<{ lifeSystem: LifeSystem | null }>({
     queryKey: ["/api/life-system"],

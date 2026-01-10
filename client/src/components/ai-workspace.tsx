@@ -91,7 +91,21 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { trackEvent, EVENTS, markActivated, isActivated, wasNudgeShownToday, markNudgeShownToday } from "@/lib/analytics";
+import { 
+  trackEvent, 
+  EVENTS, 
+  markActivated, 
+  isActivated, 
+  wasNudgeShownToday, 
+  markNudgeShownToday,
+  getStreak,
+  wasWeeklyRecapShown,
+  markWeeklyRecapShown,
+  getOpensThisWeek,
+  wasNextStepShownToday,
+  markNextStepShownToday,
+  getLastPlanVisit,
+} from "@/lib/analytics";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -190,6 +204,85 @@ export function AIWorkspace() {
   const handleNudgeDismiss = () => {
     markNudgeShownToday();
     setShowNudge(false);
+  };
+  
+  // D7 Streak (for activated users only)
+  const userActivated = isActivated();
+  const streak = userActivated ? getStreak() : 0;
+  
+  // Weekly Recap state (for activated users, once per week)
+  // Track dismissed state locally, but derive visibility from current activation status
+  const [weeklyRecapDismissed, setWeeklyRecapDismissed] = useState(false);
+  const showWeeklyRecap = userActivated && !wasWeeklyRecapShown() && !weeklyRecapDismissed;
+  const opensThisWeek = getOpensThisWeek();
+  
+  const handleRecapSimple = () => {
+    markWeeklyRecapShown();
+    setWeeklyRecapDismissed(true);
+    setInput("What's the one thing to protect this week?");
+  };
+  
+  const handleRecapStructure = () => {
+    markWeeklyRecapShown();
+    setWeeklyRecapDismissed(true);
+    toast({ title: "Let's build structure." });
+    setLocation("/plans");
+  };
+  
+  const handleRecapDismiss = () => {
+    markWeeklyRecapShown();
+    setWeeklyRecapDismissed(true);
+  };
+  
+  // Next Best Step state (for activated users, once per day)
+  // Track dismissed state locally, but derive visibility from current activation status
+  const [nextStepDismissed, setNextStepDismissed] = useState(false);
+  const showNextStep = userActivated && !wasNextStepShownToday() && !nextStepDismissed;
+  
+  const getNextStepSuggestion = (): { title: string; action: () => void } => {
+    const lastPlanVisit = getLastPlanVisit();
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoKey = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysAgo.getDate()).padStart(2, "0")}`;
+    
+    if (!lastPlanVisit || lastPlanVisit < sevenDaysAgoKey) {
+      return {
+        title: "Build one block in Plan",
+        action: () => {
+          markNextStepShownToday();
+          setNextStepDismissed(true);
+          setLocation("/plans");
+        }
+      };
+    }
+    
+    if (streak < 3) {
+      return {
+        title: "Do a 2-minute reset",
+        action: () => {
+          markNextStepShownToday();
+          setNextStepDismissed(true);
+          setInput("Guide me through a quick 2-minute reset.");
+        }
+      };
+    }
+    
+    return {
+      title: "Name one priority for today",
+      action: () => {
+        markNextStepShownToday();
+        setNextStepDismissed(true);
+        setInput("What's my one priority for today?");
+      }
+    };
+  };
+  
+  const nextStepSuggestion = showNextStep ? getNextStepSuggestion() : null;
+  
+  const handleNextStepDismiss = () => {
+    markNextStepShownToday();
+    setNextStepDismissed(true);
   };
   
   const handleDismissSpotlight = () => {
@@ -937,7 +1030,14 @@ export function AIWorkspace() {
             <Plus className="h-5 w-5" />
           </Button>
         </div>
-        <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">FTS</span>
+        <div className="flex items-center gap-2">
+          <span className="font-display font-semibold text-lg text-gradient" data-testid="text-brand">FTS</span>
+          {userActivated && streak >= 2 && (
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid="text-streak">
+              {streak} day streak
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -1199,6 +1299,80 @@ export function AIWorkspace() {
                         data-testid="button-nudge-dismiss"
                       >
                         Not today
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Weekly Recap Card - once per week for activated users */}
+            {showWeeklyRecap && userActivated && !showNudge && !shouldShowSpotlight && (
+              <Card className="mb-3 border-primary/20 bg-primary/5" data-testid="card-weekly-recap">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <h3 className="font-medium text-sm" data-testid="text-recap-title">
+                        Your week at a glance
+                      </h3>
+                      <p className="text-xs text-muted-foreground" data-testid="text-recap-body">
+                        You showed up {opensThisWeek} {opensThisWeek === 1 ? "day" : "days"}. Want to keep it simple or build structure?
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button 
+                        size="sm" 
+                        onClick={handleRecapSimple}
+                        data-testid="button-recap-simple"
+                      >
+                        Keep it simple
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        size="sm" 
+                        onClick={handleRecapStructure}
+                        data-testid="button-recap-structure"
+                      >
+                        Build structure
+                      </Button>
+                      <button
+                        onClick={handleRecapDismiss}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                        data-testid="button-recap-dismiss"
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Next Best Step Card - once per day for activated users */}
+            {showNextStep && userActivated && nextStepSuggestion && !showWeeklyRecap && !showNudge && !shouldShowSpotlight && (
+              <Card className="mb-3 border-muted bg-muted/30" data-testid="card-next-step">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground">Today's suggestion</p>
+                      <p className="text-sm font-medium" data-testid="text-next-step">
+                        {nextStepSuggestion.title}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button 
+                        size="sm" 
+                        onClick={nextStepSuggestion.action}
+                        data-testid="button-next-step-action"
+                      >
+                        Let's go
+                      </Button>
+                      <button
+                        onClick={handleNextStepDismiss}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="button-next-step-dismiss"
+                      >
+                        Skip
                       </button>
                     </div>
                   </div>

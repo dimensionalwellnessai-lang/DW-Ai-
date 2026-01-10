@@ -258,3 +258,121 @@ export function markNudgeShownToday(): void {
     // Never throw
   }
 }
+
+// D7 Streak helpers
+export function getOpenDaysArray(): string[] {
+  return getOpenDays();
+}
+
+export function getStreak(): number {
+  try {
+    const openDays = getOpenDays();
+    if (openDays.length === 0) return 0;
+    
+    const today = getLocalDateKey();
+    
+    // Sort descending to start from most recent
+    const sortedDays = [...openDays].sort().reverse();
+    
+    // If today is not in openDays, streak is 0
+    if (!sortedDays.includes(today)) return 0;
+    
+    let streak = 0;
+    let currentDate = new Date(today + "T00:00:00");
+    
+    for (let i = 0; i < sortedDays.length && i < 365; i++) {
+      const expectedKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+      
+      if (sortedDays.includes(expectedKey)) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  } catch {
+    return 0;
+  }
+}
+
+// Weekly Recap helpers
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+export function getWeeklyRecapKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const week = getWeekNumber(now);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+export function wasWeeklyRecapShown(): boolean {
+  try {
+    const weekKey = getWeeklyRecapKey();
+    return !!localStorage.getItem(`fts:weeklyRecapShown:${weekKey}`);
+  } catch {
+    return false;
+  }
+}
+
+export function markWeeklyRecapShown(): void {
+  try {
+    const weekKey = getWeeklyRecapKey();
+    localStorage.setItem(`fts:weeklyRecapShown:${weekKey}`, "1");
+  } catch {
+    // Never throw
+  }
+}
+
+export function getOpensThisWeek(): number {
+  try {
+    const openDays = getOpenDays();
+    const today = getLocalDateKey();
+    return countOpensThisWeek(openDays, today);
+  } catch {
+    return 0;
+  }
+}
+
+// Next Best Step helpers
+export function wasNextStepShownToday(): boolean {
+  try {
+    const dateKey = getLocalDateKey();
+    return !!localStorage.getItem(`fts:nextStepShown:${dateKey}`);
+  } catch {
+    return false;
+  }
+}
+
+export function markNextStepShownToday(): void {
+  try {
+    const dateKey = getLocalDateKey();
+    localStorage.setItem(`fts:nextStepShown:${dateKey}`, "1");
+  } catch {
+    // Never throw
+  }
+}
+
+export function getLastPlanVisit(): string | null {
+  try {
+    return localStorage.getItem("fts:lastPlanVisit");
+  } catch {
+    return null;
+  }
+}
+
+export function markPlanVisit(): void {
+  try {
+    const dateKey = getLocalDateKey();
+    localStorage.setItem("fts:lastPlanVisit", dateKey);
+  } catch {
+    // Never throw
+  }
+}
