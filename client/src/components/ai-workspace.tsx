@@ -153,8 +153,15 @@ export function AIWorkspace() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
-  const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial } = useTutorial();
+  const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Auto-open menu when navigation tutorial requires it
+  useEffect(() => {
+    if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
+      setMenuOpen(true);
+    }
+  }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, menuOpen]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -1124,6 +1131,7 @@ export function AIWorkspace() {
         open={menuOpen} 
         onClose={() => setMenuOpen(false)} 
         title="Menu"
+        elevated={tutorialState.isActive && requiresMenuOpen}
       >
         <nav className="space-y-1 flex-1">
           {menuFeatures.filter(f => f.group !== "calendar").map((feature) => {
@@ -1223,7 +1231,9 @@ export function AIWorkspace() {
             className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
             onClick={() => {
               setMenuOpen(false);
-              startNavigationTutorial(true);
+              setTimeout(() => {
+                startNavigationTutorial(true);
+              }, 300);
             }}
             data-testid="button-start-tutorial"
           >

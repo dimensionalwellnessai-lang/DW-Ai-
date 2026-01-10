@@ -116,6 +116,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         open={menuOpen} 
         onClose={() => setMenuOpen(false)} 
         title="Menu"
+        elevated={tutorialState.isActive && requiresMenuOpen}
       >
         <nav className="space-y-1 flex-1 overflow-y-auto min-h-0">
           {(() => {

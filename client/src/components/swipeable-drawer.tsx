@@ -8,6 +8,7 @@ interface SwipeableDrawerProps {
   title: string;
   children: React.ReactNode;
   width?: string;
+  elevated?: boolean;
 }
 
 export function SwipeableDrawer({ 
@@ -15,7 +16,8 @@ export function SwipeableDrawer({
   onClose, 
   title, 
   children,
-  width = "w-64"
+  width = "w-64",
+  elevated = false
 }: SwipeableDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const [translateX, setTranslateX] = useState(0);
@@ -90,8 +92,10 @@ export function SwipeableDrawer({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/40" 
+      className={`fixed inset-0 bg-black/40 ${elevated ? "z-[10001]" : "z-50"}`}
       onClick={onClose}
+      data-testid="swipeable-drawer-overlay"
+      data-elevated={elevated ? "true" : "false"}
     >
       <div 
         ref={drawerRef}
