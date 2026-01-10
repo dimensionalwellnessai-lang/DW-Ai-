@@ -1,0 +1,133 @@
+Alright — Next = Retention Signal v1 ✅
+One event. Super light. Tells you everything about whether users come back.
+
+Goal
+
+Track “did the user open the app on a new day?”
+This is the first real retention metric (D1/D2/D7 later).
+
+⸻
+
+Paste-ready SPEC for Replit Agent: Retention Signal v1
+
+SPEC: Retention Signal v1 (app_opened_new_day)
+
+GOAL
+Fire an analytics event once per calendar day per user/session:
+- app_opened_new_day
+
+This lets us measure day-to-day retention without any vendor SDK.
+
+NO NEW DEPENDENCIES.
+Do not change UI.
+
+--------------------------------------------
+1) Add new event constant + payload type
+--------------------------------------------
+
+File: client/src/lib/analytics.ts
+
+Add to EVENTS:
+- APP_OPENED_NEW_DAY: "app_opened_new_day"
+
+Payload type:
+type AppOpenedNewDayPayload = {
+  dateKey: string;        // "YYYY-MM-DD" local time
+  daysSinceFirstOpen: number;
+  opensThisWeek: number;  // count of unique days opened in last 7 days
+};
+
+Add to EventPayloadMap:
+[EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload
+
+--------------------------------------------
+2) Implement retention helper (analytics.ts)
+--------------------------------------------
+
+Add a helper inside analytics.ts:
+
+- function getLocalDateKey(): string
+  returns local YYYY-MM-DD
+
+- function trackNewDayOpen(): void
+  Logic:
+  - read localStorage keys:
+    fts:firstOpenDateKey
+    fts:lastOpenDateKey
+    fts:openDays (JSON array of dateKeys)
+
+  - dateKey = getLocalDateKey()
+
+  - if firstOpenDateKey missing => set it to dateKey
+  - if lastOpenDateKey === dateKey => do nothing (already fired today)
+  - else:
+      - update lastOpenDateKey to dateKey
+      - update openDays array (unique date keys)
+      - compute:
+          daysSinceFirstOpen = difference in days between firstOpenDateKey and dateKey (local)
+          opensThisWeek = count of dateKeys in openDays within last 7 days
+      - call trackEvent(EVENTS.APP_OPENED_NEW_DAY, { dateKey, daysSinceFirstOpen, opensThisWeek })
+
+IMPORTANT:
+- Use try/catch: retention tracking must never throw.
+- Keep storage small (openDays max 90 days; trim older entries).
+
+--------------------------------------------
+3) Call it on app start (1 file change outside analytics.ts)
+--------------------------------------------
+
+Call trackNewDayOpen() ONE time when the app loads.
+
+Find the best “app root” place:
+- client/src/App.tsx (preferred)
+- or the top-level layout component
+
+Implementation:
+- import { trackNewDayOpen } from "@/lib/analytics"
+- call it inside a useEffect(() => { trackNewDayOpen(); }, [])
+
+--------------------------------------------
+4) Acceptance tests (phone-friendly)
+--------------------------------------------
+
+A) Same day:
+1) Open app -> Debug panel shows app_opened_new_day (once)
+2) Refresh / reopen -> should NOT fire again today
+
+B) Simulate new day:
+- Temporarily change getLocalDateKey() to return yesterday/tomorrow to test
+OR
+- In dev, add a temporary button “Simulate New Day” that clears fts:lastOpenDateKey (DEV-only)
+
+Then:
+- Open app again -> app_opened_new_day fires
+
+--------------------------------------------
+5) Output required from Agent
+--------------------------------------------
+
+- Files changed list
+- Show new EVENTS constant
+- Show trackNewDayOpen() function
+- Confirm it’s called once on app load
+- Confirm storage trimming implemented
+
+
+⸻
+
+What this gives you immediately
+
+From your debug panel you’ll be able to see:
+	•	Day 0: first open
+	•	Day 1+: did they come back?
+	•	opensThisWeek: lightweight “stickiness”
+
+No dashboards needed yet.
+
+⸻
+
+If you want, after this we’ll do Retention v2:
+	•	completed_first_action (the first time they do anything meaningful)
+That’s the real “activation” metric.
+
+But do Retention v1 first.

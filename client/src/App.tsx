@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
+import { trackNewDayOpen } from "@/lib/analytics";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { AIWorkspace } from "@/components/ai-workspace";
@@ -166,6 +167,10 @@ function AppContent() {
 function App() {
   const { showSplash, handleSplashComplete } = useSplashScreen();
   const [termsAccepted, setTermsAccepted] = useState(hasAcceptedTerms);
+
+  useEffect(() => {
+    trackNewDayOpen();
+  }, []);
 
   const onSplashComplete = () => {
     handleSplashComplete();

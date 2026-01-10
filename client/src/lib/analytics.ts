@@ -6,6 +6,7 @@ export const EVENTS = {
   DW_FIRST_MESSAGE_SHOWN: "dw_first_message_shown",
   STARTER_SPOTLIGHT_CLICKED: "starter_spotlight_clicked",
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
+  APP_OPENED_NEW_DAY: "app_opened_new_day",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -38,6 +39,12 @@ type SpotlightDismissedPayload = {
   focusArea: string | null;
 };
 
+type AppOpenedNewDayPayload = {
+  dateKey: string;
+  daysSinceFirstOpen: number;
+  opensThisWeek: number;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -46,6 +53,7 @@ type EventPayloadMap = {
   [EVENTS.DW_FIRST_MESSAGE_SHOWN]: DwFirstMessageShownPayload;
   [EVENTS.STARTER_SPOTLIGHT_CLICKED]: SpotlightClickedPayload;
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
+  [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
 };
 
 // Session metadata (in-memory only)
@@ -96,5 +104,102 @@ export function trackEvent<K extends AnalyticsEventName>(
     }
   } catch {
     // Never throw from analytics
+  }
+}
+
+// Retention tracking helpers
+const STORAGE_KEYS = {
+  FIRST_OPEN: "fts:firstOpenDateKey",
+  LAST_OPEN: "fts:lastOpenDateKey",
+  OPEN_DAYS: "fts:openDays",
+} as const;
+
+function getLocalDateKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function daysBetween(dateKey1: string, dateKey2: string): number {
+  const d1 = new Date(dateKey1 + "T00:00:00");
+  const d2 = new Date(dateKey2 + "T00:00:00");
+  const diffMs = Math.abs(d2.getTime() - d1.getTime());
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function getOpenDays(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.OPEN_DAYS);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveOpenDays(days: string[]): void {
+  try {
+    // Trim to last 90 days max
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    const cutoffKey = getLocalDateKey();
+    const trimmed = days
+      .filter((d) => d >= cutoffKey.slice(0, 10).replace(/\d{2}$/, "01") || daysBetween(d, cutoffKey) <= 90)
+      .slice(-90);
+    localStorage.setItem(STORAGE_KEYS.OPEN_DAYS, JSON.stringify(trimmed));
+  } catch {}
+}
+
+function countOpensThisWeek(openDays: string[], today: string): number {
+  const todayDate = new Date(today + "T00:00:00");
+  const weekAgo = new Date(todayDate);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekAgoKey = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, "0")}-${String(weekAgo.getDate()).padStart(2, "0")}`;
+  
+  return openDays.filter((d) => d >= weekAgoKey && d <= today).length;
+}
+
+export function trackNewDayOpen(): void {
+  try {
+    const dateKey = getLocalDateKey();
+    
+    // Get or set first open date
+    let firstOpenDateKey = localStorage.getItem(STORAGE_KEYS.FIRST_OPEN);
+    if (!firstOpenDateKey) {
+      firstOpenDateKey = dateKey;
+      localStorage.setItem(STORAGE_KEYS.FIRST_OPEN, dateKey);
+    }
+    
+    // Check if already fired today
+    const lastOpenDateKey = localStorage.getItem(STORAGE_KEYS.LAST_OPEN);
+    if (lastOpenDateKey === dateKey) {
+      return; // Already tracked today
+    }
+    
+    // Update last open date
+    localStorage.setItem(STORAGE_KEYS.LAST_OPEN, dateKey);
+    
+    // Update open days array
+    const openDays = getOpenDays();
+    if (!openDays.includes(dateKey)) {
+      openDays.push(dateKey);
+    }
+    saveOpenDays(openDays);
+    
+    // Compute metrics
+    const daysSinceFirstOpen = daysBetween(firstOpenDateKey, dateKey);
+    const opensThisWeek = countOpensThisWeek(openDays, dateKey);
+    
+    // Fire the event
+    trackEvent(EVENTS.APP_OPENED_NEW_DAY, {
+      dateKey,
+      daysSinceFirstOpen,
+      opensThisWeek,
+    });
+  } catch {
+    // Never throw from retention tracking
   }
 }
