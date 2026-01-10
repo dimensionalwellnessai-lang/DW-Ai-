@@ -1964,8 +1964,8 @@ export function addItemToGroceryList(
     const existingAmount = parseFloat(existingItem.amount) || 0;
     const newAmount = parseFloat(item.amount) || 0;
     existingItem.amount = String(existingAmount + newAmount);
-    existingItem.sourceRecipeIds = [...new Set([...existingItem.sourceRecipeIds, ...item.sourceRecipeIds])];
-    existingItem.sourceMealPlanIds = [...new Set([...existingItem.sourceMealPlanIds, ...item.sourceMealPlanIds])];
+    existingItem.sourceRecipeIds = Array.from(new Set([...existingItem.sourceRecipeIds, ...item.sourceRecipeIds]));
+    existingItem.sourceMealPlanIds = Array.from(new Set([...existingItem.sourceMealPlanIds, ...item.sourceMealPlanIds]));
     saveGuestData(data);
     return existingItem;
   }

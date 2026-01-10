@@ -152,20 +152,35 @@ export function AIWorkspace() {
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const welcomeMessageSentRef = useRef(false);
   
-  // Starter Block Spotlight state
-  const [showStarterSpotlight, setShowStarterSpotlight] = useState(() => {
+  // Starter Block Spotlight state - tracks dismissal, re-read profile on render for visibility
+  const [spotlightDismissed, setSpotlightDismissed] = useState(() => {
     const profile = getProfileSetup();
-    return profile?.starterObjectId && !profile?.starterSpotlightDismissed;
+    return profile?.starterSpotlightDismissed ?? false;
   });
+  
+  // Compute spotlight visibility from live profile data each render
+  const spotlightProfile = getProfileSetup();
+  const shouldShowSpotlight = Boolean(
+    spotlightProfile?.starterObjectId && 
+    spotlightProfile?.focusArea && 
+    !spotlightDismissed
+  );
   
   const handleDismissSpotlight = () => {
     saveProfileSetup({ starterSpotlightDismissed: true });
-    setShowStarterSpotlight(false);
+    setSpotlightDismissed(true);
   };
   
   const handleViewStarterBlock = () => {
     const profile = getProfileSetup();
-    if (!profile?.focusArea) return;
+    const focusArea = profile?.focusArea as FocusArea | undefined;
+    
+    // Validate prerequisites
+    if (!profile?.starterObjectId || !focusArea) {
+      toast({ title: "Setting up your starter block..." });
+      handleDismissSpotlight();
+      return;
+    }
     
     // Route based on focusArea
     const routeMap: Record<FocusArea, string> = {
@@ -177,10 +192,17 @@ export function AIWorkspace() {
       work: "/plans",
     };
     
+    const targetRoute = routeMap[focusArea];
+    if (!targetRoute) {
+      toast({ title: "Couldn't find your starter block" });
+      handleDismissSpotlight();
+      return;
+    }
+    
     toast({ title: COPY.starterSpotlight.toastOnView });
     saveProfileSetup({ starterSpotlightDismissed: true });
-    setShowStarterSpotlight(false);
-    setLocation(routeMap[profile.focusArea]);
+    setSpotlightDismissed(true);
+    setLocation(targetRoute);
   };
 
   const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
@@ -1087,9 +1109,8 @@ export function AIWorkspace() {
         <ScrollArea className="flex-1 px-4">
           <div className="max-w-2xl mx-auto py-4">
             {/* Starter Block Spotlight Card */}
-            {showStarterSpotlight && (() => {
-              const profile = getProfileSetup();
-              const focusArea = profile?.focusArea as FocusArea | null;
+            {shouldShowSpotlight && (() => {
+              const focusArea = spotlightProfile?.focusArea as FocusArea | null;
               if (!focusArea) return null;
               
               return (
