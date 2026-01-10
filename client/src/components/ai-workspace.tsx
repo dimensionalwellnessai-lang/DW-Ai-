@@ -1839,8 +1839,14 @@ export function AIWorkspace() {
 
       <ProfileSetupModal
         isOpen={showProfileSetup}
-        onComplete={() => {
+        onComplete={(startTutorial) => {
           setShowProfileSetup(false);
+          if (startTutorial) {
+            // Start the navigation tutorial after a short delay for modal to close
+            setTimeout(() => {
+              startNavigationTutorial(true);
+            }, 300);
+          }
         }}
       />
 

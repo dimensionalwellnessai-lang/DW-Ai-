@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Calendar, Sparkles, Brain, Zap, DollarSign, Briefcase, Utensils, Clock, X, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Calendar, Sparkles, Brain, Zap, DollarSign, Briefcase, Utensils, Clock, X, Check, MessageCircle, Compass } from "lucide-react";
 import { saveProfileSetup, getProfileSetup, type ScheduleType, type FocusArea } from "@/lib/guest-storage";
 import { COPY } from "@/copy/en";
 
 interface ProfileSetupModalProps {
   isOpen: boolean;
-  onComplete: () => void;
+  onComplete: (startTutorial?: boolean) => void;
 }
 
 const SCHEDULE_OPTIONS: { id: ScheduleType; label: string }[] = [
@@ -81,6 +81,9 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
     } else if (step === 2) {
       saveProfileSetup({ wakeTime, windDownTime });
       setStep(3);
+    } else if (step === 3 && focusArea) {
+      saveProfileSetup({ focusArea });
+      setStep(4);
     }
   };
 
@@ -88,11 +91,12 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
     if (step > 1) setStep(step - 1);
   };
 
-  const handleFinish = () => {
-    if (focusArea) {
-      saveProfileSetup({ focusArea });
-    }
-    onComplete();
+  const handleContinueToDW = () => {
+    onComplete(false);
+  };
+
+  const handleExploreApp = () => {
+    onComplete(true);
   };
 
   const toggleDay = (day: number) => {
@@ -101,7 +105,7 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
     );
   };
 
-  const canContinue = step === 1 ? !!scheduleType : step === 3 ? !!focusArea : true;
+  const canContinue = step === 1 ? !!scheduleType : step === 3 ? !!focusArea : step === 4 ? true : true;
 
   return (
     <>
@@ -254,49 +258,86 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
                 </div>
               </motion.div>
             )}
+
+            {step === 4 && (
+              <motion.div
+                key="step4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-5"
+              >
+                <div className="space-y-2 text-center">
+                  <Check className="h-8 w-8 mx-auto text-primary" />
+                  <h2 className="text-lg font-display font-semibold">You're all set!</h2>
+                  <p className="text-sm text-muted-foreground">How would you like to start?</p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={handleContinueToDW}
+                    className="w-full p-4 rounded-xl border bg-primary text-primary-foreground hover-elevate text-left flex items-center gap-3"
+                    data-testid="button-continue-to-dw"
+                  >
+                    <MessageCircle className="h-5 w-5 shrink-0" />
+                    <div>
+                      <span className="font-medium block">Continue to DW</span>
+                      <span className="text-xs opacity-80">Start chatting right away</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={handleExploreApp}
+                    className="w-full p-4 rounded-xl border bg-muted/50 hover-elevate text-left flex items-center gap-3"
+                    data-testid="button-explore-app"
+                  >
+                    <Compass className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <span className="font-medium block">Explore the app</span>
+                      <span className="text-xs text-muted-foreground">Take a quick tour first</span>
+                    </div>
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
-          <div className="flex gap-2 mt-6">
-            {step > 1 && (
-              <Button 
-                variant="ghost"
-                onClick={handleBack}
-                data-testid="button-back-edit"
-              >
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Back
-              </Button>
-            )}
-            <Button 
-              onClick={step === 3 ? handleFinish : handleNext}
-              className="flex-1"
-              disabled={!canContinue}
-              data-testid="button-continue-edit"
-            >
-              {step === 3 ? (
-                <>
-                  Save
-                  <Check className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </>
+          {step < 4 && (
+            <div className="flex gap-2 mt-6">
+              {step > 1 && (
+                <Button 
+                  variant="ghost"
+                  onClick={handleBack}
+                  data-testid="button-back-edit"
+                >
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back
+                </Button>
               )}
-            </Button>
-          </div>
+              <Button 
+                onClick={handleNext}
+                className="flex-1"
+                disabled={!canContinue}
+                data-testid="button-continue-edit"
+              >
+                Continue
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
-          <div className="flex justify-center gap-1.5 mt-4">
-            {[1, 2, 3].map((s) => (
-              <div
-                key={s}
-                className={`h-1 rounded-full transition-all ${
-                  s === step ? "w-6 bg-primary" : s < step ? "w-1.5 bg-primary/50" : "w-1.5 bg-muted-foreground/30"
-                }`}
-              />
-            ))}
-          </div>
+          {step < 4 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {[1, 2, 3].map((s) => (
+                <div
+                  key={s}
+                  className={`h-1 rounded-full transition-all ${
+                    s === step ? "w-6 bg-primary" : s < step ? "w-1.5 bg-primary/50" : "w-1.5 bg-muted-foreground/30"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </>
