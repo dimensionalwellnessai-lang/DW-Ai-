@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,6 +64,25 @@ export default function TodayHubPage() {
   const dayOfWeek = today.getDay();
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const [showLifeSystemExplainer, setShowLifeSystemExplainer] = useState(false);
+
+  useEffect(() => {
+    const checkSetup = () => {
+      try {
+        const data = localStorage.getItem("fts_guest_data");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (parsed.profileSetup?.completedAt) {
+            return;
+          }
+        }
+        navigate("/welcome");
+      } catch {
+        navigate("/welcome");
+      }
+    };
+    const timer = setTimeout(checkSetup, 150);
+    return () => clearTimeout(timer);
+  }, [navigate]);
 
   const { data: moodData } = useQuery<MoodLog | null>({
     queryKey: ["/api/mood/today"],

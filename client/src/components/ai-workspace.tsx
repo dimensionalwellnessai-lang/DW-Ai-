@@ -1321,18 +1321,14 @@ export function AIWorkspace() {
         onComplete={(mood: OnboardingMood) => {
           saveSoftOnboarding(mood as SoftOnboardingMood);
           setShowSoftOnboarding(false);
-          if (!isProfileSetupComplete()) {
-            setShowProfileSetup(true);
-          } else {
-            const moodMessages: Record<OnboardingMood, string> = {
-              calm: "I'm feeling calm today.",
-              heavy: "I'm feeling heavy today and could use some support.",
-              scattered: "My mind feels scattered right now.",
-              pushing: "I'm pushing through but could use some grounding.",
-              unsure: "I'm not quite sure how I'm feeling.",
-            };
-            handleSendMessage(moodMessages[mood]);
-          }
+          const moodMessages: Record<OnboardingMood, string> = {
+            calm: "I'm feeling calm today.",
+            heavy: "I'm feeling heavy today and could use some support.",
+            scattered: "My mind feels scattered right now.",
+            pushing: "I'm pushing through but could use some grounding.",
+            unsure: "I'm not quite sure how I'm feeling.",
+          };
+          handleSendMessage(moodMessages[mood]);
         }}
         onSkip={() => {
           skipSoftOnboarding();
@@ -1340,9 +1336,6 @@ export function AIWorkspace() {
         }}
         onOpenChat={() => {
           setShowSoftOnboarding(false);
-          if (!isProfileSetupComplete()) {
-            setShowProfileSetup(true);
-          }
         }}
       />
 
@@ -1350,20 +1343,6 @@ export function AIWorkspace() {
         isOpen={showProfileSetup}
         onComplete={() => {
           setShowProfileSetup(false);
-        }}
-        onOpenChat={() => {
-          setShowProfileSetup(false);
-          const mood = getSoftOnboardingMood();
-          if (mood) {
-            const moodMessages: Record<SoftOnboardingMood, string> = {
-              calm: "I'm feeling calm today.",
-              heavy: "I'm feeling heavy today and could use some support.",
-              scattered: "My mind feels scattered right now.",
-              pushing: "I'm pushing through but could use some grounding.",
-              unsure: "I'm not quite sure how I'm feeling.",
-            };
-            handleSendMessage(moodMessages[mood]);
-          }
         }}
       />
 

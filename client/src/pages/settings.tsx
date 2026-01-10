@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -6,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
+import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import {
   User,
   Bell,
@@ -19,18 +21,41 @@ import {
   BellOff,
   FileText,
   ChevronRight,
+  Settings2,
 } from "lucide-react";
 import { Link } from "wouter";
 
 export function SettingsPage() {
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
   
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Settings" backPath="/" />
 
       <main className="p-4 max-w-2xl mx-auto space-y-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Settings2 className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Quick Setup</CardTitle>
+                <CardDescription>Edit your schedule, times, and focus area</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowProfileSetup(true)}
+              data-testid="button-edit-quick-setup"
+            >
+              Edit Quick Setup
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -201,6 +226,11 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </main>
+
+      <ProfileSetupModal
+        isOpen={showProfileSetup}
+        onComplete={() => setShowProfileSetup(false)}
+      />
     </div>
   );
 }
