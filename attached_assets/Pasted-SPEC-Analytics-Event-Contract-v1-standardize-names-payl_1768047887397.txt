@@ -1,0 +1,102 @@
+SPEC: Analytics Event Contract v1 (standardize names + payloads)
+
+GOAL
+Create a single source of truth for analytics event names + payload shapes.
+Add consistent metadata to every event:
+- ts (timestamp)
+- sessionId (random UUID per session; stored in memory only)
+- env ("dev" | "prod")
+
+NO NEW DEPENDENCIES.
+Do not modify UI behavior.
+
+--------------------------------------------
+1) Update analytics.ts (ONLY place to change)
+--------------------------------------------
+
+File: client/src/lib/analytics.ts
+
+A) Add event name constants / union:
+
+export const EVENTS = {
+  QUICK_SETUP_STARTED: "quick_setup_started",
+  QUICK_SETUP_COMPLETED: "quick_setup_completed",
+  STARTER_OBJECT_CREATED: "starter_object_created",
+  DW_FIRST_MESSAGE_SHOWN: "dw_first_message_shown",
+  STARTER_SPOTLIGHT_CLICKED: "starter_spotlight_clicked",
+  STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
+} as const;
+
+export type AnalyticsEventName = typeof EVENTS[keyof typeof EVENTS];
+
+B) Add stable payload types (interfaces), one per event:
+
+type QuickSetupCompletedPayload = {
+  scheduleType: string | null;
+  focusArea: string | null;
+  hasStarterObject: boolean;
+  timeToCompleteSeconds: number;
+};
+
+type StarterObjectCreatedPayload = {
+  focusArea: string | null;
+  objectType: "task" | "event" | "log";
+  starterObjectId: string;
+};
+
+type DwFirstMessageShownPayload = {
+  scheduleType: string | null;
+  focusArea: string | null;
+};
+
+type SpotlightClickedPayload = {
+  focusArea: string | null;
+  destinationRoute: string;
+};
+
+type SpotlightDismissedPayload = {
+  focusArea: string | null;
+};
+
+C) Create an event map type so trackEvent enforces payload shape:
+
+type EventPayloadMap = {
+  [EVENTS.QUICK_SETUP_STARTED]: undefined;
+  [EVENTS.QUICK_SETUP_COMPLETED]: QuickSetupCompletedPayload;
+  [EVENTS.STARTER_OBJECT_CREATED]: StarterObjectCreatedPayload;
+  [EVENTS.DW_FIRST_MESSAGE_SHOWN]: DwFirstMessageShownPayload;
+  [EVENTS.STARTER_SPOTLIGHT_CLICKED]: SpotlightClickedPayload;
+  [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
+};
+
+D) Add sessionId (in-memory), env, and ts to every logged event.
+
+- sessionId should be created once per page session:
+  const sessionId = crypto.randomUUID?.() ?? String(Math.random())
+
+- env:
+  const env = import.meta.env.DEV ? "dev" : "prod"
+
+E) Update trackEvent signature to enforce payload:
+export function trackEvent<K extends AnalyticsEventName>(
+  name: K,
+  payload: EventPayloadMap[K]
+)
+
+F) Ensure window queue still receives:
+{ name, payload, ts, sessionId, env }
+
+--------------------------------------------
+2) Acceptance tests
+--------------------------------------------
+- App compiles (TypeScript)
+- No screen changes required
+- Existing trackEvent calls may need minor tweaks if payload mismatches
+- Debug panel shows extra fields ts/sessionId/env
+
+--------------------------------------------
+3) Output required
+--------------------------------------------
+- Paste analytics.ts after change
+- List any call sites that needed payload fixes
+- Confirm: no new dependencies

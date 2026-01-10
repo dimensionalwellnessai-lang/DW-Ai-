@@ -3,13 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
-import type { AnalyticsEventName } from "@/lib/analytics";
-
-interface AnalyticsEvent {
-  name: AnalyticsEventName;
-  payload: Record<string, unknown>;
-  ts: number;
-}
+import type { StoredEvent } from "@/lib/analytics";
 
 function getRelativeTime(ts: number): string {
   const now = Date.now();
@@ -21,7 +15,7 @@ function getRelativeTime(ts: number): string {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-function EventCard({ event }: { event: AnalyticsEvent }) {
+function EventCard({ event }: { event: StoredEvent }) {
   const [expanded, setExpanded] = useState(false);
   const hasPayload = Object.keys(event.payload).length > 0;
 
@@ -34,7 +28,7 @@ function EventCard({ event }: { event: AnalyticsEvent }) {
               {event.name}
             </p>
             <p className="text-xs text-muted-foreground">
-              {getRelativeTime(event.ts)}
+              {getRelativeTime(event.ts)} · {event.env} · {event.sessionId.slice(0, 8)}
             </p>
           </div>
           {hasPayload && (
@@ -68,14 +62,14 @@ interface AnalyticsDebugPanelProps {
 }
 
 export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps) {
-  const [events, setEvents] = useState<AnalyticsEvent[]>([]);
+  const [events, setEvents] = useState<StoredEvent[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!open) return;
 
     const updateEvents = () => {
-      const ftsEvents = (window.__ftsEvents || []) as AnalyticsEvent[];
+      const ftsEvents = (window.__ftsEvents || []) as StoredEvent[];
       setEvents([...ftsEvents].reverse());
     };
 

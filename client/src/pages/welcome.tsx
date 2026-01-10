@@ -151,7 +151,7 @@ export default function Welcome() {
   
   if (!hasTrackedStartRef.current) {
     hasTrackedStartRef.current = true;
-    trackEvent("quick_setup_started", { ts: Date.now() });
+    trackEvent("quick_setup_started");
   }
   
   // Auto-advance from success screen after 3 seconds
