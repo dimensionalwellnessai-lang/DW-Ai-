@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,10 +24,17 @@ import {
   MessageCircle,
   ThumbsUp,
   MapPin,
+  Search,
+  ExternalLink,
+  Star,
+  Phone,
+  Globe,
+  ChevronRight,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -130,15 +137,40 @@ const COMMUNITY_POSTS = [
   { id: "5", authorName: "Casey L.", timeAgo: "1d", text: "Joining the study sprint group helped me stay accountable. Highly recommend!", tags: ["community", "study"] },
 ];
 
+interface LocalResource {
+  title: string;
+  description: string;
+  category: string;
+  rating?: number;
+  address?: string;
+  phone?: string;
+  website?: string;
+  aiSuggested?: boolean;
+  aiReason?: string;
+}
+
 export default function Browse() {
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"browse" | "community">("browse");
+  const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [currentMood, setCurrentMood] = useState("");
   const [aiRecommendations, setAiRecommendations] = useState<string[] | null>(null);
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const [localResources, setLocalResources] = useState<LocalResource[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Reset local resources when switching away from local tab
+  useEffect(() => {
+    if (communityCategory !== "local") {
+      setLocalResources([]);
+      setLocalSearchQuery("");
+      setIsSearching(false);
+    }
+  }, [communityCategory]);
 
   const { data: userProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
@@ -188,6 +220,38 @@ ${contentList}`,
 
   const handleComingSoon = () => {
     toast({ title: "Coming soon", description: "This feature is not available yet." });
+  };
+
+  const handleLocalSearch = async () => {
+    if (!localSearchQuery.trim()) return;
+    
+    setIsSearching(true);
+    setLocalResources([]); // Clear previous results
+    try {
+      const response = await apiRequest("POST", "/api/local-resources/search", {
+        query: localSearchQuery,
+      });
+      const data = await response.json();
+      // Validate that resources is an array
+      const resources = Array.isArray(data.resources) ? data.resources : [];
+      setLocalResources(resources);
+      if (resources.length === 0) {
+        toast({
+          title: "No results found",
+          description: "Try a different search term.",
+        });
+      }
+    } catch (error) {
+      console.error("Local search error:", error);
+      setLocalResources([]);
+      toast({
+        title: "Search failed",
+        description: "We couldn't find resources right now. Try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -362,95 +426,249 @@ ${contentList}`,
       )}
 
       {activeTab === "community" && (
-        <main className="p-4 space-y-6">
-          <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Groups
-            </h2>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {COMMUNITY_GROUPS.map((group) => {
-                const GroupIcon = group.icon;
-                return (
-                  <Card
-                    key={group.id}
-                    className="overflow-visible hover-elevate cursor-pointer transition-all"
-                    onClick={handleComingSoon}
-                    data-testid={`card-group-${group.id}`}
-                  >
+        <div className="flex flex-col">
+          <div className="sticky top-[109px] z-30 bg-background border-b">
+            <div className="flex gap-2 px-4 py-3">
+              <Button
+                variant={communityCategory === "groups" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCommunityCategory("groups")}
+                data-testid="button-community-groups"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Groups
+              </Button>
+              <Button
+                variant={communityCategory === "feed" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCommunityCategory("feed")}
+                data-testid="button-community-feed"
+              >
+                <MessageCircle className="h-4 w-4 mr-1" />
+                Feed
+              </Button>
+              <Button
+                variant={communityCategory === "local" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCommunityCategory("local")}
+                data-testid="button-community-local"
+              >
+                <MapPin className="h-4 w-4 mr-1" />
+                Local Resources
+              </Button>
+            </div>
+          </div>
+
+          {communityCategory === "groups" && (
+            <main className="p-4">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {COMMUNITY_GROUPS.map((group) => {
+                  const GroupIcon = group.icon;
+                  return (
+                    <Card
+                      key={group.id}
+                      className="overflow-visible hover-elevate cursor-pointer transition-all"
+                      onClick={handleComingSoon}
+                      data-testid={`card-group-${group.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <GroupIcon className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-sm">{group.name}</h3>
+                            <p className="text-xs text-muted-foreground mb-2">{group.description}</p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              <span>{group.members} members</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </main>
+          )}
+
+          {communityCategory === "feed" && (
+            <main className="p-4">
+              <div className="space-y-3">
+                {COMMUNITY_POSTS.map((post) => (
+                  <Card key={post.id} className="overflow-visible" data-testid={`card-post-${post.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <GroupIcon className="h-5 w-5 text-primary" />
+                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
+                          {post.authorName.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm">{group.name}</h3>
-                          <p className="text-xs text-muted-foreground mb-2">{group.description}</p>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Users className="h-3 w-3" />
-                            <span>{group.members} members</span>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{post.authorName}</span>
+                            <span className="text-xs text-muted-foreground">{post.timeAgo}</span>
+                          </div>
+                          <p className="text-sm mb-2">{post.text}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {post.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-4 mt-3">
+                            <button 
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={handleComingSoon}
+                              data-testid={`button-like-${post.id}`}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                              Like
+                            </button>
+                            <button 
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              onClick={handleComingSoon}
+                              data-testid={`button-comment-${post.id}`}
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              Comment
+                            </button>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
-          </section>
+                ))}
+              </div>
+            </main>
+          )}
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Feed
-            </h2>
-            <div className="space-y-3">
-              {COMMUNITY_POSTS.map((post) => (
-                <Card key={post.id} className="overflow-visible" data-testid={`card-post-${post.id}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
-                        {post.authorName.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{post.authorName}</span>
-                          <span className="text-xs text-muted-foreground">{post.timeAgo}</span>
+          {communityCategory === "local" && (
+            <main className="p-4 space-y-4">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search for gyms, therapists, yoga studios, healthy restaurants..."
+                    value={localSearchQuery}
+                    onChange={(e) => setLocalSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLocalSearch()}
+                    className="pl-9"
+                    data-testid="input-local-search"
+                  />
+                </div>
+                <Button 
+                  onClick={handleLocalSearch}
+                  disabled={isSearching || !localSearchQuery.trim()}
+                  data-testid="button-local-search"
+                >
+                  {isSearching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {localResources.length === 0 && !isSearching && (
+                <div className="text-center py-12">
+                  <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <h3 className="font-medium mb-2">Find Local Resources</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Search for wellness resources near you - gyms, therapists, yoga studios, healthy restaurants, and more. 
+                    Your concierge will find the best options based on your preferences.
+                  </p>
+                </div>
+              )}
+
+              {isSearching && (
+                <div className="text-center py-12">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Searching for resources...</p>
+                </div>
+              )}
+
+              {localResources.length > 0 && !isSearching && (
+                <div className="space-y-3">
+                  {localResources.map((resource, idx) => (
+                    <Card 
+                      key={idx} 
+                      className={`overflow-visible hover-elevate cursor-pointer ${resource.aiSuggested ? 'ring-2 ring-primary/20' : ''}`}
+                      data-testid={`card-resource-${idx}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <MapPin className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h3 className="font-medium text-sm flex items-center gap-2">
+                                  {resource.title}
+                                  {resource.aiSuggested && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Sparkles className="h-3 w-3 mr-1" />
+                                      AI Pick
+                                    </Badge>
+                                  )}
+                                </h3>
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  {resource.category}
+                                </Badge>
+                              </div>
+                              {resource.rating && (
+                                <div className="flex items-center gap-1 text-sm">
+                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                  <span>{resource.rating}</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {resource.description}
+                            </p>
+                            {resource.aiReason && (
+                              <p className="text-xs text-primary mt-2 italic">
+                                "{resource.aiReason}"
+                              </p>
+                            )}
+                            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                              {resource.address && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {resource.address}
+                                </span>
+                              )}
+                              {resource.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {resource.phone}
+                                </span>
+                              )}
+                              {resource.website && (
+                                <a 
+                                  href={resource.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-primary hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Globe className="h-3 w-3" />
+                                  Website
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                         </div>
-                        <p className="text-sm mb-2">{post.text}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {post.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-4 mt-3">
-                          <button 
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={handleComingSoon}
-                            data-testid={`button-like-${post.id}`}
-                          >
-                            <ThumbsUp className="h-3.5 w-3.5" />
-                            Like
-                          </button>
-                          <button 
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={handleComingSoon}
-                            data-testid={`button-comment-${post.id}`}
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            Comment
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        </main>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </main>
+          )}
+        </div>
       )}
 
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>

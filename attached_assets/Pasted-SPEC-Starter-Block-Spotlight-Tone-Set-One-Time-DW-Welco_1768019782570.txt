@@ -1,0 +1,156 @@
+SPEC: Starter Block Spotlight (Tone-Set) + One-Time DW Welcome Message
+
+GOAL
+Make the starter object created during Quick Setup impossible to miss.
+When the user lands in DW Chat after setup, show a “Starter Block Spotlight” card at the top with your tone.
+Also auto-send ONE welcome message from DW (only once) that reflects their setup.
+
+NON-GOALS
+- No refactors
+- No new dependencies
+- No backend
+- No full notification system
+- No rewriting navigation
+
+TONE RULES (HARD)
+- Calm, grounded, confident
+- Minimal punctuation (avoid exclamation points)
+- No therapy jargon, no cringe coaching
+- “Flip the Switch” voice: direct, supportive, not fluffy
+
+--------------------------------------------
+1) REQUIRED DATA (use existing guest-storage)
+--------------------------------------------
+Use profileSetup fields already saved in guest-storage:
+- scheduleType
+- busiestDays[]
+- wakeTime
+- windDownTime
+- focusArea  (body | food | mind | money | spirit | work)
+- starterObjectId
+- completedAt
+- metDW (existing) OR add if missing
+
+ADD ONE NEW FIELD:
+- starterSpotlightDismissed: boolean (default false)
+
+Rules:
+- Spotlight shows only if starterObjectId exists AND starterSpotlightDismissed is false.
+- DW welcome auto-message sends only if metDW is false.
+
+--------------------------------------------
+2) UX BEHAVIOR
+--------------------------------------------
+
+A) Spotlight card location
+- Inside the DW Chat screen (the screen used by bottom nav “Dw chat”)
+- Render at the top of the chat UI, above message list or pinned area.
+
+B) Spotlight card content (tone-set)
+Title:
+- “Your first block is live.”
+
+Subtitle (small/muted):
+- “You’re officially not starting from zero.”
+
+Body (by focusArea):
+- body:  “I set up a simple movement block. Nothing extreme — just enough to get your body back online.”
+- food:  “I added a starter food check so meals don’t turn into a last-minute scramble.”
+- mind:  “I dropped in a short reset. Two minutes to slow things down and clear the noise.”
+- money: “I added a quick money check-in. Awareness first — decisions come easier after.”
+- spirit:“I set aside a small reflection moment. No pressure. Just space.”
+- work:  “I created a focused work block so your energy has somewhere to go.”
+
+Meta line (tiny/muted):
+- “Created just now.”
+
+Buttons:
+Primary CTA:
+- “Take me to it”
+Secondary CTA:
+- “I’ll come back later”
+
+C) Spotlight button behaviors
+- “I’ll come back later”
+  - Set profileSetup.starterSpotlightDismissed = true
+  - Save in guest-storage
+  - Card disappears and stays gone across reloads
+
+- “Take me to it”
+  - Navigate user to the best screen to view the created object
+  - If deep-linking by starterObjectId exists, use it
+  - If not, route by focusArea:
+    - body/work -> Calendar or Plan (where blocks/events are visible)
+    - food/money -> Plan or Tasks list
+    - mind/spirit -> Journal/Routines/Logs
+  - OPTIONAL: after navigation, show a toast: “Here it is.”
+
+D) One-time DW welcome message (auto-send)
+- After Quick Setup completion, user is routed to DW Chat.
+- On first arrival ONLY (metDW === false):
+  - Auto-insert one message from DW that reflects the user setup.
+
+Message template (tone-set):
+“Alright. I’ve got a feel for your rhythm now.
+You’re on a {scheduleType} flow, busiest on {busyDays}, and you want to start with {focusArea}.
+I set something small up so you’re not starting from zero.
+Want to look at what I made — or do you want help with tonight first?”
+
+- After sending, set profileSetup.metDW = true and save.
+
+--------------------------------------------
+3) COPY LOCATION
+--------------------------------------------
+All strings should live in client/src/copy/en.ts if that file already stores copy.
+Add a new object like:
+- lifeSystem.starterSpotlight (title/subtitle/bodyByFocus/cta labels)
+- dwChat.welcomeAfterSetup (template strings)
+
+Do not hardcode visible strings in components.
+
+--------------------------------------------
+4) FILES TO CHANGE (MAX 3)
+--------------------------------------------
+1) client/src/lib/guest-storage.ts
+   - Add starterSpotlightDismissed boolean in profileSetup
+   - Ensure getter/setter functions support reading/writing it
+   - Ensure metDW exists and persists
+
+2) DW Chat screen component (the file used by bottom nav “Dw chat”)
+   - Add Spotlight card rendering logic
+   - Add one-time auto-message insertion on first arrival after setup
+   - Implement CTA handlers (dismiss + navigate)
+
+3) OPTIONAL (only if needed): client/src/pages/welcome.tsx
+   - Ensure starterObjectId is definitely saved when created
+   - Ensure metDW initializes false on setup completion (if not already)
+
+--------------------------------------------
+5) ACCEPTANCE TESTS (CLICK-BY-CLICK)
+--------------------------------------------
+1) Use your in-app Reset button
+2) Complete Quick Setup and create starter object
+3) App lands on DW Chat
+4) Verify:
+   - Spotlight card is visible at top
+   - Copy matches tone
+   - “Take me to it” routes correctly
+   - “I’ll come back later” hides card
+5) Reload app
+   - Spotlight stays hidden if dismissed
+   - DW welcome message does not duplicate
+6) Reset again
+   - Spotlight appears again (fresh run)
+
+--------------------------------------------
+6) OUTPUT REQUIRED FROM AGENT
+--------------------------------------------
+- Exact file paths changed
+- Where metDW and starterSpotlightDismissed are stored and updated
+- Where the spotlight routes for each focusArea
+- How the auto-message is injected (and how duplicates are prevented)
+
+IMPLEMENTATION NOTE (IMPORTANT)
+Do not guess the DW Chat route or component.
+Search the codebase for the bottom nav label “Dw chat” and use the component that tab points to.
+Do not add a new screen if one already exists.

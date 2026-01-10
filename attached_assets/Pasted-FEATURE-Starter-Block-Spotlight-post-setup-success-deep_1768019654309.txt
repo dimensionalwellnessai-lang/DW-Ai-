@@ -1,0 +1,116 @@
+FEATURE: “Starter Block Spotlight” (post-setup success + deep link)
+
+GOAL:
+After Quick Setup creates the starter object (task/event/log), the user must immediately SEE:
+1) What was created
+2) Why it matters
+3) A button to view it (deep link)
+4) A button to dismiss
+
+This should appear in the FIRST place the user lands after onboarding (DW Chat, since we routed there).
+
+NON-GOALS:
+- No refactors
+- No new dependencies
+- No backend work
+- No full notifications system
+
+--------------------------------------------
+1) Data we already have
+--------------------------------------------
+We already store in guest-storage profileSetup:
+- focusArea
+- starterObjectId
+- completedAt
+
+We also have copy in en.ts:
+- lifeSystem.starterMessages.{body,food,mind,money,spirit,work}
+We should reuse these messages.
+
+--------------------------------------------
+2) Behavior
+--------------------------------------------
+A) When onboarding completes and starter object is created:
+- Set profileSetup.starterObjectId = <id>
+- Set a new flag: profileSetup.starterSpotlightDismissed = false (or similar)
+- Navigate to DW Chat
+
+B) When the user lands on DW Chat the first time after setup:
+Show a “Starter Block Spotlight” card at the top of the chat screen (above messages or pinned area)
+
+The card must include:
+- Title: “Your first block is ready”
+- Body: Use the correct starter message based on focusArea
+- Small meta line: “Created just now”
+- CTA button: “View it”
+- Secondary: “Dismiss”
+
+C) Dismiss behavior:
+- When user taps Dismiss:
+  - Set profileSetup.starterSpotlightDismissed = true in guest-storage
+  - Card disappears and stays gone across reloads
+
+D) View it behavior:
+- When user taps View it:
+  Navigate to the correct place depending on focusArea:
+  - body/work -> Calendar or Plan page (where the event/block should exist)
+  - food/money -> Plan page or Tasks list
+  - mind/spirit -> Journal or Routines/log page
+If exact object deep-link exists, use starterObjectId.
+If not, route to the best screen and pre-filter/highlight if possible.
+
+E) If starterObjectId is missing:
+- Do not show the spotlight card.
+
+F) If spotlight was dismissed:
+- Do not show it again.
+
+--------------------------------------------
+3) Minimal implementation path (keep it safe)
+--------------------------------------------
+- Implement spotlight UI as a small component inside the DW Chat screen file (or as a new component file ONLY if needed).
+- Use existing UI components (Card/Button/Toast).
+- Use guest-storage getters to read profileSetup.
+- Add one new field to profileSetup in guest-storage:
+  - starterSpotlightDismissed?: boolean
+
+--------------------------------------------
+4) Files to change (MAX 3)
+--------------------------------------------
+1) client/src/lib/guest-storage.ts
+   - Add starterSpotlightDismissed field
+   - Add helper functions if needed:
+     - getProfileSetup()
+     - saveProfileSetup(partial)
+
+2) client/src/pages/welcome.tsx (ONLY if needed)
+   - Ensure starterObjectId is saved when created
+
+3) DW Chat screen component (the one used by bottom nav “Dw chat”)
+   - Add spotlight card logic + dismiss + view navigation
+
+--------------------------------------------
+5) Acceptance tests (click-by-click)
+--------------------------------------------
+1) Tap DEV RESET
+2) Run onboarding, choose focus, tap “Create my first starter block”
+3) App lands on DW Chat
+4) Spotlight card appears at top:
+   - correct message for focus
+   - shows “View it” and “Dismiss”
+5) Tap Dismiss
+   - card disappears
+6) Reload
+   - card stays gone
+7) DEV RESET again, repeat
+   - card shows again (fresh run)
+8) Tap “View it”
+   - routes to correct screen (Calendar/Plan/Journal etc)
+
+--------------------------------------------
+6) Output required from Agent
+--------------------------------------------
+- Exact files changed list
+- Where spotlight reads guest-storage
+- Where dismiss flag is saved
+- What route “View it” navigates to for each focusArea

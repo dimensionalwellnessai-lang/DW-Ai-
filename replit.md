@@ -24,6 +24,9 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **Guided Experiences**: Follows a Netflix-style layout with AI-picked recommendations, "Why" explanations, single-selection patterns, and explicit calendar confirmations.
 *   **Transparency & Trust**: Implements data origin labels, an "Explain Why" toggle for AI suggestions, a user feedback queue, and energy-adaptive AI patterns with consent reminders to avoid dark patterns.
 *   **Ingredient Substitution System**: AI-powered ingredient substitutes with ratios and usage notes. Users can click any ingredient to find alternatives, manage banned/excluded ingredients that are automatically filtered from all AI meal suggestions, and view substitutes with contextual tips.
+*   **Community Page**: Tab-based navigation with Groups, Feed, and Local Resources categories. Groups show wellness communities, Feed displays community posts, and Local Resources provides AI-powered web search for nearby services (gyms, therapists, restaurants, etc.).
+*   **Local Resources Search**: Powered by Perplexity API for web search. Returns curated results with AI-suggested picks. Falls back to mock data when API key is not configured. Results include business name, description, category, rating, address, phone, and website.
+*   **Concierge Planning**: AI can help plan anything - trips, birthday parties, events, home organization, career transitions, and more. Uses constraint awareness (budget, time, energy, preferences) to provide personalized recommendations.
 
 ### Configuration Architecture
 *   **Centralized Voice & Copy**: `client/src/config/brand.ts` for app identity, `client/src/config/voiceGuide.ts` for AI voice rules, and `client/src/copy/en.ts` for all UI text.
@@ -34,4 +37,5 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **AI Services**: Replit AI Integrations (OpenAI-compatible API), requiring `AI_INTEGRATIONS_OPENAI_BASE_URL` and `AI_INTEGRATIONS_OPENAI_API_KEY`.
 *   **Authentication**: `express-session` (with `SESSION_SECRET`), Resend for email-based password resets.
 *   **Email**: Resend via Replit connector (default sender: `Flip the Switch <no-reply@resend.dev>`).
+*   **Web Search**: Perplexity API (`PERPLEXITY_API_KEY`) for Local Resources search feature. Optional - falls back to mock data.
 *   **Third-Party Libraries**: `shadcn/ui`, `react-hook-form` (with `@hookform/resolvers` and Zod), `date-fns`, `Recharts`.
