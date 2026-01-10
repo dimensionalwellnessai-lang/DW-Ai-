@@ -1,24 +1,30 @@
+export type AnalyticsEventName =
+  | "quick_setup_started"
+  | "quick_setup_completed"
+  | "starter_object_created"
+  | "dw_first_message_shown"
+  | "starter_spotlight_clicked"
+  | "starter_spotlight_dismissed";
+
 type AnalyticsPayload = Record<string, unknown>;
 
 declare global {
   interface Window {
-    __analyticsQueue?: Array<{ event: string; payload: AnalyticsPayload; timestamp: number }>;
+    __ftsEvents?: Array<{ event: AnalyticsEventName; payload: AnalyticsPayload; ts: number }>;
   }
 }
 
-export function trackEvent(name: string, payload?: AnalyticsPayload): void {
+export function trackEvent(name: AnalyticsEventName, payload?: AnalyticsPayload): void {
   const eventData = {
     event: name,
     payload: payload || {},
-    timestamp: Date.now(),
+    ts: Date.now(),
   };
 
-  if (import.meta.env.DEV) {
-    console.log(`[analytics]`, name, payload || {});
-  }
+  console.log("[analytics]", name, payload || {});
 
   if (typeof window !== "undefined") {
-    window.__analyticsQueue = window.__analyticsQueue || [];
-    window.__analyticsQueue.push(eventData);
+    window.__ftsEvents = window.__ftsEvents || [];
+    window.__ftsEvents.push(eventData);
   }
 }

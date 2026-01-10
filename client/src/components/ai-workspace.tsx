@@ -204,17 +204,9 @@ export function AIWorkspace() {
       return;
     }
     
-    const destinationMap: Record<FocusArea, string> = {
-      body: "plan",
-      food: "plan",
-      mind: "journal",
-      money: "plan",
-      spirit: "journal",
-      work: "plan",
-    };
     trackEvent("starter_spotlight_clicked", {
       focusArea,
-      destination: destinationMap[focusArea],
+      destinationRoute: targetRoute,
     });
     
     toast({ title: COPY.starterSpotlight.toastOnView });

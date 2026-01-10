@@ -1,0 +1,136 @@
+SPEC C: Lightweight Analytics (MVP) — DWAI / Flip the Switch
+
+GOAL
+Track the onboarding + first-session flow without new dependencies.
+This must NOT affect UX or break any flows.
+
+NO NEW DEPENDENCIES.
+Do not add Mixpanel/Posthog SDK yet. Just create a small `trackEvent()` utility so we can swap later.
+
+--------------------------------------------
+1) Create analytics utility
+--------------------------------------------
+
+CREATE FILE:
+- client/src/lib/analytics.ts
+
+EXPORT:
+- type AnalyticsEventName = ...
+- function trackEvent(name: AnalyticsEventName, payload?: Record<string, any>)
+
+IMPLEMENTATION (MVP):
+- In dev: console.log("[analytics]", name, payload)
+- In prod: still console.log OR push to `window.__ftsEvents = []` (simple queue)
+
+RULES:
+- Never throw
+- No PII (no email, no full freeform text)
+- Fire-and-forget
+
+--------------------------------------------
+2) Events to track (ONLY these 6)
+--------------------------------------------
+
+EVENT: quick_setup_started
+WHEN:
+- user first enters /welcome screen
+
+PAYLOAD:
+- ts
+
+EVENT: quick_setup_completed
+WHEN:
+- user finishes Quick Setup (after Meet DW step, right before navigating away)
+
+PAYLOAD:
+- scheduleType
+- focusArea
+- hasStarterObject (boolean)
+- timeToCompleteSeconds (number)
+
+EVENT: starter_object_created
+WHEN:
+- starter task/event/log is saved successfully
+
+PAYLOAD:
+- focusArea
+- objectType: "task" | "event" | "log"
+- starterObjectId
+
+EVENT: dw_first_message_shown
+WHEN:
+- DW auto-sends the one-time welcome message after setup (metDW goes false -> true)
+
+PAYLOAD:
+- scheduleType
+- focusArea
+
+EVENT: starter_spotlight_clicked
+WHEN:
+- user taps “Take me to it” on the spotlight card in DW Chat
+
+PAYLOAD:
+- focusArea
+- destinationRoute (string; ex "/plans", "/calendar", "/journal")
+
+EVENT: starter_spotlight_dismissed
+WHEN:
+- user taps “I’ll come back later” on spotlight
+
+PAYLOAD:
+- focusArea
+
+--------------------------------------------
+3) Exact files to change (matches your app)
+--------------------------------------------
+
+A) NEW:
+- client/src/lib/analytics.ts
+
+B) Update:
+- client/src/pages/welcome.tsx
+  Add:
+  - trackEvent("quick_setup_started") on first render
+  - capture `setupStartAt` timestamp (useRef) to calculate timeToCompleteSeconds
+  - trackEvent("quick_setup_completed") when setup completes
+  - trackEvent("starter_object_created") when starter is saved (if created)
+
+C) Update:
+- client/src/components/ai-workspace.tsx
+  Add:
+  - trackEvent("dw_first_message_shown") right when the one-time auto-message is inserted
+  - trackEvent("starter_spotlight_clicked") on CTA
+  - trackEvent("starter_spotlight_dismissed") on dismiss
+
+NO OTHER FILES.
+
+--------------------------------------------
+4) Acceptance tests (click-by-click)
+--------------------------------------------
+
+1) Use your in-app Reset button (clears storage)
+2) Go through /welcome
+   Verify console logs:
+   - quick_setup_started
+3) Complete setup
+   Verify:
+   - quick_setup_completed
+   - starter_object_created (only if created)
+4) App lands on /chat
+   Verify:
+   - dw_first_message_shown (only once)
+5) Tap “Take me to it”
+   Verify:
+   - starter_spotlight_clicked
+6) Reset again, dismiss spotlight
+   Verify:
+   - starter_spotlight_dismissed
+
+--------------------------------------------
+5) Output required from Agent
+--------------------------------------------
+
+- List exact files changed
+- Paste full contents of analytics.ts
+- List the exact locations (line/section) where each event fires
+- Confirm: “No new dependencies added”
