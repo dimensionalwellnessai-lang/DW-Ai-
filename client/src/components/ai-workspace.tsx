@@ -156,12 +156,18 @@ export function AIWorkspace() {
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // Auto-open menu when navigation tutorial requires it
+  // Auto-open/close menu based on tutorial requirements
   useEffect(() => {
-    if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
-      setMenuOpen(true);
+    if (tutorialState.isActive) {
+      if (requiresMenuOpen && !menuOpen) {
+        // Open menu when tutorial step requires it
+        setMenuOpen(true);
+      } else if (!requiresMenuOpen && menuOpen && tutorialState.currentStepIndex > 0) {
+        // Close menu when tutorial step doesn't require it (except first step)
+        setMenuOpen(false);
+      }
     }
-  }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, menuOpen]);
+  }, [tutorialState.isActive, tutorialState.currentStepIndex, requiresMenuOpen, menuOpen]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [breathingPlayerOpen, setBreathingPlayerOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
