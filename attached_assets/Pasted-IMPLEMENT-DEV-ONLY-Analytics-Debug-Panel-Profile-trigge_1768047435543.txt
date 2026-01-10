@@ -1,0 +1,95 @@
+IMPLEMENT: DEV-ONLY Analytics Debug Panel (Profile-triggered)
+
+DECISION (LOCKED):
+- Trigger location: Profile screen
+- Visibility: DEV-ONLY
+- Panel: full-screen modal or bottom sheet
+
+--------------------------------------------
+1) Trigger (Profile)
+--------------------------------------------
+
+Add a hidden Profile row labeled:
+- “Debug”
+
+RULES:
+- Only render this row when:
+  import.meta.env.DEV === true
+- Row should look neutral (not highlighted)
+- Tapping it opens AnalyticsDebugPanel
+
+--------------------------------------------
+2) Analytics Debug Panel
+--------------------------------------------
+
+Create component:
+- client/src/components/AnalyticsDebugPanel.tsx
+
+Data source:
+- window.__ftsEvents (array)
+
+Panel UI:
+- Header:
+  - Title: “Analytics (Dev)”
+  - Subtitle: “Current session”
+  - Button: “Clear”
+- Body:
+  - Scrollable list
+  - Newest events first
+  - Each event card shows:
+    - Event name (bold)
+    - Relative time (“just now”, “5s ago”)
+    - Payload (collapsed by default, expandable)
+- Footer (optional):
+  - “{count} events logged”
+
+Clear button behavior:
+- Clears ONLY window.__ftsEvents
+- Does NOT touch guest storage
+
+--------------------------------------------
+3) DEV guard (MANDATORY)
+--------------------------------------------
+
+AnalyticsDebugPanel must:
+- Return null if not DEV
+- Not be imported or rendered in prod builds
+
+--------------------------------------------
+4) Files to change (MAX 3)
+--------------------------------------------
+
+1) client/src/components/AnalyticsDebugPanel.tsx (NEW)
+2) client/src/lib/analytics.ts
+   - Ensure window.__ftsEvents always exists
+   - Ensure events push with { name, payload, ts }
+3) Profile screen component
+   - Add DEV-only “Debug” row
+   - Wire it to open the panel
+
+--------------------------------------------
+5) Acceptance tests
+--------------------------------------------
+
+1) Run app in DEV
+2) Open Profile
+   - “Debug” row is visible
+3) Tap “Debug”
+   - Analytics panel opens
+4) Perform actions (setup, chat, spotlight)
+5) Panel updates live
+6) Tap “Clear”
+   - Events list empties
+7) Trigger another event
+   - New event appears
+8) Build / simulate prod
+   - Debug row + panel DO NOT exist
+
+--------------------------------------------
+6) Output required from Agent
+--------------------------------------------
+
+- List of files changed
+- Exact DEV guard used
+- How events are read from window.__ftsEvents
+- Confirmation that Debug UI does not exist in prod
