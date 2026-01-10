@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,9 +17,12 @@ import {
   Save,
   X,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Wind
 } from "lucide-react";
 import { format } from "date-fns";
+import { consumeHighlightNext } from "@/lib/momentum";
+import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 
 const JOURNAL_STORAGE_KEY = "fts_journal_entries";
 
@@ -70,16 +73,50 @@ export default function JournalPage() {
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMoodFilter, setSelectedMoodFilter] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [momentumLogs, setMomentumLogs] = useState<OnboardingLog[]>([]);
+  const [pendingHighlightId, setPendingHighlightId] = useState<string | null>(null);
+  const highlightProcessedRef = useRef(false);
 
   useEffect(() => {
     setEntries(getStoredEntries());
+    
+    const logs = getOnboardingLogs().filter(log => 
+      log.type === "grounding_practice" && 
+      log.dimensionTags?.some(t => t === "mind" || t === "emotional") &&
+      log.backgroundContext?.includes("momentum")
+    );
+    setMomentumLogs(logs);
+    
+    const highlight = consumeHighlightNext("/journal");
+    if (highlight) {
+      setPendingHighlightId(highlight.id);
+    }
   }, []);
+  
+  useEffect(() => {
+    if (!pendingHighlightId || highlightProcessedRef.current) return;
+    
+    const logExists = momentumLogs.some(l => l.id === pendingHighlightId);
+    if (logExists) {
+      highlightProcessedRef.current = true;
+      setHighlightedId(pendingHighlightId);
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      setTimeout(() => {
+        setHighlightedId(null);
+        setPendingHighlightId(null);
+      }, 3000);
+    }
+  }, [momentumLogs, pendingHighlightId]);
 
   const filteredEntries = entries.filter(entry => {
     const matchesSearch = searchQuery === "" || 
@@ -208,6 +245,41 @@ export default function JournalPage() {
               </Badge>
             ))}
           </div>
+          
+          {momentumLogs.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Wind className="w-4 h-4" />
+                Reset Practices
+              </h2>
+              {momentumLogs.map(log => {
+                const isHighlighted = highlightedId === log.id;
+                return (
+                  <div 
+                    key={log.id}
+                    ref={isHighlighted ? highlightRef : undefined}
+                    data-testid={`momentum-log-${log.id}`}
+                  >
+                    <Card className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium">{log.title}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{log.content}</p>
+                            {log.actionStep && (
+                              <p className="text-xs text-muted-foreground mt-2 italic">{log.actionStep}</p>
+                            )}
+                          </div>
+                          <Badge variant="secondary" className="shrink-0">Reset</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {todayEntries.length === 0 && entries.length > 0 && (
             <Card className="bg-primary/5 border-primary/20">

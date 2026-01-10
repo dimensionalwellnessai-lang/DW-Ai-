@@ -106,6 +106,13 @@ import {
   markNextStepShownToday,
   getLastPlanVisit,
 } from "@/lib/analytics";
+import {
+  createTonightPlanBlock,
+  createWeeklySkeleton,
+  createNextBestStepObject,
+  setHighlightNext,
+  type NextStepRule,
+} from "@/lib/momentum";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -190,15 +197,28 @@ export function AIWorkspace() {
   const handleNudgeTonight = () => {
     markNudgeShownToday();
     setShowNudge(false);
-    // Insert a helpful prompt into the chat
-    setInput("Help me plan tonight. What do I need — time, focus, or energy?");
+    const result = createTonightPlanBlock();
+    if (result) {
+      setHighlightNext(result.id, result.type, result.routeToView);
+      toast({ title: "Tonight is handled." });
+      setLocation(result.routeToView);
+    } else {
+      setInput("Help me plan tonight. What do I need — time, focus, or energy?");
+    }
   };
   
   const handleNudgeBuildWeek = () => {
     markNudgeShownToday();
     setShowNudge(false);
-    toast({ title: "Start here. I'll help shape it." });
-    setLocation("/plans");
+    const result = createWeeklySkeleton(false);
+    if (result) {
+      setHighlightNext(result.id, result.type, result.routeToView);
+      toast({ title: "Week skeleton created." });
+      setLocation(result.routeToView);
+    } else {
+      toast({ title: "Start here. I'll help shape it." });
+      setLocation("/plans");
+    }
   };
   
   const handleNudgeDismiss = () => {
@@ -219,14 +239,28 @@ export function AIWorkspace() {
   const handleRecapSimple = () => {
     markWeeklyRecapShown();
     setWeeklyRecapDismissed(true);
-    setInput("What's the one thing to protect this week?");
+    const result = createWeeklySkeleton(true);
+    if (result) {
+      setHighlightNext(result.id, result.type, result.routeToView);
+      toast({ title: "Done. I set it up." });
+      setLocation(result.routeToView);
+    } else {
+      setInput("What's the one thing to protect this week?");
+    }
   };
   
   const handleRecapStructure = () => {
     markWeeklyRecapShown();
     setWeeklyRecapDismissed(true);
-    toast({ title: "Let's build structure." });
-    setLocation("/plans");
+    const result = createWeeklySkeleton(false);
+    if (result) {
+      setHighlightNext(result.id, result.type, result.routeToView);
+      toast({ title: "Week skeleton created." });
+      setLocation(result.routeToView);
+    } else {
+      toast({ title: "Let's build structure." });
+      setLocation("/plans");
+    }
   };
   
   const handleRecapDismiss = () => {
@@ -239,7 +273,7 @@ export function AIWorkspace() {
   const [nextStepDismissed, setNextStepDismissed] = useState(false);
   const showNextStep = userActivated && !wasNextStepShownToday() && !nextStepDismissed;
   
-  const getNextStepSuggestion = (): { title: string; action: () => void } => {
+  const getNextStepSuggestion = (): { title: string; rule: NextStepRule; action: () => void } => {
     const lastPlanVisit = getLastPlanVisit();
     const today = new Date();
     const sevenDaysAgo = new Date(today);
@@ -249,10 +283,18 @@ export function AIWorkspace() {
     if (!lastPlanVisit || lastPlanVisit < sevenDaysAgoKey) {
       return {
         title: "Build one block in Plan",
+        rule: "plan",
         action: () => {
           markNextStepShownToday();
           setNextStepDismissed(true);
-          setLocation("/plans");
+          const result = createNextBestStepObject("plan");
+          if (result) {
+            setHighlightNext(result.id, result.type, result.routeToView);
+            toast({ title: "Done. I set it up." });
+            setLocation(result.routeToView);
+          } else {
+            setLocation("/plans");
+          }
         }
       };
     }
@@ -260,20 +302,36 @@ export function AIWorkspace() {
     if (streak < 3) {
       return {
         title: "Do a 2-minute reset",
+        rule: "reset",
         action: () => {
           markNextStepShownToday();
           setNextStepDismissed(true);
-          setInput("Guide me through a quick 2-minute reset.");
+          const result = createNextBestStepObject("reset");
+          if (result) {
+            setHighlightNext(result.id, result.type, result.routeToView);
+            toast({ title: "Done. I set it up." });
+            setLocation(result.routeToView);
+          } else {
+            setInput("Guide me through a quick 2-minute reset.");
+          }
         }
       };
     }
     
     return {
       title: "Name one priority for today",
+      rule: "priority",
       action: () => {
         markNextStepShownToday();
         setNextStepDismissed(true);
-        setInput("What's my one priority for today?");
+        const result = createNextBestStepObject("priority");
+        if (result) {
+          setHighlightNext(result.id, result.type, result.routeToView);
+          toast({ title: "Done. I set it up." });
+          setLocation(result.routeToView);
+        } else {
+          setInput("What's my one priority for today?");
+        }
       }
     };
   };

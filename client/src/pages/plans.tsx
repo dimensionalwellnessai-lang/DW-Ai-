@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Trash2 } from "lucide-react";
+import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Trash2, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { markPlanVisit } from "@/lib/analytics";
+import { consumeHighlightNext } from "@/lib/momentum";
+import { getCalendarEvents, getSavedRoutines, type CalendarEvent, type SavedRoutine } from "@/lib/guest-storage";
 import type { LifeSystem } from "@shared/schema";
 import {
   DropdownMenu,
@@ -46,9 +48,22 @@ function saveLocalPlans(plans: Plan[]) {
 export default function PlansPage() {
   const [, setLocation] = useLocation();
   const [localPlans, setLocalPlans] = useState<Plan[]>(getLocalPlans);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  
+  const momentumEvents = getCalendarEvents().filter(e => e.tags?.includes("momentum"));
+  const momentumRoutines = getSavedRoutines().filter(r => r.tags?.includes("momentum"));
   
   useEffect(() => {
     markPlanVisit();
+    const highlight = consumeHighlightNext("/plans");
+    if (highlight) {
+      setHighlightedId(highlight.id);
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      setTimeout(() => setHighlightedId(null), 3000);
+    }
   }, []);
 
   const { data: lifeSystemData } = useQuery<{ lifeSystem: LifeSystem | null }>({
@@ -147,6 +162,63 @@ export default function PlansPage() {
     </div>
   );
 
+  const renderMomentumEvent = (event: CalendarEvent) => {
+    const isHighlighted = highlightedId === event.id;
+    const eventDate = new Date(event.startTime);
+    
+    return (
+      <div 
+        key={event.id}
+        ref={isHighlighted ? highlightRef : undefined}
+        data-testid={`momentum-event-${event.id}`}
+      >
+        <Card className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium truncate">{event.title}</h3>
+                <p className="text-sm text-muted-foreground">{event.description}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <Badge variant="secondary" className="shrink-0">
+                <Clock className="w-3 h-3 mr-1" />
+                30 min
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+  
+  const renderMomentumRoutine = (routine: SavedRoutine) => {
+    const isHighlighted = highlightedId === routine.id;
+    
+    return (
+      <div 
+        key={routine.id}
+        ref={isHighlighted ? highlightRef : undefined}
+        data-testid={`momentum-routine-${routine.id}`}
+      >
+        <Card className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium truncate">{routine.title}</h3>
+                <p className="text-sm text-muted-foreground">{routine.description}</p>
+              </div>
+              <Badge variant="outline" className="shrink-0">Task</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader 
@@ -161,6 +233,19 @@ export default function PlansPage() {
       
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto pb-8">
+          {(momentumEvents.length > 0 || momentumRoutines.length > 0) && (
+            <div className="mb-6">
+              <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Momentum Items
+              </h2>
+              <div className="space-y-3">
+                {momentumEvents.map(renderMomentumEvent)}
+                {momentumRoutines.map(renderMomentumRoutine)}
+              </div>
+            </div>
+          )}
+          
           <Tabs defaultValue="drafts" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="drafts" className="gap-2" data-testid="tab-drafts">

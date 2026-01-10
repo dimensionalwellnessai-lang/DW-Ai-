@@ -1,0 +1,236 @@
+Locked — we’ll do A + B + C as one unified “One-Tap Momentum” upgrade, without bloating your code.
+
+Below is a single spec you can paste to your Agent. It builds real objects (task/event/log) from each card’s primary CTA, and it reuses your existing guest-storage save functions.
+
+⸻
+
+
+SPEC: One-Tap Momentum (All Cards Create Real Objects)
+
+GOAL
+When the user taps the primary CTA on:
+A) Next Best Step
+B) Weekly Recap
+C) D2 Nudge
+…the app should create a REAL object automatically (task/event/log/calendar item) so users feel immediate progress.
+
+RULES
+- No new dependencies
+- No backend
+- Minimal code touch (reuse existing save helpers)
+- Never block UI: show toast on success/failure
+- Do NOT create duplicates: enforce one object per card per day/week
+- Preserve existing card gating + priority order
+
+--------------------------------------------
+0) Objects + storage assumptions
+--------------------------------------------
+Use existing guest-storage save functions (examples):
+- saveCalendarEvent(...)
+- saveTask(...)
+- saveOnboardingLog(...) or saveLog(...)
+If only some exist, implement missing ones in guest-storage.ts using existing patterns.
+
+Every created object must return/produce an id.
+Store that id in localStorage so we can:
+- deep-link to it
+- prevent duplicates
+
+--------------------------------------------
+1) Add object creation helper (recommended)
+--------------------------------------------
+Create helper functions in:
+- client/src/lib/momentum.ts (NEW)
+OR inside analytics.ts if you want fewer files (but momentum.ts cleaner)
+
+Export:
+- createTonightPlanBlock()
+- createWeeklySkeleton()
+- createNextBestStepObject(rule: "plan"|"reset"|"priority")
+
+Each function:
+- Creates a real object via guest-storage
+- Returns { id, type, routeToView }
+
+Also export:
+- ensureOnce(key: string, fn): prevents duplicates
+  Uses localStorage to record creation:
+  - key -> created object id
+
+--------------------------------------------
+2) Feature A: Next Best Step = Create a real object (daily)
+--------------------------------------------
+CURRENT:
+Next Best Step shows a suggestion and routes to /plans on “Let’s go”.
+
+NEW:
+On primary CTA, auto-create a real object based on the rule that was chosen:
+
+RULES:
+If user hasn’t visited Plan in last 7 days:
+- Create a 30-min focus block (calendar event or plan block)
+  Title: "Focus Block"
+  Duration: 30 min
+  Suggested time: next available hour OR default tomorrow 9:00 AM (simple is fine)
+  Tag: ["work","productivity"]
+
+Else if rule suggests “2-minute reset”:
+- Create a log entry or routine item:
+  type: "reset"
+  title: "2-Minute Reset"
+  content: "One breath. One unclench. One step."
+  Tag: ["mind","emotional"]
+
+Else if rule suggests “name one priority”:
+- Create a task:
+  title: "Today: 1 priority"
+  notes: "Name it. Keep it small. Finish it."
+  Due: today
+
+DUPLICATE PREVENTION:
+Key: fts:nextStepCreated:<YYYY-MM-DD>
+- If exists, do not recreate; instead route to existing object.
+
+UI AFTER TAP:
+- Toast: "Done. I set it up."
+- Navigate to the best screen to view it:
+  - focus block -> /plans (or /calendar if exists)
+  - reset log -> /journal
+  - priority task -> /plans or /today (where tasks list is)
+
+TRACKING:
+- trackEvent(EVENTS.COMPLETED_FIRST_ACTION, ...) should not fire here unless user was not activated (your activation helper already handles once-ever).
+
+--------------------------------------------
+3) Feature B: Weekly Recap = Create a 3-block week skeleton (once/week)
+--------------------------------------------
+CURRENT:
+Weekly Recap offers “Keep it simple” or “Build structure” and routes.
+
+NEW:
+Primary CTA “Build structure” should create a simple weekly skeleton:
+- 3 blocks: Mon/Wed/Fri (or next 3 weekdays if current day is mid-week)
+- Each block: 30 minutes
+- Title: "Weekly Anchor"
+- Notes: "Protect this time. Small wins stack."
+
+If focusArea exists, personalize block title:
+- work -> "Weekly Focus Block"
+- body -> "Strength Session"
+- food -> "Meal Prep / Plan"
+- mind/spirit -> "Reset + Reflection"
+- money -> "Money Check"
+
+DUPLICATE PREVENTION:
+Key: fts:weeklySkeletonCreated:<ISO_WEEK_KEY>
+- If exists, don’t recreate; route user to /plans.
+
+UI AFTER TAP:
+- Toast: "Week skeleton created."
+- Navigate: /plans
+
+OPTIONAL SECONDARY:
+“Keep it simple” can create ONE block instead of 3:
+- Key: fts:weeklySimpleCreated:<ISO_WEEK_KEY>
+
+--------------------------------------------
+4) Feature C: D2 Nudge = Create “Tonight Plan” block (daily, unactivated)
+--------------------------------------------
+CURRENT:
+D2 Nudge “Help me with tonight” inserts a DW prompt.
+
+NEW:
+Primary CTA “Help me with tonight” should create a Tonight Plan object:
+Option 1 (preferred): calendar event or plan block:
+- Title: "Tonight Plan (30 min)"
+- Structure notes:
+  "5 min settle → 20 min focus → 5 min pause"
+- Suggested time:
+  - If current time < 8pm: set for 7:30pm today
+  - Else: set for tomorrow 7:30pm
+(Simple rule is fine.)
+
+DUPLICATE PREVENTION:
+Key: fts:tonightPlanCreated:<YYYY-MM-DD>
+- If exists, route to /plans instead.
+
+UI AFTER TAP:
+- Toast: "Tonight is handled."
+- Navigate: /plans (or /calendar)
+
+Secondary CTA “Build my week” stays as route to /plans (no auto-create) OR can call weekly skeleton if you want (optional).
+
+--------------------------------------------
+5) Deep-linking (MVP acceptable)
+--------------------------------------------
+If you don’t have object-detail routes, do this:
+- After creation, route user to the screen where they can SEE it:
+  /plans, /today, /journal
+
+If detail routes exist, use them:
+- /plans?highlight=<id>
+- /journal?highlight=<id>
+(If not, skip highlight.)
+
+--------------------------------------------
+6) Files to change (MAX 4)
+--------------------------------------------
+1) client/src/components/ai-workspace.tsx
+   - Update CTA handlers for D2 nudge, weekly recap, next best step
+   - Use ensureOnce keys + create functions
+
+2) client/src/pages/plans.tsx
+   - Keep markPlanVisit() (already added)
+   - OPTIONAL: if highlight query exists, scroll to item
+
+3) client/src/lib/guest-storage.ts
+   - Ensure save functions exist for task/event/log creation and return IDs
+
+4) NEW: client/src/lib/momentum.ts
+   - Centralize createTonightPlanBlock / createWeeklySkeleton / createNextBestStepObject + ensureOnce
+
+--------------------------------------------
+7) Acceptance tests
+--------------------------------------------
+A) Next Best Step:
+- Clear fts:nextStepCreated:<today>
+- Tap CTA -> object is created -> toast -> routes
+- Tap again -> NO duplicate, routes to view
+
+B) Weekly Recap:
+- Clear weeklyCreated key
+- Tap Build structure -> 3 blocks created -> toast -> /plans
+- Tap again same week -> no duplicates
+
+C) D2 Nudge:
+- Ensure not activated
+- Clear tonightPlanCreated key
+- Tap Help me with tonight -> plan block created -> toast -> /plans
+- Tap again -> no duplicate
+
+--------------------------------------------
+8) Output required
+--------------------------------------------
+- List files changed
+- List the exact localStorage keys used for creation
+- For each card, specify object type created + where it appears (plans/today/journal)
+- Confirm duplicate prevention works
+
+
+⸻
+
+One more thing (tiny but important)
+
+Tell the Agent to keep the tone consistent in toasts:
+
+Toasts (tone):
+	•	“Done. I set it up.”
+	•	“Tonight is handled.”
+	•	“Week skeleton created.”
+
+No exclamation points.
+
+⸻
+
+If you want, after this I’ll guide the best next step:
+✅ “Highlight the created object” (so users instantly SEE the thing you created) — that’s the final polish that makes it feel like magic.

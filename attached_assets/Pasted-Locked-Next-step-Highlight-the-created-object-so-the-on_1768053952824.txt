@@ -1,0 +1,151 @@
+Locked ✅ Next step = Highlight the created object so the “one-tap” actions feel like magic (user instantly sees what was created).
+
+Here’s the paste-ready spec for your Agent.
+
+⸻
+
+
+SPEC: Highlight Created Object (Plans / Today / Journal) + Deep Link
+
+GOAL
+After any One-Tap Momentum action creates an object, navigating to the destination screen should:
+1) Auto-scroll to the created item
+2) Visually highlight it for ~2–3 seconds (soft glow/outline)
+3) Then fade back to normal
+
+NO NEW DEPENDENCIES.
+No refactors.
+MVP-friendly (works even if lists are simple).
+
+--------------------------------------------
+1) Standardize “highlight” navigation contract
+--------------------------------------------
+
+When we navigate after creation, always include:
+- query param: ?highlight=<objectId>
+
+Examples:
+- /plans?highlight=abc123
+- /today?highlight=abc123
+- /journal?highlight=abc123
+
+If the object type is ambiguous, add:
+- &type=task|event|log  (optional)
+
+--------------------------------------------
+2) Store a fallback highlight target (in case query param is lost)
+--------------------------------------------
+
+In addition to routing with query param, set localStorage:
+- fts:highlightNext = JSON string:
+  { id: string, route: string, ts: number }
+
+Clear it after the highlight is applied.
+
+Reason: some mobile navigation stacks can drop query params; fallback keeps it reliable.
+
+--------------------------------------------
+3) Implement highlight behavior on each destination screen
+--------------------------------------------
+
+DESTINATIONS:
+- Plans screen: client/src/pages/plans.tsx
+- Today screen: client/src/pages/today.tsx (or wherever Today is)
+- Journal screen: client/src/pages/journal.tsx (or wherever Journal is)
+
+On mount:
+A) Read highlight id:
+   - from URL search param highlight
+   - else from localStorage fts:highlightNext (only if route matches)
+B) If found:
+   - scroll the list to the item
+   - apply highlight state to that item (outlined/glow)
+   - clear localStorage fallback
+   - remove highlight after 2500ms
+
+--------------------------------------------
+4) Scroll strategy (MVP)
+--------------------------------------------
+
+If list items already render from an array:
+- Add a ref map:
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({})
+- Set ref on each row wrapper:
+  ref={(el) => (itemRefs.current[item.id] = el)}
+- After render, call:
+  itemRefs.current[highlightId]?.scrollIntoView({ behavior: "smooth", block: "center" })
+
+If virtualized list is used:
+- Use its scrollToIndex/scrollToItem API (only if already present)
+
+--------------------------------------------
+5) Visual highlight (simple + consistent)
+--------------------------------------------
+
+Use a CSS class or inline style when highlighted:
+- subtle border + background change
+- transition in/out
+
+Example behavior:
+- add class “highlighted”
+- remove after timeout
+
+No new styling libraries.
+
+--------------------------------------------
+6) Update One-Tap Momentum actions to pass highlight id
+--------------------------------------------
+
+Where you currently navigate after creation:
+- append ?highlight=<createdId>
+- and set localStorage fts:highlightNext
+
+Do this for:
+- Next Best Step creations
+- Weekly skeleton creations (highlight the FIRST created block)
+- Tonight Plan creation
+
+--------------------------------------------
+7) Acceptance tests
+--------------------------------------------
+
+A) Next Best Step → Plans
+1) Tap CTA to create object
+2) App navigates to /plans?highlight=<id>
+3) The created item scrolls into view and highlights
+4) Highlight fades after ~2.5s
+
+B) Weekly skeleton
+1) Tap Build structure
+2) Navigate to /plans?highlight=<firstId>
+3) First block is highlighted (at least)
+
+C) Tonight plan
+1) Tap Help me with tonight
+2) Navigate to /plans?highlight=<id>
+3) Item highlighted
+
+D) Repeat navigation
+- Refresh: highlight should NOT re-run unless highlight param exists again
+- localStorage fallback should clear after success
+
+--------------------------------------------
+8) Output required from Agent
+--------------------------------------------
+
+- Files changed list
+- Which screens support highlight (plans/today/journal)
+- The exact CSS/class used
+- Confirm query param + localStorage fallback implemented
+
+
+⸻
+
+One small tone detail (keep it FTS)
+
+When it highlights, don’t pop a big success screen.
+Just the highlight + a calm toast like: “There it is.” (optional)
+
+⸻
+
+If you want, I can also give you the exact code snippet for the ref-map + scroll + highlight pattern so the Agent can paste it with zero guesswork.

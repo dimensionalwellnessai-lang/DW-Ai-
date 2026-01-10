@@ -1,0 +1,198 @@
+Awesome — here are copy-paste code patterns the Agent can drop in with minimal guessing. This follows your current approach: no new deps, smooth scroll, 2.5s highlight, query param + localStorage fallback.
+
+Use these snippets as the “golden pattern” for Plans / Today / Journal.
+
+⸻
+
+1) setHighlightNext() helper (put in client/src/lib/momentum.ts OR client/src/lib/analytics.ts)
+
+export function setHighlightNext(route: string, id: string) {
+  try {
+    localStorage.setItem(
+      "fts:highlightNext",
+      JSON.stringify({ route, id, ts: Date.now() })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function consumeHighlightNext(route: string): string | null {
+  try {
+    const raw = localStorage.getItem("fts:highlightNext");
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { route?: string; id?: string; ts?: number };
+    if (!parsed?.id || !parsed?.route) return null;
+
+    // Only consume if it matches this route
+    if (parsed.route !== route) return null;
+
+    localStorage.removeItem("fts:highlightNext");
+    return parsed.id;
+  } catch {
+    return null;
+  }
+}
+
+
+⸻
+
+2) Navigate with highlight after creation (use anywhere you route)
+
+Example: routing to Plans after creating an object.
+
+import { setHighlightNext } from "@/lib/momentum";
+// or wherever you placed it
+
+function goToPlansWithHighlight(navigate: (to: string) => void, createdId: string) {
+  const route = "/plans";
+  setHighlightNext(route, createdId);
+  navigate(`${route}?highlight=${encodeURIComponent(createdId)}`);
+}
+
+If you use react-router-dom:
+
+import { useNavigate } from "react-router-dom";
+const navigate = useNavigate();
+// then call goToPlansWithHighlight(navigate, id)
+
+
+⸻
+
+3) Highlight + scroll pattern (drop into destination screen)
+
+This example assumes you’re on Plans and render a list of items.
+
+A) Add this near top of plans.tsx
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { consumeHighlightNext } from "@/lib/momentum";
+
+function getHighlightFromQuery(search: string): string | null {
+  try {
+    const params = new URLSearchParams(search);
+    return params.get("highlight");
+  } catch {
+    return null;
+  }
+}
+
+B) Inside your component
+
+const location = useLocation();
+
+// Map of itemId -> element
+const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+const [highlightId, setHighlightId] = useState<string | null>(null);
+
+const routePath = "/plans"; // change to "/today" or "/journal" per screen
+
+useEffect(() => {
+  // 1) Prefer query param
+  const fromQuery = getHighlightFromQuery(location.search);
+
+  // 2) Fallback from localStorage
+  const fromStorage = consumeHighlightNext(routePath);
+
+  const id = fromQuery || fromStorage;
+  if (!id) return;
+
+  setHighlightId(id);
+
+  // Scroll after paint
+  const t = window.setTimeout(() => {
+    const el = itemRefs.current[id];
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 50);
+
+  // Remove highlight after 2.5s
+  const off = window.setTimeout(() => {
+    setHighlightId(null);
+  }, 2500);
+
+  return () => {
+    window.clearTimeout(t);
+    window.clearTimeout(off);
+  };
+}, [location.search]);
+
+
+⸻
+
+4) Apply highlight styles to the list row wrapper
+
+Where you render each item (task/event/block), wrap the row with a div that captures the ref:
+
+{items.map((item) => (
+  <div
+    key={item.id}
+    ref={(el) => {
+      itemRefs.current[item.id] = el;
+    }}
+    className={[
+      "transition-all duration-300",
+      highlightId === item.id ? "ring-2 ring-white/30 bg-white/5 rounded-xl" : ""
+    ].join(" ")}
+  >
+    {/* existing row UI */}
+    <YourRowComponent item={item} />
+  </div>
+))}
+
+If you don’t use Tailwind classes, use inline styles:
+
+style={
+  highlightId === item.id
+    ? { outline: "2px solid rgba(255,255,255,0.25)", borderRadius: 12, background: "rgba(255,255,255,0.04)" }
+    : undefined
+}
+
+
+⸻
+
+5) Same pattern for Today and Journal screens
+
+Just change:
+	•	routePath to "/today" or "/journal"
+	•	items to whatever array you render
+	•	attach refs on each row
+
+⸻
+
+6) (Optional) Remove highlight query param after applying (clean URL)
+
+Only do this if you want tidy URLs and you’re using react-router v6:
+
+import { useNavigate } from "react-router-dom";
+
+const navigate = useNavigate();
+
+useEffect(() => {
+  const fromQuery = getHighlightFromQuery(location.search);
+  if (!fromQuery) return;
+
+  // remove highlight param (replace so no back button weirdness)
+  const params = new URLSearchParams(location.search);
+  params.delete("highlight");
+  navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+}, [location.search]);
+
+This is optional. The highlight won’t rerun unless query is present.
+
+⸻
+
+What to tell the Agent (paste this)
+
+Use the provided golden pattern for highlight:
+- query param ?highlight=<id>
+- localStorage fallback fts:highlightNext
+- scrollIntoView + 2.5s highlight ring
+Implement on /plans first, then /today and /journal if those lists exist.
+No new deps.
+
+
+⸻
+
+If you paste me the names of the actual list arrays on Plans/Today (like tasks, events, planItems), I can tailor the snippet to your exact variables — but the above will work as the default pattern.
