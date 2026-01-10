@@ -268,11 +268,11 @@ export async function registerRoutes(
   // Trust the first proxy (Replit's proxy) for secure cookies to work
   app.set("trust proxy", 1);
   
-  if (isProduction && !process.env.SESSION_SECRET) {
-    throw new Error("SESSION_SECRET environment variable is required in production");
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET environment variable is required. Please set it in your environment or Replit Secrets.");
   }
   
-  const sessionSecret = process.env.SESSION_SECRET || "wellness-dev-only-secret-key-not-for-production";
+  const sessionSecret = process.env.SESSION_SECRET;
   
   const PgSession = connectPgSimple(session);
   
