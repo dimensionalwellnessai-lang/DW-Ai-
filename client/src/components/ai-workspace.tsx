@@ -30,6 +30,8 @@ import {
   markSoftOnboardingShownThisSession,
   getSoftOnboardingMood,
   isProfileSetupComplete,
+  getProfileSetup,
+  saveProfileSetup,
   getLifeSystemContext,
   getMealPrepPreferences,
   getWorkoutPreferences,
@@ -145,6 +147,7 @@ export function AIWorkspace() {
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
   const [longPressMenuIndex, setLongPressMenuIndex] = useState<number | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const welcomeMessageSentRef = useRef(false);
 
   const { prefs: systemPrefs, isAuthenticated } = useSystemPreferences();
   const { events: scheduleEvents } = useScheduleEvents();
@@ -321,6 +324,60 @@ export function AIWorkspace() {
 
   useEffect(() => {
     initGuestData();
+  }, []);
+
+  // Auto-send welcome message after onboarding completion (only once)
+  useEffect(() => {
+    if (welcomeMessageSentRef.current) return; // Prevent double-fire in same session
+    
+    const profile = getProfileSetup();
+    if (!profile || !profile.completedAt) return;
+    if (profile.metDW) return; // Already met DW
+    
+    welcomeMessageSentRef.current = true; // Mark as sent before async operations
+    
+    // Build personalized welcome message based on their setup
+    const scheduleMap: Record<string, string> = {
+      "9to5": "9-to-5 rhythm",
+      "nightShift": "night shift schedule",
+      "student": "student schedule",
+      "mixed": "mixed schedule",
+      "rebuilding": "rebuilding phase",
+    };
+    const focusMap: Record<string, string> = {
+      "body": "Body/Movement",
+      "food": "Food/Nutrition",
+      "mind": "Mind/Mental Health",
+      "money": "Money/Finances",
+      "spirit": "Spirit/Purpose",
+      "work": "Work/Career",
+    };
+    
+    const schedule = profile.scheduleType ? scheduleMap[profile.scheduleType] || profile.scheduleType : "your rhythm";
+    const focus = profile.focusArea ? focusMap[profile.focusArea] || profile.focusArea : "getting started";
+    const wake = profile.wakeTime || "morning";
+    const wind = profile.windDownTime || "evening";
+    const busyDays = profile.busiestDays?.length > 0 
+      ? profile.busiestDays.map(d => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join("/")
+      : null;
+    
+    let welcomeMsg = `Got you. ${schedule}`;
+    if (busyDays) welcomeMsg += `, busy on ${busyDays}`;
+    welcomeMsg += `, wake ~${wake.replace(":00 ", " ").replace("AM", "am").replace("PM", "pm")}`;
+    welcomeMsg += `, wind down ~${wind.replace(":00 ", " ").replace("AM", "am").replace("PM", "pm")}`;
+    welcomeMsg += `, starting with ${focus}. `;
+    welcomeMsg += "Want me to set up your first week or just tonight?";
+    
+    // Create a new conversation with the welcome message
+    const convo = createNewConversation();
+    addMessageToConversation("assistant", welcomeMsg);
+    setActiveConversation(convo.id);
+    setActiveConversationState(getActiveConversation());
+    setStartedFresh(false);
+    setConversationVersion(v => v + 1);
+    
+    // Mark as having met DW so we don't repeat
+    saveProfileSetup({ metDW: true });
   }, []);
 
   // Check for fresh session when user returns after being away

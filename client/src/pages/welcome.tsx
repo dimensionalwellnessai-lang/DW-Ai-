@@ -141,7 +141,7 @@ export default function Welcome() {
   const [starterMessage, setStarterMessage] = useState<string | null>(null);
 
   if (isProfileSetupComplete() && !isFinishing) {
-    setLocation("/");
+    setLocation("/chat");
     return null;
   }
 
@@ -171,18 +171,18 @@ export default function Welcome() {
     saveProfileSetup({ 
       starterObjectId: objectId, 
       completedAt: Date.now(),
-      metDW: true,
+      metDW: false,
     });
 
     setStarterMessage(copy.starterMessages[focusArea]);
     
     await new Promise(r => setTimeout(r, 1000));
-    setLocation("/");
+    setLocation("/chat");
   };
 
   const handleSkipStarter = () => {
-    saveProfileSetup({ completedAt: Date.now(), metDW: true });
-    setLocation("/");
+    saveProfileSetup({ completedAt: Date.now(), metDW: false });
+    setLocation("/chat");
   };
 
   const handleBack = () => {
@@ -190,8 +190,8 @@ export default function Welcome() {
   };
 
   const handleSkipAll = () => {
-    saveProfileSetup({ completedAt: Date.now(), metDW: true });
-    setLocation("/");
+    saveProfileSetup({ completedAt: Date.now(), metDW: false });
+    setLocation("/chat");
   };
 
   const toggleDay = (day: number) => {
