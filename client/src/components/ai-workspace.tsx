@@ -1413,7 +1413,8 @@ export function AIWorkspace() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type a message..."
-                className="resize-none min-h-[32px] max-h-20 rounded-xl py-1.5 text-sm"
+                className="resize-none !min-h-[36px] max-h-16 rounded-xl py-2 px-3 text-sm"
+                rows={1}
                 disabled={isTyping || isUploading}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
