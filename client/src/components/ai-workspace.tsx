@@ -91,6 +91,7 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -167,6 +168,10 @@ export function AIWorkspace() {
   );
   
   const handleDismissSpotlight = () => {
+    const profile = getProfileSetup();
+    trackEvent("starter_spotlight_dismissed", {
+      focusArea: profile?.focusArea || null,
+    });
     saveProfileSetup({ starterSpotlightDismissed: true });
     setSpotlightDismissed(true);
   };
@@ -198,6 +203,19 @@ export function AIWorkspace() {
       handleDismissSpotlight();
       return;
     }
+    
+    const destinationMap: Record<FocusArea, string> = {
+      body: "plan",
+      food: "plan",
+      mind: "journal",
+      money: "plan",
+      spirit: "journal",
+      work: "plan",
+    };
+    trackEvent("starter_spotlight_clicked", {
+      focusArea,
+      destination: destinationMap[focusArea],
+    });
     
     toast({ title: COPY.starterSpotlight.toastOnView });
     saveProfileSetup({ starterSpotlightDismissed: true });
@@ -425,6 +443,12 @@ export function AIWorkspace() {
     setActiveConversationState(getActiveConversation());
     setStartedFresh(false);
     setConversationVersion(v => v + 1);
+    
+    // Track first message shown
+    trackEvent("dw_first_message_shown", {
+      focusArea: profile.focusArea || null,
+      scheduleType: profile.scheduleType || null,
+    });
     
     // Mark as having met DW so we don't repeat
     saveProfileSetup({ metDW: true });
