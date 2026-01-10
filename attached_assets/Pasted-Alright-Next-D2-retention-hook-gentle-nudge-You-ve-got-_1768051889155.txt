@@ -1,0 +1,154 @@
+Alright — Next = D2 retention hook (gentle nudge) ✅
+You’ve got signals. Now we add a light behavior nudge that increases day-2 return without spam, without push notifications, without new deps.
+
+What we’re building
+
+A single in-app “Return Nudge” that only appears when:
+	•	it’s a new day
+	•	user is not activated yet
+	•	user has not completed today’s first action
+
+It shows once per day, and it lives where they’ll see it: DW Chat (top card).
+
+⸻
+
+Paste-ready SPEC for Replit Agent: D2 In-App Nudge v1
+
+SPEC: D2 In-App Return Nudge v1 (no push)
+
+GOAL
+Increase day-2 retention by showing a single, calm nudge card once per day
+for users who haven’t activated yet.
+
+NO NEW DEPENDENCIES.
+No push notifications.
+No popups. Use a subtle card inside DW Chat.
+
+--------------------------------------------
+1) Definitions
+--------------------------------------------
+
+- "New day": local dateKey changed (YYYY-MM-DD)
+- "Activated": localStorage has "fts:activatedAt"
+- "Nudge shown today": localStorage has "fts:nudgeShown:<dateKey>"
+
+--------------------------------------------
+2) When to show the nudge
+--------------------------------------------
+
+Show the nudge card ONLY if all are true:
+1) It is a new day OR first open today
+2) NOT activated (no fts:activatedAt)
+3) Nudge not shown today (no fts:nudgeShown:<dateKey>)
+4) User is on DW Chat screen (/chat)
+
+Once it appears:
+- set fts:nudgeShown:<dateKey> = "1"
+- so it never repeats today
+
+--------------------------------------------
+3) Nudge card content (tone-set)
+--------------------------------------------
+
+Title:
+- "Quick check."
+
+Body (pick one, rotate or keep static):
+- "Want me to set up tonight in 10 minutes, or build your week?"
+- "Pick one thing. I’ll shape the next step."
+- "No pressure. One small switch is enough."
+
+Buttons:
+Primary:
+- "Help me with tonight"  -> triggers a chat suggestion / inserts a prompt
+Secondary:
+- "Build my week"         -> routes to Plan (/plans) OR opens a week builder entry
+Tertiary (small text button):
+- "Not today"             -> dismisses card
+
+Dismiss behavior:
+- "Not today" hides the card immediately
+- It remains hidden for the rest of the day
+
+--------------------------------------------
+4) Implementation details
+--------------------------------------------
+
+A) Add helper functions in analytics.ts OR a small new util (preferred: analytics.ts since it already handles dateKey):
+- getLocalDateKey()
+- isActivated()
+- markNudgeShown(dateKey)
+- wasNudgeShown(dateKey)
+
+B) Add the nudge card to:
+- client/src/components/ai-workspace.tsx
+Render near the top, same zone as Spotlight.
+
+C) Button actions (MVP)
+- "Help me with tonight":
+   Insert a system-ish suggestion into the chat input OR immediately add a DW message like:
+   "Alright. What do you need tonight — time, focus, or energy?"
+   (Do NOT mark activation unless user responds; activation is handled elsewhere)
+
+- "Build my week":
+   Navigate to /plans (simple)
+   Optionally add a toast: "Start here. I’ll help shape it."
+
+- "Not today":
+   Hide card and keep it hidden until tomorrow.
+
+--------------------------------------------
+5) Files to change (MAX 2)
+--------------------------------------------
+
+1) client/src/lib/analytics.ts
+   - Ensure getLocalDateKey exists (from retention work)
+   - Add small helpers for nudge gating (localStorage keys)
+
+2) client/src/components/ai-workspace.tsx
+   - Add nudge card UI + gating logic + button handlers
+
+--------------------------------------------
+6) Acceptance tests
+--------------------------------------------
+
+1) Ensure NOT activated:
+   localStorage.removeItem("fts:activatedAt")
+
+2) New day simulation:
+   clear localStorage key fts:nudgeShown:<today>
+
+3) Open /chat
+   -> nudge appears once
+4) Close/reopen chat same day
+   -> nudge does NOT appear again
+5) Tap "Not today"
+   -> hides immediately
+6) Activate user (send first manual chat message)
+   -> nudge should not appear on subsequent days
+
+--------------------------------------------
+7) Output required from Agent
+--------------------------------------------
+
+- exact keys used in localStorage
+- exact render location in ai-workspace.tsx
+- confirm nudge shows once/day
+- confirm nudge never shows after activation
+
+
+⸻
+
+Why this is the right “next”
+	•	You aren’t relying on notifications
+	•	You aren’t adding clutter
+	•	You’re nudging the exact behavior that creates retention: one small action
+
+When this is done, you’ll have the full loop:
+	•	Onboarding → DW Chat
+	•	Spotlight → action
+	•	Activation tracked
+	•	Retention tracked
+	•	D2 nudge improves return
+
+If you want, after this we’ll do D7 streak (but only if you want that vibe).
