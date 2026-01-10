@@ -1,0 +1,90 @@
+Bet ✅ Here’s the exact copy block (tone-set) you can drop into client/src/copy/en.ts, plus a clean “Agent message” to implement Spec B.
+
+⸻
+
+1) Copy block for client/src/copy/en.ts
+
+Paste this under your existing lifeSystem section (since you already have lifeSystem.finishing, complete, starterMessages, etc.):
+
+lifeSystem: {
+  // ...keep your existing keys above
+
+  setupSuccess: {
+    title: "You’re set.",
+    subtitle: "Small structure. Real momentum.",
+    lines: {
+      rhythm: "Weekly rhythm saved",
+      anchors: "Wake + wind-down set",
+      focus: (focusLabel: string) => `Focus: ${focusLabel}`,
+      starterCreated: "Starter block created",
+      starterReady: "Starter block ready when you are",
+      editAnytime: "You can edit this anytime.",
+    },
+    buttons: {
+      goToDW: "Go to DW",
+      viewWhatYouMade: "View what you made",
+    },
+  },
+
+  // Optional: if you want a clean label map for the focus string
+  focusLabels: {
+    body: "Body",
+    food: "Food",
+    mind: "Mind",
+    money: "Money",
+    spirit: "Spirit",
+    work: "Work / School",
+  },
+
+  // ...keep your existing keys below
+}
+
+If your copy file doesn’t support functions (some setups prefer pure strings), replace the focus: function with a string and build it in the component. But if you already use functions in en.ts, this is clean.
+
+⸻
+
+2) Paste this to Replit Agent (Spec B implementation)
+
+Implement SPEC B: “Setup Complete” success moment.
+
+TASK:
+Add a success step to the end of client/src/pages/welcome.tsx (after Meet DW screen).
+When user finishes setup (Create starter block OR Skip), show the success screen for ~3 seconds (auto-advance) OR allow tapping “Go to DW”.
+
+SUCCESS SCREEN CONTENT (use COPY keys in en.ts):
+- Title: COPY.lifeSystem.setupSuccess.title
+- Subtitle: COPY.lifeSystem.setupSuccess.subtitle
+- Show checklist lines:
+  1) rhythm
+  2) anchors
+  3) focus: use COPY.lifeSystem.focusLabels[focusArea]
+  4) if starterObjectId exists -> starterCreated else -> starterReady
+- Show micro text: editAnytime
+- Primary CTA: goToDW (routes to DW Chat)
+- Secondary CTA (optional): viewWhatYouMade (routes same as Spotlight mapping)
+
+RULES:
+- No refactors, no new deps.
+- This success moment should ONLY appear at the end of Quick Setup, not on later launches.
+- After auto-advance or “Go to DW”, route to the same DW Chat route used previously.
+- Output: exact files changed + click-by-click tests.
+
+FILES (max 2):
+1) client/src/pages/welcome.tsx
+2) client/src/copy/en.ts
+
+
+⸻
+
+3) Click-by-click test (do this after Agent finishes)
+	1.	Tap your in-app Reset
+	2.	Complete Quick Setup → get to “Meet DW”
+	3.	Tap Create/Skip
+	4.	✅ You should see: “You’re set.” success screen
+	5.	Wait ~3 seconds OR tap Go to DW
+	6.	✅ You land in DW Chat
+	7.	Refresh → ✅ success screen does not show again
+
+⸻
+
+If you paste back the new success screen screenshot after it’s done, I’ll tell you if the tone feels right or if we should tighten it even more.

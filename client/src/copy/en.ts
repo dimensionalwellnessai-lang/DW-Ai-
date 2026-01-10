@@ -265,5 +265,31 @@ DW helps you see those connections, not just track tasks.`,
     areasExplanation: "Wellness dimensions help regulate the system \u2014 they are not the system itself.",
     ctaShowAreas: "Show me the areas of a life system",
     ctaStartHere: "Help me start where I am",
+
+    setupSuccess: {
+      title: "You're set.",
+      subtitle: "Small structure. Real momentum.",
+      lines: {
+        rhythm: "Weekly rhythm saved",
+        anchors: "Wake + wind-down set",
+        focus: (focusLabel: string) => `Focus: ${focusLabel}`,
+        starterCreated: "Starter block created",
+        starterReady: "Starter block ready when you are",
+        editAnytime: "You can edit this anytime.",
+      },
+      buttons: {
+        goToDW: "Go to DW",
+        viewWhatYouMade: "View what you made",
+      },
+    },
+
+    focusLabels: {
+      body: "Body",
+      food: "Food",
+      mind: "Mind",
+      money: "Money",
+      spirit: "Spirit",
+      work: "Work / School",
+    } as Record<string, string>,
   },
 };

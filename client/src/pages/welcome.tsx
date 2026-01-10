@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
@@ -137,13 +137,52 @@ export default function Welcome() {
   const [wakeTime, setWakeTime] = useState<string>("7:00 AM");
   const [windDownTime, setWindDownTime] = useState<string>("10:00 PM");
   const [focusArea, setFocusArea] = useState<FocusArea | null>(null);
-  const [isFinishing, setIsFinishing] = useState(false);
-  const [starterMessage, setStarterMessage] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [hasStarterObject, setHasStarterObject] = useState(false);
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  if (isProfileSetupComplete() && !isFinishing) {
+  if (isProfileSetupComplete() && !showSuccess) {
     setLocation("/chat");
     return null;
   }
+  
+  // Auto-advance from success screen after 3 seconds
+  useEffect(() => {
+    if (showSuccess) {
+      autoAdvanceTimerRef.current = setTimeout(() => {
+        setLocation("/chat");
+      }, 3000);
+      
+      return () => {
+        if (autoAdvanceTimerRef.current) {
+          clearTimeout(autoAdvanceTimerRef.current);
+        }
+      };
+    }
+  }, [showSuccess, setLocation]);
+  
+  const handleGoToDW = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+    }
+    setLocation("/chat");
+  };
+  
+  const handleViewWhatYouMade = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+    }
+    const routeMap: Record<FocusArea, string> = {
+      body: "/plans",
+      food: "/plans",
+      mind: "/journal",
+      money: "/plans",
+      spirit: "/journal",
+      work: "/plans",
+    };
+    const route = focusArea ? routeMap[focusArea] : "/chat";
+    setLocation(route);
+  };
 
   const copy = COPY.quickSetup;
 
@@ -162,10 +201,6 @@ export default function Welcome() {
 
   const handleCreateStarter = async () => {
     if (!focusArea) return;
-    
-    setIsFinishing(true);
-
-    await new Promise(r => setTimeout(r, 500));
 
     const objectId = createStarterObject(focusArea);
     saveProfileSetup({ 
@@ -174,15 +209,14 @@ export default function Welcome() {
       metDW: false,
     });
 
-    setStarterMessage(copy.starterMessages[focusArea]);
-    
-    await new Promise(r => setTimeout(r, 1000));
-    setLocation("/chat");
+    setHasStarterObject(true);
+    setShowSuccess(true);
   };
 
   const handleSkipStarter = () => {
     saveProfileSetup({ completedAt: Date.now(), metDW: false });
-    setLocation("/chat");
+    setHasStarterObject(false);
+    setShowSuccess(true);
   };
 
   const handleBack = () => {
@@ -212,28 +246,78 @@ export default function Welcome() {
     return copy.focusAreas[focusArea].toLowerCase();
   };
 
-  if (isFinishing) {
+  const successCopy = COPY.lifeSystem.setupSuccess;
+  const focusLabels = COPY.lifeSystem.focusLabels;
+
+  if (showSuccess) {
+    const focusLabel = focusArea ? (focusLabels[focusArea] || focusArea) : "";
+    
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center space-y-4"
+          className="text-center space-y-6 max-w-sm"
         >
-          {starterMessage ? (
-            <>
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <Check className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-xl font-display font-semibold">{copy.complete}</h2>
-              <p className="text-muted-foreground">{starterMessage}</p>
-            </>
-          ) : (
-            <>
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">{copy.finishing}</p>
-            </>
-          )}
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Check className="w-8 h-8 text-primary" />
+          </div>
+          
+          <div className="space-y-1">
+            <h2 className="text-2xl font-display font-semibold" data-testid="text-success-title">
+              {successCopy.title}
+            </h2>
+            <p className="text-muted-foreground" data-testid="text-success-subtitle">
+              {successCopy.subtitle}
+            </p>
+          </div>
+          
+          <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="w-4 h-4 text-primary shrink-0" />
+              <span data-testid="text-line-rhythm">{successCopy.lines.rhythm}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="w-4 h-4 text-primary shrink-0" />
+              <span data-testid="text-line-anchors">{successCopy.lines.anchors}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="w-4 h-4 text-primary shrink-0" />
+              <span data-testid="text-line-focus">{successCopy.lines.focus(focusLabel)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Check className="w-4 h-4 text-primary shrink-0" />
+              <span data-testid="text-line-starter">
+                {hasStarterObject ? successCopy.lines.starterCreated : successCopy.lines.starterReady}
+              </span>
+            </div>
+          </div>
+          
+          <p className="text-xs text-muted-foreground" data-testid="text-edit-anytime">
+            {successCopy.lines.editAnytime}
+          </p>
+          
+          <div className="space-y-2 pt-2">
+            <Button 
+              size="lg" 
+              onClick={handleGoToDW}
+              className="w-full"
+              data-testid="button-go-to-dw"
+            >
+              {successCopy.buttons.goToDW}
+            </Button>
+            {hasStarterObject && (
+              <Button 
+                variant="ghost" 
+                size="lg"
+                onClick={handleViewWhatYouMade}
+                className="w-full"
+                data-testid="button-view-what-you-made"
+              >
+                {successCopy.buttons.viewWhatYouMade}
+              </Button>
+            )}
+          </div>
         </motion.div>
       </div>
     );
