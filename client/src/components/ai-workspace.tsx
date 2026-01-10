@@ -1060,7 +1060,7 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-20">
+    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-16">
       <header className="flex items-center justify-between p-3 border-b dark:border-white/5 glass-subtle">
         <div className="flex items-center gap-1">
           <Button
