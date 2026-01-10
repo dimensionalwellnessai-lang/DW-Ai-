@@ -1114,38 +1114,34 @@ export function AIWorkspace() {
               if (!focusArea) return null;
               
               return (
-                <Card className="mb-4 border-primary/20 bg-primary/5" data-testid="card-starter-spotlight">
-                  <CardContent className="p-4 space-y-3">
-                    <div>
-                      <h3 className="font-medium text-sm" data-testid="text-spotlight-title">
-                        {COPY.starterSpotlight.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {COPY.starterSpotlight.subtitle}
-                      </p>
-                    </div>
-                    <p className="text-sm" data-testid="text-spotlight-body">
-                      {COPY.starterSpotlight.bodyByFocus[focusArea]}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {COPY.starterSpotlight.meta}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={handleViewStarterBlock}
-                        data-testid="button-spotlight-view"
-                      >
-                        {COPY.starterSpotlight.ctaPrimary}
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={handleDismissSpotlight}
-                        data-testid="button-spotlight-dismiss"
-                      >
-                        {COPY.starterSpotlight.ctaSecondary}
-                      </Button>
+                <Card className="mb-3 border-primary/20 bg-primary/5" data-testid="card-starter-spotlight">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm" data-testid="text-spotlight-title">
+                          {COPY.starterSpotlight.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2" data-testid="text-spotlight-body">
+                          {COPY.starterSpotlight.bodyByFocus[focusArea]}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button 
+                          size="sm" 
+                          onClick={handleViewStarterBlock}
+                          data-testid="button-spotlight-view"
+                        >
+                          View
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={handleDismissSpotlight}
+                          data-testid="button-spotlight-dismiss"
+                        >
+                          Later
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
