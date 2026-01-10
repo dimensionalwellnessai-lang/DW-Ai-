@@ -7,6 +7,7 @@ export const EVENTS = {
   STARTER_SPOTLIGHT_CLICKED: "starter_spotlight_clicked",
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
   APP_OPENED_NEW_DAY: "app_opened_new_day",
+  COMPLETED_FIRST_ACTION: "completed_first_action",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -45,6 +46,12 @@ type AppOpenedNewDayPayload = {
   opensThisWeek: number;
 };
 
+type CompletedFirstActionPayload = {
+  actionType: "starter_object_created" | "spotlight_view_clicked" | "user_sent_first_chat" | "plan_created" | "task_created" | "log_created";
+  source: "welcome" | "chat" | "plan" | "today" | "unknown";
+  tsLocal: string;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -54,6 +61,7 @@ type EventPayloadMap = {
   [EVENTS.STARTER_SPOTLIGHT_CLICKED]: SpotlightClickedPayload;
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
   [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
+  [EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload;
 };
 
 // Session metadata (in-memory only)
@@ -112,6 +120,7 @@ const STORAGE_KEYS = {
   FIRST_OPEN: "fts:firstOpenDateKey",
   LAST_OPEN: "fts:lastOpenDateKey",
   OPEN_DAYS: "fts:openDays",
+  ACTIVATED_AT: "fts:activatedAt",
 } as const;
 
 function getLocalDateKey(): string {
@@ -201,5 +210,24 @@ export function trackNewDayOpen(): void {
     });
   } catch {
     // Never throw from retention tracking
+  }
+}
+
+// Activation tracking - fires once ever per user
+export function markActivated(payload: CompletedFirstActionPayload): void {
+  try {
+    // Check if already activated
+    const existingActivation = localStorage.getItem(STORAGE_KEYS.ACTIVATED_AT);
+    if (existingActivation) {
+      return; // Already activated, do nothing
+    }
+    
+    // Mark as activated
+    localStorage.setItem(STORAGE_KEYS.ACTIVATED_AT, Date.now().toString());
+    
+    // Fire the event
+    trackEvent(EVENTS.COMPLETED_FIRST_ACTION, payload);
+  } catch {
+    // Never throw from activation tracking
   }
 }

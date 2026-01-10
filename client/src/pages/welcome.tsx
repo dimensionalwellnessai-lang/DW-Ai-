@@ -27,7 +27,7 @@ import {
   type ScheduleType, 
   type FocusArea,
 } from "@/lib/guest-storage";
-import { trackEvent, EVENTS } from "@/lib/analytics";
+import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
 
 const SCHEDULE_OPTIONS: { id: ScheduleType; label: string }[] = [
   { id: "9to5", label: COPY.quickSetup.schedules["9to5"] },
@@ -221,6 +221,13 @@ export default function Welcome() {
       focusArea,
       objectType: "event",
       starterObjectId: objectId,
+    });
+    
+    // Track first action (starter object created)
+    markActivated({
+      actionType: "starter_object_created",
+      source: "welcome",
+      tsLocal: new Date().toISOString(),
     });
 
     const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);

@@ -91,7 +91,7 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { trackEvent, EVENTS } from "@/lib/analytics";
+import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -207,6 +207,13 @@ export function AIWorkspace() {
     trackEvent(EVENTS.STARTER_SPOTLIGHT_CLICKED, {
       focusArea,
       destinationRoute: targetRoute,
+    });
+    
+    // Track first action (spotlight view clicked)
+    markActivated({
+      actionType: "spotlight_view_clicked",
+      source: "chat",
+      tsLocal: new Date().toISOString(),
     });
     
     toast({ title: COPY.starterSpotlight.toastOnView });
@@ -743,6 +750,14 @@ export function AIWorkspace() {
     setInput("");
     clearChatDraft();
     setIsTyping(true);
+    
+    // Track first action (user manually sent a chat message)
+    markActivated({
+      actionType: "user_sent_first_chat",
+      source: "chat",
+      tsLocal: new Date().toISOString(),
+    });
+    
     chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds, messagesOverride });
   };
 

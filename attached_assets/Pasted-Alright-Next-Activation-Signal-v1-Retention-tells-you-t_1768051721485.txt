@@ -1,0 +1,157 @@
+Alright — Next = Activation Signal v1 ✅
+Retention tells you they came back. Activation tells you they actually used it.
+
+What we’re building
+
+A single event:
+
+completed_first_action
+
+Fires once ever per user when they do any meaningful action.
+
+This becomes your “Activation Rate” metric.
+
+⸻
+
+Paste-ready SPEC for Replit Agent: Activation Signal v1
+
+SPEC: Activation Signal v1 (completed_first_action)
+
+GOAL
+Track the first meaningful action a user completes in the product.
+Fire ONCE ever per user:
+- completed_first_action
+
+NO NEW DEPENDENCIES.
+Do not change UI.
+Must never throw.
+Must not double-fire.
+
+--------------------------------------------
+1) Define "meaningful actions" (choose 4–6)
+--------------------------------------------
+
+Any ONE of these triggers activation:
+
+A) Starter spotlight CTA clicked (“Take me to it”)
+B) Starter object created during setup
+C) User sends their first message in DW chat (not the auto-message)
+D) User completes a plan action (creates/saves a plan item)
+E) User creates any task/event/log manually
+
+We’ll implement at least A + C (most universal), and optionally B (already available).
+
+--------------------------------------------
+2) Add event to analytics.ts
+--------------------------------------------
+
+File: client/src/lib/analytics.ts
+
+Add to EVENTS:
+- COMPLETED_FIRST_ACTION: "completed_first_action"
+
+Payload:
+type CompletedFirstActionPayload = {
+  actionType: "starter_object_created" | "spotlight_view_clicked" | "user_sent_first_chat" | "plan_created" | "task_created" | "log_created";
+  source: "welcome" | "chat" | "plan" | "today" | "unknown";
+  tsLocal: string; // local ISO
+};
+
+Add to EventPayloadMap:
+[EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload
+
+--------------------------------------------
+3) Add a helper to guarantee it fires once
+--------------------------------------------
+
+In analytics.ts, add:
+
+function markActivated(payload: CompletedFirstActionPayload): void
+
+Logic:
+- localStorage key: "fts:activatedAt"
+- if exists -> return (do nothing)
+- else:
+   - set "fts:activatedAt" = Date.now().toString()
+   - trackEvent(EVENTS.COMPLETED_FIRST_ACTION, payload)
+
+Rules:
+- must be wrapped in try/catch
+- never throw
+
+--------------------------------------------
+4) Hook it into the product (minimal touch points)
+--------------------------------------------
+
+A) In DW chat component (client/src/components/ai-workspace.tsx)
+When user sends their FIRST manual message:
+- call markActivated({
+    actionType: "user_sent_first_chat",
+    source: "chat",
+    tsLocal: new Date().toISOString()
+  })
+
+Important:
+- Do NOT trigger on the auto-message inserted by DW
+- Only trigger when the user submits input
+
+B) In spotlight “Take me to it” handler (same file)
+- call markActivated({
+    actionType: "spotlight_view_clicked",
+    source: "chat",
+    tsLocal: new Date().toISOString()
+  })
+
+C) OPTIONAL (if starter creation exists in welcome.tsx)
+After starter object successfully saves:
+- call markActivated({
+    actionType: "starter_object_created",
+    source: "welcome",
+    tsLocal: new Date().toISOString()
+  })
+
+Do NOT add more call sites than necessary.
+
+--------------------------------------------
+5) Acceptance tests
+--------------------------------------------
+
+1) Reset app AND remove activation key:
+   localStorage.removeItem("fts:activatedAt")
+
+2) Open app, go to chat:
+- Send first manual message:
+  -> should fire completed_first_action once
+
+3) Send second message:
+  -> should NOT fire again
+
+4) Reset activation key again, then:
+- Click “Take me to it”:
+  -> should fire completed_first_action once
+
+5) Verify in Debug panel:
+- event appears exactly once per reset
+
+--------------------------------------------
+6) Output required from Agent
+--------------------------------------------
+
+- Files changed list
+- Show markActivated() helper
+- Show exactly where it is called in ai-workspace.tsx (and welcome.tsx if used)
+- Confirm auto-DW message does NOT trigger activation
+
+
+⸻
+
+After this, your “growth dashboard” is basically done (without tools)
+
+You’ll have:
+	•	Retention: app_opened_new_day
+	•	Activation: completed_first_action
+	•	Onboarding conversion: quick_setup_completed
+
+That’s the core trio.
+
+If you want the next-next step after this, it’s D2 retention hook (a gentle “come back” nudge), but only after activation is logged cleanly.
