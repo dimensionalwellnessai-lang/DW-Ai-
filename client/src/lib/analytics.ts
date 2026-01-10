@@ -231,3 +231,30 @@ export function markActivated(payload: CompletedFirstActionPayload): void {
     // Never throw from activation tracking
   }
 }
+
+// D2 Nudge helpers
+export function isActivated(): boolean {
+  try {
+    return !!localStorage.getItem(STORAGE_KEYS.ACTIVATED_AT);
+  } catch {
+    return false;
+  }
+}
+
+export function wasNudgeShownToday(): boolean {
+  try {
+    const dateKey = getLocalDateKey();
+    return !!localStorage.getItem(`fts:nudgeShown:${dateKey}`);
+  } catch {
+    return false;
+  }
+}
+
+export function markNudgeShownToday(): void {
+  try {
+    const dateKey = getLocalDateKey();
+    localStorage.setItem(`fts:nudgeShown:${dateKey}`, "1");
+  } catch {
+    // Never throw
+  }
+}

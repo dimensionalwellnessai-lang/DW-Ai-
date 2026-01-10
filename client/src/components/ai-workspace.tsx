@@ -91,7 +91,7 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
+import { trackEvent, EVENTS, markActivated, isActivated, wasNudgeShownToday, markNudgeShownToday } from "@/lib/analytics";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -166,6 +166,31 @@ export function AIWorkspace() {
     spotlightProfile?.focusArea && 
     !spotlightDismissed
   );
+  
+  // D2 Return Nudge state
+  const [showNudge, setShowNudge] = useState(() => {
+    // Show nudge if: not activated AND not shown today
+    return !isActivated() && !wasNudgeShownToday();
+  });
+  
+  const handleNudgeTonight = () => {
+    markNudgeShownToday();
+    setShowNudge(false);
+    // Insert a helpful prompt into the chat
+    setInput("Help me plan tonight. What do I need — time, focus, or energy?");
+  };
+  
+  const handleNudgeBuildWeek = () => {
+    markNudgeShownToday();
+    setShowNudge(false);
+    toast({ title: "Start here. I'll help shape it." });
+    setLocation("/plans");
+  };
+  
+  const handleNudgeDismiss = () => {
+    markNudgeShownToday();
+    setShowNudge(false);
+  };
   
   const handleDismissSpotlight = () => {
     const profile = getProfileSetup();
@@ -1139,6 +1164,48 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
           <div className="max-w-2xl mx-auto py-4">
+            {/* D2 Return Nudge Card - shows once per day for non-activated users */}
+            {showNudge && !shouldShowSpotlight && (
+              <Card className="mb-3 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <h3 className="font-medium text-sm" data-testid="text-nudge-title">
+                        Quick check.
+                      </h3>
+                      <p className="text-xs text-muted-foreground" data-testid="text-nudge-body">
+                        Pick one thing. I'll shape the next step.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button 
+                        size="sm" 
+                        onClick={handleNudgeTonight}
+                        data-testid="button-nudge-tonight"
+                      >
+                        Help me with tonight
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        size="sm" 
+                        onClick={handleNudgeBuildWeek}
+                        data-testid="button-nudge-week"
+                      >
+                        Build my week
+                      </Button>
+                      <button
+                        onClick={handleNudgeDismiss}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                        data-testid="button-nudge-dismiss"
+                      >
+                        Not today
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             {/* Starter Block Spotlight Card */}
             {shouldShowSpotlight && (() => {
               const focusArea = spotlightProfile?.focusArea as FocusArea | null;

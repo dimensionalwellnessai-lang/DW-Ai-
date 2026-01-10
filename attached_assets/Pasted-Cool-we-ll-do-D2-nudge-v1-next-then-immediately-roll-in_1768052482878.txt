@@ -1,0 +1,196 @@
+Cool — we’ll do D2 nudge v1 next, then immediately roll into the “whatever comes after” sequence in the cleanest order:
+	1.	D2 In-App Nudge (unactivated users)
+	2.	D7 Streak + Momentum (activated users)
+	3.	Weekly Recap Card (light “look back / plan ahead”)
+	4.	One “Next Best Step” recommender (DW picks 1 action daily)
+
+Below are paste-ready specs for your AI Agent. Do them in order.
+
+⸻
+
+1) SPEC: D2 In-App Return Nudge v1 (no push, DW Chat card)
+
+SPEC: D2 In-App Return Nudge v1 (DW Chat)
+
+GOAL
+Show a calm “return nudge” once per day for users who are NOT activated yet.
+No notifications. No popups. Just a subtle card at top of DW Chat.
+
+SHOW CONDITIONS (ALL TRUE):
+1) User is on DW Chat screen (/chat)
+2) NOT activated (localStorage missing "fts:activatedAt")
+3) Nudge not shown today (localStorage missing "fts:nudgeShown:<dateKey>")
+4) It is a new day / first open today (dateKey is today)
+
+WHEN SHOWN:
+- set localStorage "fts:nudgeShown:<dateKey>" = "1"
+
+CARD COPY (tone-set)
+Title: "Quick check."
+Body (pick one, static is fine for v1):
+- "Want me to set up tonight in 10 minutes, or build your week?"
+
+Buttons:
+Primary: "Help me with tonight"
+Secondary: "Build my week"
+Tertiary text: "Not today"
+
+BUTTON ACTIONS
+- Help me with tonight:
+  Insert a DW message into chat stream:
+  "Alright. Tonight first. What do you need most — time, focus, or energy?"
+  (Do NOT mark activation here; activation happens when user sends a manual message.)
+- Build my week:
+  Navigate to /plans
+- Not today:
+  Hide card for today (keep the shown key so it won’t reappear today)
+
+FILES (MAX 2)
+1) client/src/lib/analytics.ts
+   - Ensure getLocalDateKey() exists (YYYY-MM-DD local)
+   - Add helpers:
+     - isActivated(): boolean
+     - hasShownNudgeToday(dateKey): boolean
+     - markShownNudgeToday(dateKey): void
+2) client/src/components/ai-workspace.tsx
+   - Render the nudge card at the top (same zone as Spotlight)
+   - Gate with conditions above
+   - Wire buttons
+
+ACCEPTANCE TESTS
+1) localStorage.removeItem("fts:activatedAt")
+2) Remove any nudge key for today: localStorage.removeItem("fts:nudgeShown:<today>")
+3) Open /chat -> nudge appears
+4) Navigate away and back -> does NOT reappear today
+5) Tap "Not today" -> disappears immediately and stays hidden today
+6) Activate user (send first manual message) -> nudge never appears again on future days
+
+
+⸻
+
+2) SPEC: D7 Streak + Momentum v1 (only for activated users)
+
+SPEC: D7 Streak + Momentum v1 (DW Chat header chip)
+
+GOAL
+For activated users, show a lightweight streak indicator in DW Chat:
+- “Streak: X days”
+This builds identity and return behavior without pressure.
+
+DEFINITIONS
+- Activated: localStorage has "fts:activatedAt"
+- Open days: use your existing open-day tracking array from retention work:
+  "fts:openDays" = JSON string array of dateKeys (YYYY-MM-DD)
+
+STREAK LOGIC
+- streak = number of consecutive days up to today found in openDays
+  Example: if openDays includes today, yesterday, day before yesterday => streak 3
+- if today not in openDays, streak is 0 (but should be rare since openDays updated on app start)
+
+UI
+Location: DW Chat (top right or near header)
+Display:
+- if streak >= 2: "Streak: {streak} days"
+- if streak < 2: show nothing (avoid noise)
+
+TONE
+No guilt messaging. No “you broke your streak”.
+
+FILES (MAX 2)
+1) client/src/lib/analytics.ts (or a new small util if cleaner)
+   - helper: getStreak(openDays, todayKey): number
+2) client/src/components/ai-workspace.tsx
+   - read openDays, compute streak, render chip
+
+ACCEPTANCE TESTS
+- simulate openDays list in localStorage and verify streak renders correctly
+- streak only shows for activated users
+
+
+⸻
+
+3) SPEC: Weekly Recap Card (Sunday/Monday, 1 tap, calm)
+
+SPEC: Weekly Recap Card v1 (DW Chat, once per week)
+
+GOAL
+Once per week, show a recap card:
+- “Your week at a glance”
+- “Pick your focus for this week”
+This converts returning users into planners without forcing it.
+
+WHEN TO SHOW
+- Only for activated users
+- Once per week (store key "fts:weeklyRecapShown:<year-weekNumber>")
+
+CONTENT
+Title: "Your week at a glance"
+Body:
+- "You showed up {opensThisWeek} days."
+- "Want to keep it simple or build structure?"
+
+Buttons:
+Primary: "Keep it simple" -> DW asks: “What’s the one thing to protect this week?”
+Secondary: "Build structure" -> Navigate /plans
+Tertiary: "Not now" -> dismiss for the week
+
+DATA
+Use opensThisWeek from your retention calculation (or compute from openDays last 7 days).
+
+FILES
+- analytics.ts helpers for weekNumber + shown key
+- ai-workspace.tsx card render + actions
+
+
+⸻
+
+4) SPEC: Next Best Step v1 (daily, 1 suggestion, no AI complexity)
+
+SPEC: Next Best Step v1 (daily suggestion, rules-based)
+
+GOAL
+Each day, show ONE “next best step” suggestion in DW Chat for activated users.
+
+RULES (simple)
+If not opened /plans in last 7 days -> suggest “Build one block in Plan”
+Else suggest “Do a 2-minute reset”
+Else suggest “Name one priority for today”
+
+Store key "fts:nextStepShown:<dateKey>" to show once per day.
+
+This is rules-based. No LLM needed.
+
+FILES
+- ai-workspace.tsx suggestion card
+- analytics.ts helpers (once/day)
+
+
+⸻
+
+One message you can paste to your Agent to run this whole sequence
+
+Implement in this order:
+1) D2 In-App Return Nudge v1 (for unactivated) in DW Chat
+2) D7 Streak chip (for activated) in DW Chat
+3) Weekly Recap card (once/week) in DW Chat
+4) Next Best Step v1 (once/day) in DW Chat
+
+Rules:
+- no new deps
+- no refactors
+- DEV-only debug panel must show events/helpers working
+- keep tone calm + confident (Flip the Switch voice)
+Output:
+- files changed list
+- localStorage keys used
+- click-by-click tests for each feature
+
+
+⸻
+
+If you want me to keep leading exactly, do this:
+After your Agent finishes Step 1 (D2 Nudge), paste:
+	•	the new localStorage keys it used
+	•	the nudge card screenshot
+
+…and I’ll tell you immediately if it matches the tone + gating rules before you move to streak/weekly.
