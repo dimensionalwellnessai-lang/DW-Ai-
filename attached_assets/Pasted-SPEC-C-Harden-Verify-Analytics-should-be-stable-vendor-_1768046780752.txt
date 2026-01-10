@@ -1,0 +1,81 @@
+SPEC C (Harden + Verify): Analytics should be stable, vendor-ready, and non-breaking
+
+GOALS
+1) Confirm analytics events fire exactly once where intended
+2) Make analytics impossible to break onboarding/chat (never throw, never block UI)
+3) Prepare for future vendor swap (Mixpanel/PostHog) without editing components again
+
+NON-GOALS
+- No new dependencies
+- No backend
+- No refactors across the app
+
+--------------------------------------------
+1) Confirm analytics utility behavior
+--------------------------------------------
+File: client/src/lib/analytics.ts
+
+REQUIREMENTS:
+- trackEvent() must never throw
+- trackEvent() must never block UI
+- In DEV: console.log("[analytics]", name, payload)
+- In PROD: store events in window queue so we can forward later:
+  window.__ftsEvents = window.__ftsEvents || []
+  push { name, payload, ts }
+
+--------------------------------------------
+2) Event list (must exist and match names exactly)
+--------------------------------------------
+quick_setup_started
+quick_setup_completed
+starter_object_created
+dw_first_message_shown
+starter_spotlight_clicked
+starter_spotlight_dismissed
+
+REQUIREMENTS:
+- No duplicates caused by rerenders
+- Use useRef guards where necessary
+
+--------------------------------------------
+3) Verify exact trigger points
+--------------------------------------------
+A) client/src/pages/welcome.tsx
+- quick_setup_started: first render of /welcome only (guard with useRef)
+- quick_setup_completed: once on final completion (Create or Skip)
+- starter_object_created: only after starter object save succeeds; include:
+  { focusArea, objectType, starterObjectId }
+
+B) client/src/components/ai-workspace.tsx
+- dw_first_message_shown: only when metDW flips false -> true and message is inserted
+- spotlight clicked/dismissed: on button taps
+
+--------------------------------------------
+4) Add a DEV “Analytics Debug” toggle (optional but useful)
+--------------------------------------------
+- Add a boolean flag in analytics.ts:
+  const ANALYTICS_DEBUG = import.meta.env.DEV
+- When true, include payload + timestamp in console logs.
+
+--------------------------------------------
+5) Acceptance tests
+--------------------------------------------
+1) Use your in-app Reset button
+2) Go through Quick Setup
+3) Confirm console shows:
+   - quick_setup_started
+   - quick_setup_completed
+   - starter_object_created (only if created)
+4) Land in DW Chat
+   - dw_first_message_shown (only once)
+5) Tap “Take me to it”
+   - starter_spotlight_clicked
+6) Reset and dismiss spotlight
+   - starter_spotlight_dismissed
+
+--------------------------------------------
+6) Output required from Agent
+--------------------------------------------
+- Confirm which files changed (should be analytics.ts only, unless guard fixes needed)
+- List each event and the exact guard used to prevent duplicates
+- Confirm “No new dependencies added”
