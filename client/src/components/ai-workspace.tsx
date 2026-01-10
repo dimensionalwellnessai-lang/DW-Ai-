@@ -576,6 +576,8 @@ export function AIWorkspace() {
   const [isTyping, setIsTyping] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesStartRef = useRef<HTMLDivElement>(null);
+  const [hasScrolledInitial, setHasScrolledInitial] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -657,8 +659,15 @@ export function AIWorkspace() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, conversationVersion]);
+    // For the first message (initial DW greeting), scroll to the top so user sees it
+    // For subsequent messages, scroll to bottom
+    if (messages.length === 1 && !hasScrolledInitial) {
+      messagesStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHasScrolledInitial(true);
+    } else if (messages.length > 1) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length, conversationVersion, hasScrolledInitial]);
 
   // Auto-save chat draft as user types (debounced)
   useEffect(() => {
@@ -1540,6 +1549,7 @@ export function AIWorkspace() {
               </div>
             ) : (
               <div className="space-y-4">
+                <div ref={messagesStartRef} />
                 {/* Combine DB/local messages with optimistic messages for display */}
                 {[...messages, ...optimisticMessages].map((message, index) => {
                   const handleLongPressStart = () => {

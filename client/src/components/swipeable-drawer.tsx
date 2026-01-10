@@ -123,7 +123,7 @@ export function SwipeableDrawer({
             <X className="h-5 w-5" />
           </Button>
         </div>
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 overflow-y-auto flex flex-col pb-16">
           {children}
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
