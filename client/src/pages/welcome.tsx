@@ -27,7 +27,7 @@ import {
   type ScheduleType, 
   type FocusArea,
 } from "@/lib/guest-storage";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const SCHEDULE_OPTIONS: { id: ScheduleType; label: string }[] = [
   { id: "9to5", label: COPY.quickSetup.schedules["9to5"] },
@@ -151,7 +151,7 @@ export default function Welcome() {
   
   if (!hasTrackedStartRef.current) {
     hasTrackedStartRef.current = true;
-    trackEvent("quick_setup_started");
+    trackEvent(EVENTS.QUICK_SETUP_STARTED);
   }
   
   // Auto-advance from success screen after 3 seconds
@@ -217,14 +217,14 @@ export default function Welcome() {
       metDW: false,
     });
 
-    trackEvent("starter_object_created", {
+    trackEvent(EVENTS.STARTER_OBJECT_CREATED, {
       focusArea,
       objectType: "event",
       starterObjectId: objectId,
     });
 
     const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
-    trackEvent("quick_setup_completed", {
+    trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {
       scheduleType,
       focusArea,
       hasStarterObject: true,
@@ -239,7 +239,7 @@ export default function Welcome() {
     saveProfileSetup({ completedAt: Date.now(), metDW: false });
 
     const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
-    trackEvent("quick_setup_completed", {
+    trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {
       scheduleType,
       focusArea,
       hasStarterObject: false,

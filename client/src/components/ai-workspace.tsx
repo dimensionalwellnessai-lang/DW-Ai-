@@ -91,7 +91,7 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -169,7 +169,7 @@ export function AIWorkspace() {
   
   const handleDismissSpotlight = () => {
     const profile = getProfileSetup();
-    trackEvent("starter_spotlight_dismissed", {
+    trackEvent(EVENTS.STARTER_SPOTLIGHT_DISMISSED, {
       focusArea: profile?.focusArea || null,
     });
     saveProfileSetup({ starterSpotlightDismissed: true });
@@ -204,7 +204,7 @@ export function AIWorkspace() {
       return;
     }
     
-    trackEvent("starter_spotlight_clicked", {
+    trackEvent(EVENTS.STARTER_SPOTLIGHT_CLICKED, {
       focusArea,
       destinationRoute: targetRoute,
     });
@@ -437,7 +437,7 @@ export function AIWorkspace() {
     setConversationVersion(v => v + 1);
     
     // Track first message shown
-    trackEvent("dw_first_message_shown", {
+    trackEvent(EVENTS.DW_FIRST_MESSAGE_SHOWN, {
       focusArea: profile.focusArea || null,
       scheduleType: profile.scheduleType || null,
     });
