@@ -1151,7 +1151,7 @@ export function AIWorkspace() {
                     </button>
                   </Link>
                   <details className="group">
-                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm flex-1">Calendar</span>
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />

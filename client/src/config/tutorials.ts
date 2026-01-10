@@ -28,14 +28,14 @@ export const NAVIGATION_TUTORIAL: TutorialStep[] = [
     requiresMenuOpen: true
   },
   {
-    targetTestId: "menu-item-calendar",
+    targetTestId: "menu-calendar-dropdown",
     title: "Calendar",
     description: "View your week and plan what feels manageable.",
     placement: "right",
     requiresMenuOpen: true
   },
   {
-    targetTestId: "menu-item-daily-schedule",
+    targetTestId: "menu-calendar-today",
     title: "Today",
     description: "Focus on just today. One day at a time.",
     placement: "right",

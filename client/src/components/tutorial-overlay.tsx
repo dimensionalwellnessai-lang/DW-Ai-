@@ -43,6 +43,12 @@ export function TutorialOverlay() {
       return;
     }
 
+    // Check if element is inside a collapsed details and open it
+    let parentDetails = element.closest('details');
+    if (parentDetails && !parentDetails.open) {
+      parentDetails.open = true;
+    }
+
     element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
 
     setTimeout(() => {
@@ -67,7 +73,7 @@ export function TutorialOverlay() {
       if (computedStyle.position === 'static') {
         htmlElement.style.position = 'relative';
       }
-      htmlElement.style.zIndex = '10000';
+      htmlElement.style.zIndex = '10003';
 
       const tooltipWidth = 300;
       const tooltipHeight = 180;
@@ -169,7 +175,7 @@ export function TutorialOverlay() {
 
   const overlayContent = (
     <div 
-      className="fixed inset-0 z-[9999] pointer-events-none"
+      className="fixed inset-0 z-[10002] pointer-events-none"
       data-testid="tutorial-overlay"
     >
       <svg
@@ -225,7 +231,7 @@ export function TutorialOverlay() {
             width: targetRect.width,
             height: targetRect.height,
             pointerEvents: "auto",
-            zIndex: 10001,
+            zIndex: 10004,
           }}
           onClick={() => {
             // Find and click the actual element
@@ -249,7 +255,7 @@ export function TutorialOverlay() {
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
-          zIndex: 10002
+          zIndex: 10005
         }}
         data-testid="tutorial-tooltip"
         role="dialog"
