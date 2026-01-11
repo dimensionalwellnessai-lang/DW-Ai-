@@ -8,7 +8,7 @@ export const COPY = {
   onboarding: {
     screen1Title: "Pause for a second.",
     screen1Body: "You don't need to change anything right now. This space is about noticing — then choosing.",
-    ctaStart: "Let's flip the switch",
+    ctaStart: "Let's begin",
 
     energyPrompt: "Where are you at, honestly?",
     energyHelper: "Pick as many as apply. No pressure.",
@@ -24,7 +24,7 @@ export const COPY = {
 
     closeTitle: "Use this when you want clarity.",
     closeBody: "Not every day. Just when it helps.",
-    closeCTA: "Enter Flip the Switch",
+    closeCTA: "Enter DW",
   },
 
   states: {
