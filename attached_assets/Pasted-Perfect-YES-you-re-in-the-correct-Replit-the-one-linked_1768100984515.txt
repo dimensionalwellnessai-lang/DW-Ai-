@@ -1,0 +1,78 @@
+Perfect ✅ — YES = you’re in the correct Replit (the one linked to dimensionalwellnessai-lang/Dw-Ai-).
+So now we can safely redo the right changes in the right app.
+
+Here’s the clean “DW + PWA” spec for your Replit AI Agent.
+
+⸻
+
+✅ Replit AI Agent Prompt (copy/paste exactly)
+
+We were editing the wrong Replit earlier. Now we are in the correct repo (connected to dimensionalwellnessai-lang/Dw-Ai-).
+
+Goal: Update PWA + Home Screen branding to "DW" (assistant/presence brand). Do NOT change appId/package IDs, Capacitor config, Android/iOS folders, or any native build settings. Web/PWA only.
+
+Tasks:
+
+1) Ensure these files exist under client/public:
+   - client/public/manifest.json
+   - client/public/icon-192.png
+   - client/public/icon-512.png
+
+2) Set manifest.json content to exactly:
+
+{
+  "name": "DW",
+  "short_name": "DW",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
+3) If icons do not exist, create simple placeholder square PNGs (192x192 and 512x512). Keep them basic.
+
+4) Find the Vite HTML entry file (likely client/index.html). Inside <head> ensure these tags exist:
+
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DW" />
+
+5) Run npm run build and confirm it succeeds.
+
+6) Confirm the build output includes:
+   - dist/public/manifest.json
+   - dist/public/icon-192.png
+   - dist/public/icon-512.png
+
+Return:
+- which files were edited (exact paths)
+- build output confirmation
+
+
+⸻
+
+After the Agent finishes (iPhone refresh steps)
+
+Because iOS caches hard:
+	1.	Delete the existing Home Screen shortcut
+	2.	Close Safari fully
+	3.	Open your app URL in Safari
+	4.	Share → Add to Home Screen
+	5.	It should show DW
+
+⸻
+
+Next message you send me
+
+After the Agent runs, reply with either:
+	•	“Build succeeded + files confirmed”
+or
+	•	paste the Agent output if it says something failed
+
+Then we’ll do the next polish step: DW icon + splash look (still web-first).
