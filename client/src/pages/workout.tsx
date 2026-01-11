@@ -71,6 +71,7 @@ import { AlternativesDialog } from "@/components/alternatives-dialog";
 import { ExclusionsButton } from "@/components/exclusions-manager";
 import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -219,6 +220,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
 ];
 
 export default function WorkoutPage() {
+  useTutorialStart("workout", 1000);
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);

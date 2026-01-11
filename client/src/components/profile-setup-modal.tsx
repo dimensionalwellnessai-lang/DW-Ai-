@@ -92,10 +92,12 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
   };
 
   const handleContinueToDW = () => {
+    saveProfileSetup({ skipped: false, completedAt: Date.now() });
     onComplete(false);
   };
 
   const handleExploreApp = () => {
+    saveProfileSetup({ skipped: false, completedAt: Date.now() });
     onComplete(true);
   };
 
@@ -121,7 +123,10 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={onComplete}
+            onClick={() => {
+              saveProfileSetup({ skipped: true });
+              onComplete();
+            }}
             className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted"
             data-testid="button-close-modal"
           >

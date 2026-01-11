@@ -372,6 +372,7 @@ export interface ProfileSetup {
   primaryFocus: LifeDimension | null;
   metDW: boolean;
   completedAt: number | null;
+  skipped: boolean;
   scheduleType: ScheduleType | null;
   busiestDays: number[];
   wakeTime: string | null;
@@ -2095,6 +2096,7 @@ export function saveProfileSetup(setup: Partial<ProfileSetup>): void {
     weeklyRhythm: setup.weeklyRhythm ?? data.profileSetup?.weeklyRhythm ?? null,
     primaryFocus: setup.primaryFocus ?? data.profileSetup?.primaryFocus ?? null,
     metDW: setup.metDW ?? data.profileSetup?.metDW ?? false,
+    skipped: setup.skipped ?? data.profileSetup?.skipped ?? false,
     scheduleType: setup.scheduleType ?? data.profileSetup?.scheduleType ?? null,
     busiestDays: setup.busiestDays ?? data.profileSetup?.busiestDays ?? [],
     wakeTime: setup.wakeTime ?? data.profileSetup?.wakeTime ?? null,

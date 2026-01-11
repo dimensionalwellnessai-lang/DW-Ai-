@@ -26,8 +26,10 @@ import {
   Bug,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 
 export function SettingsPage() {
+  useTutorialStart("profile", 1000);
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);

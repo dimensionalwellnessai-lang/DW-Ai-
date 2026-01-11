@@ -590,6 +590,7 @@ export function AIWorkspace() {
     
     const profile = getProfileSetup();
     if (!profile || !profile.completedAt) return;
+    if (profile.skipped) return; // User skipped quick setup - show blank chat
     if (profile.metDW) return; // Already met DW
     
     welcomeMessageSentRef.current = true; // Mark as sent before async operations

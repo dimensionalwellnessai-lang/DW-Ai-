@@ -23,6 +23,7 @@ import {
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 
 const JOURNAL_STORAGE_KEY = "fts_journal_entries";
 
@@ -68,6 +69,7 @@ function saveEntries(entries: JournalEntry[]): void {
 }
 
 export default function JournalPage() {
+  useTutorialStart("journal", 1000);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);

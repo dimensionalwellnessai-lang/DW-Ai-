@@ -29,6 +29,7 @@ import {
   type RoutineType
 } from "@/lib/guest-storage";
 import { useLocation, useSearch } from "wouter";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 
 const TYPE_ICONS: Record<RoutineType, typeof Dumbbell> = {
   workout: Dumbbell,
@@ -82,6 +83,7 @@ const SUGGESTED_ROUTINES = [
 ];
 
 export default function RoutinesPage() {
+  useTutorialStart("routines", 1000);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const searchString = useSearch();
