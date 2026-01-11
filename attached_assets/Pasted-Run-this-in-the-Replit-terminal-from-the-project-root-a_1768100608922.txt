@@ -1,0 +1,87 @@
+Run this in the Replit terminal from the project root and paste the full output back here:
+
+pwd
+ls
+npm exec -- @capacitor/cli --version
+npm exec -- @capacitor/cli doctor
+If any command fails, paste the exact error output.
+Do NOT change any files yet—just run diagnostics.
+Perfect — that output explains your error exactly.
+
+What’s happening
+
+When you ran npx cap sync android, Capacitor wasn’t actually installed in your project. npm exec temporarily downloaded @capacitor/cli, but your repo still shows:
+• @capacitor/cli: not installed
+• @capacitor/core/android/ios: not installed
+
+So npx cap … has nothing local to run → you get the “could not determine executable to run” error.
+
+⸻
+
+Next step (do this EXACTLY)
+
+Run these from /home/runner/workspace:
+
+Step 1 — Install Capacitor locally (v8)
+
+npm i @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/ios@8
+
+Step 2 — Confirm it’s installed
+
+npm exec -- @capacitor/cli --version
+npm exec -- @capacitor/cli doctor
+
+Step 3 — Build + sync
+
+npm run build
+npx cap sync
+
+✅ After Step 3, your earlier command should work too:
+
+npx cap sync android
+
+⸻
+
+Answer: “Do I need an Android for this?”
+
+No.
+You do not need an Android phone to generate the Android build (AAB/APK). You only need Android hardware if you want to install and test on a real device. You can test with an Android emulator later.
+
+⸻
+
+Important iPhone reality check (since you said you have an iPhone)
+
+To ship to the Apple App Store, you will need access to a Mac (for Xcode signing + archiving). Replit can hold the code, but it can’t replace Xcode.
+
+⸻
+
+Do this now
+
+Run Step 1 only, then paste the output of Step 2 here (the doctor output). If that looks clean, we move to Step 3.
+Add Capacitor dependencies for cross-platform mobile development
+Worked for 1 minute
+Run these commands from the project root and paste the full output back here.
+
+npm run build
+npm exec -- @capacitor/cli -- sync
+Do not change any files. Just run the commands and return the output.
+Run: npm exec -- @capacitor/cli -- sync from the project root and paste the output herE
+{
+"appId": "com.reilbrown.fliptheswitch",
+"appName": "Flip the Switch",
+"webDir": "dist/public",
+"bundledWebRuntime": false
+}
+Configure Capacitor to use the correct web directory
+Worked for 35 seconds
+npm exec -- @capacitor/cli -- sync
+manifest.json
+• icon-192.png or icon-512.png
+• Anything like apple-touch-icon.png?
+Add PWA installation capabilities to the wellness application
+Worked for 1 minute
+I want to change the name back to DW the name flipped the switch doesn't fit the brand and it gives more of the assistance/presence
+Update application branding and references to the new name DW
+Worked for 3 minutes
+I don't like ap id can we take out my name?
+Done! Changed the app ID to com.dimensionalwellness.app
