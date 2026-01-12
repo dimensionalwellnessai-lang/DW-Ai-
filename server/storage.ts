@@ -378,6 +378,21 @@ export interface IStorage {
 
   getAdminAnalytics(): Promise<AdminAnalytics>;
   getUserProgress(userId: string): Promise<UserProgress>;
+  
+  // New comprehensive admin metrics
+  getAdminMetricsSummary(range: string): Promise<AdminMetricsSummary>;
+  getAdminMetricsFunnel(range: string): Promise<AdminMetricsFunnel>;
+  getAdminMetricsSwitches(range: string): Promise<Record<string, AdminSwitchData>>;
+  getAdminMetricsRecommendations(range: string): Promise<AdminRecommendationsData>;
+  getAdminMetricsTimeband(range: string): Promise<AdminTimebandData>;
+  getAdminMetricsFlags(range: string): Promise<AdminFlagsData>;
+  getAdminMetricsErrors(range: string): Promise<AdminErrorsData>;
+  
+  // New user progress methods
+  getUserProgressSummary(userId: string, range: string): Promise<UserProgressSummary>;
+  getUserProgressSwitches(userId: string, range: string): Promise<UserSwitchProgress[]>;
+  getUserProgressPatterns(userId: string, range: string): Promise<{ flagKey: string; count: number }[]>;
+  getUserRecommendationToday(userId: string): Promise<UserRecommendation>;
 }
 
 export interface AdminAnalytics {
@@ -425,6 +440,104 @@ export interface UserProgress {
     didntHelp: number;
   };
   patterns: { label: string; count: number }[];
+}
+
+export interface AdminMetricsSummary {
+  dau: number;
+  wau: number;
+  mau: number;
+  activationRate7d: number;
+  d1Retention: number;
+  d7Retention: number;
+  d7MeaningfulRetention: number;
+  helpedPositiveRate: number;
+  avgCompletionsPerActiveUser: number;
+  swapRate: number;
+  errorsPerSession: number;
+  sessions: number;
+  planGenerated: number;
+  planSaved: number;
+  planItemCompleted: number;
+  postActionCheckins: number;
+  recommendationsViewed: number;
+  recommendationsSwapped: number;
+  errors: number;
+}
+
+export interface AdminMetricsFunnel {
+  onboardingStarted: number;
+  onboardingCompleted: number;
+  planGenerated: number;
+  planSaved: number;
+  planItemCompleted: number;
+  postActionCheckin: number;
+}
+
+export interface AdminSwitchData {
+  detailViews: number;
+  plansGenerated: number;
+  plansSaved: number;
+  itemsCompleted: number;
+  helpedYes: number;
+  helpedSome: number;
+  helpedNo: number;
+  helpedTotal: number;
+}
+
+export interface AdminRecommendationsData {
+  viewed: number;
+  swapped: number;
+  accepted: number;
+  completedWithin24h: number;
+  byReason: { reason: string; count: number }[];
+  bySwitch: { switchId: string; recommended: number; completedWithin24h: number; completion24hRate: number }[];
+}
+
+export interface AdminTimebandData {
+  distribution: { tiny: number; small: number; medium: number; large: number };
+  modeDistribution: { restoring: number; training: number; maintaining: number };
+  helpedByTimeBand: { timeBand: string; helpedPositiveRate: number; sampleSize: number }[];
+  helpedByMode: { mode: string; helpedPositiveRate: number; sampleSize: number }[];
+  completionByTimeBand: { timeBand: string; itemsCompleted: number }[];
+}
+
+export interface AdminFlagsData {
+  topFlags: { flagKey: string; count: number }[];
+  flagToOutcome: { flagKey: string; recommendedSwitchId: string; recommendations: number; completedWithin24h: number; completion24hRate: number }[];
+}
+
+export interface AdminErrorsData {
+  errorsPerSession: number;
+  topErrorCodes: { errorCode: string; count: number }[];
+  topScreens: { screenId: string; count: number }[];
+}
+
+export interface UserProgressSummary {
+  energyLevel: string;
+  stressLevel: string;
+  timeBand: string;
+  consistencyDays: number;
+  actionsCompleted: number;
+  bestDay: string | null;
+  helpedYes: number;
+  helpedSome: number;
+  helpedNo: number;
+}
+
+export interface UserSwitchProgress {
+  switchId: string;
+  status: string;
+  lastTrainedAt: string | null;
+  completedCount: number;
+}
+
+export interface UserRecommendation {
+  switchId: string;
+  alternativeId: string;
+  timeBand: string;
+  mode: string;
+  title: string;
+  reason: string;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1619,6 +1732,224 @@ export class DatabaseStorage implements IStorage {
         didntHelp: helpedCounts.no,
       },
       patterns: [],
+    };
+  }
+
+  async getAdminMetricsSummary(range: string): Promise<AdminMetricsSummary> {
+    const now = new Date();
+    const days = range === '30d' ? 30 : range === '14d' ? 14 : 7;
+    const rangeStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const allUsers = await db.select().from(users);
+    const allMoodLogs = await db.select().from(moodLogs);
+    const allCheckIns = await db.select().from(checkIns);
+
+    const dauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= dayAgo).map(m => m.userId));
+    const wauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= weekAgo).map(m => m.userId));
+    const mauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= monthAgo).map(m => m.userId));
+
+    const recentUsers = allUsers.filter(u => u.createdAt && u.createdAt >= weekAgo);
+    const completedOnboarding = recentUsers.filter(u => u.onboardingCompleted);
+    const activationRate = recentUsers.length > 0 ? completedOnboarding.length / recentUsers.length : 0;
+
+    const helpedCheckIns = allCheckIns.filter(c => {
+      const msgs = c.messages as any;
+      return msgs?.helped === 'yes' || msgs?.helped === 'some';
+    });
+    const helpedRate = allCheckIns.length > 0 ? helpedCheckIns.length / allCheckIns.length : 0;
+
+    return {
+      dau: dauUsers.size,
+      wau: wauUsers.size,
+      mau: mauUsers.size,
+      activationRate7d: activationRate,
+      d1Retention: 0,
+      d7Retention: 0,
+      d7MeaningfulRetention: 0,
+      helpedPositiveRate: helpedRate,
+      avgCompletionsPerActiveUser: 0,
+      swapRate: 0,
+      errorsPerSession: 0,
+      sessions: 0,
+      planGenerated: 0,
+      planSaved: 0,
+      planItemCompleted: 0,
+      postActionCheckins: allCheckIns.length,
+      recommendationsViewed: 0,
+      recommendationsSwapped: 0,
+      errors: 0,
+    };
+  }
+
+  async getAdminMetricsFunnel(range: string): Promise<AdminMetricsFunnel> {
+    const allUsers = await db.select().from(users);
+    const allCheckIns = await db.select().from(checkIns);
+
+    return {
+      onboardingStarted: allUsers.length,
+      onboardingCompleted: allUsers.filter(u => u.onboardingCompleted).length,
+      planGenerated: 0,
+      planSaved: 0,
+      planItemCompleted: 0,
+      postActionCheckin: allCheckIns.length,
+    };
+  }
+
+  async getAdminMetricsSwitches(range: string): Promise<Record<string, AdminSwitchData>> {
+    const switchIds = ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"];
+    const result: Record<string, AdminSwitchData> = {};
+    
+    for (const switchId of switchIds) {
+      result[switchId] = {
+        detailViews: 0,
+        plansGenerated: 0,
+        plansSaved: 0,
+        itemsCompleted: 0,
+        helpedYes: 0,
+        helpedSome: 0,
+        helpedNo: 0,
+        helpedTotal: 0,
+      };
+    }
+    
+    return result;
+  }
+
+  async getAdminMetricsRecommendations(range: string): Promise<AdminRecommendationsData> {
+    return {
+      viewed: 0,
+      swapped: 0,
+      accepted: 0,
+      completedWithin24h: 0,
+      byReason: [],
+      bySwitch: [],
+    };
+  }
+
+  async getAdminMetricsTimeband(range: string): Promise<AdminTimebandData> {
+    return {
+      distribution: { tiny: 0, small: 0, medium: 0, large: 0 },
+      modeDistribution: { restoring: 0, training: 0, maintaining: 0 },
+      helpedByTimeBand: [],
+      helpedByMode: [],
+      completionByTimeBand: [],
+    };
+  }
+
+  async getAdminMetricsFlags(range: string): Promise<AdminFlagsData> {
+    return {
+      topFlags: [],
+      flagToOutcome: [],
+    };
+  }
+
+  async getAdminMetricsErrors(range: string): Promise<AdminErrorsData> {
+    return {
+      errorsPerSession: 0,
+      topErrorCodes: [],
+      topScreens: [],
+    };
+  }
+
+  async getUserProgressSummary(userId: string, range: string): Promise<UserProgressSummary> {
+    const days = range === '14d' ? 14 : 7;
+    const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    const recentMoodLogs = await db.select().from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), gte(moodLogs.createdAt, rangeStart)));
+    
+    const recentCheckIns = await db.select().from(checkIns)
+      .where(and(eq(checkIns.userId, userId), gte(checkIns.createdAt, rangeStart)));
+
+    const uniqueDays = new Set(recentMoodLogs.map(m => m.createdAt?.toDateString()));
+
+    const latestMood = recentMoodLogs.sort((a, b) => 
+      (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+    )[0];
+
+    let energyLevel = 'medium';
+    let stressLevel = 'medium';
+    if (latestMood) {
+      const moodValue = latestMood.moodLevel || 3;
+      energyLevel = moodValue >= 4 ? 'high' : moodValue >= 2 ? 'medium' : 'low';
+      stressLevel = moodValue <= 2 ? 'high' : moodValue <= 3 ? 'medium' : 'low';
+    }
+
+    const helpedCounts = { yes: 0, some: 0, no: 0 };
+    recentCheckIns.forEach(c => {
+      const msgs = c.messages as any;
+      if (msgs?.helped === 'yes') helpedCounts.yes++;
+      else if (msgs?.helped === 'some') helpedCounts.some++;
+      else if (msgs?.helped === 'no') helpedCounts.no++;
+    });
+
+    return {
+      energyLevel,
+      stressLevel,
+      timeBand: 'small',
+      consistencyDays: uniqueDays.size,
+      actionsCompleted: recentCheckIns.length,
+      bestDay: null,
+      helpedYes: helpedCounts.yes,
+      helpedSome: helpedCounts.some,
+      helpedNo: helpedCounts.no,
+    };
+  }
+
+  async getUserProgressSwitches(userId: string, range: string): Promise<UserSwitchProgress[]> {
+    const switchIds = ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"];
+    
+    return switchIds.map(switchId => ({
+      switchId,
+      status: 'off',
+      lastTrainedAt: null,
+      completedCount: 0,
+    }));
+  }
+
+  async getUserProgressPatterns(userId: string, range: string): Promise<{ flagKey: string; count: number }[]> {
+    return [];
+  }
+
+  async getUserRecommendationToday(userId: string): Promise<UserRecommendation> {
+    const switchOptions = ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"];
+    const randomIndex = Math.floor(Math.random() * switchOptions.length);
+    const altIndex = (randomIndex + 1) % switchOptions.length;
+    
+    const switchTitles: Record<string, string> = {
+      body: "Body Switch",
+      mind: "Mind Switch",
+      time: "Time Switch",
+      purpose: "Purpose Switch",
+      money: "Money Switch",
+      relationships: "Relationships Switch",
+      environment: "Environment Switch",
+      identity: "Identity Switch",
+    };
+    
+    const reasons: Record<string, string> = {
+      body: "Movement shifts your state faster than thinking.",
+      mind: "A few minutes of stillness can reset your whole day.",
+      time: "Structure reduces overwhelm fast.",
+      purpose: "Reconnecting with meaning brings clarity.",
+      money: "Small financial wins build confidence.",
+      relationships: "Connection is restorative when intentional.",
+      environment: "Your space shapes your state.",
+      identity: "Remembering who you are grounds everything.",
+    };
+    
+    const selectedSwitch = switchOptions[randomIndex];
+    
+    return {
+      switchId: selectedSwitch,
+      alternativeId: switchOptions[altIndex],
+      timeBand: 'tiny',
+      mode: 'training',
+      title: `${switchTitles[selectedSwitch]} (10 min)`,
+      reason: reasons[selectedSwitch],
     };
   }
 }
