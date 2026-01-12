@@ -62,6 +62,8 @@ import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
 import FTSHomePage from "@/pages/fts-home";
 import PlanPage from "@/pages/plan-page";
+import MyProgressPage from "@/pages/my-progress";
+import AdminAnalyticsPage from "@/pages/admin-analytics";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -104,6 +106,8 @@ function Router() {
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
       <Route path="/home" component={FTSHomePage} />
       <Route path="/plan" component={PlanPage} />
+      <Route path="/profile/progress" component={MyProgressPage} />
+      <Route path="/admin/analytics" component={AdminAnalyticsPage} />
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}

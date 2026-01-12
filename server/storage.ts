@@ -375,6 +375,56 @@ export interface IStorage {
   getBirthChart(userId: string): Promise<BirthChart | undefined>;
   createBirthChart(chart: InsertBirthChart): Promise<BirthChart>;
   updateBirthChart(userId: string, data: Partial<BirthChart>): Promise<BirthChart | undefined>;
+
+  getAdminAnalytics(): Promise<AdminAnalytics>;
+  getUserProgress(userId: string): Promise<UserProgress>;
+}
+
+export interface AdminAnalytics {
+  dau: number;
+  wau: number;
+  mau: number;
+  activationRate7d: number;
+  d7MeaningfulRetention: number;
+  helpedPositiveRate: number;
+  funnel: {
+    onboardingStarted: number;
+    onboardingCompleted: number;
+    planGenerated: number;
+    planSaved: number;
+    planItemCompleted: number;
+    checkInSubmitted: number;
+  };
+  switchPerformance: {
+    switchId: string;
+    completions: number;
+    helpedPositiveRate: number;
+  }[];
+  errors: {
+    errorsPerSession: number;
+    topErrorCodes: { code: string; count: number }[];
+  };
+}
+
+export interface UserProgress {
+  systemSnapshot: {
+    energy: string;
+    stress: string;
+    consistencyDays: number;
+  };
+  switches: {
+    switchId: string;
+    status: string;
+    lastTrained: string | null;
+  }[];
+  weeklyWins: {
+    completedActions: number;
+    bestDay: string | null;
+    helped: number;
+    somewhat: number;
+    didntHelp: number;
+  };
+  patterns: { label: string; count: number }[];
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1474,6 +1524,102 @@ export class DatabaseStorage implements IStorage {
       .where(eq(birthCharts.userId, userId))
       .returning();
     return updated || undefined;
+  }
+
+  async getAdminAnalytics(): Promise<AdminAnalytics> {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const allUsers = await db.select().from(users);
+    const allMoodLogs = await db.select().from(moodLogs);
+    const allCheckIns = await db.select().from(checkIns);
+
+    const dauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= dayAgo).map(m => m.userId));
+    const wauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= weekAgo).map(m => m.userId));
+    const mauUsers = new Set(allMoodLogs.filter(m => m.createdAt && m.createdAt >= monthAgo).map(m => m.userId));
+
+    const recentUsers = allUsers.filter(u => u.createdAt && u.createdAt >= weekAgo);
+    const completedOnboarding = recentUsers.filter(u => u.onboardingCompleted);
+    const activationRate = recentUsers.length > 0 ? (completedOnboarding.length / recentUsers.length) * 100 : 0;
+
+    const helpedCheckIns = allCheckIns.filter(c => {
+      const msgs = c.messages as any;
+      return msgs?.helped === 'yes' || msgs?.helped === 'some';
+    });
+    const helpedRate = allCheckIns.length > 0 ? (helpedCheckIns.length / allCheckIns.length) * 100 : 0;
+
+    return {
+      dau: dauUsers.size,
+      wau: wauUsers.size,
+      mau: mauUsers.size,
+      activationRate7d: Math.round(activationRate * 10) / 10,
+      d7MeaningfulRetention: 0,
+      helpedPositiveRate: Math.round(helpedRate * 10) / 10,
+      funnel: {
+        onboardingStarted: allUsers.length,
+        onboardingCompleted: allUsers.filter(u => u.onboardingCompleted).length,
+        planGenerated: 0,
+        planSaved: 0,
+        planItemCompleted: 0,
+        checkInSubmitted: allCheckIns.length,
+      },
+      switchPerformance: [],
+      errors: {
+        errorsPerSession: 0,
+        topErrorCodes: [],
+      },
+    };
+  }
+
+  async getUserProgress(userId: string): Promise<UserProgress> {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    
+    const recentMoodLogs = await db.select().from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), gte(moodLogs.createdAt, twoWeeksAgo)));
+    
+    const recentCheckIns = await db.select().from(checkIns)
+      .where(and(eq(checkIns.userId, userId), gte(checkIns.createdAt, twoWeeksAgo)));
+
+    const uniqueDays = new Set(recentMoodLogs.map(m => m.createdAt?.toDateString()));
+
+    const latestMood = recentMoodLogs.sort((a, b) => 
+      (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+    )[0];
+
+    let energy = 'medium';
+    let stress = 'medium';
+    if (latestMood) {
+      const moodValue = latestMood.moodLevel || 3;
+      energy = moodValue >= 4 ? 'high' : moodValue >= 2 ? 'medium' : 'low';
+      stress = moodValue <= 2 ? 'high' : moodValue <= 3 ? 'medium' : 'low';
+    }
+
+    const helpedCounts = { yes: 0, some: 0, no: 0 };
+    recentCheckIns.forEach(c => {
+      const msgs = c.messages as any;
+      if (msgs?.helped === 'yes') helpedCounts.yes++;
+      else if (msgs?.helped === 'some') helpedCounts.some++;
+      else if (msgs?.helped === 'no') helpedCounts.no++;
+    });
+
+    return {
+      systemSnapshot: {
+        energy,
+        stress,
+        consistencyDays: uniqueDays.size,
+      },
+      switches: [],
+      weeklyWins: {
+        completedActions: recentCheckIns.length,
+        bestDay: null,
+        helped: helpedCounts.yes,
+        somewhat: helpedCounts.some,
+        didntHelp: helpedCounts.no,
+      },
+      patterns: [],
+    };
   }
 }
 

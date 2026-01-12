@@ -4,6 +4,9 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+export const userRoleEnum = ["user", "admin"] as const;
+export type UserRole = typeof userRoleEnum[number];
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -11,6 +14,7 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   password: text("password").notNull(),
   systemName: text("system_name"),
+  role: text("role").default("user").$type<UserRole>(),
   onboardingCompleted: boolean("onboarding_completed").default(false),
   trialStartAt: timestamp("trial_start_at"),
   createdAt: timestamp("created_at").defaultNow(),

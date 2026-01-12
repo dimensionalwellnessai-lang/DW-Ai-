@@ -54,6 +54,21 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    const user = await storage.getUser(req.session.userId);
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to verify admin status" });
+  }
+};
+
 interface ExtractedCategoryData {
   category: string;
   title: string;
@@ -4389,6 +4404,45 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Local resources search error:", error);
       res.status(500).json({ error: "Failed to search resources" });
+    }
+  });
+
+  // ===== ADMIN ANALYTICS ROUTES =====
+  
+  // Check user role
+  app.get("/api/auth/role", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json({ role: user.role || "user" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get user role" });
+    }
+  });
+
+  // Admin analytics - aggregated metrics (admin only)
+  app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
+    try {
+      // Get aggregated analytics data
+      const analytics = await storage.getAdminAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Admin analytics error:", error);
+      res.status(500).json({ error: "Failed to get analytics" });
+    }
+  });
+
+  // User progress data (user-only, sanitized)
+  app.get("/api/user/progress", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const progress = await storage.getUserProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("User progress error:", error);
+      res.status(500).json({ error: "Failed to get progress" });
     }
   });
 
