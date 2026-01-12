@@ -1,0 +1,193 @@
+Bet — we’ll finish all phases first, then we’ll build the Learning / Browse section (Energy • Perspective • Manifestation + web search + rotating suggestions).
+
+Below is a full phased plan you can copy-paste into Replit as your product roadmap + logic spec.
+
+⸻
+
+FLIP THE SWITCH — FULL PHASE PLAN (END-TO-END)
+
+PHASE 0 — FOUNDATION (Non-Negotiables)
+
+Goal: Make the app stable, understandable, and consistent.
+
+Must-have
+	•	Global navigation is clear (Home / Switchboard / Plan / Browse / Profile)
+	•	Consistent page structure + typography + buttons
+	•	“What do I do?” is answered on every major screen
+	•	Save state + error handling + loading states + empty states
+
+Definition of done
+	•	User can: choose a switch → answer questions → get a plan → save it → see it again
+
+⸻
+
+PHASE 1 — SWITCHBOARD EXPERIENCE (Your Life Switchboard)
+
+Goal: Fix the “flat” feeling and guide users immediately.
+
+Must-have
+	•	Switchboard page with:
+	•	Orientation panel (what this is + what to do)
+	•	8 switch cards (Body, Mind, Time, Purpose, Money, Relationships, Environment, Identity)
+	•	Each card includes: what it controls / why it matters / perspective quote / CTA
+	•	Switch status language:
+	•	Off / Flickering / Stable / Powered
+	•	Training / Maintaining / Restoring
+
+Definition of done
+	•	A first-time user lands on the Switchboard and instantly understands:
+	•	what a switch is
+	•	why it matters
+	•	where to start
+
+⸻
+
+PHASE 2 — INTAKE (Perspective Training Onboarding)
+
+Goal: Replace boring intake with guided, motivating, personality-driven flow.
+
+Must-have
+	•	Onboarding that:
+	•	explains “Perspective Training”
+	•	asks 5–10 quick questions to find the user’s top 1–2 “priority switches”
+	•	gives a “starting recommendation” (not a diagnosis)
+	•	Micro-question style:
+	•	reflective prompts (not forms)
+	•	short, human language
+
+Key output
+	•	“Today, your system is most affected by: [Switch A] + [Switch B].”
+	•	“Pick one to train first.”
+
+Definition of done
+	•	User finishes intake feeling: “Okay, I know what I’m doing.”
+
+⸻
+
+PHASE 3 — PLAN GENERATION (Action + Meaning)
+
+Goal: Generate plans that feel personal, doable, and clearly connected to the switch.
+
+Must-have
+	•	For each switch, the AI outputs:
+	1.	Switch Summary (why this matters right now)
+	2.	2–4 Small Actions (today / this week)
+	3.	One Routine Block (repeatable)
+	4.	One Check-in Question (keeps meaning alive)
+	•	Plans must include:
+	•	time estimate (“10–20 min”)
+	•	intensity level (“light / moderate / deep”)
+	•	mode (“Training / Maintaining / Restoring”)
+
+Definition of done
+	•	User can save a plan and actually follow it without feeling overwhelmed.
+
+⸻
+
+PHASE 4 — TRACKING (Human Progress, Not Just Numbers)
+
+Goal: Make progress feel real, visible, and motivating.
+
+Must-have
+	•	Switch progress uses:
+	•	“Status” changes (Flickering → Stable)
+	•	streaks (optional)
+	•	check-ins (“Did this reduce stress?”)
+	•	Weekly reflection:
+	•	“What improved your system most?”
+	•	“What drained you?”
+	•	“Which switch needs attention next?”
+
+Definition of done
+	•	Progress is understandable even if the user hates tracking.
+
+⸻
+
+PHASE 5 — RECOMMENDATION ENGINE (Smart Suggestions)
+
+Goal: AI suggests the right switch at the right time, without being annoying.
+
+Rules
+	•	Recommend based on:
+	•	user-selected priorities
+	•	recent check-ins
+	•	missed plans (don’t shame)
+	•	energy level + time available
+	•	Recommendation style:
+	•	supportive, direct, minimal
+
+Example
+	•	“You’ve been low energy + skipping plans. Let’s restore Body with a 10-minute reset.”
+
+Definition of done
+	•	Suggestions feel helpful, not random.
+
+⸻
+
+PHASE 6 — PHASE 2 UNLOCK (Core Switches)
+
+Goal: Evolve the system from 8 switches into 5 core switches after the user earns it.
+
+Unlock trigger
+	•	e.g., 14 days active OR 6 completed check-ins OR 3 switches stabilized
+
+Core Switches
+	•	Energy (Body + Mind)
+	•	Direction (Purpose + Time)
+	•	Stability (Money + Environment)
+	•	Connection (Relationships)
+	•	Growth (Identity)
+
+Definition of done
+	•	The user feels like they “leveled up” into a deeper mode.
+
+⸻
+
+PHASE 7 — PERSONALITY + BRAND TONE (Flip the Switch Voice)
+
+Goal: Make the app feel like YOU.
+
+Must-have
+	•	Signature phrases (short, repeatable)
+	•	Onboarding tone rules
+	•	Encouragement scripts for:
+	•	success
+	•	returning after absence
+	•	overwhelm
+	•	uncertainty
+
+Definition of done
+	•	The app doesn’t read like a workbook. It reads like a coach with flavor.
+
+⸻
+
+PHASE 8 — LEARNING / BROWSE SECTION (WE WILL BUILD NEXT)
+
+Goal: A “Learning” area inside Browse where users learn:
+	•	energy
+	•	perspective
+	•	manifestation
+…and can search the internet for content (blogs/videos/articles) with AI suggestions that refresh periodically.
+
+✅ We’re NOT building this yet — it’s next after phases are locked.
+
+⸻
+
+DONE CRITERIA FOR “ALL PHASES FINISHED”
+
+All phases are “finished” when:
+	•	Switchboard is clear and not flat
+	•	Intake makes sense and feels interesting
+	•	Plans are actionable + meaningful
+	•	Tracking exists and is human
+	•	Recommendations are smart and not annoying
+	•	Phase 2 Core Switches is a real “level up”
+	•	Voice/tone is consistent across screens
+
+⸻
+
+If you want, next message I’ll convert this into:
+	•	a Replit-friendly “Product Spec + Acceptance Criteria” format, AND/OR
+	•	a JSON blueprint structure that matches these phases.
+
+Just say: “Make it a Replit spec” or “Make it JSON blueprint.”

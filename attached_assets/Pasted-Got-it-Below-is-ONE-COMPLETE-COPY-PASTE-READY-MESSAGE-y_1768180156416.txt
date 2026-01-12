@@ -1,0 +1,320 @@
+Got it.
+Below is ONE COMPLETE, COPY-PASTE-READY MESSAGE you can drop straight into Replit (prompt, config note, or documentation).
+This includes 1️⃣ all 8 dimensions rewritten, 2️⃣ the full Life Switchboard page flow, and 3️⃣ the Perspective Training onboarding script — clean, intentional, and not flat.
+
+⸻
+
+🔌 FLIP THE SWITCH — LIFE SYSTEM FRAMEWORK
+
+(Core Philosophy + Life Dimensions + User Flow)
+
+SYSTEM OVERVIEW
+
+Flip the Switch is a life-system app, not a productivity tool.
+
+The user’s life is treated as one integrated system, made up of multiple Life Dimensions.
+Each Life Dimension functions as a switch inside a larger Life Switchboard.
+
+Some switches are:
+	•	Off
+	•	Flickering
+	•	Overloaded
+	•	Stable
+
+When the right switches are trained and powered intentionally, the entire system improves — not just one area.
+
+This app does not ask users to fix everything at once.
+It teaches them how their life actually works.
+
+⸻
+
+PAGE NAME
+
+Your Life Switchboard
+
+Subtitle:
+One system. Multiple switches. You choose what to power.
+
+⸻
+
+ORIENTATION PANEL (TOP OF PAGE)
+
+Welcome to Your Life Switchboard
+
+“This isn’t about doing more.
+It’s about understanding what’s actually draining or fueling your life.”
+
+“Each switch controls a different part of your system.
+You don’t need to flip them all — just the right ones, at the right time.”
+
+Primary CTA:
+👉 Start Switch Training
+
+Secondary CTA:
+👉 Explore My Switches
+
+⸻
+
+🔁 PERSPECTIVE TRAINING (CORE CONCEPT)
+
+Each Life Dimension is also a Perspective Training Lens.
+
+You are not just taking actions —
+you are training how you see, interpret, and respond to your life.
+
+Every switch:
+	•	Changes behavior
+	•	Shapes perspective
+	•	Affects the entire system
+
+⸻
+
+🔋 THE 8 LIFE DIMENSIONS (PHASE 1)
+
+Each dimension follows the same structure so users feel guided and grounded.
+
+⸻
+
+🔋 BODY SWITCH — Physical Energy
+
+Perspective Training: Body
+
+What this switch controls:
+Stamina, mood, confidence, and physical resilience.
+
+Why this switch matters:
+Your body is the battery your life runs on.
+When energy is low, everything feels harder — even things you care about.
+
+Perspective this trains:
+
+“Energy comes before motivation.”
+
+When this switch is ignored:
+Burnout, inconsistency, low confidence, mental fog.
+
+What we train here:
+Movement, recovery, nourishment, sustainable strength.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🧠 MIND SWITCH — Mental & Emotional Clarity
+
+Perspective Training: Mind
+
+What this switch controls:
+Thought patterns, emotional regulation, stress response.
+
+Why this switch matters:
+Not every thought is true — but unexamined thoughts run your life.
+
+Perspective this trains:
+
+“I can notice my thoughts without becoming them.”
+
+When this switch is ignored:
+Overthinking, emotional overload, anxiety, self-doubt.
+
+What we train here:
+Emotional awareness, stress recovery, mental filtering.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+⏱ TIME SWITCH — Structure & Flow
+
+Perspective Training: Time
+
+What this switch controls:
+Focus, follow-through, balance, and overwhelm.
+
+Why this switch matters:
+Time isn’t the issue — structure is.
+
+Perspective this trains:
+
+“A plan should support my life, not trap it.”
+
+When this switch is ignored:
+Chaos, procrastination, guilt, constant catch-up.
+
+What we train here:
+Realistic scheduling, rhythm, flexibility, energy-based planning.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🧭 PURPOSE SWITCH — Direction & Meaning
+
+Perspective Training: Purpose
+
+What this switch controls:
+Motivation, fulfillment, long-term direction.
+
+Why this switch matters:
+Without direction, effort feels empty.
+
+Perspective this trains:
+
+“I don’t need the full map — just the next aligned step.”
+
+When this switch is ignored:
+Aimlessness, burnout, comparison, disengagement.
+
+What we train here:
+Values alignment, intention setting, meaningful goals.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+💰 MONEY SWITCH — Stability & Choice
+
+Perspective Training: Money
+
+What this switch controls:
+Security, options, stress levels, independence.
+
+Why this switch matters:
+Money doesn’t buy happiness — but instability buys stress.
+
+Perspective this trains:
+
+“Money is a tool, not a verdict on my worth.”
+
+When this switch is ignored:
+Anxiety, avoidance, impulsive decisions, feeling trapped.
+
+What we train here:
+Awareness, planning, intentional spending, financial clarity.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🤝 RELATIONSHIPS SWITCH — Connection & Boundaries
+
+Perspective Training: Relationships
+
+What this switch controls:
+Belonging, support, emotional safety.
+
+Why this switch matters:
+Humans are wired for connection — but not at the cost of self-abandonment.
+
+Perspective this trains:
+
+“Connection should feel safe, not draining.”
+
+When this switch is ignored:
+Isolation, resentment, people-pleasing, emotional exhaustion.
+
+What we train here:
+Boundaries, communication, healthy connection.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🏡 ENVIRONMENT SWITCH — External Support
+
+Perspective Training: Environment
+
+What this switch controls:
+Focus, stress levels, daily friction.
+
+Why this switch matters:
+Your environment either supports your goals — or silently works against them.
+
+Perspective this trains:
+
+“My surroundings shape my behavior.”
+
+When this switch is ignored:
+Distraction, overwhelm, inconsistency.
+
+What we train here:
+Space design, routines, friction removal.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🌱 IDENTITY SWITCH — Growth & Alignment
+
+Perspective Training: Identity
+
+What this switch controls:
+Self-trust, confidence, long-term growth.
+
+Why this switch matters:
+Change sticks when it aligns with who you believe you are.
+
+Perspective this trains:
+
+“I am allowed to evolve.”
+
+When this switch is ignored:
+Self-sabotage, stagnation, imposter syndrome.
+
+What we train here:
+Self-concept, habits, growth narratives.
+
+CTA:
+👉 Train This Switch
+
+⸻
+
+🧠 USER STATUS LANGUAGE (INSTEAD OF PERCENTAGES)
+
+Each switch can show:
+	•	Status: Off / Flickering / Stable / Powered
+	•	Energy Impact: Low / Medium / High
+	•	Mode: Training / Maintaining / Restoring
+
+This keeps progress human — not robotic.
+
+⸻
+
+🚀 FUTURE EVOLUTION (PHASE 2 – INTERNAL NOTE)
+
+As the user progresses, the system may merge dimensions into Core Switches:
+	•	Energy (Body + Mind)
+	•	Direction (Purpose + Time)
+	•	Stability (Money + Environment)
+	•	Connection (Relationships)
+	•	Growth (Identity)
+
+This is unlocked later and framed as insight — not requirement.
+
+⸻
+
+FINAL NOTE TO SYSTEM / AI
+
+The goal is clarity, not pressure.
+The app should always explain why a switch exists before asking the user to act.
+
+Flip the Switch is not about doing more —
+it’s about powering the right parts of life, intentionally.
+
+⸻
+
+When you paste this into Replit, it will finally feel planned, grounded, and intentional.
+
+If you want next:
+	•	UI card microcopy
+	•	AI logic rules (when to recommend which switch)
+	•	Or Phase 2 unlock wording
+
+Just tell me what’s next.
