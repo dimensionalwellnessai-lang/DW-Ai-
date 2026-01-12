@@ -130,3 +130,20 @@ export function getPrioritySwitches(): SwitchId[] {
     .filter(id => data[id].mode === "training" || data[id].status === "flickering")
     .slice(0, 2);
 }
+
+export function initializeSwitchData(statuses: Partial<Record<SwitchId, SwitchStatus>>): void {
+  const allSwitches: SwitchId[] = ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"];
+  const data: Record<SwitchId, SwitchData> = {} as Record<SwitchId, SwitchData>;
+  
+  allSwitches.forEach(id => {
+    const status = statuses[id] || "off";
+    data[id] = {
+      ...DEFAULT_SWITCH_DATA,
+      status,
+      mode: status === "off" ? "training" : (status === "powered" ? "maintaining" : "training"),
+      lastUpdated: Date.now(),
+    };
+  });
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}

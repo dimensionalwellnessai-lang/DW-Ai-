@@ -1,0 +1,350 @@
+Cool — then we’ll do ALL THREE (A + B + C) in one clean spec you can paste into Replit.
+
+Below is a single, implementation-ready blueprint:
+	•	A) UI flow + screens
+	•	B) Onboarding / intake questions + branching + scoring
+	•	C) AI rules for recommendations, plan generation, and status updates
+
+⸻
+
+FLIP THE SWITCH — IMPLEMENTATION SPEC (PHASE 1–3 CORE BUILD)
+
+A) UI FLOW + SCREENS (WHAT USER SEES + WHAT HAPPENS)
+
+Global Nav (bottom tabs)
+	1.	Home
+	2.	Switchboard
+	3.	Plan
+	4.	Browse (Phase 8 later)
+	5.	Profile
+
+⸻
+
+Screen: Home
+
+Purpose: “What’s my next move?” in 5 seconds.
+
+Components
+	1.	Today’s System Snapshot
+
+	•	Primary copy: “Your system today: [ENERGY STATE]”
+	•	Secondary: “Top switch to train: [SwitchName] (Mode: Training/Maintaining/Restoring)”
+	•	Mini chips: Time Available (quick pick) + Energy Level (quick pick)
+
+	2.	One Recommended Action (single card)
+
+	•	Title: “Do this next”
+	•	Shows: 1 action, time estimate, why it matters
+	•	Buttons: Start / Swap / Save to Plan
+
+	3.	Recent Switches
+
+	•	3 small tiles: last trained switches + status change (if any)
+
+Empty State (first time user)
+	•	“Welcome to Flip the Switch.”
+	•	CTA: Start Switch Training → Onboarding
+
+⸻
+
+Screen: Switchboard (Your Life Switchboard)
+
+Purpose: orient + motivate + choose a switch.
+
+Top Orientation Panel (always visible)
+	•	Title: “Welcome to Your Life Switchboard”
+	•	Copy: “One system. Multiple switches. You choose what to power.”
+	•	CTA 1: Start Switch Training (if onboarding not done)
+	•	CTA 2: Explore My Switches
+
+Switch Cards (8 cards)
+
+Each card must show:
+	•	Name + icon
+	•	1-line truth
+	•	Perspective quote
+	•	“What it controls” short line
+	•	Button: Train This Switch
+
+Switch Card States
+	•	Status badge: Off / Flickering / Stable / Powered
+	•	Mode badge: Training / Maintaining / Restoring
+	•	Optional: “Energy Impact: Low/Medium/High”
+
+Empty State (no data yet)
+	•	All switches show “Off” + prompt: “Start with one switch.”
+
+⸻
+
+Screen: Switch Detail (for any switch)
+
+Purpose: explain + assess + generate plan.
+
+Components
+	1.	Header: Switch name + status
+	2.	“Why this switch matters” (short)
+	3.	Quick Check-in (3–6 questions, fast)
+	4.	“What I recommend today” (Mode + intensity)
+	5.	CTA: Generate Plan
+	6.	After plan: Save to Plan, Add reminders later, Mark done
+
+⸻
+
+Screen: Plan
+
+Purpose: everything the user is actively doing.
+
+Components
+	•	“This Week” plan list
+	•	Grouped by switch
+	•	Each item has: time estimate + Start button + Done button
+	•	“Saved Plans” section (templates)
+
+Empty State
+	•	“You don’t have a plan yet.”
+	•	CTA: Generate a plan from the Switchboard
+
+⸻
+
+Screen: Profile
+
+Purpose: preferences + history + reset.
+
+Components
+	•	Preferences: tone (coach / chill / direct), reminders on/off, time windows
+	•	History: weekly summary, switch status timeline
+	•	Reset options: restart onboarding, clear plan, export later
+
+⸻
+
+Loading / Error / Empty Rules (global)
+	•	Loading: never blank—show skeleton cards
+	•	Error: “Something didn’t load. Try again.” + Retry
+	•	Empty: always explain what to do next with 1 CTA
+
+⸻
+
+B) INTAKE / ONBOARDING (QUESTIONS + BRANCHING + PRIORITY SCORING)
+
+Onboarding Goals
+	•	Explain “Switchboard + Perspective Training”
+	•	Identify user’s top 1–2 priority switches
+	•	Capture constraints: time, energy, schedule reality
+	•	Output: “Start recommendation” + first plan
+
+⸻
+
+Onboarding Script (Short + Clear)
+
+Screen 1: Welcome
+	•	“Flip the Switch is a life system.”
+	•	“Each dimension is a switch.”
+	•	“We’ll find your top switches in 2 minutes.”
+	•	CTA: Let’s do it
+
+⸻
+
+Intake Questions (with answer formats + scoring)
+
+Q1: “Right now, what feels MOST true?”
+
+(choose up to 2)
+	•	A) “I’m tired / drained.” → Body +2, Mind +1
+	•	B) “I’m overwhelmed / mentally noisy.” → Mind +2, Time +1
+	•	C) “I don’t know what to do next.” → Purpose +2, Time +1
+	•	D) “Money stress is heavy.” → Money +2, Mind +1
+	•	E) “People are draining me / I feel alone.” → Relationships +2, Mind +1
+	•	F) “My space / environment is a mess.” → Environment +2, Time +1
+	•	G) “I keep starting over / inconsistent.” → Identity +2, Time +1
+	•	H) “Everything is okay, I just want to level up.” → Purpose +1, Identity +1, Body +1
+
+Q2: “How much time can you realistically give most days?”
+
+(single choice)
+	•	10 min → Time constraint tag: TINY
+	•	20–30 min → SMALL
+	•	45–60 min → MEDIUM
+	•	90+ min → LARGE
+
+Q3: “Your energy lately is…”
+
+(single choice)
+	•	Low → Mode bias: Restoring
+	•	Medium → Mode bias: Training (light)
+	•	High → Mode bias: Training (moderate)
+
+Q4: “Which area do you avoid the most?”
+
+(single choice)
+	•	Moving my body → Body +2
+	•	Facing emotions/thoughts → Mind +2
+	•	Planning my day → Time +2
+	•	Thinking about future → Purpose +2
+	•	Looking at finances → Money +2
+	•	Having hard conversations → Relationships +2
+	•	Cleaning/organizing → Environment +2
+	•	Sticking to habits → Identity +2
+
+Q5: “What would make the biggest difference THIS WEEK?”
+
+(choose 1)
+	•	More energy → Body +2
+	•	Less stress → Mind +2
+	•	More structure → Time +2
+	•	Direction/motivation → Purpose +2
+	•	Feeling stable → Money +2 or Environment +2 (if they chose mess earlier)
+	•	Better relationships → Relationships +2
+	•	Feeling like myself again → Identity +2
+
+Q6 (Optional): “Anything you want to prioritize?”
+
+(free text)
+	•	Stored as user goals, used for plan personalization.
+
+⸻
+
+Priority Switch Selection Logic
+	1.	Total points per switch from Q1/Q4/Q5
+	2.	Sort descending
+	3.	Pick Top 1 as “Primary Switch”
+	4.	Pick Top 2 as “Support Switch” if within 2 points of top (or if user selected 2 in Q1)
+
+⸻
+
+Onboarding Output Copy (must be consistent)
+	•	“Your system right now is most affected by: [Primary Switch].”
+	•	“Support switch: [Support Switch].”
+	•	“Mode for today: [Restoring/Training/Maintaining] based on energy + time.”
+
+CTA:
+	•	Generate my first plan
+
+⸻
+
+C) AI RULES (RECOMMENDATIONS + PLAN GEN + STATUS UPDATES)
+
+Core AI Principle
+
+Never give the user 10 options.
+Always give:
+	•	1 recommendation
+	•	1 alternative
+	•	1 reason
+
+⸻
+
+Recommendation Engine Rules
+
+Inputs
+	•	Primary switch
+	•	Support switch
+	•	Last 7 days completion (done/skip)
+	•	Energy level (user selected or inferred from check-ins)
+	•	Time available (TINY/SMALL/MEDIUM/LARGE)
+	•	Stress indicator (from Mind check-ins)
+
+Output
+	•	recommended switch
+	•	mode (Training/Maintaining/Restoring)
+	•	1 action now
+	•	2–4 actions for plan
+
+Rule Set
+	1.	If energy = Low → Restoring mode; prioritize Body or Mind
+	2.	If completion rate < 30% over 7 days → shrink plan (TINY/SMALL) + Restoring
+	3.	If user reports “overwhelmed” → prioritize Time switch with 10–20 min structure reset
+	4.	If money stress flagged 2+ times → suggest Money switch (tiny action: check balance/bills list)
+	5.	If relationships drain flagged → suggest Relationships (boundary script / one repair action)
+	6.	If environment flagged + time chaos flagged → suggest Environment first (15-min reset) THEN Time
+	7.	If everything stable + user wants level up → Purpose or Identity Training (moderate)
+
+⸻
+
+Plan Generation Template (always the same structure)
+
+Plan Header
+	•	“Switch: [X]”
+	•	“Mode: [Restoring/Training/Maintaining]”
+	•	“Time: [10/20/45 mins]”
+	•	“Intensity: [Light/Moderate/Deep]”
+	•	“Why this matters (1–2 lines)”
+
+The Plan (2–4 actions max)
+	1.	Action Now (today)
+
+	•	must be doable in the chosen time
+	•	must not require extra research unless Browse exists
+
+	2.	Repeatable Routine Block (this week)
+
+	•	2–4 times per week or daily micro-version
+
+	3.	One Support Switch Action
+
+	•	tiny action that supports primary switch
+
+	4.	Check-in Question
+
+	•	“What changed after doing this?”
+
+Plan must end with:
+	•	“Want to keep it light or go deeper?” (2 buttons)
+
+⸻
+
+Switch Status Update Rules
+
+When to update status
+	•	After 2 completed actions for a switch in 7 days → Off → Flickering
+	•	After 5 completed actions in 14 days → Flickering → Stable
+	•	After 10 completed actions in 21 days + positive check-ins → Stable → Powered
+
+Regression (no shame)
+	•	If 14 days no activity → Powered/Stable can drop one level (Powered → Stable; Stable → Flickering)
+	•	Copy: “This switch cooled down — totally normal. Let’s restart light.”
+
+⸻
+
+Check-in System (simple, fast)
+
+After any completed action, ask ONE:
+	•	“Did this help?” (Yes/Some/No)
+
+If “No” twice in a row:
+	•	reduce intensity
+	•	switch mode to Restoring
+	•	offer alternative action
+
+⸻
+
+Voice/Tone Rules (Flip the Switch personality)
+	•	Never guilt.
+	•	No corporate therapy talk.
+	•	Short, confident lines.
+	•	Always explain “why” in 1 sentence.
+
+Examples:
+	•	“We’re not fixing your whole life today. We’re powering one switch.”
+	•	“Small is powerful when it’s consistent.”
+	•	“Energy first. Then everything else.”
+
+⸻
+
+IMPLEMENTATION ORDER (DON’T SKIP)
+	1.	Build Switchboard UI + cards + states (Phase 1)
+	2.	Build Onboarding + scoring + output (Phase 2)
+	3.	Build Switch Detail → Generate Plan → Save to Plan (Phase 3)
+	4.	Add Tracking + Weekly reflection (Phase 4)
+	5.	Add Recommendation engine hooks (Phase 5)
+	6.	Add Phase 2 unlock later (Phase 6)
+	7.	Add Browse/Learning later (Phase 8)
+
+⸻
+
+If you want the next thing to paste into Replit, tell me which format you prefer:
+
+1) JSON blueprint schema (so the AI can implement data structures clean)
+2) UI copy pack (every button, title, empty state, microcopy)
+3) Dev tickets (GitHub-style tasks with acceptance criteria)
+
+Say 1, 2, or 3.

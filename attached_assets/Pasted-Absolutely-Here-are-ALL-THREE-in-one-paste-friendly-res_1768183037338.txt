@@ -1,0 +1,608 @@
+Absolutely. Here are ALL THREE in one paste-friendly response:
+	1.	JSON blueprint schema (data structures + example objects)
+	2.	UI copy pack (titles, buttons, empty states, microcopy)
+	3.	Dev tickets (GitHub-style tasks with acceptance criteria)
+
+You can copy/paste sections into Replit as needed.
+
+⸻
+
+1) JSON BLUEPRINT SCHEMA (STRUCTURE + EXAMPLES)
+
+1.1 Core types + app blueprint (minimal, extensible)
+
+{
+  "meta": {
+    "appName": "Flip the Switch",
+    "version": "1.0.0",
+    "sourceOfTruth": "Life Switchboard + Perspective Training + Phases 0-8"
+  },
+  "navigation": {
+    "tabs": [
+      { "id": "home", "label": "Home" },
+      { "id": "switchboard", "label": "Switchboard" },
+      { "id": "plan", "label": "Plan" },
+      { "id": "browse", "label": "Browse", "enabled": false },
+      { "id": "profile", "label": "Profile" }
+    ]
+  },
+  "constants": {
+    "switchIds": [
+      "body",
+      "mind",
+      "time",
+      "purpose",
+      "money",
+      "relationships",
+      "environment",
+      "identity"
+    ],
+    "switchStatus": ["off", "flickering", "stable", "powered"],
+    "modes": ["restoring", "training", "maintaining"],
+    "intensity": ["light", "moderate", "deep"],
+    "timeBand": ["tiny", "small", "medium", "large"]
+  },
+  "content": {
+    "switchDefinitions": {},
+    "uiCopy": {}
+  },
+  "userModel": {
+    "profile": {},
+    "signals": {},
+    "switchboard": {},
+    "plans": {},
+    "history": {}
+  },
+  "logic": {
+    "onboarding": {},
+    "recommendations": {},
+    "planGeneration": {},
+    "statusUpdates": {}
+  }
+}
+
+
+⸻
+
+1.2 Switch definitions (the 8 switches)
+
+{
+  "switchDefinitions": {
+    "body": {
+      "id": "body",
+      "title": "BODY SWITCH — Physical Energy",
+      "lens": "Perspective Training: Body",
+      "oneLineTruth": "Your body is the battery your life runs on.",
+      "controls": "Stamina, mood, confidence, physical resilience.",
+      "whyItMatters": "When energy is low, everything feels harder — even what you care about.",
+      "perspectiveQuote": "Energy comes before motivation.",
+      "ignoredLooksLike": "Burnout, inconsistency, low confidence, mental fog.",
+      "trainFocus": ["movement", "recovery", "nourishment", "sustainable strength"]
+    },
+    "mind": {
+      "id": "mind",
+      "title": "MIND SWITCH — Mental & Emotional Clarity",
+      "lens": "Perspective Training: Mind",
+      "oneLineTruth": "Not every thought deserves your belief.",
+      "controls": "Thought patterns, emotional regulation, stress response.",
+      "whyItMatters": "Unexamined thoughts quietly run the system.",
+      "perspectiveQuote": "I can notice my thoughts without becoming them.",
+      "ignoredLooksLike": "Overthinking, emotional overload, anxiety, self-doubt.",
+      "trainFocus": ["emotional awareness", "stress recovery", "mental filtering"]
+    },
+    "time": {
+      "id": "time",
+      "title": "TIME SWITCH — Structure & Flow",
+      "lens": "Perspective Training: Time",
+      "oneLineTruth": "Time isn’t the problem — structure is.",
+      "controls": "Focus, follow-through, balance, overwhelm.",
+      "whyItMatters": "Structure determines whether your day supports you or drains you.",
+      "perspectiveQuote": "A plan should support my life, not trap it.",
+      "ignoredLooksLike": "Chaos, procrastination, guilt, constant catch-up.",
+      "trainFocus": ["realistic scheduling", "rhythm", "flexibility", "energy-based planning"]
+    },
+    "purpose": {
+      "id": "purpose",
+      "title": "PURPOSE SWITCH — Direction & Meaning",
+      "lens": "Perspective Training: Purpose",
+      "oneLineTruth": "Without direction, effort feels empty.",
+      "controls": "Motivation, fulfillment, long-term direction.",
+      "whyItMatters": "Meaning is the engine that keeps consistency alive.",
+      "perspectiveQuote": "I don’t need the full map — just the next aligned step.",
+      "ignoredLooksLike": "Aimlessness, burnout, comparison, disengagement.",
+      "trainFocus": ["values alignment", "intention setting", "meaningful goals"]
+    },
+    "money": {
+      "id": "money",
+      "title": "MONEY SWITCH — Stability & Choice",
+      "lens": "Perspective Training: Money",
+      "oneLineTruth": "Money is a tool, not a verdict on your worth.",
+      "controls": "Security, options, stress levels, independence.",
+      "whyItMatters": "Instability buys stress — stability buys choices.",
+      "perspectiveQuote": "Clarity first. Then control.",
+      "ignoredLooksLike": "Anxiety, avoidance, impulsive decisions, feeling trapped.",
+      "trainFocus": ["awareness", "planning", "intentional spending", "financial clarity"]
+    },
+    "relationships": {
+      "id": "relationships",
+      "title": "RELATIONSHIPS SWITCH — Connection & Boundaries",
+      "lens": "Perspective Training: Relationships",
+      "oneLineTruth": "Connection should feel safe, not draining.",
+      "controls": "Belonging, support, emotional safety.",
+      "whyItMatters": "You can’t out-hustle a lack of support or constant conflict.",
+      "perspectiveQuote": "Boundaries are love with a backbone.",
+      "ignoredLooksLike": "Isolation, resentment, people-pleasing, emotional exhaustion.",
+      "trainFocus": ["boundaries", "communication", "healthy connection"]
+    },
+    "environment": {
+      "id": "environment",
+      "title": "ENVIRONMENT SWITCH — External Support",
+      "lens": "Perspective Training: Environment",
+      "oneLineTruth": "Your surroundings shape your behavior.",
+      "controls": "Focus, stress levels, daily friction.",
+      "whyItMatters": "Your space is either helping you or quietly working against you.",
+      "perspectiveQuote": "Reduce friction. Increase follow-through.",
+      "ignoredLooksLike": "Distraction, overwhelm, inconsistency.",
+      "trainFocus": ["space design", "routines", "friction removal"]
+    },
+    "identity": {
+      "id": "identity",
+      "title": "IDENTITY SWITCH — Growth & Alignment",
+      "lens": "Perspective Training: Identity",
+      "oneLineTruth": "Change sticks when it matches who you believe you are.",
+      "controls": "Self-trust, confidence, long-term growth.",
+      "whyItMatters": "Your identity decides what you repeat.",
+      "perspectiveQuote": "I am allowed to evolve.",
+      "ignoredLooksLike": "Self-sabotage, stagnation, imposter syndrome.",
+      "trainFocus": ["self-concept", "habits", "growth narratives"]
+    }
+  }
+}
+
+
+⸻
+
+1.3 User model (signals + switchboard + plans + history)
+
+{
+  "profile": {
+    "userId": "uuid",
+    "displayName": "Reil",
+    "tone": "direct",
+    "remindersEnabled": false,
+    "preferredTimeWindows": {
+      "morning": ["06:00", "10:00"],
+      "evening": ["18:00", "22:00"]
+    }
+  },
+  "signals": {
+    "timeBand": "small",
+    "energyLevel": "medium",
+    "stressLevel": "medium",
+    "constraints": {
+      "noGym": true,
+      "busyWeek": false
+    }
+  },
+  "switchboard": {
+    "primarySwitchId": "time",
+    "supportSwitchId": "mind",
+    "switchStates": {
+      "body": { "status": "off", "mode": "restoring", "energyImpact": "high" },
+      "mind": { "status": "flickering", "mode": "restoring", "energyImpact": "high" },
+      "time": { "status": "flickering", "mode": "training", "energyImpact": "high" },
+      "purpose": { "status": "off", "mode": "training", "energyImpact": "medium" },
+      "money": { "status": "off", "mode": "training", "energyImpact": "medium" },
+      "relationships": { "status": "off", "mode": "maintaining", "energyImpact": "medium" },
+      "environment": { "status": "off", "mode": "training", "energyImpact": "medium" },
+      "identity": { "status": "off", "mode": "training", "energyImpact": "medium" }
+    }
+  },
+  "plans": {
+    "activeWeekPlanId": "week_2026_01_11",
+    "weekPlans": {
+      "week_2026_01_11": {
+        "id": "week_2026_01_11",
+        "startDate": "2026-01-11",
+        "items": [
+          {
+            "id": "pi_001",
+            "switchId": "time",
+            "mode": "training",
+            "intensity": "light",
+            "estimateMinutes": 15,
+            "title": "15-min schedule reset",
+            "steps": [
+              "Pick 1 priority for today",
+              "Block 1 focused session",
+              "Choose 1 recovery break"
+            ],
+            "checkInQuestion": "Did this reduce overwhelm?"
+          }
+        ]
+      }
+    }
+  },
+  "history": {
+    "completions": [
+      { "id": "c_001", "date": "2026-01-11", "switchId": "time", "planItemId": "pi_001", "helped": "some" }
+    ]
+  }
+}
+
+
+⸻
+
+1.4 Onboarding scoring (rules as data)
+
+{
+  "onboarding": {
+    "questions": [
+      {
+        "id": "q1_state",
+        "prompt": "Right now, what feels MOST true?",
+        "type": "multi_select",
+        "maxSelect": 2,
+        "options": [
+          { "id": "tired", "label": "I’m tired / drained.", "score": { "body": 2, "mind": 1 } },
+          { "id": "overwhelmed", "label": "I’m overwhelmed / mentally noisy.", "score": { "mind": 2, "time": 1 } },
+          { "id": "direction", "label": "I don’t know what to do next.", "score": { "purpose": 2, "time": 1 } },
+          { "id": "money", "label": "Money stress is heavy.", "score": { "money": 2, "mind": 1 } },
+          { "id": "people", "label": "People are draining me / I feel alone.", "score": { "relationships": 2, "mind": 1 } },
+          { "id": "mess", "label": "My space is stressing me out.", "score": { "environment": 2, "time": 1 } },
+          { "id": "restart", "label": "I keep starting over.", "score": { "identity": 2, "time": 1 } },
+          { "id": "levelup", "label": "I’m okay — I just want to level up.", "score": { "purpose": 1, "identity": 1, "body": 1 } }
+        ]
+      },
+      {
+        "id": "q2_time",
+        "prompt": "How much time can you realistically give most days?",
+        "type": "single_select",
+        "options": [
+          { "id": "tiny", "label": "10 minutes", "set": { "timeBand": "tiny" } },
+          { "id": "small", "label": "20–30 minutes", "set": { "timeBand": "small" } },
+          { "id": "medium", "label": "45–60 minutes", "set": { "timeBand": "medium" } },
+          { "id": "large", "label": "90+ minutes", "set": { "timeBand": "large" } }
+        ]
+      },
+      {
+        "id": "q3_energy",
+        "prompt": "Your energy lately is…",
+        "type": "single_select",
+        "options": [
+          { "id": "low", "label": "Low", "set": { "energyLevel": "low", "modeBias": "restoring" } },
+          { "id": "med", "label": "Medium", "set": { "energyLevel": "medium", "modeBias": "training" } },
+          { "id": "high", "label": "High", "set": { "energyLevel": "high", "modeBias": "training" } }
+        ]
+      }
+    ],
+    "selectionLogic": {
+      "primaryRule": "highest_score_switch",
+      "supportRule": "second_highest_if_within_points",
+      "supportWithinPoints": 2
+    }
+  }
+}
+
+
+⸻
+
+1.5 Recommendation + status update rules (as data)
+
+{
+  "recommendations": {
+    "rules": [
+      { "if": { "energyLevel": "low" }, "then": { "preferModes": ["restoring"], "preferSwitches": ["body", "mind"] } },
+      { "if": { "completionRate7dLt": 0.3 }, "then": { "forceTimeBandMax": "small", "preferModes": ["restoring"] } },
+      { "if": { "overwhelmFlag": true }, "then": { "preferSwitches": ["time"], "defaultActionMinutes": 10 } },
+      { "if": { "moneyStressCount14dGte": 2 }, "then": { "preferSwitches": ["money"], "defaultActionMinutes": 10 } },
+      { "if": { "relationshipDrainFlag": true }, "then": { "preferSwitches": ["relationships"], "defaultActionMinutes": 10 } },
+      { "if": { "envMessFlag": true, "timeChaosFlag": true }, "then": { "preferSwitches": ["environment", "time"] } }
+    ],
+    "outputShape": {
+      "recommendedSwitchId": "string",
+      "mode": "restoring|training|maintaining",
+      "actionNow": "planItem",
+      "alternativeSwitchId": "string",
+      "reason": "string"
+    }
+  },
+  "statusUpdates": {
+    "upgradeThresholds": [
+      { "from": "off", "to": "flickering", "windowDays": 7, "completedActionsGte": 2 },
+      { "from": "flickering", "to": "stable", "windowDays": 14, "completedActionsGte": 5 },
+      { "from": "stable", "to": "powered", "windowDays": 21, "completedActionsGte": 10, "positiveCheckinsGte": 4 }
+    ],
+    "cooldown": { "inactiveDaysGte": 14, "dropOneLevel": true }
+  }
+}
+
+
+⸻
+
+2) UI COPY PACK (EVERY SCREEN + MICROCOPY)
+
+Global buttons
+	•	Primary: Start
+	•	Primary: Generate Plan
+	•	Primary: Train This Switch
+	•	Secondary: Swap
+	•	Secondary: Save to Plan
+	•	Secondary: Try again
+	•	Tertiary: Not now
+
+Global helper lines
+	•	“Small is powerful when it’s consistent.”
+	•	“We’re powering one switch — not your whole life.”
+	•	“Energy first. Then everything else.”
+
+⸻
+
+Home
+
+Header: Home
+Snapshot title: “Today’s System Snapshot”
+Snapshot line: “Your system today: {energyState}.”
+Top recommendation line: “Top switch to train: {switchName} ({mode}).”
+CTA: “Do this next”
+Swap microcopy: “Not feeling this? Swap it.”
+
+Empty state (new user):
+	•	Title: “Welcome to Flip the Switch.”
+	•	Body: “We’ll find the right switch to power first.”
+	•	CTA: “Start Switch Training”
+
+Loading:
+	•	“Loading your system…”
+
+Error:
+	•	“Something didn’t load. Try again.”
+
+⸻
+
+Switchboard
+
+Title: “Your Life Switchboard”
+Subtitle: “One system. Multiple switches. You choose what to power.”
+
+Orientation panel:
+	•	“This isn’t about doing more.”
+	•	“It’s about learning what’s draining or fueling your life — and flipping the right switch.”
+
+Primary CTA: “Start Switch Training”
+Secondary CTA: “Explore My Switches”
+
+Card CTA: “Train This Switch”
+
+Card status labels:
+	•	Off / Flickering / Stable / Powered
+	•	Mode: Restoring / Training / Maintaining
+
+Empty state (no onboarding):
+	•	“Start with one switch. I’ll guide you.”
+
+⸻
+
+Switch Detail
+
+Title format: “{SWITCH TITLE}”
+Section headers:
+	•	“Why this switch matters”
+	•	“Quick check-in”
+	•	“What I recommend today”
+	•	“Your plan”
+
+Generate CTA: “Generate Plan”
+After plan buttons: “Save to Plan” / “Start now”
+
+Check-in after action:
+	•	“Did this help?”
+	•	Buttons: “Yes” / “Some” / “No”
+	•	If “No”: “Cool — let’s adjust. Want lighter or different?”
+
+⸻
+
+Plan
+
+Title: “Plan”
+Tabs/sections:
+	•	“This Week”
+	•	“Saved Plans”
+
+Empty state:
+	•	“No plan yet.”
+	•	“Pick a switch and I’ll build one in minutes.”
+	•	CTA: “Go to Switchboard”
+
+Completion toast:
+	•	“Done. That switch just got stronger.”
+
+⸻
+
+Onboarding (Perspective Training)
+
+Screen 1
+	•	Title: “Welcome to your Switchboard”
+	•	Body:
+	•	“Your life is one system.”
+	•	“Each dimension is a switch.”
+	•	“We’ll find your top switches in 2 minutes.”
+	•	CTA: “Let’s do it”
+
+Results screen
+	•	Title: “Here’s what’s affecting your system most”
+	•	Body:
+	•	“Primary switch: {Primary}”
+	•	“Support switch: {Support}”
+	•	“Mode for today: {Mode}”
+	•	CTA: “Generate my first plan”
+
+⸻
+
+3) DEV TICKETS (GITHUB-STYLE TASKS + ACCEPTANCE CRITERIA)
+
+EPIC 0 — Foundation
+
+Ticket 0.1 — App shell + navigation
+	•	Build bottom tabs: Home, Switchboard, Plan, Browse (disabled), Profile
+	•	Acceptance:
+	•	Tabs render and route correctly
+	•	Browse can be hidden/disabled via config
+
+Ticket 0.2 — Global UI states
+	•	Add skeleton loaders + error fallback + empty state component
+	•	Acceptance:
+	•	Every screen has loading/error/empty patterns
+	•	No blank white screens
+
+⸻
+
+EPIC 1 — Switchboard (Phase 1)
+
+Ticket 1.1 — Switch definitions + content source
+	•	Add switchDefinitions object (8 switches) in content store
+	•	Acceptance:
+	•	Switchboard renders 8 cards from data (no hardcoded text)
+
+Ticket 1.2 — Switchboard screen UI
+	•	Orientation panel + 8 switch cards with status/mode badges
+	•	Acceptance:
+	•	Cards show title + quote + “Train This Switch”
+	•	Status/mode displayed for each switch
+
+Ticket 1.3 — Switch state model
+	•	Implement switchStates in user model (status/mode/energyImpact)
+	•	Acceptance:
+	•	State persists (local storage or db)
+	•	Defaults exist for new users
+
+⸻
+
+EPIC 2 — Onboarding + Scoring (Phase 2)
+
+Ticket 2.1 — Onboarding screens
+	•	Welcome → Questions → Results
+	•	Acceptance:
+	•	User completes onboarding end-to-end
+	•	Results show Primary + Support + Mode
+
+Ticket 2.2 — Scoring engine
+	•	Implement scoring from onboarding questions
+	•	Acceptance:
+	•	Primary switch = highest score
+	•	Support switch selected if within 2 points
+	•	Stored in user model
+
+Ticket 2.3 — Signals capture
+	•	Save timeBand + energyLevel (+ optional stress)
+	•	Acceptance:
+	•	Signals available to recommendation logic
+
+⸻
+
+EPIC 3 — Switch Detail + Plan Generation (Phase 3)
+
+Ticket 3.1 — Switch detail page
+	•	Render switch content + quick check-in + generate plan CTA
+	•	Acceptance:
+	•	Can open from any switch card
+	•	Quick check-in stores user signal updates
+
+Ticket 3.2 — Plan generator
+	•	Generate plan using fixed template:
+	•	header (switch/mode/time/intensity/why)
+	•	2–4 actions max
+	•	check-in question
+	•	Acceptance:
+	•	Uses timeBand to cap plan size
+	•	Outputs valid planItem object
+
+Ticket 3.3 — Save to Plan
+	•	Save plan items to weekly plan store
+	•	Acceptance:
+	•	Plan appears in Plan screen
+	•	Persists after refresh
+
+⸻
+
+EPIC 4 — Tracking + Status Updates (Phase 4)
+
+Ticket 4.1 — Completion logging
+	•	Done button logs completion with helped yes/some/no
+	•	Acceptance:
+	•	Creates history record per completion
+
+Ticket 4.2 — Status update engine
+	•	Implement upgrade thresholds + cooldown rules
+	•	Acceptance:
+	•	Off→Flickering after 2 completions/7d
+	•	Flickering→Stable after 5/14d
+	•	Stable→Powered after 10/21d + positive check-ins
+	•	Cooldown after 14d inactivity drops one level (no shame copy)
+
+⸻
+
+EPIC 5 — Recommendations (Phase 5)
+
+Ticket 5.1 — Recommendation engine
+	•	Inputs: signals + completions + flags
+	•	Output: 1 recommendation + 1 alternative + 1 reason
+	•	Acceptance:
+	•	Low energy favors Restoring + Body/Mind
+	•	Low completion shrinks plan
+	•	Overwhelm favors Time reset
+
+Ticket 5.2 — Home “Do this next”
+	•	Display recommendation card on Home
+	•	Acceptance:
+	•	Can Start / Swap / Save to Plan
+
+⸻
+
+EPIC 6 — Phase 2 Unlock (Phase 6)
+
+Ticket 6.1 — Unlock tracker
+	•	Track eligibility: 14 days active OR 6 check-ins OR 3 switches stable
+	•	Acceptance:
+	•	Unlock flag stored and gated
+
+Ticket 6.2 — Core Switch view
+	•	Map 8 → 5 core switches (Energy/Direction/Stability/Connection/Growth)
+	•	Acceptance:
+	•	Only visible when unlocked
+
+⸻
+
+EPIC 7 — Voice + Tone (Phase 7)
+
+Ticket 7.1 — Tone system
+	•	Tone setting: chill/direct/coach
+	•	Acceptance:
+	•	Copy style changes without changing meaning
+
+Ticket 7.2 — Script library
+	•	Success/returning/overwhelm/uncertainty messages
+	•	Acceptance:
+	•	Used across onboarding, plan, and home suggestions
+
+⸻
+
+EPIC 8 — Browse / Learning (Phase 8) — NOT NOW
+	•	Park this epic until after Phase 1–5 are stable.
+
+⸻
+
+ONE LAST COPY-PASTE (to keep Replit AI disciplined)
+
+Paste this at the end in Replit:
+
+Do not implement Browse/Learning yet.
+Implement Epics in order: 0 → 1 → 2 → 3 → 4 → 5.
+After each epic, provide:
+- what was built
+- what files changed
+- how to test manually
+- known issues
+Then wait for approval before moving to the next epic.
+
+If you want, next I can also produce sample PlanItem generators for each switch (tiny/small/medium/large) so the AI doesn’t “make stuff up” inconsistently.
