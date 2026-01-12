@@ -1,0 +1,899 @@
+Perfect — below is a Plan Library you can paste into Replit so your AI stops “making stuff up” and instead pulls consistent, on-brand plan items.
+
+It includes tiny / small / medium / large templates for all 8 switches, plus rules for how to pick mode + intensity.
+
+⸻
+
+✅ FLIP THE SWITCH — PLAN LIBRARY (TINY/SMALL/MEDIUM/LARGE)
+
+Use this as the default content bank for plan generation.
+AI should select from this library first, then lightly personalize language using user goals.
+
+PLAN GENERATION RULES (STRICT)
+	1.	Choose timeBand from user signal: tiny | small | medium | large
+	2.	Choose mode:
+
+	•	energy = low → restoring
+	•	energy = medium → training (light/moderate)
+	•	energy = high → training (moderate) or maintaining if switch already Powered
+
+	3.	Plan must always include exactly:
+
+	•	actionNow (today, immediately doable)
+	•	routineBlock (repeatable this week)
+	•	supportAction (tiny action from support switch)
+	•	checkInQuestion (1 question)
+
+	4.	Max actions inside actionNow.steps:
+
+	•	tiny: 2–3 steps
+	•	small: 3–4 steps
+	•	medium: 4–6 steps
+	•	large: 6–9 steps
+
+	5.	Always output: estimateMinutes, mode, intensity, whyThisMatters
+
+⸻
+
+PLAN LIBRARY JSON (READY TO USE)
+
+{
+  "planLibrary": {
+    "body": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Energy comes before motivation. We’re charging the battery.",
+        "actionNow": {
+          "title": "10-min body reset",
+          "steps": [
+            "2 minutes: slow breathing + shoulder rolls",
+            "6 minutes: light movement (walk in place, mobility, or band pull-aparts)",
+            "2 minutes: water + quick protein/snack check"
+          ]
+        },
+        "routineBlock": {
+          "title": "Micro-move (3x this week)",
+          "schedule": "3x/week",
+          "steps": [
+            "10 minutes total",
+            "Pick: walk / mobility / bands",
+            "Stop while you still feel good"
+          ]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "One thought reset",
+          "steps": ["Name the stress in 1 sentence", "Replace with 1 helpful sentence"]
+        },
+        "checkInQuestion": "Did your energy feel even 5% better after this?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re building energy and consistency without burnout.",
+        "actionNow": {
+          "title": "25-min strength + mobility",
+          "steps": [
+            "5 min warm-up (mobility + easy pace)",
+            "15 min strength circuit (bands/bodyweight): push + pull + squat/hinge",
+            "5 min cooldown + water"
+          ]
+        },
+        "routineBlock": {
+          "title": "Strength foundation (3x this week)",
+          "schedule": "3x/week",
+          "steps": [
+            "20–30 min sessions",
+            "Track: reps or time",
+            "Add 1 small progression weekly"
+          ]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Schedule the next session",
+          "steps": ["Pick 1 day + time", "Block 30 minutes", "Add a reminder label: BODY SWITCH"]
+        },
+        "checkInQuestion": "Did this feel doable enough to repeat?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re upgrading stamina + strength so the rest of life feels lighter.",
+        "actionNow": {
+          "title": "50-min full session",
+          "steps": [
+            "8 min warm-up + mobility",
+            "30 min strength (3–4 moves, 3–4 rounds)",
+            "7 min light cardio finisher",
+            "5 min stretch + recovery note"
+          ]
+        },
+        "routineBlock": {
+          "title": "Body performance week",
+          "schedule": "4x/week",
+          "steps": [
+            "2 strength days, 1 mobility day, 1 cardio day",
+            "Rest day rule: active recovery only",
+            "Keep it sustainable"
+          ]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Set your workout space",
+          "steps": ["Put bands/shoes visible", "Clear a 6x6 area", "Queue a playlist"]
+        },
+        "checkInQuestion": "What part of this session gave you the biggest energy boost?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "We’re building a strong base — this is system-level energy.",
+        "actionNow": {
+          "title": "90-min performance build",
+          "steps": [
+            "10 min warm-up + activation",
+            "45 min progressive strength blocks",
+            "15 min conditioning",
+            "10 min mobility",
+            "10 min meal/fuel plan for next 24 hours"
+          ]
+        },
+        "routineBlock": {
+          "title": "Athlete week (5 sessions)",
+          "schedule": "5x/week",
+          "steps": [
+            "3 strength, 1 conditioning, 1 mobility",
+            "Track performance (reps/time)",
+            "One full rest day"
+          ]
+        },
+        "supportAction": {
+          "switchId": "money",
+          "title": "Fuel budget check",
+          "steps": ["List 2 high-protein groceries", "Plan 1 simple meal", "Keep it affordable"]
+        },
+        "checkInQuestion": "Do you feel stronger or more capable after this session?"
+      }
+    },
+
+    "mind": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Not every thought deserves your belief. We’re clearing noise.",
+        "actionNow": {
+          "title": "10-min mental reset",
+          "steps": [
+            "2 min: breathe + unclench jaw/shoulders",
+            "5 min: brain-dump (what’s loud right now?)",
+            "3 min: choose ONE thought to reframe"
+          ]
+        },
+        "routineBlock": {
+          "title": "Daily 5-minute de-noise",
+          "schedule": "daily",
+          "steps": ["Brain-dump 5 lines", "Circle the one you can act on", "Let the rest sit"]
+        },
+        "supportAction": {
+          "switchId": "body",
+          "title": "Nervous system downshift",
+          "steps": ["Drink water", "30–60 seconds slow breathing"]
+        },
+        "checkInQuestion": "Did your mind get quieter or just more organized?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re training emotional clarity so stress stops running the system.",
+        "actionNow": {
+          "title": "25-min clarity session",
+          "steps": [
+            "5 min: breathe + body scan",
+            "10 min: journal (trigger → feeling → need)",
+            "10 min: pick one boundary or next step"
+          ]
+        },
+        "routineBlock": {
+          "title": "Stress recovery loop",
+          "schedule": "3x/week",
+          "steps": ["10–20 minutes", "Name the pattern", "Choose one adjustment"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Protect a calm block",
+          "steps": ["Block 15 minutes", "Label: MIND SWITCH", "No phone during block"]
+        },
+        "checkInQuestion": "Do you feel more in control of your emotions right now?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re rewiring thought patterns so you respond instead of react.",
+        "actionNow": {
+          "title": "50-min pattern break",
+          "steps": [
+            "10 min: guided breathing/grounding",
+            "15 min: write the recurring story you tell yourself",
+            "15 min: challenge it with evidence",
+            "10 min: write the new story (short + believable)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Mind training week",
+          "schedule": "4x/week",
+          "steps": ["2 calm sessions", "1 reflection session", "1 boundary/practice session"]
+        },
+        "supportAction": {
+          "switchId": "relationships",
+          "title": "One connection check",
+          "steps": ["Text one supportive person", "Keep it simple: ‘Checking in’"]
+        },
+        "checkInQuestion": "What thought has less power over you after this?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is deep perspective training — system-level clarity.",
+        "actionNow": {
+          "title": "90-min inner reset",
+          "steps": [
+            "15 min: grounding + breathwork",
+            "25 min: deep journaling (pattern → origin → cost)",
+            "20 min: rewrite new belief system",
+            "15 min: plan the next 7 days with one new boundary",
+            "15 min: decompress (walk/stretch)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Deep clarity cycle",
+          "schedule": "2x/week",
+          "steps": ["One deep session", "One follow-up action session"]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Make space for calm",
+          "steps": ["Clear one surface", "Reduce one noise", "Set one comfort item"]
+        },
+        "checkInQuestion": "What belief are you ready to stop carrying?"
+      }
+    },
+
+    "time": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Time isn’t the problem — structure is. We’re reducing overwhelm fast.",
+        "actionNow": {
+          "title": "10-min time reset",
+          "steps": [
+            "Write your top 3 tasks",
+            "Circle ONE priority",
+            "Block 25 minutes for it (even if you start later)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Daily 3–1 structure",
+          "schedule": "daily",
+          "steps": ["3 tasks list", "1 priority circle", "1 block protected"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Overwhelm release",
+          "steps": ["Say: ‘One block at a time.’", "Breathe 60 seconds"]
+        },
+        "checkInQuestion": "Did this make your day feel more manageable?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re building rhythm so you stop living in catch-up.",
+        "actionNow": {
+          "title": "25-min schedule rebuild",
+          "steps": [
+            "List today’s commitments",
+            "Choose 1 focus block + 1 recovery break",
+            "Assign times (realistic, not perfect)",
+            "Set one boundary: what you’re NOT doing today"
+          ]
+        },
+        "routineBlock": {
+          "title": "Weekly rhythm setup",
+          "schedule": "1x/week",
+          "steps": ["Pick 3 focus days", "Pick 2 lighter days", "Add one buffer block"]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Remove one distraction",
+          "steps": ["Clear one tab/app", "Put phone away for the focus block"]
+        },
+        "checkInQuestion": "What’s the one boundary that helped most?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re building a real system, not a fantasy schedule.",
+        "actionNow": {
+          "title": "50-min life scheduling session",
+          "steps": [
+            "10 min: brain dump everything",
+            "15 min: group by category",
+            "15 min: schedule the top 3 blocks",
+            "10 min: add buffers + simplify"
+          ]
+        },
+        "routineBlock": {
+          "title": "Time system week",
+          "schedule": "2x/week",
+          "steps": ["Midweek reset", "Weekend plan"]
+        },
+        "supportAction": {
+          "switchId": "identity",
+          "title": "Consistency identity cue",
+          "steps": ["Write one line: ‘I’m the type of person who finishes blocks.’"]
+        },
+        "checkInQuestion": "Does your schedule feel supportive or suffocating?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "We’re upgrading your entire operating system.",
+        "actionNow": {
+          "title": "90-min full system rebuild",
+          "steps": [
+            "15 min: full brain dump",
+            "20 min: prioritize (must/should/could)",
+            "25 min: build weekly structure (anchors + blocks)",
+            "15 min: plan buffers + recovery",
+            "15 min: lock next 3 days"
+          ]
+        },
+        "routineBlock": {
+          "title": "Weekly OS maintenance",
+          "schedule": "1x/week",
+          "steps": ["Plan week", "Midweek check", "Sunday reset"]
+        },
+        "supportAction": {
+          "switchId": "purpose",
+          "title": "Direction check",
+          "steps": ["Name one goal this week supports", "Remove one task that doesn’t"]
+        },
+        "checkInQuestion": "What changed when you planned for energy, not perfection?"
+      }
+    },
+
+    "purpose": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Direction turns effort into progress.",
+        "actionNow": {
+          "title": "10-min direction ping",
+          "steps": [
+            "Write: ‘This week I want…’",
+            "Pick ONE goal (simple)",
+            "Choose ONE next step (today)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Daily direction check",
+          "schedule": "daily",
+          "steps": ["1 sentence goal", "1 next step", "1 reason why it matters"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Protect the next step",
+          "steps": ["Block 25 minutes", "Label: PURPOSE SWITCH"]
+        },
+        "checkInQuestion": "Do you feel clearer on what you’re aiming at?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "Meaning fuels consistency.",
+        "actionNow": {
+          "title": "25-min purpose map",
+          "steps": [
+            "List 3 things you care about",
+            "Pick 1 you want to strengthen",
+            "Write 2 outcomes you want",
+            "Pick 1 action for this week"
+          ]
+        },
+        "routineBlock": {
+          "title": "Purpose practice",
+          "schedule": "2x/week",
+          "steps": ["One planning session", "One action session"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Stop the comparison loop",
+          "steps": ["Write one line: ‘I’m building my lane.’"]
+        },
+        "checkInQuestion": "What action feels most aligned right now?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re turning values into a real direction.",
+        "actionNow": {
+          "title": "50-min alignment session",
+          "steps": [
+            "10 min: values list",
+            "15 min: current life audit (what matches/doesn’t)",
+            "15 min: choose 1 direction goal",
+            "10 min: schedule 2 steps"
+          ]
+        },
+        "routineBlock": {
+          "title": "Direction week",
+          "schedule": "3x/week",
+          "steps": ["Plan", "Act", "Reflect"]
+        },
+        "supportAction": {
+          "switchId": "identity",
+          "title": "Identity anchor",
+          "steps": ["Write: ‘I show up for what matters.’"]
+        },
+        "checkInQuestion": "Does your week reflect what you say you want?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is a long-term trajectory upgrade.",
+        "actionNow": {
+          "title": "90-min life direction build",
+          "steps": [
+            "20 min: values + strengths",
+            "20 min: vision (6–12 months)",
+            "20 min: goals (3 buckets)",
+            "20 min: next 14 days plan",
+            "10 min: commit statement"
+          ]
+        },
+        "routineBlock": {
+          "title": "Purpose cycle",
+          "schedule": "1x/week",
+          "steps": ["Vision check", "Goal review", "Next steps scheduling"]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Purpose environment cue",
+          "steps": ["Put one visual reminder somewhere you’ll see daily"]
+        },
+        "checkInQuestion": "What are you willing to prioritize to make this real?"
+      }
+    },
+
+    "money": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Clarity reduces stress fast.",
+        "actionNow": {
+          "title": "10-min money clarity check",
+          "steps": [
+            "Check current balance(s)",
+            "List next 3 upcoming expenses",
+            "Pick ONE small money move for today"
+          ]
+        },
+        "routineBlock": {
+          "title": "Money check (2x/week)",
+          "schedule": "2x/week",
+          "steps": ["Balance glance", "Upcoming bills glance", "One tiny adjustment"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Money shame release",
+          "steps": ["Write: ‘This is information, not judgment.’"]
+        },
+        "checkInQuestion": "Did clarity lower money stress even slightly?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "Stability buys choices.",
+        "actionNow": {
+          "title": "25-min budget snapshot",
+          "steps": [
+            "List income sources",
+            "List fixed expenses",
+            "Pick one spending cap for the week",
+            "Choose one ‘stability’ action (pay, save, plan)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Weekly money plan",
+          "schedule": "1x/week",
+          "steps": ["Plan bills", "Plan groceries", "Choose one savings goal"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Set a money block",
+          "steps": ["Schedule 20 minutes", "No distractions", "Do it once, not daily"]
+        },
+        "checkInQuestion": "What money decision feels easier now?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re building control, not perfection.",
+        "actionNow": {
+          "title": "50-min stability setup",
+          "steps": [
+            "Audit last 7 days spending (quick categories)",
+            "Identify one leak",
+            "Set one rule (cap or swap)",
+            "Create a simple weekly plan",
+            "Schedule next check-in"
+          ]
+        },
+        "routineBlock": {
+          "title": "Stability week",
+          "schedule": "2x/week",
+          "steps": ["Midweek check", "Weekend plan"]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Organize money stuff",
+          "steps": ["Create one folder (digital or physical)", "Put all bills/notes there"]
+        },
+        "checkInQuestion": "Which ‘leak’ are you ready to close first?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is long-term stability work.",
+        "actionNow": {
+          "title": "90-min financial reset",
+          "steps": [
+            "Full bills list",
+            "Debt/obligations list",
+            "Income plan",
+            "Build a monthly map",
+            "Pick a 30-day focus (save, pay down, stabilize)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Monthly money cycle",
+          "schedule": "1x/month",
+          "steps": ["Plan month", "Weekly check-ins", "Close-out review"]
+        },
+        "supportAction": {
+          "switchId": "identity",
+          "title": "Money identity cue",
+          "steps": ["Write: ‘I handle my money with respect.’"]
+        },
+        "checkInQuestion": "Do you feel more in control of your choices now?"
+      }
+    },
+
+    "relationships": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Connection should feel safe, not draining.",
+        "actionNow": {
+          "title": "10-min connection reset",
+          "steps": [
+            "Text one supportive person",
+            "Or set one boundary message (short + respectful)",
+            "Breathe after sending — don’t spiral"
+          ]
+        },
+        "routineBlock": {
+          "title": "Connection upkeep",
+          "schedule": "2x/week",
+          "steps": ["One reach-out", "One boundary check", "One gratitude note"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Detach from people-pleasing",
+          "steps": ["Write: ‘I can be kind and still say no.’"]
+        },
+        "checkInQuestion": "Did this feel energizing or draining?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "Boundaries protect your system.",
+        "actionNow": {
+          "title": "25-min boundary build",
+          "steps": [
+            "Name one relationship stressor",
+            "Write what you need (1–2 sentences)",
+            "Draft a boundary line you can actually say",
+            "Choose: send it or practice it"
+          ]
+        },
+        "routineBlock": {
+          "title": "Relationship rhythm",
+          "schedule": "weekly",
+          "steps": ["One check-in call", "One boundary moment", "One repair action if needed"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Protect your space",
+          "steps": ["Block one personal hour this week", "No negotiations"]
+        },
+        "checkInQuestion": "What boundary would make your life lighter?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "Healthy connection increases resilience.",
+        "actionNow": {
+          "title": "50-min relationship clarity",
+          "steps": [
+            "Audit: who drains vs supports",
+            "Choose one repair OR one boundary",
+            "Plan one quality interaction",
+            "Write one rule you’ll follow going forward"
+          ]
+        },
+        "routineBlock": {
+          "title": "Connection week",
+          "schedule": "3x/week",
+          "steps": ["Reach out", "Maintain boundary", "Reflect"]
+        },
+        "supportAction": {
+          "switchId": "identity",
+          "title": "Self-respect statement",
+          "steps": ["Write: ‘I choose relationships that respect me.’"]
+        },
+        "checkInQuestion": "Who do you feel safest being yourself with?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is a deep reset of how you do connection.",
+        "actionNow": {
+          "title": "90-min relationship reset",
+          "steps": [
+            "Write your relationship standards",
+            "List red flags you ignore",
+            "List green flags you want more of",
+            "Choose 2 boundaries",
+            "Plan one repair conversation"
+          ]
+        },
+        "routineBlock": {
+          "title": "Relationship operating system",
+          "schedule": "weekly",
+          "steps": ["Standards review", "Boundary practice", "Connection plan"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Stop over-explaining",
+          "steps": ["Practice one sentence: ‘This is what I need.’"]
+        },
+        "checkInQuestion": "What relationship pattern are you done repeating?"
+      }
+    },
+
+    "environment": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Reduce friction. Increase follow-through.",
+        "actionNow": {
+          "title": "10-min space reset",
+          "steps": [
+            "Clear one surface",
+            "Throw away trash",
+            "Put 5 things back where they belong"
+          ]
+        },
+        "routineBlock": {
+          "title": "Daily 10-minute reset",
+          "schedule": "daily",
+          "steps": ["One surface", "One bag/trash", "One quick sweep"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Create a reset time",
+          "steps": ["Pick a daily time (ex: 8:30 PM)", "Set a reminder"]
+        },
+        "checkInQuestion": "Did your space feel less stressful after this?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "Your environment decides your default behavior.",
+        "actionNow": {
+          "title": "25-min friction removal",
+          "steps": [
+            "Choose one zone (desk, bed area, kitchen)",
+            "Remove clutter + reset layout",
+            "Set one ‘easy win’ item visible (water, shoes, journal)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Zone reset",
+          "schedule": "3x/week",
+          "steps": ["Pick zone", "Reset", "Maintain"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Reduce visual noise",
+          "steps": ["Put away one distracting item", "Silence one notification"]
+        },
+        "checkInQuestion": "What change made the biggest difference?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re building an environment that supports your goals automatically.",
+        "actionNow": {
+          "title": "50-min environment upgrade",
+          "steps": [
+            "Clean one primary zone",
+            "Create a ‘ready station’ (keys, bag, charger)",
+            "Set a dedicated focus spot",
+            "Remove one recurring friction point"
+          ]
+        },
+        "routineBlock": {
+          "title": "Supportive space week",
+          "schedule": "2x/week",
+          "steps": ["Deep reset", "Maintenance reset"]
+        },
+        "supportAction": {
+          "switchId": "identity",
+          "title": "Environment identity cue",
+          "steps": ["Write: ‘My space supports who I’m becoming.’"]
+        },
+        "checkInQuestion": "Did it become easier to start tasks?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is a full system support rebuild through your environment.",
+        "actionNow": {
+          "title": "90-min home operating system",
+          "steps": [
+            "Declutter one high-traffic area",
+            "Set storage rules (what goes where)",
+            "Build a weekly reset routine",
+            "Create one inspiration/goal corner",
+            "Remove one time-wasting setup"
+          ]
+        },
+        "routineBlock": {
+          "title": "Weekly environment maintenance",
+          "schedule": "weekly",
+          "steps": ["Reset day", "Daily 10-minute upkeep", "Monthly declutter"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Lock reset blocks",
+          "steps": ["Schedule weekly reset", "Schedule 2 quick maintenance sessions"]
+        },
+        "checkInQuestion": "What part of your space is now ‘working for you’?"
+      }
+    },
+
+    "identity": {
+      "tiny": {
+        "estimateMinutes": 10,
+        "intensity": "light",
+        "whyThisMatters": "Identity decides what you repeat.",
+        "actionNow": {
+          "title": "10-min identity anchor",
+          "steps": [
+            "Write: ‘I’m the type of person who…’",
+            "Finish the sentence with one behavior",
+            "Do a 2-minute proof action immediately"
+          ]
+        },
+        "routineBlock": {
+          "title": "Daily identity proof",
+          "schedule": "daily",
+          "steps": ["One sentence identity", "One tiny proof action"]
+        },
+        "supportAction": {
+          "switchId": "time",
+          "title": "Make it automatic",
+          "steps": ["Pick a consistent time", "Attach to an existing habit"]
+        },
+        "checkInQuestion": "Did you feel more like ‘you’ after this?"
+      },
+      "small": {
+        "estimateMinutes": 25,
+        "intensity": "moderate",
+        "whyThisMatters": "Consistency grows when your identity changes first.",
+        "actionNow": {
+          "title": "25-min habit identity build",
+          "steps": [
+            "Pick one habit you want",
+            "Identify what usually blocks it",
+            "Design a tiny version you can always do",
+            "Write your identity rule (short)"
+          ]
+        },
+        "routineBlock": {
+          "title": "Consistency week",
+          "schedule": "4x/week",
+          "steps": ["Tiny version minimum", "Track yes/no", "Celebrate consistency"]
+        },
+        "supportAction": {
+          "switchId": "mind",
+          "title": "Stop the self-attack",
+          "steps": ["Write: ‘I’m practicing, not failing.’"]
+        },
+        "checkInQuestion": "What habit feels easiest to keep consistent now?"
+      },
+      "medium": {
+        "estimateMinutes": 50,
+        "intensity": "moderate",
+        "whyThisMatters": "We’re rewriting your personal operating rules.",
+        "actionNow": {
+          "title": "50-min identity rewrite",
+          "steps": [
+            "List 3 patterns you want to stop",
+            "List 3 patterns you want to start",
+            "Write one identity statement per pattern",
+            "Choose one proof action for each"
+          ]
+        },
+        "routineBlock": {
+          "title": "Identity training week",
+          "schedule": "3x/week",
+          "steps": ["Practice", "Proof", "Reflect"]
+        },
+        "supportAction": {
+          "switchId": "environment",
+          "title": "Make your identity visible",
+          "steps": ["Put one cue in your space that supports the new habit"]
+        },
+        "checkInQuestion": "Which identity statement felt most real?"
+      },
+      "large": {
+        "estimateMinutes": 90,
+        "intensity": "deep",
+        "whyThisMatters": "This is deep alignment: who you are and how you live match.",
+        "actionNow": {
+          "title": "90-min life alignment session",
+          "steps": [
+            "Write your top values",
+            "Audit your current habits",
+            "Choose the 3 identity rules you’ll live by",
+            "Design your weekly structure around them",
+            "Commit to one 14-day challenge"
+          ]
+        },
+        "routineBlock": {
+          "title": "14-day identity challenge",
+          "schedule": "daily",
+          "steps": ["Tiny proof action daily", "Weekly reflection", "Adjust without quitting"]
+        },
+        "supportAction": {
+          "switchId": "purpose",
+          "title": "Meaning lock-in",
+          "steps": ["Write: ‘I’m building this because…’ (one sentence)"]
+        },
+        "checkInQuestion": "What version of you are you choosing now?"
+      }
+    }
+  }
+}
+
+
+⸻
+
+HOW TO USE THIS (IN APP LOGIC)
+	•	When generating a plan:
+	•	primarySwitchId → pick planLibrary[primarySwitchId][timeBand]
+	•	supportSwitchId → use the supportAction already embedded OR swap it to match current support switch
+	•	Personalize only:
+	•	the whyThisMatters sentence (optional)
+	•	examples inside steps (e.g., “walk” vs “mobility”)
+	•	Do NOT change structure.
+
+⸻
+
+If you want, I can also output a small helper function spec (not code, just behavior) that tells the AI exactly how to:
+	•	pick mode/intensity,
+	•	cap steps,
+	•	and auto-write the “reason” line for Home recommendations.

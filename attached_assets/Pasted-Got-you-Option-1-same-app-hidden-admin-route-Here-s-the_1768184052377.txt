@@ -1,0 +1,181 @@
+Got you — Option 1: same app, hidden admin route.
+
+Here’s the copy-paste spec for Replit to implement it cleanly (and safely), with route protection + UI placement + what to log.
+
+⸻
+
+✅ ADMIN DASHBOARD IN SAME APP (HIDDEN ROUTE) — IMPLEMENTATION SPEC
+
+1) Routes
+	•	User dashboards:
+	•	/profile/progress  → My Progress (user-only)
+	•	Admin dashboards:
+	•	/admin/analytics → Analytics (admin-only)
+
+Rule: /admin/* must be blocked unless role = admin.
+
+⸻
+
+2) Role Model (minimum)
+
+User record includes:
+
+{
+  "userId": "uuid",
+  "role": "user"
+}
+
+Valid roles: user, admin
+
+Default = user
+
+⸻
+
+3) Server-Side Access Control (non-negotiable)
+
+Middleware / Guard (behavior)
+
+When a request hits /admin/*:
+	•	If not authenticated → redirect to login
+	•	If authenticated but role != admin → return 403 + show “Not authorized”
+	•	If role == admin → allow
+
+Important: Don’t rely on “hiding the button.” Protect the route.
+
+⸻
+
+4) UI Placement (so users don’t see it)
+
+In Profile screen
+	•	Users see: “My Progress”
+	•	Admins see:
+	•	“My Progress”
+	•	“Admin Analytics” (small label, at bottom)
+	•	OR no button at all and admin uses direct URL
+
+Recommended: show admin link only if role = admin.
+
+⸻
+
+5) Data Exposure Rules (what the admin screen can query)
+
+Admin can access:
+	•	aggregated metrics (counts, rates)
+	•	event logs aggregated
+	•	error codes aggregated
+
+Admin cannot access:
+	•	raw personal free-text content
+	•	raw journals
+	•	raw personal entries
+
+If an event includes text: store only tags/hashes, not raw text.
+
+⸻
+
+6) Analytics Data Pipeline (minimum viable)
+
+Store events
+
+Use the telemetry schema events you already have:
+	•	SESSION_STARTED
+	•	SCREEN_VIEWED
+	•	ONBOARDING_STARTED/COMPLETED
+	•	PLAN_GENERATED/SAVED
+	•	PLAN_ITEM_COMPLETED
+	•	POST_ACTION_CHECKIN_SUBMITTED
+	•	FLAGS_UPDATED
+	•	ERROR_OCCURRED
+
+Admin dashboard queries
+
+Admin dashboard should query:
+	•	metrics_summary (pre-aggregated daily tables if possible)
+OR
+	•	compute on demand for MVP
+
+MVP approach: compute on demand for last 7/30 days.
+
+⸻
+
+7) Admin Dashboard Layout (within app)
+
+/admin/analytics
+
+Row 1 — KPI Tiles
+	•	DAU
+	•	Activation Rate (7d)
+	•	D7 Meaningful Retention
+	•	Helped Positive Rate
+
+Row 2 — Funnel
+Onboarding Started → Completed → Plan Generated → Saved → Completed → Check-in
+
+Row 3 — Switch Performance
+	•	Completions by switch
+	•	Helped positive rate by switch
+
+Row 4 — Recommendations
+	•	acceptance rate
+	•	swap rate
+	•	completion within 24h
+
+Row 5 — TimeBand & Mode
+	•	timeBand distribution
+	•	completion rate by timeBand
+	•	helped positive rate by mode
+
+Row 6 — Flags & Pain
+	•	top flags 14d
+	•	flag → recommended switch → completion within 24h
+
+Row 7 — Errors
+	•	errors/session
+	•	top error codes
+	•	top screens with errors
+
+⸻
+
+8) “My Progress” Dashboard Route
+
+/profile/progress
+
+Show only:
+	•	system snapshot (energy/stress/consistency)
+	•	switch status grid
+	•	weekly wins (completed actions + helped summary)
+	•	patterns (friendly labels)
+	•	next move
+
+No funnels. No DAU. No errors.
+
+⸻
+
+9) Extra Security (quick wins)
+	•	Don’t ship admin UI code to everyone if you can help it (lazy-load admin route).
+	•	Never include admin analytics in client state for normal users.
+	•	Add a log event:
+	•	ADMIN_ANALYTICS_VIEWED (admin-only)
+
+⸻
+
+10) Testing Checklist (manual)
+	•	Log in as user:
+	•	/admin/analytics → blocked (403)
+	•	Profile shows only “My Progress”
+	•	Log in as admin:
+	•	/admin/analytics → accessible
+	•	Profile shows “Admin Analytics” link
+	•	Confirm user never sees:
+	•	raw flags
+	•	funnels
+	•	DAU
+	•	errors
+
+⸻
+
+If you want, I can now write the exact UI copy for:
+	•	the admin analytics page headings + tooltips (so it’s readable),
+	•	and the “Not authorized” screen.
+
+And if you tell me what stack your Replit app uses (Next.js? Vite + React? Express? Supabase?), I can tailor the route guard structure to match it—without rewriting your whole app.

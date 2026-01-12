@@ -1,0 +1,245 @@
+Awesome — here’s the helper function spec (behavioral rules, not code) that you can paste into Replit so the AI always generates plans + recommendations consistently.
+
+⸻
+
+FLIP THE SWITCH — HELPER FUNCTION SPECS (NO CODE)
+
+1) deriveUserContext(userModel) -> context
+
+Purpose: Normalize user signals into one clean context object for every AI decision.
+
+Inputs
+	•	userModel.signals.timeBand (tiny/small/medium/large)
+	•	userModel.signals.energyLevel (low/medium/high)
+	•	optional: userModel.signals.stressLevel (low/medium/high)
+	•	userModel.switchboard.primarySwitchId
+	•	userModel.switchboard.supportSwitchId
+	•	userModel.history.completions (last 7/14/21 days)
+	•	optional flags from check-ins (overwhelmFlag, moneyStressFlag, envMessFlag, relationshipDrainFlag, timeChaosFlag)
+
+Outputs (context)
+	•	timeBand: tiny|small|medium|large (default: small)
+	•	energyLevel: low|medium|high (default: medium)
+	•	stressLevel: low|medium|high (default: medium)
+	•	primarySwitchId, supportSwitchId
+	•	completionRate7d: 0..1
+	•	completedCountsBySwitch7d/14d/21d
+	•	positiveCheckins21d
+	•	flags: boolean map
+
+Rules
+	•	If timeBand missing → small
+	•	If energy missing → medium
+	•	completionRate7d = completedActions7d / max(7, plannedActions7d or 7)
+	•	If flags missing → false
+
+⸻
+
+2) chooseModeAndIntensity(context, switchState) -> { mode, intensity, estimateCap }
+
+Purpose: Decide how hard to push today (restoring vs training vs maintaining).
+
+Inputs
+	•	context.energyLevel
+	•	context.stressLevel
+	•	context.completionRate7d
+	•	switchState.status (off/flickering/stable/powered)
+	•	context.timeBand
+
+Outputs
+	•	mode: restoring|training|maintaining
+	•	intensity: light|moderate|deep
+	•	estimateCapMinutes: number (max plan minutes allowed)
+
+Decision Rules (strict)
+	1.	Energy-based
+
+	•	If energyLevel = low → mode = restoring, intensity = light
+	•	If energyLevel = medium → mode = training, intensity = light (or moderate if completionRate good)
+	•	If energyLevel = high → mode = training, intensity = moderate (or maintaining if switch is powered)
+
+	2.	Stress override
+
+	•	If stressLevel = high → intensity cannot exceed light unless user explicitly chooses “go deeper”
+
+	3.	Consistency override
+
+	•	If completionRate7d < 0.30 → force mode = restoring, intensity = light, and cap timeBand to at most small
+
+	4.	Status bias
+
+	•	If switchState.status = powered and energyLevel != low → prefer mode = maintaining (unless user wants growth/level up)
+
+	5.	Estimate caps by timeBand
+
+	•	tiny → cap 10 min
+	•	small → cap 30 min
+	•	medium → cap 60 min
+	•	large → cap 90 min
+
+⸻
+
+3) pickRecommendedSwitch(context) -> { recommendedSwitchId, alternativeSwitchId, reasonKey }
+
+Purpose: Choose 1 best switch + 1 alternative, plus a reason key.
+
+Inputs
+	•	context flags + primary/support + energy + completionRate
+
+Output
+	•	recommendedSwitchId
+	•	alternativeSwitchId
+	•	reasonKey (used to generate a one-sentence reason)
+
+Switch Selection Priority Rules
+
+Apply in this order (first match wins):
+	1.	If energyLevel = low → recommended = body OR mind
+
+	•	if stressLevel = high → mind
+	•	else → body
+Alternative = the other (body/mind)
+
+	2.	If completionRate7d < 0.30 → recommended = time (tiny reset)
+Alternative = mind (overwhelm relief)
+	3.	If flags.overwhelmFlag = true → recommended = time
+Alternative = mind
+	4.	If flags.moneyStressFlag = true (>=2 in 14d) → recommended = money
+Alternative = time
+	5.	If flags.relationshipDrainFlag = true → recommended = relationships
+Alternative = mind
+	6.	If flags.envMessFlag = true AND flags.timeChaosFlag = true → recommended = environment
+Alternative = time
+	7.	Default → recommended = primarySwitchId
+Alternative = supportSwitchId
+
+⸻
+
+4) buildHomeReasonLine(context, recommendedSwitchId, mode) -> reasonText
+
+Purpose: Generate the Home screen’s “why this” line in 1 sentence.
+
+Rules (choose template by condition)
+	•	If mode=restoring and recommended=body →
+“Your energy is low — let’s charge the battery first.”
+	•	If mode=restoring and recommended=mind →
+“Your mind’s overloaded — let’s quiet the noise so you can move.”
+	•	If recommended=time →
+“Structure reduces overwhelm fast — one block changes the whole day.”
+	•	If recommended=money →
+“Clarity lowers money stress — we’ll take one small control step.”
+	•	If recommended=relationships →
+“A boundary or connection move can stop the drain.”
+	•	If recommended=environment →
+“Removing friction makes everything easier to start.”
+	•	If recommended=purpose →
+“Direction turns effort into progress — one aligned step.”
+	•	If recommended=identity →
+“Consistency starts with identity — one proof action today.”
+
+Style rules
+	•	Max 16 words if possible
+	•	No guilt language
+	•	No therapy jargon
+
+⸻
+
+5) generatePlanFromLibrary(context, switchId) -> plan
+
+Purpose: Pull a consistent plan from your Plan Library, then lightly personalize.
+
+Inputs
+	•	context.timeBand
+	•	switchId (recommended switch)
+	•	mode/intensity from chooseModeAndIntensity
+	•	optional user goals (free text)
+
+Output Plan Shape (must always match)
+	•	switchId
+	•	mode
+	•	intensity
+	•	estimateMinutes
+	•	whyThisMatters
+	•	actionNow { title, steps[] }
+	•	routineBlock { title, schedule, steps[] }
+	•	supportAction { switchId, title, steps[] }
+	•	checkInQuestion
+
+Rules (strict)
+	1.	Pull base plan = planLibrary[switchId][context.timeBand]
+	2.	Override intensity if needed (but do not change steps structure)
+	3.	If estimateMinutes > cap → downgrade timeBand one step (large→medium→small→tiny)
+	4.	Support action:
+
+	•	If base plan’s supportAction.switchId != context.supportSwitchId
+replace supportAction with a tiny action from the actual support switch:
+	•	choose the support switch’s tiny plan and extract ONLY actionNow (rename as supportAction)
+	•	ensure supportAction stays small (1–3 steps max)
+
+	5.	Personalize:
+
+	•	Optionally insert user goal keywords into whyThisMatters (1 phrase)
+	•	Do not add more steps
+
+⸻
+
+6) logCompletionAndUpdateStatus(userModel, completion) -> updatedUserModel
+
+Purpose: When user hits “Done”, log it and update switch status if thresholds met.
+
+Completion object
+	•	date/time
+	•	switchId
+	•	planItemId
+	•	helped: yes|some|no
+
+Update Rules
+	1.	Append completion to history
+	2.	Recompute counts:
+
+	•	completedActions7d/14d/21d for that switch
+	•	positiveCheckins21d = count(helped in [yes,some])
+
+	3.	Apply upgrades:
+
+	•	off → flickering if >=2 actions/7d
+	•	flickering → stable if >=5 actions/14d
+	•	stable → powered if >=10 actions/21d AND positiveCheckins21d >=4
+
+	4.	Cooldown:
+
+	•	if inactiveDays >=14 for a switch: drop one level (powered→stable, stable→flickering)
+
+	5.	If helped = no twice in a row on same switch:
+
+	•	next recommendation for that switch must reduce intensity OR switch to restoring and offer alternative switch
+
+⸻
+
+7) planSizeGuard(plan, timeBand) -> plan
+
+Purpose: Prevent “plan bloat”.
+
+Rules
+	•	total steps inside actionNow ≤:
+	•	tiny: 3
+	•	small: 4
+	•	medium: 6
+	•	large: 9
+	•	supportAction steps ≤ 3 always
+	•	If exceeded: trim from the bottom, never add
+
+⸻
+
+FINAL INTEGRATION RULE (MOST IMPORTANT)
+
+Every plan and recommendation must be explainable in one sentence:
+	•	“Because [signal/flag], we’re training [switch] in [mode] with a [timeBand] plan.”
+
+If the AI can’t say that sentence, it’s doing too much.
+
+⸻
+
+If you want, next I can give you:
+	•	a flag dictionary spec (exactly how to set overwhelmFlag, moneyStressFlag, etc. from check-ins), and
+	•	the exact micro-check-in questions per switch that generate those flags cleanly.

@@ -60,6 +60,8 @@ import PrivacyTermsPage from "@/pages/privacy-terms";
 import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
+import FTSHomePage from "@/pages/fts-home";
+import PlanPage from "@/pages/plan-page";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -100,6 +102,8 @@ function Router() {
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
+      <Route path="/home" component={FTSHomePage} />
+      <Route path="/plan" component={PlanPage} />
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}

@@ -1,0 +1,237 @@
+Yes — that’s exactly the right call, and you’re thinking about this at the right level.
+
+Below is a clean, explicit separation between User vs Admin, plus a permissions rule, and then the final dashboard layouts for both.
+Nothing unnecessary will leak to users.
+
+You can paste this whole thing into Replit as Dashboard + Permissions Spec.
+
+⸻
+
+🔐 VISIBILITY & PERMISSIONS MODEL (SOURCE OF TRUTH)
+
+Roles
+
+{
+  "roles": ["user", "admin"]
+}
+
+Core Rule (non-negotiable)
+	•	Users NEVER see raw analytics
+	•	Admins NEVER see raw personal reflections
+	•	Aggregation goes up, personal data does not go sideways
+
+⸻
+
+Visibility Rules (Simple & Safe)
+
+Data Type	User	Admin
+Switch status (Off/Flickering/Stable/Powered)	✅	✅
+Completed actions (count only)	✅	✅ (aggregated)
+“Helped” summary (Yes/Some/No)	✅	✅ (aggregated)
+Flags shown as friendly patterns	✅ (sanitized)	✅ (raw)
+Flags raw names (overwhelmFlag)	❌	✅
+Onboarding answers	❌	✅ (aggregated only)
+Funnels (onboarding → activation)	❌	✅
+DAU/WAU/MAU	❌	✅
+Recommendation acceptance/swap	❌	✅
+Error logs	❌	✅
+Free-text content	❌	❌ (never shown raw)
+
+
+⸻
+
+🧑‍💻 USER DASHBOARD (WHAT USERS SEE)
+
+Name: My Progress
+Access: role = user
+
+This dashboard is motivating, not analytical.
+
+⸻
+
+USER DASHBOARD LAYOUT
+
+🟦 Section 1 — System Snapshot (Top Card)
+
+Title: Your System This Week
+	•	Energy: Low / Medium / High
+	•	Stress: Low / Medium / High
+	•	Consistency: X days active (last 14)
+
+Microcopy:
+“You don’t need perfect weeks — just powered ones.”
+
+⸻
+
+🟦 Section 2 — Switchboard Status (8 Cards)
+
+Each card shows:
+	•	Switch name
+	•	Status badge: Off / Flickering / Stable / Powered
+	•	Last trained: “Today / 2 days ago / Never”
+	•	Tiny trend: ↑ ↓ or steady
+
+❌ No percentages
+❌ No graphs
+❌ No internal metrics
+
+Tap → Switch Detail (personal history only)
+
+⸻
+
+🟦 Section 3 — Weekly Wins
+
+Title: What You Did This Week
+	•	Completed actions: X
+	•	Best day: Wednesday (example)
+	•	“Helped” summary:
+	•	Helped: X
+	•	Somewhat: X
+	•	Didn’t help: X
+
+Microcopy:
+“Information, not judgment.”
+
+⸻
+
+🟦 Section 4 — Patterns (Sanitized Flags)
+
+Title: What Showed Up This Week
+
+Translate flags into human language:
+	•	Overwhelm → “Felt overwhelmed”
+	•	Time chaos → “Days felt scattered”
+	•	Low energy → “Energy dips”
+	•	Money stress → “Financial pressure”
+	•	Relationship drain → “People felt draining”
+	•	Environment mess → “Space caused friction”
+
+Show as:
+	•	“Felt overwhelmed: 3×”
+	•	“Energy dips: 4×”
+
+❌ Never show flag names
+❌ Never show counts over long ranges
+
+⸻
+
+🟦 Section 5 — Next Best Move
+
+One recommendation card only:
+	•	“Train: Time Switch (10 minutes)”
+	•	Why: “Structure reduces overwhelm fast.”
+
+Buttons:
+	•	Start
+	•	Save
+
+⸻
+
+🛠️ ADMIN DASHBOARD (WHAT ONLY YOU SEE)
+
+Name: Analytics
+Access: role = admin
+
+This dashboard is for growth, debugging, and decision-making.
+
+⸻
+
+ADMIN DASHBOARD LAYOUT
+
+🟨 Row 1 — Health KPIs (Tiles)
+	•	DAU
+	•	Activation Rate (7d)
+	•	D7 Meaningful Retention
+	•	Helped Positive Rate
+
+⸻
+
+🟨 Row 2 — Activation Funnel
+
+Steps:
+	1.	Onboarding Started
+	2.	Onboarding Completed
+	3.	Plan Generated
+	4.	Plan Saved
+	5.	Plan Item Completed
+	6.	Post-action Check-in
+
+Shows:
+	•	Drop-off %
+	•	Conversion %
+
+⸻
+
+🟨 Row 3 — Switch Performance
+
+Charts:
+	•	Completions by switch (bar)
+	•	Helped positive rate by switch (bar)
+
+⸻
+
+🟨 Row 4 — Recommendations Engine
+	•	Recommendation acceptance rate
+	•	Swap rate
+	•	Completion within 24h of recommendation
+
+⸻
+
+🟨 Row 5 — TimeBand & Mode
+	•	TimeBand distribution (tiny/small/medium/large)
+	•	Completion rate by timeBand
+	•	Helped rate by mode (restoring/training/maintaining)
+
+⸻
+
+🟨 Row 6 — Flags & Pain Points
+	•	Top flags (last 14 days)
+	•	Flag → recommended switch → completion within 24h (table)
+
+This tells you if your logic is working.
+
+⸻
+
+🟨 Row 7 — Dropoff & Errors
+	•	Onboarding dropoff by question
+	•	Errors per session
+	•	Top error codes + screens
+
+⸻
+
+🔐 PERMISSION ENFORCEMENT (IMPLEMENTATION RULES)
+
+Backend / Logic Rules
+
+IF role != admin:
+  - Block access to /admin/*
+  - Strip event-level analytics
+  - Strip raw flags and counts
+  - Convert flags → friendly labels only
+
+IF role == admin:
+  - Allow aggregated analytics
+  - Never expose raw free-text
+
+Frontend Rules
+	•	Never conditionally hide admin data in UI only
+	•	Admin routes must be protected server-side
+	•	Analytics components should not mount for users
+
+⸻
+
+🧠 WHY THIS DESIGN IS CORRECT
+	•	Users feel supported, not monitored
+	•	No “big brother” vibes
+	•	You get full insight without violating trust
+	•	Future-proof if you add coaches, therapists, or teams later
+
+⸻
+
+FINAL QUESTION (Quick)
+
+Do you want:
+1️⃣ Admin dashboard inside the same app (hidden route), or
+2️⃣ Admin dashboard as a separate admin app / panel?
+
+Either works — choice affects architecture, not philosophy.

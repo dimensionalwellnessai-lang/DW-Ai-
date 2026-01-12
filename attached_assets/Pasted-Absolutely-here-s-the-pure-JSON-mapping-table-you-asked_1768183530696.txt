@@ -1,0 +1,466 @@
+Absolutely — here’s the pure JSON mapping table you asked for: every micro-check-in option maps directly to signals + flags + counts + expiration. This is built so Replit can implement it with minimal interpretation.
+
+⸻
+
+✅ FLAG EXTRACTION MAPPING TABLE (PURE JSON)
+
+{
+  "flagExtraction": {
+    "meta": {
+      "flagsExpireHours": 24,
+      "countsWindowDays": 14,
+      "stressHighThreshold": 4,
+      "motivationLowThreshold": 2
+    },
+
+    "updateModel": {
+      "setSignal": {
+        "path": "signals",
+        "fields": ["energyLevel", "stressLevel", "timeBand"]
+      },
+      "setFlag": {
+        "path": "flags",
+        "expirationHours": 24
+      },
+      "incrementCount": {
+        "path": "flagCounts14d",
+        "windowDays": 14
+      },
+      "appendHistory": {
+        "path": "flagHistory",
+        "fields": ["date", "flagKey", "value", "source"]
+      }
+    },
+
+    "sources": {
+      "body_checkin": {
+        "questions": {
+          "energy_now": {
+            "type": "single_select",
+            "options": {
+              "high": {
+                "signalUpdates": { "energyLevel": "high" },
+                "flagUpdates": [],
+                "countUpdates": []
+              },
+              "medium": {
+                "signalUpdates": { "energyLevel": "medium" },
+                "flagUpdates": [],
+                "countUpdates": []
+              },
+              "low": {
+                "signalUpdates": { "energyLevel": "low" },
+                "flagUpdates": [{ "flagKey": "lowEnergyFlag", "value": true }],
+                "countUpdates": [{ "countKey": "lowEnergy", "delta": 1 }]
+              }
+            }
+          },
+          "sleep_last_night": {
+            "type": "single_select",
+            "options": {
+              "good_7plus": {
+                "signalUpdates": {},
+                "flagUpdates": [],
+                "countUpdates": []
+              },
+              "okay_6to7": {
+                "signalUpdates": {},
+                "flagUpdates": [],
+                "countUpdates": []
+              },
+              "low_under6": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "sleepDebtFlag", "value": true }],
+                "countUpdates": [{ "countKey": "sleepDebt", "delta": 1 }]
+              }
+            }
+          },
+          "body_feels": {
+            "type": "single_select",
+            "options": {
+              "rested": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "tight": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "sore": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "heavy": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "lowEnergyFlag", "value": true }],
+                "countUpdates": [{ "countKey": "lowEnergy", "delta": 1 }]
+              }
+            }
+          }
+        }
+      },
+
+      "mind_checkin": {
+        "questions": {
+          "mind_state": {
+            "type": "single_select",
+            "options": {
+              "clear": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "busy": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "overwhelmed": {
+                "signalUpdates": { "stressLevel": "high" },
+                "flagUpdates": [{ "flagKey": "overwhelmFlag", "value": true }],
+                "countUpdates": [{ "countKey": "overwhelm", "delta": 1 }]
+              }
+            }
+          },
+          "stress_level_1to5": {
+            "type": "rating_1to5",
+            "rules": [
+              {
+                "if": { "gte": 4 },
+                "then": {
+                  "signalUpdates": { "stressLevel": "high" },
+                  "flagUpdates": [{ "flagKey": "overwhelmFlag", "value": true }],
+                  "countUpdates": [{ "countKey": "overwhelm", "delta": 1 }]
+                }
+              },
+              {
+                "if": { "lte": 2 },
+                "then": {
+                  "signalUpdates": { "stressLevel": "low" },
+                  "flagUpdates": [],
+                  "countUpdates": []
+                }
+              },
+              {
+                "if": { "eq": 3 },
+                "then": {
+                  "signalUpdates": { "stressLevel": "medium" },
+                  "flagUpdates": [],
+                  "countUpdates": []
+                }
+              }
+            ]
+          },
+          "main_driver": {
+            "type": "single_select",
+            "options": {
+              "worry": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "anger": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "sadness": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "pressure": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "unknown": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] }
+            }
+          }
+        }
+      },
+
+      "time_checkin": {
+        "questions": {
+          "day_feels": {
+            "type": "single_select",
+            "options": {
+              "under_control": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "slightly_messy": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "out_of_control": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+                "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+              }
+            }
+          },
+          "know_next_step": {
+            "type": "single_select",
+            "options": {
+              "yes": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "kinda": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "no": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+                "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+              }
+            }
+          },
+          "blocking_most": {
+            "type": "single_select",
+            "options": {
+              "too_many_tasks": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "no_plan": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+                "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+              },
+              "distractions": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "people": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "low_energy": {
+                "signalUpdates": { "energyLevel": "low" },
+                "flagUpdates": [{ "flagKey": "lowEnergyFlag", "value": true }],
+                "countUpdates": [{ "countKey": "lowEnergy", "delta": 1 }]
+              }
+            }
+          }
+        }
+      },
+
+      "purpose_checkin": {
+        "questions": {
+          "direction_now": {
+            "type": "single_select",
+            "options": {
+              "clear": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "foggy": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "lost": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "lowMotivationFlag", "value": true }],
+                "countUpdates": [{ "countKey": "lowMotivation", "delta": 1 }]
+              }
+            }
+          },
+          "actions_match": {
+            "type": "single_select",
+            "options": {
+              "yes": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "some": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "no": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+                "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+              }
+            }
+          },
+          "want_more_of": {
+            "type": "single_select",
+            "options": {
+              "meaning": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "progress": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "confidence": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "discipline": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "peace": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] }
+            }
+          }
+        }
+      },
+
+      "money_checkin": {
+        "questions": {
+          "money_stress_today": {
+            "type": "single_select",
+            "options": {
+              "none": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "some": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "heavy": {
+                "signalUpdates": { "stressLevel": "high" },
+                "flagUpdates": [{ "flagKey": "moneyStressFlag", "value": true }],
+                "countUpdates": [{ "countKey": "moneyStress", "delta": 1 }]
+              }
+            }
+          },
+          "avoiding_money": {
+            "type": "single_select",
+            "options": {
+              "no": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "a_little": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "yes": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "moneyStressFlag", "value": true }],
+                "countUpdates": [{ "countKey": "moneyStress", "delta": 1 }]
+              }
+            }
+          },
+          "biggest_pressure": {
+            "type": "single_select",
+            "options": {
+              "bills": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "debt": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "spending": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "income": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "savings": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] }
+            }
+          }
+        }
+      },
+
+      "relationships_checkin": {
+        "questions": {
+          "people_felt": {
+            "type": "single_select",
+            "options": {
+              "supportive": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "neutral": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "draining": {
+                "signalUpdates": { "stressLevel": "high" },
+                "flagUpdates": [{ "flagKey": "relationshipDrainFlag", "value": true }],
+                "countUpdates": [{ "countKey": "relationshipDrain", "delta": 1 }]
+              }
+            }
+          },
+          "need_boundary": {
+            "type": "single_select",
+            "options": {
+              "no": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "maybe": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "yes": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "relationshipDrainFlag", "value": true }],
+                "countUpdates": [{ "countKey": "relationshipDrain", "delta": 1 }]
+              }
+            }
+          },
+          "want_right_now": {
+            "type": "single_select",
+            "options": {
+              "space": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "repair": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "connection": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "clarity": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] }
+            }
+          }
+        }
+      },
+
+      "environment_checkin": {
+        "questions": {
+          "space_feels": {
+            "type": "single_select",
+            "options": {
+              "calm": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "okay": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "stressful": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "envMessFlag", "value": true }],
+                "countUpdates": [{ "countKey": "envMess", "delta": 1 }]
+              }
+            }
+          },
+          "clutter_blocking": {
+            "type": "single_select",
+            "options": {
+              "no": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "a_bit": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "yes": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "envMessFlag", "value": true }],
+                "countUpdates": [{ "countKey": "envMess", "delta": 1 }]
+              }
+            }
+          },
+          "friction_zone": {
+            "type": "single_select",
+            "options": {
+              "desk": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "bed_area": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "kitchen": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "bathroom": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "closet": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "digital_clutter": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+                "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+              }
+            }
+          }
+        }
+      },
+
+      "identity_checkin": {
+        "questions": {
+          "consistency_lately": {
+            "type": "single_select",
+            "options": {
+              "strong": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "on_and_off": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "starting_over": {
+                "signalUpdates": {},
+                "flagUpdates": [{ "flagKey": "lowMotivationFlag", "value": true }],
+                "countUpdates": [{ "countKey": "lowMotivation", "delta": 1 }]
+              }
+            }
+          },
+          "self_talk": {
+            "type": "single_select",
+            "options": {
+              "supportive": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "mixed": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "harsh": {
+                "signalUpdates": { "stressLevel": "high" },
+                "flagUpdates": [{ "flagKey": "overwhelmFlag", "value": true }],
+                "countUpdates": [{ "countKey": "overwhelm", "delta": 1 }]
+              }
+            }
+          },
+          "prove_this_week": {
+            "type": "single_select",
+            "options": {
+              "discipline": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "confidence": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "peace": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "strength": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] },
+              "focus": { "signalUpdates": {}, "flagUpdates": [], "countUpdates": [] }
+            }
+          }
+        }
+      }
+    },
+
+    "freeTextHeuristics": {
+      "enabled": true,
+      "rules": [
+        {
+          "matchAny": ["drained", "exhausted", "tired", "no energy"],
+          "apply": {
+            "signalUpdates": { "energyLevel": "low" },
+            "flagUpdates": [{ "flagKey": "lowEnergyFlag", "value": true }],
+            "countUpdates": [{ "countKey": "lowEnergy", "delta": 1 }]
+          }
+        },
+        {
+          "matchAny": ["overwhelmed", "too much", "stress", "anxious", "panic"],
+          "apply": {
+            "signalUpdates": { "stressLevel": "high" },
+            "flagUpdates": [{ "flagKey": "overwhelmFlag", "value": true }],
+            "countUpdates": [{ "countKey": "overwhelm", "delta": 1 }]
+          }
+        },
+        {
+          "matchAny": ["bills", "broke", "money", "rent", "debt"],
+          "apply": {
+            "flagUpdates": [{ "flagKey": "moneyStressFlag", "value": true }],
+            "countUpdates": [{ "countKey": "moneyStress", "delta": 1 }]
+          }
+        },
+        {
+          "matchAny": ["mess", "clutter", "dirty", "can't find", "chaos at home"],
+          "apply": {
+            "flagUpdates": [{ "flagKey": "envMessFlag", "value": true }],
+            "countUpdates": [{ "countKey": "envMess", "delta": 1 }]
+          }
+        },
+        {
+          "matchAny": ["people draining", "toxic", "arguing", "conflict", "boundary"],
+          "apply": {
+            "flagUpdates": [{ "flagKey": "relationshipDrainFlag", "value": true }],
+            "countUpdates": [{ "countKey": "relationshipDrain", "delta": 1 }]
+          }
+        },
+        {
+          "matchAny": ["no plan", "behind", "can't keep up", "late", "missed"],
+          "apply": {
+            "flagUpdates": [{ "flagKey": "timeChaosFlag", "value": true }],
+            "countUpdates": [{ "countKey": "timeChaos", "delta": 1 }]
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+⸻
+
+Two Implementation Notes (so Replit doesn’t mess it up)
+
+1) Flag Expiration (24h)
+
+When a flag is set true, store:
+	•	flagExpirations[flagKey] = now + 24h
+and auto-clear if expired.
+
+2) Rolling 14-day counts
+
+When incrementing counts, append to flagHistory, then compute flagCounts14d by counting items in last 14 days (don’t just store an integer forever).
+
+⸻
+
+If you want, next I can provide the full event schema for analytics/telemetry (e.g., SWITCH_OPENED, PLAN_GENERATED, ACTION_COMPLETED, FLAG_SET) so you can later run “what makes users stick” insights.

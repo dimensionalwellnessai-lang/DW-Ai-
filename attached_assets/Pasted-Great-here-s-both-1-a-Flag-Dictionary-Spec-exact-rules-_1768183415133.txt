@@ -1,0 +1,340 @@
+Great — here’s both:
+	1.	a Flag Dictionary Spec (exact rules for setting overwhelmFlag, moneyStressFlag, etc.)
+	2.	the exact micro-check-in questions per switch that generate those flags cleanly (fast + consistent)
+
+Copy/paste into Replit.
+
+⸻
+
+1) FLAG DICTIONARY SPEC (SIGNALS → FLAGS → COUNTS)
+
+Goal
+
+Convert quick user check-ins into:
+	•	flags (boolean: what’s happening right now)
+	•	flagCounts (how often in the last 14 days)
+	•	stressLevel and energyLevel updates when relevant
+
+These drive recommendations without the AI guessing.
+
+⸻
+
+Data Model (store on user)
+
+{
+  "signals": {
+    "energyLevel": "medium",
+    "stressLevel": "medium",
+    "timeBand": "small"
+  },
+  "flags": {
+    "overwhelmFlag": false,
+    "timeChaosFlag": false,
+    "moneyStressFlag": false,
+    "relationshipDrainFlag": false,
+    "envMessFlag": false,
+    "lowEnergyFlag": false,
+    "lowMotivationFlag": false,
+    "sleepDebtFlag": false
+  },
+  "flagCounts14d": {
+    "overwhelm": 0,
+    "timeChaos": 0,
+    "moneyStress": 0,
+    "relationshipDrain": 0,
+    "envMess": 0,
+    "lowEnergy": 0,
+    "lowMotivation": 0,
+    "sleepDebt": 0
+  },
+  "flagHistory": [
+    {
+      "date": "2026-01-11",
+      "flagKey": "overwhelm",
+      "value": true,
+      "source": "mind_checkin"
+    }
+  ]
+}
+
+
+⸻
+
+Flag Setting Rules (STRICT)
+
+General rule
+
+A check-in response can:
+	•	set a flag true for 24 hours
+	•	increment a flagCounts14d counter
+	•	optionally update signals.energyLevel or signals.stressLevel
+
+Expiration rule
+	•	Flags auto-expire after 24 hours unless re-triggered.
+	•	Counts persist as rolling last 14 days.
+
+Count rule
+
+Increment count when:
+	•	the response crosses a threshold (example below)
+	•	OR user selects a “strong yes” option
+
+⸻
+
+Threshold Map (What triggers each flag)
+
+lowEnergyFlag
+
+Triggered when:
+	•	user selects energy “Low”
+OR
+	•	user says “I’m drained” / “exhausted” in any check-in
+
+Also:
+	•	set signals.energyLevel = low
+
+Increment flagCounts14d.lowEnergy by 1.
+
+⸻
+
+sleepDebtFlag
+
+Triggered when:
+	•	user reports sleep < 6 hours
+OR
+	•	selects “sleep was bad” option
+
+Increment flagCounts14d.sleepDebt by 1.
+
+⸻
+
+overwhelmFlag
+
+Triggered when:
+	•	user selects “Overwhelmed”
+OR
+	•	stress rating >= 4/5
+
+Also:
+	•	set signals.stressLevel = high
+
+Increment flagCounts14d.overwhelm by 1.
+
+⸻
+
+timeChaosFlag
+
+Triggered when:
+	•	user selects “I don’t know what to do next”
+OR
+	•	“My day is out of control”
+OR
+	•	“I missed important tasks due to disorganization”
+
+Increment flagCounts14d.timeChaos by 1.
+
+⸻
+
+moneyStressFlag
+
+Triggered when:
+	•	user selects “Money stress is heavy”
+OR
+	•	chooses “I’m avoiding checking my balance/bills”
+OR
+	•	stress about money >= 4/5
+
+Increment flagCounts14d.moneyStress by 1.
+
+Recommendation engine rule uses:
+if flagCounts14d.moneyStress >= 2 then money becomes eligible to prioritize.
+
+⸻
+
+relationshipDrainFlag
+
+Triggered when:
+	•	user selects “People drained me”
+OR
+	•	“I need boundaries”
+OR
+	•	conflict stress >= 4/5
+
+Increment flagCounts14d.relationshipDrain by 1.
+
+⸻
+
+envMessFlag
+
+Triggered when:
+	•	user selects “My space is stressing me out”
+OR
+	•	chooses “Clutter is blocking me”
+OR
+	•	“I can’t find things / my space is chaotic”
+
+Increment flagCounts14d.envMess by 1.
+
+⸻
+
+lowMotivationFlag
+
+Triggered when:
+	•	user selects “I can’t start anything”
+OR
+	•	“I know what to do but can’t do it”
+OR
+	•	motivation rating <= 2/5
+
+Increment flagCounts14d.lowMotivation by 1.
+
+⸻
+
+Flag Precedence (when multiple flags triggered)
+
+If multiple flags triggered same day:
+	1.	lowEnergyFlag
+	2.	overwhelmFlag
+	3.	timeChaosFlag
+	4.	moneyStressFlag
+	5.	relationshipDrainFlag
+	6.	envMessFlag
+	7.	lowMotivationFlag
+
+(That priority keeps the system humane: energy + stress first.)
+
+⸻
+
+2) MICRO-CHECK-IN QUESTIONS (PER SWITCH)
+
+These are fast, consistent, and directly map to flags + plan adjustments.
+
+Global rule for micro-check-ins
+	•	Always 3 questions max.
+	•	Use multiple choice first.
+	•	If user types free text, store it but don’t require it.
+
+⸻
+
+A) BODY SWITCH — Micro Check-in
+
+Q1: “Energy right now?”
+	•	High / Medium / Low  → sets signals.energyLevel and may trigger lowEnergyFlag
+
+Q2: “Sleep last night?”
+	•	Good (7+ hrs) / Okay (6–7) / Low (under 6) → may trigger sleepDebtFlag
+
+Q3: “Body feels…”
+	•	Rested / Tight / Sore / Heavy
+If Heavy + Low energy → bias Restoring.
+
+⸻
+
+B) MIND SWITCH — Micro Check-in
+
+Q1: “Mind state right now?”
+	•	Clear / Busy / Overwhelmed → if Overwhelmed triggers overwhelmFlag
+
+Q2: “Stress level?”
+	•	1 / 2 / 3 / 4 / 5 → if 4–5 triggers overwhelmFlag and signals.stressLevel=high
+
+Q3: “Main driver?”
+	•	Worry / Anger / Sadness / Pressure / Unknown
+(Used for copy personalization only.)
+
+⸻
+
+C) TIME SWITCH — Micro Check-in
+
+Q1: “Your day feels…”
+	•	Under control / Slightly messy / Out of control → if Out of control triggers timeChaosFlag
+
+Q2: “Do you know your next step?”
+	•	Yes / Kinda / No → if No triggers timeChaosFlag
+
+Q3: “What’s blocking you most?”
+	•	Too many tasks / No plan / Distractions / People / Low energy
+If Low energy chosen, also set lowEnergyFlag (soft).
+
+⸻
+
+D) PURPOSE SWITCH — Micro Check-in
+
+Q1: “Direction right now?”
+	•	Clear / Foggy / Lost → if Lost may set lowMotivationFlag (optional)
+
+Q2: “Do your actions match what you want?”
+	•	Yes / Some / No → if No, bias Purpose + Time combo
+
+Q3: “What do you want more of?”
+	•	Meaning / Progress / Confidence / Discipline / Peace
+(Used to personalize whyThisMatters.)
+
+⸻
+
+E) MONEY SWITCH — Micro Check-in
+
+Q1: “Money stress today?”
+	•	None / Some / Heavy → if Heavy triggers moneyStressFlag
+
+Q2: “Are you avoiding checking money stuff?”
+	•	No / A little / Yes → if Yes triggers moneyStressFlag
+
+Q3: “What’s the biggest pressure?”
+	•	Bills / Debt / Spending / Income / Savings
+(Used to pick money plan variant language.)
+
+⸻
+
+F) RELATIONSHIPS SWITCH — Micro Check-in
+
+Q1: “People felt…”
+	•	Supportive / Neutral / Draining → if Draining triggers relationshipDrainFlag
+
+Q2: “Do you need a boundary?”
+	•	No / Maybe / Yes → if Yes triggers relationshipDrainFlag
+
+Q3: “What do you want right now?”
+	•	Space / Repair / Connection / Clarity
+(Used to select plan emphasis.)
+
+⸻
+
+G) ENVIRONMENT SWITCH — Micro Check-in
+
+Q1: “Your space feels…”
+	•	Calm / Okay / Stressful → if Stressful triggers envMessFlag
+
+Q2: “Is clutter blocking action?”
+	•	No / A bit / Yes → if Yes triggers envMessFlag
+
+Q3: “Where’s the biggest friction zone?”
+	•	Desk / Bed area / Kitchen / Bathroom / Closet / Digital clutter
+(Used to target the plan steps.)
+
+⸻
+
+H) IDENTITY SWITCH — Micro Check-in
+
+Q1: “Consistency lately?”
+	•	Strong / On and off / Starting over → if Starting over triggers lowMotivationFlag
+
+Q2: “Self-talk is…”
+	•	Supportive / Mixed / Harsh → if Harsh, bias Mind support action
+
+Q3: “What do you want to prove to yourself this week?”
+	•	Discipline / Confidence / Peace / Strength / Focus
+(Used for identity statements.)
+
+⸻
+
+HOW THESE CHECK-INS CHANGE PLANS (AUTOMATIC)
+	•	If lowEnergyFlag OR sleepDebtFlag → force Restoring + tiny/small plans
+	•	If overwhelmFlag → recommend Time (tiny reset) or Mind (calm), cap intensity to light
+	•	If moneyStressFlag count ≥ 2 in 14d → Money becomes priority recommendation
+	•	If relationshipDrainFlag → Relationships recommended with boundary micro-plan
+	•	If envMessFlag + timeChaosFlag → Environment first, then Time
+
+⸻
+
+If you want one more thing that makes implementation easier: I can write the exact “flag extraction” mapping table (question option → flag updates) in pure JSON so Replit can implement it without interpretation.
