@@ -1,0 +1,57 @@
+Cool — to move fastest, do it in two passes: (A) wire everything with “zeros” so the UI shows up immediately, then (B) fill in real calculations.
+
+Here’s the exact message to paste into Replit AI to do that.
+
+FAST TRACK IMPLEMENTATION (2-PASS)
+
+PASS A — SHIP UI + ROUTES + SAFE PROTECTION (RETURN ZEROS/EMPTY)
+1) Add users.role enum ('user'|'admin') default 'user' in Drizzle schema + migration.
+2) Add GET /api/me returning { userId, role } from session.
+3) Add Express middleware requireAuth + requireAdmin.
+4) Lock down ALL /api/admin/* endpoints with requireAdmin.
+
+5) Create admin endpoints returning correct JSON SHAPES but with zeros:
+   - GET /api/admin/metrics/summary?range=7d|30d
+   - GET /api/admin/metrics/funnel?range=7d|30d
+   - GET /api/admin/metrics/switches?range=7d|30d (include all 8 switches)
+   - GET /api/admin/metrics/recommendations?range=7d|30d
+   - GET /api/admin/metrics/timeband?range=7d|30d
+   - GET /api/admin/metrics/flags?range=14d
+   - GET /api/admin/metrics/errors?range=7d|30d
+
+6) Frontend:
+   - Add AdminRoute component (Wouter) that blocks /admin/analytics unless me.role==='admin'.
+   - Add /admin/analytics page using shadcn/ui + Recharts with strict chart mappings to the above endpoints.
+   - Add Profile link "Admin Analytics" visible only if role==='admin'.
+
+7) Create user endpoints returning correct JSON SHAPES but with zeros/empty:
+   - GET /api/progress/summary?range=7d|14d
+   - GET /api/progress/switches?range=21d (include all 8 switches)
+   - GET /api/progress/patterns?range=7d|14d (friendly labels only)
+   - GET /api/recommendation/today
+
+8) Frontend:
+   - Add /profile/progress page with sections: System Snapshot, Switch Grid, Weekly Wins, Patterns, Next Best Move.
+   - Use React Query keys:
+     ["progress","summary",range], ["progress","switches","21d"], ["progress","patterns",range], ["recommendation","today"]
+   - Add loading skeletons + empty states.
+
+PASS B — FILL REAL METRICS FROM TELEMETRY
+9) After PASS A works, implement real metric calculations using stored telemetry events:
+   - Compute DAU/activation/helped rates/funnel etc. based on events and unique users in time windows.
+   - Compute user progress endpoints based on that user’s completions/check-ins/flags.
+
+IMPORTANT RULES
+- Never expose raw free-text anywhere.
+- User dashboards are user-only and sanitized.
+- Admin analytics must pull data ONLY from /api/admin/* endpoints, never from shared endpoints.
+- Protect both UI routes and API endpoints (server-side enforcement).
+- After implementing PASS A, list all changed files and give manual test steps:
+  a) user role cannot access /admin/analytics or /api/admin/*
+  b) admin role can access /admin/analytics and sees charts (even if zeros)
+  c) /profile/progress works for all users
+
+If you run into a “where do I set admin role?” moment:
+	•	simplest: update your own user row in Postgres to role='admin' once, then you’re good.
+
+When Replit finishes PASS A, tell me what it outputs (file list or any errors) and I’ll tell you exactly what to tweak next.

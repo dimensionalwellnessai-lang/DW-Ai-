@@ -1,0 +1,230 @@
+Got you. Here’s the User Progress Dashboard mapping (clean + motivating), plus the next immediate build order so Replit can knock it out fast without getting stuck.
+
+⸻
+
+✅ USER “MY PROGRESS” DASHBOARD — UI MAPPING (USER-SAFE)
+
+Route
+	•	/profile/progress (or whatever your Profile → Progress route is)
+
+Rule
+
+Users see only their own data, summarized.
+No DAU/WAU, no funnels, no drop-off, no error logs, no event names.
+
+⸻
+
+1) DATA SOURCES (USER-SAFE ENDPOINTS)
+
+You’ll want user-only endpoints (NOT admin):
+
+A) GET /api/progress/summary?range=7d|14d
+
+Returns: system snapshot + weekly wins + consistency days
+
+{
+  "range": "14d",
+  "startDate": "2025-12-29",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "snapshot": {
+    "energyLevel": "medium",
+    "stressLevel": "medium",
+    "timeBand": "small",
+    "consistencyDays14d": 4
+  },
+  "wins": {
+    "actionsCompleted": 6,
+    "bestDay": "2026-01-08",
+    "helped": { "yes": 3, "some": 2, "no": 1 }
+  }
+}
+
+B) GET /api/progress/switches?range=21d
+
+Returns: each switch status + last trained
+
+{
+  "range": "21d",
+  "startDate": "2025-12-22",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "switches": [
+    {
+      "switchId": "body",
+      "status": "stable",
+      "lastTrainedAt": "2026-01-10T23:01:00.000Z",
+      "completedCount21d": 4
+    }
+  ]
+}
+
+C) GET /api/progress/patterns?range=7d|14d
+
+Returns: friendly labels only (no raw flag keys in UI)
+
+{
+  "range": "7d",
+  "startDate": "2026-01-05",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "patterns": [
+    { "label": "Felt overwhelmed", "count": 3 },
+    { "label": "Energy dips", "count": 4 },
+    { "label": "Days felt scattered", "count": 2 }
+  ]
+}
+
+D) GET /api/recommendation/today
+
+Returns: next move card (user-facing)
+
+{
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "recommendedSwitchId": "time",
+  "alternativeSwitchId": "mind",
+  "timeBand": "tiny",
+  "mode": "restoring",
+  "title": "Time Switch (10 minutes)",
+  "reasonLine": "Structure reduces overwhelm fast — one block changes the day.",
+  "primaryAction": { "label": "Start", "action": "START_PLAN" },
+  "secondaryAction": { "label": "Save", "action": "SAVE_PLAN" }
+}
+
+
+⸻
+
+2) USER DASHBOARD LAYOUT + EXACT MAPPING
+
+Section 1 — Top Card: “Your System This Week”
+
+Component: Card
+
+Data mapping:
+	•	Energy: summary.snapshot.energyLevel
+	•	Stress: summary.snapshot.stressLevel
+	•	Consistency: summary.snapshot.consistencyDays14d
+
+UI note: show as “4/14 days active”
+
+⸻
+
+Section 2 — Switch Grid (8 cards)
+
+Component: Card grid (2 columns on mobile, 4 on desktop)
+
+Each card maps from switches.switches[]:
+	•	Title: Switch name
+	•	Badge: status (Off/Flickering/Stable/Powered)
+	•	Subtext: lastTrainedAt → “Last trained: Today / 2 days ago / Never”
+	•	Optional tiny stat: completedCount21d
+
+Tap behavior:
+	•	go to /switch/:switchId detail
+
+⸻
+
+Section 3 — Weekly Wins
+
+Component: Card with 3 mini stats
+
+Data:
+	•	Completed: summary.wins.actionsCompleted
+	•	Best day: summary.wins.bestDay (format to day name)
+	•	Helped summary:
+	•	Yes: summary.wins.helped.yes
+	•	Some: summary.wins.helped.some
+	•	No: summary.wins.helped.no
+
+⸻
+
+Section 4 — Patterns (Friendly)
+
+Component: Card + list chips or rows
+
+Data:
+	•	patterns.patterns[]
+Show: “Felt overwhelmed: 3×”
+
+STRICT: UI must never display internal flag keys.
+
+⸻
+
+Section 5 — Next Best Move
+
+Component: Card with CTA buttons
+
+Data from /api/recommendation/today:
+	•	Title: title
+	•	Reason: reasonLine
+	•	Primary button: Start
+	•	Secondary: Save
+	•	Optional “Swap” link → switch to alternative
+
+⸻
+
+3) FRONTEND QUERY KEYS (React Query)
+	•	["progress","summary",range]
+	•	["progress","switches","21d"]
+	•	["progress","patterns",range]
+	•	["recommendation","today"]
+
+⸻
+
+4) USER DASHBOARD EMPTY STATES
+	•	No completions yet:
+	•	“No wins yet — start with a Tiny Switch today.”
+	•	No patterns:
+	•	“Nothing heavy showed up this week. Keep the rhythm.”
+	•	Switches empty/unknown:
+	•	show all 8 cards with status “Off” and last trained “—”
+
+⸻
+
+✅ NEXT (FAST BUILD ORDER — DO THIS IN REPLIT)
+
+This is what to do “next” so it finishes quick and doesn’t get messy:
+
+Phase 1 — Security first (same day)
+	1.	Add users.role in Drizzle + migration
+	2.	Add /api/me returning role
+	3.	Add requireAdmin middleware
+	4.	Lock /api/admin/*
+
+Phase 2 — Admin dashboard skeleton
+	5.	Add /admin/analytics route (AdminRoute protected)
+	6.	Add endpoint shells returning the JSON shapes (even if zeros)
+	7.	Render UI cards with placeholders
+
+Phase 3 — User progress (clean)
+	8.	Add /api/progress/summary, /switches, /patterns
+	9.	Build /profile/progress UI mapped exactly above
+
+Phase 4 — Metrics logic
+	10.	Fill in calculations from telemetry table
+	11.	Add timeseries later if needed
+
+⸻
+
+COPY/PASTE THIS TO REPLIT AI (USER DASHBOARD TASK)
+
+Implement a user-safe My Progress dashboard.
+
+Backend (Express sessions):
+- Add GET /api/progress/summary?range=7d|14d returning snapshot (energyLevel, stressLevel, timeBand, consistencyDays14d) and wins (actionsCompleted, bestDay, helped yes/some/no).
+- Add GET /api/progress/switches?range=21d returning all 8 switches with status, lastTrainedAt, completedCount21d.
+- Add GET /api/progress/patterns?range=7d|14d returning patterns as friendly labels ONLY (e.g., "Felt overwhelmed") with counts.
+- Add GET /api/recommendation/today returning recommended switch CTA card (title, reasonLine, mode, timeBand).
+
+Frontend (React + Wouter + React Query + shadcn/ui):
+- Create /profile/progress page with sections: System Snapshot, Switch Grid, Weekly Wins, Patterns, Next Best Move.
+- Map UI fields strictly to the endpoint responses. No admin analytics exposed.
+- Use React Query keys: ["progress","summary",range], ["progress","switches","21d"], ["progress","patterns",range], ["recommendation","today"].
+- Add loading skeletons and empty states.
+
+After implementing, list files changed + manual test steps.
+
+
+⸻
+
+If you want to move even faster, tell Replit AI to implement endpoints returning zeros first, then you can see the UI immediately, then fill the math.

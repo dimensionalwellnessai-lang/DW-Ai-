@@ -1,0 +1,351 @@
+Awesome — here are the exact JSON response shapes for every admin endpoint (plus query params + field meanings). This removes all guessing for Replit AI.
+
+Copy/paste this whole section into Replit.
+
+⸻
+
+✅ ADMIN ANALYTICS API — RESPONSE SHAPES (SOURCE OF TRUTH)
+
+Global rules (all endpoints)
+	•	All endpoints are admin-only: requireAdmin
+	•	All responses include:
+	•	range (string)
+	•	startDate / endDate (YYYY-MM-DD)
+	•	generatedAt (ISO)
+	•	No raw free-text ever. Only aggregated counts/rates.
+
+Standard response headers
+	•	200 OK (admin)
+	•	401 Unauthorized (no session)
+	•	403 Forbidden (not admin)
+
+⸻
+
+1) GET /api/admin/metrics/summary?range=7d|30d
+
+Response
+
+{
+  "range": "7d",
+  "startDate": "2026-01-05",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "kpis": {
+    "dau": 0,
+    "wau": 0,
+    "mau": 0,
+    "activationRate7d": 0,
+    "d1Retention": 0,
+    "d7Retention": 0,
+    "d7MeaningfulRetention": 0,
+    "helpedPositiveRate": 0,
+    "avgCompletionsPerActiveUser": 0,
+    "swapRate": 0,
+    "errorsPerSession": 0
+  },
+  "counts": {
+    "sessions": 0,
+    "planGenerated": 0,
+    "planSaved": 0,
+    "planItemCompleted": 0,
+    "postActionCheckins": 0,
+    "recommendationsViewed": 0,
+    "recommendationsSwapped": 0,
+    "errors": 0
+  }
+}
+
+Notes
+	•	Rates are decimals 0..1 (frontend can render as %)
+	•	dau/wau/mau computed over their respective windows (even if range=7d)
+
+⸻
+
+2) GET /api/admin/metrics/funnel?range=7d|30d
+
+Response
+
+{
+  "range": "30d",
+  "startDate": "2025-12-13",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "steps": [
+    {
+      "stepId": "onboarding_started",
+      "label": "Onboarding Started",
+      "users": 0,
+      "conversionFromPrev": null
+    },
+    {
+      "stepId": "onboarding_completed",
+      "label": "Onboarding Completed",
+      "users": 0,
+      "conversionFromPrev": 0
+    },
+    {
+      "stepId": "plan_generated",
+      "label": "Plan Generated",
+      "users": 0,
+      "conversionFromPrev": 0
+    },
+    {
+      "stepId": "plan_saved",
+      "label": "Plan Saved",
+      "users": 0,
+      "conversionFromPrev": 0
+    },
+    {
+      "stepId": "plan_item_completed",
+      "label": "Plan Item Completed",
+      "users": 0,
+      "conversionFromPrev": 0
+    },
+    {
+      "stepId": "post_action_checkin",
+      "label": "Post-action Check-in",
+      "users": 0,
+      "conversionFromPrev": 0
+    }
+  ]
+}
+
+Notes
+	•	users = distinct userIds that reached that step at least once in range
+	•	conversionFromPrev = users(step) / users(previous step)
+
+⸻
+
+3) GET /api/admin/metrics/switches?range=7d|30d
+
+Response
+
+{
+  "range": "7d",
+  "startDate": "2026-01-05",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "switches": [
+    {
+      "switchId": "body",
+      "detailViews": 0,
+      "plansGenerated": 0,
+      "plansSaved": 0,
+      "itemsCompleted": 0,
+      "helped": {
+        "yes": 0,
+        "some": 0,
+        "no": 0,
+        "positiveRate": 0
+      }
+    }
+  ],
+  "totals": {
+    "detailViews": 0,
+    "plansGenerated": 0,
+    "plansSaved": 0,
+    "itemsCompleted": 0
+  }
+}
+
+Notes
+	•	Must include all 8 switches in switches array (even if zeros)
+
+⸻
+
+4) GET /api/admin/metrics/recommendations?range=7d|30d
+
+Response
+
+{
+  "range": "7d",
+  "startDate": "2026-01-05",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "recommendations": {
+    "viewed": 0,
+    "swapped": 0,
+    "accepted": 0,
+    "completedWithin24h": 0,
+    "swapRate": 0,
+    "acceptRate": 0,
+    "completion24hRate": 0
+  },
+  "byReason": [
+    {
+      "reason": "not_feeling_it",
+      "count": 0
+    }
+  ],
+  "bySwitch": [
+    {
+      "switchId": "time",
+      "recommended": 0,
+      "completedWithin24h": 0,
+      "completion24hRate": 0
+    }
+  ]
+}
+
+Notes
+	•	“Accepted” means PLAN_ITEM_STARTED OR PLAN_SAVED within 1 hour of RECOMMENDATION_VIEWED
+	•	completedWithin24h means completion within 24h of recommendation viewed (or generated; pick one and stay consistent—recommended: viewed)
+
+⸻
+
+5) GET /api/admin/metrics/timeband?range=7d|30d
+
+Response
+
+{
+  "range": "30d",
+  "startDate": "2025-12-13",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "timeBandDistribution": {
+    "tiny": 0,
+    "small": 0,
+    "medium": 0,
+    "large": 0
+  },
+  "modeDistribution": {
+    "restoring": 0,
+    "training": 0,
+    "maintaining": 0
+  },
+  "helpedByTimeBand": [
+    {
+      "timeBand": "small",
+      "helpedPositiveRate": 0,
+      "sampleSize": 0
+    }
+  ],
+  "helpedByMode": [
+    {
+      "mode": "training",
+      "helpedPositiveRate": 0,
+      "sampleSize": 0
+    }
+  ],
+  "completionByTimeBand": [
+    {
+      "timeBand": "small",
+      "itemsCompleted": 0
+    }
+  ]
+}
+
+Notes
+	•	Distribution values are counts
+	•	“helpedPositiveRate” uses check-ins only (yes+some / total)
+
+⸻
+
+6) GET /api/admin/metrics/flags?range=14d
+
+Response
+
+{
+  "range": "14d",
+  "startDate": "2025-12-29",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "topFlags": [
+    {
+      "flagKey": "overwhelm",
+      "count": 0
+    },
+    {
+      "flagKey": "lowEnergy",
+      "count": 0
+    }
+  ],
+  "flagToOutcome": [
+    {
+      "flagKey": "overwhelm",
+      "recommendedSwitchId": "time",
+      "recommendations": 0,
+      "completedWithin24h": 0,
+      "completion24hRate": 0
+    }
+  ]
+}
+
+Notes
+	•	flagKey should be the short form (overwhelm, timeChaos, etc.) not the internal overwhelmFlag
+	•	flagToOutcome is optional for MVP, but extremely useful
+
+⸻
+
+7) GET /api/admin/metrics/errors?range=7d|30d
+
+Response
+
+{
+  "range": "7d",
+  "startDate": "2026-01-05",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "errorsPerSession": 0,
+  "topErrorCodes": [
+    {
+      "errorCode": "ADMIN_FORBIDDEN",
+      "count": 0
+    }
+  ],
+  "topScreens": [
+    {
+      "screenId": "home",
+      "count": 0
+    }
+  ]
+}
+
+
+⸻
+
+8) Optional: GET /api/admin/metrics/timeseries?range=30d&metric=dau|completions|helpedRate
+
+(Use this if you want line charts)
+
+Response
+
+{
+  "range": "30d",
+  "startDate": "2025-12-13",
+  "endDate": "2026-01-11",
+  "generatedAt": "2026-01-11T18:10:00.000Z",
+  "metric": "dau",
+  "points": [
+    { "date": "2025-12-13", "value": 0 },
+    { "date": "2025-12-14", "value": 0 }
+  ]
+}
+
+
+⸻
+
+FRONTEND CONTRACT (React Query Keys)
+
+Use these query keys so caching is consistent:
+	•	["admin","summary",range]
+	•	["admin","funnel",range]
+	•	["admin","switches",range]
+	•	["admin","recommendations",range]
+	•	["admin","timeband",range]
+	•	["admin","flags",range]
+	•	["admin","errors",range]
+
+⸻
+
+ONE MORE SAFETY RULE (DO THIS)
+
+If a non-admin calls admin endpoints, return:
+
+{ "error": "FORBIDDEN" }
+
+(no extra details)
+
+⸻
+
+If you want, I can also give you the exact UI component mapping: which response fields map to which Recharts charts (bar/line/table), so Replit AI builds the dashboard without weird chart choices.
