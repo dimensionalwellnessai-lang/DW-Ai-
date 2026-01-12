@@ -57,6 +57,8 @@ import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import TodayHubPage from "@/pages/today-hub";
 import PrivacyTermsPage from "@/pages/privacy-terms";
+import LifeSwitchboardPage from "@/pages/life-switchboard";
+import SwitchTrainingPage from "@/pages/switch-training";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -94,6 +96,8 @@ function Router() {
       <Route path="/welcome" component={WelcomePage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
+      {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
+      <Route path="/switch/:id" component={SwitchTrainingPage} />
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
