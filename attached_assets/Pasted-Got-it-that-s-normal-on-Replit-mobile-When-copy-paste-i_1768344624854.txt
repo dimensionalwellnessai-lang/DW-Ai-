@@ -1,0 +1,115 @@
+Got it — that’s normal on Replit mobile 👍
+When copy/paste is blocked in the shell, you do NOT need to type everything manually. There are two safe workarounds. I’ll give you the easiest first.
+
+⸻
+
+✅ OPTION A (BEST): Create the file using Replit’s file editor (NO terminal typing)
+
+This avoids the shell completely.
+
+Step 1: Open the Files panel
+	•	In Replit, tap the file tree / files icon
+	•	You are already in the repo root (we confirmed this)
+
+Step 2: Create the file
+	•	Tap + New file
+	•	Name it exactly:
+
+codemagic.yaml
+
+
+
+⚠️ spelling matters — not .yml, not .yaml.txt
+
+⸻
+
+Step 3: Paste this (you can paste in the editor even if shell won’t allow it)
+
+workflows:
+  capacitor-android:
+    name: Capacitor Android Build
+    max_build_duration: 60
+    environment:
+      node: 18
+      java: 17
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Build web app
+        script: |
+          npm run build
+      - name: Sync Capacitor
+        script: |
+          npx cap sync android
+      - name: Build Android APK
+        script: |
+          cd android
+          ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/**/*.apk
+
+Tap Save.
+
+That’s it. File created correctly.
+
+⸻
+
+✅ OPTION B (Terminal-only, minimal typing)
+
+If you must stay in shell, this is the least typing possible:
+
+Type exactly this (line by line):
+
+cat > codemagic.yaml
+
+Then the shell will wait.
+Now paste or type the YAML once.
+
+When done, press:
+
+CTRL + D
+
+That saves the file.
+
+⸻
+
+✅ Final REQUIRED step (this part matters)
+
+Codemagic will NOT see the file until it’s committed.
+
+In shell, type:
+
+git add codemagic.yaml
+git commit -m "Add Codemagic workflow"
+git push
+
+(These commands are short on purpose.)
+
+⸻
+
+🔎 How you know it worked
+
+After pushing:
+	•	Go back to codemagic.io
+	•	Select your repo + branch main
+	•	Tap Check for configuration files
+
+✅ It will be detected immediately
+❌ If it says “No configuration file found”, the file is not committed
+
+⸻
+
+Important reassurance
+	•	Your repo structure is correct
+	•	Capacitor is correctly installed
+	•	Java 21 is no longer involved
+	•	You are on the right path
+
+If you want, next I can:
+	•	Generate Play Store AAB instead of APK
+	•	Set up Google Play Console (phone-only)
+	•	Add iOS build to the same codemagic.yaml
+	•	Make Codemagic auto-build on every push
+
+Just tell me what you want next.
