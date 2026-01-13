@@ -141,7 +141,7 @@ export default function ScheduleReviewPage() {
         }
       />
       
-      <ScrollArea className="h-[calc(100vh-57px-80px)]">
+      <ScrollArea className="h-[calc(100vh-57px-140px)]">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
           <Card>
             <CardHeader className="pb-2">
@@ -206,13 +206,34 @@ export default function ScheduleReviewPage() {
         </div>
       </ScrollArea>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-        <div className="max-w-lg mx-auto flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 safe-area-bottom">
+        <div className="max-w-lg mx-auto space-y-3">
+          {/* Primary action - always visible and prominent */}
           <Button
-            variant="outline"
+            onClick={handleAddToCalendar}
+            disabled={isAddingToCalendar || selectedItems.length === 0}
+            className="w-full gap-2 h-12 text-base"
+            data-testid="button-add-calendar"
+          >
+            {isAddingToCalendar ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <CalendarPlus className="w-5 h-5" />
+                Add {selectedItems.length} {selectedItems.length === 1 ? "Item" : "Items"} to Calendar
+              </>
+            )}
+          </Button>
+          
+          {/* Secondary action - less prominent */}
+          <Button
+            variant="ghost"
             onClick={handleSaveToLifeSystem}
             disabled={isSaving}
-            className="flex-1 gap-2"
+            className="w-full gap-2 text-muted-foreground"
             data-testid="button-save-life-system"
           >
             {isSaving ? (
@@ -220,21 +241,7 @@ export default function ScheduleReviewPage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            Save to Life System
-          </Button>
-          
-          <Button
-            onClick={handleAddToCalendar}
-            disabled={isAddingToCalendar || selectedItems.length === 0}
-            className="flex-1 gap-2"
-            data-testid="button-add-calendar"
-          >
-            {isAddingToCalendar ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CalendarPlus className="w-4 h-4" />
-            )}
-            Add to Calendar ({selectedItems.length})
+            Save as draft instead
           </Button>
         </div>
       </div>

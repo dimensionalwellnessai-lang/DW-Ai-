@@ -108,11 +108,11 @@ export default function PlanBuilderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <PageHeader title="Plan Builder" backPath="/plans" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
-        <div className="p-4 max-w-lg mx-auto space-y-6 pb-8">
+      <ScrollArea className="flex-1">
+        <div className="p-4 max-w-lg mx-auto space-y-6 pb-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Step {step} of {totalSteps}</span>
@@ -220,51 +220,54 @@ export default function PlanBuilderPage() {
               </CardContent>
             </Card>
           )}
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              className="flex-1 gap-2"
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {step === 1 ? "Cancel" : "Back"}
-            </Button>
-            
-            {step < totalSteps ? (
-              <Button
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="flex-1 gap-2"
-                data-testid="button-next"
-              >
-                Next
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleGenerate}
-                disabled={!canProceed() || isGenerating}
-                className="flex-1 gap-2"
-                data-testid="button-generate"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Generate Plan
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
         </div>
       </ScrollArea>
+      
+      {/* Fixed bottom action bar - always visible */}
+      <div className="border-t bg-background p-4 safe-area-bottom">
+        <div className="max-w-lg mx-auto flex gap-3">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            className="flex-1 gap-2"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {step === 1 ? "Cancel" : "Back"}
+          </Button>
+          
+          {step < totalSteps ? (
+            <Button
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="flex-1 gap-2"
+              data-testid="button-next"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleGenerate}
+              disabled={!canProceed() || isGenerating}
+              className="flex-1 gap-2"
+              data-testid="button-generate"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Generate Plan
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

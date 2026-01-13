@@ -102,9 +102,26 @@ export default function PlansPage() {
     setLocalPlans(updated);
     saveLocalPlans(updated);
   };
+  
+  const handleActivatePlan = (id: string) => {
+    const updated = localPlans.map(p => 
+      p.id === id ? { ...p, status: "active" as PlanStatus, updatedAt: new Date().toISOString() } : p
+    );
+    setLocalPlans(updated);
+    saveLocalPlans(updated);
+  };
+  
+  const handleArchivePlan = (id: string) => {
+    const updated = localPlans.map(p => 
+      p.id === id ? { ...p, status: "archived" as PlanStatus, updatedAt: new Date().toISOString() } : p
+    );
+    setLocalPlans(updated);
+    saveLocalPlans(updated);
+  };
 
   const renderPlanCard = (plan: Plan) => {
     const isHighlighted = highlightedId === plan.id;
+    const isDraft = plan.status === "draft";
     
     return (
       <div 
@@ -137,32 +154,53 @@ export default function PlansPage() {
                 </div>
               </div>
               
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" data-testid={`button-plan-menu-${plan.id}`}>
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {plan.status === "draft" && (
-                    <DropdownMenuItem className="gap-2">
-                      <Play className="w-4 h-4" />
-                      Activate
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem className="gap-2">
-                    <Archive className="w-4 h-4" />
-                    Archive
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="gap-2 text-destructive"
-                    onClick={() => handleDeletePlan(plan.id)}
+              <div className="flex items-center gap-2">
+                {/* Visible Activate button for drafts */}
+                {isDraft && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleActivatePlan(plan.id)}
+                    className="gap-1.5"
+                    data-testid={`button-activate-${plan.id}`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <Play className="w-4 h-4" />
+                    Activate
+                  </Button>
+                )}
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" data-testid={`button-plan-menu-${plan.id}`}>
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {isDraft && (
+                      <DropdownMenuItem 
+                        className="gap-2"
+                        onClick={() => handleActivatePlan(plan.id)}
+                      >
+                        <Play className="w-4 h-4" />
+                        Activate
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem 
+                      className="gap-2"
+                      onClick={() => handleArchivePlan(plan.id)}
+                    >
+                      <Archive className="w-4 h-4" />
+                      Archive
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="gap-2 text-destructive"
+                      onClick={() => handleDeletePlan(plan.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardContent>
         </Card>
