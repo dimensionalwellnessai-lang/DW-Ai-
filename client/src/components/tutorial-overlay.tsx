@@ -22,7 +22,6 @@ export function TutorialOverlay() {
   const updateTargetPosition = useCallback(() => {
     if (!currentStep) {
       setTargetRect(null);
-      // Cleanup previous highlighted element
       if (highlightedElementRef.current) {
         highlightedElementRef.current.style.removeProperty('position');
         highlightedElementRef.current.style.removeProperty('z-index');
@@ -34,7 +33,6 @@ export function TutorialOverlay() {
     const element = document.querySelector(`[data-testid="${currentStep.targetTestId}"]`);
     if (!element) {
       setTargetRect(null);
-      // Cleanup previous highlighted element when target not found
       if (highlightedElementRef.current) {
         highlightedElementRef.current.style.removeProperty('position');
         highlightedElementRef.current.style.removeProperty('z-index');
@@ -43,7 +41,6 @@ export function TutorialOverlay() {
       return;
     }
 
-    // Check if element is inside a collapsed details and open it
     let parentDetails = element.closest('details');
     if (parentDetails && !parentDetails.open) {
       parentDetails.open = true;
@@ -62,7 +59,6 @@ export function TutorialOverlay() {
         height: rect.height + padding * 2
       });
       
-      // Raise the z-index of the highlighted element to appear above the mask
       if (highlightedElementRef.current && highlightedElementRef.current !== element) {
         highlightedElementRef.current.style.removeProperty('position');
         highlightedElementRef.current.style.removeProperty('z-index');
@@ -75,36 +71,42 @@ export function TutorialOverlay() {
       }
       htmlElement.style.zIndex = '10003';
 
-      const tooltipWidth = 300;
+      const isMobile = window.innerWidth < 768;
+      const tooltipWidth = isMobile ? window.innerWidth - 32 : 300;
       const tooltipHeight = 180;
       const spacing = 16;
 
       let tooltipTop = 0;
       let tooltipLeft = 0;
 
-      const placement = currentStep.placement || "bottom";
+      if (isMobile) {
+        tooltipTop = window.innerHeight - tooltipHeight - 24;
+        tooltipLeft = 16;
+      } else {
+        const placement = currentStep.placement || "bottom";
 
-      switch (placement) {
-        case "top":
-          tooltipTop = rect.top - tooltipHeight - spacing;
-          tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-          break;
-        case "bottom":
-          tooltipTop = rect.bottom + spacing;
-          tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-          break;
-        case "left":
-          tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
-          tooltipLeft = rect.left - tooltipWidth - spacing;
-          break;
-        case "right":
-          tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
-          tooltipLeft = rect.right + spacing;
-          break;
+        switch (placement) {
+          case "top":
+            tooltipTop = rect.top - tooltipHeight - spacing;
+            tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+            break;
+          case "bottom":
+            tooltipTop = rect.bottom + spacing;
+            tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+            break;
+          case "left":
+            tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+            tooltipLeft = rect.left - tooltipWidth - spacing;
+            break;
+          case "right":
+            tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+            tooltipLeft = rect.right + spacing;
+            break;
+        }
+
+        tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 16));
+        tooltipTop = Math.max(16, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 16));
       }
-
-      tooltipLeft = Math.max(16, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 16));
-      tooltipTop = Math.max(16, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 16));
 
       setTooltipPosition({ top: tooltipTop, left: tooltipLeft });
       
@@ -251,7 +253,7 @@ export function TutorialOverlay() {
       <Card
         ref={tooltipRef}
         tabIndex={-1}
-        className="fixed w-[300px] shadow-xl border-primary/20 outline-none pointer-events-auto"
+        className="fixed shadow-xl border-primary/20 outline-none pointer-events-auto w-[calc(100%-32px)] md:w-[300px]"
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
