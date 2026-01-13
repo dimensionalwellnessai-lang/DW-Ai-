@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/use-user-role";
 import { 
   ShoppingCart, 
   Plus, 
@@ -28,8 +29,35 @@ import {
   MoreHorizontal
 } from "lucide-react";
 import type { ShoppingList, ShoppingListItem, MealPlan } from "@shared/schema";
+import {
+  getGroceryLists,
+  createGroceryList,
+  addItemToGroceryList,
+  toggleGroceryItemChecked,
+  removeGroceryItem,
+  deleteGroceryList,
+  type GroceryList,
+  type GroceryItem,
+} from "@/lib/guest-storage";
 
 type ShoppingListWithItems = ShoppingList & { items: ShoppingListItem[] };
+
+interface LocalShoppingList {
+  id: string;
+  title: string;
+  status: string;
+  items: LocalShoppingItem[];
+}
+
+interface LocalShoppingItem {
+  id: string;
+  ingredient: string;
+  quantity: string | null;
+  unit: string | null;
+  category: string | null;
+  isChecked: boolean;
+  notes: string | null;
+}
 
 const CATEGORY_ICONS: Record<string, typeof Apple> = {
   produce: Apple,
@@ -53,33 +81,82 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+function convertGroceryListToLocal(list: GroceryList): LocalShoppingList {
+  return {
+    id: list.id,
+    title: list.name,
+    status: list.isActive ? "active" : "completed",
+    items: list.items.map((item: GroceryItem) => ({
+      id: item.id,
+      ingredient: item.name,
+      quantity: item.amount || null,
+      unit: item.unit || null,
+      category: item.category || null,
+      isChecked: item.isChecked,
+      notes: item.notes || null,
+    })),
+  };
+}
+
 export default function ShoppingListPage() {
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: userLoading } = useUserRole();
+  
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [newItemText, setNewItemText] = useState("");
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const [localLists, setLocalLists] = useState<LocalShoppingList[]>([]);
+  const [localListsLoading, setLocalListsLoading] = useState(true);
+  
+  const loadLocalLists = useCallback(() => {
+    const groceryLists = getGroceryLists();
+    const converted = groceryLists.map(convertGroceryListToLocal);
+    setLocalLists(converted);
+    setLocalListsLoading(false);
+  }, []);
+  
+  useEffect(() => {
+    if (!isAuthenticated && !userLoading) {
+      loadLocalLists();
+    }
+  }, [isAuthenticated, userLoading, loadLocalLists]);
 
   const { data: lists = [], isLoading: listsLoading } = useQuery<ShoppingList[]>({
     queryKey: ["/api/shopping-lists"],
+    enabled: isAuthenticated,
   });
 
   const { data: mealPlans = [], isLoading: plansLoading } = useQuery<MealPlan[]>({
     queryKey: ["/api/meal-plans"],
+    enabled: isAuthenticated,
   });
 
   const { data: selectedList, isLoading: listLoading } = useQuery<ShoppingListWithItems>({
     queryKey: ["/api/shopping-lists", selectedListId],
-    enabled: !!selectedListId,
+    enabled: isAuthenticated && !!selectedListId,
   });
+  
+  const localSelectedList = !isAuthenticated && selectedListId 
+    ? localLists.find(l => l.id === selectedListId) || null 
+    : null;
 
   const createListMutation = useMutation({
     mutationFn: async (title: string) => {
+      if (!isAuthenticated) {
+        const newList = createGroceryList(title);
+        return convertGroceryListToLocal(newList);
+      }
       const res = await apiRequest("POST", "/api/shopping-lists", { title });
       return res.json();
     },
     onSuccess: (newList) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+      } else {
+        loadLocalLists();
+      }
       setSelectedListId(newList.id);
       toast({ title: "List created", description: "Your new shopping list is ready." });
     },
@@ -106,41 +183,83 @@ export default function ShoppingListPage() {
 
   const addItemMutation = useMutation({
     mutationFn: async ({ listId, ingredient }: { listId: string; ingredient: string }) => {
+      if (!isAuthenticated) {
+        const item = addItemToGroceryList(listId, {
+          name: ingredient,
+          amount: "",
+          unit: "",
+          category: "other",
+          isChecked: false,
+          isInPantry: false,
+          sourceRecipeIds: [],
+          sourceMealPlanIds: [],
+          notes: "",
+        });
+        return item;
+      }
       const res = await apiRequest("POST", `/api/shopping-lists/${listId}/items`, { ingredient });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      } else {
+        loadLocalLists();
+      }
       setNewItemText("");
     },
   });
 
   const toggleItemMutation = useMutation({
     mutationFn: async ({ listId, itemId, isChecked }: { listId: string; itemId: string; isChecked: boolean }) => {
+      if (!isAuthenticated) {
+        toggleGroceryItemChecked(listId, itemId);
+        return { isChecked };
+      }
       const res = await apiRequest("PATCH", `/api/shopping-lists/${listId}/items/${itemId}`, { isChecked });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      } else {
+        loadLocalLists();
+      }
     },
   });
 
   const deleteItemMutation = useMutation({
     mutationFn: async ({ listId, itemId }: { listId: string; itemId: string }) => {
+      if (!isAuthenticated) {
+        removeGroceryItem(listId, itemId);
+        return;
+      }
       await apiRequest("DELETE", `/api/shopping-lists/${listId}/items/${itemId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists", selectedListId] });
+      } else {
+        loadLocalLists();
+      }
     },
   });
 
   const deleteListMutation = useMutation({
     mutationFn: async (listId: string) => {
+      if (!isAuthenticated) {
+        deleteGroceryList(listId);
+        return;
+      }
       await apiRequest("DELETE", `/api/shopping-lists/${listId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
       setSelectedListId(null);
+      if (isAuthenticated) {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+      } else {
+        loadLocalLists();
+      }
       toast({ title: "List deleted" });
     },
   });
@@ -151,17 +270,22 @@ export default function ShoppingListPage() {
     addItemMutation.mutate({ listId: selectedListId, ingredient: newItemText.trim() });
   };
 
-  const groupedItems = selectedList?.items.reduce((acc, item) => {
+  const displayLists = isAuthenticated ? lists : localLists;
+  const displaySelectedList = isAuthenticated ? selectedList : localSelectedList;
+  const isListsLoading = isAuthenticated ? listsLoading : localListsLoading;
+  const isListLoading = isAuthenticated ? listLoading : false;
+
+  const groupedItems = displaySelectedList?.items.reduce((acc, item) => {
     const category = item.category || "other";
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
     return acc;
-  }, {} as Record<string, ShoppingListItem[]>) || {};
+  }, {} as Record<string, (ShoppingListItem | LocalShoppingItem)[]>) || {};
 
-  const completedCount = selectedList?.items.filter(i => i.isChecked).length || 0;
-  const totalCount = selectedList?.items.length || 0;
+  const completedCount = displaySelectedList?.items.filter(i => i.isChecked).length || 0;
+  const totalCount = displaySelectedList?.items.length || 0;
 
-  if (listsLoading) {
+  if (userLoading || isListsLoading) {
     return (
       <div className="flex items-center justify-center h-full p-8">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -186,19 +310,21 @@ export default function ShoppingListPage() {
             New List
           </Button>
           
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-2"
-            onClick={() => setShowGenerateDialog(true)}
-            data-testid="button-generate-from-plan"
-          >
-            <Sparkles className="w-4 h-4" />
-            From Meal Plan
-          </Button>
+          {isAuthenticated && (
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2"
+              onClick={() => setShowGenerateDialog(true)}
+              data-testid="button-generate-from-plan"
+            >
+              <Sparkles className="w-4 h-4" />
+              From Meal Plan
+            </Button>
+          )}
           
           <ScrollArea className="flex-1">
             <div className="space-y-1">
-              {lists.map((list) => (
+              {displayLists.map((list) => (
                 <button
                   key={list.id}
                   onClick={() => setSelectedListId(list.id)}
@@ -219,7 +345,7 @@ export default function ShoppingListPage() {
                 </button>
               ))}
               
-              {lists.length === 0 && (
+              {displayLists.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No shopping lists yet
                 </p>
@@ -239,15 +365,15 @@ export default function ShoppingListPage() {
                 </p>
               </div>
             </div>
-          ) : listLoading ? (
+          ) : isListLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
-          ) : selectedList ? (
+          ) : displaySelectedList ? (
             <div className="space-y-6 max-w-2xl mx-auto">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-xl font-semibold">{selectedList.title}</h1>
+                  <h1 className="text-xl font-semibold">{displaySelectedList.title}</h1>
                   {totalCount > 0 && (
                     <p className="text-sm text-muted-foreground">
                       {completedCount} of {totalCount} items checked
@@ -286,7 +412,7 @@ export default function ShoppingListPage() {
                   <CardContent className="py-8 text-center">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      Your list is empty. Add items above or generate from a meal plan.
+                      Your list is empty. Add items above{isAuthenticated ? " or generate from a meal plan" : ""}.
                     </p>
                   </CardContent>
                 </Card>

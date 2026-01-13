@@ -2025,6 +2025,19 @@ export function removeGroceryItem(listId: string, itemId: string): void {
   saveGuestData(data);
 }
 
+export function getGroceryListById(listId: string): GroceryList | null {
+  const lists = getGroceryLists();
+  return lists.find(l => l.id === listId) || null;
+}
+
+export function deleteGroceryList(listId: string): void {
+  const data = getGuestData();
+  if (!data?.groceryLists) return;
+  
+  data.groceryLists = data.groceryLists.filter(l => l.id !== listId);
+  saveGuestData(data);
+}
+
 export function addRecipeIngredientsToGroceryList(recipeId: string, listId?: string): GroceryList | null {
   const recipe = getSavedRecipeById(recipeId);
   if (!recipe) return null;
