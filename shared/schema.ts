@@ -1333,6 +1333,85 @@ export const insertWeeklyFeedbackResponseSchema = createInsertSchema(weeklyFeedb
   updatedAt: true,
 });
 
+// Mood Check-ins - Daily mood tracking with word-based moods
+export const dailyMoodCheckins = pgTable("daily_mood_checkins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  date: text("date").notNull(), // YYYY-MM-DD format
+  timeOfDay: text("time_of_day").notNull(), // morning, afternoon, evening
+  mood: text("mood").notNull(), // calm, anxious, energized, tired, hopeful, overwhelmed, etc.
+  customNote: text("custom_note"), // Optional custom expression
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dailyMoodCheckinsRelations = relations(dailyMoodCheckins, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyMoodCheckins.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDailyMoodCheckinSchema = createInsertSchema(dailyMoodCheckins).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Activity Completions - Track whether user completed scheduled activities
+export const activityCompletions = pgTable("activity_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  date: text("date").notNull(), // YYYY-MM-DD format
+  activityTitle: text("activity_title").notNull(),
+  activityId: varchar("activity_id"), // Reference to plan item if applicable
+  switchId: text("switch_id"), // Which life dimension this relates to
+  completed: boolean("completed").notNull().default(false),
+  skippedReason: text("skipped_reason"), // Optional reason if skipped
+  scheduledTime: text("scheduled_time"), // When it was scheduled
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const activityCompletionsRelations = relations(activityCompletions, ({ one }) => ({
+  user: one(users, {
+    fields: [activityCompletions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertActivityCompletionSchema = createInsertSchema(activityCompletions).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Tracker Settings - User preferences for mood/activity notifications
+export const trackerSettings = pgTable("tracker_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  guestId: varchar("guest_id"),
+  moodCheckinsEnabled: boolean("mood_checkins_enabled").default(true),
+  moodCheckinTimes: text("mood_checkin_times").array(), // e.g., ["09:00", "14:00", "20:00"]
+  activityRemindersEnabled: boolean("activity_reminders_enabled").default(true),
+  reminderMinutesBefore: integer("reminder_minutes_before").default(15),
+  dailySynopsisEnabled: boolean("daily_synopsis_enabled").default(true),
+  dailySynopsisTime: text("daily_synopsis_time").default("21:00"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const trackerSettingsRelations = relations(trackerSettings, ({ one }) => ({
+  user: one(users, {
+    fields: [trackerSettings.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertTrackerSettingsSchema = createInsertSchema(trackerSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1431,3 +1510,9 @@ export type Exercise = typeof exercises.$inferSelect;
 export type InsertExercise = z.infer<typeof insertExerciseSchema>;
 export type BirthChart = typeof birthCharts.$inferSelect;
 export type InsertBirthChart = z.infer<typeof insertBirthChartSchema>;
+export type DailyMoodCheckin = typeof dailyMoodCheckins.$inferSelect;
+export type InsertDailyMoodCheckin = z.infer<typeof insertDailyMoodCheckinSchema>;
+export type ActivityCompletion = typeof activityCompletions.$inferSelect;
+export type InsertActivityCompletion = z.infer<typeof insertActivityCompletionSchema>;
+export type TrackerSettings = typeof trackerSettings.$inferSelect;
+export type InsertTrackerSettings = z.infer<typeof insertTrackerSettingsSchema>;
