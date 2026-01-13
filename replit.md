@@ -18,7 +18,7 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **Backend**: Node.js with Express.js, TypeScript, RESTful API. `express-session` handles session management with secure cookies, and custom session-based authentication uses bcrypt for password hashing.
 *   **Data Layer**: PostgreSQL database managed by Drizzle ORM. Schemas are defined in `shared/schema.ts`, and Drizzle Kit handles migrations. Zod schemas are generated for validation.
 *   **Core Data Models**: Users, Onboarding Profiles, Life Systems, Goals, Habits, Mood Logs, Check-ins, and Schedule Blocks.
-*   **AI Integration**: Utilizes an OpenAI-compatible API via Replit AI Integrations for chat-based check-ins and life system recommendations. AI responses are personalized using user context and adhere to a strict voice configuration.
+*   **AI Integration**: Utilizes an OpenAI-compatible API via Replit AI Integrations for chat-based check-ins and life system recommendations. AI responses are personalized using user context and adhere to a strict voice configuration. Incorporates CBT (Cognitive Behavioral Therapy) principles with the "Flip the Script" technique for thought work and reframing.
 *   **Voice Mode**: Implemented via Web Speech API (push-to-talk only, never auto-listening) with defined voice scripts and rules against navigation or saving without permission.
 *   **Energy Context System**: The AI adapts its tone, pacing, and suggestions based on user energy levels (low, medium, high) derived from mood logs and body scans, always with transparent explanations and user consent.
 *   **Guided Experiences**: Follows a Netflix-style layout with AI-picked recommendations, "Why" explanations, single-selection patterns, and explicit calendar confirmations.
