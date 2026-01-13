@@ -64,7 +64,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "One thought reset",
         steps: ["Name the stress in 1 sentence", "Replace with 1 helpful sentence"]
       },
-      checkInQuestion: "Did your energy feel even 5% better after this?"
+      checkInQuestion: "What thought came up about your body during this? Did anything shift?"
     },
     small: {
       estimateMinutes: 25,
@@ -92,7 +92,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "Schedule the next session",
         steps: ["Pick 1 day + time", "Block 30 minutes", "Add a reminder"]
       },
-      checkInQuestion: "Did this feel doable enough to repeat?"
+      checkInQuestion: "What story did you tell yourself before starting? Is it still true after doing it?"
     },
     medium: {
       estimateMinutes: 50,
@@ -121,7 +121,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "Set your workout space",
         steps: ["Put equipment visible", "Clear a 6x6 area", "Queue a playlist"]
       },
-      checkInQuestion: "What part of this session gave you the biggest energy boost?"
+      checkInQuestion: "What would you tell yourself before starting, now that you've done it?"
     },
     large: {
       estimateMinutes: 90,
@@ -151,7 +151,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "Fuel budget check",
         steps: ["List 2 high-protein groceries", "Plan 1 simple meal", "Keep it affordable"]
       },
-      checkInQuestion: "Do you feel stronger or more capable after this session?"
+      checkInQuestion: "Did any limiting belief about your body get challenged today?"
     }
   },
 
@@ -178,7 +178,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "Nervous system downshift",
         steps: ["Drink water", "30–60 seconds slow breathing"]
       },
-      checkInQuestion: "Did your mind get quieter or just more organized?"
+      checkInQuestion: "What thought lost power when you named it out loud?"
     },
     small: {
       estimateMinutes: 25,
@@ -202,7 +202,7 @@ export const PLAN_LIBRARY: Record<SwitchId, SwitchPlanLibrary> = {
         title: "Protect a calm block",
         steps: ["Block 15 minutes", "Label: MIND SWITCH", "No phone during block"]
       },
-      checkInQuestion: "Do you feel more in control of your emotions right now?"
+      checkInQuestion: "What pattern did you notice? What's a more balanced way to see it?"
     },
     medium: {
       estimateMinutes: 50,

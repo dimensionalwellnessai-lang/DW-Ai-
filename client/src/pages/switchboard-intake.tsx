@@ -48,7 +48,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-red-400",
     bgColor: "bg-red-500/10",
     question: "How would you describe your physical energy lately?",
-    perspective: "Energy comes before motivation.",
+    perspective: "Energy comes before motivation. We're not broken — we're building capacity.",
     options: [
       { label: "Depleted", value: 0, description: "Running on empty most days" },
       { label: "Inconsistent", value: 1, description: "Good days and bad days" },
@@ -63,7 +63,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-purple-400",
     bgColor: "bg-purple-500/10",
     question: "How clear does your mind feel most days?",
-    perspective: "I can notice my thoughts without becoming them.",
+    perspective: "Thoughts are visitors, not residents. We can notice them without becoming them.",
     options: [
       { label: "Overwhelmed", value: 0, description: "Constant mental noise" },
       { label: "Foggy", value: 1, description: "Hard to focus or think clearly" },
@@ -78,7 +78,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-blue-400",
     bgColor: "bg-blue-500/10",
     question: "How in control of your time do you feel?",
-    perspective: "A plan should support my life, not trap it.",
+    perspective: "A plan supports life — it doesn't trap it. We can adjust anytime.",
     options: [
       { label: "Chaotic", value: 0, description: "Days just happen to me" },
       { label: "Reactive", value: 1, description: "Always catching up" },
@@ -93,7 +93,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-amber-400",
     bgColor: "bg-amber-500/10",
     question: "How connected do you feel to your sense of direction?",
-    perspective: "I don't need the full map — just the next aligned step.",
+    perspective: "We don't need the full map — just the next honest step.",
     options: [
       { label: "Lost", value: 0, description: "No idea what I'm working toward" },
       { label: "Searching", value: 1, description: "Looking for meaning" },
@@ -108,7 +108,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-green-400",
     bgColor: "bg-green-500/10",
     question: "How do you feel about your financial situation?",
-    perspective: "Money is a tool, not a verdict on my worth.",
+    perspective: "Money is a tool, not a verdict on your worth. Stories about money can be rewritten.",
     options: [
       { label: "Stressed", value: 0, description: "Constant worry about money" },
       { label: "Anxious", value: 1, description: "Uncertain and avoiding it" },
@@ -123,7 +123,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-pink-400",
     bgColor: "bg-pink-500/10",
     question: "How nourishing are your relationships right now?",
-    perspective: "Connection should feel safe, not draining.",
+    perspective: "Connection should feel safe, not draining. We can set boundaries.",
     options: [
       { label: "Isolated", value: 0, description: "Feeling alone or disconnected" },
       { label: "Draining", value: 1, description: "More taking than giving" },
@@ -138,7 +138,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-cyan-400",
     bgColor: "bg-cyan-500/10",
     question: "How well does your physical space support you?",
-    perspective: "My surroundings shape my behavior.",
+    perspective: "Environment shapes behavior. Small changes create big shifts.",
     options: [
       { label: "Cluttered", value: 0, description: "Space adds to my stress" },
       { label: "Neglected", value: 1, description: "Could use attention" },
@@ -153,7 +153,7 @@ const INTAKE_QUESTIONS: IntakeQuestion[] = [
     color: "text-emerald-400",
     bgColor: "bg-emerald-500/10",
     question: "How aligned do you feel with who you're becoming?",
-    perspective: "I am allowed to evolve.",
+    perspective: "We are allowed to evolve. Old stories don't define new chapters.",
     options: [
       { label: "Stuck", value: 0, description: "Feel trapped in old patterns" },
       { label: "Questioning", value: 1, description: "Not sure who I am anymore" },
