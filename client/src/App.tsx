@@ -64,6 +64,7 @@ import FTSHomePage from "@/pages/fts-home";
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
 import AdminAnalyticsPage from "@/pages/admin-analytics";
+import MoodTrackerPage from "@/pages/mood-tracker";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -108,6 +109,7 @@ function Router() {
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
+      <Route path="/mood-tracker" component={MoodTrackerPage} />
 
       {/* Put specific calendar routes BEFORE /calendar so they actually render */}
       {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}

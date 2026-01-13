@@ -36,6 +36,14 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **Shopping List**: `/shopping-list` route for managing grocery/shopping lists. Supports both authenticated (database) and guest (localStorage) modes. Guest mode stores lists in `groceryLists` array within `fts_guest_data`. Features: create lists, add items, check/uncheck items, delete items, delete lists. Authenticated users can also generate shopping lists from meal plans.
 *   **Admin Analytics Page**: `/admin/analytics` route for admin-only dashboard with Recharts visualizations. Features: range selector (7d/30d), KPI tiles (DAU/WAU/MAU, activation rate, retention, helped rate), activation funnel, switch performance bar charts, timeband/mode distribution, flags table, error tracking. Protected by `requireAdmin` middleware. Admin APIs: `/api/admin/metrics/summary`, `/api/admin/metrics/funnel`, `/api/admin/metrics/switches`, `/api/admin/metrics/recommendations`, `/api/admin/metrics/timeband`, `/api/admin/metrics/flags`, `/api/admin/metrics/errors`.
 *   **Role-Based Access Control**: Users table has `role` field (user/admin, default "user"). `requireAdmin` middleware protects admin routes. `useUserRole` hook provides frontend role checking. `AdminRoute` component guards admin pages on the frontend.
+*   **Mood & Activity Tracker**: `/mood-tracker` route for daily mood check-ins and activity tracking. Features:
+    - **Mood Check-ins**: 3x daily (morning/afternoon/evening) with 12 word-based mood options (calm, content, hopeful, grateful, motivated, energized, tired, anxious, overwhelmed, frustrated, sad, scattered) plus optional custom notes.
+    - **Activity Check-ins**: Integrated with Weekly Plan items - mark activities as completed or skipped with optional skip reasons.
+    - **Daily Synopsis**: Shows mood journey (morning → afternoon → evening), dominant mood, and activity completion rate.
+    - **Weekly Calendar View**: Visual calendar showing mood dots for each time of day and activity completion percentages.
+    - **Tracker Settings**: Toggle notifications for mood check-ins, activity reminders, and daily synopsis. Requests browser notification permissions.
+    - Guest mode supported via localStorage (`moodCheckins`, `activityCompletions`, `trackerSettings` in `fts_guest_data`).
+    - Database tables: `daily_mood_checkins`, `activity_completions`, `tracker_settings` for authenticated users.
 
 ### Configuration Architecture
 *   **Centralized Voice & Copy**: `client/src/config/brand.ts` for app identity, `client/src/config/voiceGuide.ts` for AI voice rules, and `client/src/copy/en.ts` for all UI text.
