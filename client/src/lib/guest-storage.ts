@@ -394,6 +394,43 @@ export interface OnboardingLog {
   createdAt: number;
 }
 
+// Mood check-in types
+export type TimeOfDay = "morning" | "afternoon" | "evening";
+export type MoodWord = "calm" | "anxious" | "energized" | "tired" | "hopeful" | "overwhelmed" | "content" | "frustrated" | "grateful" | "sad" | "motivated" | "scattered";
+
+export interface MoodCheckin {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  timeOfDay: TimeOfDay;
+  mood: MoodWord | string;
+  customNote?: string;
+  createdAt: number;
+}
+
+// Activity completion types
+export interface ActivityCompletion {
+  id: string;
+  date: string; // YYYY-MM-DD format
+  activityTitle: string;
+  activityId?: string;
+  switchId?: string;
+  completed: boolean;
+  skippedReason?: string;
+  scheduledTime?: string;
+  createdAt: number;
+}
+
+// Tracker settings
+export interface TrackerSettings {
+  moodCheckinsEnabled: boolean;
+  moodCheckinTimes: string[]; // e.g., ["09:00", "14:00", "20:00"]
+  activityRemindersEnabled: boolean;
+  reminderMinutesBefore: number;
+  dailySynopsisEnabled: boolean;
+  dailySynopsisTime: string;
+  updatedAt: number;
+}
+
 export type PlanningHorizon = "today" | "week" | "month";
 export type PlanningDomain = "meals" | "workouts" | "general";
 
@@ -442,6 +479,9 @@ export interface GuestData {
   groceryLists?: GroceryList[];
   domainExclusions?: Record<string, { domain: string; exclusions: string[]; updatedAt: number }>;
   onboardingLogs?: OnboardingLog[];
+  moodCheckins?: MoodCheckin[];
+  activityCompletions?: ActivityCompletion[];
+  trackerSettings?: TrackerSettings;
   preferences: {
     themeMode: "accent-only" | "full-background";
     useMetricUnits?: boolean;
@@ -2130,4 +2170,246 @@ export function isProfileSetupComplete(): boolean {
 export function getLatestOnboardingLog(): OnboardingLog | null {
   const logs = getOnboardingLogs();
   return logs.length > 0 ? logs[0] : null;
+}
+
+// ============================================
+// Mood Check-ins
+// ============================================
+
+export function getMoodCheckins(): MoodCheckin[] {
+  const data = getGuestData();
+  return data?.moodCheckins || [];
+}
+
+export function getMoodCheckinsForDate(date: string): MoodCheckin[] {
+  return getMoodCheckins().filter(c => c.date === date);
+}
+
+export function getMoodCheckinsForDateRange(startDate: string, endDate: string): MoodCheckin[] {
+  return getMoodCheckins().filter(c => c.date >= startDate && c.date <= endDate);
+}
+
+export function addMoodCheckin(checkin: Omit<MoodCheckin, "id" | "createdAt">): MoodCheckin {
+  const data = getGuestData() || initGuestData();
+  if (!data.moodCheckins) {
+    data.moodCheckins = [];
+  }
+  
+  const newCheckin: MoodCheckin = {
+    ...checkin,
+    id: generateId(),
+    createdAt: Date.now(),
+  };
+  
+  data.moodCheckins.unshift(newCheckin);
+  saveGuestData(data);
+  return newCheckin;
+}
+
+export function updateMoodCheckin(checkinId: string, updates: Partial<MoodCheckin>): MoodCheckin | null {
+  const data = getGuestData();
+  if (!data?.moodCheckins) return null;
+  
+  const index = data.moodCheckins.findIndex(c => c.id === checkinId);
+  if (index === -1) return null;
+  
+  data.moodCheckins[index] = { ...data.moodCheckins[index], ...updates };
+  saveGuestData(data);
+  return data.moodCheckins[index];
+}
+
+export function deleteMoodCheckin(checkinId: string): void {
+  const data = getGuestData();
+  if (!data?.moodCheckins) return;
+  
+  data.moodCheckins = data.moodCheckins.filter(c => c.id !== checkinId);
+  saveGuestData(data);
+}
+
+export function getTodayMoodCheckins(): MoodCheckin[] {
+  const today = new Date().toISOString().split("T")[0];
+  return getMoodCheckinsForDate(today);
+}
+
+export function hasMoodCheckinForTimeOfDay(date: string, timeOfDay: TimeOfDay): boolean {
+  const checkins = getMoodCheckinsForDate(date);
+  return checkins.some(c => c.timeOfDay === timeOfDay);
+}
+
+// ============================================
+// Activity Completions
+// ============================================
+
+export function getActivityCompletions(): ActivityCompletion[] {
+  const data = getGuestData();
+  return data?.activityCompletions || [];
+}
+
+export function getActivityCompletionsForDate(date: string): ActivityCompletion[] {
+  return getActivityCompletions().filter(c => c.date === date);
+}
+
+export function getActivityCompletionsForDateRange(startDate: string, endDate: string): ActivityCompletion[] {
+  return getActivityCompletions().filter(c => c.date >= startDate && c.date <= endDate);
+}
+
+export function addActivityCompletion(completion: Omit<ActivityCompletion, "id" | "createdAt">): ActivityCompletion {
+  const data = getGuestData() || initGuestData();
+  if (!data.activityCompletions) {
+    data.activityCompletions = [];
+  }
+  
+  const newCompletion: ActivityCompletion = {
+    ...completion,
+    id: generateId(),
+    createdAt: Date.now(),
+  };
+  
+  data.activityCompletions.unshift(newCompletion);
+  saveGuestData(data);
+  return newCompletion;
+}
+
+export function updateActivityCompletion(completionId: string, updates: Partial<ActivityCompletion>): ActivityCompletion | null {
+  const data = getGuestData();
+  if (!data?.activityCompletions) return null;
+  
+  const index = data.activityCompletions.findIndex(c => c.id === completionId);
+  if (index === -1) return null;
+  
+  data.activityCompletions[index] = { ...data.activityCompletions[index], ...updates };
+  saveGuestData(data);
+  return data.activityCompletions[index];
+}
+
+export function deleteActivityCompletion(completionId: string): void {
+  const data = getGuestData();
+  if (!data?.activityCompletions) return;
+  
+  data.activityCompletions = data.activityCompletions.filter(c => c.id !== completionId);
+  saveGuestData(data);
+}
+
+export function getTodayActivityCompletions(): ActivityCompletion[] {
+  const today = new Date().toISOString().split("T")[0];
+  return getActivityCompletionsForDate(today);
+}
+
+export function getCompletionRate(date: string): { completed: number; total: number; rate: number } {
+  const completions = getActivityCompletionsForDate(date);
+  const total = completions.length;
+  const completed = completions.filter(c => c.completed).length;
+  const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  return { completed, total, rate };
+}
+
+// ============================================
+// Tracker Settings
+// ============================================
+
+const DEFAULT_TRACKER_SETTINGS: TrackerSettings = {
+  moodCheckinsEnabled: true,
+  moodCheckinTimes: ["09:00", "14:00", "20:00"],
+  activityRemindersEnabled: true,
+  reminderMinutesBefore: 15,
+  dailySynopsisEnabled: true,
+  dailySynopsisTime: "21:00",
+  updatedAt: Date.now(),
+};
+
+export function getTrackerSettings(): TrackerSettings {
+  const data = getGuestData();
+  return data?.trackerSettings || DEFAULT_TRACKER_SETTINGS;
+}
+
+export function saveTrackerSettings(settings: Partial<TrackerSettings>): TrackerSettings {
+  const data = getGuestData() || initGuestData();
+  data.trackerSettings = {
+    ...DEFAULT_TRACKER_SETTINGS,
+    ...data.trackerSettings,
+    ...settings,
+    updatedAt: Date.now(),
+  };
+  saveGuestData(data);
+  return data.trackerSettings;
+}
+
+// ============================================
+// Daily Synopsis helpers
+// ============================================
+
+export interface DailySynopsis {
+  date: string;
+  moodCheckins: MoodCheckin[];
+  activityCompletions: ActivityCompletion[];
+  moodSummary: {
+    dominantMood: string | null;
+    moodCount: number;
+    moodJourney: string[];
+  };
+  activitySummary: {
+    completed: number;
+    total: number;
+    completionRate: number;
+    completedTitles: string[];
+    skippedTitles: string[];
+  };
+}
+
+export function getDailySynopsis(date: string): DailySynopsis {
+  const moodCheckins = getMoodCheckinsForDate(date);
+  const activityCompletions = getActivityCompletionsForDate(date);
+  
+  // Calculate mood summary
+  const moodJourney = moodCheckins
+    .sort((a, b) => {
+      const order = { morning: 0, afternoon: 1, evening: 2 };
+      return order[a.timeOfDay] - order[b.timeOfDay];
+    })
+    .map(c => c.mood);
+  
+  const moodCounts: Record<string, number> = {};
+  moodCheckins.forEach(c => {
+    moodCounts[c.mood] = (moodCounts[c.mood] || 0) + 1;
+  });
+  
+  const dominantMood = Object.entries(moodCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  
+  // Calculate activity summary
+  const completed = activityCompletions.filter(c => c.completed).length;
+  const total = activityCompletions.length;
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  
+  return {
+    date,
+    moodCheckins,
+    activityCompletions,
+    moodSummary: {
+      dominantMood,
+      moodCount: moodCheckins.length,
+      moodJourney,
+    },
+    activitySummary: {
+      completed,
+      total,
+      completionRate,
+      completedTitles: activityCompletions.filter(c => c.completed).map(c => c.activityTitle),
+      skippedTitles: activityCompletions.filter(c => !c.completed).map(c => c.activityTitle),
+    },
+  };
+}
+
+export function getWeeklySynopsis(startDate: string): DailySynopsis[] {
+  const synopses: DailySynopsis[] = [];
+  const start = new Date(startDate);
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    const dateStr = date.toISOString().split("T")[0];
+    synopses.push(getDailySynopsis(dateStr));
+  }
+  
+  return synopses;
 }
