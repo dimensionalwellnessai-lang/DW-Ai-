@@ -151,7 +151,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function AIWorkspace() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -449,6 +449,12 @@ export function AIWorkspace() {
   // Active database conversation ID - initialize from localStorage for persistence
   const [activeDbConversationId, setActiveDbConversationId] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
+      // Check for fresh param - clear ID to show empty state
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("fresh") === "true") {
+        localStorage.removeItem("fts_active_conversation_id");
+        return null;
+      }
       return localStorage.getItem("fts_active_conversation_id") || null;
     }
     return null;
@@ -463,12 +469,13 @@ export function AIWorkspace() {
 
   // Initialize or validate activeDbConversationId from server data when conversations load
   useEffect(() => {
-    if (isUserAuthenticated && dbConversations.length > 0) {
+    if (isUserAuthenticated && dbConversations.length > 0 && activeDbConversationId) {
       // Check if current ID is valid (exists in loaded conversations)
-      const idExists = activeDbConversationId && dbConversations.some(c => c.id === activeDbConversationId);
+      const idExists = dbConversations.some(c => c.id === activeDbConversationId);
       if (!idExists) {
-        // Clear stale ID and set to first conversation
-        setActiveDbConversationId(dbConversations[0].id);
+        // Clear stale ID - don't auto-select (let user see empty state)
+        localStorage.removeItem("fts_active_conversation_id");
+        setActiveDbConversationId(null);
       }
     } else if (isUserAuthenticated && dbConversations.length === 0 && activeDbConversationId) {
       // Clear stale ID if no conversations exist
@@ -477,21 +484,36 @@ export function AIWorkspace() {
     }
   }, [isUserAuthenticated, dbConversations]);
 
-  // Get the active database conversation
-  const activeDbConversation = dbConversations.find(c => c.id === activeDbConversationId) || 
-    (dbConversations.length > 0 ? dbConversations[0] : null);
+  // Get the active database conversation (no fallback to first - allow empty state)
+  const activeDbConversation = activeDbConversationId 
+    ? dbConversations.find(c => c.id === activeDbConversationId) || null
+    : null;
 
+  // Check if we should start fresh (from URL param or new session)
   const [startedFresh, setStartedFresh] = useState(() => {
     if (typeof window === "undefined") return true;
+    // Check for fresh param before initializing
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("fresh") === "true") {
+      clearActiveConversation();
+      localStorage.removeItem("fts_active_conversation_id");
+      window.history.replaceState({}, "", "/chat");
+      return true;
+    }
     startFreshSession();
     const active = getActiveConversation();
     return !active || active.messages.length === 0;
   });
   
   // Use state for activeConversation so it updates when conversationVersion changes
-  const [activeConversation, setActiveConversationState] = useState<GuestConversation | null>(() => 
-    getActiveConversation()
-  );
+  const [activeConversation, setActiveConversationState] = useState<GuestConversation | null>(() => {
+    // If fresh param was set, return null to show empty state
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("fresh") === "true") {
+      return null;
+    }
+    return getActiveConversation();
+  });
   
   // Get current conversation based on auth state
   const currentConversation = isUserAuthenticated ? activeDbConversation : activeConversation;

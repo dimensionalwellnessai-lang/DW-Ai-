@@ -262,8 +262,10 @@ export default function Welcome() {
   };
 
   const handleSkipAll = () => {
-    saveProfileSetup({ completedAt: Date.now(), metDW: false });
-    setLocation("/chat");
+    // Navigate FIRST to avoid race condition with isProfileSetupComplete check
+    setLocation("/chat?fresh=true");
+    // Mark as skipped to prevent auto-welcome message and show empty chat
+    saveProfileSetup({ completedAt: Date.now(), metDW: false, skipped: true });
   };
 
   const toggleDay = (day: number) => {

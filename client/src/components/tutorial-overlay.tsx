@@ -80,7 +80,17 @@ export function TutorialOverlay() {
       let tooltipLeft = 0;
 
       if (isMobile) {
-        tooltipTop = window.innerHeight - tooltipHeight - 24;
+        // On mobile, position tooltip based on where the element is
+        const elementCenterY = rect.top + rect.height / 2;
+        const screenMidpoint = window.innerHeight / 2;
+        
+        if (elementCenterY > screenMidpoint) {
+          // Element is in bottom half - show tooltip at top
+          tooltipTop = 80; // Below header
+        } else {
+          // Element is in top half - show tooltip at bottom
+          tooltipTop = window.innerHeight - tooltipHeight - 24;
+        }
         tooltipLeft = 16;
       } else {
         const placement = currentStep.placement || "bottom";
