@@ -1,98 +1,28 @@
 workflows:
-  capacitor-android:
-    name: Capacitor Android Build (Play Store)
+  ios-capacitor:
+    name: Capacitor iOS Build (App Store)
     max_build_duration: 60
     environment:
-      node: 18
-      java: 17
-      groups:
-        - google_play_credentials
-      vars:
-        PACKAGE_NAME: "com.dimensionalwellness.app"
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm install
-      - name: Build web app
-        script: |
-          npm run build
-      - name: Sync Capacitor
-        script: |
-          npx cap sync android
-      - name: Build Android Release AAB
-        script: |
-          cd android
-          ./gradlew bundleRelease
-      - name: Sign AAB
-        script: |
-          cd android
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore $CM_KEYSTORE_PATH \
-            -storepass $CM_KEYSTORE_PASSWORD \
-            -keypass $CM_KEY_PASSWORD \
-            app/build/outputs/bundle/release/app-release.aab \
-            $CM_KEY_ALIAS
-    artifacts:
-      - android/app/build/outputs/**/*.apk
-      - android/app/build/outputs/**/*.aab
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-
-  capacitor-ios:
-    name: Capacitor iOS Build (App Store)
-    max_build_duration: 90
-    instance_type: mac_mini_m1
-    environment:
-      node: 18
+      node: 20
       xcode: latest
-      cocoapods: default
-      groups:
-        - app_store_credentials
-      vars:
-        BUNDLE_ID: "com.dimensionalwellness.app"
     scripts:
       - name: Install dependencies
         script: |
-          npm install
+          npm ci
+
       - name: Build web app
         script: |
           npm run build
+
       - name: Sync Capacitor
         script: |
           npx cap sync ios
+
       - name: Install CocoaPods
         script: |
           cd ios/App
           pod install
-      - name: Set up code signing
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          xcode-project use-profiles
-      - name: Build iOS Archive
-        script: |
-          cd ios/App
-          xcodebuild -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
-            archive
-      - name: Export IPA
-        script: |
-          cd ios/App
-          xcodebuild -exportArchive \
-            -archivePath build/App.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist exportOptions.plist
+
     artifacts:
-      - ios/App/build/ipa/*.ipa
-      - ios/App/build/*.xcarchive
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
+      - ios/App/build/ios/ipa/*.ipa
+      - build/**/*
