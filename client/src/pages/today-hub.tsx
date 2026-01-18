@@ -41,7 +41,7 @@ import { Anchor, RefreshCw, ListTodo, MessageCircle } from "lucide-react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
-import { useTutorial } from "@/contexts/tutorial-context";
+import { useTutorial, useTutorialStart } from "@/contexts/tutorial-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 function formatTime12Hour(time24: string): string {
@@ -95,6 +95,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
 };
 
 export default function TodayHubPage() {
+  useTutorialStart("today-hub", 1000);
   const [, navigate] = useLocation();
   const today = new Date();
   const dayOfWeek = today.getDay();

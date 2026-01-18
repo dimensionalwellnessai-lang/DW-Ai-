@@ -49,7 +49,7 @@ export function SettingsPage() {
     localStorage.removeItem(MENU_TUTORIAL_STEP_KEY);
     toast({
       title: "Menu tour reset",
-      description: "Open the menu to start the tour",
+      description: "Navigate to the main chat to start the tour",
     });
     setLocation("/chat");
   };
@@ -60,7 +60,7 @@ export function SettingsPage() {
     localStorage.removeItem(MENU_TUTORIAL_STEP_KEY);
     toast({
       title: "All tutorials reset",
-      description: "You'll see tutorials again as you visit each screen",
+      description: "Visit any screen to see its tutorial again",
     });
   };
   

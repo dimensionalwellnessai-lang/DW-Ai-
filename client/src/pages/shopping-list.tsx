@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,6 +100,7 @@ function convertGroceryListToLocal(list: GroceryList): LocalShoppingList {
 }
 
 export default function ShoppingListPage() {
+  useTutorialStart("shopping-list", 1000);
   const { toast } = useToast();
   const { isAuthenticated, isLoading: userLoading } = useUserRole();
   

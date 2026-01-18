@@ -8,6 +8,7 @@ import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Tras
 import { Link, useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { markPlanVisit } from "@/lib/analytics";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getCalendarEvents, getSavedRoutines, type CalendarEvent, type SavedRoutine } from "@/lib/guest-storage";
@@ -46,6 +47,7 @@ function saveLocalPlans(plans: Plan[]) {
 }
 
 export default function PlansPage() {
+  useTutorialStart("plans", 1000);
   const [, setLocation] = useLocation();
   const [localPlans, setLocalPlans] = useState<Plan[]>(getLocalPlans);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);

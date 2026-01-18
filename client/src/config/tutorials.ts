@@ -294,8 +294,8 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
       }
     ]
   },
-  today: {
-    pageId: "today",
+  "today-hub": {
+    pageId: "today-hub",
     pageName: "Today",
     welcomeMessage: "Your daily check-in hub. Start here each day.",
     steps: [
@@ -319,78 +319,22 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
       }
     ]
   },
-  home: {
-    pageId: "home",
-    pageName: "Home",
-    welcomeMessage: "Your personal wellness dashboard.",
+  plans: {
+    pageId: "plans",
+    pageName: "Plans",
+    welcomeMessage: "Your training plans for wellness.",
     steps: [
       {
-        targetTestId: "card-system-snapshot",
-        title: "System Snapshot",
-        description: "A quick view of your current energy and available time.",
+        targetTestId: "button-create-plan",
+        title: "Create New Plan",
+        description: "Start a new wellness plan to organize your actions.",
         placement: "bottom"
       },
       {
-        targetTestId: "card-ai-recommendation",
-        title: "AI Recommendation",
-        description: "A personalized suggestion based on how you're doing right now.",
+        targetTestId: "section-active-plans",
+        title: "Active Plans",
+        description: "Your current plans in progress. Start small.",
         placement: "top"
-      },
-      {
-        targetTestId: "section-weekly-summary",
-        title: "Weekly Summary",
-        description: "See your progress at a glance. Celebrate small wins.",
-        placement: "top"
-      }
-    ]
-  },
-  switchboard: {
-    pageId: "switchboard",
-    pageName: "Life Switchboard",
-    welcomeMessage: "8 dimensions of your life. Train each one over time.",
-    steps: [
-      {
-        targetTestId: "switch-card-body",
-        title: "Body Switch",
-        description: "Physical health, movement, and how your body feels.",
-        placement: "bottom"
-      },
-      {
-        targetTestId: "switch-card-mind",
-        title: "Mind Switch",
-        description: "Mental clarity, focus, and emotional balance.",
-        placement: "bottom"
-      },
-      {
-        targetTestId: "button-start-intake",
-        title: "Start Assessment",
-        description: "Take a quick assessment to set your initial switch statuses.",
-        placement: "top"
-      }
-    ]
-  },
-  plan: {
-    pageId: "plan",
-    pageName: "Weekly Plan",
-    welcomeMessage: "Your training plan for the week.",
-    steps: [
-      {
-        targetTestId: "section-plan-items",
-        title: "Plan Items",
-        description: "Actions grouped by life dimension. Start small.",
-        placement: "top"
-      },
-      {
-        targetTestId: "button-add-action",
-        title: "Add Action",
-        description: "Build your plan by adding doable actions.",
-        placement: "left"
-      },
-      {
-        targetTestId: "card-plan-summary",
-        title: "Weekly Summary",
-        description: "Track your progress and time commitment.",
-        placement: "bottom"
       }
     ]
   },

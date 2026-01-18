@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +98,7 @@ const SAMPLE_OPPORTUNITIES = [
 ];
 
 export default function CommunityPage() {
+  useTutorialStart("community", 1000);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<CommunityProfile | null>(getCommunityProfile());
   const opportunities = getCommunityOpportunities();

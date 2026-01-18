@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTutorialStart } from "@/contexts/tutorial-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -818,6 +819,7 @@ function WeeklyCalendarView() {
 }
 
 export default function MoodTrackerPage() {
+  useTutorialStart("mood-tracker", 1000);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useUserRole();
   
