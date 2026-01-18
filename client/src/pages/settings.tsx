@@ -28,14 +28,15 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useTutorialStart } from "@/contexts/tutorial-context";
+import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
 
 const MENU_TUTORIAL_KEY = "fts:menuTutorialDone";
 const MENU_TUTORIAL_STEP_KEY = "fts:menuTutorialStep";
 
 export function SettingsPage() {
-  useTutorialStart("profile", 1000);
+  useTutorialStart("settings", 1000);
+  const { resetAllTutorials } = useTutorial();
   const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
@@ -51,6 +52,16 @@ export function SettingsPage() {
       description: "Open the menu to start the tour",
     });
     setLocation("/chat");
+  };
+  
+  const handleResetAllTutorials = () => {
+    resetAllTutorials();
+    localStorage.removeItem(MENU_TUTORIAL_KEY);
+    localStorage.removeItem(MENU_TUTORIAL_STEP_KEY);
+    toast({
+      title: "All tutorials reset",
+      description: "You'll see tutorials again as you visit each screen",
+    });
   };
   
   return (
@@ -193,6 +204,41 @@ export function SettingsPage() {
             <div className="flex items-center justify-between">
               <Label>Theme</Label>
               <ThemeToggle />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <HelpCircle className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">App Tours</CardTitle>
+                <CardDescription>Learn how to use each feature</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Replay tutorials to learn how each screen works.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline"
+                onClick={handleReplayMenuTour}
+                data-testid="button-replay-tour"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Replay Menu Tour
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleResetAllTutorials}
+                data-testid="button-reset-all-tutorials"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset All Tutorials
+              </Button>
             </div>
           </CardContent>
         </Card>

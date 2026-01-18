@@ -293,6 +293,194 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
         placement: "top"
       }
     ]
+  },
+  today: {
+    pageId: "today",
+    pageName: "Today",
+    welcomeMessage: "Your daily check-in hub. Start here each day.",
+    steps: [
+      {
+        targetTestId: "card-quick-check",
+        title: "Quick Check",
+        description: "A fast way to set your intention for the day. Pick what feels right.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "card-energy-selector",
+        title: "Energy Level",
+        description: "Let the app know how you're feeling so suggestions match your capacity.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "section-today-actions",
+        title: "Today's Actions",
+        description: "Small, doable things that move you forward. No pressure.",
+        placement: "top"
+      }
+    ]
+  },
+  home: {
+    pageId: "home",
+    pageName: "Home",
+    welcomeMessage: "Your personal wellness dashboard.",
+    steps: [
+      {
+        targetTestId: "card-system-snapshot",
+        title: "System Snapshot",
+        description: "A quick view of your current energy and available time.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "card-ai-recommendation",
+        title: "AI Recommendation",
+        description: "A personalized suggestion based on how you're doing right now.",
+        placement: "top"
+      },
+      {
+        targetTestId: "section-weekly-summary",
+        title: "Weekly Summary",
+        description: "See your progress at a glance. Celebrate small wins.",
+        placement: "top"
+      }
+    ]
+  },
+  switchboard: {
+    pageId: "switchboard",
+    pageName: "Life Switchboard",
+    welcomeMessage: "8 dimensions of your life. Train each one over time.",
+    steps: [
+      {
+        targetTestId: "switch-card-body",
+        title: "Body Switch",
+        description: "Physical health, movement, and how your body feels.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "switch-card-mind",
+        title: "Mind Switch",
+        description: "Mental clarity, focus, and emotional balance.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "button-start-intake",
+        title: "Start Assessment",
+        description: "Take a quick assessment to set your initial switch statuses.",
+        placement: "top"
+      }
+    ]
+  },
+  plan: {
+    pageId: "plan",
+    pageName: "Weekly Plan",
+    welcomeMessage: "Your training plan for the week.",
+    steps: [
+      {
+        targetTestId: "section-plan-items",
+        title: "Plan Items",
+        description: "Actions grouped by life dimension. Start small.",
+        placement: "top"
+      },
+      {
+        targetTestId: "button-add-action",
+        title: "Add Action",
+        description: "Build your plan by adding doable actions.",
+        placement: "left"
+      },
+      {
+        targetTestId: "card-plan-summary",
+        title: "Weekly Summary",
+        description: "Track your progress and time commitment.",
+        placement: "bottom"
+      }
+    ]
+  },
+  "shopping-list": {
+    pageId: "shopping-list",
+    pageName: "Shopping List",
+    welcomeMessage: "Keep track of what you need.",
+    steps: [
+      {
+        targetTestId: "button-create-list",
+        title: "Create List",
+        description: "Start a new shopping list for your next trip.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "section-lists",
+        title: "Your Lists",
+        description: "All your shopping lists in one place. Check items off as you go.",
+        placement: "top"
+      }
+    ]
+  },
+  "mood-tracker": {
+    pageId: "mood-tracker",
+    pageName: "Mood Tracker",
+    welcomeMessage: "Check in with yourself throughout the day.",
+    steps: [
+      {
+        targetTestId: "section-mood-checkin",
+        title: "Mood Check-in",
+        description: "How are you feeling right now? Pick a word that fits.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "section-daily-synopsis",
+        title: "Daily Synopsis",
+        description: "See your mood journey through the day.",
+        placement: "top"
+      },
+      {
+        targetTestId: "section-weekly-calendar",
+        title: "Weekly View",
+        description: "Notice patterns in your mood over time.",
+        placement: "top"
+      }
+    ]
+  },
+  community: {
+    pageId: "community",
+    pageName: "Community",
+    welcomeMessage: "Connect with others on the same journey.",
+    steps: [
+      {
+        targetTestId: "tab-groups",
+        title: "Groups",
+        description: "Join wellness communities that resonate with you.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "tab-feed",
+        title: "Feed",
+        description: "See what others are sharing and learning.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "tab-local",
+        title: "Local Resources",
+        description: "Find gyms, therapists, and healthy spots near you.",
+        placement: "bottom"
+      }
+    ]
+  },
+  settings: {
+    pageId: "settings",
+    pageName: "Settings",
+    welcomeMessage: "Customize your experience.",
+    steps: [
+      {
+        targetTestId: "button-edit-quick-setup",
+        title: "Quick Setup",
+        description: "Edit your schedule, focus area, and preferences.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "button-replay-tour",
+        title: "Replay Tours",
+        description: "Watch any tutorial again whenever you need a refresher.",
+        placement: "top"
+      }
+    ]
   }
 };
 
