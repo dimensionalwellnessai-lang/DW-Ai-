@@ -1,0 +1,236 @@
+Absolutely. Here’s the same plan, but organized so you first understand what’s happening, then you get one big spec you can paste into Replit AI Agent.
+
+⸻
+
+What’s happening right now (in your app)
+
+Problem 1 — DW chat is getting “seeded” even when you skip setup
+
+Why you see a populated chat:
+Some code is auto-creating “starter messages” (or a “DW first message”) as soon as the app loads — even if the user skipped onboarding.
+
+What you want instead:
+	•	If user skips setup → DW chat stays empty
+	•	DW only starts with messages when the user chooses to start (or finishes setup)
+
+⸻
+
+Problem 2 — Menu is under the iPhone status bar (time/battery)
+
+Why it happens:
+Your menu container isn’t respecting iOS safe-area padding. In simulator/fullscreen it can slide behind the notch/status bar.
+
+What you want instead:
+Menu and top UI should always sit below the status bar.
+
+⸻
+
+Problem 3 — Returning user opens Today instead of DW chat
+
+Why it happens:
+Your “first screen routing” logic is currently always sending users to Today (or it’s not detecting “returning user”).
+
+What you want instead:
+	•	First-time user → Today
+	•	Returning user → DW Chat
+	•	But: if they skipped setup, they should NOT be treated as “returning”.
+
+⸻
+
+Problem 4 — You want a “Menu tutorial”
+
+Why you don’t see it:
+There’s no guided overlay/tutorial tied to menu open events.
+
+What you want instead:
+First time someone opens the menu, a guided tutorial highlights each menu item and forces them to tap “More” to reveal everything, with explanations.
+
+⸻
+
+Problem 5 — Replit → GitHub does NOT auto-update Xcode
+
+Reality check (important):
+Even if Replit pushes to GitHub, your Xcode app won’t auto-update.
+You still need to:
+	•	pull the repo on your Mac (git pull)
+	•	rebuild (npm run build)
+	•	sync (npx cap sync ios)
+	•	run in Xcode
+
+(Unless you’re using live reload, but even then you still need the new code locally.)
+
+⸻
+
+BIG COMBINED SPEC (paste into Replit AI Agent)
+
+Title
+
+DW App: Fix First Run vs Returning Flow, Empty Chat Rules, Safe Area Menu, and Menu Tutorial
+
+Goals
+	1.	First-time user lands on Today (Choice B).
+	2.	Returning user lands on DW Chat.
+	3.	If user skips setup, DW chat must remain empty (no seeded messages).
+	4.	Add a Menu Tutorial that runs on first menu open and explains each option + forces “More”.
+	5.	Fix Safe Area so menu/top UI never sits behind iOS status bar.
+	6.	Clarify dev workflow: Replit→GitHub does not auto-update Xcode.
+
+⸻
+
+Definitions / Key Flags
+
+“First-time user”
+	•	No completion flag set
+	•	No activation flag set
+
+“Returning user”
+	•	profileSetup.completedAt exists OR fts:activatedAt exists OR fts:isReturning === "1"
+
+“Skipped setup”
+	•	User exits setup without completing
+	•	Must NOT set returning flags
+	•	Must NOT seed DW chat
+
+⸻
+
+Data / Storage Keys
+
+LocalStorage Keys
+	•	fts:isReturning = “1” (set ONLY after setup completion)
+	•	fts:dwSeeded = “1” (set ONLY after chat seeding happens)
+	•	fts:menuTutorialDone = “1”
+	•	fts:menuTutorialStep = number (optional resume)
+	•	existing: fts:activatedAt (already in use per your analytics spec)
+
+Guest profile setup fields (already in guest-storage)
+	•	profileSetup.completedAt
+	•	profileSetup.metDW (true only when they actually complete “meet DW”)
+
+⸻
+
+Feature A — Empty DW Chat When Setup Is Skipped
+
+Requirements
+	•	If user skipped setup OR has not completed setup:
+	•	DW chat should show an empty state (no bot bubbles)
+	•	No “starter messages”
+	•	No “DW first message”
+	•	DW chat can seed messages only when:
+	•	setup is completed (completedAt != null) AND
+	•	user met DW (metDW === true) AND
+	•	fts:dwSeeded not yet set
+
+Implementation Steps
+	1.	Find where chat is seeded (search project for):
+	•	starterMessages
+	•	DW_FIRST_MESSAGE_SHOWN
+	•	seed
+	•	createInitialMessages
+	•	defaultMessages
+	•	welcome.tsx completion handlers
+	2.	Add a gate:
+	•	if setup incomplete OR skipped → do nothing
+	3.	Add fts:dwSeeded so seeding happens once.
+
+Acceptance Tests
+	•	Clear storage (reset)
+	•	Launch app → go through onboarding → skip schedule → open chat → should be empty
+	•	Complete setup normally → open chat → first message may appear once
+	•	Relaunch → chat stays as-is (no reseeding)
+
+⸻
+
+Feature B — First Screen Routing Rules (First-time vs Returning)
+
+Requirements
+	•	On app startup:
+	•	If returning user → route to /chat
+	•	Else → route to Today/home screen
+
+Implementation Steps
+	1.	Locate initial routing logic (likely router entry or splash logic)
+	2.	Compute isReturning using:
+	•	profileSetup.completedAt != null OR fts:activatedAt OR fts:isReturning
+	3.	Only set fts:isReturning=1 when setup is completed (NOT when skipped)
+
+Acceptance Tests
+	•	Fresh user: opens Today
+	•	Complete setup: next cold launch opens DW chat
+	•	Skip setup: next launch still opens Today
+
+⸻
+
+Feature C — Menu Tutorial (in-menu guided walkthrough)
+
+Requirements
+	•	On first menu open, show tutorial overlay
+	•	Tutorial highlights each menu option with:
+	•	title + 1–2 line description (DW tone)
+	•	“Next” button
+	•	One step requires user to tap “More”
+	•	tutorial should not advance until moreExpanded === true
+	•	Store completion flag: fts:menuTutorialDone=1
+
+Tutorial Steps (minimum)
+	1.	Today — “Your dashboard. Quick check-in + what matters now.”
+	2.	DW Chat — “Talk to DW for clarity, comfort, or a plan.”
+	3.	Plans — “Turn chaos into blocks. Build your week.”
+	4.	Journal — “Track resets + reflections.”
+	5.	Browse — “Tools, learning, community.”
+	6.	More — “Tap More to unlock everything.” (must tap)
+	7.	Settings — “Your rules, your profile, your reset button.”
+
+Acceptance Tests
+	•	First menu open: tutorial appears
+	•	Tap Next advances steps
+	•	“More” step blocks until More is tapped
+	•	Once completed: never shows again unless reset
+
+⸻
+
+Feature D — Safe Area Fix (menu + top UI not under status bar)
+
+Requirements
+	•	Menu drawer and header must respect iOS safe area
+	•	No UI behind time/battery/notch in simulator/fullscreen
+
+Implementation Steps (Web inside Capacitor)
+	•	Add CSS safe-area padding on main layout and menu container:
+	•	padding-top: env(safe-area-inset-top);
+	•	padding-bottom: env(safe-area-inset-bottom);
+	•	Ensure any fixed header also uses safe-area top padding
+	•	Test on iPhone simulator with notch
+
+Acceptance Tests
+	•	Open menu: top content visible below status bar
+	•	No overlap when scrolling
+
+⸻
+
+Feature E — Dev Workflow Note (Replit → GitHub → Xcode)
+
+Requirements
+	•	Add a short internal dev note in docs or replit.md:
+	•	Replit push → GitHub does not auto-update Xcode
+	•	Mac needs: git pull → npm install → npm run build → npx cap sync ios → run in Xcode
+
+⸻
+
+Deliverables
+	•	Code changes implementing A–D
+	•	Updated docs/dev note for E
+	•	Tests: provide click-by-click verification list
+
+⸻
+
+“Done” Checklist
+	•	Skipping setup = empty DW chat
+	•	Returning user opens DW chat; first-time opens Today
+	•	Safe area fixed (menu not behind notch)
+	•	Menu tutorial runs once; forces “More”
+	•	No chat reseeding (fts:dwSeeded works)
+	•	Documentation updated for update workflow
+
+⸻
+
+If you want, I can also write the exact menu item descriptions in your voice (short, punchy) + the empty chat screen copy.

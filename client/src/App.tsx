@@ -77,17 +77,58 @@ function isProfileSetupComplete(): boolean {
   return false;
 }
 
+function isReturningUser(): boolean {
+  try {
+    // First check if setup was skipped - skipped users are NOT returning
+    const data = localStorage.getItem("fts_guest_data");
+    if (data) {
+      const parsed = JSON.parse(data);
+      const profile = parsed.profileSetup;
+      // If skipped, never treat as returning
+      if (profile?.skipped) return false;
+      // If completed (not skipped), treat as returning
+      if (profile?.completedAt) return true;
+    }
+    
+    // Check explicit returning flag (set on setup completion)
+    if (localStorage.getItem("fts:isReturning") === "1") return true;
+    
+    // Check if activated (took a meaningful action)
+    if (localStorage.getItem("fts:activatedAt")) return true;
+  } catch {}
+  return false;
+}
+
+function wasSetupSkipped(): boolean {
+  try {
+    const data = localStorage.getItem("fts_guest_data");
+    if (data) {
+      const parsed = JSON.parse(data);
+      return !!parsed.profileSetup?.skipped;
+    }
+  } catch {}
+  return false;
+}
+
 function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const setupComplete = isProfileSetupComplete();
+  const returning = isReturningUser();
   
+  // Not setup complete and not on welcome page -> go to welcome
   if (!setupComplete && location !== "/welcome") {
     return <Redirect to="/welcome" />;
   }
   
+  // Setup complete, on welcome -> redirect based on returning status
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/" />;
+    // Returning users go to DW chat, first-timers go to Today
+    return <Redirect to={returning ? "/chat" : "/"} />;
   }
+  
+  // Initial launch routing: if on root "/" and this is app startup
+  // returning users should see chat, first-time see today
+  // (handled by route definition - "/" is TodayHubPage)
   
   return <>{children}</>;
 }
@@ -160,6 +201,33 @@ function Router() {
 
 const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/reset-password", "/app-tour"];
 
+function InitialRouteHandler({ children }: { children: React.ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const [hasHandledInitial, setHasHandledInitial] = useState(false);
+  
+  useEffect(() => {
+    if (hasHandledInitial) return;
+    
+    // Only handle initial routing on root path
+    if (location !== "/") {
+      setHasHandledInitial(true);
+      return;
+    }
+    
+    const setupComplete = isProfileSetupComplete();
+    const returning = isReturningUser();
+    
+    // If setup complete and returning user, redirect to chat
+    if (setupComplete && returning) {
+      setLocation("/chat");
+    }
+    
+    setHasHandledInitial(true);
+  }, [location, hasHandledInitial, setLocation]);
+  
+  return <>{children}</>;
+}
+
 function AppContent() {
   const [location] = useLocation();
   const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
@@ -172,7 +240,9 @@ function AppContent() {
       <SyncTray />
       <div className={showBottomNav ? "pb-20" : ""}>
         <FirstRunGuard>
-          <Router />
+          <InitialRouteHandler>
+            <Router />
+          </InitialRouteHandler>
         </FirstRunGuard>
       </div>
       {showBottomNav && <BottomNav />}

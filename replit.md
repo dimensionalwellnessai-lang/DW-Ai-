@@ -56,3 +56,22 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
 *   **Email**: Resend via Replit connector (default sender: `Flip the Switch <no-reply@resend.dev>`).
 *   **Web Search**: Perplexity API (`PERPLEXITY_API_KEY`) for Local Resources search feature. Optional - falls back to mock data.
 *   **Third-Party Libraries**: `shadcn/ui`, `react-hook-form` (with `@hookform/resolvers` and Zod), `date-fns`, `Recharts`.
+*   **Mobile Build**: Capacitor for iOS/Android builds, configured with `capacitor.config.ts`. Codemagic CI/CD for automated builds.
+
+## Development Workflow
+
+### Replit → GitHub → Xcode Update Process
+Replit pushes to GitHub but this does NOT auto-update your local Xcode project. To update:
+1. On your Mac: `git pull`
+2. Install dependencies: `npm install`
+3. Build the web app: `npm run build`
+4. Sync Capacitor: `npx cap sync ios`
+5. Open in Xcode: `npx cap open ios`
+6. Run/build in Xcode
+
+### Key LocalStorage Keys
+- `fts:isReturning` - "1" when user is a returning user (setup completed, not skipped)
+- `fts:activatedAt` - Timestamp when user first activated (took a meaningful action)
+- `fts:dwSeeded` - "1" when DW chat has been seeded with welcome message
+- `fts:menuTutorialDone` - "1" when menu tutorial has been completed
+- `fts_guest_data` - Main guest data store with profileSetup, conversations, etc.

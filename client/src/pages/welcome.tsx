@@ -216,6 +216,9 @@ export default function Welcome() {
       completedAt: Date.now(),
       metDW: false,
     });
+    
+    // Mark as returning user (setup completed, not skipped)
+    localStorage.setItem("fts:isReturning", "1");
 
     trackEvent(EVENTS.STARTER_OBJECT_CREATED, {
       focusArea,
@@ -244,6 +247,9 @@ export default function Welcome() {
 
   const handleSkipStarter = () => {
     saveProfileSetup({ completedAt: Date.now(), metDW: false });
+    
+    // Mark as returning user (setup completed, not skipped all)
+    localStorage.setItem("fts:isReturning", "1");
 
     const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
     trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {

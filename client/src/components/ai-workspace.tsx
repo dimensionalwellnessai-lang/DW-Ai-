@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
+import { MenuTutorial, shouldShowMenuTutorial } from "@/components/menu-tutorial";
 import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
@@ -155,6 +156,15 @@ export function AIWorkspace() {
   useTutorialStart("chat", 1500);
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreExpanded, setMoreExpanded] = useState(false);
+  const [showMenuTutorial, setShowMenuTutorial] = useState(false);
+  
+  // Start menu tutorial on first menu open
+  useEffect(() => {
+    if (menuOpen && shouldShowMenuTutorial() && !showMenuTutorial) {
+      setShowMenuTutorial(true);
+    }
+  }, [menuOpen, showMenuTutorial]);
   
   // Auto-open menu when navigation tutorial requires it
   useEffect(() => {
@@ -1100,7 +1110,7 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-16">
-      <header className="flex items-center justify-between p-3 border-b dark:border-white/5 glass-subtle">
+      <header className="flex items-center justify-between p-3 border-b dark:border-white/5 glass-subtle safe-area-top">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -1233,8 +1243,12 @@ export function AIWorkspace() {
             );
           })}
           
-          <details className="group">
-            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
+          <details 
+            className="group" 
+            onToggle={(e) => setMoreExpanded((e.target as HTMLDetailsElement).open)}
+            data-testid="menu-more-details"
+          >
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-more-toggle">
               <LayoutGrid className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm flex-1">More</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -1301,6 +1315,14 @@ export function AIWorkspace() {
             </Link>
           )}
         </div>
+        
+        {showMenuTutorial && (
+          <MenuTutorial 
+            isMenuOpen={menuOpen}
+            moreExpanded={moreExpanded}
+            onComplete={() => setShowMenuTutorial(false)}
+          />
+        )}
       </SwipeableDrawer>
 
       <SwipeableDrawer 

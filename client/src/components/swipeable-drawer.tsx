@@ -99,7 +99,7 @@ export function SwipeableDrawer({
     >
       <div 
         ref={drawerRef}
-        className={`absolute left-0 top-0 h-full ${width} bg-background glass-strong dark:border-r-white/10 border-r p-4 flex flex-col touch-pan-y ${
+        className={`absolute left-0 top-0 h-full ${width} bg-background glass-strong dark:border-r-white/10 border-r p-4 flex flex-col touch-pan-y safe-area-top ${
           isDragging ? "" : "transition-transform duration-200"
         }`}
         style={{ transform: `translateX(${translateX}px)` }}
