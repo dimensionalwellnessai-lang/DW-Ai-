@@ -376,7 +376,7 @@
   }
 
   .safe-area-top {
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: max(env(safe-area-inset-top, 0px), 12px);
   }
 
   .safe-area-all {

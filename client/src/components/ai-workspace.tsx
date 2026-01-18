@@ -1110,7 +1110,7 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-16">
-      <header className="flex items-center justify-between p-3 border-b dark:border-white/5 glass-subtle safe-area-top">
+      <header className="flex items-center justify-between px-3 pb-3 border-b dark:border-white/5 glass-subtle safe-area-top">
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
