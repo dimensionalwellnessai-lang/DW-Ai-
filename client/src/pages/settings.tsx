@@ -24,9 +24,15 @@ import {
   ChevronRight,
   Settings2,
   Bug,
+  RotateCcw,
+  HelpCircle,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { useToast } from "@/hooks/use-toast";
+
+const MENU_TUTORIAL_KEY = "fts:menuTutorialDone";
+const MENU_TUTORIAL_STEP_KEY = "fts:menuTutorialStep";
 
 export function SettingsPage() {
   useTutorialStart("profile", 1000);
@@ -34,6 +40,18 @@ export function SettingsPage() {
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  
+  const handleReplayMenuTour = () => {
+    localStorage.removeItem(MENU_TUTORIAL_KEY);
+    localStorage.removeItem(MENU_TUTORIAL_STEP_KEY);
+    toast({
+      title: "Menu tour reset",
+      description: "Open the menu to start the tour",
+    });
+    setLocation("/chat");
+  };
   
   return (
     <div className="min-h-screen bg-background">

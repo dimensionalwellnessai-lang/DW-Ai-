@@ -1,0 +1,307 @@
+Perfect — here’s the BIG SPEC (copy/paste-ready) combining everything, organized in the exact order you’re working.
+
+⸻
+
+DW-AI BIG SPEC (Onboarding + DW Chat + Menu Tutorial + Safe Area + Git Workflow)
+
+Goals
+	1.	First-time user who skips setup must see EMPTY DW chat (no seeded messages).
+	2.	Menu tutorial appears inside the menu and walks through options (including “More”).
+	3.	Returning user should open to DW chat (not Today) when that rule is enabled.
+	4.	App UI must respect iOS safe area so time/battery never overlaps the menu/header.
+
+⸻
+
+1) DW Chat must be EMPTY if user skips setup
+
+Definitions (local storage keys)
+	•	onboardingCompleted: "true" | "false"
+	•	dwChatStarted: "true" | "false"
+	•	dwMessages: JSON array (or whatever your messages store is)
+
+Default state (first install)
+
+On first launch, if keys don’t exist:
+	•	onboardingCompleted = "false"
+	•	dwChatStarted = "false"
+	•	dwMessages = []
+
+DW Chat display rules
+
+When DW screen loads:
+
+Rule A — show empty state (no thread)
+
+Show EmptyChatState UI if ANY of the following is true:
+	•	onboardingCompleted !== "true" AND dwChatStarted !== "true"
+	•	messages length is 0 AND dwChatStarted !== "true"
+
+Meaning: No onboarding + no explicit chat start = empty chat.
+
+Rule B — show real chat thread
+
+Show ChatThread only if:
+	•	dwChatStarted === "true" OR messages length > 0
+
+When DW chat becomes “started”
+
+Set dwChatStarted="true" only when user does one of these:
+	•	taps a quick action (“Help me tonight”, “Build my week”, etc.)
+	•	sends their first message
+	•	completes onboarding AND you choose to auto-send a message (optional — but if they skip onboarding, you do NOT do this)
+
+Implementation snippet (logic)
+
+const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
+const dwChatStarted = localStorage.getItem("dwChatStarted") === "true";
+const messages = loadDwMessages(); // your function
+
+const showThread = dwChatStarted || messages.length > 0;
+
+if (!showThread) return <EmptyChatState />;
+return <ChatThread messages={messages} />;
+
+EmptyChatState requirements
+	•	Shows your “Hey. I’m here.” UI
+	•	Shows quick actions
+	•	DOES NOT render any message bubbles/history
+
+⸻
+
+2) Menu tutorial inside the menu (first time + optional replay)
+
+Definitions (local storage keys)
+	•	menuTutorialCompleted: "true" | "false"
+	•	menuTutorialStep: "0"..."N"
+
+When it appears
+	•	On first open of menu:
+	•	if menuTutorialCompleted !== "true" → show tutorial
+
+Tutorial format (in-menu)
+	•	Tutorial is a card pinned at top of menu
+	•	Has:
+	•	Title: “Quick tour”
+	•	Step text
+	•	Buttons: Back (if step>0), Next, Done
+	•	Optional: “Skip tour” small link
+
+Step list (recommended)
+	0.	Welcome: “This menu is your control panel.”
+	1.	Today: “Today is your day plan + schedule.”
+	2.	DW Chat: “DW is your coach — plan, reflect, reset.”
+	3.	Plan: “Build routines, weeks, projects.”
+	4.	Journal: “Track thoughts + progress.”
+	5.	More: “Tap ‘More’ to see all tools.”  ✅ This step requires user action
+	6.	Profile: “Your settings + preferences.”
+	7.	Done: “You can replay this tour anytime in Settings.”
+
+Mandatory interaction step
+
+At step 5 (“More”):
+	•	tutorial should wait until user taps More
+	•	then auto-advance to step 6
+
+Completion
+
+When done:
+	•	menuTutorialCompleted="true"
+	•	menuTutorialStep="0" (or remove)
+
+Optional replay
+
+Add a button in Profile/Settings:
+	•	“Replay menu tour”
+	•	sets:
+	•	menuTutorialCompleted="false"
+	•	menuTutorialStep="0"
+
+⸻
+
+3) Returning user opens on DW chat (not Today)
+
+Definitions (local storage keys)
+
+Pick ONE strategy:
+
+Strategy A (best): Remember last tab
+	•	lastActiveTab: "today" | "dw" | "plan" | "journal" | "profile"
+
+On every tab change:
+
+localStorage.setItem("lastActiveTab", tabId);
+
+On app start:
+
+const startTab = localStorage.getItem("lastActiveTab") || "today";
+navigate(`/${startTab}`);
+
+Strategy B (your requirement): Always open to DW for returning users
+	•	launchPreference: "dw" | "today" | "last"
+
+On app start:
+
+const onboardingCompleted = localStorage.getItem("onboardingCompleted")==="true";
+const pref = localStorage.getItem("launchPreference") || "dw";
+
+if (onboardingCompleted && pref === "dw") navigate("/dw");
+else navigate("/today");
+
+✅ Choose B if you want “returning always lands on DW chat.”
+
+⸻
+
+4) Safe Area fix (time/battery not obstructed)
+
+Required changes
+
+A) Add viewport-fit
+
+In index.html:
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+B) Global safe-area padding
+
+In global CSS (app root wrapper):
+
+.app-root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+Make sure your app wrapper uses:
+
+<div class="app-root">...</div>
+
+C) Capacitor iOS inset
+
+In capacitor.config.ts:
+
+ios: {
+  contentInset: "automatic"
+}
+
+UI rule
+
+No header/menu content may start at top: 0 without safe area padding.
+Everything must live inside .app-root.
+
+⸻
+
+5) Git → Xcode workflow (your “what updates what?” question)
+
+Truth
+	•	Updating Replit does NOT automatically update Xcode unless your Mac pulls the latest repo.
+	•	Xcode runs what is on your Mac disk.
+
+Correct daily workflow (manual but fast)
+
+From your project root on Mac:
+
+git pull
+npm install
+npm run build
+npx cap sync ios
+
+Then run in Xcode again.
+
+⸻
+
+6) Make pulling/building automatic (one command)
+
+Option A: A simple “update” command in package.json (best)
+
+In package.json add:
+
+{
+  "scripts": {
+    "update:ios": "git pull && npm install && npm run build && npx cap sync ios"
+  }
+}
+
+Then run:
+
+npm run update:ios
+
+Option B: Shell script (fix your zsh /bin/bash error)
+
+You got zsh: event not found: /bin/bash because you typed #!/bin/bash directly into terminal.
+
+Correct approach:
+	1.	Create file:
+
+nano update.sh
+
+	2.	Paste this:
+
+#!/bin/bash
+set -e
+
+echo "Pulling latest code..."
+git pull
+
+echo "Installing deps..."
+npm install
+
+echo "Building web..."
+npm run build
+
+echo "Syncing iOS..."
+npx cap sync ios
+
+echo "Done. Open Xcode and Run."
+
+	3.	Save nano: CTRL+O, Enter, then CTRL+X
+	4.	Make executable:
+
+chmod +x update.sh
+
+	5.	Run it:
+
+./update.sh
+
+✅ That gives you “one command updates everything.”
+
+⸻
+
+7) Acceptance Tests (how you confirm it’s fixed)
+
+Test 1: First-time skip setup
+	•	Fresh install simulator (delete app)
+	•	open app
+	•	skip onboarding/setup
+	•	go to DW tab
+✅ Expected: empty chat UI, no bubbles/history
+
+Test 2: Start chat
+	•	tap “Help me with tonight”
+✅ Expected: first message appears, dwChatStarted=true
+
+Test 3: Menu tutorial
+	•	fresh install
+	•	open menu
+✅ Expected: tutorial card shows steps
+	•	at “More” step, tutorial waits until you tap More
+✅ Expected: advances after tap
+
+Test 4: Returning user landing
+	•	set onboardingCompleted true
+	•	kill app
+	•	reopen app
+✅ Expected: opens to DW (if using Strategy B) or last tab (Strategy A)
+
+Test 5: Safe area
+	•	check top UI near time/battery
+✅ Expected: no overlap, clean spacing
+
+⸻
+
+If you want, next I can do two things (you pick 1 or both):
+
+A) Give you the exact files to change + where to paste (based on your folder structure)
+B) Write the actual code snippets for your app’s stack (React / Capacitor / your router) so you can paste directly
+
+Reply with: A, B, or A+B.
