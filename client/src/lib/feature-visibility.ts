@@ -15,7 +15,7 @@ export interface FeatureConfig {
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Your wellness hub", enabled: true },
   { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true, group: "calendar" },
-  { id: "daily-schedule", name: "Today", path: "/daily-schedule", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
+  { id: "daily-schedule", name: "Today", path: "/today", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   { id: "meal-prep", name: "Meal Plans", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
   { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
   { id: "recovery", name: "Recovery", path: "/recovery", visibility: "primary", description: "Rest & restore", enabled: true },

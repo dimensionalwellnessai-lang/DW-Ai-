@@ -125,10 +125,7 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/" />;
   }
   
-  // Initial launch routing: if on root "/" and this is app startup
-  // returning users should see chat, first-time see today
-  // (handled by route definition - "/" is TodayHubPage)
-  
+  // App always launches to DW chat at "/" - route definition handles this
   return <>{children}</>;
 }
 
