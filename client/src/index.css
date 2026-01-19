@@ -8,6 +8,17 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Hide default details/summary disclosure marker */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+summary::marker {
+  display: none;
+}
+
 /* LIGHT MODE - Sleek Blue Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);

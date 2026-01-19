@@ -5,7 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BreathingPlayer } from "@/components/breathing-player";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
-import { MenuTutorial, shouldShowMenuTutorial } from "@/components/menu-tutorial";
 import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
@@ -157,14 +156,13 @@ export function AIWorkspace() {
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
-  const [showMenuTutorial, setShowMenuTutorial] = useState(false);
   
-  // Start menu tutorial on first menu open
+  // Start navigation tutorial on first menu open (spotlight bubble style)
   useEffect(() => {
-    if (menuOpen && shouldShowMenuTutorial() && !showMenuTutorial) {
-      setShowMenuTutorial(true);
+    if (menuOpen && !hasSeenNavigationTutorial() && !tutorialState.isActive) {
+      startNavigationTutorial();
     }
-  }, [menuOpen, showMenuTutorial]);
+  }, [menuOpen, hasSeenNavigationTutorial, tutorialState.isActive, startNavigationTutorial]);
   
   // Auto-open menu when navigation tutorial requires it
   useEffect(() => {
@@ -1316,13 +1314,6 @@ export function AIWorkspace() {
           )}
         </div>
         
-        {showMenuTutorial && (
-          <MenuTutorial 
-            isMenuOpen={menuOpen}
-            moreExpanded={moreExpanded}
-            onComplete={() => setShowMenuTutorial(false)}
-          />
-        )}
       </SwipeableDrawer>
 
       <SwipeableDrawer 
