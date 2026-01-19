@@ -2,21 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Safe Area - Apply padding via :root for Capacitor */
+/* iOS Safe Area - Apply padding ONLY on body to avoid double spacing */
 :root {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Prevent content from ignoring safe areas */
-html, body {
+html {
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
 }
 
 #root {
@@ -402,8 +407,6 @@ summary::marker {
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    padding-top: var(--safe-top);
-    padding-bottom: var(--safe-bottom);
   }
 
   .safe-area-bottom {
