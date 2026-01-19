@@ -2,7 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Safe Area Variables */
+/* iOS Safe Area - Content starts below status bar */
+html, body {
+  margin: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: 100%;
+}
+
+/* iOS Safe Area Variables for component use */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);

@@ -1,0 +1,122 @@
+Got it. Here is a clean, copy-paste-ready SPEC you can give directly to the Replit Agent.
+No extra explanation. No back-and-forth. This is written for the agent to execute.
+
+⸻
+
+🔧 REPLIT AGENT TASK — FIX iOS SAFE AREA / STATUS BAR SPACING
+
+Goal
+
+Fix iOS app so content does NOT render under the status bar.
+The app must start below the system status bar (time, signal, Wi-Fi, battery).
+No edge-to-edge rendering.
+
+⸻
+
+1️⃣ Capacitor Config Fix
+
+File: capacitor.config.ts
+
+Set EXACTLY:
+
+import { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.reilbrown.fliptheswitch',
+  appName: 'DW-Ai',
+  webDir: 'dist/public',
+  ios: {
+    contentInset: 'always'
+  }
+};
+
+export default config;
+
+❗ Remove any viewport-fit=cover logic implied by config.
+
+⸻
+
+2️⃣ Viewport Fix (Critical)
+
+File: index.html
+
+REPLACE viewport meta with:
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1"
+/>
+
+❌ REMOVE viewport-fit=cover if present anywhere.
+
+⸻
+
+3️⃣ Global CSS Safe Area Padding
+
+File: client/src/index.css
+(or global CSS entry file)
+
+ADD:
+
+html, body {
+  margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  height: 100%;
+}
+
+This ensures content starts below the status bar.
+
+⸻
+
+4️⃣ Ensure No Edge-to-Edge Overrides
+
+Search entire codebase and REMOVE:
+	•	position: fixed headers touching top
+	•	top: 0 without safe-area padding
+	•	Any 100vh usage that ignores safe area
+
+If 100vh is used, replace with:
+
+min-height: calc(100vh - env(safe-area-inset-top));
+
+
+⸻
+
+5️⃣ Sync iOS Output
+
+After changes:
+
+npm run build
+npx cap sync ios
+
+Ensure generated iOS build respects safe area.
+
+⸻
+
+6️⃣ Acceptance Criteria (Must Pass)
+	•	Status bar visible
+	•	App content begins below status bar
+	•	No UI behind notch
+	•	No fake top spacing
+	•	Works on iPhone 16 Pro simulator
+
+⸻
+
+❌ Explicitly Do NOT
+	•	Do NOT use SwiftUI changes
+	•	Do NOT edit Xcode UI manually
+	•	Do NOT enable viewport-fit=cover
+	•	Do NOT force full-screen layouts
+
+⸻
+
+✅ END OF TASK
+
+You can paste everything above straight into the Replit Agent.
+If you want, next I can write:
+	•	a follow-up agent task to fix menu consistency
+	•	a separate agent task to fix the DW empty chat default screen
+	•	or a single master “App Flow Stabilization” agent spec
+
+Just tell me which one.
