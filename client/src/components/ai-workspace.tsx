@@ -1385,11 +1385,11 @@ export function AIWorkspace() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
-          <div className="max-w-2xl mx-auto py-4">
+          <div className="max-w-2xl mx-auto py-2">
             {/* D2 Return Nudge Card - shows once per day for non-activated users */}
             {showNudge && !shouldShowSpotlight && (
-              <Card className="mb-3 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
-                <CardContent className="p-3 space-y-2">
+              <Card className="mb-2 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
+                <CardContent className="p-2.5 space-y-1.5">
                   <div className="flex flex-col gap-2">
                     <div>
                       <h3 className="font-medium text-sm" data-testid="text-nudge-title">
@@ -1430,8 +1430,8 @@ export function AIWorkspace() {
             
             {/* Weekly Recap Card - once per week for activated users */}
             {showWeeklyRecap && userActivated && !showNudge && !shouldShowSpotlight && (
-              <Card className="mb-3 border-primary/20 bg-primary/5" data-testid="card-weekly-recap">
-                <CardContent className="p-3 space-y-2">
+              <Card className="mb-2 border-primary/20 bg-primary/5" data-testid="card-weekly-recap">
+                <CardContent className="p-2.5 space-y-1.5">
                   <div className="flex flex-col gap-2">
                     <div>
                       <h3 className="font-medium text-sm" data-testid="text-recap-title">
@@ -1472,8 +1472,8 @@ export function AIWorkspace() {
             
             {/* Next Best Step Card - once per day for activated users */}
             {showNextStep && userActivated && nextStepSuggestion && !showWeeklyRecap && !showNudge && !shouldShowSpotlight && (
-              <Card className="mb-3 border-muted bg-muted/30" data-testid="card-next-step">
-                <CardContent className="p-3">
+              <Card className="mb-2 border-muted bg-muted/30" data-testid="card-next-step">
+                <CardContent className="p-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Today's suggestion</p>
@@ -1508,8 +1508,8 @@ export function AIWorkspace() {
               if (!focusArea) return null;
               
               return (
-                <Card className="mb-3 border-primary/20 bg-primary/5" data-testid="card-starter-spotlight">
-                  <CardContent className="p-3 space-y-2">
+                <Card className="mb-2 border-primary/20 bg-primary/5" data-testid="card-starter-spotlight">
+                  <CardContent className="p-2.5 space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-sm" data-testid="text-spotlight-title">
@@ -1543,9 +1543,9 @@ export function AIWorkspace() {
             })()}
             
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[40vh] space-y-6">
-                <div className="text-center space-y-2">
-                  <h1 className="text-2xl font-display font-semibold" data-testid="text-greeting">
+              <div className="flex flex-col items-center justify-center space-y-4 pt-2">
+                <div className="text-center space-y-1">
+                  <h1 className="text-xl font-display font-semibold" data-testid="text-greeting">
                     {greeting}
                   </h1>
                   <p className="text-muted-foreground text-sm">
@@ -1559,7 +1559,7 @@ export function AIWorkspace() {
                       <button
                         key={action.id}
                         onClick={() => handleFirstTimeAction(action.action)}
-                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
+                        className="flex flex-col items-center gap-1 p-2.5 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
                         data-testid={`button-action-${action.id}`}
                       >
                         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -1570,13 +1570,13 @@ export function AIWorkspace() {
                 </div>
                 <button
                   onClick={() => handleFirstTimeAction("lifesystem")}
-                  className="w-full max-w-xs px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                  className="w-full max-w-xs px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
                   data-testid="button-action-lifesystem"
                 >
                   <LayoutGrid className="h-4 w-4" />
                   Build my life system
                 </button>
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-1.5">
                   <button
                     onClick={() => setHistoryOpen(true)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
