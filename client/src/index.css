@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS Safe Area Variables */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* LIGHT MODE - Sleek Blue Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
@@ -369,6 +375,8 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
   }
 
   .safe-area-bottom {
