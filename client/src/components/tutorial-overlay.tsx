@@ -84,12 +84,19 @@ export function TutorialOverlay() {
         const elementCenterY = rect.top + rect.height / 2;
         const screenMidpoint = window.innerHeight / 2;
         
+        // Calculate actual tooltip height (estimate or measure)
+        const actualTooltipHeight = tooltipRef.current?.offsetHeight || tooltipHeight;
+        const safeBottomMargin = 100; // Account for bottom nav and safe area
+        
         if (elementCenterY > screenMidpoint) {
           // Element is in bottom half - show tooltip at top
           tooltipTop = 80; // Below header
         } else {
-          // Element is in top half - show tooltip at bottom
-          tooltipTop = window.innerHeight - tooltipHeight - 24;
+          // Element is in top half - show tooltip above bottom nav
+          tooltipTop = Math.min(
+            window.innerHeight - actualTooltipHeight - safeBottomMargin,
+            window.innerHeight * 0.5 // Never go below middle of screen
+          );
         }
         tooltipLeft = 16;
       } else {

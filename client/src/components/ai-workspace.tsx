@@ -158,9 +158,13 @@ export function AIWorkspace() {
   const [moreExpanded, setMoreExpanded] = useState(false);
   
   // Start navigation tutorial on first menu open (spotlight bubble style)
+  // Close menu first so the first tutorial step (open menu) works correctly
   useEffect(() => {
     if (menuOpen && !hasSeenNavigationTutorial() && !tutorialState.isActive) {
-      startNavigationTutorial();
+      setMenuOpen(false);
+      setTimeout(() => {
+        startNavigationTutorial();
+      }, 300);
     }
   }, [menuOpen, hasSeenNavigationTutorial, tutorialState.isActive, startNavigationTutorial]);
   
