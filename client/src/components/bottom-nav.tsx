@@ -21,10 +21,11 @@ export function BottomNav() {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-xl safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-xl"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       data-testid="nav-bottom"
     >
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+      <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           const isActive = location === item.path || 
             (item.path !== "/" && location.startsWith(item.path));
