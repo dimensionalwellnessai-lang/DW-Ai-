@@ -184,6 +184,13 @@ export function TutorialOverlay() {
   const currentStepNum = state.currentStepIndex + 1;
   const isFirstStep = state.currentStepIndex === 0;
   const isLastStep = state.currentStepIndex === totalSteps - 1;
+  
+  const stepRequiresAction = currentStep.requiresAction === true;
+  const actionHint = stepRequiresAction 
+    ? currentStep.actionType === "open-menu" 
+      ? "Tap the highlighted element to continue"
+      : "Complete the action to continue"
+    : null;
 
   const overlayContent = (
     <div 
@@ -288,9 +295,16 @@ export function TutorialOverlay() {
             </Button>
           </div>
 
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-muted-foreground mb-3">
             {currentStep.description}
           </p>
+          
+          {actionHint && (
+            <p className="text-xs text-primary font-medium mb-3 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              {actionHint}
+            </p>
+          )}
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">
@@ -312,6 +326,7 @@ export function TutorialOverlay() {
               <Button
                 size="sm"
                 onClick={nextStep}
+                disabled={stepRequiresAction}
                 data-testid="button-next-step"
               >
                 {isLastStep ? "Done" : "Next"}

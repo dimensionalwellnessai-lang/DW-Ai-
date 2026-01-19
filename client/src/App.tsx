@@ -120,10 +120,9 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> redirect based on returning status
+  // Setup complete, on welcome -> go to DW chat
   if (setupComplete && location === "/welcome") {
-    // Returning users go to DW chat, first-timers go to Today
-    return <Redirect to={returning ? "/chat" : "/"} />;
+    return <Redirect to="/" />;
   }
   
   // Initial launch routing: if on root "/" and this is app startup
@@ -136,8 +135,9 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={TodayHubPage} />
+      <Route path="/" component={AIWorkspace} />
       <Route path="/chat" component={AIWorkspace} />
+      <Route path="/today" component={TodayHubPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/welcome" component={WelcomePage} />
@@ -202,29 +202,7 @@ function Router() {
 const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/reset-password", "/app-tour"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
-  const [hasHandledInitial, setHasHandledInitial] = useState(false);
-  
-  useEffect(() => {
-    if (hasHandledInitial) return;
-    
-    // Only handle initial routing on root path
-    if (location !== "/") {
-      setHasHandledInitial(true);
-      return;
-    }
-    
-    const setupComplete = isProfileSetupComplete();
-    const returning = isReturningUser();
-    
-    // If setup complete and returning user, redirect to chat
-    if (setupComplete && returning) {
-      setLocation("/chat");
-    }
-    
-    setHasHandledInitial(true);
-  }, [location, hasHandledInitial, setLocation]);
-  
+  // App now always launches to DW chat at "/" - no special routing needed
   return <>{children}</>;
 }
 

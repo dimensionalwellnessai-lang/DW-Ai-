@@ -475,29 +475,33 @@ export default function TodayHubPage() {
         )}
 
         <section className="grid grid-cols-3 gap-3" data-testid="section-vitals">
-          <Card className="hover-elevate" data-testid="card-energy">
-            <CardContent className="p-3 text-center">
-              <div className={`w-10 h-10 rounded-full mx-auto flex items-center justify-center ${getEnergyBgColor(energyLevel)}`}>
-                <Zap className={`h-5 w-5 ${getEnergyColor(energyLevel)}`} />
-              </div>
-              <p className={`text-lg font-bold mt-2 ${getEnergyColor(energyLevel)}`}>
-                {energyLevel !== null ? energyLevel : "--"}
-              </p>
-              <p className="text-xs text-muted-foreground">Energy</p>
-            </CardContent>
-          </Card>
+          <Link href="/mood-tracker">
+            <Card className="hover-elevate cursor-pointer h-full" data-testid="card-energy">
+              <CardContent className="p-3 text-center flex flex-col items-center justify-center h-full">
+                <div className={`w-10 h-10 rounded-full mx-auto flex items-center justify-center ${getEnergyBgColor(energyLevel)}`}>
+                  <Zap className={`h-5 w-5 ${getEnergyColor(energyLevel)}`} />
+                </div>
+                <p className={`text-lg font-bold mt-2 ${getEnergyColor(energyLevel)}`}>
+                  {energyLevel !== null ? energyLevel : "--"}
+                </p>
+                <p className="text-xs text-muted-foreground">Energy</p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="hover-elevate" data-testid="card-mood">
-            <CardContent className="p-3 text-center">
-              <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-rose-500/10">
-                <Heart className="h-5 w-5 text-rose-500" />
-              </div>
-              <p className="text-lg font-bold mt-2">
-                {moodLevel !== null ? moodLevel : "--"}
-              </p>
-              <p className="text-xs text-muted-foreground">Mood</p>
-            </CardContent>
-          </Card>
+          <Link href="/mood-tracker">
+            <Card className="hover-elevate cursor-pointer h-full" data-testid="card-mood">
+              <CardContent className="p-3 text-center flex flex-col items-center justify-center h-full">
+                <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-rose-500/10">
+                  <Heart className="h-5 w-5 text-rose-500" />
+                </div>
+                <p className="text-lg font-bold mt-2">
+                  {moodLevel !== null ? moodLevel : "--"}
+                </p>
+                <p className="text-xs text-muted-foreground">Mood</p>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Link href="/weekly-checkin">
             <Card className="hover-elevate cursor-pointer h-full" data-testid="card-checkin">

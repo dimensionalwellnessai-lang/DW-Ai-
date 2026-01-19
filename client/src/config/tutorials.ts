@@ -4,6 +4,8 @@ export interface TutorialStep {
   description: string;
   placement?: "top" | "bottom" | "left" | "right";
   requiresMenuOpen?: boolean;
+  requiresAction?: boolean;
+  actionType?: "click" | "open-menu" | "expand";
 }
 
 export interface PageTutorial {
@@ -18,7 +20,9 @@ export const NAVIGATION_TUTORIAL: TutorialStep[] = [
     targetTestId: "button-menu",
     title: "Open the Menu",
     description: "Tap here to see all the areas you can explore. Take your time.",
-    placement: "right"
+    placement: "right",
+    requiresAction: true,
+    actionType: "open-menu"
   },
   {
     targetTestId: "menu-item-life-dashboard",

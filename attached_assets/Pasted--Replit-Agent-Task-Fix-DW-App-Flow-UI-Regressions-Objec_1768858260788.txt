@@ -1,0 +1,134 @@
+
+⸻
+
+Replit Agent Task: Fix DW App Flow + UI Regressions
+
+Objective:
+Stabilize app navigation, onboarding/tutorial behavior, DW chat flow, Today interactions, menu consistency, and restore missing features without manual developer intervention.
+
+⸻
+
+1️⃣ App Launch Behavior
+	•	App must launch into DW (chat) tab, not Today.
+	•	If user is first-time and skipped setup:
+	•	DW opens with empty chat
+	•	No auto-seeded messages
+	•	No “Quick check” prefilled
+	•	Returning users:
+	•	Open DW
+	•	Load last conversation if exists, otherwise empty state
+
+Agent:
+
+Locate initial route / navigation config and update default route + conditional logic.
+
+⸻
+
+2️⃣ Fix Mood / Energy / Check-in Interactions
+
+Current bug: cards animate but do nothing.
+	•	Mood → open mood selector (modal or screen)
+	•	Energy → open energy selector
+	•	Check-in → open check-in flow, NOT beta feedback
+
+Agent:
+
+Find Today screen interaction handlers and restore missing navigation/state actions.
+
+⸻
+
+3️⃣ Remove Beta Feedback Hijack
+	•	Check-in must never route to beta/feedback
+	•	Feedback only accessible from Profile / Settings
+
+Agent:
+
+Remove or re-route incorrect navigation binding.
+
+⸻
+
+4️⃣ Tutorial / App Tour Logic Fix
+
+Problems:
+	•	“Next” advances without required interaction
+	•	Tutorial auto-skips meaningful actions
+
+Fix:
+	•	Steps that reference UI actions must require the action
+	•	Example: “Tap Menu” → disable Next until menu opens
+	•	Highlighted elements must remain clickable
+	•	Tutorial must be replayable from menu
+
+Agent:
+
+Update tutorial overlay logic to support action-gated steps.
+
+⸻
+
+5️⃣ Menu Consistency (Critical)
+
+Bug: Menu differs by page.
+
+Fix:
+	•	One single menu config
+	•	Same items on every screen
+	•	Remove page-specific menu variants
+
+Agent:
+
+Refactor menu rendering to shared/global source of truth.
+
+⸻
+
+6️⃣ Restore Meal Plans
+
+Bug: Meal Plans missing or blank.
+
+Fix:
+	•	Restore menu link
+	•	Ensure route renders
+	•	Add empty state if no data
+
+Agent:
+
+Search for Meal Plans screen/route and re-enable.
+
+⸻
+
+7️⃣ Fix Past Conversations Blank Screen
+
+Bug: Past conversations opens empty/blank.
+
+Fix:
+	•	Add loading + empty + error states
+	•	Ensure chat history retrieval doesn’t silently fail
+	•	Add schema fallback if history format changed
+
+Agent:
+
+Repair conversation history screen resilience.
+
+⸻
+
+8️⃣ Fix Excessive iOS Spacing
+
+Bug: Too much vertical space after recent fixes.
+
+Fix:
+	•	Remove duplicated safe-area padding
+	•	Ensure Capacitor + CSS + layout wrappers are not stacking
+
+Agent:
+
+Normalize safe-area handling to a single source.
+
+⸻
+
+✅ Success Criteria
+	•	App opens to DW empty chat correctly
+	•	Mood / Energy / Check-in all work
+	•	Tutorial feels intentional, not skippable nonsense
+	•	Menu identical everywhere
+	•	Meal Plans visible
+	•	Chat history works
+	•	No weird spacing
