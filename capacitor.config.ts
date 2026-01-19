@@ -1,12 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.dimensionalwellness.app',
-  appName: 'DW',
+  appId: 'com.reilbrown.fliptheswitch',
+  appName: 'DW-Ai',
   webDir: 'dist/public',
-  server: {
-    androidScheme: 'https'
-  },
   ios: {
     contentInset: 'automatic'
   }
