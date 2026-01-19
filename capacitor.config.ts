@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'DW-Ai',
   webDir: 'dist/public',
   ios: {
-    contentInset: 'always'
+    contentInset: 'automatic'
   }
 };
 
