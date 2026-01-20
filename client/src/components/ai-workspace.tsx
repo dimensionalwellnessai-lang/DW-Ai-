@@ -1120,8 +1120,9 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24">
-      <header className="flex items-center justify-between px-3 py-3 border-b dark:border-white/5 glass-subtle">
-        <div className="flex items-center gap-1">
+      <header className="relative flex items-center justify-center px-3 py-3 border-b dark:border-white/5 glass-subtle">
+        {/* Left icons - absolute positioned */}
+        <div className="absolute left-3 flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -1147,7 +1148,9 @@ export function AIWorkspace() {
             <Plus className="h-5 w-5" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        
+        {/* Centered brand name */}
+        <div className="flex flex-col items-center gap-0.5">
           <span className="font-display font-semibold text-sm text-gradient leading-tight" data-testid="text-brand">Dimensional Wellness AI</span>
           {userActivated && streak >= 2 && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid="text-streak">
@@ -1155,7 +1158,9 @@ export function AIWorkspace() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        
+        {/* Right icons - absolute positioned */}
+        <div className="absolute right-3 flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
