@@ -44,6 +44,11 @@ The application emphasizes a calm, optional, and energy-aware user experience. K
     - **Tracker Settings**: Toggle notifications for mood check-ins, activity reminders, and daily synopsis. Requests browser notification permissions.
     - Guest mode supported via localStorage (`moodCheckins`, `activityCompletions`, `trackerSettings` in `fts_guest_data`).
     - Database tables: `daily_mood_checkins`, `activity_completions`, `tracker_settings` for authenticated users.
+    - Uses theme-aware styling classes for proper light/dark mode support.
+*   **Astrology Page**: `/astrology` route with tab-based organization:
+    - **Charts tab** (default): Birth Chart with visual wheel, zodiac placements, aspects, AI Cosmic Readings, Numerology life path, Moon Phase, and Daily/Weekly/Monthly horoscopes
+    - **Calendar tab**: Cosmic Calendar showing upcoming celestial events (moon phases, retrogrades, planetary alignments)
+    - **Journal tab**: Cosmic Journal for recording observations, synchronicities, and intuitive notes with moon phase tracking
 
 ### Configuration Architecture
 *   **Centralized Voice & Copy**: `client/src/config/brand.ts` for app identity, `client/src/config/voiceGuide.ts` for AI voice rules, and `client/src/copy/en.ts` for all UI text.
