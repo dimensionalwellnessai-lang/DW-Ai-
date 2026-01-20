@@ -817,6 +817,8 @@ ${voiceRules}`;
     setChartDialogOpen(false);
   };
 
+  const [activeTab, setActiveTab] = useState("charts");
+
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Astrology" />
@@ -824,6 +826,23 @@ ${voiceRules}`;
       <ScrollArea className="h-[calc(100vh-57px)]">
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="charts" className="flex-1" data-testid="tab-charts">
+                <Star className="mr-1 h-4 w-4" />
+                Charts
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar">
+                <Calendar className="mr-1 h-4 w-4" />
+                Calendar
+              </TabsTrigger>
+              <TabsTrigger value="journal" className="flex-1" data-testid="tab-journal">
+                <MessageSquareText className="mr-1 h-4 w-4" />
+                Journal
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="charts" className="mt-6 space-y-6">
           {!birthChart ? (
             <Card className="border-dashed">
               <CardContent className="p-6 text-center space-y-4">
@@ -1200,12 +1219,17 @@ ${voiceRules}`;
               </Tabs>
             </div>
           )}
-          
+            </TabsContent>
+            
+            <TabsContent value="calendar" className="mt-6 space-y-6">
           <div className="space-y-3">
             <h2 className="font-semibold flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Cosmic Calendar
             </h2>
+            <p className="text-sm text-muted-foreground">
+              Upcoming celestial events and their influences on your journey
+            </p>
             <div className="space-y-2">
               {cosmicEvents.map((event, idx) => (
                 <Card 
@@ -1247,7 +1271,9 @@ ${voiceRules}`;
               ))}
             </div>
           </div>
-
+            </TabsContent>
+            
+            <TabsContent value="journal" className="mt-6 space-y-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base font-medium">
@@ -1256,6 +1282,9 @@ ${voiceRules}`;
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Record your cosmic observations, synchronicities, and intuitive hits
+              </p>
               <Textarea
                 placeholder="What are you noticing today? Any cosmic vibes, synchronicities, or intuitive hits..."
                 value={newNote}
@@ -1298,6 +1327,8 @@ ${voiceRules}`;
               ))}
             </div>
           )}
+            </TabsContent>
+          </Tabs>
         </main>
       </ScrollArea>
       

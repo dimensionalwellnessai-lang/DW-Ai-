@@ -128,17 +128,17 @@ function MoodCheckinCard({
 
   if (hasCheckedIn) {
     return (
-      <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+      <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-green-500/20 p-2">
-              <CheckCircle2 className="h-5 w-5 text-green-400" />
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <p className="font-medium text-white">
+              <p className="font-medium">
                 {config.label} check-in complete
               </p>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 You've already logged how you're feeling this {timeOfDay}
               </p>
             </div>
@@ -149,15 +149,15 @@ function MoodCheckinCard({
   }
 
   return (
-    <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl text-white">
+        <CardTitle className="flex items-center gap-3 text-xl">
           <div className="rounded-full bg-purple-500/20 p-2">
-            <TimeIcon className="h-5 w-5 text-purple-400" />
+            <TimeIcon className="h-5 w-5 text-purple-500" />
           </div>
           How are you feeling this {timeOfDay}?
         </CardTitle>
-        <p className="text-sm text-slate-400">{config.range}</p>
+        <p className="text-sm text-muted-foreground">{config.range}</p>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -170,12 +170,12 @@ function MoodCheckinCard({
               className={cn(
                 "flex flex-col items-center gap-2 rounded-xl border p-3 transition-all",
                 selectedMood === word
-                  ? "border-purple-500/50 bg-purple-500/20 ring-2 ring-purple-500/30"
-                  : "border-white/10 bg-slate-800/30 hover-elevate"
+                  ? "border-primary/50 bg-primary/10 ring-2 ring-primary/30"
+                  : "border-border hover-elevate"
               )}
             >
               <Icon className={cn("h-6 w-6", color)} />
-              <span className="text-xs font-medium capitalize text-slate-300">
+              <span className="text-xs font-medium capitalize">
                 {word}
               </span>
             </button>
@@ -183,14 +183,14 @@ function MoodCheckinCard({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-300">
+          <label className="text-sm font-medium">
             Add a note (optional)
           </label>
           <Textarea
             value={customNote}
             onChange={(e) => setCustomNote(e.target.value)}
             placeholder="What's on your mind?"
-            className="resize-none border-white/10 bg-slate-800/50 text-slate-100 placeholder:text-slate-500"
+            className="resize-none"
             rows={3}
             data-testid="mood-note-input"
           />
@@ -199,7 +199,7 @@ function MoodCheckinCard({
         <Button
           onClick={onSubmit}
           disabled={!selectedMood || isSubmitting}
-          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 font-semibold shadow-lg shadow-purple-500/50"
+          className="w-full font-semibold"
           data-testid="submit-mood-checkin"
         >
           {isSubmitting ? (
@@ -218,24 +218,24 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
   const { moodSummary, activitySummary, moodCheckins } = synopsis;
 
   return (
-    <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl text-white">
+        <CardTitle className="flex items-center gap-3 text-xl">
           <div className="rounded-full bg-blue-500/20 p-2">
-            <Activity className="h-5 w-5 text-blue-400" />
+            <Activity className="h-5 w-5 text-blue-500" />
           </div>
           Today's Journey
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {moodCheckins.length === 0 ? (
-          <p className="text-center text-slate-400">
+          <p className="text-center text-muted-foreground">
             No mood check-ins yet today. Start by logging how you feel.
           </p>
         ) : (
           <>
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-slate-400">Mood Journey</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">Mood Journey</h4>
               <div className="flex flex-wrap gap-2">
                 {(["morning", "afternoon", "evening"] as TimeOfDay[]).map((tod) => {
                   const checkin = moodCheckins.find(c => c.timeOfDay === tod);
@@ -248,12 +248,12 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
                       className={cn(
                         "flex items-center gap-2 rounded-full px-3 py-1.5",
                         checkin 
-                          ? "bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30"
-                          : "bg-slate-800/30 border border-white/10"
+                          ? "bg-primary/10 border border-primary/30"
+                          : "bg-muted border border-border"
                       )}
                     >
-                      <TimeIcon className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm capitalize text-slate-300">
+                      <TimeIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm capitalize">
                         {checkin ? checkin.mood : "—"}
                       </span>
                     </div>
@@ -263,9 +263,9 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
             </div>
 
             {moodSummary.dominantMood && (
-              <div className="rounded-xl border border-white/10 bg-slate-800/30 p-4">
-                <p className="text-sm text-slate-400">Most felt today</p>
-                <p className="mt-1 text-lg font-medium capitalize text-white">
+              <div className="rounded-xl border border-border bg-muted/50 p-4">
+                <p className="text-sm text-muted-foreground">Most felt today</p>
+                <p className="mt-1 text-lg font-medium capitalize">
                   {moodSummary.dominantMood}
                 </p>
               </div>
@@ -275,19 +275,19 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
 
         {activitySummary.total > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-slate-400">Activities</h4>
+            <h4 className="text-sm font-medium text-muted-foreground">Activities</h4>
             <div className="flex items-center gap-4">
-              <div className="rounded-xl border border-white/10 bg-slate-800/30 p-4 text-center flex-1">
-                <p className="text-2xl font-bold text-green-400">
+              <div className="rounded-xl border border-border bg-muted/50 p-4 text-center flex-1">
+                <p className="text-2xl font-bold text-green-500">
                   {activitySummary.completed}
                 </p>
-                <p className="text-xs text-slate-400">Completed</p>
+                <p className="text-xs text-muted-foreground">Completed</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-slate-800/30 p-4 text-center flex-1">
-                <p className="text-2xl font-bold text-purple-400">
+              <div className="rounded-xl border border-border bg-muted/50 p-4 text-center flex-1">
+                <p className="text-2xl font-bold text-purple-500">
                   {activitySummary.completionRate}%
                 </p>
-                <p className="text-xs text-slate-400">Rate</p>
+                <p className="text-xs text-muted-foreground">Rate</p>
               </div>
             </div>
           </div>
@@ -394,13 +394,13 @@ function ActivityCheckinCard({
   
   if (planItems.length === 0) {
     return (
-      <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+      <Card>
         <CardContent className="p-6">
           <div className="text-center space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center">
-              <ListChecks className="h-6 w-6 text-slate-400" />
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <ListChecks className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               No activities in your weekly plan yet.
             </p>
             <Button
@@ -418,21 +418,21 @@ function ActivityCheckinCard({
   }
   
   return (
-    <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl text-white">
+        <CardTitle className="flex items-center gap-3 text-xl">
           <div className="rounded-full bg-green-500/20 p-2">
-            <ListChecks className="h-5 w-5 text-green-400" />
+            <ListChecks className="h-5 w-5 text-green-500" />
           </div>
           Activity Check-in
         </CardTitle>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Did you complete any of these today?
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
         {incompletePlanItems.length === 0 ? (
-          <p className="text-center text-slate-400 py-4">
+          <p className="text-center text-muted-foreground py-4">
             All activities completed! Great work.
           </p>
         ) : (
@@ -450,8 +450,8 @@ function ActivityCheckinCard({
                   isLogged 
                     ? completion.completed
                       ? "border-green-500/30 bg-green-500/10"
-                      : "border-slate-500/30 bg-slate-800/30"
-                    : "border-white/10 bg-slate-800/30"
+                      : "border-border bg-muted/50"
+                    : "border-border bg-muted/30"
                 )}
               >
                 <div className={cn("rounded-full p-2", colors.bg)}>
@@ -461,11 +461,11 @@ function ActivityCheckinCard({
                 <div className="flex-1 min-w-0">
                   <p className={cn(
                     "font-medium truncate",
-                    isLogged && completion.completed ? "text-green-300" : "text-white"
+                    isLogged && completion.completed ? "text-green-500" : ""
                   )}>
                     {item.title}
                   </p>
-                  <p className="text-xs text-slate-500 capitalize">
+                  <p className="text-xs text-muted-foreground capitalize">
                     {item.switchId} • {item.estimateMinutes}min
                   </p>
                 </div>
@@ -475,7 +475,7 @@ function ActivityCheckinCard({
                     variant="secondary" 
                     className={cn(
                       "text-xs",
-                      completion.completed ? "bg-green-500/20 text-green-300" : "bg-slate-700 text-slate-400"
+                      completion.completed ? "bg-green-500/20 text-green-600 dark:text-green-400" : ""
                     )}
                   >
                     {completion.completed ? "Done" : "Skipped"}
@@ -489,16 +489,15 @@ function ActivityCheckinCard({
                       className="h-8 w-8 bg-green-500/10 hover:bg-green-500/20"
                       data-testid={`complete-activity-${item.id}`}
                     >
-                      <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => handleLogActivity(item, false, "skipped")}
-                      className="h-8 w-8 bg-slate-700/50 hover:bg-slate-700"
                       data-testid={`skip-activity-${item.id}`}
                     >
-                      <X className="h-4 w-4 text-slate-400" />
+                      <X className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
                 )}
@@ -547,11 +546,11 @@ function TrackerSettingsCard() {
   };
   
   return (
-    <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl text-white">
+        <CardTitle className="flex items-center gap-3 text-xl">
           <div className="rounded-full bg-purple-500/20 p-2">
-            <Settings className="h-5 w-5 text-purple-400" />
+            <Settings className="h-5 w-5 text-purple-500" />
           </div>
           Tracker Settings
         </CardTitle>
@@ -560,16 +559,17 @@ function TrackerSettingsCard() {
         {notificationsPermission !== "granted" && notificationsPermission !== "unsupported" && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
             <div className="flex items-start gap-3">
-              <BellOff className="h-5 w-5 text-amber-400 mt-0.5" />
+              <BellOff className="h-5 w-5 text-amber-500 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-amber-300">Enable Notifications</p>
-                <p className="text-sm text-amber-200/70 mt-1">
+                <p className="font-medium text-amber-600 dark:text-amber-400">Enable Notifications</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Get reminded to check in with how you're feeling
                 </p>
                 <Button
                   onClick={handleRequestNotifications}
                   size="sm"
-                  className="mt-3 bg-amber-500/20 hover:bg-amber-500/30"
+                  className="mt-3"
+                  variant="outline"
                   data-testid="enable-notifications-btn"
                 >
                   <Bell className="mr-2 h-4 w-4" />
@@ -583,19 +583,19 @@ function TrackerSettingsCard() {
         {notificationsPermission === "granted" && (
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-green-400" />
-              <p className="text-green-300">Notifications are enabled</p>
+              <Bell className="h-5 w-5 text-green-500" />
+              <p className="text-green-600 dark:text-green-400">Notifications are enabled</p>
             </div>
           </div>
         )}
         
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-800/30 p-4">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="mood-checkins" className="text-white font-medium">
+              <Label htmlFor="mood-checkins" className="font-medium">
                 Mood Check-ins
               </Label>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Reminders to log your mood throughout the day
               </p>
             </div>
@@ -607,12 +607,12 @@ function TrackerSettingsCard() {
             />
           </div>
           
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-800/30 p-4">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="activity-reminders" className="text-white font-medium">
+              <Label htmlFor="activity-reminders" className="font-medium">
                 Activity Reminders
               </Label>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 Get reminded about planned activities
               </p>
             </div>
@@ -624,12 +624,12 @@ function TrackerSettingsCard() {
             />
           </div>
           
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-800/30 p-4">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="daily-synopsis" className="text-white font-medium">
+              <Label htmlFor="daily-synopsis" className="font-medium">
                 Daily Synopsis
               </Label>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 End-of-day summary of your mood and activities
               </p>
             </div>
@@ -644,20 +644,19 @@ function TrackerSettingsCard() {
         
         {settings.moodCheckinsEnabled && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-slate-400">Check-in Times</h4>
+            <h4 className="text-sm font-medium text-muted-foreground">Check-in Times</h4>
             <div className="flex flex-wrap gap-2">
               {TIME_OF_DAY_CONFIG && Object.entries(TIME_OF_DAY_CONFIG).map(([tod, config]) => (
                 <Badge
                   key={tod}
                   variant="secondary"
-                  className="bg-purple-500/20 text-purple-300 border border-purple-400/30"
                 >
                   {config.icon && <config.icon className="mr-1 h-3 w-3" />}
                   {config.label}
                 </Badge>
               ))}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Morning (9am), Afternoon (2pm), Evening (8pm)
             </p>
           </div>
@@ -688,9 +687,9 @@ function WeeklyCalendarView() {
   const synopses = weekDates.map(date => getDailySynopsis(date));
 
   const getMoodColor = (mood: string | null): string => {
-    if (!mood) return "bg-slate-700";
+    if (!mood) return "bg-muted";
     const moodConfig = MOOD_OPTIONS.find(m => m.word === mood);
-    if (!moodConfig) return "bg-slate-600";
+    if (!moodConfig) return "bg-muted";
     
     const colorMap: Record<string, string> = {
       "text-blue-400": "bg-blue-500",
@@ -706,16 +705,16 @@ function WeeklyCalendarView() {
       "text-blue-500": "bg-blue-600",
       "text-slate-500": "bg-slate-600",
     };
-    return colorMap[moodConfig.color] || "bg-slate-600";
+    return colorMap[moodConfig.color] || "bg-muted";
   };
 
   return (
-    <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+    <Card>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-3 text-xl text-white">
+          <CardTitle className="flex items-center gap-3 text-xl">
             <div className="rounded-full bg-green-500/20 p-2">
-              <Calendar className="h-5 w-5 text-green-400" />
+              <Calendar className="h-5 w-5 text-green-500" />
             </div>
             Weekly View
           </CardTitle>
@@ -762,16 +761,16 @@ function WeeklyCalendarView() {
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-xl border p-2 text-center",
                   isToday 
-                    ? "border-purple-500/50 bg-purple-500/10" 
-                    : "border-white/10 bg-slate-800/30"
+                    ? "border-primary/50 bg-primary/10" 
+                    : "border-border bg-muted/30"
                 )}
               >
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-xs font-medium text-muted-foreground">
                   {dayNames[date.getDay()]}
                 </span>
                 <span className={cn(
                   "text-sm font-semibold",
-                  isToday ? "text-purple-400" : "text-white"
+                  isToday ? "text-primary" : ""
                 )}>
                   {date.getDate()}
                 </span>
@@ -793,7 +792,7 @@ function WeeklyCalendarView() {
                 </div>
                 
                 {synopsis.activitySummary.total > 0 && (
-                  <span className="text-xs text-slate-500 mt-1">
+                  <span className="text-xs text-muted-foreground mt-1">
                     {synopsis.activitySummary.completionRate}%
                   </span>
                 )}
@@ -802,7 +801,7 @@ function WeeklyCalendarView() {
           })}
         </div>
         
-        <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-500">
+        <div className="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Sun className="h-3 w-3" /> Morning
           </div>
@@ -880,16 +879,16 @@ export default function MoodTrackerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background">
       <PageHeader 
         title="Mood & Activity Tracker" 
         showBack 
-        backPath="/home"
+        backPath="/today"
       />
       
       <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-800/50">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="checkin" data-testid="tab-checkin">
               <Heart className="mr-1 h-4 w-4" />
               <span className="hidden sm:inline">Check-in</span>
@@ -926,9 +925,9 @@ export default function MoodTrackerPage() {
             />
             
             {todayCheckins.length > 0 && (
-              <Card className="border-white/10 bg-slate-800/40 backdrop-blur-xl">
+              <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg text-white">Today's Check-ins</CardTitle>
+                  <CardTitle className="text-lg">Today's Check-ins</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -946,15 +945,15 @@ export default function MoodTrackerPage() {
                         return (
                           <div
                             key={checkin.id}
-                            className="flex items-start gap-3 rounded-lg border border-white/10 bg-slate-800/30 p-3"
+                            className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3"
                           >
-                            <div className="rounded-full bg-slate-700/50 p-1.5">
-                              <TimeIcon className="h-4 w-4 text-slate-400" />
+                            <div className="rounded-full bg-muted p-1.5">
+                              <TimeIcon className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <MoodIcon className={cn("h-4 w-4", moodConfig?.color)} />
-                                <span className="font-medium capitalize text-white">
+                                <span className="font-medium capitalize">
                                   {checkin.mood}
                                 </span>
                                 <Badge variant="secondary" className="text-xs">
@@ -962,7 +961,7 @@ export default function MoodTrackerPage() {
                                 </Badge>
                               </div>
                               {checkin.customNote && (
-                                <p className="mt-1 text-sm text-slate-400">
+                                <p className="mt-1 text-sm text-muted-foreground">
                                   {checkin.customNote}
                                 </p>
                               )}

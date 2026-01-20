@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { MessageCircle, CalendarDays, Sparkles, BookOpen, User } from "lucide-react";
+import { MessageCircle, CalendarDays, Sparkles, BookOpen, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -13,7 +13,7 @@ const navItems: NavItem[] = [
   { path: "/today", icon: CalendarDays, label: "Today" },
   { path: "/", icon: MessageCircle, label: "DW" },
   { path: "/journal", icon: BookOpen, label: "Journal" },
-  { path: "/settings", icon: User, label: "Profile" },
+  { path: "/astrology", icon: Star, label: "Astrology" },
 ];
 
 export function BottomNav() {
