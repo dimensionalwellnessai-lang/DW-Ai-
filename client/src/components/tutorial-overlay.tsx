@@ -87,10 +87,12 @@ export function TutorialOverlay() {
         // Calculate actual tooltip height (estimate or measure)
         const actualTooltipHeight = tooltipRef.current?.offsetHeight || tooltipHeight;
         const safeBottomMargin = 100; // Account for bottom nav and safe area
+        // Account for iOS safe area at top (notch) - use 120px minimum to clear header + safe area
+        const safeTopMargin = 120;
         
         if (elementCenterY > screenMidpoint) {
-          // Element is in bottom half - show tooltip at top
-          tooltipTop = 80; // Below header
+          // Element is in bottom half - show tooltip at top, respecting safe area
+          tooltipTop = safeTopMargin;
         } else {
           // Element is in top half - show tooltip above bottom nav
           tooltipTop = Math.min(
