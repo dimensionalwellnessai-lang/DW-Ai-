@@ -67,10 +67,11 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, menuOpen]);
 
   const handleStartTutorial = () => {
+    const menuWasOpen = menuOpen;
     setMenuOpen(false);
     setTimeout(() => {
-      startNavigationTutorial(true);
-    }, 300);
+      startNavigationTutorial(true, menuWasOpen);
+    }, 500);
   };
 
   const handleBack = () => {

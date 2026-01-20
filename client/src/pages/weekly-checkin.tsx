@@ -467,7 +467,7 @@ export default function WeeklyCheckinPage() {
       </main>
 
       {!isSubmitted && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t safe-area-bottom">
           <div className="max-w-md mx-auto flex gap-2">
             <Button 
               variant="outline" 
@@ -494,7 +494,7 @@ export default function WeeklyCheckinPage() {
       )}
 
       {isSubmitted && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t safe-area-bottom">
           <div className="max-w-md mx-auto">
             <Button 
               variant="outline" 

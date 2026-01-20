@@ -366,7 +366,7 @@ export function GuidedExperienceLayout({
         </div>
       </ScrollArea>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t safe-area-bottom">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {selectedItemId 

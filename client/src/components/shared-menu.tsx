@@ -169,10 +169,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
         <button
           className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
           onClick={() => {
+            const menuWasOpen = open;
             onClose();
             setTimeout(() => {
-              startNavigationTutorial(true);
-            }, 300);
+              startNavigationTutorial(true, menuWasOpen);
+            }, 500);
           }}
           data-testid="button-start-tutorial"
         >

@@ -16,7 +16,7 @@ interface TutorialState {
 interface TutorialContextValue {
   state: TutorialState;
   startTutorial: (pageId: string, force?: boolean) => void;
-  startNavigationTutorial: (force?: boolean) => void;
+  startNavigationTutorial: (force?: boolean, skipOpenMenuStep?: boolean) => void;
   nextStep: () => void;
   prevStep: () => void;
   skipTutorial: () => void;
@@ -94,7 +94,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     });
   }, [hasSeenTutorial]);
 
-  const startNavigationTutorial = useCallback((force = false) => {
+  const startNavigationTutorial = useCallback((force = false, skipOpenMenuStep = false) => {
     if (!force && hasSeenNavTutorial()) {
       return;
     }
@@ -102,7 +102,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     setState({
       isActive: true,
       currentPageId: "navigation",
-      currentStepIndex: 0,
+      currentStepIndex: skipOpenMenuStep ? 1 : 0,
       tutorial: null,
       isNavigationTutorial: true,
       navigationSteps: NAVIGATION_TUTORIAL

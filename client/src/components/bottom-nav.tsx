@@ -10,8 +10,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/plans", icon: Sparkles, label: "Plan" },
-  { path: "/", icon: CalendarDays, label: "Today" },
-  { path: "/chat", icon: MessageCircle, label: "DW" },
+  { path: "/today", icon: CalendarDays, label: "Today" },
+  { path: "/", icon: MessageCircle, label: "DW" },
   { path: "/journal", icon: BookOpen, label: "Journal" },
   { path: "/settings", icon: User, label: "Profile" },
 ];
@@ -21,8 +21,7 @@ export function BottomNav() {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-xl"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-xl safe-area-bottom"
       data-testid="nav-bottom"
     >
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-2">

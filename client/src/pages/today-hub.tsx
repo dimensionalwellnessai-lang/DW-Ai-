@@ -782,8 +782,9 @@ export default function TodayHubPage() {
           <button
             className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
             onClick={() => {
+              const menuWasOpen = menuOpen;
               setMenuOpen(false);
-              setTimeout(() => startNavigationTutorial(true), 300);
+              setTimeout(() => startNavigationTutorial(true, menuWasOpen), 500);
             }}
             data-testid="button-start-tutorial"
           >
