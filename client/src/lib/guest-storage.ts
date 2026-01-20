@@ -367,6 +367,22 @@ export type LifeDimension = "physical" | "emotional" | "mental" | "spiritual" | 
 export type ScheduleType = "9to5" | "nightShift" | "student" | "mixed" | "rebuilding";
 export type FocusArea = "body" | "food" | "mind" | "money" | "spirit" | "work";
 
+// Mobility & Capabilities for practice preferences
+export type MobilityLevel = "full" | "some_limits" | "major_limits";
+export type FloorComfort = "yes" | "sometimes" | "no";
+export type IntensityPreference = "gentle" | "moderate" | "intense";
+export type StandingTolerance = "5" | "10" | "20+";
+
+export interface MobilityCapabilities {
+  mobilityLevel: MobilityLevel | null;
+  protectAreas: string[];
+  standingTolerance: StandingTolerance | null;
+  floorComfort: FloorComfort | null;
+  equipment: string[];
+  intensity: IntensityPreference | null;
+  avoidNotes: string;
+}
+
 export interface ProfileSetup {
   weeklyRhythm: WeeklyRhythm | null;
   primaryFocus: LifeDimension | null;
@@ -380,6 +396,7 @@ export interface ProfileSetup {
   focusArea: FocusArea | null;
   starterObjectId: string | null;
   starterSpotlightDismissed: boolean;
+  mobilityCapabilities: MobilityCapabilities | null;
 }
 
 export interface OnboardingLog {
@@ -2158,6 +2175,7 @@ export function saveProfileSetup(setup: Partial<ProfileSetup>): void {
     starterObjectId: setup.starterObjectId ?? data.profileSetup?.starterObjectId ?? null,
     starterSpotlightDismissed: setup.starterSpotlightDismissed ?? data.profileSetup?.starterSpotlightDismissed ?? false,
     completedAt: setup.completedAt ?? data.profileSetup?.completedAt ?? null,
+    mobilityCapabilities: setup.mobilityCapabilities ?? data.profileSetup?.mobilityCapabilities ?? null,
   };
   saveGuestData(data);
 }

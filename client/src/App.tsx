@@ -208,12 +208,12 @@ function AppContent() {
   const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
 
   return (
-    <>
+    <div className="app-shell">
       <Toaster />
       <TutorialOverlay />
       <PWAInstallPrompt />
       <SyncTray />
-      <div className={showBottomNav ? "pb-20" : ""}>
+      <div className={`app-content ${showBottomNav ? "pb-20" : ""}`}>
         <FirstRunGuard>
           <InitialRouteHandler>
             <Router />
@@ -221,7 +221,7 @@ function AppContent() {
         </FirstRunGuard>
       </div>
       {showBottomNav && <BottomNav />}
-    </>
+    </div>
   );
 }
 

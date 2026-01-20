@@ -2,10 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Safe Area - Let Capacitor handle insets with contentInset: 'always' */
+/* iOS Safe Area Variables */
 :root {
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  /* Legacy aliases */
+  --safe-top: var(--sat);
+  --safe-bottom: var(--sab);
 }
 
 html, body {
@@ -16,6 +21,21 @@ html, body {
 
 #root {
   min-height: 100%;
+}
+
+/* App Shell - Single source of safe area padding */
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: var(--sat);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  box-sizing: border-box;
+}
+
+/* Content area respects safe area */
+.app-content {
+  min-height: calc(100dvh - var(--sat));
 }
 
 /* Hide default details/summary disclosure marker */
@@ -402,8 +422,9 @@ summary::marker {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
+  /* Only use safe-area-top on elements that truly need it (e.g., fixed/sticky headers outside app-shell) */
   .safe-area-top {
-    padding-top: max(env(safe-area-inset-top, 0px), 12px);
+    padding-top: 0;
   }
 
   .safe-area-all {

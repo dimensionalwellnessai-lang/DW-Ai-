@@ -1,0 +1,231 @@
+Got you. You’re seeing two different safe-area behaviors:
+	•	Today page is respecting the safe area (but it’s over-padding, so the “FTS” row sits too low).
+	•	DW chat (and some other pages) are ignoring safe area and sliding under the Dynamic Island.
+
+Below is a copy-paste spec you can drop into Replit AI/Agent so it makes the changes without you hunting.
+
+⸻
+
+1) Fix Safe Area globally (all pages), and remove the “too much top gap” on Today
+
+✅ Goal
+	•	Every screen’s content starts below the Dynamic Island.
+	•	The top nav row (with title + icons) starts immediately under the Dynamic Island (no extra blank band).
+	•	No page is allowed to render under the status bar.
+
+What’s happening now (based on your screenshots)
+
+You likely have double padding happening:
+	•	one at the global/root level (safe area padding)
+	•	another inside the header/topbar container
+
+…and some pages (DW chat) are bypassing the padded wrapper entirely.
+
+Replit Agent instructions (paste this)
+
+TASK: Standardize Safe Area across the app
+	1.	In the global CSS (usually client/src/index.css or client/src/styles.css):
+
+	•	Define safe-area variables
+	•	Do NOT apply padding to :root or body directly (that causes double padding / weird header gaps)
+	•	Apply safe-area padding ONLY inside a single “AppShell” wrapper.
+
+Add:
+
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+	2.	Create or update a single top-level wrapper (commonly AppShell.tsx, Layout.tsx, or inside App.tsx) that wraps every screen.
+
+Wrap the router output like this:
+
+<div className="app-shell">
+  {/** your header/nav here if global **/}
+  <div className="app-content">
+    {/* routes/screens */}
+  </div>
+</div>
+
+CSS:
+
+.app-shell {
+  min-height: 100vh;
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  box-sizing: border-box;
+}
+
+/* Important: prevent any screen from "escaping" the safe area wrapper */
+.app-content {
+  min-height: calc(100vh - var(--sat) - var(--sab));
+}
+
+	3.	Fix the header/topbar so it does NOT add extra top padding/margin.
+Search for header CSS like padding-top, margin-top, pt-12, pt-10, safe-area, etc.
+
+Rule:
+	•	Header should start at the top of .app-shell with no extra top padding.
+	•	If the header is position: sticky/fixed, it must use top: 0 (NOT top: env(safe-area-inset-top) because the shell already handles it).
+
+Header CSS should be like:
+
+.topbar {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+	4.	Ensure DW Chat screen is inside the same wrapper.
+If DW chat uses position: fixed; top: 0; height: 100vh; it will ignore the safe area.
+
+Fix rule for chat screen containers:
+	•	Replace height: 100vh with height: 100%
+	•	Replace top: 0 with top: 0 ONLY if it remains inside .app-shell
+	•	If it must be fixed, then set top: var(--sat) (but prefer not fixed)
+
+⸻
+
+2) Rename “FTS” → “Dimensional Wellness AI” under the app logo
+
+✅ Goal
+
+On that top bar, show:
+	•	App logo
+	•	Dimensional Wellness AI underneath (or as the title line if that’s your layout)
+
+Replit Agent instructions
+
+TASK: Replace header title text
+	1.	Search for the literal string "FTS" in the repo.
+	2.	Replace it with "Dimensional Wellness AI".
+	3.	If the header has a logo component, render title under it:
+
+Example:
+
+<div className="brand">
+  <AppLogo />
+  <div className="brand-text">
+    <div className="brand-title">Dimensional Wellness AI</div>
+  </div>
+</div>
+
+CSS:
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-title { font-weight: 600; font-size: 14px; }
+
+
+⸻
+
+3) Practice Preferences: add Mobility + Capability questions (so AI suggests what fits)
+
+Right now “Practice Preferences” is just “exclude practices.” You want it to also collect constraints so recommendations don’t violate reality.
+
+✅ Add a “Mobility & Capabilities” section inside Practice Preferences
+
+Questions to store in profile:
+	•	Mobility level: full / some limits / major limits
+	•	Pain/injuries to protect: knees / back / shoulders / hips / wrists / ankles
+	•	Standing tolerance: 5 / 10 / 20+ minutes
+	•	Floor comfort: yes / sometimes / no
+	•	Equipment available: none / bands / dumbbells / yoga mat / chair
+	•	Intensity preference: gentle / moderate / intense
+	•	“Avoid movements”: free text
+
+Replit Agent instructions
+
+TASK: Upgrade Practice Preferences modal to include Mobility & Capabilities
+	1.	Add a new section above “exclude practices” called Mobility & Capabilities
+	2.	Save answers to userProfile.mobilityCapabilities
+	3.	Update AI suggestion prompt builder to include these constraints in every recommendation.
+
+Example shape:
+
+mobilityCapabilities: {
+  mobilityLevel: "full" | "some_limits" | "major_limits",
+  protectAreas: string[],
+  standingTolerance: "5" | "10" | "20+",
+  floorComfort: "yes" | "sometimes" | "no",
+  equipment: string[],
+  intensity: "gentle" | "moderate" | "intense",
+  avoidNotes: string
+}
+
+Prompt injection example:
+
+“User mobility/capabilities: … Always recommend practices that respect these constraints. Avoid protected areas and avoid floor work if floorComfort is ‘no’…”
+
+⸻
+
+4) Today page: hide “Dev Reset”, and fix Mood flow back navigation (unknown page)
+
+A) Hide “Dev Reset”
+
+TASK: Remove Dev Reset from user-visible UI
+	•	Find the Today screen component
+	•	Locate the Dev Reset button
+	•	Gate it behind dev-only logic OR remove it entirely.
+
+Use one of these:
+
+const isDev = import.meta.env.DEV; // Vite
+
+or
+
+const isDev = process.env.NODE_ENV !== "production";
+
+Then:
+
+{isDev && <DevResetButton />}
+
+B) Mood flow back button going to a weird/unknown screen
+
+This is almost always a routing stack issue:
+	•	Mood card navigates to Mood screen
+	•	Mood screen’s back button does a generic “back”
+	•	If the previous route was an onboarding shell / hidden route / blank container, you land on “unknown”
+
+Fix: always return Mood → Today
+TASK: Make Mood screen back button route to Today explicitly
+	•	When opening Mood from Today, pass from=/today
+	•	Mood back button goes to from if present, else /today
+
+Example (works with most routers):
+
+navigate(`/mood?from=/today`);
+
+Back button:
+
+const params = new URLSearchParams(location.search);
+const from = params.get("from") || "/today";
+navigate(from);
+
+If you use router “state”:
+
+navigate("/mood", { state: { from: "/today" }});
+
+Back:
+
+navigate(location.state?.from ?? "/today");
+
+
+⸻
+
+Quick checklist (what your next simulator run should show)
+	•	✅ No page content under Dynamic Island (including DW chat)
+	•	✅ Top bar starts immediately under the Dynamic Island (no giant blank band)
+	•	✅ “FTS” replaced with Dimensional Wellness AI under logo
+	•	✅ Practice Preferences collects mobility/capability constraints + exclusions
+	•	✅ Today page does not show Dev Reset
+	•	✅ Mood flow back always returns to Today (no mystery screen)
+
+If you want, paste (or screenshot) the files where your TopBar/AppShell and DW chat screen container live (just the filenames/sidebar view is enough) and I’ll tell Replit exactly what to change per file with zero extra steps.

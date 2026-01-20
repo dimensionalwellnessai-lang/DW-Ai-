@@ -282,25 +282,27 @@ export default function TodayHubPage() {
               {getGreeting()}{userName ? `, ${userName}` : ""}
             </h1>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const data = localStorage.getItem("fts_guest_data");
-              if (data) {
-                const parsed = JSON.parse(data);
-                if (parsed.profileSetup) {
-                  delete parsed.profileSetup.completedAt;
+          {import.meta.env.DEV && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const data = localStorage.getItem("fts_guest_data");
+                if (data) {
+                  const parsed = JSON.parse(data);
+                  if (parsed.profileSetup) {
+                    delete parsed.profileSetup.completedAt;
+                  }
+                  localStorage.setItem("fts_guest_data", JSON.stringify(parsed));
                 }
-                localStorage.setItem("fts_guest_data", JSON.stringify(parsed));
-              }
-              window.location.href = "/welcome";
-            }}
-            className="text-xs text-destructive border-destructive/50"
-            data-testid="button-dev-reset"
-          >
-            DEV RESET
-          </Button>
+                window.location.href = "/welcome";
+              }}
+              className="text-xs text-destructive border-destructive/50"
+              data-testid="button-dev-reset"
+            >
+              DEV RESET
+            </Button>
+          )}
         </header>
 
         {latestLog && (

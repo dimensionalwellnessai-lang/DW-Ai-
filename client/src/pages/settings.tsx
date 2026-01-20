@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
+import { MobilityCapabilitiesModal } from "@/components/mobility-capabilities-modal";
 import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
 import {
   User,
@@ -22,6 +23,7 @@ import {
   Bug,
   RotateCcw,
   HelpCircle,
+  Activity,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -35,6 +37,7 @@ export function SettingsPage() {
   const { resetAllTutorials } = useTutorial();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showMobilityModal, setShowMobilityModal] = useState(false);
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -81,6 +84,27 @@ export function SettingsPage() {
               data-testid="button-edit-quick-setup"
             >
               Edit Quick Setup
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Activity className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Practice Preferences</CardTitle>
+                <CardDescription>Set your mobility, equipment, and intensity preferences</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMobilityModal(true)}
+              data-testid="button-edit-mobility"
+            >
+              Edit Mobility & Capabilities
             </Button>
           </CardContent>
         </Card>
@@ -283,6 +307,11 @@ export function SettingsPage() {
       <ProfileSetupModal
         isOpen={showProfileSetup}
         onComplete={() => setShowProfileSetup(false)}
+      />
+
+      <MobilityCapabilitiesModal
+        isOpen={showMobilityModal}
+        onClose={() => setShowMobilityModal(false)}
       />
 
       <AnalyticsDebugPanel
