@@ -1113,7 +1113,7 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-20">
+    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24">
       <header className="flex items-center justify-between px-3 pb-3 border-b dark:border-white/5 glass-subtle safe-area-top">
         <div className="flex items-center gap-1">
           <Button
@@ -1733,7 +1733,7 @@ export function AIWorkspace() {
           </div>
         </ScrollArea>
 
-        <div className="px-2 py-1 pb-2 border-t dark:border-white/5 glass-subtle safe-area-bottom">
+        <div className="px-2 py-2 pb-4 border-t dark:border-white/5 glass-subtle">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
