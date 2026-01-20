@@ -1280,10 +1280,11 @@ export function AIWorkspace() {
           <button
             className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
             onClick={() => {
-              const menuWasOpen = menuOpen;
+              // Menu is already open when clicking this button inside the menu
+              // Skip Step 1 ("Open Menu") and start at Step 2 (Life Dashboard)
               setMenuOpen(false);
               setTimeout(() => {
-                startNavigationTutorial(true, menuWasOpen);
+                startNavigationTutorial(true, true);
               }, 500);
             }}
             data-testid="button-start-tutorial"

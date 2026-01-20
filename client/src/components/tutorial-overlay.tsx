@@ -19,9 +19,12 @@ export function TutorialOverlay() {
   const highlightedElementRef = useRef<HTMLElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+  const retryCountRef = useRef(0);
+  
   const updateTargetPosition = useCallback(() => {
     if (!currentStep) {
       setTargetRect(null);
+      retryCountRef.current = 0;
       if (highlightedElementRef.current) {
         highlightedElementRef.current.style.removeProperty('position');
         highlightedElementRef.current.style.removeProperty('z-index');
@@ -32,7 +35,14 @@ export function TutorialOverlay() {
 
     const element = document.querySelector(`[data-testid="${currentStep.targetTestId}"]`);
     if (!element) {
+      // Retry a few times to wait for menu/element to appear in DOM
+      if (retryCountRef.current < 10) {
+        retryCountRef.current++;
+        setTimeout(() => updateTargetPosition(), 100);
+        return;
+      }
       setTargetRect(null);
+      retryCountRef.current = 0;
       if (highlightedElementRef.current) {
         highlightedElementRef.current.style.removeProperty('position');
         highlightedElementRef.current.style.removeProperty('z-index');
@@ -40,6 +50,9 @@ export function TutorialOverlay() {
       }
       return;
     }
+    
+    // Element found, reset retry counter
+    retryCountRef.current = 0;
 
     let parentDetails = element.closest('details');
     if (parentDetails && !parentDetails.open) {
