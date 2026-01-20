@@ -1383,7 +1383,7 @@ export function AIWorkspace() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
-          <div className="max-w-2xl mx-auto py-2">
+          <div className="max-w-2xl mx-auto py-1">
             {/* D2 Return Nudge Card - shows once per day for non-activated users */}
             {showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
@@ -1541,7 +1541,7 @@ export function AIWorkspace() {
             })()}
             
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center space-y-4 pt-2">
+              <div className="flex flex-col items-center justify-center space-y-3 pt-1">
                 <div className="text-center space-y-1">
                   <h1 className="text-xl font-display font-semibold" data-testid="text-greeting">
                     {greeting}
@@ -1574,7 +1574,7 @@ export function AIWorkspace() {
                   <LayoutGrid className="h-4 w-4" />
                   Build my life system
                 </button>
-                <div className="flex flex-col items-center gap-1.5">
+                <div className="flex flex-col items-center gap-1">
                   <button
                     onClick={() => setHistoryOpen(true)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
