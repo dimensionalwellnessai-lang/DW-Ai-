@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
@@ -15,9 +14,6 @@ import {
   Shield,
   Trash2,
   Moon,
-  Smartphone,
-  Download,
-  Check,
   BellRing,
   BellOff,
   FileText,
@@ -37,7 +33,6 @@ const MENU_TUTORIAL_STEP_KEY = "fts:menuTutorialStep";
 export function SettingsPage() {
   useTutorialStart("settings", 1000);
   const { resetAllTutorials } = useTutorial();
-  const { isInstallable, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
@@ -105,41 +100,6 @@ export function SettingsPage() {
               <Label>Email notifications</Label>
               <Switch data-testid="switch-email-notifications" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Smartphone className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <CardTitle className="text-base">Install App</CardTitle>
-                <CardDescription>Add to your home screen for easy access</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isInstalled ? (
-              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                <Check className="h-4 w-4" />
-                App installed on your device
-              </div>
-            ) : isIOS ? (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  To install on iOS: tap the Share button in Safari, then "Add to Home Screen"
-                </p>
-              </div>
-            ) : isInstallable ? (
-              <Button onClick={promptInstall} data-testid="button-install-app">
-                <Download className="h-4 w-4 mr-2" />
-                Add to Home Screen
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Install option will appear when supported by your browser
-              </p>
-            )}
           </CardContent>
         </Card>
 

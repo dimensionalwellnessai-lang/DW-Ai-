@@ -423,15 +423,21 @@ export function AIWorkspace() {
   const { events: scheduleEvents } = useScheduleEvents();
 
   useEffect(() => {
-    // Don't show onboarding dialogs until navigation tutorial is completed
-    if (tutorialState.isActive || !hasSeenNavigationTutorial()) {
+    // Don't show onboarding if a tutorial is currently active
+    if (tutorialState.isActive) {
       return;
     }
     
+    // Show soft onboarding for first-time users immediately
     if (shouldShowSoftOnboarding()) {
       markSoftOnboardingShownThisSession();
       setShowSoftOnboarding(true);
-    } else {
+      return;
+    }
+    
+    // After soft onboarding, show profile setup (Getting to Know You)
+    // Only show after navigation tutorial is completed to avoid overwhelming
+    if (hasSeenNavigationTutorial()) {
       const timer = setTimeout(() => {
         if (shouldShowOnboardingDialog()) {
           setShowOnboarding(true);

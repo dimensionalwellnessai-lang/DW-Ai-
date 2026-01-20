@@ -848,7 +848,7 @@ export function hasCompletedOnboarding(): boolean {
 
 const ONBOARDING_COOLDOWN_KEY = "fts_onboarding_dismissed";
 const ONBOARDING_COMPLETED_KEY = "fts_onboarding_completed";
-const ONBOARDING_COOLDOWN_DAYS = 7;
+const ONBOARDING_COOLDOWN_DAYS = 1; // Show again after 1 day if not completed
 
 export function dismissOnboardingDialog(): void {
   localStorage.setItem(ONBOARDING_COOLDOWN_KEY, Date.now().toString());

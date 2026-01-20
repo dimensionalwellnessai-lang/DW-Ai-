@@ -285,16 +285,16 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
     welcomeMessage: "Your preferences and settings live here.",
     steps: [
       {
-        targetTestId: "section-body-profile",
-        title: "Body Profile",
-        description: "Update physical details that help personalize your experience.",
-        placement: "top"
+        targetTestId: "button-edit-quick-setup",
+        title: "Quick Setup",
+        description: "Update your profile and preferences to personalize your experience.",
+        placement: "bottom"
       },
       {
-        targetTestId: "section-dimension-signals",
-        title: "Wellness Signals",
-        description: "Set preferences that shape how the app supports you.",
-        placement: "top"
+        targetTestId: "button-replay-tour",
+        title: "App Tour",
+        description: "Replay the tour anytime you want a refresher on how to use the app.",
+        placement: "bottom"
       }
     ]
   },
@@ -304,21 +304,27 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
     welcomeMessage: "Your daily check-in hub. Start here each day.",
     steps: [
       {
-        targetTestId: "card-quick-check",
-        title: "Quick Check",
-        description: "A fast way to set your intention for the day. Pick what feels right.",
-        placement: "bottom"
-      },
-      {
-        targetTestId: "card-energy-selector",
+        targetTestId: "card-energy",
         title: "Energy Level",
-        description: "Let the app know how you're feeling so suggestions match your capacity.",
+        description: "Tap here to log how you're feeling. This helps suggestions match your capacity.",
         placement: "bottom"
       },
       {
-        targetTestId: "section-today-actions",
-        title: "Today's Actions",
-        description: "Small, doable things that move you forward. No pressure.",
+        targetTestId: "card-mood",
+        title: "Mood Check",
+        description: "Track your emotional state throughout the day.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "card-checkin",
+        title: "Weekly Check-in",
+        description: "A deeper reflection on how things are going.",
+        placement: "bottom"
+      },
+      {
+        targetTestId: "section-schedule",
+        title: "Today's Schedule",
+        description: "See what's planned for today. Ask DW to help organize your time.",
         placement: "top"
       }
     ]
@@ -329,13 +335,13 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
     welcomeMessage: "Your training plans for wellness.",
     steps: [
       {
-        targetTestId: "button-create-plan",
+        targetTestId: "button-new-plan",
         title: "Create New Plan",
         description: "Start a new wellness plan to organize your actions.",
         placement: "bottom"
       },
       {
-        targetTestId: "section-active-plans",
+        targetTestId: "tab-active",
         title: "Active Plans",
         description: "Your current plans in progress. Start small.",
         placement: "top"
@@ -352,12 +358,6 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
         title: "Create List",
         description: "Start a new shopping list for your next trip.",
         placement: "bottom"
-      },
-      {
-        targetTestId: "section-lists",
-        title: "Your Lists",
-        description: "All your shopping lists in one place. Check items off as you go.",
-        placement: "top"
       }
     ]
   },
@@ -367,22 +367,22 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
     welcomeMessage: "Check in with yourself throughout the day.",
     steps: [
       {
-        targetTestId: "section-mood-checkin",
+        targetTestId: "tab-checkin",
         title: "Mood Check-in",
         description: "How are you feeling right now? Pick a word that fits.",
         placement: "bottom"
       },
       {
-        targetTestId: "section-daily-synopsis",
-        title: "Daily Synopsis",
-        description: "See your mood journey through the day.",
-        placement: "top"
+        targetTestId: "tab-today",
+        title: "Today's Synopsis",
+        description: "See your mood journey and activities for today.",
+        placement: "bottom"
       },
       {
-        targetTestId: "section-weekly-calendar",
+        targetTestId: "tab-history",
         title: "Weekly View",
         description: "Notice patterns in your mood over time.",
-        placement: "top"
+        placement: "bottom"
       }
     ]
   },
@@ -392,21 +392,9 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
     welcomeMessage: "Connect with others on the same journey.",
     steps: [
       {
-        targetTestId: "tab-groups",
-        title: "Groups",
-        description: "Join wellness communities that resonate with you.",
-        placement: "bottom"
-      },
-      {
-        targetTestId: "tab-feed",
-        title: "Feed",
-        description: "See what others are sharing and learning.",
-        placement: "bottom"
-      },
-      {
-        targetTestId: "tab-local",
-        title: "Local Resources",
-        description: "Find gyms, therapists, and healthy spots near you.",
+        targetTestId: "button-setup-community",
+        title: "Set Up Your Profile",
+        description: "Tell us about your interests to find the best opportunities.",
         placement: "bottom"
       }
     ]
