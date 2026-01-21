@@ -1,4 +1,4 @@
-# Flip the Switch (FTS)
+# Flip the Switch (FTS) tesing
 
 A Dimensional Wellness AI - a consent-based personal assistant designed to help users build their own life system through adaptive, energy-based guidance rather than prescriptive routines.
 
