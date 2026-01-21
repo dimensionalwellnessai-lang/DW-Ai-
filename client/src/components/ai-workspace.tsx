@@ -1553,26 +1553,26 @@ export function AIWorkspace() {
             })()}
             
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center space-y-3 pt-1">
-                <div className="text-center space-y-1">
-                  <h1 className="text-xl font-display font-semibold" data-testid="text-greeting">
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="text-center space-y-0.5">
+                  <h1 className="text-lg font-display font-semibold" data-testid="text-greeting">
                     {greeting}
                   </h1>
                   <p className="text-muted-foreground text-sm">
                     {subGreeting}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+                <div className="grid grid-cols-2 gap-1.5 w-full max-w-xs">
                   {FIRST_TIME_ACTIONS.map((action) => {
                     const Icon = action.icon;
                     return (
                       <button
                         key={action.id}
                         onClick={() => handleFirstTimeAction(action.action)}
-                        className="flex flex-col items-center gap-1 p-2.5 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
+                        className="flex flex-col items-center gap-0.5 p-2 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
                         data-testid={`button-action-${action.id}`}
                       >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-xs">{action.text}</span>
                       </button>
                     );
@@ -1580,24 +1580,24 @@ export function AIWorkspace() {
                 </div>
                 <button
                   onClick={() => handleFirstTimeAction("lifesystem")}
-                  className="w-full max-w-xs px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                  className="w-full max-w-xs px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
                   data-testid="button-action-lifesystem"
                 >
                   <LayoutGrid className="h-4 w-4" />
                   Build my life system
                 </button>
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setHistoryOpen(true)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     data-testid="button-view-history"
                   >
                     <History className="h-3 w-3" />
-                    {hasConversationHistory ? "View past conversations" : "No conversation history yet"}
+                    History
                   </button>
                   <Link href="/daily-schedule">
                     <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
-                      View today's schedule
+                      Today's schedule
                     </button>
                   </Link>
                 </div>
