@@ -1155,7 +1155,7 @@ export function AIWorkspace() {
         
         {/* Centered brand name */}
         <div className="flex flex-col items-center gap-0.5">
-          <span className="font-display font-semibold text-sm text-gradient leading-tight" data-testid="text-brand">Dimensional Wellness AI</span>
+          <span className="font-display font-semibold text-sm text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
           {userActivated && streak >= 2 && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid="text-streak">
               {streak} day streak
