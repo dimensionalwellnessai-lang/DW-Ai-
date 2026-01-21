@@ -1395,9 +1395,9 @@ export function AIWorkspace() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-4">
-          <div className="max-w-2xl mx-auto py-1">
-            {/* D2 Return Nudge Card - shows once per day for non-activated users */}
-            {showNudge && !shouldShowSpotlight && (
+          <div className={`max-w-2xl mx-auto ${messages.length === 0 ? 'h-full flex flex-col justify-center' : 'py-1'}`}>
+            {/* D2 Return Nudge Card - shows once per day for non-activated users (only when there are messages) */}
+            {messages.length > 0 && showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
                 <CardContent className="p-2.5 space-y-1.5">
                   <div className="flex flex-col gap-2">
@@ -1438,8 +1438,8 @@ export function AIWorkspace() {
               </Card>
             )}
             
-            {/* Weekly Recap Card - once per week for activated users */}
-            {showWeeklyRecap && userActivated && !showNudge && !shouldShowSpotlight && (
+            {/* Weekly Recap Card - once per week for activated users (only when there are messages) */}
+            {messages.length > 0 && showWeeklyRecap && userActivated && !showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-primary/20 bg-primary/5" data-testid="card-weekly-recap">
                 <CardContent className="p-2.5 space-y-1.5">
                   <div className="flex flex-col gap-2">
@@ -1480,8 +1480,8 @@ export function AIWorkspace() {
               </Card>
             )}
             
-            {/* Next Best Step Card - once per day for activated users */}
-            {showNextStep && userActivated && nextStepSuggestion && !showWeeklyRecap && !showNudge && !shouldShowSpotlight && (
+            {/* Next Best Step Card - once per day for activated users (only when there are messages) */}
+            {messages.length > 0 && showNextStep && userActivated && nextStepSuggestion && !showWeeklyRecap && !showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-muted bg-muted/30" data-testid="card-next-step">
                 <CardContent className="p-2.5">
                   <div className="flex items-center justify-between gap-2">
@@ -1512,8 +1512,8 @@ export function AIWorkspace() {
               </Card>
             )}
             
-            {/* Starter Block Spotlight Card */}
-            {shouldShowSpotlight && (() => {
+            {/* Starter Block Spotlight Card (only when there are messages) */}
+            {messages.length > 0 && shouldShowSpotlight && (() => {
               const focusArea = spotlightProfile?.focusArea as FocusArea | null;
               if (!focusArea) return null;
               
