@@ -422,9 +422,16 @@ summary::marker {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Only use safe-area-top on elements that truly need it (e.g., fixed/sticky headers outside app-shell) */
+  /* Status bar spacer - creates a div that takes up the safe area height */
   .safe-area-top {
-    padding-top: 0;
+    height: 0; /* Fallback for browsers without env() support */
+    height: env(safe-area-inset-top);
+  }
+
+  /* For sticky headers that need to sit below the status bar */
+  .safe-area-sticky-top {
+    top: 0; /* Fallback for browsers without env() support */
+    top: env(safe-area-inset-top);
   }
 
   .safe-area-all {

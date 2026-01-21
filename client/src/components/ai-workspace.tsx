@@ -1119,8 +1119,12 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24">
-      <header className="relative flex items-center justify-center px-3 py-2 border-b dark:border-white/5 glass-subtle" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
+    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24 overflow-hidden">
+      {/* Status bar spacer - protects the iOS status bar area, matches background color */}
+      <div className="w-full bg-background shrink-0 safe-area-top" />
+      
+      {/* Fixed header - never scrolls, sits below status bar */}
+      <header className="shrink-0 relative flex items-center justify-center px-3 py-2 border-b dark:border-white/5 glass-subtle bg-background z-50">
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button

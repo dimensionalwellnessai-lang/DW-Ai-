@@ -86,7 +86,11 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      <header className="flex items-center gap-2 px-3 py-2 border-b dark:border-white/5 sticky top-0 bg-background glass-subtle z-50" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
+      {/* Status bar spacer - protects the iOS status bar area, matches background color */}
+      <div className="w-full bg-background sticky top-0 z-50 safe-area-top" />
+      
+      {/* Header - sits directly below status bar spacer, sticky */}
+      <header className="flex items-center gap-2 px-3 py-2 border-b dark:border-white/5 sticky bg-background glass-subtle z-50 safe-area-sticky-top">
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 
