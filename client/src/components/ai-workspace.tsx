@@ -1398,8 +1398,62 @@ export function AIWorkspace() {
       </SwipeableDrawer>
 
       <div className="flex-1 flex flex-col overflow-hidden">
+        {messages.length === 0 ? (
+          /* Landing view - centered without scrolling */
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-2">
+              <div className="text-center space-y-0.5">
+                <h1 className="text-lg font-display font-semibold" data-testid="text-greeting">
+                  {greeting}
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  {subGreeting}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 w-full max-w-xs">
+                {FIRST_TIME_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={() => handleFirstTimeAction(action.action)}
+                      className="flex flex-col items-center gap-0.5 p-2 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
+                      data-testid={`button-action-${action.id}`}
+                    >
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs">{action.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => handleFirstTimeAction("lifesystem")}
+                className="w-full max-w-xs px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                data-testid="button-action-lifesystem"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Build my life system
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  data-testid="button-view-history"
+                >
+                  <History className="h-3 w-3" />
+                  History
+                </button>
+                <Link href="/daily-schedule">
+                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
+                    Today's schedule
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : (
         <ScrollArea className="flex-1 px-4">
-          <div className={`max-w-2xl mx-auto ${messages.length === 0 ? 'h-full flex flex-col justify-center' : 'py-1'}`}>
+          <div className="max-w-2xl mx-auto py-1">
             {/* D2 Return Nudge Card - shows once per day for non-activated users (only when there are messages) */}
             {messages.length > 0 && showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
@@ -1556,59 +1610,8 @@ export function AIWorkspace() {
               );
             })()}
             
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="text-center space-y-0.5">
-                  <h1 className="text-lg font-display font-semibold" data-testid="text-greeting">
-                    {greeting}
-                  </h1>
-                  <p className="text-muted-foreground text-sm">
-                    {subGreeting}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 w-full max-w-xs">
-                  {FIRST_TIME_ACTIONS.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <button
-                        key={action.id}
-                        onClick={() => handleFirstTimeAction(action.action)}
-                        className="flex flex-col items-center gap-0.5 p-2 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
-                        data-testid={`button-action-${action.id}`}
-                      >
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs">{action.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={() => handleFirstTimeAction("lifesystem")}
-                  className="w-full max-w-xs px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
-                  data-testid="button-action-lifesystem"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  Build my life system
-                </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setHistoryOpen(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                    data-testid="button-view-history"
-                  >
-                    <History className="h-3 w-3" />
-                    History
-                  </button>
-                  <Link href="/daily-schedule">
-                    <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
-                      Today's schedule
-                    </button>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div ref={messagesStartRef} />
+            <div className="space-y-4">
+              <div ref={messagesStartRef} />
                 {/* Combine DB/local messages with optimistic messages for display */}
                 {[...messages, ...optimisticMessages].map((message, index) => {
                   const handleLongPressStart = () => {
@@ -1744,9 +1747,9 @@ export function AIWorkspace() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-            )}
           </div>
         </ScrollArea>
+        )}
 
         <div className="px-2 py-2 pb-4 border-t dark:border-white/5 glass-subtle">
           <div className="max-w-2xl mx-auto space-y-1">
