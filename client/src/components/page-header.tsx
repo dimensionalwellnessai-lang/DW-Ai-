@@ -86,7 +86,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      <header className="flex items-center gap-2 p-3 border-b dark:border-white/5 sticky top-0 bg-background glass-subtle z-50">
+      <header className="flex items-center gap-2 px-3 py-2 border-b dark:border-white/5 sticky top-0 bg-background glass-subtle z-50" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 

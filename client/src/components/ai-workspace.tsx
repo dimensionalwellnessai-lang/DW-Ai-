@@ -1120,7 +1120,7 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24">
-      <header className="relative flex items-center justify-center px-3 py-3 border-b dark:border-white/5 glass-subtle">
+      <header className="relative flex items-center justify-center px-3 py-2 border-b dark:border-white/5 glass-subtle" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button
