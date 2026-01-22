@@ -87,7 +87,7 @@ export function SettingsPage() {
     <div className="min-h-screen bg-background">
       <PageHeader title="Settings" backPath="/" />
 
-      <main className="p-4 max-w-2xl mx-auto space-y-4">
+      <main className="p-4 max-w-2xl mx-auto space-y-4" data-tour="settings">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
