@@ -92,7 +92,10 @@ export function SwipeableDrawer({
 
   return (
     <div 
-      className={`fixed inset-0 bg-black/40 ${elevated ? "z-[10001]" : "z-50"}`}
+      className={`fixed inset-0 bg-black/40 ${elevated ? "z-[10001]" : "z-40"}`}
+      style={{
+        top: "calc(env(safe-area-inset-top, 0px) + 52px)" /* Below status bar + header */
+      }}
       onClick={onClose}
       data-testid="swipeable-drawer-overlay"
       data-elevated={elevated ? "true" : "false"}
@@ -103,7 +106,7 @@ export function SwipeableDrawer({
           isDragging ? "" : "transition-transform duration-200"
         }`}
         style={{ 
-          paddingTop: "max(env(safe-area-inset-top, 0px), 12px)",
+          paddingTop: "12px",
           transform: `translateX(${translateX}px)` 
         }}
         onClick={(e) => e.stopPropagation()}
