@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeSelector } from "@/components/theme-selector";
+import { WearableManager } from "@/components/wearable-manager";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
@@ -174,23 +176,11 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Moon className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <CardTitle className="text-base">Appearance</CardTitle>
-                <CardDescription>Customize how the app looks</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <Label>Theme</Label>
-              <ThemeToggle />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Enhanced Theme Selector */}
+        <ThemeSelector />
+
+        {/* Wearable Device Manager */}
+        <WearableManager />
 
         <Card>
           <CardHeader>
