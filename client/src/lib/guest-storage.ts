@@ -399,6 +399,21 @@ export interface ProfileSetup {
   mobilityCapabilities: MobilityCapabilities | null;
 }
 
+export interface EnhancedOnboardingData {
+  name: string | null;
+  wellnessGoals: string[];
+  birthDate: string | null;
+  birthTime: string | null;
+  birthLocation: string | null;
+  wakeTime: string | null;
+  sleepTime: string | null;
+  dietaryPreferences: string[];
+  fitnessGoals: string[];
+  wearableDataPermission: boolean;
+  completedAt: number | null;
+  tourCompleted: boolean;
+}
+
 export interface OnboardingLog {
   id: string;
   type: OnboardingLogType;
@@ -489,6 +504,7 @@ export interface GuestData {
   chatFeedback?: ChatFeedback[];
   softOnboarding?: SoftOnboarding;
   profileSetup?: ProfileSetup;
+  enhancedOnboarding?: EnhancedOnboardingData;
   userResources?: UserResource[];
   planningScopes?: PlanningScope[];
   contentRotations?: ContentRotation[];
@@ -2430,4 +2446,65 @@ export function getWeeklySynopsis(startDate: string): DailySynopsis[] {
   }
   
   return synopses;
+}
+
+// ============================================
+// Enhanced Onboarding
+// ============================================
+
+export function getEnhancedOnboarding(): EnhancedOnboardingData | null {
+  const data = getGuestData();
+  return data?.enhancedOnboarding || null;
+}
+
+export function saveEnhancedOnboarding(onboarding: Partial<EnhancedOnboardingData>): void {
+  const data = getGuestData() || initGuestData();
+  data.enhancedOnboarding = {
+    name: onboarding.name ?? data.enhancedOnboarding?.name ?? null,
+    wellnessGoals: onboarding.wellnessGoals ?? data.enhancedOnboarding?.wellnessGoals ?? [],
+    birthDate: onboarding.birthDate ?? data.enhancedOnboarding?.birthDate ?? null,
+    birthTime: onboarding.birthTime ?? data.enhancedOnboarding?.birthTime ?? null,
+    birthLocation: onboarding.birthLocation ?? data.enhancedOnboarding?.birthLocation ?? null,
+    wakeTime: onboarding.wakeTime ?? data.enhancedOnboarding?.wakeTime ?? null,
+    sleepTime: onboarding.sleepTime ?? data.enhancedOnboarding?.sleepTime ?? null,
+    dietaryPreferences: onboarding.dietaryPreferences ?? data.enhancedOnboarding?.dietaryPreferences ?? [],
+    fitnessGoals: onboarding.fitnessGoals ?? data.enhancedOnboarding?.fitnessGoals ?? [],
+    wearableDataPermission: onboarding.wearableDataPermission ?? data.enhancedOnboarding?.wearableDataPermission ?? false,
+    completedAt: onboarding.completedAt ?? data.enhancedOnboarding?.completedAt ?? null,
+    tourCompleted: onboarding.tourCompleted ?? data.enhancedOnboarding?.tourCompleted ?? false,
+  };
+  saveGuestData(data);
+}
+
+export function isEnhancedOnboardingComplete(): boolean {
+  const onboarding = getEnhancedOnboarding();
+  return onboarding?.completedAt !== null && onboarding?.completedAt !== undefined;
+}
+
+export function hasCompletedTour(): boolean {
+  const onboarding = getEnhancedOnboarding();
+  return onboarding?.tourCompleted === true;
+}
+
+export function markTourCompleted(): void {
+  const data = getGuestData() || initGuestData();
+  if (!data.enhancedOnboarding) {
+    data.enhancedOnboarding = {
+      name: null,
+      wellnessGoals: [],
+      birthDate: null,
+      birthTime: null,
+      birthLocation: null,
+      wakeTime: null,
+      sleepTime: null,
+      dietaryPreferences: [],
+      fitnessGoals: [],
+      wearableDataPermission: false,
+      completedAt: null,
+      tourCompleted: true,
+    };
+  } else {
+    data.enhancedOnboarding.tourCompleted = true;
+  }
+  saveGuestData(data);
 }
