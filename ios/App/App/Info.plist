@@ -45,5 +45,26 @@
         </array>
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <true/>
+        
+        <!-- Microphone permission for voice input -->
+        <key>NSMicrophoneUsageDescription</key>
+        <string>DW-Ai needs microphone access to enable voice input for conversations with your wellness assistant.</string>
+        
+        <!-- Speech recognition permission -->
+        <key>NSSpeechRecognitionUsageDescription</key>
+        <string>DW-Ai uses speech recognition to convert your voice into text for better interaction with your wellness assistant.</string>
+        
+        <!-- Custom URL scheme for deep linking -->
+        <key>CFBundleURLTypes</key>
+        <array>
+                <dict>
+                        <key>CFBundleURLName</key>
+                        <string>com.reilbrown.fliptheswitch</string>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>dwai</string>
+                        </array>
+                </dict>
+        </array>
 </dict>
 </plist>

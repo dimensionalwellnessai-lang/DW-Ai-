@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { VoiceSettings } from "@/components/voice-settings";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
@@ -191,6 +192,9 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Voice Settings */}
+        <VoiceSettings />
 
         <Card>
           <CardHeader>
