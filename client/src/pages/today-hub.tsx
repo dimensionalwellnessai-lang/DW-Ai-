@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProactiveCard, ProactiveCardProps } from "@/components/proactive-card";
+import { UnifiedSearch } from "@/components/unified-search";
 import {
   Zap,
   Heart,
@@ -304,6 +305,15 @@ export default function TodayHubPage() {
             </Button>
           )}
         </header>
+
+        {/* Unified Search */}
+        <section data-testid="section-unified-search">
+          <Card>
+            <CardContent className="p-4">
+              <UnifiedSearch placeholder="Search tasks, projects, routines, goals..." />
+            </CardContent>
+          </Card>
+        </section>
 
         {latestLog && (
           <section data-testid="section-pause-snapshot">
