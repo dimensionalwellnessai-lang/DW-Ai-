@@ -100,7 +100,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     completedAt: null,
   });
 
-  const totalSteps = 8;
+  const totalSteps = 9; // 0-7 are wizard steps, 8 is completion screen
 
   const updateData = (updates: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -116,7 +116,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
   };
 
   const handleNext = () => {
-    if (step < totalSteps - 1) {
+    if (step < 8) { // Steps 0-7, then completion screen is step 8
       setStep(step + 1);
     }
   };
@@ -568,10 +568,10 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       </header>
 
       {/* Progress Indicator */}
-      {step > 0 && step < totalSteps && (
+      {step > 0 && step < 8 && (
         <div className="px-6 pb-4">
           <div className="flex gap-1.5 justify-center">
-            {Array.from({ length: totalSteps }, (_, i) => (
+            {Array.from({ length: 8 }, (_, i) => (
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-colors ${
@@ -599,7 +599,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
           </AnimatePresence>
 
           {/* Next Button */}
-          {step > 0 && step < totalSteps && (
+          {step > 0 && step < 8 && (
             <div className="mt-8">
               <Button
                 size="lg"
@@ -607,7 +607,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                 disabled={!canProceed()}
                 className="w-full"
               >
-                {step === totalSteps - 1 ? "Finish" : "Continue"}
+                {step === 7 ? "Finish" : "Continue"}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>

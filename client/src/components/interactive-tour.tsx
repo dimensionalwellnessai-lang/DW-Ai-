@@ -162,6 +162,43 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
   const isCenter = step?.position === "center" || !step?.targetSelector;
   const isFinal = currentStep === TOUR_STEPS.length - 1;
 
+  // Calculate position for non-center cards
+  const getCardStyle = (): React.CSSProperties | undefined => {
+    if (isCenter || !targetElement) return undefined;
+
+    const rect = targetElement.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    const cardWidth = 450; // max-w-md = ~450px
+    const cardMargin = 16; // mx-4 = 16px
+
+    switch (step?.position) {
+      case "top":
+        return {
+          left: "50%",
+          transform: "translateX(-50%)",
+          bottom: windowHeight - rect.top + 20,
+        };
+      case "bottom":
+        return {
+          left: "50%",
+          transform: "translateX(-50%)",
+          top: rect.bottom + 20,
+        };
+      case "left":
+        return {
+          right: window.innerWidth - rect.left + 20,
+          top: rect.top,
+        };
+      case "right":
+        return {
+          left: rect.right + 20,
+          top: rect.top,
+        };
+      default:
+        return undefined;
+    }
+  };
+
   return (
     <>
       {/* Overlay */}
@@ -174,8 +211,8 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
           <div
             className="absolute border-4 border-primary rounded-lg pointer-events-none transition-all duration-300"
             style={{
-              top: targetElement.offsetTop - 4,
-              left: targetElement.offsetLeft - 4,
+              top: targetElement.getBoundingClientRect().top - 4,
+              left: targetElement.getBoundingClientRect().left - 4,
               width: targetElement.offsetWidth + 8,
               height: targetElement.offsetHeight + 8,
               boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.6)",
@@ -191,11 +228,12 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className={`absolute ${
+            className={`absolute w-full max-w-md mx-4 glass-strong rounded-2xl p-6 shadow-2xl ${
               isCenter
                 ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                : getPositionClasses(targetElement, step?.position)
-            } w-full max-w-md mx-4 glass-strong rounded-2xl p-6 shadow-2xl`}
+                : ""
+            }`}
+            style={isCenter ? undefined : getCardStyle()}
           >
             {/* Close button */}
             <button
@@ -276,30 +314,6 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
       </div>
     </>
   );
-}
-
-function getPositionClasses(
-  element: HTMLElement | null,
-  position?: string
-): string {
-  if (!element) return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
-
-  const rect = element.getBoundingClientRect();
-  const windowHeight = window.innerHeight;
-  const windowWidth = window.innerWidth;
-
-  switch (position) {
-    case "top":
-      return `left-1/2 -translate-x-1/2 bottom-[${windowHeight - rect.top + 20}px]`;
-    case "bottom":
-      return `left-1/2 -translate-x-1/2 top-[${rect.bottom + 20}px]`;
-    case "left":
-      return `right-[${windowWidth - rect.left + 20}px] top-[${rect.top}px]`;
-    case "right":
-      return `left-[${rect.right + 20}px] top-[${rect.top}px]`;
-    default:
-      return "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2";
-  }
 }
 
 // Hook to manage tour state
