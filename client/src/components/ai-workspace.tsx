@@ -1120,11 +1120,11 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated overflow-hidden">
-      {/* Status bar spacer - protects the iOS status bar area */}
-      <div className="w-full shrink-0 safe-area-top" />
-      
-      {/* Fixed header - never scrolls, sits directly below status bar */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 pb-2 z-50">
+      {/* Fixed header - extends to top edge, content pushed down by safe area */}
+      <header 
+        className="shrink-0 relative flex items-center justify-center px-3 pb-2 z-50"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button
