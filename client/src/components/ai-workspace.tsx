@@ -1121,16 +1121,16 @@ export function AIWorkspace() {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated overflow-hidden">
       {/* Fixed header - taller for better proportion */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 py-3 z-50">
+      <header className="shrink-0 relative flex items-center justify-center px-3 py-4 z-50">
         {/* Left icons - absolute positioned */}
-        <div className="absolute left-3 flex items-center gap-1">
+        <div className="absolute left-3 flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </Button>
           <Button
             variant="ghost"
@@ -1138,7 +1138,7 @@ export function AIWorkspace() {
             onClick={() => setHistoryOpen(true)}
             data-testid="button-history"
           >
-            <MessageSquare className="h-5 w-5" />
+            <MessageSquare className="h-6 w-6" />
           </Button>
           <Button
             variant="ghost"
@@ -1146,13 +1146,13 @@ export function AIWorkspace() {
             onClick={handleNewConversation}
             data-testid="button-new-chat"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-6 w-6" />
           </Button>
         </div>
         
         {/* Centered brand name */}
         <div className="flex flex-col items-center gap-0.5">
-          <span className="font-display font-semibold text-sm text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
+          <span className="font-display font-semibold text-base text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
           {userActivated && streak >= 2 && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid="text-streak">
               {streak} day streak
@@ -1161,14 +1161,14 @@ export function AIWorkspace() {
         </div>
         
         {/* Right icons - absolute positioned */}
-        <div className="absolute right-3 flex items-center gap-1">
+        <div className="absolute right-3 flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setImportDialogOpen(true)}
             data-testid="button-import"
           >
-            <Upload className="h-5 w-5" />
+            <Upload className="h-6 w-6" />
           </Button>
           <ThemeToggle />
         </div>
@@ -1748,7 +1748,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="shrink-0 px-2 py-2 pb-14">
+        <div className="shrink-0 px-2 pt-1 pb-16">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
