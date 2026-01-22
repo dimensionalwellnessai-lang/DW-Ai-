@@ -1748,7 +1748,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="px-2 py-2 pb-16">
+        <div className="shrink-0 px-2 py-2 pb-14">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
