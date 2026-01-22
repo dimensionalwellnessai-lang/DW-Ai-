@@ -183,11 +183,4 @@ export const ttsService = new TTSService();
 // Initialize on load
 if (typeof window !== 'undefined') {
   ttsService.loadSettings();
-  
-  // Voices might not be loaded immediately
-  if (window.speechSynthesis) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      // Voices are now available
-    };
-  }
 }

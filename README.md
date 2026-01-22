@@ -127,7 +127,7 @@ DW-Ai includes advanced voice interaction capabilities:
 - Click "Listen" button on any AI response to hear it
 
 ### Phone Assistant Integration
-- **Siri Support (iOS)**: Use "Hey Siri, open dwai://action/chat?message=check my schedule"
+- **Siri Support (iOS)**: Use "Hey Siri, open dwai://action?type=chat&message=check my schedule"
 - **Google Assistant (Android)**: Use "Hey Google, ask DW-Ai to check my tasks"
 - Deep link support for direct app actions
 

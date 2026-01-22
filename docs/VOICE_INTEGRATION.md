@@ -37,16 +37,16 @@ Available options:
 You can use Siri to interact with DW-Ai through deep links:
 
 **Example Commands:**
-- "Hey Siri, open dwai://action/chat?message=How am I doing today"
-- "Hey Siri, open dwai://action/schedule"
-- "Hey Siri, open dwai://action/tasks"
-- "Hey Siri, open dwai://action/meditation"
+- "Hey Siri, open dwai://action?type=chat&message=How am I doing today"
+- "Hey Siri, open dwai://action?type=schedule"
+- "Hey Siri, open dwai://action?type=tasks"
+- "Hey Siri, open dwai://action?type=meditation"
 
 **Setting up Siri Shortcuts:**
 1. Open the Shortcuts app on your iPhone
 2. Create a new shortcut
 3. Add "Open URL" action
-4. Enter a DW-Ai deep link (e.g., `dwai://action/chat?message=check my schedule`)
+4. Enter a DW-Ai deep link (e.g., `dwai://action?type=chat&message=check my schedule`)
 5. Add to Siri with a phrase like "Check my wellness"
 
 #### Android (Google Assistant)
@@ -59,7 +59,7 @@ Use Google Assistant with App Actions:
 
 **Deep Link Format:**
 ```
-dwai://action/<action-name>?param1=value1&param2=value2
+dwai://action?type=<action-name>&param1=value1&param2=value2
 ```
 
 **Available Actions:**
@@ -131,7 +131,7 @@ Voice features enhance accessibility for:
 4. Disable when done
 
 ### Voice-Activated Scheduling
-1. Say to Siri: "Hey Siri, open dwai://action/chat?message=Schedule meditation for 6 PM"
+1. Say to Siri: "Hey Siri, open dwai://action?type=chat&message=Schedule meditation for 6 PM"
 2. App opens with the command pre-filled
 3. AI processes and creates the schedule
 

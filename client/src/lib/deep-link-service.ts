@@ -89,7 +89,7 @@ class DeepLinkService {
 
   /**
    * Parse and handle a deep link URL
-   * Supports formats like: dwai://action/chat?message=hello
+   * Supports formats like: dwai://action?type=chat&message=hello
    */
   private handleDeepLink(url: string) {
     try {
@@ -104,14 +104,22 @@ class DeepLinkService {
         return;
       }
 
-      // Extract action from path
-      const pathParts = urlObj.pathname.split('/').filter(Boolean);
-      const action = pathParts[0] || 'unknown';
+      // Extract action from query parameter or path
+      let action = urlObj.searchParams.get('type') || 'unknown';
+      
+      // If no type param, try to get from path (format: dwai://chat or dwai://action/chat)
+      if (action === 'unknown') {
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
+        // Handle both dwai://chat and dwai://action/chat formats
+        action = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'unknown';
+      }
       
       // Extract query parameters
       const params: Record<string, string> = {};
       urlObj.searchParams.forEach((value, key) => {
-        params[key] = value;
+        if (key !== 'type') { // Don't include type in params since it's the action
+          params[key] = value;
+        }
       });
 
       // Find and execute handler
@@ -132,9 +140,11 @@ class DeepLinkService {
 
   /**
    * Generate a deep link URL
+   * Format: dwai://action?type=actionName&param1=value1
    */
   generateDeepLink(action: string, params?: Record<string, string>): string {
-    const url = new URL(`dwai://action/${action}`);
+    const url = new URL(`dwai://action`);
+    url.searchParams.append('type', action);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.append(key, value);

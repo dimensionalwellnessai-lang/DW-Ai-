@@ -30,13 +30,11 @@ export function TTSButton({
   }, [text, autoPlay]);
 
   useEffect(() => {
-    // Cleanup on unmount
+    // Cleanup on unmount - always stop to prevent orphaned audio
     return () => {
-      if (isPlaying) {
-        ttsService.stop();
-      }
+      ttsService.stop();
     };
-  }, [isPlaying]);
+  }, []);
 
   const handleSpeak = async () => {
     if (!isSupported) return;

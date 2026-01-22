@@ -153,15 +153,16 @@ export function EnhancedVoiceModeButton({
       };
 
       recognition.onend = () => {
-        if (voiceState === "continuous" && isContinuous) {
-          // Restart in continuous mode
+        // Check if we should restart in continuous mode
+        // Use isContinuous parameter rather than voiceState for accuracy
+        if (isContinuous && recognitionRef.current === recognition) {
           try {
             recognition.start();
           } catch (error) {
             console.error('Failed to restart continuous recognition:', error);
             setVoiceState("idle");
           }
-        } else if (voiceState === "listening") {
+        } else {
           setVoiceState("idle");
         }
       };
