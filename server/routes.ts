@@ -47,6 +47,35 @@ declare module "express-session" {
   }
 }
 
+// Helper function to calculate search relevance score
+function calculateRelevance(title: string | null | undefined, description: string | null | undefined, searchTerm: string): number {
+  let score = 0;
+  const lowerSearch = searchTerm.toLowerCase();
+  const titleLower = (title || "").toLowerCase();
+  const descLower = (description || "").toLowerCase();
+  
+  // Exact match in title gets highest score
+  if (titleLower === lowerSearch) score += 100;
+  // Title starts with search term
+  else if (titleLower.startsWith(lowerSearch)) score += 50;
+  // Title contains search term
+  else if (titleLower.includes(lowerSearch)) score += 25;
+  
+  // Description contains search term
+  if (descLower.includes(lowerSearch)) score += 10;
+  
+  // Bonus for multiple word matches
+  const searchWords = lowerSearch.split(/\s+/);
+  searchWords.forEach(word => {
+    if (word.length > 2) {
+      if (titleLower.includes(word)) score += 5;
+      if (descLower.includes(word)) score += 2;
+    }
+  });
+  
+  return score;
+}
+
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -1594,6 +1623,205 @@ export async function registerRoutes(
       console.error("Error generating morning briefing:", error);
       res.status(500).json({ error: "Failed to generate briefing" });
     }
+  });
+
+  // Wellness Summary Endpoint - aggregates mood, completions, and energy logs
+  app.get("/api/summary", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const days = parseInt(req.query.days as string) || 7;
+      
+      // Get data from the last N days
+      const moodLogs = await storage.getMoodLogs(userId);
+      const recentMoods = moodLogs.slice(-days);
+      
+      const habits = await storage.getHabits(userId);
+      const goals = await storage.getGoals(userId);
+      const routines = await storage.getRoutines(userId);
+      
+      // Calculate average energy and mood
+      const avgEnergy = recentMoods.length > 0 
+        ? recentMoods.reduce((sum, log) => sum + (log.energy || 0), 0) / recentMoods.length 
+        : 0;
+      const avgMood = recentMoods.length > 0 
+        ? recentMoods.reduce((sum, log) => sum + (log.mood || 0), 0) / recentMoods.length 
+        : 0;
+      const avgClarity = recentMoods.length > 0 
+        ? recentMoods.reduce((sum, log) => sum + (log.clarity || 0), 0) / recentMoods.length 
+        : 0;
+      
+      // Count completions
+      const activeGoalsCount = goals.filter(g => g.isActive).length;
+      const completedGoalsCount = goals.filter(g => !g.isActive && g.progress >= 100).length;
+      const activeHabitsCount = habits.filter(h => h.isActive).length;
+      const activeRoutinesCount = routines.filter(r => r.isActive).length;
+      
+      res.json({
+        period: `${days} days`,
+        moodTrends: {
+          averageEnergy: Math.round(avgEnergy * 10) / 10,
+          averageMood: Math.round(avgMood * 10) / 10,
+          averageClarity: Math.round(avgClarity * 10) / 10,
+          totalLogs: recentMoods.length
+        },
+        progress: {
+          activeGoals: activeGoalsCount,
+          completedGoals: completedGoalsCount,
+          activeHabits: activeHabitsCount,
+          activeRoutines: activeRoutinesCount
+        },
+        insights: [
+          avgEnergy > 7 ? "Your energy levels have been strong this week!" : 
+          avgEnergy < 4 ? "Your energy has been low. Consider adding more rest and recovery." :
+          "Your energy levels are moderate. Balance is key.",
+          
+          avgMood > 7 ? "You've been feeling positive lately!" :
+          avgMood < 4 ? "Your mood has been lower. Reach out for support if needed." :
+          "Your mood has been steady."
+        ]
+      });
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      res.status(500).json({ error: "Failed to generate summary" });
+    }
+  });
+
+  // Unified Search Endpoint - searches across tasks, projects, routines, goals
+  app.post("/api/search/unified", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { query, categories } = req.body;
+      
+      if (!query || query.trim().length === 0) {
+        return res.json({ results: [], summary: "Please enter a search query" });
+      }
+      
+      const searchTerm = query.toLowerCase();
+      const results: any[] = [];
+      
+      // Determine which categories to search
+      const searchCategories = categories || ["tasks", "projects", "routines", "goals"];
+      
+      // Search Tasks
+      if (searchCategories.includes("tasks")) {
+        const tasks = await storage.getTasks(userId);
+        const matchingTasks = tasks.filter(task => 
+          task.title?.toLowerCase().includes(searchTerm) ||
+          task.description?.toLowerCase().includes(searchTerm) ||
+          task.dimensionTags?.some(tag => tag.toLowerCase().includes(searchTerm))
+        );
+        
+        results.push(...matchingTasks.map(task => ({
+          id: task.id,
+          type: "task",
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          dueDate: task.dueDate,
+          relevanceScore: calculateRelevance(task.title, task.description, searchTerm)
+        })));
+      }
+      
+      // Search Projects
+      if (searchCategories.includes("projects")) {
+        const projects = await storage.getProjects(userId);
+        const matchingProjects = projects.filter(project =>
+          project.title?.toLowerCase().includes(searchTerm) ||
+          project.description?.toLowerCase().includes(searchTerm) ||
+          project.dimensionTags?.some(tag => tag.toLowerCase().includes(searchTerm))
+        );
+        
+        results.push(...matchingProjects.map(project => ({
+          id: project.id,
+          type: "project",
+          title: project.title,
+          description: project.description,
+          status: project.status,
+          relevanceScore: calculateRelevance(project.title, project.description, searchTerm)
+        })));
+      }
+      
+      // Search Routines
+      if (searchCategories.includes("routines")) {
+        const routines = await storage.getRoutines(userId);
+        const matchingRoutines = routines.filter(routine =>
+          routine.title?.toLowerCase().includes(searchTerm) ||
+          routine.description?.toLowerCase().includes(searchTerm)
+        );
+        
+        results.push(...matchingRoutines.map(routine => ({
+          id: routine.id,
+          type: "routine",
+          title: routine.title,
+          description: routine.description,
+          isActive: routine.isActive,
+          duration: routine.duration,
+          relevanceScore: calculateRelevance(routine.title, routine.description, searchTerm)
+        })));
+      }
+      
+      // Search Goals
+      if (searchCategories.includes("goals")) {
+        const goals = await storage.getGoals(userId);
+        const matchingGoals = goals.filter(goal =>
+          goal.title?.toLowerCase().includes(searchTerm) ||
+          goal.description?.toLowerCase().includes(searchTerm) ||
+          goal.wellnessDimension?.toLowerCase().includes(searchTerm)
+        );
+        
+        results.push(...matchingGoals.map(goal => ({
+          id: goal.id,
+          type: "goal",
+          title: goal.title,
+          description: goal.description,
+          progress: goal.progress,
+          isActive: goal.isActive,
+          relevanceScore: calculateRelevance(goal.title, goal.description, searchTerm)
+        })));
+      }
+      
+      // Sort by relevance score (higher is better)
+      results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      
+      res.json({
+        results: results.slice(0, 20), // Limit to top 20 results
+        totalResults: results.length,
+        query: query
+      });
+    } catch (error) {
+      console.error("Error performing unified search:", error);
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
+  // Calendar Sync Stub - for future Google Calendar integration
+  app.get("/api/integrations/calendar/google/status", requireAuth, async (req, res) => {
+    res.json({
+      connected: false,
+      message: "Google Calendar integration coming soon"
+    });
+  });
+
+  app.post("/api/integrations/calendar/google/connect", requireAuth, async (req, res) => {
+    res.status(501).json({
+      error: "Not implemented",
+      message: "Google Calendar sync will be available in a future update"
+    });
+  });
+
+  // Voice Query Stubs - for future voice integration
+  app.post("/api/voice/query", requireAuth, async (req, res) => {
+    res.status(501).json({
+      error: "Not implemented",
+      message: "Voice query support coming in Phase 2"
+    });
+  });
+
+  app.post("/api/voice/response", requireAuth, async (req, res) => {
+    res.status(501).json({
+      error: "Not implemented",
+      message: "Voice response support coming in Phase 2"
+    });
   });
 
   app.get("/api/goals", requireAuth, async (req, res) => {
