@@ -1120,8 +1120,8 @@ export function AIWorkspace() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated overflow-hidden">
-      {/* Fixed header - no top padding */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 py-2 z-50">
+      {/* Fixed header - taller for better proportion */}
+      <header className="shrink-0 relative flex items-center justify-center px-3 py-3 z-50">
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button
@@ -1397,8 +1397,8 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           /* Landing view - centered without scrolling */
-          <div className="flex-1 flex items-center justify-center px-4">
-            <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-2">
+          <div className="flex-1 flex items-center justify-center px-4 overflow-hidden">
+            <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-1.5">
               <div className="text-center space-y-0.5">
                 <h1 className="text-lg font-display font-semibold" data-testid="text-greeting">
                   {greeting}
