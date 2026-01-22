@@ -1641,13 +1641,13 @@ export async function registerRoutes(
       
       // Calculate average energy and mood
       const avgEnergy = recentMoods.length > 0 
-        ? recentMoods.reduce((sum, log) => sum + (log.energy || 0), 0) / recentMoods.length 
+        ? recentMoods.reduce((sum, log) => sum + (log.energyLevel || 0), 0) / recentMoods.length 
         : 0;
       const avgMood = recentMoods.length > 0 
-        ? recentMoods.reduce((sum, log) => sum + (log.mood || 0), 0) / recentMoods.length 
+        ? recentMoods.reduce((sum, log) => sum + (log.moodLevel || 0), 0) / recentMoods.length 
         : 0;
       const avgClarity = recentMoods.length > 0 
-        ? recentMoods.reduce((sum, log) => sum + (log.clarity || 0), 0) / recentMoods.length 
+        ? recentMoods.reduce((sum, log) => sum + (log.clarityLevel || 0), 0) / recentMoods.length 
         : 0;
       
       // Count completions
