@@ -1119,12 +1119,12 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated pb-24 overflow-hidden">
-      {/* Status bar spacer - protects the iOS status bar area, matches background color */}
-      <div className="w-full bg-background shrink-0 safe-area-top" />
+    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated overflow-hidden">
+      {/* Status bar spacer - protects the iOS status bar area */}
+      <div className="w-full shrink-0 safe-area-top" />
       
-      {/* Fixed header - never scrolls, sits below status bar */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 py-2 border-b dark:border-white/5 glass-subtle bg-background z-50">
+      {/* Fixed header - never scrolls, sits directly below status bar */}
+      <header className="shrink-0 relative flex items-center justify-center px-3 py-2 z-50">
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button
@@ -1751,7 +1751,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="px-2 py-2 pb-4 border-t dark:border-white/5 glass-subtle">
+        <div className="px-2 py-2 pb-20">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
