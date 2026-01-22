@@ -9,6 +9,8 @@ Flip the Switch helps users manage wellness across 13 life dimensions using an e
 ### Key Features
 
 - **AI Chat Interface**: Primary interaction point with context-aware wellness guidance
+- **Voice Interaction**: Speech-to-text input and text-to-speech responses for natural conversation
+- **Phone Assistant Integration**: Deep links for Siri and Google Assistant integration
 - **Today Hub**: Daily command center showing schedule, goals, and proactive nudges
 - **Life System Management**: Goals, habits, routines, and schedule blocks
 - **Wellness Dimensions**: Physical, emotional, spiritual, financial, and more
@@ -108,6 +110,35 @@ npm run db:push
 - **Silence as a design tool** - calm, unobtrusive UX
 - **Nervous system-aware** - adapts to user energy states
 - **Consent-based** - always asks before saving or scheduling
+
+## Voice Interaction Features
+
+DW-Ai includes advanced voice interaction capabilities:
+
+### Speech-to-Text (STT)
+- Click the microphone button in any chat interface to speak your message
+- Supports continuous listening mode for hands-free conversation
+- Uses Web Speech API for accurate transcription
+
+### Text-to-Speech (TTS)
+- AI assistant can speak its responses aloud
+- Customizable voice, speaking rate, pitch, and volume
+- Auto-speak mode for automatic voice responses
+- Click "Listen" button on any AI response to hear it
+
+### Phone Assistant Integration
+- **Siri Support (iOS)**: Use "Hey Siri, open dwai://action/chat?message=check my schedule"
+- **Google Assistant (Android)**: Use "Hey Google, ask DW-Ai to check my tasks"
+- Deep link support for direct app actions
+
+### Voice Settings
+Configure voice features in Settings → Voice Settings:
+- Enable/disable voice responses
+- Select preferred voice
+- Adjust speaking rate, pitch, and volume
+- Test your voice settings
+
+For detailed documentation, see [Voice Integration Guide](./docs/VOICE_INTEGRATION.md).
 
 ## Current Status
 

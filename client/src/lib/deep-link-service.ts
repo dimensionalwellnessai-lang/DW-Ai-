@@ -3,8 +3,6 @@
  * Handles deep links from Siri, Google Assistant, and other sources
  */
 
-import { App, URLOpenListenerEvent } from '@capacitor/app';
-
 export interface DeepLinkAction {
   action: string;
   params?: Record<string, string>;
@@ -12,32 +10,66 @@ export interface DeepLinkAction {
 
 type DeepLinkHandler = (action: DeepLinkAction) => void;
 
+// Type definitions for Capacitor App plugin
+interface URLOpenListenerEvent {
+  url: string;
+}
+
+interface LaunchUrlResult {
+  url?: string;
+}
+
 class DeepLinkService {
   private handlers: Map<string, DeepLinkHandler> = new Map();
   private isInitialized = false;
+  private isCapacitorAvailable = false;
+
+  constructor() {
+    // Check if Capacitor is available
+    if (typeof window !== 'undefined' && (window as any).Capacitor) {
+      this.isCapacitorAvailable = true;
+    }
+  }
 
   /**
    * Initialize deep link listener
    */
-  initialize() {
+  async initialize() {
     if (this.isInitialized) return;
     
     try {
+      if (!this.isCapacitorAvailable) {
+        console.log('Capacitor not available, deep links will not work in web mode');
+        this.isInitialized = true;
+        return;
+      }
+
+      // Dynamically import Capacitor App plugin
+      // @ts-ignore - Capacitor App plugin may not be available in web builds
+      const capacitorApp = await import('@capacitor/app').catch(() => null);
+      if (!capacitorApp) {
+        console.log('Capacitor App plugin not available');
+        this.isInitialized = true;
+        return;
+      }
+
+      const { App } = capacitorApp;
+      
       // Listen for deep links
       App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
         this.handleDeepLink(event.url);
       });
 
       // Check if app was opened with a URL
-      App.getLaunchUrl().then((result) => {
-        if (result?.url) {
-          this.handleDeepLink(result.url);
-        }
-      });
+      const result: LaunchUrlResult = await App.getLaunchUrl();
+      if (result?.url) {
+        this.handleDeepLink(result.url);
+      }
 
       this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize deep link service:', error);
+      this.isInitialized = true; // Mark as initialized even on error to prevent retries
     }
   }
 
@@ -89,7 +121,9 @@ class DeepLinkService {
       } else {
         console.warn('No handler registered for action:', action);
         // Default action - navigate to home
-        window.location.href = '/';
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
       }
     } catch (error) {
       console.error('Failed to parse deep link:', error);
