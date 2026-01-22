@@ -314,6 +314,7 @@ export default function Browse() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedContent, setSelectedContent] = useState<WellnessContent | typeof SAMPLE_CONTENT[0] | null>(null);
   const [contentDetailOpen, setContentDetailOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Reset local resources when switching away from local tab
   useEffect(() => {
@@ -359,11 +360,29 @@ ${contentList}`,
 
   const content = dbContent && dbContent.length > 0 ? dbContent : SAMPLE_CONTENT;
   
-  const filteredContent = activeCategory
-    ? content.filter((c) => c.category === activeCategory)
-    : aiRecommendations
-    ? content.filter((c) => aiRecommendations.includes(c.title))
-    : content;
+  // Apply filters - cast to common type for filtering
+  let filteredContent: Array<WellnessContent | typeof SAMPLE_CONTENT[0]> = content;
+  
+  // Search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredContent = filteredContent.filter((c) => 
+      c.title.toLowerCase().includes(query) ||
+      (c.description && c.description.toLowerCase().includes(query)) ||
+      (c.goalTags && c.goalTags.some(tag => tag.toLowerCase().includes(query))) ||
+      (c.moodTags && c.moodTags.some(tag => tag.toLowerCase().includes(query)))
+    );
+  }
+  
+  // Category filter
+  if (activeCategory) {
+    filteredContent = filteredContent.filter((c) => c.category === activeCategory);
+  }
+  
+  // AI recommendations filter
+  if (aiRecommendations) {
+    filteredContent = filteredContent.filter((c) => aiRecommendations.includes(c.title));
+  }
 
   const getCategoryIcon = (category: string) => {
     const found = CONTENT_CATEGORIES.find((c) => c.id === category);
@@ -469,52 +488,77 @@ ${contentList}`,
       </div>
       
       {activeTab === "browse" && (
-        <div className="sticky top-[109px] z-30 bg-background border-b">
-        <div className="overflow-x-auto">
-          <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
-            {aiRecommendations && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setAiRecommendations(null);
-                  setActiveCategory(null);
-                }}
-                data-testid="button-clear-ai"
-              >
-                <X className="h-4 w-4 mr-1" />
-                AI Picks
-              </Button>
-            )}
-            <Button
-              variant={activeCategory === null && !aiRecommendations ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setActiveCategory(null);
-                setAiRecommendations(null);
-              }}
-              data-testid="button-category-all"
-            >
-              All
-            </Button>
-            {CONTENT_CATEGORIES.map((cat) => (
-              <Button
-                key={cat.id}
-                variant={activeCategory === cat.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  setAiRecommendations(null);
-                }}
-                data-testid={`button-category-${cat.id}`}
-              >
-                <cat.icon className="h-4 w-4 mr-1" />
-                {cat.name}
-              </Button>
-            ))}
+        <>
+          <div className="sticky top-[109px] z-30 bg-background border-b px-4 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search workouts, meditations, or browse by mood..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-content-search"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+          
+          <div className="sticky top-[172px] z-30 bg-background border-b">
+            <div className="overflow-x-auto">
+              <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
+                {aiRecommendations && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setAiRecommendations(null);
+                      setActiveCategory(null);
+                    }}
+                    data-testid="button-clear-ai"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    AI Picks
+                  </Button>
+                )}
+                <Button
+                  variant={activeCategory === null && !aiRecommendations ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setActiveCategory(null);
+                    setAiRecommendations(null);
+                  }}
+                  data-testid="button-category-all"
+                >
+                  All
+                </Button>
+                {CONTENT_CATEGORIES.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    variant={activeCategory === cat.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setActiveCategory(cat.id);
+                      setAiRecommendations(null);
+                    }}
+                    data-testid={`button-category-${cat.id}`}
+                  >
+                    <cat.icon className="h-4 w-4 mr-1" />
+                    {cat.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {activeTab === "browse" && userProfile && (
@@ -595,9 +639,25 @@ ${contentList}`,
 
           {filteredContent.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No content found in this category yet.
-              </p>
+              {searchQuery ? (
+                <>
+                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <p className="text-muted-foreground mb-2">
+                    No content found for "{searchQuery}"
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  No content found in this category yet.
+                </p>
+              )}
             </div>
           )}
         </main>
