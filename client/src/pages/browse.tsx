@@ -63,6 +63,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["energy", "mobility"],
     moodTags: ["tired", "scattered"],
+    thumbnailUrl: "/api/placeholder/workout-morning",
   },
   {
     id: "2",
@@ -74,6 +75,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "focus"],
     moodTags: ["anxious", "overwhelmed"],
+    thumbnailUrl: "/api/placeholder/meditation-calm",
   },
   {
     id: "3",
@@ -85,6 +87,7 @@ const SAMPLE_CONTENT = [
     difficulty: "intermediate",
     goalTags: ["muscle-gain", "strength"],
     moodTags: ["motivated", "energetic"],
+    thumbnailUrl: "/api/placeholder/workout-strength",
   },
   {
     id: "4",
@@ -96,6 +99,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["sleep", "relaxation"],
     moodTags: ["tired", "restless"],
+    thumbnailUrl: "/api/placeholder/meditation-sleep",
   },
   {
     id: "5",
@@ -107,6 +111,7 @@ const SAMPLE_CONTENT = [
     difficulty: "advanced",
     goalTags: ["fat-loss", "endurance"],
     moodTags: ["energetic", "motivated"],
+    thumbnailUrl: "/api/placeholder/workout-hiit",
   },
   {
     id: "6",
@@ -118,6 +123,151 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["mental-health", "positivity"],
     moodTags: ["low", "neutral"],
+    thumbnailUrl: "/api/placeholder/mindfulness-gratitude",
+  },
+  {
+    id: "7",
+    title: "Yoga for Flexibility",
+    description: "Gentle yoga flow focused on improving flexibility and reducing tension",
+    contentType: "workout",
+    category: "workout",
+    duration: 25,
+    difficulty: "beginner",
+    goalTags: ["flexibility", "stress-relief"],
+    moodTags: ["tense", "stressed"],
+    thumbnailUrl: "/api/placeholder/workout-yoga",
+  },
+  {
+    id: "8",
+    title: "Focus Boost",
+    description: "Quick meditation to enhance concentration and mental clarity",
+    contentType: "meditation",
+    category: "meditation",
+    duration: 8,
+    difficulty: "beginner",
+    goalTags: ["focus", "productivity"],
+    moodTags: ["scattered", "distracted"],
+    thumbnailUrl: "/api/placeholder/meditation-focus",
+  },
+  {
+    id: "9",
+    title: "Core Conditioning",
+    description: "Targeted core workout for building strength and stability",
+    contentType: "workout",
+    category: "workout",
+    duration: 20,
+    difficulty: "intermediate",
+    goalTags: ["strength", "core"],
+    moodTags: ["motivated", "focused"],
+    thumbnailUrl: "/api/placeholder/workout-core",
+  },
+  {
+    id: "10",
+    title: "Mindful Walking",
+    description: "Transform a simple walk into a moving meditation",
+    contentType: "mindfulness",
+    category: "mindfulness",
+    duration: 20,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "presence"],
+    moodTags: ["restless", "scattered"],
+    thumbnailUrl: "/api/placeholder/mindfulness-walking",
+  },
+  {
+    id: "11",
+    title: "Evening Wind Down",
+    description: "Gentle movement to release tension and prepare for sleep",
+    contentType: "workout",
+    category: "workout",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["sleep", "relaxation"],
+    moodTags: ["tired", "tense"],
+    thumbnailUrl: "/api/placeholder/workout-evening",
+  },
+  {
+    id: "12",
+    title: "Body Scan Relaxation",
+    description: "Deep relaxation through systematic body awareness",
+    contentType: "meditation",
+    category: "meditation",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "relaxation"],
+    moodTags: ["tense", "overwhelmed"],
+    thumbnailUrl: "/api/placeholder/meditation-body-scan",
+  },
+  {
+    id: "13",
+    title: "Breathing Space",
+    description: "Quick mindfulness exercise to create calm in busy moments",
+    contentType: "mindfulness",
+    category: "mindfulness",
+    duration: 5,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "presence"],
+    moodTags: ["overwhelmed", "anxious"],
+    thumbnailUrl: "/api/placeholder/mindfulness-breathing",
+  },
+  {
+    id: "14",
+    title: "Foam Rolling Recovery",
+    description: "Self-myofascial release to reduce muscle soreness",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["recovery", "mobility"],
+    moodTags: ["sore", "tired"],
+    thumbnailUrl: "/api/placeholder/recovery-foam-rolling",
+  },
+  {
+    id: "15",
+    title: "Active Recovery Flow",
+    description: "Light movement to promote blood flow and reduce soreness",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 20,
+    difficulty: "beginner",
+    goalTags: ["recovery", "mobility"],
+    moodTags: ["sore", "low-energy"],
+    thumbnailUrl: "/api/placeholder/recovery-active",
+  },
+  {
+    id: "16",
+    title: "Meal Prep Basics",
+    description: "Learn efficient strategies for weekly meal preparation",
+    contentType: "nutrition",
+    category: "nutrition",
+    duration: 45,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "time-management"],
+    moodTags: ["motivated", "organized"],
+    thumbnailUrl: "/api/placeholder/nutrition-meal-prep",
+  },
+  {
+    id: "17",
+    title: "Hydration Challenge",
+    description: "Build the habit of drinking enough water daily",
+    contentType: "nutrition",
+    category: "nutrition",
+    duration: 10,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "habits"],
+    moodTags: ["tired", "low-energy"],
+    thumbnailUrl: "/api/placeholder/nutrition-hydration",
+  },
+  {
+    id: "18",
+    title: "Restorative Yoga",
+    description: "Deeply relaxing yoga practice using props to support the body",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 30,
+    difficulty: "beginner",
+    goalTags: ["recovery", "relaxation"],
+    moodTags: ["exhausted", "stressed"],
+    thumbnailUrl: "/api/placeholder/recovery-restorative",
   },
 ];
 
@@ -162,6 +312,8 @@ export default function Browse() {
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const [localResources, setLocalResources] = useState<LocalResource[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<WellnessContent | typeof SAMPLE_CONTENT[0] | null>(null);
+  const [contentDetailOpen, setContentDetailOpen] = useState(false);
 
   // Reset local resources when switching away from local tab
   useEffect(() => {
@@ -220,6 +372,27 @@ ${contentList}`,
 
   const handleComingSoon = () => {
     toast({ title: "Coming soon", description: "This feature is not available yet." });
+  };
+
+  const handleContentClick = (item: WellnessContent | typeof SAMPLE_CONTENT[0]) => {
+    setSelectedContent(item);
+    setContentDetailOpen(true);
+  };
+
+  const handleStartContent = () => {
+    if (!selectedContent) return;
+    
+    // Close the dialog and show toast for now
+    setContentDetailOpen(false);
+    toast({ 
+      title: "Starting content...", 
+      description: `Get ready for: ${selectedContent.title}`,
+    });
+    
+    // In a real implementation, this would navigate to the appropriate page
+    // For workouts: navigate to workout player
+    // For meditations: navigate to meditation player
+    // etc.
   };
 
   const handleLocalSearch = async () => {
@@ -370,6 +543,7 @@ ${contentList}`,
                 <Card
                   key={item.id}
                   className="overflow-visible hover-elevate cursor-pointer transition-all"
+                  onClick={() => handleContentClick(item)}
                   data-testid={`card-content-${item.id}`}
                 >
                   <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-md flex items-center justify-center relative">
@@ -377,6 +551,10 @@ ${contentList}`,
                     <Button
                       size="icon"
                       className="absolute bottom-3 right-3 rounded-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContentClick(item);
+                      }}
                       data-testid={`button-play-${item.id}`}
                     >
                       <Play className="h-4 w-4" />
@@ -722,6 +900,114 @@ ${contentList}`,
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={contentDetailOpen} onOpenChange={setContentDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          {selectedContent && (
+            <>
+              <DialogHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <DialogTitle className="text-2xl mb-2">
+                      {selectedContent.title}
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedContent.duration && (
+                        <Badge variant="secondary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {selectedContent.duration} min
+                        </Badge>
+                      )}
+                      {selectedContent.difficulty && (
+                        <Badge variant="outline" className="capitalize">
+                          {selectedContent.difficulty}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="capitalize">
+                        {selectedContent.category}
+                      </Badge>
+                    </div>
+                  </div>
+                  {(() => {
+                    const Icon = getCategoryIcon(selectedContent.category);
+                    return (
+                      <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon className="h-8 w-8 text-primary" />
+                      </div>
+                    );
+                  })()}
+                </div>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center">
+                  {(() => {
+                    const Icon = getCategoryIcon(selectedContent.category);
+                    return <Icon className="h-24 w-24 text-primary/40" />;
+                  })()}
+                </div>
+                
+                {selectedContent.description && (
+                  <div>
+                    <h3 className="font-medium mb-2">About This Content</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedContent.description}
+                    </p>
+                  </div>
+                )}
+
+                {selectedContent.goalTags && selectedContent.goalTags.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm">What You'll Gain</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedContent.goalTags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedContent.moodTags && selectedContent.moodTags.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm">Perfect When You're Feeling</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedContent.moodTags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 flex gap-2">
+                  <Button 
+                    onClick={handleStartContent}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Now
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      toast({ 
+                        title: "Added to favorites", 
+                        description: "This content has been saved for later" 
+                      });
+                    }}
+                  >
+                    <Heart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
