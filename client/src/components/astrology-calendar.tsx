@@ -50,7 +50,10 @@ function getCelestialDataForDate(date: Date): DayData {
 
   const currentPhase = moonPhases.find(phase => 
     dayInCycle >= phase.range[0] && dayInCycle < phase.range[1]
-  ) || moonPhases[0];
+  );
+  
+  // Default to New Moon if not found (edge case at cycle boundary)
+  const moonPhase = currentPhase || moonPhases[0];
 
   const events: CelestialEvent[] = [];
   

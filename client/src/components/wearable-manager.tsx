@@ -51,6 +51,17 @@ const DEVICE_TYPES = [
   { value: "fitness-tracker", label: "Fitness Tracker" },
 ];
 
+// Mock biometric data generator for testing
+function generateMockBiometricData(deviceId: string) {
+  return {
+    deviceId,
+    heartRate: Math.floor(Math.random() * 40) + 60, // 60-100 bpm
+    stressLevel: Math.floor(Math.random() * 100),
+    activityLevel: Math.floor(Math.random() * 100),
+    hrvScore: Math.floor(Math.random() * 50) + 50,
+  };
+}
+
 export function WearableManager() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,14 +111,7 @@ export function WearableManager() {
 
   const syncDataMutation = useMutation({
     mutationFn: async (deviceId: string) => {
-      // Simulate wearable data sync
-      const mockData = {
-        deviceId,
-        heartRate: Math.floor(Math.random() * 40) + 60, // 60-100 bpm
-        stressLevel: Math.floor(Math.random() * 100),
-        activityLevel: Math.floor(Math.random() * 100),
-        hrvScore: Math.floor(Math.random() * 50) + 50,
-      };
+      const mockData = generateMockBiometricData(deviceId);
       const res = await apiRequest("POST", "/api/wearables/sync", mockData);
       return res.json();
     },

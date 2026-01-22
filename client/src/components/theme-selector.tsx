@@ -23,7 +23,7 @@ const THEME_OPTIONS: { value: ThemeName; label: string; description: string }[] 
   { value: "sunset-warmth", label: "Sunset Warmth", description: "Warm and inviting" },
 ];
 
-const MOOD_OPTIONS: { value: MoodTheme & string; label: string; emoji: string }[] = [
+const MOOD_OPTIONS: { value: MoodTheme; label: string; emoji: string }[] = [
   { value: "calm", label: "Calm", emoji: "😌" },
   { value: "motivated", label: "Energetic", emoji: "⚡" },
   { value: "stressed", label: "Stressed", emoji: "😰" },

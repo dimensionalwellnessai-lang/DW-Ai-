@@ -4907,22 +4907,39 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   return httpServer;
 }
 
+// Mood detection thresholds
+const MOOD_THRESHOLDS = {
+  HIGH_STRESS: 70,
+  LOW_STRESS: 30,
+  CALM_HEART_RATE: 70,
+  ENERGETIC_HEART_RATE: 90,
+  MODERATE_STRESS_MIN: 30,
+  MODERATE_STRESS_MAX: 60,
+  MODERATE_HR_MIN: 70,
+  MODERATE_HR_MAX: 90,
+  GOOD_HRV: 70,
+  MODERATE_STRESS_THRESHOLD: 50,
+};
+
 // Helper function to detect mood from biometric data
 function detectMoodFromBiometrics(heartRate: number, stressLevel: number, hrvScore?: number | null): string {
   // High stress = stressed
-  if (stressLevel > 70) return "stressed";
+  if (stressLevel > MOOD_THRESHOLDS.HIGH_STRESS) return "stressed";
   
   // Low stress + low heart rate = calm/relaxed
-  if (stressLevel < 30 && heartRate < 70) return "calm";
+  if (stressLevel < MOOD_THRESHOLDS.LOW_STRESS && heartRate < MOOD_THRESHOLDS.CALM_HEART_RATE) return "calm";
   
   // High heart rate + moderate stress = energetic
-  if (heartRate > 90 && stressLevel < 50) return "energetic";
+  if (heartRate > MOOD_THRESHOLDS.ENERGETIC_HEART_RATE && stressLevel < MOOD_THRESHOLDS.MODERATE_STRESS_THRESHOLD) return "energetic";
   
   // Good HRV = relaxed
-  if (hrvScore && hrvScore > 70) return "relaxed";
+  if (hrvScore && hrvScore > MOOD_THRESHOLDS.GOOD_HRV) return "relaxed";
   
   // Moderate ranges = focused
-  if (heartRate >= 70 && heartRate <= 90 && stressLevel >= 30 && stressLevel <= 60) return "focused";
+  if (heartRate >= MOOD_THRESHOLDS.MODERATE_HR_MIN && heartRate <= MOOD_THRESHOLDS.MODERATE_HR_MAX && 
+      stressLevel >= MOOD_THRESHOLDS.MODERATE_STRESS_MIN && stressLevel <= MOOD_THRESHOLDS.MODERATE_STRESS_MAX) {
+    return "focused";
+  }
   
   return "neutral";
 }
