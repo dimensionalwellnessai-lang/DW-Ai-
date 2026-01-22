@@ -389,6 +389,17 @@ ${contentList}`,
     return found ? found.icon : Sparkles;
   };
 
+  const getCategoryGradient = (category: string) => {
+    const gradients: Record<string, string> = {
+      workout: "from-orange-500/20 to-red-500/5",
+      meditation: "from-purple-500/20 to-blue-500/5",
+      mindfulness: "from-green-500/20 to-teal-500/5",
+      recovery: "from-blue-500/20 to-cyan-500/5",
+      nutrition: "from-yellow-500/20 to-orange-500/5",
+    };
+    return gradients[category] || "from-primary/20 to-primary/5";
+  };
+
   const handleComingSoon = () => {
     toast({ title: "Coming soon", description: "This feature is not available yet." });
   };
@@ -539,22 +550,33 @@ ${contentList}`,
                   data-testid="button-category-all"
                 >
                   All
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {content.length}
+                  </Badge>
                 </Button>
-                {CONTENT_CATEGORIES.map((cat) => (
-                  <Button
-                    key={cat.id}
-                    variant={activeCategory === cat.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setActiveCategory(cat.id);
-                      setAiRecommendations(null);
-                    }}
-                    data-testid={`button-category-${cat.id}`}
-                  >
-                    <cat.icon className="h-4 w-4 mr-1" />
-                    {cat.name}
-                  </Button>
-                ))}
+                {CONTENT_CATEGORIES.map((cat) => {
+                  const categoryCount = content.filter(c => c.category === cat.id).length;
+                  return (
+                    <Button
+                      key={cat.id}
+                      variant={activeCategory === cat.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setActiveCategory(cat.id);
+                        setAiRecommendations(null);
+                      }}
+                      data-testid={`button-category-${cat.id}`}
+                    >
+                      <cat.icon className="h-4 w-4 mr-1" />
+                      {cat.name}
+                      {categoryCount > 0 && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {categoryCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -563,17 +585,26 @@ ${contentList}`,
 
       {activeTab === "browse" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4" />
-            <span>
-              Personalized for you based on your{" "}
-              {userProfile.fitnessGoal && (
-                <Badge variant="secondary" className="mx-1">
-                  {userProfile.fitnessGoal}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              <span>
+                Personalized for you based on your{" "}
+                {userProfile.fitnessGoal && (
+                  <Badge variant="secondary" className="mx-1">
+                    {userProfile.fitnessGoal}
+                  </Badge>
+                )}
+                goals
+              </span>
+            </div>
+            {(searchQuery || activeCategory || aiRecommendations) && (
+              <div className="text-sm text-muted-foreground">
+                <Badge variant="outline">
+                  {filteredContent.length} {filteredContent.length === 1 ? 'result' : 'results'}
                 </Badge>
-              )}
-              goals
-            </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -586,15 +617,16 @@ ${contentList}`,
               return (
                 <Card
                   key={item.id}
-                  className="overflow-visible hover-elevate cursor-pointer transition-all"
+                  className="overflow-visible hover-elevate cursor-pointer transition-all hover:shadow-lg"
                   onClick={() => handleContentClick(item)}
                   data-testid={`card-content-${item.id}`}
                 >
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-md flex items-center justify-center relative">
-                    <CategoryIcon className="h-12 w-12 text-primary/40" />
+                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
+                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-t-md" />
                     <Button
                       size="icon"
-                      className="absolute bottom-3 right-3 rounded-full"
+                      className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleContentClick(item);
@@ -1002,7 +1034,7 @@ ${contentList}`,
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center">
+                <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(selectedContent.category)} rounded-lg flex items-center justify-center`}>
                   {(() => {
                     const Icon = getCategoryIcon(selectedContent.category);
                     return <Icon className="h-24 w-24 text-primary/40" />;
