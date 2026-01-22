@@ -65,6 +65,7 @@ export function EnhancedVoiceModeButton({
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultIndexRef = useRef(0);
+  const isContinuousRef = useRef(false); // Track continuous mode state
 
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -98,6 +99,7 @@ export function EnhancedVoiceModeButton({
       const recognition = new SpeechRecognitionAPI();
       recognitionRef.current = recognition;
       resultIndexRef.current = 0;
+      isContinuousRef.current = isContinuous; // Store in ref
 
       recognition.continuous = isContinuous;
       recognition.interimResults = true;
@@ -153,14 +155,14 @@ export function EnhancedVoiceModeButton({
       };
 
       recognition.onend = () => {
-        // Check if we should restart in continuous mode
-        // Use isContinuous parameter rather than voiceState for accuracy
-        if (isContinuous && recognitionRef.current === recognition) {
+        // Check if we should restart in continuous mode using ref value
+        if (isContinuousRef.current && recognitionRef.current === recognition) {
           try {
             recognition.start();
           } catch (error) {
             console.error('Failed to restart continuous recognition:', error);
             setVoiceState("idle");
+            isContinuousRef.current = false;
           }
         } else {
           setVoiceState("idle");
@@ -176,12 +178,13 @@ export function EnhancedVoiceModeButton({
         setVoiceState("idle");
       }, 2000);
     }
-  }, [isSupported, onTranscript, onError, voiceState]);
+  }, [isSupported, onTranscript, onError]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
+    isContinuousRef.current = false; // Reset continuous flag
     setVoiceState("idle");
   }, []);
 

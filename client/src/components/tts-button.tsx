@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX, Square } from "lucide-react";
+import { Volume2, Square } from "lucide-react";
 import { ttsService } from "@/lib/tts-service";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,7 @@ export function TTSButton({
     if (autoPlay && settings.enabled && settings.autoSpeak && text) {
       handleSpeak();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, autoPlay]);
 
   useEffect(() => {

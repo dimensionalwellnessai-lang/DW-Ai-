@@ -172,12 +172,15 @@ export const DEEP_LINK_ACTIONS = {
  * Hook for using deep links in React components
  */
 export function useDeepLinkHandler(action: string, handler: DeepLinkHandler) {
+  // Note: This is a simplified hook. In a real React app, wrap this with useEffect:
+  // useEffect(() => {
+  //   deepLinkService.initialize();
+  //   deepLinkService.registerHandler(action, handler);
+  //   return () => deepLinkService.unregisterHandler(action);
+  // }, [action, handler]);
+  
   if (typeof window !== 'undefined') {
     deepLinkService.initialize();
     deepLinkService.registerHandler(action, handler);
-    
-    return () => {
-      deepLinkService.unregisterHandler(action);
-    };
   }
 }

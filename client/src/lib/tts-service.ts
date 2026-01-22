@@ -61,6 +61,10 @@ class TTSService {
    * Get current settings
    */
   getSettings(): TTSSettings {
+    // Lazy initialize settings if not loaded
+    if (!this.settings.enabled && !this.settings.voice) {
+      this.loadSettings();
+    }
     return { ...this.settings };
   }
 
@@ -179,8 +183,3 @@ class TTSService {
 
 // Create singleton instance
 export const ttsService = new TTSService();
-
-// Initialize on load
-if (typeof window !== 'undefined') {
-  ttsService.loadSettings();
-}

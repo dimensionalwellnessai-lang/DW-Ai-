@@ -37,10 +37,12 @@ Available options:
 You can use Siri to interact with DW-Ai through deep links:
 
 **Example Commands:**
-- "Hey Siri, open dwai://action?type=chat&message=How am I doing today"
+- "Hey Siri, open dwai://action?type=chat&message=How%20am%20I%20doing%20today"
 - "Hey Siri, open dwai://action?type=schedule"
 - "Hey Siri, open dwai://action?type=tasks"
 - "Hey Siri, open dwai://action?type=meditation"
+
+**Note:** Messages with spaces or special characters should be URL-encoded. For example, spaces become `%20`.
 
 **Setting up Siri Shortcuts:**
 1. Open the Shortcuts app on your iPhone
@@ -131,9 +133,11 @@ Voice features enhance accessibility for:
 4. Disable when done
 
 ### Voice-Activated Scheduling
-1. Say to Siri: "Hey Siri, open dwai://action?type=chat&message=Schedule meditation for 6 PM"
+1. Say to Siri: "Hey Siri, open dwai://action?type=chat&message=Schedule%20meditation%20for%206%20PM"
 2. App opens with the command pre-filled
 3. AI processes and creates the schedule
+
+**Note:** The URL will be URL-encoded automatically by most systems, but for manual creation, encode spaces as `%20` and special characters appropriately.
 
 ### Quick Check-in via Voice
 1. Enable auto-speak in settings
