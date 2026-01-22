@@ -1124,7 +1124,7 @@ export function AIWorkspace() {
       <div className="w-full shrink-0 safe-area-top" />
       
       {/* Fixed header - never scrolls, sits directly below status bar */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 py-2 z-50">
+      <header className="shrink-0 relative flex items-center justify-center px-3 pb-2 z-50">
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1">
           <Button
