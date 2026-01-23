@@ -1119,7 +1119,7 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-full w-full bg-background gradient-bg-animated overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-background gradient-bg-animated">
       {/* Sticky header - positioned under app-shell safe area */}
       <header className="shrink-0 sticky top-0 bg-background z-50 flex items-center justify-center px-3 py-3">
         {/* Left icons - absolute positioned */}

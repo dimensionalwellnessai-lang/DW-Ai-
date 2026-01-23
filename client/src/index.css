@@ -36,7 +36,7 @@ html, body {
 
 /* Content area respects safe area and is the scroll container */
 .app-content {
-  min-height: calc(100dvh - var(--sat));
+  min-height: calc(100dvh - var(--sat) - var(--sab));
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
