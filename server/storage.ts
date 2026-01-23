@@ -140,9 +140,18 @@ import {
   type InsertExercise,
   type BirthChart,
   type InsertBirthChart,
+  wearableDevices,
+  wearableData,
+  astrologyPredictions,
+  type WearableDevice,
+  type InsertWearableDevice,
+  type WearableData,
+  type InsertWearableData,
+  type AstrologyPrediction,
+  type InsertAstrologyPrediction,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -375,6 +384,21 @@ export interface IStorage {
   getBirthChart(userId: string): Promise<BirthChart | undefined>;
   createBirthChart(chart: InsertBirthChart): Promise<BirthChart>;
   updateBirthChart(userId: string, data: Partial<BirthChart>): Promise<BirthChart | undefined>;
+
+  // Wearable devices
+  getWearableDevices(userId: string): Promise<WearableDevice[]>;
+  createWearableDevice(device: InsertWearableDevice): Promise<WearableDevice>;
+  updateWearableDevice(id: string, data: Partial<WearableDevice>): Promise<WearableDevice | undefined>;
+  
+  // Wearable data
+  getWearableData(userId: string, limit?: number): Promise<WearableData[]>;
+  getLatestWearableData(userId: string): Promise<WearableData | undefined>;
+  createWearableData(data: InsertWearableData): Promise<WearableData>;
+  updateWearableData(id: string, data: Partial<WearableData>): Promise<WearableData | undefined>;
+  
+  // Astrology predictions
+  getAstrologyPredictions(userId: string, startDate: Date, endDate: Date): Promise<AstrologyPrediction[]>;
+  createAstrologyPrediction(prediction: InsertAstrologyPrediction): Promise<AstrologyPrediction>;
 
   getAdminAnalytics(): Promise<AdminAnalytics>;
   getUserProgress(userId: string): Promise<UserProgress>;
@@ -1637,6 +1661,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(birthCharts.userId, userId))
       .returning();
     return updated || undefined;
+  }
+
+  // Wearable Devices
+  async getWearableDevices(userId: string): Promise<WearableDevice[]> {
+    return db.select().from(wearableDevices).where(eq(wearableDevices.userId, userId));
+  }
+
+  async createWearableDevice(device: InsertWearableDevice): Promise<WearableDevice> {
+    const [created] = await db.insert(wearableDevices).values(device).returning();
+    return created;
+  }
+
+  async updateWearableDevice(id: string, data: Partial<WearableDevice>): Promise<WearableDevice | undefined> {
+    const [updated] = await db.update(wearableDevices)
+      .set(data)
+      .where(eq(wearableDevices.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Wearable Data
+  async getWearableData(userId: string, limit: number = 100): Promise<WearableData[]> {
+    return db.select()
+      .from(wearableData)
+      .where(eq(wearableData.userId, userId))
+      .orderBy(desc(wearableData.timestamp))
+      .limit(limit);
+  }
+
+  async getLatestWearableData(userId: string): Promise<WearableData | undefined> {
+    const [latest] = await db.select()
+      .from(wearableData)
+      .where(eq(wearableData.userId, userId))
+      .orderBy(desc(wearableData.timestamp))
+      .limit(1);
+    return latest || undefined;
+  }
+
+  async createWearableData(data: InsertWearableData): Promise<WearableData> {
+    const [created] = await db.insert(wearableData).values(data).returning();
+    return created;
+  }
+
+  async updateWearableData(id: string, data: Partial<WearableData>): Promise<WearableData | undefined> {
+    const [updated] = await db.update(wearableData)
+      .set(data)
+      .where(eq(wearableData.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Astrology Predictions
+  async getAstrologyPredictions(userId: string, startDate: Date, endDate: Date): Promise<AstrologyPrediction[]> {
+    return db.select()
+      .from(astrologyPredictions)
+      .where(
+        and(
+          eq(astrologyPredictions.userId, userId),
+          gte(astrologyPredictions.date, startDate),
+          lte(astrologyPredictions.date, endDate)
+        )
+      )
+      .orderBy(astrologyPredictions.date);
+  }
+
+  async createAstrologyPrediction(prediction: InsertAstrologyPrediction): Promise<AstrologyPrediction> {
+    const [created] = await db.insert(astrologyPredictions).values(prediction).returning();
+    return created;
   }
 
   async getAdminAnalytics(): Promise<AdminAnalytics> {
