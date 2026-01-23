@@ -1720,7 +1720,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(astrologyPredictions.userId, userId),
           gte(astrologyPredictions.date, startDate),
-          gte(endDate, astrologyPredictions.date)
+          lte(astrologyPredictions.date, endDate)
         )
       )
       .orderBy(astrologyPredictions.date);

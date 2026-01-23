@@ -58,13 +58,13 @@ function getCelestialDataForDate(date: Date): DayData {
   const events: CelestialEvent[] = [];
   
   // Add moon phase events
-  if (currentPhase.name === "New Moon" || currentPhase.name === "Full Moon") {
+  if (moonPhase.name === "New Moon" || moonPhase.name === "Full Moon") {
     events.push({
       type: "moon_phase",
-      name: currentPhase.name,
-      description: `The ${currentPhase.name.toLowerCase()} brings powerful energy for ${currentPhase.name === "New Moon" ? "new beginnings and setting intentions" : "completion and release"}`,
+      name: moonPhase.name,
+      description: `The ${moonPhase.name.toLowerCase()} brings powerful energy for ${moonPhase.name === "New Moon" ? "new beginnings and setting intentions" : "completion and release"}`,
       impact: "high",
-      suggestion: currentPhase.name === "New Moon" 
+      suggestion: moonPhase.name === "New Moon" 
         ? "Set new intentions, start fresh projects" 
         : "Reflect on achievements, let go of what no longer serves you",
     });
@@ -100,8 +100,8 @@ function getCelestialDataForDate(date: Date): DayData {
 
   return {
     date,
-    moonPhase: currentPhase.name,
-    moonPhaseEmoji: currentPhase.emoji,
+    moonPhase: moonPhase.name,
+    moonPhaseEmoji: moonPhase.emoji,
     events,
     energyLevel,
     moodAlignment,

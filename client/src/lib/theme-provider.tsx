@@ -57,7 +57,7 @@ export const MOOD_OPTIONS = [
   { id: "motivated" as const, name: "Energized", emoji: "flame", color: "#FF7A59" },
 ];
 
-const MOOD_TO_EXTENDED_THEME_MAP: Record<MoodTheme, ThemeName> = {
+const MOOD_TO_EXTENDED_THEME_MAP: Record<Exclude<MoodTheme, null>, ThemeName> = {
   calm: "calm-pastels",
   focused: "dark",
   happy: "sunset-warmth",
