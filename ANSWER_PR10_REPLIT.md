@@ -36,12 +36,13 @@ PR #10 removes **9 documentation files** from the root directory (~60KB cleanup)
    - All actual application code remains unchanged
 
 4. **Your `.replit` file will continue to work**
-   - The `.replit` file contains:
-     ```
-     modules = ["nodejs-20", "web", "postgresql-16"]
-     run = "npm run dev"
-     ```
-   - This configuration is preserved and untouched
+   - The `.replit` file contains all your Replit configuration:
+     - Node.js modules, PostgreSQL database
+     - Run command: `npm run dev`
+     - Port configuration (5000)
+     - Deployment settings
+     - Workflow definitions
+   - This entire configuration is preserved and untouched
 
 ## Summary
 
