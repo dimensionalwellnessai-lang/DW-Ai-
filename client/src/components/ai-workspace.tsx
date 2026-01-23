@@ -1119,9 +1119,9 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-background gradient-bg-animated overflow-hidden">
-      {/* Fixed header - taller for better proportion */}
-      <header className="shrink-0 relative flex items-center justify-center px-3 py-4 z-50">
+    <div className="flex flex-col h-full w-full bg-background gradient-bg-animated">
+      {/* Sticky header - positioned under app-shell safe area */}
+      <header className="shrink-0 sticky top-0 bg-background z-50 flex items-center justify-center px-3 py-3">
         {/* Left icons - absolute positioned */}
         <div className="absolute left-3 flex items-center gap-1.5">
           <Button
@@ -1130,7 +1130,7 @@ export function AIWorkspace() {
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-7 w-7" />
           </Button>
           <Button
             variant="ghost"
@@ -1138,7 +1138,7 @@ export function AIWorkspace() {
             onClick={() => setHistoryOpen(true)}
             data-testid="button-history"
           >
-            <MessageSquare className="h-6 w-6" />
+            <MessageSquare className="h-7 w-7" />
           </Button>
           <Button
             variant="ghost"
@@ -1146,7 +1146,7 @@ export function AIWorkspace() {
             onClick={handleNewConversation}
             data-testid="button-new-chat"
           >
-            <Plus className="h-6 w-6" />
+            <Plus className="h-7 w-7" />
           </Button>
         </div>
         
@@ -1168,7 +1168,7 @@ export function AIWorkspace() {
             onClick={() => setImportDialogOpen(true)}
             data-testid="button-import"
           >
-            <Upload className="h-6 w-6" />
+            <Upload className="h-7 w-7" />
           </Button>
           <ThemeToggle />
         </div>
@@ -1748,7 +1748,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="shrink-0 px-2 pt-1 pb-16">
+        <div className="shrink-0 px-2 pt-1 pb-6 safe-area-bottom">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">

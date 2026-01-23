@@ -17,12 +17,10 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
 }
 
 #root {
   height: 100%;
-  overflow: hidden;
 }
 
 /* App Shell - Single source of safe area padding */
@@ -36,9 +34,11 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Content area respects safe area */
+/* Content area respects safe area and is the scroll container */
 .app-content {
   min-height: calc(100dvh - var(--sat) - var(--sab));
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Hide default details/summary disclosure marker */
@@ -219,4 +219,11 @@ summary::marker {
   --glow-accent: 0 0 20px rgba(95,207,165,0.4);
   /* Focus ring for accessibility */
   --focus-ring: 204 94% 78%;
+}
+
+/* Safe Area Utilities */
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: var(--sab);
+  }
 }
