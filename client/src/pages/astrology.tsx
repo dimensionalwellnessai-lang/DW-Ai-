@@ -825,7 +825,7 @@ ${voiceRules}`;
       <PageHeader title="Astrology" />
 
       <ScrollArea className="h-[calc(100vh-57px)]">
-        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="astrology">
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full">
@@ -833,7 +833,7 @@ ${voiceRules}`;
                 <Star className="mr-1 h-4 w-4" />
                 Charts
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar">
+              <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar" data-tour="calendar">
                 <Calendar className="mr-1 h-4 w-4" />
                 Calendar
               </TabsTrigger>

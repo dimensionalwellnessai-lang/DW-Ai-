@@ -16,6 +16,15 @@ const navItems: NavItem[] = [
   { path: "/astrology", icon: Star, label: "Astrology" },
 ];
 
+// Map paths to tour data attributes
+const tourDataMap: Record<string, string> = {
+  "/": "chat",
+  "/plans": "tasks",
+  "/today": "dashboard",
+  "/astrology": "astrology",
+  "/journal": "tasks",
+};
+
 export function BottomNav() {
   const [location] = useLocation();
 
@@ -28,6 +37,7 @@ export function BottomNav() {
         {navItems.map((item) => {
           const isActive = location === item.path || 
             (item.path !== "/" && location.startsWith(item.path));
+          const tourAttr = tourDataMap[item.path];
           
           return (
             <Link key={item.path} href={item.path}>
@@ -39,6 +49,7 @@ export function BottomNav() {
                     : "text-muted-foreground hover:text-foreground"
                 )}
                 data-testid={`nav-${item.label.toLowerCase()}`}
+                {...(tourAttr && { "data-tour": tourAttr })}
               >
                 <div className={cn(
                   "p-1.5 rounded-lg transition-all duration-200",
