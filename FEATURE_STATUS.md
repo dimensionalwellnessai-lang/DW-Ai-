@@ -52,10 +52,32 @@ PR #7 added three documentation files (COMPREHENSIVE_ROADMAP.md, DEPLOYMENT_CHEC
 
 **Resolution**: Those documentation files will NOT be added to this repository. The features they described already exist as functional code in the app. This document serves as a lightweight status reference without adding unnecessary documentation overhead.
 
+## Documentation Cleanup
+
+As part of addressing the "no unnecessary documents in the app" concern, the following development artifacts were removed from the root directory:
+
+**Removed (9 files, ~60KB):**
+- MERGE_RESOLUTION.md - Temporary merge artifact
+- replit.md - Replit-specific development docs
+- DWAI_MASTER_SPEC.md - Development spec (belongs in `/docs/`)
+- FEATURE_SUMMARY.md - Implementation summary from PR #8
+- IMPLEMENTATION_DOCS.md - Implementation docs from PR #8
+- QA_CHECKLIST.md - Development checklist
+- TESTING_GUIDE.md - Development guide
+- SECURITY_SUMMARY.md - Security summary
+- design_guidelines.md - Development guidelines
+
+**Kept (4 essential files):**
+- README.md - Project overview (essential)
+- LICENSE - Legal requirement
+- PRIVACY.md - Legal requirement
+- TERMS.md - Legal requirement
+
 ## Documentation Policy
 
 - ✅ Essential technical documentation belongs in `/docs/` directory
-- ✅ Root-level documentation limited to: README, LICENSE, PRIVACY, TERMS, and essential specs
+- ✅ Root-level documentation limited to: README, LICENSE, PRIVACY, TERMS
+- ❌ Development artifacts, checklists, and guides should be in `/docs/` or removed
 - ❌ Large roadmap/checklist files should not be added at root level
 - ✅ Focus on implementing features in code, not creating extensive planning documents
 
