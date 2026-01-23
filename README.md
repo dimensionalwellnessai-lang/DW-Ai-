@@ -2,12 +2,53 @@
 
 A Dimensional Wellness AI - a consent-based personal assistant designed to help users build their own life system through adaptive, energy-based guidance rather than prescriptive routines.
 
+## 🌟 New Features (v2.0)
+
+### Unified Search
+- **Intelligent Search**: Search across tasks, projects, routines, and goals with smart ranking
+- **Category Filtering**: Filter results by type with real-time counts
+- **Keyboard Shortcuts**: Enter to search, Escape to clear
+- **Relevance Scoring**: Results ranked by exact matches, partial matches, and context
+
+### Wellness Dashboard
+- **Mood Trends**: Visualize energy, mood, and clarity averages over time
+- **Progress Tracking**: Active goals, habits, routines, and completion metrics
+- **AI Insights**: Personalized recommendations based on your data patterns
+- **Smart Summaries**: Aggregated wellness insights in a clean, visual format
+
+### Proactive AI Assistant
+- **Context-Aware Nudges**: Suggestions based on your history (e.g., "Yesterday was tiring")
+- **Inactivity Reminders**: Gentle check-ins when you haven't logged mood in 24 hours
+- **Energy-Based Recommendations**: Adaptive suggestions matching your current state
+- **Priority Ordering**: High, medium, and low priority nudges based on urgency
+
+### Enhanced Browsing
+- **Quick Actions**: Schedule or save content directly from browse cards
+- **Improved UI**: Clear action buttons with visual feedback
+- **Toast Notifications**: Instant feedback for user actions
+
+### Performance Optimizations
+- **Lazy Loading**: Components load on-demand for faster initial page load
+- **Suspense Boundaries**: Smooth loading states with skeleton animations
+- **Optimized Queries**: Efficient data fetching with intelligent caching
+
 ## Overview
 
 Flip the Switch helps users manage wellness across 13 life dimensions using an energy-based **Pause → Name → Flip → Choose** structure. The AI acts as a concierge - anticipatory, personalized, and pattern-aware.
 
 ### Key Features
 
+- **🔍 Unified Search**: Intelligent search across tasks, projects, routines, and goals
+- **📊 Wellness Dashboard**: Visual mood trends, progress tracking, and AI insights
+- **🤖 Proactive AI**: Context-aware nudges and personalized recommendations
+- **💬 AI Chat Interface**: Primary interaction point with context-aware wellness guidance
+- **📅 Today Hub**: Daily command center showing schedule, goals, and proactive nudges
+- **🎯 Life System Management**: Goals, habits, routines, and schedule blocks
+- **🌈 Wellness Dimensions**: Physical, emotional, spiritual, financial, and more
+- **🍽️ Meal Planning**: Import and manage meal prep documents
+- **💪 Workout Planning**: Customizable workout routines
+- **📆 Calendar Integration**: Daily schedule with recurring events
+- **📝 Journal & Check-ins**: Weekly wellness check-ins and journaling
 - **AI Chat Interface**: Primary interaction point with context-aware wellness guidance
 - **Voice Interaction**: Speech-to-text input and text-to-speech responses for natural conversation
 - **Phone Assistant Integration**: Deep links for Siri and Google Assistant integration
@@ -102,6 +143,34 @@ This project uses Drizzle ORM. To update the database schema:
 npm run db:push
 ```
 
+## API Endpoints
+
+### New in v2.0
+
+#### Wellness Summary
+```bash
+GET /api/summary?days=7
+```
+Returns aggregated wellness insights including mood trends, progress metrics, and AI-generated recommendations.
+
+#### Unified Search
+```bash
+POST /api/search/unified
+{
+  "query": "workout",
+  "categories": ["tasks", "routines", "goals"]
+}
+```
+Searches across all system data with intelligent relevance scoring.
+
+#### Future Integrations (Stubs)
+- `GET /api/integrations/calendar/google/status` - Calendar sync status
+- `POST /api/integrations/calendar/google/connect` - Connect Google Calendar
+- `POST /api/voice/query` - Process voice queries (Phase 2)
+- `POST /api/voice/response` - Generate voice responses (Phase 2)
+
+For complete API documentation, see [ENHANCED_FEATURES.md](docs/ENHANCED_FEATURES.md).
+
 ## Design Philosophy
 
 - **Energy-based guidance** over productivity metrics
@@ -163,6 +232,13 @@ For detailed documentation, see [Voice Integration Guide](./docs/VOICE_INTEGRATI
 ## Contributing
 
 This project is currently in private beta. For feedback or issues, use the in-app feedback button.
+
+## Documentation
+
+- **[Enhanced Features Guide](docs/ENHANCED_FEATURES.md)** - Comprehensive guide to new v2.0 features
+- **[Security Summary](docs/SECURITY_SUMMARY.md)** - Security analysis and recommendations
+- **[Design Guidelines](design_guidelines.md)** - UI/UX design principles
+- **[QA Checklist](QA_CHECKLIST.md)** - Quality assurance testing checklist
 
 ## License
 

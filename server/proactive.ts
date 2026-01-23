@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 
 export interface ProactiveNudge {
-  type: "morning-briefing" | "energy-suggestion" | "goal-reminder" | "workout-suggestion" | "meal-suggestion" | "wind-down" | "pattern-insight" | "check-in-prompt";
+  type: "morning-briefing" | "energy-suggestion" | "goal-reminder" | "workout-suggestion" | "meal-suggestion" | "wind-down" | "pattern-insight" | "check-in-prompt" | "inactivity-reminder" | "context-suggestion";
   title: string;
   message: string;
   actionLabel?: string;
@@ -88,6 +88,47 @@ export async function generateProactiveNudges(userId: string): Promise<Proactive
         actionRoute: "/workout",
         priority: "medium",
       });
+    }
+
+    // Inactivity reminder - check if no mood logs in the last 24 hours
+    const moodLogs = await storage.getMoodLogs(userId);
+    const recentLogs = moodLogs.filter(log => {
+      const logDate = new Date(log.createdAt);
+      const hoursSince = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60);
+      return hoursSince <= 24;
+    });
+
+    if (recentLogs.length === 0 && hour >= 9 && hour < 20) {
+      nudges.push({
+        type: "inactivity-reminder",
+        title: "Haven't seen you today",
+        message: "A quick check-in helps me support you better. How are you feeling?",
+        actionLabel: "Check in",
+        actionRoute: "/mood-tracker",
+        priority: "medium",
+      });
+    }
+
+    // Context-based suggestion based on yesterday's mood
+    if (moodLogs.length > 0) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      const yesterdayMood = moodLogs.find(log => 
+        log.createdAt.toString().startsWith(yesterdayStr)
+      );
+
+      if (yesterdayMood && yesterdayMood.energyLevel !== null && yesterdayMood.energyLevel <= 4 && hour >= 6 && hour < 11) {
+        nudges.push({
+          type: "context-suggestion",
+          title: "Yesterday was tiring",
+          message: "You felt tired yesterday. Let's plan light activities today - no pressure.",
+          actionLabel: "See gentle options",
+          actionRoute: "/recovery",
+          priority: "high",
+        });
+      }
     }
 
     return nudges.slice(0, 5);

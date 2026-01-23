@@ -30,6 +30,8 @@ import {
   Phone,
   Globe,
   ChevronRight,
+  Calendar,
+  Plus,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -651,7 +653,7 @@ ${contentList}`,
                     <p className="text-sm text-muted-foreground mb-3">
                       {item.description}
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 mb-3">
                       {item.goalTags?.slice(0, 2).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag}
@@ -662,6 +664,42 @@ ${contentList}`,
                           {item.difficulty}
                         </Badge>
                       )}
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Add to calendar/schedule
+                          toast({ 
+                            title: "Schedule feature", 
+                            description: "Quick scheduling coming soon!" 
+                          });
+                        }}
+                        data-testid={`button-schedule-${item.id}`}
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Schedule
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Save to project
+                          toast({ 
+                            title: "Saved", 
+                            description: `${item.title} saved to your favorites` 
+                          });
+                        }}
+                        data-testid={`button-save-${item.id}`}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Save
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

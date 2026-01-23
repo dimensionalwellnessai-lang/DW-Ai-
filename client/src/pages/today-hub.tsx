@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProactiveCard, ProactiveCardProps } from "@/components/proactive-card";
+import { UnifiedSearch } from "@/components/unified-search";
 import {
   Zap,
   Heart,
@@ -43,6 +44,9 @@ import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial, useTutorialStart } from "@/contexts/tutorial-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+// Lazy load heavy components for better performance
+const WellnessSummary = lazy(() => import("@/components/wellness-summary").then(m => ({ default: m.WellnessSummary })));
 
 function formatTime12Hour(time24: string): string {
   if (!time24) return "";
@@ -305,6 +309,15 @@ export default function TodayHubPage() {
           )}
         </header>
 
+        {/* Unified Search */}
+        <section data-testid="section-unified-search">
+          <Card>
+            <CardContent className="p-4">
+              <UnifiedSearch placeholder="Search tasks, projects, routines, goals..." />
+            </CardContent>
+          </Card>
+        </section>
+
         {latestLog && (
           <section data-testid="section-pause-snapshot">
             <Card className="overflow-hidden">
@@ -475,6 +488,18 @@ export default function TodayHubPage() {
             ))}
           </section>
         )}
+
+        {/* Wellness Summary with Mood Trends and Progress */}
+        <section data-testid="section-wellness-summary">
+          <Suspense fallback={
+            <div className="space-y-4">
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          }>
+            <WellnessSummary days={7} />
+          </Suspense>
+        </section>
 
         <section className="grid grid-cols-3 gap-3" data-testid="section-vitals">
           <Link href="/mood-tracker">
