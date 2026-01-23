@@ -216,9 +216,24 @@ export function TutorialOverlay() {
 
   const overlayContent = (
     <div 
-      className="fixed inset-0 z-[10002] pointer-events-none"
+      className="fixed inset-0 z-[10002]"
       data-testid="tutorial-overlay"
+      style={{ pointerEvents: "none" }}
     >
+      {/* Invisible blocker divs that capture clicks outside spotlight, but leave bottom nav accessible */}
+      {/* Top section */}
+      <div 
+        className="absolute top-0 left-0 right-0"
+        style={{ 
+          height: 'calc(100% - 56px)', // Leave space for bottom nav (h-14 = 56px)
+          pointerEvents: "auto" 
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
+      
       <svg
         className="absolute inset-0 w-full h-full"
         style={{ pointerEvents: "none" }}
@@ -245,8 +260,7 @@ export function TutorialOverlay() {
           height="100%"
           fill="rgba(0, 0, 0, 0.75)"
           mask="url(#spotlight-mask)"
-          style={{ pointerEvents: "auto" }}
-          onClick={(e) => e.stopPropagation()}
+          style={{ pointerEvents: "none" }}
         />
       </svg>
 
