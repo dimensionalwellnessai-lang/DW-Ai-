@@ -51,7 +51,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     startNavigationTutorial, 
     hasSeenNavigationTutorial,
     requiresMenuOpen,
-    skipTutorial
   } = useTutorial();
 
   const { data: authData } = useQuery<{ user: any } | null>({ 
@@ -86,11 +85,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      {/* Status bar spacer - protects the iOS status bar area, matches background color */}
-      <div className="w-full bg-background sticky top-0 z-50 safe-area-top" />
-      
-      {/* Header - sits directly below status bar spacer, sticky */}
-      <header className="flex items-center gap-2 px-3 py-2 border-b dark:border-white/5 sticky bg-background glass-subtle z-50 safe-area-sticky-top">
+      {/* Header - sits directly below the app-shell's safe-area padding */}
+      <header className="flex items-center gap-2 px-3 py-3 border-b dark:border-white/5 sticky top-0 bg-background glass-subtle z-50">
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 
@@ -99,7 +95,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
               onClick={handleBack}
               data-testid="button-back"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-6 w-6" />
             </Button>
           )}
           <Button 
@@ -108,10 +104,10 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </Button>
         </div>
-        <h1 className="font-display text-lg font-medium flex-1" data-testid="text-page-title">
+        <h1 className="font-display text-xl font-medium flex-1" data-testid="text-page-title">
           {title}
         </h1>
         {rightContent}
