@@ -221,7 +221,7 @@ export function TutorialOverlay() {
       style={{ pointerEvents: "none" }}
     >
       {/* Invisible blocker divs that capture clicks outside spotlight, but leave bottom nav accessible */}
-      {/* Top section */}
+      {/* Top section - blocks everything except bottom nav (h-14 = 56px as defined in bottom-nav.tsx) */}
       <div 
         className="absolute top-0 left-0 right-0"
         style={{ 
@@ -229,6 +229,7 @@ export function TutorialOverlay() {
           pointerEvents: "auto" 
         }}
         onClick={(e) => {
+          // Block all clicks outside the spotlight area to keep focus on tutorial
           e.preventDefault();
           e.stopPropagation();
         }}
