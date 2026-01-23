@@ -41,7 +41,8 @@ export function BottomNav() {
           
           return (
             <Link key={item.path} href={item.path}>
-              <button
+              {/* Use a non-interactive element inside the anchor so we don't nest a button inside an anchor (which can break clicks) */}
+              <div
                 className={cn(
                   "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-200",
                   isActive 
@@ -66,7 +67,7 @@ export function BottomNav() {
                 )}>
                   {item.label}
                 </span>
-              </button>
+              </div>
             </Link>
           );
         })}
