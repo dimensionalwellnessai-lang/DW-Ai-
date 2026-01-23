@@ -263,7 +263,7 @@ export default function TodayHubPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="space-y-5 p-4 md:p-6 max-w-2xl mx-auto">
+      <div className="space-y-5 p-4 md:p-6 max-w-2xl mx-auto" data-tour="dashboard">
         <header className="flex items-start gap-3 pt-2">
           <Button 
             variant="ghost" 

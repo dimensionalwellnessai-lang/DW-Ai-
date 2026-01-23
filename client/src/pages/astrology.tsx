@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AstrologyCalendar } from "@/components/astrology-calendar";
 
 interface AstrologyNote {
   id: string;
@@ -824,7 +825,7 @@ ${voiceRules}`;
       <PageHeader title="Astrology" />
 
       <ScrollArea className="h-[calc(100vh-57px)]">
-        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="astrology">
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full">
@@ -832,7 +833,7 @@ ${voiceRules}`;
                 <Star className="mr-1 h-4 w-4" />
                 Charts
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar">
+              <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar" data-tour="calendar">
                 <Calendar className="mr-1 h-4 w-4" />
                 Calendar
               </TabsTrigger>
@@ -1222,55 +1223,11 @@ ${voiceRules}`;
             </TabsContent>
             
             <TabsContent value="calendar" className="mt-6 space-y-6">
-          <div className="space-y-3">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Cosmic Calendar
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Upcoming celestial events and their influences on your journey
-            </p>
-            <div className="space-y-2">
-              {cosmicEvents.map((event, idx) => (
-                <Card 
-                  key={idx} 
-                  className="hover-elevate"
-                  data-testid={`card-cosmic-event-${idx}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          event.type === "moon" ? "bg-violet-500/10" :
-                          event.type === "retrograde" ? "bg-amber-500/10" : "bg-blue-500/10"
-                        }`}>
-                          {event.type === "moon" ? (
-                            <Moon className={`w-5 h-5 ${
-                              event.event.includes("Full") ? "text-amber-400" : "text-violet-500"
-                            }`} />
-                          ) : event.type === "retrograde" ? (
-                            <RefreshCw className="w-5 h-5 text-amber-500" />
-                          ) : (
-                            <Star className="w-5 h-5 text-blue-500" />
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-sm">{event.event}</h3>
-                          <p className="text-xs text-muted-foreground mb-1">
-                            {formatDate(event.date)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {event.description}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+              <AstrologyCalendar birthChart={birthChart ? {
+                sunSign: birthChart.sunSign,
+                moonSign: birthChart.moonSign,
+                risingSign: birthChart.risingSign,
+              } : undefined} />
             </TabsContent>
             
             <TabsContent value="journal" className="mt-6 space-y-6">

@@ -886,7 +886,7 @@ export default function MoodTrackerPage() {
         backPath="/today"
       />
       
-      <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24">
+      <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24" data-tour="mood-tracker">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="checkin" data-testid="tab-checkin">

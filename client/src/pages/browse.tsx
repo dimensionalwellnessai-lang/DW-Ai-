@@ -65,6 +65,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["energy", "mobility"],
     moodTags: ["tired", "scattered"],
+    thumbnailUrl: "/api/placeholder/workout-morning",
   },
   {
     id: "2",
@@ -76,6 +77,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "focus"],
     moodTags: ["anxious", "overwhelmed"],
+    thumbnailUrl: "/api/placeholder/meditation-calm",
   },
   {
     id: "3",
@@ -87,6 +89,7 @@ const SAMPLE_CONTENT = [
     difficulty: "intermediate",
     goalTags: ["muscle-gain", "strength"],
     moodTags: ["motivated", "energetic"],
+    thumbnailUrl: "/api/placeholder/workout-strength",
   },
   {
     id: "4",
@@ -98,6 +101,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["sleep", "relaxation"],
     moodTags: ["tired", "restless"],
+    thumbnailUrl: "/api/placeholder/meditation-sleep",
   },
   {
     id: "5",
@@ -109,6 +113,7 @@ const SAMPLE_CONTENT = [
     difficulty: "advanced",
     goalTags: ["fat-loss", "endurance"],
     moodTags: ["energetic", "motivated"],
+    thumbnailUrl: "/api/placeholder/workout-hiit",
   },
   {
     id: "6",
@@ -120,6 +125,151 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["mental-health", "positivity"],
     moodTags: ["low", "neutral"],
+    thumbnailUrl: "/api/placeholder/mindfulness-gratitude",
+  },
+  {
+    id: "7",
+    title: "Yoga for Flexibility",
+    description: "Gentle yoga flow focused on improving flexibility and reducing tension",
+    contentType: "workout",
+    category: "workout",
+    duration: 25,
+    difficulty: "beginner",
+    goalTags: ["flexibility", "stress-relief"],
+    moodTags: ["tense", "stressed"],
+    thumbnailUrl: "/api/placeholder/workout-yoga",
+  },
+  {
+    id: "8",
+    title: "Focus Boost",
+    description: "Quick meditation to enhance concentration and mental clarity",
+    contentType: "meditation",
+    category: "meditation",
+    duration: 8,
+    difficulty: "beginner",
+    goalTags: ["focus", "productivity"],
+    moodTags: ["scattered", "distracted"],
+    thumbnailUrl: "/api/placeholder/meditation-focus",
+  },
+  {
+    id: "9",
+    title: "Core Conditioning",
+    description: "Targeted core workout for building strength and stability",
+    contentType: "workout",
+    category: "workout",
+    duration: 20,
+    difficulty: "intermediate",
+    goalTags: ["strength", "core"],
+    moodTags: ["motivated", "focused"],
+    thumbnailUrl: "/api/placeholder/workout-core",
+  },
+  {
+    id: "10",
+    title: "Mindful Walking",
+    description: "Transform a simple walk into a moving meditation",
+    contentType: "mindfulness",
+    category: "mindfulness",
+    duration: 20,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "presence"],
+    moodTags: ["restless", "scattered"],
+    thumbnailUrl: "/api/placeholder/mindfulness-walking",
+  },
+  {
+    id: "11",
+    title: "Evening Wind Down",
+    description: "Gentle movement to release tension and prepare for sleep",
+    contentType: "workout",
+    category: "workout",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["sleep", "relaxation"],
+    moodTags: ["tired", "tense"],
+    thumbnailUrl: "/api/placeholder/workout-evening",
+  },
+  {
+    id: "12",
+    title: "Body Scan Relaxation",
+    description: "Deep relaxation through systematic body awareness",
+    contentType: "meditation",
+    category: "meditation",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "relaxation"],
+    moodTags: ["tense", "overwhelmed"],
+    thumbnailUrl: "/api/placeholder/meditation-body-scan",
+  },
+  {
+    id: "13",
+    title: "Breathing Space",
+    description: "Quick mindfulness exercise to create calm in busy moments",
+    contentType: "mindfulness",
+    category: "mindfulness",
+    duration: 5,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "presence"],
+    moodTags: ["overwhelmed", "anxious"],
+    thumbnailUrl: "/api/placeholder/mindfulness-breathing",
+  },
+  {
+    id: "14",
+    title: "Foam Rolling Recovery",
+    description: "Self-myofascial release to reduce muscle soreness",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 15,
+    difficulty: "beginner",
+    goalTags: ["recovery", "mobility"],
+    moodTags: ["sore", "tired"],
+    thumbnailUrl: "/api/placeholder/recovery-foam-rolling",
+  },
+  {
+    id: "15",
+    title: "Active Recovery Flow",
+    description: "Light movement to promote blood flow and reduce soreness",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 20,
+    difficulty: "beginner",
+    goalTags: ["recovery", "mobility"],
+    moodTags: ["sore", "low-energy"],
+    thumbnailUrl: "/api/placeholder/recovery-active",
+  },
+  {
+    id: "16",
+    title: "Meal Prep Basics",
+    description: "Learn efficient strategies for weekly meal preparation",
+    contentType: "nutrition",
+    category: "nutrition",
+    duration: 45,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "time-management"],
+    moodTags: ["motivated", "organized"],
+    thumbnailUrl: "/api/placeholder/nutrition-meal-prep",
+  },
+  {
+    id: "17",
+    title: "Hydration Challenge",
+    description: "Build the habit of drinking enough water daily",
+    contentType: "nutrition",
+    category: "nutrition",
+    duration: 10,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "habits"],
+    moodTags: ["tired", "low-energy"],
+    thumbnailUrl: "/api/placeholder/nutrition-hydration",
+  },
+  {
+    id: "18",
+    title: "Restorative Yoga",
+    description: "Deeply relaxing yoga practice using props to support the body",
+    contentType: "recovery",
+    category: "recovery",
+    duration: 30,
+    difficulty: "beginner",
+    goalTags: ["recovery", "relaxation"],
+    moodTags: ["exhausted", "stressed"],
+    thumbnailUrl: "/api/placeholder/recovery-restorative",
   },
 ];
 
@@ -164,6 +314,9 @@ export default function Browse() {
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const [localResources, setLocalResources] = useState<LocalResource[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<WellnessContent | typeof SAMPLE_CONTENT[0] | null>(null);
+  const [contentDetailOpen, setContentDetailOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Reset local resources when switching away from local tab
   useEffect(() => {
@@ -209,19 +362,69 @@ ${contentList}`,
 
   const content = dbContent && dbContent.length > 0 ? dbContent : SAMPLE_CONTENT;
   
-  const filteredContent = activeCategory
-    ? content.filter((c) => c.category === activeCategory)
-    : aiRecommendations
-    ? content.filter((c) => aiRecommendations.includes(c.title))
-    : content;
+  // Apply filters - cast to common type for filtering
+  let filteredContent: Array<WellnessContent | typeof SAMPLE_CONTENT[0]> = content;
+  
+  // Search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredContent = filteredContent.filter((c) => 
+      c.title.toLowerCase().includes(query) ||
+      (c.description && c.description.toLowerCase().includes(query)) ||
+      (c.goalTags && c.goalTags.some(tag => tag.toLowerCase().includes(query))) ||
+      (c.moodTags && c.moodTags.some(tag => tag.toLowerCase().includes(query)))
+    );
+  }
+  
+  // Category filter
+  if (activeCategory) {
+    filteredContent = filteredContent.filter((c) => c.category === activeCategory);
+  }
+  
+  // AI recommendations filter
+  if (aiRecommendations) {
+    filteredContent = filteredContent.filter((c) => aiRecommendations.includes(c.title));
+  }
 
   const getCategoryIcon = (category: string) => {
     const found = CONTENT_CATEGORIES.find((c) => c.id === category);
     return found ? found.icon : Sparkles;
   };
 
+  const getCategoryGradient = (category: string) => {
+    const gradients: Record<string, string> = {
+      workout: "from-orange-500/20 to-red-500/5",
+      meditation: "from-purple-500/20 to-blue-500/5",
+      mindfulness: "from-green-500/20 to-teal-500/5",
+      recovery: "from-blue-500/20 to-cyan-500/5",
+      nutrition: "from-yellow-500/20 to-orange-500/5",
+    };
+    return gradients[category] || "from-primary/20 to-primary/5";
+  };
+
   const handleComingSoon = () => {
     toast({ title: "Coming soon", description: "This feature is not available yet." });
+  };
+
+  const handleContentClick = (item: WellnessContent | typeof SAMPLE_CONTENT[0]) => {
+    setSelectedContent(item);
+    setContentDetailOpen(true);
+  };
+
+  const handleStartContent = () => {
+    if (!selectedContent) return;
+    
+    // Close the dialog and show toast for now
+    setContentDetailOpen(false);
+    toast({ 
+      title: "Starting content...", 
+      description: `Get ready for: ${selectedContent.title}`,
+    });
+    
+    // In a real implementation, this would navigate to the appropriate page
+    // For workouts: navigate to workout player
+    // For meditations: navigate to meditation player
+    // etc.
   };
 
   const handleLocalSearch = async () => {
@@ -298,67 +501,112 @@ ${contentList}`,
       </div>
       
       {activeTab === "browse" && (
-        <div className="sticky top-[109px] z-30 bg-background border-b">
-        <div className="overflow-x-auto">
-          <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
-            {aiRecommendations && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setAiRecommendations(null);
-                  setActiveCategory(null);
-                }}
-                data-testid="button-clear-ai"
-              >
-                <X className="h-4 w-4 mr-1" />
-                AI Picks
-              </Button>
-            )}
-            <Button
-              variant={activeCategory === null && !aiRecommendations ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setActiveCategory(null);
-                setAiRecommendations(null);
-              }}
-              data-testid="button-category-all"
-            >
-              All
-            </Button>
-            {CONTENT_CATEGORIES.map((cat) => (
-              <Button
-                key={cat.id}
-                variant={activeCategory === cat.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  setAiRecommendations(null);
-                }}
-                data-testid={`button-category-${cat.id}`}
-              >
-                <cat.icon className="h-4 w-4 mr-1" />
-                {cat.name}
-              </Button>
-            ))}
+        <>
+          <div className="sticky top-[109px] z-30 bg-background border-b px-4 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search workouts, meditations, or browse by mood..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-content-search"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+          
+          <div className="sticky top-[172px] z-30 bg-background border-b">
+            <div className="overflow-x-auto">
+              <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
+                {aiRecommendations && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setAiRecommendations(null);
+                      setActiveCategory(null);
+                    }}
+                    data-testid="button-clear-ai"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    AI Picks
+                  </Button>
+                )}
+                <Button
+                  variant={activeCategory === null && !aiRecommendations ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setActiveCategory(null);
+                    setAiRecommendations(null);
+                  }}
+                  data-testid="button-category-all"
+                >
+                  All
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {content.length}
+                  </Badge>
+                </Button>
+                {CONTENT_CATEGORIES.map((cat) => {
+                  const categoryCount = content.filter(c => c.category === cat.id).length;
+                  return (
+                    <Button
+                      key={cat.id}
+                      variant={activeCategory === cat.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setActiveCategory(cat.id);
+                        setAiRecommendations(null);
+                      }}
+                      data-testid={`button-category-${cat.id}`}
+                    >
+                      <cat.icon className="h-4 w-4 mr-1" />
+                      {cat.name}
+                      {categoryCount > 0 && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {categoryCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {activeTab === "browse" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4" />
-            <span>
-              Personalized for you based on your{" "}
-              {userProfile.fitnessGoal && (
-                <Badge variant="secondary" className="mx-1">
-                  {userProfile.fitnessGoal}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              <span>
+                Personalized for you based on your{" "}
+                {userProfile.fitnessGoal && (
+                  <Badge variant="secondary" className="mx-1">
+                    {userProfile.fitnessGoal}
+                  </Badge>
+                )}
+                goals
+              </span>
+            </div>
+            {(searchQuery || activeCategory || aiRecommendations) && (
+              <div className="text-sm text-muted-foreground">
+                <Badge variant="outline">
+                  {filteredContent.length} {filteredContent.length === 1 ? 'result' : 'results'}
                 </Badge>
-              )}
-              goals
-            </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -371,14 +619,20 @@ ${contentList}`,
               return (
                 <Card
                   key={item.id}
-                  className="overflow-visible hover-elevate cursor-pointer transition-all"
+                  className="overflow-visible hover-elevate cursor-pointer transition-all hover:shadow-lg"
+                  onClick={() => handleContentClick(item)}
                   data-testid={`card-content-${item.id}`}
                 >
-                  <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-md flex items-center justify-center relative">
-                    <CategoryIcon className="h-12 w-12 text-primary/40" />
+                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
+                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-t-md" />
                     <Button
                       size="icon"
-                      className="absolute bottom-3 right-3 rounded-full"
+                      className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleContentClick(item);
+                      }}
                       data-testid={`button-play-${item.id}`}
                     >
                       <Play className="h-4 w-4" />
@@ -455,9 +709,25 @@ ${contentList}`,
 
           {filteredContent.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                No content found in this category yet.
-              </p>
+              {searchQuery ? (
+                <>
+                  <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                  <p className="text-muted-foreground mb-2">
+                    No content found for "{searchQuery}"
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    Clear search
+                  </Button>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  No content found in this category yet.
+                </p>
+              )}
             </div>
           )}
         </main>
@@ -760,6 +1030,114 @@ ${contentList}`,
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={contentDetailOpen} onOpenChange={setContentDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          {selectedContent && (
+            <>
+              <DialogHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <DialogTitle className="text-2xl mb-2">
+                      {selectedContent.title}
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {selectedContent.duration && (
+                        <Badge variant="secondary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {selectedContent.duration} min
+                        </Badge>
+                      )}
+                      {selectedContent.difficulty && (
+                        <Badge variant="outline" className="capitalize">
+                          {selectedContent.difficulty}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="capitalize">
+                        {selectedContent.category}
+                      </Badge>
+                    </div>
+                  </div>
+                  {(() => {
+                    const Icon = getCategoryIcon(selectedContent.category);
+                    return (
+                      <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon className="h-8 w-8 text-primary" />
+                      </div>
+                    );
+                  })()}
+                </div>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(selectedContent.category)} rounded-lg flex items-center justify-center`}>
+                  {(() => {
+                    const Icon = getCategoryIcon(selectedContent.category);
+                    return <Icon className="h-24 w-24 text-primary/40" />;
+                  })()}
+                </div>
+                
+                {selectedContent.description && (
+                  <div>
+                    <h3 className="font-medium mb-2">About This Content</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedContent.description}
+                    </p>
+                  </div>
+                )}
+
+                {selectedContent.goalTags && selectedContent.goalTags.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm">What You'll Gain</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedContent.goalTags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedContent.moodTags && selectedContent.moodTags.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm">Perfect When You're Feeling</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedContent.moodTags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 flex gap-2">
+                  <Button 
+                    onClick={handleStartContent}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Start Now
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      toast({ 
+                        title: "Added to favorites", 
+                        description: "This content has been saved for later" 
+                      });
+                    }}
+                  >
+                    <Heart className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

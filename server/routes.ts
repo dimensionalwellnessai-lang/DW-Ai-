@@ -36,6 +36,9 @@ import {
   insertUserSystemPreferencesSchema,
   insertShoppingListSchema,
   insertShoppingListItemSchema,
+  insertWearableDeviceSchema,
+  insertWearableDataSchema,
+  insertAstrologyPredictionSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -4994,7 +4997,179 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // Wearable Device Integration Endpoints
+  app.get("/api/wearables/devices", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const devices = await storage.getWearableDevices(userId);
+      res.json(devices);
+    } catch (error) {
+      console.error("Wearable devices error:", error);
+      res.status(500).json({ error: "Failed to get wearable devices" });
+    }
+  });
+
+  app.post("/api/wearables/devices", requireAuth, async (req, res) => {
+    try {
+      const data = insertWearableDeviceSchema.parse({ 
+        ...req.body, 
+        userId: req.session.userId! 
+      });
+      const device = await storage.createWearableDevice(data);
+      res.json(device);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create wearable device error:", error);
+      res.status(500).json({ error: "Failed to create wearable device" });
+    }
+  });
+
+  app.post("/api/wearables/sync", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const data = insertWearableDataSchema.parse({ 
+        ...req.body, 
+        userId 
+      });
+      
+      // Save wearable data
+      const wearableData = await storage.createWearableData(data);
+      
+      // Detect mood from biometric data
+      let detectedMood = data.detectedMood;
+      if (!detectedMood && data.heartRate && data.stressLevel) {
+        detectedMood = detectMoodFromBiometrics(data.heartRate, data.stressLevel, data.hrvScore);
+      }
+      
+      // Update the wearable data with detected mood
+      if (detectedMood && !data.detectedMood) {
+        await storage.updateWearableData(wearableData.id, { detectedMood });
+      }
+      
+      // Update device last synced time
+      await storage.updateWearableDevice(data.deviceId, { 
+        lastSyncedAt: new Date() 
+      });
+      
+      res.json({ 
+        success: true, 
+        data: { ...wearableData, detectedMood },
+        detectedMood 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Wearable sync error:", error);
+      res.status(500).json({ error: "Failed to sync wearable data" });
+    }
+  });
+
+  app.get("/api/wearables/data", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const data = await storage.getWearableData(userId, limit);
+      res.json(data);
+    } catch (error) {
+      console.error("Wearable data error:", error);
+      res.status(500).json({ error: "Failed to get wearable data" });
+    }
+  });
+
+  app.get("/api/wearables/latest-mood", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const latestData = await storage.getLatestWearableData(userId);
+      
+      if (!latestData || !latestData.detectedMood) {
+        return res.json({ mood: null });
+      }
+      
+      res.json({ 
+        mood: latestData.detectedMood,
+        timestamp: latestData.timestamp,
+        heartRate: latestData.heartRate,
+        stressLevel: latestData.stressLevel,
+      });
+    } catch (error) {
+      console.error("Latest mood error:", error);
+      res.status(500).json({ error: "Failed to get latest mood" });
+    }
+  });
+
+  // Astrology Predictions Endpoints
+  app.get("/api/astrology/predictions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : new Date();
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      const predictions = await storage.getAstrologyPredictions(userId, startDate, endDate);
+      res.json(predictions);
+    } catch (error) {
+      console.error("Astrology predictions error:", error);
+      res.status(500).json({ error: "Failed to get astrology predictions" });
+    }
+  });
+
+  app.post("/api/astrology/predictions", requireAuth, async (req, res) => {
+    try {
+      const data = insertAstrologyPredictionSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const prediction = await storage.createAstrologyPrediction(data);
+      res.json(prediction);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create astrology prediction error:", error);
+      res.status(500).json({ error: "Failed to create astrology prediction" });
+    }
+  });
+
   return httpServer;
+}
+
+// Mood detection thresholds
+const MOOD_THRESHOLDS = {
+  HIGH_STRESS: 70,
+  LOW_STRESS: 30,
+  CALM_HEART_RATE: 70,
+  ENERGETIC_HEART_RATE: 90,
+  MODERATE_STRESS_MIN: 30,
+  MODERATE_STRESS_MAX: 60,
+  MODERATE_HR_MIN: 70,
+  MODERATE_HR_MAX: 90,
+  GOOD_HRV: 70,
+  MODERATE_STRESS_THRESHOLD: 50,
+};
+
+// Helper function to detect mood from biometric data
+function detectMoodFromBiometrics(heartRate: number, stressLevel: number, hrvScore?: number | null): string {
+  // High stress = stressed
+  if (stressLevel > MOOD_THRESHOLDS.HIGH_STRESS) return "stressed";
+  
+  // Low stress + low heart rate = calm/relaxed
+  if (stressLevel < MOOD_THRESHOLDS.LOW_STRESS && heartRate < MOOD_THRESHOLDS.CALM_HEART_RATE) return "calm";
+  
+  // High heart rate + moderate stress = energetic
+  if (heartRate > MOOD_THRESHOLDS.ENERGETIC_HEART_RATE && stressLevel < MOOD_THRESHOLDS.MODERATE_STRESS_THRESHOLD) return "energetic";
+  
+  // Good HRV = relaxed
+  if (hrvScore && hrvScore > MOOD_THRESHOLDS.GOOD_HRV) return "relaxed";
+  
+  // Moderate ranges = focused
+  if (heartRate >= MOOD_THRESHOLDS.MODERATE_HR_MIN && heartRate <= MOOD_THRESHOLDS.MODERATE_HR_MAX && 
+      stressLevel >= MOOD_THRESHOLDS.MODERATE_STRESS_MIN && stressLevel <= MOOD_THRESHOLDS.MODERATE_STRESS_MAX) {
+    return "focused";
+  }
+  
+  return "neutral";
 }
 
 function calculateEndTime(startTime: string, durationMinutes: number): string {

@@ -1412,6 +1412,86 @@ export const insertTrackerSettingsSchema = createInsertSchema(trackerSettings).o
   updatedAt: true,
 });
 
+// Wearable Device Integration
+export const wearableDevices = pgTable("wearable_devices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  deviceType: text("device_type").notNull(), // smartwatch, smart-ring, fitness-tracker
+  deviceName: text("device_name"),
+  manufacturer: text("manufacturer"),
+  isActive: boolean("is_active").default(true),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const wearableDevicesRelations = relations(wearableDevices, ({ one, many }) => ({
+  user: one(users, {
+    fields: [wearableDevices.userId],
+    references: [users.id],
+  }),
+  data: many(wearableData),
+}));
+
+export const wearableData = pgTable("wearable_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceId: varchar("device_id").notNull().references(() => wearableDevices.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  heartRate: integer("heart_rate"),
+  stressLevel: integer("stress_level"), // 0-100
+  sleepQuality: integer("sleep_quality"), // 0-100
+  activityLevel: integer("activity_level"), // 0-100
+  hrvScore: integer("hrv_score"), // Heart Rate Variability
+  detectedMood: text("detected_mood"), // calm, energetic, stressed, focused, relaxed
+  biometricData: jsonb("biometric_data"), // Additional data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const wearableDataRelations = relations(wearableData, ({ one }) => ({
+  device: one(wearableDevices, {
+    fields: [wearableData.deviceId],
+    references: [wearableDevices.id],
+  }),
+  user: one(users, {
+    fields: [wearableData.userId],
+    references: [users.id],
+  }),
+}));
+
+export const astrologyPredictions = pgTable("astrology_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  date: timestamp("date").notNull(),
+  moonPhase: text("moon_phase"),
+  celestialEvents: jsonb("celestial_events"),
+  energyLevel: integer("energy_level"), // 1-10
+  moodAlignment: text("mood_alignment"),
+  personalizedInsights: text("personalized_insights"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const astrologyPredictionsRelations = relations(astrologyPredictions, ({ one }) => ({
+  user: one(users, {
+    fields: [astrologyPredictions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertWearableDeviceSchema = createInsertSchema(wearableDevices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWearableDataSchema = createInsertSchema(wearableData).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAstrologyPredictionSchema = createInsertSchema(astrologyPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1516,3 +1596,9 @@ export type ActivityCompletion = typeof activityCompletions.$inferSelect;
 export type InsertActivityCompletion = z.infer<typeof insertActivityCompletionSchema>;
 export type TrackerSettings = typeof trackerSettings.$inferSelect;
 export type InsertTrackerSettings = z.infer<typeof insertTrackerSettingsSchema>;
+export type WearableDevice = typeof wearableDevices.$inferSelect;
+export type InsertWearableDevice = z.infer<typeof insertWearableDeviceSchema>;
+export type WearableData = typeof wearableData.$inferSelect;
+export type InsertWearableData = z.infer<typeof insertWearableDataSchema>;
+export type AstrologyPrediction = typeof astrologyPredictions.$inferSelect;
+export type InsertAstrologyPrediction = z.infer<typeof insertAstrologyPredictionSchema>;

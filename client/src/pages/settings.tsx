@@ -4,11 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeSelector } from "@/components/theme-selector";
+import { WearableManager } from "@/components/wearable-manager";
+import { VoiceSettings } from "@/components/voice-settings";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import { MobilityCapabilitiesModal } from "@/components/mobility-capabilities-modal";
 import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
+import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import {
   User,
   Bell,
@@ -24,6 +29,7 @@ import {
   RotateCcw,
   HelpCircle,
   Activity,
+  Sparkles,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -41,6 +47,7 @@ export function SettingsPage() {
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
   
   const handleReplayMenuTour = () => {
     localStorage.removeItem(MENU_TUTORIAL_KEY);
@@ -61,12 +68,29 @@ export function SettingsPage() {
       description: "Visit any screen to see its tutorial again",
     });
   };
+
+  const handleStartInteractiveTour = () => {
+    startTour();
+  };
+
+  const handleTourComplete = () => {
+    saveEnhancedOnboarding({ tourCompleted: true });
+    completeTour();
+    toast({
+      title: "Tour completed",
+      description: "You can replay it anytime from Settings",
+    });
+  };
+
+  const handleTourSkip = () => {
+    skipTour();
+  };
   
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="Settings" backPath="/" />
 
-      <main className="p-4 max-w-2xl mx-auto space-y-4">
+      <main className="p-4 max-w-2xl mx-auto space-y-4" data-tour="settings">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -174,6 +198,12 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Enhanced Theme Selector */}
+        <ThemeSelector />
+
+        {/* Wearable Device Manager */}
+        <WearableManager />
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -192,6 +222,9 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Voice Settings */}
+        <VoiceSettings />
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -207,6 +240,14 @@ export function SettingsPage() {
               Replay tutorials to learn how each screen works.
             </p>
             <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="default"
+                onClick={handleStartInteractiveTour}
+                data-testid="button-start-interactive-tour"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Take Interactive Tour
+              </Button>
               <Button 
                 variant="outline"
                 onClick={handleReplayMenuTour}
@@ -317,6 +358,12 @@ export function SettingsPage() {
       <AnalyticsDebugPanel
         open={showAnalyticsDebug}
         onClose={() => setShowAnalyticsDebug(false)}
+      />
+
+      <InteractiveTour
+        open={isOpen}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
       />
     </div>
   );

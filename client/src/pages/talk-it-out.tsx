@@ -9,6 +9,7 @@ import { saveChatFeedback } from "@/lib/guest-storage";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
+import { TTSButton } from "@/components/tts-button";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -172,10 +173,13 @@ export function TalkItOutPage() {
                   <p className="font-body whitespace-pre-line leading-relaxed">{message.content}</p>
                 </div>
                 {message.role === "assistant" && index > 0 && (
-                  <ChatFeedbackBar 
-                    messageId={`talk-${index}`} 
-                    onFeedback={handleFeedback} 
-                  />
+                  <div className="flex items-center gap-2 mt-1">
+                    <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
+                    <ChatFeedbackBar 
+                      messageId={`talk-${index}`} 
+                      onFeedback={handleFeedback} 
+                    />
+                  </div>
                 )}
               </div>
             </div>
