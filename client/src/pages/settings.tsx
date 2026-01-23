@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeSelector } from "@/components/theme-selector";
+import { WearableManager } from "@/components/wearable-manager";
 import { VoiceSettings } from "@/components/voice-settings";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { PageHeader } from "@/components/page-header";
@@ -174,6 +176,12 @@ export function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Enhanced Theme Selector */}
+        <ThemeSelector />
+
+        {/* Wearable Device Manager */}
+        <WearableManager />
 
         <Card>
           <CardHeader>
