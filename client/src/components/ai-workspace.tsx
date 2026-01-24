@@ -1403,7 +1403,7 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           /* Landing view - exactly centered between header and input */
-          <div className="flex-1 flex items-center justify-center px-4 mb-28">
+          <div className="flex-1 flex items-center justify-center px-4 pb-40">
             <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
               <div className="text-center">
                 <h1 className="text-lg font-display font-semibold text-foreground" data-testid="text-greeting">
