@@ -549,7 +549,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Header */}
       <header className="p-4 flex justify-between items-center">
         {step > 0 && step < totalSteps ? (

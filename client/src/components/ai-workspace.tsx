@@ -428,7 +428,13 @@ export function AIWorkspace() {
       return;
     }
     
-    // Show soft onboarding for first-time users immediately
+    // Don't show soft onboarding if the navigation tutorial hasn't been seen yet
+    // This means the tutorial is about to start - avoid popup overload
+    if (!hasSeenNavigationTutorial()) {
+      return;
+    }
+    
+    // Show soft onboarding for returning users (who have completed the tutorial)
     if (shouldShowSoftOnboarding()) {
       markSoftOnboardingShownThisSession();
       setShowSoftOnboarding(true);
