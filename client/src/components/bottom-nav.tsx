@@ -30,7 +30,7 @@ export function BottomNav() {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-xl safe-area-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
       data-testid="nav-bottom"
       role="navigation"
     >
