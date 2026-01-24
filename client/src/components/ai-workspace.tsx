@@ -1754,7 +1754,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="fixed bottom-14 left-0 right-0 px-2 py-2 bg-background z-40">
+        <div className="fixed left-0 right-0 px-2 py-2 bg-background z-40" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
