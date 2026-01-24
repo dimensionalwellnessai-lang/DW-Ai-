@@ -139,7 +139,7 @@ export default function PlansPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
-                  <h3 className="font-medium truncate">{plan.name}</h3>
+                  <h3 className="font-medium text-foreground truncate">{plan.name}</h3>
                   <Badge variant={plan.status === "active" ? "default" : "secondary"} className="shrink-0">
                     {plan.status}
                   </Badge>
@@ -238,7 +238,7 @@ export default function PlansPage() {
             <div className="flex items-center gap-3">
               {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{event.title}</h3>
+                <h3 className="font-medium text-foreground truncate">{event.title}</h3>
                 <p className="text-sm text-muted-foreground">{event.description}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -269,7 +269,7 @@ export default function PlansPage() {
             <div className="flex items-center gap-3">
               {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{routine.title}</h3>
+                <h3 className="font-medium text-foreground truncate">{routine.title}</h3>
                 <p className="text-sm text-muted-foreground">{routine.description}</p>
               </div>
               <Badge variant="outline" className="shrink-0">Task</Badge>

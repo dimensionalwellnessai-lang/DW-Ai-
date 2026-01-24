@@ -855,7 +855,7 @@ ${voiceRules}`;
                   <Star className="w-6 h-6 text-violet-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Create Your Birth Chart</h3>
+                  <h3 className="font-semibold mb-1 text-foreground">Create Your Birth Chart</h3>
                   <p className="text-sm text-muted-foreground">
                     Enter your birth details for personalized horoscope readings
                   </p>
@@ -1128,7 +1128,7 @@ ${voiceRules}`;
                           <span className="text-2xl font-display font-bold text-primary">{lifePathNumber}</span>
                         </div>
                         <div>
-                          <h3 className="font-semibold">{meaning.title}</h3>
+                          <h3 className="font-semibold text-foreground">{meaning.title}</h3>
                           <p className="text-sm text-muted-foreground">Life Path Number</p>
                         </div>
                       </div>
@@ -1182,7 +1182,7 @@ ${voiceRules}`;
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <h2 className="font-semibold">{sunSign} Horoscope</h2>
+                <h2 className="font-semibold text-foreground">{sunSign} Horoscope</h2>
               </div>
               
               <Tabs defaultValue="daily" className="w-full">
@@ -1301,7 +1301,7 @@ ${voiceRules}`;
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="p-4 bg-primary/5 rounded-lg">
-                      <h3 className="font-semibold mb-2">Understanding Your Birth Chart</h3>
+                      <h3 className="font-semibold mb-2 text-foreground">Understanding Your Birth Chart</h3>
                       <p className="text-sm text-muted-foreground">
                         Your birth chart is a snapshot of the sky at the exact moment you were born. 
                         It reveals the positions of the Sun, Moon, and planets across the 12 zodiac signs.
@@ -1309,7 +1309,7 @@ ${voiceRules}`;
                     </div>
                     
                     <div className="p-4 bg-accent/5 rounded-lg">
-                      <h3 className="font-semibold mb-2">The Big Three</h3>
+                      <h3 className="font-semibold mb-2 text-foreground">The Big Three</h3>
                       <ul className="text-sm text-muted-foreground space-y-2">
                         <li><strong>Sun Sign:</strong> Your core identity and ego</li>
                         <li><strong>Moon Sign:</strong> Your emotional nature and inner self</li>
@@ -1318,7 +1318,7 @@ ${voiceRules}`;
                     </div>
                     
                     <div className="p-4 bg-violet-500/5 rounded-lg">
-                      <h3 className="font-semibold mb-2">Moon Phases</h3>
+                      <h3 className="font-semibold mb-2 text-foreground">Moon Phases</h3>
                       <p className="text-sm text-muted-foreground mb-2">
                         The Moon cycles through phases approximately every 29.5 days, each carrying different energy:
                       </p>
@@ -1331,7 +1331,7 @@ ${voiceRules}`;
                     </div>
                     
                     <div className="p-4 bg-amber-500/5 rounded-lg">
-                      <h3 className="font-semibold mb-2">Planetary Influences</h3>
+                      <h3 className="font-semibold mb-2 text-foreground">Planetary Influences</h3>
                       <p className="text-sm text-muted-foreground mb-2">
                         Each planet governs different aspects of life:
                       </p>

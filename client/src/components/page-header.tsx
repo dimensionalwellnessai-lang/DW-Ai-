@@ -136,7 +136,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                       data-testid={`menu-item-${lifeDashboard.id}`}
                     >
                       <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{lifeDashboard.name}</span>
+                      <span className="text-sm text-foreground">{lifeDashboard.name}</span>
                     </button>
                   </Link>
                 )}
@@ -145,38 +145,38 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                   <details className="group">
                     <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm flex-1">Calendar</span>
+                      <span className="text-sm flex-1 text-foreground">Calendar</span>
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-4">
                       <Link href="/daily-schedule">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Today</span>
+                          <span className="text-sm text-foreground">Today</span>
                         </button>
                       </Link>
                       <Link href="/calendar">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Month</span>
+                          <span className="text-sm text-foreground">Month</span>
                         </button>
                       </Link>
                       <Link href="/calendar?view=week">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-week">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Week</span>
+                          <span className="text-sm text-foreground">Week</span>
                         </button>
                       </Link>
                       <Link href="/daily-schedule">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-schedule">
                           <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Schedule</span>
+                          <span className="text-sm text-foreground">Schedule</span>
                         </button>
                       </Link>
                       <Link href="/routines">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
                           <History className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">Routines</span>
+                          <span className="text-sm text-foreground">Routines</span>
                         </button>
                       </Link>
                     </div>
@@ -193,7 +193,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                         data-testid={`menu-item-${feature.id}`}
                       >
                         <Icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{feature.name}</span>
+                        <span className="text-sm text-foreground">{feature.name}</span>
                       </button>
                     </Link>
                   );
@@ -205,7 +205,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           <details className="group">
             <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
               <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm flex-1">More</span>
+              <span className="text-sm flex-1 text-foreground">More</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
             <div className="mt-1 space-y-1 ml-2">
@@ -219,7 +219,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                       data-testid={`menu-item-${feature.id}`}
                     >
                       <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{feature.name}</span>
+                      <span className="text-sm text-foreground">{feature.name}</span>
                     </button>
                   </Link>
                 );
@@ -234,11 +234,11 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             data-testid="button-start-tutorial"
           >
             <GraduationCap className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">App Tour</span>
+            <span className="text-sm text-foreground">App Tour</span>
           </button>
           {user ? (
             <div className="space-y-2">
-              <div className="px-2 py-1 text-sm font-medium border-t pt-3">
+              <div className="px-2 py-1 text-sm font-medium text-foreground border-t pt-3">
                 Hello, {user.firstName || user.email?.split('@')[0] || 'there'}
               </div>
               <Button 

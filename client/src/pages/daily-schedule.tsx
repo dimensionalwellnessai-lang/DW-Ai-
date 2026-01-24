@@ -288,7 +288,7 @@ export default function DailySchedulePage() {
             <CardContent className="p-6 text-center space-y-4">
               <Calendar className="w-12 h-12 mx-auto text-muted-foreground" />
               <div>
-                <h3 className="font-semibold mb-1">Nothing scheduled yet</h3>
+                <h3 className="font-semibold text-foreground mb-1">Nothing scheduled yet</h3>
                 <p className="text-sm text-muted-foreground">
                   Want help planning your day?
                 </p>
@@ -333,7 +333,7 @@ export default function DailySchedulePage() {
                           <Icon className={`w-5 h-5 ${color}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate">{event.title}</h3>
+                          <h3 className="font-medium text-foreground truncate">{event.title}</h3>
                           {event.linkedType && event.linkedType !== "none" && (
                             <p className="text-sm text-muted-foreground capitalize">
                               {event.linkedType}
@@ -378,9 +378,9 @@ export default function DailySchedulePage() {
                     onClick={() => setLocation(systemInfo.route)}
                     data-testid={`suggested-${item.system}-${idx}`}
                   >
-                    <p className="text-sm font-medium min-w-[50px]">{item.time}</p>
+                    <p className="text-sm font-medium text-foreground min-w-[50px]">{item.time}</p>
                     <Icon className={`w-4 h-4 ${systemInfo.color}`} />
-                    <p className="text-sm">{item.title}</p>
+                    <p className="text-sm text-foreground">{item.title}</p>
                     <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                   </div>
                 );
@@ -470,7 +470,7 @@ export default function DailySchedulePage() {
             {selectedEvent && (
               <div className="space-y-4 py-4">
                 <div>
-                  <h3 className="font-semibold text-lg">{selectedEvent.title}</h3>
+                  <h3 className="font-semibold text-lg text-foreground">{selectedEvent.title}</h3>
                   {selectedEvent.description && (
                     <p className="text-sm text-muted-foreground mt-1">{selectedEvent.description}</p>
                   )}

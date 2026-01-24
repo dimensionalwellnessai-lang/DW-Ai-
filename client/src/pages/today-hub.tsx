@@ -393,7 +393,7 @@ export default function TodayHubPage() {
                   <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
                     <Layers className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="font-semibold">Your Life System</h3>
+                  <h3 className="font-semibold text-foreground">Your Life System</h3>
                 </div>
                 
                 <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
@@ -545,7 +545,7 @@ export default function TodayHubPage() {
 
         <section data-testid="section-schedule">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold flex items-center gap-2">
+            <h2 className="font-semibold flex items-center gap-2 text-foreground">
               <Calendar className="h-4 w-4" />
               Today's Schedule
             </h2>
@@ -579,7 +579,7 @@ export default function TodayHubPage() {
                       {formatTime12Hour(block.startTime)}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{block.title}</p>
+                      <p className="text-sm font-medium text-foreground">{block.title}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </CardContent>
@@ -592,7 +592,7 @@ export default function TodayHubPage() {
                       {formatTime12Hour(event.startTime)}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{event.title}</p>
+                      <p className="text-sm font-medium text-foreground">{event.title}</p>
                     </div>
                     <Badge variant="secondary" className="text-xs">Event</Badge>
                   </CardContent>
@@ -610,7 +610,7 @@ export default function TodayHubPage() {
         {activeGoals.length > 0 && (
           <section data-testid="section-goals">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold flex items-center gap-2">
+              <h2 className="font-semibold flex items-center gap-2 text-foreground">
                 <Target className="h-4 w-4" />
                 Active Goals
               </h2>
@@ -626,7 +626,7 @@ export default function TodayHubPage() {
                 <Card key={goal.id} className="hover-elevate" data-testid={`goal-card-${goal.id}`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium">{goal.title}</p>
+                      <p className="text-sm font-medium text-foreground">{goal.title}</p>
                       <Badge variant="outline" className="text-xs">
                         {goal.progress || 0}%
                       </Badge>
@@ -644,7 +644,7 @@ export default function TodayHubPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Sun className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-medium">Morning</span>
+                <span className="text-sm font-medium text-foreground">Morning</span>
               </div>
               {morningRoutines.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No routine set</p>
