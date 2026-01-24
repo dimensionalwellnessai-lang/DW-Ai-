@@ -31,18 +31,17 @@ html, body {
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
-  padding-top: var(--sat);
-  padding-bottom: var(--sab);
+  /* Safe area padding handled at component level - not here */
   padding-left: var(--sal);
   padding-right: var(--sar);
   box-sizing: border-box;
-  /* Ensure consistent background color extends to safe areas */
+  /* Ensure consistent background color extends to safe areas including dynamic island */
   background-color: hsl(var(--background));
 }
 
-/* Content area respects safe area and is the scroll container */
+/* Content area - just a container, pages handle their own safe area */
 .app-content {
-  min-height: calc(100dvh - var(--sat) - var(--sab));
+  min-height: 100dvh;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   /* Ensure background color consistency */
