@@ -143,7 +143,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
         <details className="group" data-testid="menu-more-details">
           <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-more-toggle">
             <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm flex-1">More</span>
+            <span className="text-sm flex-1 text-foreground">More</span>
             <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-1 space-y-1 ml-4">

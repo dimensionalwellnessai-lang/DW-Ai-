@@ -119,14 +119,14 @@ export function SwipeableDrawer({
         onMouseLeave={handleMouseLeave}
       >
         <div className="flex items-center justify-between mb-4">
-          <span className="font-display font-semibold">{title}</span>
+          <span className="font-display font-semibold text-foreground">{title}</span>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose}
             data-testid="button-close-drawer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5 text-foreground" />
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto flex flex-col pb-16">
