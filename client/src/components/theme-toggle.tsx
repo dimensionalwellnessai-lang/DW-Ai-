@@ -12,11 +12,12 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       data-testid="button-theme-toggle"
       aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+      className="text-foreground"
     >
       {theme === "light" ? (
-        <Moon className="h-5 w-5" />
+        <Moon className="h-6 w-6" />
       ) : (
-        <Sun className="h-5 w-5" />
+        <Sun className="h-6 w-6" />
       )}
     </Button>
   );

@@ -1155,7 +1155,7 @@ export function AIWorkspace() {
           </div>
           
           {/* Centered brand name */}
-          <span className="font-display font-semibold text-lg text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
+          <span className="font-display font-semibold text-lg text-foreground leading-tight" data-testid="text-brand">DW.AI</span>
           
           {/* Right icons - absolute positioned */}
           <div className="absolute right-0 flex items-center gap-1.5">
