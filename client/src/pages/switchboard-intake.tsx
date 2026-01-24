@@ -235,7 +235,7 @@ export default function SwitchboardIntakePage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
               <Sparkles className="h-8 w-8 text-purple-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Discover Your Switches
             </h1>
             <p className="text-slate-400 leading-relaxed">
@@ -320,7 +320,7 @@ export default function SwitchboardIntakePage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-emerald-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Your Switchboard is Ready
             </h1>
             <p className="text-slate-400">
@@ -443,7 +443,7 @@ export default function SwitchboardIntakePage() {
               <div className={`w-14 h-14 mx-auto rounded-xl ${currentQuestion.bgColor} flex items-center justify-center`}>
                 <Icon className={`h-7 w-7 ${currentQuestion.color}`} />
               </div>
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-xl font-semibold text-foreground">
                 {currentQuestion.question}
               </h2>
               <p className={`text-sm ${currentQuestion.color} italic`}>

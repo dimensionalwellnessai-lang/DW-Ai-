@@ -133,7 +133,7 @@ export default function FTSHomePage() {
             <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
               <Sparkles className="h-10 w-10 text-purple-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Welcome to Flip the Switch
             </h1>
             <p className="text-slate-400 leading-relaxed max-w-sm mx-auto">
@@ -197,7 +197,7 @@ export default function FTSHomePage() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-slate-400">Top switch to train</p>
-                  <p className="font-medium text-white capitalize">
+                  <p className="font-medium text-foreground capitalize">
                     {recommendation.recommendedSwitchId}
                     <span className="text-slate-500 ml-2">
                       ({mode === "restoring" ? "Restoring" : "Training"})
@@ -274,7 +274,7 @@ export default function FTSHomePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h3 className="font-medium text-white mb-2">{plan.actionNow.title}</h3>
+                <h3 className="font-medium text-foreground mb-2">{plan.actionNow.title}</h3>
                 <p className="text-sm text-slate-400 italic mb-3">
                   {recommendation.reason}
                 </p>

@@ -212,7 +212,7 @@ export default function MyProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-2"
         >
-          <h1 className="text-xl font-bold text-white" data-testid="progress-title">My Progress</h1>
+          <h1 className="text-xl font-bold text-foreground" data-testid="progress-title">My Progress</h1>
           <p className="text-sm text-slate-400">
             You don't need perfect weeks — just powered ones.
           </p>
@@ -225,7 +225,7 @@ export default function MyProgressPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Battery className="h-4 w-4 text-blue-400" />
                 Your System This Week
               </CardTitle>
@@ -240,19 +240,19 @@ export default function MyProgressPage() {
               ) : (
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 rounded-lg bg-slate-800/50">
-                    <p className="text-lg font-bold text-white" data-testid="energy-level">
+                    <p className="text-lg font-bold text-foreground" data-testid="energy-level">
                       {getEnergyLabel(serverSummary?.snapshot?.energyLevel || signals.energyLevel)}
                     </p>
                     <p className="text-xs text-slate-400">Energy</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-slate-800/50">
-                    <p className="text-lg font-bold text-white" data-testid="stress-level">
+                    <p className="text-lg font-bold text-foreground" data-testid="stress-level">
                       {getEnergyLabel(serverSummary?.snapshot?.stressLevel || signals.stressLevel)}
                     </p>
                     <p className="text-xs text-slate-400">Stress</p>
                   </div>
                   <div className="text-center p-3 rounded-lg bg-slate-800/50">
-                    <p className="text-lg font-bold text-white" data-testid="consistency-days">
+                    <p className="text-lg font-bold text-foreground" data-testid="consistency-days">
                       {serverSummary?.snapshot?.consistencyDays14d ?? 0}/14
                     </p>
                     <p className="text-xs text-slate-400">Days Active</p>
@@ -295,7 +295,7 @@ export default function MyProgressPage() {
                           {switchItem.status}
                         </Badge>
                       </div>
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {SWITCH_TITLES[switchItem.switchId]}
                       </p>
                       <p className="text-xs text-slate-400">
@@ -316,7 +316,7 @@ export default function MyProgressPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-400" />
                 Weekly Wins
               </CardTitle>
@@ -326,7 +326,7 @@ export default function MyProgressPage() {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Check className="h-4 w-4 text-green-400" />
-                    <span className="text-lg font-bold text-white" data-testid="actions-completed">
+                    <span className="text-lg font-bold text-foreground" data-testid="actions-completed">
                       {serverSummary?.wins?.actionsCompleted ?? 0}
                     </span>
                   </div>
@@ -335,7 +335,7 @@ export default function MyProgressPage() {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Heart className="h-4 w-4 text-pink-400" />
-                    <span className="text-lg font-bold text-white" data-testid="helped-count">
+                    <span className="text-lg font-bold text-foreground" data-testid="helped-count">
                       {serverSummary?.wins?.helped?.yes ?? 0}
                     </span>
                   </div>
@@ -344,7 +344,7 @@ export default function MyProgressPage() {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Calendar className="h-4 w-4 text-blue-400" />
-                    <span className="text-lg font-bold text-white" data-testid="somewhat-count">
+                    <span className="text-lg font-bold text-foreground" data-testid="somewhat-count">
                       {serverSummary?.wins?.helped?.some ?? 0}
                     </span>
                   </div>
@@ -363,7 +363,7 @@ export default function MyProgressPage() {
           >
             <Card className="border-white/10">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-white flex items-center gap-2">
+                <CardTitle className="text-base text-foreground flex items-center gap-2">
                   <Brain className="h-4 w-4 text-purple-400" />
                   Patterns (14 days)
                 </CardTitle>
@@ -399,13 +399,13 @@ export default function MyProgressPage() {
           >
             <Card className="border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-slate-900">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-white flex items-center gap-2">
+                <CardTitle className="text-base text-foreground flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-400" />
                   Next Best Move
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <h3 className="font-medium text-white mb-1" data-testid="recommendation-title">
+                <h3 className="font-medium text-foreground mb-1" data-testid="recommendation-title">
                   {recommendation.title}
                 </h3>
                 <p className="text-sm text-slate-400 mb-4">

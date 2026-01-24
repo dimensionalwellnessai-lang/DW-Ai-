@@ -248,7 +248,7 @@ export default function SwitchTrainingPage() {
                 <Icon className={`h-5 w-5 ${switchInfo.color}`} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">{switchInfo.name}</h1>
+                <h1 className="text-xl font-bold text-foreground">{switchInfo.name}</h1>
                 <p className="text-sm text-slate-400">{switchInfo.subtitle}</p>
               </div>
             </div>
