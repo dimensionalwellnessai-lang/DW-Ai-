@@ -1400,10 +1400,10 @@ export function AIWorkspace() {
           <div className="flex-1 flex items-center justify-center px-4">
             <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
               <div className="text-center">
-                <h1 className="text-lg font-display font-semibold" data-testid="text-greeting">
+                <h1 className="text-lg font-display font-semibold text-foreground" data-testid="text-greeting">
                   {greeting}
                 </h1>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-foreground/70 text-sm">
                   {subGreeting}
                 </p>
               </div>
@@ -1417,8 +1417,8 @@ export function AIWorkspace() {
                       className="flex flex-col items-center gap-1 p-3 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
                       data-testid={`button-action-${action.id}`}
                     >
-                      <Icon className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs">{action.text}</span>
+                      <Icon className="h-3 w-3 text-foreground/60" />
+                      <span className="text-xs text-foreground/80">{action.text}</span>
                     </button>
                   );
                 })}
