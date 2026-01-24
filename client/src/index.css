@@ -17,10 +17,14 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  /* Ensure background extends to edges - matches --background in light mode */
+  background-color: hsl(var(--background));
 }
 
 #root {
   height: 100%;
+  /* Ensure root also has background color */
+  background-color: hsl(var(--background));
 }
 
 /* App Shell - Single source of safe area padding */
