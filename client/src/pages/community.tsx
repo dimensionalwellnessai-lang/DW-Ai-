@@ -114,8 +114,8 @@ export default function CommunityPage() {
   const displayOpportunities = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b">
+    <div className="flex flex-col h-full bg-background">
+      <header className="flex items-center justify-between gap-4 p-4 border-b sticky top-0 bg-background z-50">
         <div className="flex items-center gap-3">
           <Link href="/">
             <Button variant="ghost" size="icon" data-testid="button-back">
