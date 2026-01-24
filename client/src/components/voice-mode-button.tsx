@@ -208,10 +208,10 @@ export function VoiceModeButton({
       )}
       
       {voiceState === "processing" ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 className="w-4 h-4 animate-spin text-foreground" />
       ) : (
         <Mic className={cn(
-          "w-4 h-4",
+          "w-4 h-4 text-foreground",
           voiceState === "listening" && "text-primary"
         )} />
       )}

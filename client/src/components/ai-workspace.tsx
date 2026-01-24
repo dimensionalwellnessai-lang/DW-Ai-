@@ -1821,7 +1821,7 @@ export function AIWorkspace() {
                 className="shrink-0"
                 data-testid="button-attach"
               >
-                <Paperclip className="w-4 h-4" />
+                <Paperclip className="w-4 h-4 text-foreground" />
               </Button>
               <Textarea
                 ref={inputRef}
@@ -1846,7 +1846,7 @@ export function AIWorkspace() {
                 className="rounded-full shrink-0"
                 data-testid="button-send"
               >
-                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-foreground" /> : <Send className="w-4 h-4 text-foreground" />}
               </Button>
               <VoiceModeButton
                 onTranscript={(text) => {
