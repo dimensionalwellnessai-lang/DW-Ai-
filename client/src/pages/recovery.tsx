@@ -413,7 +413,7 @@ export function RecoveryPage() {
           <section>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="font-display font-semibold text-sm">
+              <h2 className="font-display font-semibold text-sm text-foreground">
                 AI Picks
               </h2>
             </div>
@@ -442,7 +442,7 @@ export function RecoveryPage() {
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm">{item.title}</h3>
+                          <h3 className="font-medium text-sm text-foreground">{item.title}</h3>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge variant="outline" className="text-xs">
                               <Clock className="h-3 w-3 mr-1" />
@@ -504,7 +504,7 @@ export function RecoveryPage() {
           {/* AI-Powered Recovery Search */}
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h2 className="font-display font-semibold text-sm">Find Recovery Practices</h2>
+              <h2 className="font-display font-semibold text-sm text-foreground">Find Recovery Practices</h2>
               <div className="flex gap-2">
                 <ExclusionsButton domain="recovery" />
                 <Badge variant="outline" className="text-xs">
@@ -534,7 +534,7 @@ export function RecoveryPage() {
           </section>
 
           <section>
-            <h2 className="font-display font-semibold text-sm mb-3">
+            <h2 className="font-display font-semibold text-sm text-foreground mb-3">
               Browse by Category
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
@@ -564,7 +564,7 @@ export function RecoveryPage() {
                       <div className={`w-10 h-10 rounded-lg ${colors.bgColor} flex items-center justify-center`}>
                         <Icon className={`h-5 w-5 ${colors.color}`} />
                       </div>
-                      <span className="text-xs font-medium">{cat.label}</span>
+                      <span className="text-xs font-medium text-foreground">{cat.label}</span>
                     </CardContent>
                   </Card>
                 );
@@ -620,7 +620,7 @@ export function RecoveryPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 
-                            className="font-medium text-sm hover:text-primary cursor-pointer inline-flex items-center gap-1 group"
+                            className="font-medium text-sm text-foreground hover:text-primary cursor-pointer inline-flex items-center gap-1 group"
                             onClick={() => handleFindAlternatives(item.title)}
                             data-testid={`button-alternatives-${item.id}`}
                           >
@@ -677,7 +677,7 @@ export function RecoveryPage() {
                     <MessageSquareText className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium text-sm">Need something specific?</h3>
+                    <h3 className="font-medium text-sm text-foreground">Need something specific?</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Ask DW to find a recovery routine that fits your current state.
                     </p>

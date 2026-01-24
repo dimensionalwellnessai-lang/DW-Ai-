@@ -1157,7 +1157,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-sm font-medium">Planning Horizon: {planningHorizon === "today" ? "Just Today" : planningHorizon === "week" ? "This Week" : "This Month"}</h2>
+                <h2 className="text-sm font-medium text-foreground">Planning Horizon: {planningHorizon === "today" ? "Just Today" : planningHorizon === "week" ? "This Week" : "This Month"}</h2>
                 <p className="text-xs text-muted-foreground">Adjusting your focus helps reduce cognitive load.</p>
               </div>
             </div>
@@ -1177,7 +1177,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             <CardContent className="p-4 flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-sm mb-1">Budget-conscious mode active</h4>
+                <h4 className="font-medium text-sm text-foreground mb-1">Budget-conscious mode active</h4>
                 <p className="text-sm text-muted-foreground">
                   We're prioritizing affordable, pantry-friendly meal options for you.
                 </p>
@@ -1206,7 +1206,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             {/* AI-Powered Recipe Search */}
             <section className="space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="font-display font-semibold text-sm">Find Recipes</h2>
+                <h2 className="font-display font-semibold text-sm text-foreground">Find Recipes</h2>
                 <Badge variant="outline" className="text-xs">
                   <Sparkles className="w-3 h-3 mr-1" />
                   AI-Powered
@@ -1250,7 +1250,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
 
             {/* Wave 6A: Category Thumbnails */}
             <section className="space-y-3">
-              <h2 className="font-display font-semibold text-sm">Browse by Category</h2>
+              <h2 className="font-display font-semibold text-sm text-foreground">Browse by Category</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { id: "meal-plans", label: "Meal Plans", icon: Calendar, color: "text-emerald-500", bgColor: "bg-emerald-500/10" },
@@ -1275,7 +1275,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                         <div className={`w-12 h-12 rounded-lg ${cat.bgColor} flex items-center justify-center`}>
                           <Icon className={`h-6 w-6 ${cat.color}`} />
                         </div>
-                        <span className="text-sm font-medium">{cat.label}</span>
+                        <span className="text-sm font-medium text-foreground">{cat.label}</span>
                         {isSelected && (
                           <Badge variant="default" className="text-xs">Selected</Badge>
                         )}
@@ -1355,7 +1355,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     <div className="p-1.5 bg-purple-500/10 rounded-lg">
                       <ShoppingBag className="h-4 w-4 text-purple-500" />
                     </div>
-                    <h2 className="font-semibold">Grocery Builder</h2>
+                    <h2 className="font-semibold text-foreground">Grocery Builder</h2>
                   </div>
                   {groceryList && groceryList.items.length > 0 && (
                     <Badge variant="secondary" className="text-xs">
@@ -1531,7 +1531,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     <div className="p-1.5 bg-amber-500/10 rounded-lg">
                       <ChefHat className="h-4 w-4 text-amber-500" />
                     </div>
-                    <h2 className="font-semibold">Recipe Box</h2>
+                    <h2 className="font-semibold text-foreground">Recipe Box</h2>
                   </div>
                   {savedRecipes.length > 0 && (
                     <Badge variant="secondary" className="text-xs">
@@ -1560,7 +1560,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                             <CardContent className="p-3 flex items-center gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-medium text-sm truncate">{recipe.title}</h4>
+                                  <h4 className="font-medium text-sm text-foreground truncate">{recipe.title}</h4>
                                   {recipe.isFavorite && (
                                     <Heart className="h-3 w-3 text-red-500 fill-red-500 flex-shrink-0" />
                                   )}
@@ -1604,7 +1604,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 <div className="p-1.5 bg-primary/10 rounded-lg flex-shrink-0">
                   <Sparkles className="h-4 w-4 text-primary" />
                 </div>
-                <h2 className="font-semibold flex-shrink-0">Picked for You</h2>
+                <h2 className="font-semibold text-foreground flex-shrink-0">Picked for You</h2>
                 <span className="text-xs text-muted-foreground">
                   Based on your {currentEnergy} energy
                 </span>
@@ -1628,7 +1628,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium">{pick.title}</h3>
+                              <h3 className="font-medium text-foreground">{pick.title}</h3>
                               <Badge variant="secondary" className="text-xs">
                                 {pick.tag}
                               </Badge>
@@ -1679,7 +1679,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       <Zap className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Suggest meals for today</h3>
+                      <h3 className="font-medium text-foreground">Suggest meals for today</h3>
                       <p className="text-sm text-muted-foreground">
                         Quick ideas based on your energy and time
                       </p>
@@ -1707,7 +1707,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     <Utensils className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1">Set Your Preferences</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Set Your Preferences</h3>
                     <p className="text-sm text-muted-foreground">
                       Tell us about your dietary needs so we can personalize your meal plans
                     </p>
@@ -1764,13 +1764,13 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  <h2 className="font-semibold">Recommended for You</h2>
+                  <h2 className="font-semibold text-foreground">Recommended for You</h2>
                 </div>
                 <Card className="hover-elevate cursor-pointer" data-testid="card-recommended-meal">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <h3 className="font-medium mb-1">{recommendedPlan.title}</h3>
+                        <h3 className="font-medium text-foreground mb-1">{recommendedPlan.title}</h3>
                         <p className="text-sm text-muted-foreground mb-2">
                           {recommendedPlan.description}
                         </p>
@@ -1802,7 +1802,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{plan.title}</h3>
+                            <h3 className="font-medium text-foreground">{plan.title}</h3>
                             {expandedPlan === index ? (
                               <ChevronUp className="w-4 h-4 text-muted-foreground" />
                             ) : (
@@ -1842,7 +1842,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       
                       {expandedPlan === index && (
                         <div className="mt-4 pt-4 border-t space-y-4">
-                          <h4 className="text-sm font-medium">Meals in this plan:</h4>
+                          <h4 className="text-sm font-medium text-foreground">Meals in this plan:</h4>
                           {plan.meals.map((meal, mealIdx) => (
                             <div 
                               key={mealIdx} 
@@ -1857,7 +1857,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                 }}
                               >
                                 <div className="flex items-center gap-2">
-                                  <h5 className="font-medium text-sm">{meal.name}</h5>
+                                  <h5 className="font-medium text-sm text-foreground">{meal.name}</h5>
                                   {expandedMeal === `${index}-${mealIdx}` ? (
                                     <ChevronUp className="w-3 h-3 text-muted-foreground" />
                                   ) : (
@@ -2012,7 +2012,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-medium text-sm mb-1 line-clamp-1">{video.title}</h3>
+                          <h3 className="font-medium text-sm text-foreground mb-1 line-clamp-1">{video.title}</h3>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -2284,7 +2284,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           <ArrowRightLeft className="w-5 h-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <h3 className="font-medium">{ingredient.original}</h3>
+                          <h3 className="font-medium text-foreground">{ingredient.original}</h3>
                           <p className="text-sm text-muted-foreground">
                             {getRelevantAlternatives(ingredient).length} alternatives
                           </p>
@@ -2298,7 +2298,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                         {getRelevantAlternatives(ingredient).map((alt, altIdx) => (
                           <div key={altIdx} className="p-3 bg-muted/30 rounded-md space-y-2">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-sm">{alt.name}</span>
+                              <span className="font-medium text-sm text-foreground">{alt.name}</span>
                               <Badge variant="outline" className="text-xs">
                                 {alt.type === "homemade" ? (
                                   <><ChefHat className="w-3 h-3 mr-1" />Homemade</>
@@ -2386,7 +2386,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-medium truncate">{resource.title}</h4>
+                          <h4 className="font-medium text-foreground truncate">{resource.title}</h4>
                           {resource.description && (
                             <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
                           )}
@@ -2500,7 +2500,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     }}
                     data-testid={`button-meal-energy-${option.level}`}
                   >
-                    <span className="font-medium">{option.label}</span>
+                    <span className="font-medium text-foreground">{option.label}</span>
                     <span className="text-xs opacity-70">{option.desc}</span>
                   </Button>
                 ))}
@@ -2526,7 +2526,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           <div className="flex items-center gap-3">
                             {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0" />}
                             <div>
-                              <h4 className="font-medium">{meal.name}</h4>
+                              <h4 className="font-medium text-foreground">{meal.name}</h4>
                               <p className="text-sm text-muted-foreground">
                                 {meal.prepTime} min prep - {meal.planTitle}
                               </p>
@@ -2643,7 +2643,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               {pendingAIPick && (
                 <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <div className="flex-1">
-                    <div className="font-medium">{pendingAIPick.title}</div>
+                    <div className="font-medium text-foreground">{pendingAIPick.title}</div>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Clock className="h-3 w-3" />
                       {pendingAIPick.duration} min prep time
@@ -2745,7 +2745,7 @@ function MealPreferencesDialog({ open, onClose, onSave, initialPrefs, hasBodyPro
 
         <div className="space-y-6 py-4">
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Dietary Style</h4>
+            <h4 className="font-medium text-sm text-foreground">Dietary Style</h4>
             <div className="grid grid-cols-2 gap-2">
               {DIETARY_STYLES.map((style) => (
                 <button
@@ -2758,7 +2758,7 @@ function MealPreferencesDialog({ open, onClose, onSave, initialPrefs, hasBodyPro
                   }`}
                   data-testid={`button-diet-${style.id}`}
                 >
-                  <div className="font-medium text-sm">{style.label}</div>
+                  <div className="font-medium text-sm text-foreground">{style.label}</div>
                   <div className={`text-xs ${prefs.dietaryStyle === style.id ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                     {style.description}
                   </div>
@@ -2768,7 +2768,7 @@ function MealPreferencesDialog({ open, onClose, onSave, initialPrefs, hasBodyPro
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Restrictions & Preferences</h4>
+            <h4 className="font-medium text-sm text-foreground">Restrictions & Preferences</h4>
             <div className="flex flex-wrap gap-2">
               {COMMON_RESTRICTIONS.map((r) => (
                 <Badge

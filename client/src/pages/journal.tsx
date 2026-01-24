@@ -270,7 +270,7 @@ export default function JournalPage() {
                         <div className="flex items-start gap-3">
                           {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium">{log.title}</h4>
+                            <h4 className="font-medium text-foreground">{log.title}</h4>
                             <p className="text-sm text-muted-foreground mt-1">{log.content}</p>
                             {log.actionStep && (
                               <p className="text-xs text-muted-foreground mt-2 italic">{log.actionStep}</p>
@@ -291,7 +291,7 @@ export default function JournalPage() {
               <CardContent className="p-4 flex items-center gap-3">
                 <Sparkles className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">No entry today yet</p>
+                  <p className="text-sm font-medium text-foreground">No entry today yet</p>
                   <p className="text-xs text-muted-foreground">Taking a moment to reflect can help you feel more grounded.</p>
                 </div>
                 <Button size="sm" variant="outline" onClick={handleNewEntry}>
@@ -306,7 +306,7 @@ export default function JournalPage() {
               <CardContent className="p-6 text-center space-y-4">
                 <BookOpen className="w-12 h-12 text-muted-foreground mx-auto" />
                 <div>
-                  <h3 className="font-medium mb-1">Start Your Journal</h3>
+                  <h3 className="font-medium mb-1 text-foreground">Start Your Journal</h3>
                   <p className="text-sm text-muted-foreground">
                     Capture your thoughts, track your moods, and reflect on your journey.
                   </p>
@@ -336,7 +336,7 @@ export default function JournalPage() {
                         <div className="flex-1 min-w-0" onClick={() => handleEditEntry(entry)}>
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
-                            <h4 className="font-medium truncate">{entry.title}</h4>
+                            <h4 className="font-medium truncate text-foreground">{entry.title}</h4>
                             {entry.mood && (
                               <Badge variant="secondary" className="text-xs">
                                 {MOOD_OPTIONS.find(m => m.value === entry.mood)?.label || entry.mood}

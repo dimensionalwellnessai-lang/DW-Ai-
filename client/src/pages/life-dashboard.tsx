@@ -244,7 +244,7 @@ function LifeSystemItem({ title, dataSource, explainWhy }: LifeSystemItemProps) 
   return (
     <div className="border rounded-md p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium flex-1">{title}</span>
+        <span className="text-sm font-medium text-foreground flex-1">{title}</span>
         <Badge variant={getDataSourceBadgeVariant(dataSource)} className="text-xs gap-1">
           {getDataSourceIcon(dataSource)}
           {getDataSourceLabel(dataSource)}
@@ -303,7 +303,7 @@ function MyLifeSystemSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">My Life System</h2>
+        <h2 className="text-lg font-semibold text-foreground">My Life System</h2>
         <div className="flex gap-2">
           {totalCounts.user > 0 && (
             <Badge variant="default" className="text-xs gap-1">
@@ -539,7 +539,7 @@ export default function LifeDashboardPage() {
         )}
 
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Your Dimensions</h2>
+          <h2 className="text-lg font-semibold text-foreground">Your Dimensions</h2>
           
           {DIMENSION_CONFIGS.map((dimension) => {
             const Icon = dimension.icon;
@@ -562,7 +562,7 @@ export default function LifeDashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium">{dimension.name}</h3>
+                        <h3 className="font-medium text-foreground">{dimension.name}</h3>
                         {isActive ? (
                           <Badge variant="secondary" className="text-xs">
                             <Check className="w-3 h-3 mr-1" />
@@ -591,7 +591,7 @@ export default function LifeDashboardPage() {
             <CardContent className="p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-medium text-sm mb-1">We notice you're feeling some financial stress</h4>
+                <h4 className="font-medium text-sm text-foreground mb-1">We notice you're feeling some financial stress</h4>
                 <p className="text-sm text-muted-foreground">
                   We're being mindful of this across all your recommendations. Budget-friendly options are prioritized, and calming practices are suggested.
                 </p>
@@ -715,7 +715,7 @@ function WellnessDimensionsSheet({ open, onOpenChange, onSelectDimension, signal
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{dimension.name}</span>
+                      <span className="font-medium text-foreground">{dimension.name}</span>
                       {isActive && (
                         <Check className="w-4 h-4 text-green-500" />
                       )}
@@ -924,7 +924,7 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
 
             <TabsContent value="usage" className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">How I Use This Dimension</h3>
+                <h3 className="font-medium text-foreground">How I Use This Dimension</h3>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -976,7 +976,7 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
 
             <TabsContent value="assessment" className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">Current Assessment</h3>
+                <h3 className="font-medium text-foreground">Current Assessment</h3>
                 <Button 
                   variant="ghost" 
                   size="sm" 
