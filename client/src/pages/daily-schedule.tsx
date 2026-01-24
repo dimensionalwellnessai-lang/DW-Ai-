@@ -252,7 +252,7 @@ export default function DailySchedulePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Daily Schedule" 
         rightContent={
@@ -262,7 +262,7 @@ export default function DailySchedulePage() {
           </Button>
         }
       />
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <ScrollArea className="flex-1">
         <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
 
         <div className="grid grid-cols-7 gap-1 w-full">

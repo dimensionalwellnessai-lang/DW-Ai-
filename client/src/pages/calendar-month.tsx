@@ -51,7 +51,7 @@ export default function CalendarMonthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Month View" 
         rightContent={
@@ -66,7 +66,7 @@ export default function CalendarMonthPage() {
         }
       />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <ScrollArea className="flex-1">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
           <Card>
             <CardContent className="p-4">

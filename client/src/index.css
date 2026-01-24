@@ -250,3 +250,25 @@ summary::marker {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Calendar Dark Mode Fixes */
+.rdp {
+  --rdp-background-color: transparent !important;
+}
+
+.dark .rdp {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .rdp-day {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .rdp-head_cell {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .rdp-caption_label {
+  color: hsl(var(--foreground)) !important;
+}

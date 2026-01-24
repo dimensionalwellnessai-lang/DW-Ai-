@@ -261,7 +261,7 @@ export function CalendarPlansPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Calendar" 
         rightContent={
@@ -283,7 +283,7 @@ export function CalendarPlansPage() {
         }
       />
 
-      <main className="flex-1 flex flex-col lg:flex-row">
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         <div className="flex-1 p-4 border-b lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between mb-4">
             <Button
