@@ -130,7 +130,7 @@ Creates a new wellness goal.
 {
   "title": "Morning meditation practice",
   "dimension": "spiritual",
-  "targetDate": "2026-03-01",
+  "targetDate": "2026-12-31",
   "description": "Establish a consistent 10-minute morning meditation routine"
 }
 ```
@@ -142,7 +142,7 @@ Creates a new wellness goal.
   "title": "Morning meditation practice",
   "dimension": "spiritual",
   "status": "active",
-  "createdAt": "2026-01-24T03:00:00Z"
+  "createdAt": "2026-01-01T12:00:00Z"
 }
 ```
 

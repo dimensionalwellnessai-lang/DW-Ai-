@@ -183,7 +183,7 @@ describe('POST /api/goals', () => {
     const goalData = {
       title: 'Daily exercise',
       dimension: 'physical',
-      targetDate: '2026-03-01'
+      targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 30 days from now
     };
     
     const response = await request(app)
