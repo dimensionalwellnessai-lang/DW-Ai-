@@ -175,7 +175,7 @@ const SWITCH_INFO: Record<SwitchId, SwitchInfo> = {
 };
 
 const STATUS_CONFIG: Record<SwitchStatus, { label: string; color: string; bgColor: string }> = {
-  off: { label: "Off", color: "text-slate-400", bgColor: "bg-slate-500/20" },
+  off: { label: "Off", color: "text-muted-foreground", bgColor: "bg-muted/50" },
   flickering: { label: "Flickering", color: "text-amber-400", bgColor: "bg-amber-500/20" },
   stable: { label: "Stable", color: "text-blue-400", bgColor: "bg-blue-500/20" },
   powered: { label: "Powered", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
@@ -194,7 +194,7 @@ export default function SwitchTrainingPage() {
   if (!switchInfo) {
     return (
       <div className="p-4 text-center">
-        <p className="text-slate-400">Switch not found</p>
+        <p className="text-muted-foreground">Switch not found</p>
         <Link href="/switchboard">
           <Button variant="outline" className="mt-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -248,8 +248,8 @@ export default function SwitchTrainingPage() {
                 <Icon className={`h-5 w-5 ${switchInfo.color}`} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">{switchInfo.name}</h1>
-                <p className="text-sm text-slate-400">{switchInfo.subtitle}</p>
+                <h1 className="text-xl font-bold text-foreground">{switchInfo.name}</h1>
+                <p className="text-sm text-muted-foreground">{switchInfo.subtitle}</p>
               </div>
             </div>
           </div>
@@ -261,9 +261,9 @@ export default function SwitchTrainingPage() {
           </Badge>
         </div>
 
-        <Card className={`border-white/10 ${switchInfo.bgColor}`}>
+        <Card className={`border-border/50 ${switchInfo.bgColor}`}>
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-slate-400 mb-1">Perspective Training</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Perspective Training</p>
             <p className={`text-lg font-medium ${switchInfo.color} italic`}>
               "{switchInfo.perspective}"
             </p>
@@ -271,7 +271,7 @@ export default function SwitchTrainingPage() {
         </Card>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-200">What We Train</h2>
+          <h2 className="text-lg font-semibold text-foreground">What We Train</h2>
           <div className="grid grid-cols-2 gap-2">
             {switchInfo.whatWeTrain.map((item, i) => (
               <motion.div
@@ -280,12 +280,12 @@ export default function SwitchTrainingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <Card className="border-white/5">
+                <Card className="border-border/50">
                   <CardContent className="p-3 flex items-center gap-2">
                     <div className={`p-1 rounded ${switchInfo.bgColor}`}>
                       <Check className={`h-3 w-3 ${switchInfo.color}`} />
                     </div>
-                    <span className="text-sm text-slate-300">{item}</span>
+                    <span className="text-sm text-foreground">{item}</span>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -294,8 +294,8 @@ export default function SwitchTrainingPage() {
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-200">Check-In Prompts</h2>
-          <p className="text-sm text-slate-400">
+          <h2 className="text-lg font-semibold text-foreground">Check-In Prompts</h2>
+          <p className="text-sm text-muted-foreground">
             Select a prompt to explore with DW, or just start a conversation.
           </p>
           <div className="space-y-2">
@@ -316,7 +316,7 @@ export default function SwitchTrainingPage() {
                   data-testid={`prompt-${i}`}
                 >
                   <CardContent className="p-3">
-                    <p className="text-sm text-slate-300">{prompt}</p>
+                    <p className="text-sm text-foreground">{prompt}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -357,19 +357,19 @@ export default function SwitchTrainingPage() {
         </div>
 
         {switchData.status !== "off" && (
-          <Card className="border-white/5 bg-slate-800/30">
+          <Card className="border-border/50 bg-card/50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Training Progress</span>
-                <span className="text-slate-300">{switchData.checkIns} check-ins</span>
+                <span className="text-muted-foreground">Training Progress</span>
+                <span className="text-foreground">{switchData.checkIns} check-ins</span>
               </div>
-              <div className="mt-2 h-2 bg-slate-700/50 rounded-full overflow-hidden">
+              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className={`h-full ${switchInfo.bgColor.replace('/10', '')} transition-all`}
                   style={{ width: `${Math.min((switchData.checkIns / 14) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {switchData.status === "flickering" && "7 check-ins to reach Stable"}
                 {switchData.status === "stable" && "14 check-ins to reach Powered"}
                 {switchData.status === "powered" && "You're fully powered!"}

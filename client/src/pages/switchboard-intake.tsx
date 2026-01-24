@@ -235,10 +235,10 @@ export default function SwitchboardIntakePage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
               <Sparkles className="h-8 w-8 text-purple-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Discover Your Switches
             </h1>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               Life isn't one thing — it's many dimensions working together. 
               Let's see where you stand in each area so we can help you focus 
               on what matters most.
@@ -250,10 +250,10 @@ export default function SwitchboardIntakePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="border-white/10 bg-slate-800/30">
+            <Card className="border-border/50 bg-card/50">
               <CardContent className="p-4 space-y-3">
-                <h3 className="font-medium text-slate-200">How this works:</h3>
-                <ul className="space-y-2 text-sm text-slate-400">
+                <h3 className="font-medium text-card-foreground">How this works:</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="h-4 w-4 text-purple-400 mt-0.5 shrink-0" />
                     <span>8 quick questions about different life areas</span>
@@ -323,7 +323,7 @@ export default function SwitchboardIntakePage() {
             <h1 className="text-2xl font-bold text-white">
               Your Switchboard is Ready
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Based on your responses, here's what we found.
             </p>
           </motion.div>
@@ -347,8 +347,8 @@ export default function SwitchboardIntakePage() {
                         <QIcon className={`h-4 w-4 ${q.color}`} />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-slate-200">{q.name}</p>
-                        <p className="text-xs text-slate-500 capitalize">{status}</p>
+                        <p className="text-sm font-medium text-foreground">{q.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{status}</p>
                       </div>
                       <div className="flex gap-1">
                         {[0, 1, 2, 3].map(level => (
@@ -357,7 +357,7 @@ export default function SwitchboardIntakePage() {
                             className={`w-2 h-2 rounded-full ${
                               level <= score 
                                 ? q.color.replace('text-', 'bg-').replace('-400', '-500')
-                                : 'bg-slate-700'
+                                : 'bg-muted'
                             }`}
                           />
                         ))}
@@ -382,14 +382,14 @@ export default function SwitchboardIntakePage() {
                       <Icon className={`h-5 w-5 ${prioritySwitch.color}`} />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Suggested Focus</p>
-                      <p className="font-medium text-slate-200">{prioritySwitch.name} Switch</p>
+                      <p className="text-xs text-muted-foreground">Suggested Focus</p>
+                      <p className="font-medium text-foreground">{prioritySwitch.name} Switch</p>
                     </div>
                   </div>
                   <p className={`text-sm ${prioritySwitch.color} italic`}>
                     "{prioritySwitch.perspective}"
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-muted-foreground">
                     This area could use some attention. Start here and build momentum.
                   </p>
                 </CardContent>
@@ -424,8 +424,8 @@ export default function SwitchboardIntakePage() {
       <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Question {currentStep + 1} of {INTAKE_QUESTIONS.length}</span>
-            <span className="text-slate-500">{currentQuestion.name}</span>
+            <span className="text-muted-foreground">Question {currentStep + 1} of {INTAKE_QUESTIONS.length}</span>
+            <span className="text-muted-foreground">{currentQuestion.name}</span>
           </div>
           <Progress value={progress} className="h-1" />
         </div>
@@ -468,15 +468,15 @@ export default function SwitchboardIntakePage() {
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                         answers[currentQuestion.switchId] === option.value
                           ? `${currentQuestion.color.replace('text-', 'border-')} ${currentQuestion.color.replace('text-', 'bg-')}`
-                          : 'border-slate-600'
+                          : 'border-border'
                       }`}>
                         {answers[currentQuestion.switchId] === option.value && (
-                          <div className="w-2 h-2 rounded-full bg-white" />
+                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-200">{option.label}</p>
-                        <p className="text-sm text-slate-500">{option.description}</p>
+                        <p className="font-medium text-foreground">{option.label}</p>
+                        <p className="text-sm text-muted-foreground">{option.description}</p>
                       </div>
                     </div>
                   </CardContent>
