@@ -1119,9 +1119,9 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col h-full w-full bg-background gradient-bg-animated">
+    <div className="flex flex-col w-full bg-background gradient-bg-animated" style={{ height: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))' }}>
       {/* Sticky header - positioned under app-shell safe area */}
-      <header className="shrink-0 sticky top-0 bg-background z-50 flex flex-col items-center px-3 pt-3 pb-1">
+      <header className="shrink-0 bg-background z-50 flex flex-col items-center px-3 pt-3 pb-1">
         <div className="relative w-full flex items-center justify-center">
           {/* Left icons - absolute positioned */}
           <div className="absolute left-0 flex items-center gap-1.5">
@@ -1403,7 +1403,7 @@ export function AIWorkspace() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           /* Landing view - exactly centered between header and input */
-          <div className="flex-1 flex items-center justify-center px-4 pb-40">
+          <div className="flex-1 flex items-center justify-center px-4" style={{ marginBottom: '120px' }}>
             <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
               <div className="text-center">
                 <h1 className="text-lg font-display font-semibold text-foreground" data-testid="text-greeting">
