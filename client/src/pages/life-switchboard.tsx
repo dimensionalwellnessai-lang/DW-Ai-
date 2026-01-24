@@ -193,7 +193,7 @@ function SwitchCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h3 className="font-semibold text-white">{switchData.name}</h3>
+                    <h3 className="font-semibold text-foreground">{switchData.name}</h3>
                     <p className="text-xs text-slate-400">{switchData.subtitle}</p>
                   </div>
                   <Badge 
@@ -287,7 +287,7 @@ export default function LifeSwitchboardPage() {
               <Sparkles className="h-6 w-6 text-purple-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Your Life Switchboard</h1>
+              <h1 className="text-2xl font-bold text-foreground">Your Life Switchboard</h1>
               <p className="text-sm text-slate-400">One system. Multiple switches. You choose what to power.</p>
             </div>
           </div>

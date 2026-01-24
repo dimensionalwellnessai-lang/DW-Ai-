@@ -151,7 +151,7 @@ function KPITile({
             {isLoading ? (
               <Skeleton className="h-6 w-16" />
             ) : (
-              <p className="text-xl font-bold text-white" data-testid={`kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>{value}</p>
+              <p className="text-xl font-bold text-foreground" data-testid={`kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>{value}</p>
             )}
             <p className="text-xs text-slate-400">{label}</p>
           </div>
@@ -265,7 +265,7 @@ export default function AdminAnalyticsPage() {
     return (
       <div className="p-6 text-center" data-testid="admin-not-authorized">
         <AlertTriangle className="h-12 w-12 mx-auto text-red-400 mb-4" />
-        <h1 className="text-xl font-bold text-white mb-2">Not Authorized</h1>
+        <h1 className="text-xl font-bold text-foreground mb-2">Not Authorized</h1>
         <p className="text-slate-400">
           You don't have permission to access this page.
         </p>
@@ -302,7 +302,7 @@ export default function AdminAnalyticsPage() {
           className="flex items-center justify-between"
         >
           <div>
-            <h1 className="text-xl font-bold text-white" data-testid="admin-title">Admin Analytics</h1>
+            <h1 className="text-xl font-bold text-foreground" data-testid="admin-title">Admin Analytics</h1>
             <p className="text-sm text-slate-400">
               Aggregated metrics for growth and debugging
             </p>
@@ -379,7 +379,7 @@ export default function AdminAnalyticsPage() {
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
-                  <p className="text-2xl font-bold text-white">{summary?.kpis?.dau ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground">{summary?.kpis?.dau ?? 0}</p>
                 )}
                 <p className="text-xs text-slate-400">Daily Active</p>
               </CardContent>
@@ -389,7 +389,7 @@ export default function AdminAnalyticsPage() {
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
-                  <p className="text-2xl font-bold text-white">{summary?.kpis?.wau ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground">{summary?.kpis?.wau ?? 0}</p>
                 )}
                 <p className="text-xs text-slate-400">Weekly Active</p>
               </CardContent>
@@ -399,7 +399,7 @@ export default function AdminAnalyticsPage() {
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
-                  <p className="text-2xl font-bold text-white">{summary?.kpis?.mau ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground">{summary?.kpis?.mau ?? 0}</p>
                 )}
                 <p className="text-xs text-slate-400">Monthly Active</p>
               </CardContent>
@@ -414,7 +414,7 @@ export default function AdminAnalyticsPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Activity className="h-4 w-4 text-purple-400" />
                 Activation Funnel
               </CardTitle>
@@ -440,7 +440,7 @@ export default function AdminAnalyticsPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-400" />
                 Switch Performance
               </CardTitle>
@@ -493,7 +493,7 @@ export default function AdminAnalyticsPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-400" />
                 TimeBand Distribution
               </CardTitle>
@@ -522,7 +522,7 @@ export default function AdminAnalyticsPage() {
 
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-green-400" />
                 Mode Distribution
               </CardTitle>
@@ -557,7 +557,7 @@ export default function AdminAnalyticsPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Flag className="h-4 w-4 text-orange-400" />
                 Top Flags (14d)
               </CardTitle>
@@ -586,7 +586,7 @@ export default function AdminAnalyticsPage() {
         >
           <Card className="border-white/10">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-white flex items-center gap-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
                 Errors & Dropoffs
               </CardTitle>

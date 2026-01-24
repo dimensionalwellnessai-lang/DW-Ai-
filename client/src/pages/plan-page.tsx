@@ -143,7 +143,7 @@ export default function PlanPage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
               <Calendar className="h-8 w-8 text-purple-400" />
             </div>
-            <h1 className="text-xl font-bold text-white">
+            <h1 className="text-xl font-bold text-foreground">
               You don't have a plan yet
             </h1>
             <p className="text-slate-400">
@@ -170,7 +170,7 @@ export default function PlanPage() {
       <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white">This Week's Plan</h1>
+            <h1 className="text-xl font-bold text-foreground">This Week's Plan</h1>
             {totalCount > 0 && (
               <p className="text-sm text-slate-400">
                 {completedCount} of {totalCount} completed
