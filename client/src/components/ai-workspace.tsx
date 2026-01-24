@@ -1121,57 +1121,63 @@ export function AIWorkspace() {
   return (
     <div className="flex flex-col h-full w-full bg-background gradient-bg-animated">
       {/* Sticky header - positioned under app-shell safe area */}
-      <header className="shrink-0 sticky top-0 bg-background z-50 flex items-center justify-center px-3 py-3">
-        {/* Left icons - absolute positioned */}
-        <div className="absolute left-3 flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMenuOpen(true)}
-            data-testid="button-menu"
-          >
-            <Menu className="h-7 w-7" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setHistoryOpen(true)}
-            data-testid="button-history"
-          >
-            <MessageSquare className="h-7 w-7" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleNewConversation}
-            data-testid="button-new-chat"
-          >
-            <Plus className="h-7 w-7" />
-          </Button>
+      <header className="shrink-0 sticky top-0 bg-background z-50 flex flex-col items-center px-3 pt-3 pb-1">
+        <div className="relative w-full flex items-center justify-center">
+          {/* Left icons - absolute positioned */}
+          <div className="absolute left-0 flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMenuOpen(true)}
+              data-testid="button-menu"
+              className="text-foreground"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHistoryOpen(true)}
+              data-testid="button-history"
+              className="text-foreground"
+            >
+              <MessageSquare className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNewConversation}
+              data-testid="button-new-chat"
+              className="text-foreground"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </div>
+          
+          {/* Centered brand name */}
+          <span className="font-display font-semibold text-lg text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
+          
+          {/* Right icons - absolute positioned */}
+          <div className="absolute right-0 flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setImportDialogOpen(true)}
+              data-testid="button-import"
+              className="text-foreground"
+            >
+              <Upload className="h-6 w-6" />
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
         
-        {/* Centered brand name */}
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="font-display font-semibold text-base text-gradient leading-tight" data-testid="text-brand">DW.AI</span>
-          {userActivated && streak >= 2 && (
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid="text-streak">
-              {streak} day streak
-            </span>
-          )}
-        </div>
-        
-        {/* Right icons - absolute positioned */}
-        <div className="absolute right-3 flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setImportDialogOpen(true)}
-            data-testid="button-import"
-          >
-            <Upload className="h-7 w-7" />
-          </Button>
-          <ThemeToggle />
-        </div>
+        {/* Streak badge - separate row */}
+        {userActivated && streak >= 2 && (
+          <span className="text-xs text-foreground/60 bg-muted px-2 py-0.5 rounded-full mt-1" data-testid="text-streak">
+            {streak} day streak
+          </span>
+        )}
       </header>
       
       <ImportDialog
