@@ -1400,10 +1400,10 @@ export function AIWorkspace() {
         </ScrollArea>
       </SwipeableDrawer>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           /* Landing view - exactly centered between header and input */
-          <div className="absolute inset-0 bottom-28 flex items-center justify-center px-4">
+          <div className="flex-1 flex items-center justify-center px-4 mb-28">
             <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
               <div className="text-center">
                 <h1 className="text-lg font-display font-semibold text-foreground" data-testid="text-greeting">
