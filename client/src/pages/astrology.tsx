@@ -821,14 +821,14 @@ ${voiceRules}`;
   const [activeTab, setActiveTab] = useState("charts");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Astrology" />
 
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="astrology">
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full">
+            <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="charts" className="flex-1" data-testid="tab-charts">
                 <Star className="mr-1 h-4 w-4" />
                 Charts
@@ -840,6 +840,10 @@ ${voiceRules}`;
               <TabsTrigger value="journal" className="flex-1" data-testid="tab-journal">
                 <MessageSquareText className="mr-1 h-4 w-4" />
                 Journal
+              </TabsTrigger>
+              <TabsTrigger value="education" className="flex-1" data-testid="tab-education">
+                <Sparkles className="mr-1 h-4 w-4" />
+                Learn
               </TabsTrigger>
             </TabsList>
             
@@ -1284,6 +1288,72 @@ ${voiceRules}`;
               ))}
             </div>
           )}
+            </TabsContent>
+            
+            <TabsContent value="education" className="mt-6 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-violet-500" />
+                    Learn Astrology
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="p-4 bg-primary/5 rounded-lg">
+                      <h3 className="font-semibold mb-2">Understanding Your Birth Chart</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Your birth chart is a snapshot of the sky at the exact moment you were born. 
+                        It reveals the positions of the Sun, Moon, and planets across the 12 zodiac signs.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 bg-accent/5 rounded-lg">
+                      <h3 className="font-semibold mb-2">The Big Three</h3>
+                      <ul className="text-sm text-muted-foreground space-y-2">
+                        <li><strong>Sun Sign:</strong> Your core identity and ego</li>
+                        <li><strong>Moon Sign:</strong> Your emotional nature and inner self</li>
+                        <li><strong>Rising Sign (Ascendant):</strong> How you appear to others</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-4 bg-violet-500/5 rounded-lg">
+                      <h3 className="font-semibold mb-2">Moon Phases</h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        The Moon cycles through phases approximately every 29.5 days, each carrying different energy:
+                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• <strong>New Moon:</strong> New beginnings, intention setting</li>
+                        <li>• <strong>Waxing:</strong> Growth, building momentum</li>
+                        <li>• <strong>Full Moon:</strong> Culmination, release, clarity</li>
+                        <li>• <strong>Waning:</strong> Reflection, letting go</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-4 bg-amber-500/5 rounded-lg">
+                      <h3 className="font-semibold mb-2">Planetary Influences</h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Each planet governs different aspects of life:
+                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• <strong>Mercury:</strong> Communication, thinking</li>
+                        <li>• <strong>Venus:</strong> Love, beauty, values</li>
+                        <li>• <strong>Mars:</strong> Action, drive, passion</li>
+                        <li>• <strong>Jupiter:</strong> Expansion, luck, growth</li>
+                        <li>• <strong>Saturn:</strong> Structure, discipline, lessons</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">Getting Started</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Create your birth chart in the Charts tab to explore your personal cosmic blueprint. 
+                        Track the moon phases in the Calendar tab and journal your observations to deepen your practice.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </main>

@@ -32,6 +32,8 @@ html, body {
   padding-left: var(--sal);
   padding-right: var(--sar);
   box-sizing: border-box;
+  /* Ensure consistent background color extends to safe areas */
+  background-color: hsl(var(--background));
 }
 
 /* Content area respects safe area and is the scroll container */
@@ -39,6 +41,8 @@ html, body {
   min-height: calc(100dvh - var(--sat) - var(--sab));
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  /* Ensure background color consistency */
+  background-color: hsl(var(--background));
 }
 
 /* Hide default details/summary disclosure marker */
@@ -226,4 +230,45 @@ summary::marker {
   .safe-area-bottom {
     padding-bottom: var(--sab);
   }
+  
+  /* Page header that respects Dynamic Island */
+  .page-header-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: hsl(var(--background));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  
+  .dark .page-header-fixed {
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Ensure scrollable content doesn't overlap header */
+  .scrollable-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Calendar Dark Mode Fixes */
+.rdp {
+  --rdp-background-color: transparent !important;
+}
+
+.dark .rdp {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .rdp-day {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .rdp-head_cell {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .rdp-caption_label {
+  color: hsl(var(--foreground)) !important;
 }

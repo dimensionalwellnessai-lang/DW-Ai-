@@ -460,7 +460,7 @@ ${contentList}`,
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader
         title="Browse"
         rightContent={activeTab === "browse" ? (
@@ -486,7 +486,7 @@ ${contentList}`,
         ) : null}
       />
       
-      <div className="sticky top-[57px] z-40 bg-background border-b">
+      <div className="sticky top-0 z-40 bg-background border-b">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "browse" | "community")} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-none">
             <TabsTrigger value="browse" className="data-[state=active]:bg-primary/10" data-testid="tab-browse">

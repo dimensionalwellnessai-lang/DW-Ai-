@@ -86,7 +86,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   return (
     <>
       {/* Header - sits directly below the app-shell's safe-area padding */}
-      <header className="flex items-center gap-2 px-3 py-3 border-b dark:border-white/5 sticky top-0 bg-background glass-subtle z-50">
+      <header className="flex items-center gap-2 px-3 py-3 border-b sticky top-0 bg-background z-50">
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 
