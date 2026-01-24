@@ -131,7 +131,7 @@ export default function ImportPage() {
                             <Icon className="w-6 h-6 text-primary" />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-medium">{option.label}</h3>
+                            <h3 className="font-medium text-foreground">{option.label}</h3>
                             <p className="text-sm text-muted-foreground">{option.description}</p>
                           </div>
                           <ArrowRight className="w-5 h-5 text-muted-foreground" />

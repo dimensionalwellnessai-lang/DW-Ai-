@@ -135,7 +135,7 @@ function MoodCheckinCard({
               <CheckCircle2 className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <p className="font-medium">
+              <p className="font-medium text-foreground">
                 {config.label} check-in complete
               </p>
               <p className="text-sm text-muted-foreground">
@@ -592,7 +592,7 @@ function TrackerSettingsCard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="mood-checkins" className="font-medium">
+              <Label htmlFor="mood-checkins" className="font-medium text-foreground">
                 Mood Check-ins
               </Label>
               <p className="text-sm text-muted-foreground">
@@ -609,7 +609,7 @@ function TrackerSettingsCard() {
           
           <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="activity-reminders" className="font-medium">
+              <Label htmlFor="activity-reminders" className="font-medium text-foreground">
                 Activity Reminders
               </Label>
               <p className="text-sm text-muted-foreground">
@@ -626,7 +626,7 @@ function TrackerSettingsCard() {
           
           <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
             <div className="space-y-1">
-              <Label htmlFor="daily-synopsis" className="font-medium">
+              <Label htmlFor="daily-synopsis" className="font-medium text-foreground">
                 Daily Synopsis
               </Label>
               <p className="text-sm text-muted-foreground">

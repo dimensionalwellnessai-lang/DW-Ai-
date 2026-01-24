@@ -145,7 +145,7 @@ export default function DevRoutesPage() {
               <div className="space-y-4">
                 {routesWithActions.map(route => (
                   <div key={route.id} className="space-y-2">
-                    <div className="font-medium">{route.label}</div>
+                    <div className="font-medium text-foreground">{route.label}</div>
                     <div className="flex flex-wrap gap-2">
                       {route.actions?.map(action => (
                         <Badge 
@@ -174,7 +174,7 @@ export default function DevRoutesPage() {
                 {routesWithGuards.map(route => (
                   <div key={route.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
                     <div>
-                      <div className="font-medium">{route.label}</div>
+                      <div className="font-medium text-foreground">{route.label}</div>
                       <div className="text-xs text-muted-foreground font-mono">{route.path}</div>
                     </div>
                     <div className="text-xs text-right">

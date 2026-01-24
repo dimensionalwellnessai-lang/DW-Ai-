@@ -352,7 +352,7 @@ export default function WeeklyCheckinPage() {
                         <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
                       )}
                       <div>
-                        <p className="font-medium">Week {week}</p>
+                        <p className="font-medium text-foreground">Week {week}</p>
                         <p className="text-xs text-muted-foreground">
                           {week === 1 && "First Impressions"}
                           {week === 2 && "Usage & Flow"}

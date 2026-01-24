@@ -186,7 +186,7 @@ export default function SystemsHubPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{system.name}</h3>
+                            <h3 className="font-medium text-foreground">{system.name}</h3>
                             {enabled && (
                               <Badge variant="secondary" className="text-xs">Active</Badge>
                             )}

@@ -116,7 +116,7 @@ export default function PlanBuilderPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Step {step} of {totalSteps}</span>
-              <span className="font-medium">{Math.round(progress)}%</span>
+              <span className="font-medium text-foreground">{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
@@ -174,7 +174,7 @@ export default function PlanBuilderPage() {
                             <Icon className="w-5 h-5 text-white" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium">{dim.label}</div>
+                            <div className="font-medium text-foreground">{dim.label}</div>
                           </div>
                           {isSelected && (
                             <Check className="w-5 h-5 text-primary" />

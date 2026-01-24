@@ -31,6 +31,7 @@ export function BottomNav() {
   return (
     <nav 
       className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background backdrop-blur-xl"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       data-testid="nav-bottom"
       role="navigation"
     >

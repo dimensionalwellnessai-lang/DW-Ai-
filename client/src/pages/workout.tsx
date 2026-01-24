@@ -631,7 +631,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           <section className="space-y-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold">Picked for You</h2>
+              <h2 className="font-semibold text-foreground">Picked for You</h2>
             </div>
             <p className="text-xs text-muted-foreground">
               {selectedPickedWorkout ? "Tap Save to add this workout" : "Pick 1 option to save."}
@@ -647,7 +647,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                     <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   )}
                   <div className="flex-1">
-                    <h3 className="font-medium mb-1">{recommendedWorkout.title}</h3>
+                    <h3 className="font-medium mb-1 text-foreground">{recommendedWorkout.title}</h3>
                     <p className="text-sm text-muted-foreground mb-2">
                       {recommendedWorkout.description}
                     </p>
@@ -710,7 +710,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   <Zap className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-medium">Pick my workout</h3>
+                  <h3 className="font-medium text-foreground">Pick my workout</h3>
                   <p className="text-sm text-muted-foreground">
                     Let me suggest something based on how you feel
                   </p>
@@ -890,7 +890,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium">{workout.title}</h3>
+                        <h3 className="font-medium text-foreground">{workout.title}</h3>
                         {expandedWorkout === index ? (
                           <ChevronUp className="w-4 h-4 text-muted-foreground" />
                         ) : (
@@ -1220,7 +1220,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                     }}
                     data-testid={`button-energy-${option.level}`}
                   >
-                    <span className="font-medium">{option.label}</span>
+                    <span className="font-medium text-foreground">{option.label}</span>
                     <span className="text-xs opacity-70">{option.desc}</span>
                   </Button>
                 ))}
@@ -1265,7 +1265,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <h4 className="font-medium">{workout.title}</h4>
+                          <h4 className="font-medium text-foreground">{workout.title}</h4>
                           <p className="text-sm text-muted-foreground">
                             {workout.duration} min - {workout.intensity}
                           </p>

@@ -298,7 +298,7 @@ export function ChallengesPage() {
             <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Picked for You</h2>
+                <h2 className="text-lg font-semibold text-foreground">Picked for You</h2>
               </div>
               <p className="text-xs text-muted-foreground">
                 {selectedAIPick ? "Tap Save to start this challenge" : "Pick 1 option to save."}
@@ -317,7 +317,7 @@ export function ChallengesPage() {
                         <div className="flex items-start gap-3">
                           {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />}
                           <div className="flex-1">
-                            <h3 className="font-medium text-sm">{pick.title}</h3>
+                            <h3 className="font-medium text-sm text-foreground">{pick.title}</h3>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline" className="text-xs">
                                 <Clock className="h-3 w-3 mr-1" />
@@ -368,7 +368,7 @@ export function ChallengesPage() {
           )}
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Browse by Category</h2>
+            <h2 className="text-lg font-semibold text-foreground">Browse by Category</h2>
             <div className="space-y-3">
             {categories.map((category) => {
               const Icon = category.icon;
@@ -386,7 +386,7 @@ export function ChallengesPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-display font-semibold">{category.name}</h3>
+                          <h3 className="font-display font-semibold text-foreground">{category.name}</h3>
                           <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${selectedCategory === category.id ? "rotate-90" : ""}`} />
                         </div>
                         <p className="text-sm text-muted-foreground font-body mt-1">

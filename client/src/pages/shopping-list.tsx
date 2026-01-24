@@ -508,7 +508,7 @@ export default function ShoppingListPage() {
                   data-testid={`button-generate-from-${plan.id}`}
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{plan.title}</p>
+                    <p className="font-medium text-foreground">{plan.title}</p>
                     {plan.summary && (
                       <p className="text-sm text-muted-foreground line-clamp-1">{plan.summary}</p>
                     )}

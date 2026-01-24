@@ -220,7 +220,7 @@ export default function CommunityPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Opportunities for You</h2>
+              <h2 className="font-semibold text-foreground">Opportunities for You</h2>
             </div>
 
             <div className="space-y-3">
@@ -230,7 +230,7 @@ export default function CommunityPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{opp.title}</h3>
+                          <h3 className="font-medium text-foreground">{opp.title}</h3>
                           {opp.isOnline ? (
                             <Badge variant="outline" className="text-xs">
                               <Globe className="w-3 h-3 mr-1" />
@@ -372,7 +372,7 @@ function CommunityProfileDialog({ open, onOpenChange, existingProfile, onSave }:
                 >
                   {focusAreas.includes(option.id) && <Check className="w-4 h-4 mr-2 flex-shrink-0" />}
                   <div>
-                    <div className="font-medium">{option.label}</div>
+                    <div className="font-medium text-foreground">{option.label}</div>
                     <div className="text-xs text-muted-foreground">{option.description}</div>
                   </div>
                 </Button>

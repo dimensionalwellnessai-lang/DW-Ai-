@@ -170,7 +170,7 @@ export function TalkItOutPage() {
                   }`}
                   data-testid={`message-talk-${index}`}
                 >
-                  <p className="font-body whitespace-pre-line leading-relaxed">{message.content}</p>
+                  <p className="font-body whitespace-pre-line leading-relaxed text-foreground">{message.content}</p>
                 </div>
                 {message.role === "assistant" && index > 0 && (
                   <div className="flex items-center gap-2 mt-1">

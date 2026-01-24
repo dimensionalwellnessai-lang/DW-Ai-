@@ -85,8 +85,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      {/* Header - sits directly below the app-shell's safe-area padding */}
-      <header className="flex items-center gap-2 px-3 py-3 border-b sticky top-0 bg-background z-50">
+      {/* Header - fixed at top below safe area */}
+      <header className="flex items-center gap-2 px-3 py-3 border-b fixed left-0 right-0 bg-background z-50" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 
@@ -95,7 +95,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
               onClick={handleBack}
               data-testid="button-back"
             >
-              <ArrowLeft className="h-6 w-6" />
+              <ArrowLeft className="h-6 w-6 text-foreground" />
             </Button>
           )}
           <Button 
@@ -104,14 +104,16 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6 text-foreground" />
           </Button>
         </div>
-        <h1 className="font-display text-xl font-medium flex-1" data-testid="text-page-title">
+        <h1 className="font-display text-xl font-medium flex-1 text-foreground" data-testid="text-page-title">
           {title}
         </h1>
         {rightContent}
       </header>
+      {/* Spacer for fixed header */}
+      <div className="h-14" style={{ marginTop: 'env(safe-area-inset-top, 0px)' }} />
 
       <SwipeableDrawer 
         open={menuOpen} 

@@ -237,7 +237,7 @@ export default function AppTourPage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-medium">{section.title}</h4>
+                          <h4 className="font-medium text-foreground">{section.title}</h4>
                           {section.hasQuestionnaire && (
                             <>
                               {isCompleted ? (
@@ -286,7 +286,7 @@ export default function AppTourPage() {
             <CardContent className="p-4 text-center space-y-3">
               <Sparkles className="w-8 h-8 text-primary mx-auto" />
               <div>
-                <h4 className="font-medium">Need more help?</h4>
+                <h4 className="font-medium text-foreground">Need more help?</h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   Just ask the AI anything. It's here to support you.
                 </p>

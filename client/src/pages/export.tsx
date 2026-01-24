@@ -179,7 +179,7 @@ export default function ExportPage() {
                         <Icon className="w-6 h-6 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-medium">{option.label}</h3>
+                        <h3 className="font-medium text-foreground">{option.label}</h3>
                         <p className="text-sm text-muted-foreground">{option.description}</p>
                       </div>
                       {isSelected && (

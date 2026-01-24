@@ -81,7 +81,7 @@ export function TasksPage() {
                             <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                           </button>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium">{task.title}</p>
+                            <p className="font-medium text-foreground">{task.title}</p>
                             {task.description && (
                               <p className="text-sm text-muted-foreground truncate">{task.description}</p>
                             )}
@@ -134,7 +134,7 @@ export function TasksPage() {
                 <CheckSquare className="h-8 w-8 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="font-display font-semibold text-lg">No tasks yet</h3>
+                <h3 className="font-display font-semibold text-lg text-foreground">No tasks yet</h3>
                 <p className="text-muted-foreground font-body mt-1">
                   Tasks help you break down your goals into actionable steps. Create one or ask AI to help plan your day.
                 </p>

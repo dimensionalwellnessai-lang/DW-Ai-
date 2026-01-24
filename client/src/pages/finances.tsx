@@ -142,13 +142,13 @@ export default function FinancesPage() {
               <div className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">
-                  Budget: <span className="font-medium">{BUDGET_TIER_LABELS[financeProfile?.budgetTier || ""] || "Not set"}</span>
+                  Budget: <span className="font-medium text-foreground">{BUDGET_TIER_LABELS[financeProfile?.budgetTier || ""] || "Not set"}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm">
-                  Feeling: <span className="font-medium">{EMOTION_LABELS[financeProfile?.moneyEmotion || ""] || "Not set"}</span>
+                  Feeling: <span className="font-medium text-foreground">{EMOTION_LABELS[financeProfile?.moneyEmotion || ""] || "Not set"}</span>
                 </span>
               </div>
               {financeProfile?.financialPriorities && financeProfile.financialPriorities.length > 0 && (

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Moon, Star, Orbit, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, Star, Orbit, Sparkles, Sun, ArrowUp } from "lucide-react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from "date-fns";
 
 interface CelestialEvent {
@@ -25,7 +25,7 @@ interface CelestialEvent {
 interface DayData {
   date: Date;
   moonPhase: string;
-  moonPhaseEmoji: string;
+  moonPhaseIcon: string;
   events: CelestialEvent[];
   energyLevel: number; // 1-10
   moodAlignment: string;
@@ -38,14 +38,14 @@ function getCelestialDataForDate(date: Date): DayData {
   const dayInCycle = (dayOfMonth % lunarCycle);
   
   const moonPhases = [
-    { name: "New Moon", emoji: "🌑", range: [0, 3.7] },
-    { name: "Waxing Crescent", emoji: "🌒", range: [3.7, 7.4] },
-    { name: "First Quarter", emoji: "🌓", range: [7.4, 11.1] },
-    { name: "Waxing Gibbous", emoji: "🌔", range: [11.1, 14.8] },
-    { name: "Full Moon", emoji: "🌕", range: [14.8, 18.4] },
-    { name: "Waning Gibbous", emoji: "🌖", range: [18.4, 22.1] },
-    { name: "Last Quarter", emoji: "🌗", range: [22.1, 25.8] },
-    { name: "Waning Crescent", emoji: "🌘", range: [25.8, 29.53] },
+    { name: "New Moon", icon: "new", range: [0, 3.7] },
+    { name: "Waxing Crescent", icon: "waxing-crescent", range: [3.7, 7.4] },
+    { name: "First Quarter", icon: "first-quarter", range: [7.4, 11.1] },
+    { name: "Waxing Gibbous", icon: "waxing-gibbous", range: [11.1, 14.8] },
+    { name: "Full Moon", icon: "full", range: [14.8, 18.4] },
+    { name: "Waning Gibbous", icon: "waning-gibbous", range: [18.4, 22.1] },
+    { name: "Last Quarter", icon: "last-quarter", range: [22.1, 25.8] },
+    { name: "Waning Crescent", icon: "waning-crescent", range: [25.8, 29.53] },
   ];
 
   const currentPhase = moonPhases.find(phase => 
@@ -101,7 +101,7 @@ function getCelestialDataForDate(date: Date): DayData {
   return {
     date,
     moonPhase: moonPhase.name,
-    moonPhaseEmoji: moonPhase.emoji,
+    moonPhaseIcon: moonPhase.icon,
     events,
     energyLevel,
     moodAlignment,
@@ -161,23 +161,23 @@ export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
           </div>
           {birthChart && (
             <div className="flex gap-2 mt-2">
-              <Badge variant="secondary">☉ {birthChart.sunSign}</Badge>
-              <Badge variant="secondary">☽ {birthChart.moonSign}</Badge>
-              <Badge variant="secondary">↑ {birthChart.risingSign}</Badge>
+              <Badge variant="secondary" className="gap-1"><Sun className="h-3 w-3" />{birthChart.sunSign}</Badge>
+              <Badge variant="secondary" className="gap-1"><Moon className="h-3 w-3" />{birthChart.moonSign}</Badge>
+              <Badge variant="secondary" className="gap-1"><ArrowUp className="h-3 w-3" />{birthChart.risingSign}</Badge>
             </div>
           )}
         </CardHeader>
         <CardContent className="p-4">
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="text-center text-xs font-semibold text-muted-foreground p-2">
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
+            {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
+              <div key={i} className="text-center text-xs font-semibold text-muted-foreground p-1">
                 {day}
               </div>
             ))}
           </div>
           
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5">
             {daysInMonth.map((day) => {
               const dayData = getCelestialDataForDate(day);
               const isToday = isSameDay(day, new Date());
@@ -187,22 +187,21 @@ export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
                 <motion.button
                   key={day.toISOString()}
                   onClick={() => handleDayClick(day)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   className={`
-                    relative p-2 rounded-lg border text-sm transition-all
+                    relative p-1 rounded-md border text-xs transition-all hover-elevate
                     ${isToday ? "border-primary bg-primary/10 font-bold" : "border-border"}
                     ${!isSameMonth(day, currentMonth) ? "opacity-30" : ""}
                     ${hasEvents ? "ring-1 ring-accent/50" : ""}
-                    hover:bg-accent/10
                   `}
                 >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span>{format(day, "d")}</span>
-                    <span className="text-xs">{dayData.moonPhaseEmoji}</span>
+                  <div className="flex flex-col items-center gap-0">
+                    <span className="text-foreground">{format(day, "d")}</span>
+                    <Moon className={`h-2.5 w-2.5 text-muted-foreground ${dayData.moonPhaseIcon === "full" ? "fill-current" : ""}`} />
                     {hasEvents && (
-                      <div className="absolute top-1 right-1">
-                        <Sparkles className="h-2.5 w-2.5 text-accent" />
+                      <div className="absolute top-0.5 right-0.5">
+                        <Sparkles className="h-2 w-2 text-accent" />
                       </div>
                     )}
                   </div>
@@ -236,8 +235,8 @@ export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
             <DialogDescription>
               {selectedDay && (
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-2xl">{selectedDay.moonPhaseEmoji}</span>
-                  <span className="font-medium">{selectedDay.moonPhase}</span>
+                  <Moon className={`h-6 w-6 text-primary ${selectedDay.moonPhaseIcon === "full" ? "fill-current" : ""}`} />
+                  <span className="font-medium text-foreground">{selectedDay.moonPhase}</span>
                 </div>
               )}
             </DialogDescription>

@@ -369,7 +369,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
                   )}
                 </div>
                 <div>
-                  <div className="font-medium">{option.label}</div>
+                  <div className="font-medium text-foreground">{option.label}</div>
                   <div className="text-sm text-muted-foreground">{option.description}</div>
                 </div>
               </button>
@@ -547,7 +547,7 @@ function DimensionsSection() {
                   {item.level}
                 </div>
                 <div>
-                  <div className="font-medium">{item.label}</div>
+                  <div className="font-medium text-foreground">{item.label}</div>
                   <div className="text-sm text-muted-foreground">{item.description}</div>
                 </div>
               </button>
@@ -1035,7 +1035,7 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{action.actionName}</span>
+                    <span className="font-medium text-foreground">{action.actionName}</span>
                     {action.durationMinutes && (
                       <Badge variant="outline" className="text-xs">
                         <Clock className="w-3 h-3 mr-1" />
@@ -1476,7 +1476,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{reflection.title || "Reflection"}</span>
+                    <span className="font-medium text-foreground">{reflection.title || "Reflection"}</span>
                     <span className="text-xs text-muted-foreground">
                       {reflection.createdAt ? new Date(reflection.createdAt).toLocaleDateString() : ""}
                     </span>
