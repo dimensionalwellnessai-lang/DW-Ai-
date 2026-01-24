@@ -1394,7 +1394,7 @@ export function AIWorkspace() {
         </ScrollArea>
       </SwipeableDrawer>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden pb-16">
         {messages.length === 0 ? (
           /* Landing view - centered without scrolling */
           <div className="flex-1 flex items-center justify-center px-4">
@@ -1748,7 +1748,7 @@ export function AIWorkspace() {
         </ScrollArea>
         )}
 
-        <div className="shrink-0 px-2 pt-1 pb-[72px] bg-background">
+        <div className="fixed bottom-14 left-0 right-0 px-2 py-2 bg-background z-40">
           <div className="max-w-2xl mx-auto space-y-1">
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
