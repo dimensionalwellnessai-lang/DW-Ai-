@@ -1400,10 +1400,10 @@ export function AIWorkspace() {
         </ScrollArea>
       </SwipeableDrawer>
 
-      <div className="flex-1 flex flex-col overflow-hidden pb-20">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
         {messages.length === 0 ? (
-          /* Landing view - centered between header and input */
-          <div className="flex-1 flex items-center justify-center px-4 -mt-8">
+          /* Landing view - exactly centered between header and input */
+          <div className="flex-1 flex items-center justify-center px-4">
             <div className="max-w-2xl mx-auto flex flex-col items-center justify-center space-y-4">
               <div className="text-center">
                 <h1 className="text-lg font-display font-semibold text-foreground" data-testid="text-greeting">
