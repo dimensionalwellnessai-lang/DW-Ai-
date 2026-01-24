@@ -828,7 +828,7 @@ ${voiceRules}`;
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="astrology">
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full grid grid-cols-4">
+            <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="charts" className="flex-1" data-testid="tab-charts">
                 <Star className="mr-1 h-4 w-4" />
                 Charts
