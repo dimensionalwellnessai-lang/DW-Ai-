@@ -86,38 +86,38 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                     data-testid={`menu-item-${feature.id}`}
                   >
                     <Icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{feature.name}</span>
+                    <span className="text-sm text-foreground">{feature.name}</span>
                   </button>
                 </Link>
                 <details className="group">
                   <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm flex-1">Calendar</span>
+                    <span className="text-sm flex-1 text-foreground">Calendar</span>
                     <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                   </summary>
                   <div className="mt-1 space-y-1 ml-4">
                     <Link href="/today">
                       <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={onClose} data-testid="menu-calendar-today">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Today</span>
+                        <span className="text-sm text-foreground">Today</span>
                       </button>
                     </Link>
                     <Link href="/calendar">
                       <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={onClose} data-testid="menu-calendar-month">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Month</span>
+                        <span className="text-sm text-foreground">Month</span>
                       </button>
                     </Link>
                     <Link href="/calendar?view=week">
                       <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={onClose} data-testid="menu-calendar-week">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Week</span>
+                        <span className="text-sm text-foreground">Week</span>
                       </button>
                     </Link>
                     <Link href="/routines">
                       <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={onClose} data-testid="menu-calendar-routines">
                         <History className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Routines</span>
+                        <span className="text-sm text-foreground">Routines</span>
                       </button>
                     </Link>
                   </div>
@@ -134,7 +134,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                 data-testid={`menu-item-${feature.id}`}
               >
                 <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{feature.name}</span>
+                <span className="text-sm text-foreground">{feature.name}</span>
               </button>
             </Link>
           );
@@ -157,7 +157,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                     data-testid={`menu-item-${feature.id}`}
                   >
                     <Icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{feature.name}</span>
+                    <span className="text-sm text-foreground">{feature.name}</span>
                   </button>
                 </Link>
               );
@@ -178,7 +178,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
           data-testid="button-start-tutorial"
         >
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">App Tour</span>
+          <span className="text-sm text-foreground">App Tour</span>
         </button>
         {user ? (
           <div className="space-y-2">
