@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BookOpen, 
   Plus, 
@@ -18,12 +19,21 @@ import {
   X,
   Sparkles,
   ChevronRight,
-  Wind
+  Wind,
+  Wand2
 } from "lucide-react";
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { 
+  detectJournalCategory, 
+  generateJournalTitle, 
+  JOURNAL_CATEGORIES, 
+  getCategoryInfo,
+  getCategoryPrompts,
+  type JournalCategory 
+} from "@/lib/journal-ai";
 
 const JOURNAL_STORAGE_KEY = "fts_journal_entries";
 
@@ -32,6 +42,7 @@ interface JournalEntry {
   title: string;
   content: string;
   mood?: string;
+  category?: JournalCategory;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -81,6 +92,8 @@ export default function JournalPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<string>("");
+  const [category, setCategory] = useState<JournalCategory>("general");
+  const [autoDetectedCategory, setAutoDetectedCategory] = useState<JournalCategory | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [momentumLogs, setMomentumLogs] = useState<OnboardingLog[]>([]);
@@ -137,6 +150,8 @@ export default function JournalPage() {
     setTitle("");
     setContent("");
     setMood("");
+    setCategory("general");
+    setAutoDetectedCategory(null);
     setTags([]);
     setShowEditor(true);
   };
@@ -146,8 +161,33 @@ export default function JournalPage() {
     setTitle(entry.title);
     setContent(entry.content);
     setMood(entry.mood || "");
+    setCategory(entry.category || "general");
+    setAutoDetectedCategory(null);
     setTags(entry.tags);
     setShowEditor(true);
+  };
+
+  // Auto-detect category when content changes
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    
+    if (newContent.trim().length > 20) {
+      const detected = detectJournalCategory(newContent);
+      setAutoDetectedCategory(detected);
+      
+      // Auto-set category if user hasn't manually changed it
+      if (!editingEntry) {
+        setCategory(detected);
+      }
+    }
+  };
+
+  // Auto-generate title suggestion
+  const handleGenerateTitle = () => {
+    if (content.trim()) {
+      const suggested = generateJournalTitle(content, category);
+      setTitle(suggested);
+    }
   };
 
   const handleDeleteEntry = (id: string) => {
@@ -168,14 +208,17 @@ export default function JournalPage() {
   };
 
   const handleSaveEntry = () => {
-    if (!title.trim() || !content.trim()) return;
+    if (!content.trim()) return;
 
+    // Auto-generate title if empty
+    const finalTitle = title.trim() || generateJournalTitle(content, category);
+    
     const now = new Date().toISOString();
     
     if (editingEntry) {
       const updated = entries.map(e => 
         e.id === editingEntry.id 
-          ? { ...e, title: title.trim(), content: content.trim(), mood, tags, updatedAt: now }
+          ? { ...e, title: finalTitle, content: content.trim(), mood, category, tags, updatedAt: now }
           : e
       );
       setEntries(updated);
@@ -183,9 +226,10 @@ export default function JournalPage() {
     } else {
       const newEntry: JournalEntry = {
         id: `entry_${Date.now()}`,
-        title: title.trim(),
+        title: finalTitle,
         content: content.trim(),
         mood,
+        category,
         tags,
         createdAt: now,
         updatedAt: now,
@@ -200,7 +244,8 @@ export default function JournalPage() {
   };
 
   const handlePromptClick = (prompt: string) => {
-    setContent(prompt + "\n\n");
+    setContent(prompt);
+    handleContentChange(prompt);
   };
 
   const todayEntries = entries.filter(e => {
@@ -336,6 +381,9 @@ export default function JournalPage() {
                         <div className="flex-1 min-w-0" onClick={() => handleEditEntry(entry)}>
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
+                            {entry.category && (
+                              <span className="text-sm">{getCategoryInfo(entry.category).emoji}</span>
+                            )}
                             <h4 className="font-medium truncate text-foreground">{entry.title}</h4>
                             {entry.mood && (
                               <Badge variant="secondary" className="text-xs">
@@ -407,14 +455,14 @@ export default function JournalPage() {
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">Quick prompts</p>
                   <div className="flex flex-wrap gap-2">
-                    {JOURNAL_PROMPTS.map((prompt, i) => (
+                    {getCategoryPrompts(category).map((prompt, i) => (
                       <Badge
                         key={i}
                         variant="outline"
-                        className="cursor-pointer hover-elevate"
+                        className="cursor-pointer hover-lift text-xs"
                         onClick={() => handlePromptClick(prompt)}
                       >
-                        {prompt.slice(0, 30)}...
+                        {prompt}
                       </Badge>
                     ))}
                   </div>
@@ -422,20 +470,65 @@ export default function JournalPage() {
               )}
 
               <div className="space-y-2">
-                <Input
-                  placeholder="Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  data-testid="input-entry-title"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Title (auto-generated if empty)"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    data-testid="input-entry-title"
+                    className="flex-1"
+                  />
+                  {content.trim() && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={handleGenerateTitle}
+                      title="Generate title from content"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  Category
+                  {autoDetectedCategory && autoDetectedCategory !== category && (
+                    <Badge variant="outline" className="text-xs">
+                      Detected: {getCategoryInfo(autoDetectedCategory).emoji} {getCategoryInfo(autoDetectedCategory).label}
+                    </Badge>
+                  )}
+                </label>
+                <Select value={category} onValueChange={(value) => setCategory(value as JournalCategory)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOURNAL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{cat.emoji}</span>
+                          <div>
+                            <div className="font-medium">{cat.label}</div>
+                            <div className="text-xs text-muted-foreground">{cat.description}</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Textarea
                   placeholder="Write your thoughts..."
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[150px] resize-none"
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  className="min-h-[200px]"
                   data-testid="input-entry-content"
                 />
               </div>

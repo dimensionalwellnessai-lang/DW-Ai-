@@ -19,12 +19,16 @@ html, body {
   padding: 0;
   /* Ensure background extends to edges - matches --background in light mode */
   background-color: hsl(var(--background));
+  /* Smooth transitions for theme changes */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
   height: 100%;
   /* Ensure root also has background color */
   background-color: hsl(var(--background));
+  /* Smooth transitions for theme changes */
+  transition: background-color 0.3s ease;
 }
 
 /* App Shell - Single source of safe area padding */
@@ -37,6 +41,8 @@ html, body {
   box-sizing: border-box;
   /* Ensure consistent background color extends to safe areas including dynamic island */
   background-color: hsl(var(--background));
+  /* Smooth transitions for theme changes */
+  transition: background-color 0.3s ease;
 }
 
 /* Content area - just a container, pages handle their own safe area */
@@ -274,4 +280,93 @@ summary::marker {
 
 .dark .rdp-caption_label {
   color: hsl(var(--foreground)) !important;
+}
+
+/* Modern UI Enhancements */
+@layer utilities {
+  /* Smooth transitions for all theme-aware elements */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+  
+  /* Rounded modern card style */
+  .card-modern {
+    @apply rounded-2xl border border-border bg-card/50 backdrop-blur-sm;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .card-modern {
+    @apply bg-card/30;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+  
+  .gradient-card {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  }
+  
+  /* Microanimation classes */
+  .animate-in {
+    animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-out {
+    animation: slideOut 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .hover-lift:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Modern button styles */
+  .btn-modern {
+    @apply rounded-xl px-6 py-3 font-medium transition-all duration-200;
+    @apply hover:scale-105 active:scale-95;
+  }
+  
+  /* Glow effects for dark mode */
+  .dark .glow-primary {
+    box-shadow: 0 0 20px rgba(109, 131, 242, 0.3);
+  }
+  
+  .dark .glow-accent {
+    box-shadow: 0 0 20px rgba(95, 207, 165, 0.3);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
 }

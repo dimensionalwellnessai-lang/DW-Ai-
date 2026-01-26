@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { CalendarCSVImportDialog } from "@/components/calendar-csv-import-dialog";
+import type { CSVCalendarEvent } from "@/lib/csv-calendar-import";
 import {
   ChevronLeft,
   ChevronRight,
@@ -90,6 +92,7 @@ export function CalendarPlansPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [editEventOpen, setEditEventOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
   const [localEvents, setLocalEvents] = useState<LocalCalendarEvent[]>(getCalendarEvents());
@@ -260,6 +263,32 @@ export function CalendarPlansPage() {
     });
   };
 
+  const handleCSVImport = (events: CSVCalendarEvent[]) => {
+    // Save imported events as local events
+    events.forEach((event) => {
+      saveCalendarEvent({
+        title: event.title,
+        description: event.description,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        isAllDay: event.isAllDay || false,
+        location: event.location,
+        dimensionTags: event.dimensionTags || [],
+        linkedRoute: event.linkedRoute,
+        linkedId: event.linkedId,
+        linkedType: event.linkedType,
+      });
+    });
+    
+    // Refresh local events
+    setLocalEvents(getCalendarEvents());
+    
+    toast({
+      title: "Import successful",
+      description: `Imported ${events.length} event${events.length !== 1 ? 's' : ''} to your calendar.`,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader 
@@ -269,11 +298,11 @@ export function CalendarPlansPage() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setUploadOpen(true)} 
-              data-testid="button-upload-doc"
+              onClick={() => setCsvImportOpen(true)} 
+              data-testid="button-csv-import"
             >
               <Upload className="h-4 w-4 mr-1" />
-              Import
+              Import CSV
             </Button>
             <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
               <Plus className="h-4 w-4 mr-1" />
@@ -455,6 +484,11 @@ export function CalendarPlansPage() {
           onDelete={handleDeleteEvent}
         />
       )}
+      <CalendarCSVImportDialog
+        open={csvImportOpen}
+        onOpenChange={setCsvImportOpen}
+        onImport={handleCSVImport}
+      />
     </div>
   );
 }
