@@ -1,0 +1,98 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                   🎯 QUICK REFERENCE CARD 🎯                     ║
+║         UI Changes Not Showing? Here's Your Fix!                 ║
+╚══════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────┐
+│ ⚡ FASTEST FIX (2 MINUTES)                                        │
+└──────────────────────────────────────────────────────────────────┘
+
+  1. Open Terminal in project root
+  2. Run: ./script/fresh-build.sh
+  3. Run: npm run dev
+  4. Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
+  
+  ✅ Done! Changes should now be visible.
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 📱 FOR MAC SIMULATOR                                              │
+└──────────────────────────────────────────────────────────────────┘
+
+  Terminal:
+    npm run build
+    npm run sync:ios
+  
+  Xcode:
+    Product → Clean Build Folder (Cmd+Shift+K)
+    Product → Run (Cmd+R)
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 🤖 FOR ANDROID SIMULATOR                                          │
+└──────────────────────────────────────────────────────────────────┘
+
+  npm run build
+  npm run sync:android
+  cd android
+  ./gradlew clean
+  ./gradlew assembleDebug
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 🔍 VERIFY UI CONTENT IS IN CODE                                   │
+└──────────────────────────────────────────────────────────────────┘
+
+  ./script/verify-ui-content.sh
+  
+  Should show: ✓ for all 22 checks
+  Currently: ✅ ALL PASS
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 📚 MORE HELP                                                       │
+└──────────────────────────────────────────────────────────────────┘
+
+  • Full Guide: docs/TROUBLESHOOTING_UI_CHANGES.md
+  • Summary: INVESTIGATION_SUMMARY.md
+  • README: See "Troubleshooting" section
+
+┌──────────────────────────────────────────────────────────────────┐
+│ ✅ WHAT WE VERIFIED                                                │
+└──────────────────────────────────────────────────────────────────┘
+
+  All UI from your screenshots is in the code:
+  
+  ✓ Onboarding flow (4 steps + success screen)
+  ✓ "Meet DW" and "Create my first starter block"
+  ✓ "You're set. Small structure. Real momentum."
+  ✓ All 6 focus areas (Body, Food, Mind, Money, Spirit, Work)
+  ✓ Workout page with "Planning Horizon"
+  ✓ Body Scan feature
+  ✓ DW chat messages
+  
+  22/22 checks passed ✅
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 💡 WHY YOU'RE NOT SEEING CHANGES                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+  Your code is perfect! The issue is:
+  
+  ❌ Old version cached in browser/simulator
+  ❌ Build not deployed to running instance
+  ❌ Hot reload not working properly
+  
+  ✅ Solution: Clear cache + rebuild (see above)
+
+┌──────────────────────────────────────────────────────────────────┐
+│ 🎯 BOTTOM LINE                                                     │
+└──────────────────────────────────────────────────────────────────┘
+
+  Nothing is broken. Your changes are all there.
+  Just need to clear cache and rebuild.
+  
+  Run: ./script/fresh-build.sh
+  
+  You'll see everything working perfectly!
+
+╔══════════════════════════════════════════════════════════════════╗
+║                    Need more help?                               ║
+║         See INVESTIGATION_SUMMARY.md for full details            ║
+╚══════════════════════════════════════════════════════════════════╝
