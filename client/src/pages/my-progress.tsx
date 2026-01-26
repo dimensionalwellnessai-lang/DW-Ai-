@@ -86,7 +86,7 @@ const SWITCH_COLORS: Record<SwitchId, { text: string; bg: string }> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  off: "bg-slate-500/20 text-slate-400",
+  off: "bg-muted text-muted-foreground",
   flickering: "bg-yellow-500/20 text-yellow-400",
   stable: "bg-blue-500/20 text-blue-400",
   powered: "bg-emerald-500/20 text-emerald-400",
@@ -213,7 +213,7 @@ export default function MyProgressPage() {
           className="space-y-2"
         >
           <h1 className="text-xl font-bold text-foreground" data-testid="progress-title">My Progress</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             You don't need perfect weeks — just powered ones.
           </p>
         </motion.div>
@@ -239,23 +239,23 @@ export default function MyProgressPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 rounded-lg bg-slate-800/50">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold text-foreground" data-testid="energy-level">
                       {getEnergyLabel(serverSummary?.snapshot?.energyLevel || signals.energyLevel)}
                     </p>
-                    <p className="text-xs text-slate-400">Energy</p>
+                    <p className="text-xs text-muted-foreground">Energy</p>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-slate-800/50">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold text-foreground" data-testid="stress-level">
                       {getEnergyLabel(serverSummary?.snapshot?.stressLevel || signals.stressLevel)}
                     </p>
-                    <p className="text-xs text-slate-400">Stress</p>
+                    <p className="text-xs text-muted-foreground">Stress</p>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-slate-800/50">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
                     <p className="text-lg font-bold text-foreground" data-testid="consistency-days">
                       {serverSummary?.snapshot?.consistencyDays14d ?? 0}/14
                     </p>
-                    <p className="text-xs text-slate-400">Days Active</p>
+                    <p className="text-xs text-muted-foreground">Days Active</p>
                   </div>
                 </div>
               )}
@@ -268,7 +268,7 @@ export default function MyProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
         >
-          <h2 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <Zap className="h-4 w-4" />
             Switchboard Status
           </h2>
@@ -298,7 +298,7 @@ export default function MyProgressPage() {
                       <p className="text-sm font-medium text-foreground">
                         {SWITCH_TITLES[switchItem.switchId]}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {getLastTrainedText(switchItem.lastTrainedAt)}
                       </p>
                     </CardContent>
@@ -330,7 +330,7 @@ export default function MyProgressPage() {
                       {serverSummary?.wins?.actionsCompleted ?? 0}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Completed</p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -339,7 +339,7 @@ export default function MyProgressPage() {
                       {serverSummary?.wins?.helped?.yes ?? 0}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Helped</p>
+                  <p className="text-xs text-muted-foreground">Helped</p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
@@ -348,7 +348,7 @@ export default function MyProgressPage() {
                       {serverSummary?.wins?.helped?.some ?? 0}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Somewhat</p>
+                  <p className="text-xs text-muted-foreground">Somewhat</p>
                 </div>
               </div>
             </CardContent>
@@ -361,7 +361,7 @@ export default function MyProgressPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
           >
-            <Card className="border-white/10">
+            <Card className="border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base text-foreground flex items-center gap-2">
                   <Brain className="h-4 w-4 text-purple-400" />
@@ -374,7 +374,7 @@ export default function MyProgressPage() {
                     <Badge 
                       key={i} 
                       variant="secondary" 
-                      className="bg-slate-800/50"
+                      className="bg-muted/50"
                       data-testid={`pattern-${i}`}
                     >
                       {pattern.label}: {pattern.count}×
@@ -382,7 +382,7 @@ export default function MyProgressPage() {
                   ))}
                 </div>
                 {patterns.length === 0 && (
-                  <p className="text-sm text-slate-500 italic">
+                  <p className="text-sm text-muted-foreground italic">
                     Nothing heavy showed up this week. Keep the rhythm.
                   </p>
                 )}
@@ -408,7 +408,7 @@ export default function MyProgressPage() {
                 <h3 className="font-medium text-foreground mb-1" data-testid="recommendation-title">
                   {recommendation.title}
                 </h3>
-                <p className="text-sm text-slate-400 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {recommendation.reasonLine}
                 </p>
                 <div className="flex gap-2">
@@ -432,7 +432,7 @@ export default function MyProgressPage() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="w-full mt-2 text-slate-400"
+                    className="w-full mt-2 text-muted-foreground"
                     data-testid="button-swap-recommendation"
                   >
                     Try {SWITCH_TITLES[recommendation.alternativeSwitchId]} instead

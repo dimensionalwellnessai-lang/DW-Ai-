@@ -146,7 +146,7 @@ export default function PlanPage() {
             <h1 className="text-xl font-bold text-foreground">
               You don't have a plan yet
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Complete the Switch Training to generate your first plan.
             </p>
           </motion.div>
@@ -172,7 +172,7 @@ export default function PlanPage() {
           <div>
             <h1 className="text-xl font-bold text-foreground">This Week's Plan</h1>
             {totalCount > 0 && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 {completedCount} of {totalCount} completed
               </p>
             )}
@@ -193,9 +193,9 @@ export default function PlanPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card className="border-white/10 bg-slate-800/30">
+            <Card className="border-border bg-muted/30">
               <CardContent className="p-6 text-center space-y-4">
-                <p className="text-slate-400">
+                <p className="text-muted-foreground">
                   Your plan is empty. Add actions from your recommended switch.
                 </p>
                 <div className="flex gap-2 justify-center flex-wrap">
@@ -229,18 +229,18 @@ export default function PlanPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Card className="border-white/10">
+                  <Card className="border-border">
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-2">
                         <div className={`p-1.5 rounded-lg ${colors.bg}`}>
                           <Icon className={`h-4 w-4 ${colors.text}`} />
                         </div>
-                        <CardTitle className="text-base text-slate-200 capitalize">
+                        <CardTitle className="text-base text-foreground capitalize">
                           {id}
                         </CardTitle>
                         <Badge 
                           variant="outline" 
-                          className="ml-auto text-xs border-slate-600 text-slate-400"
+                          className="ml-auto text-xs border-border text-muted-foreground"
                         >
                           {mode === "restoring" ? "Restoring" : "Training"}
                         </Badge>
@@ -253,7 +253,7 @@ export default function PlanPage() {
                           className={`p-3 rounded-lg border transition-all ${
                             item.completed 
                               ? 'border-emerald-500/30 bg-emerald-500/5' 
-                              : 'border-white/5 bg-slate-800/30'
+                              : 'border-border bg-muted/30'
                           }`}
                         >
                           <div className="flex items-start gap-3">
@@ -271,13 +271,13 @@ export default function PlanPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
                                 <p className={`text-sm font-medium ${
-                                  item.completed ? 'text-slate-500 line-through' : 'text-slate-200'
+                                  item.completed ? 'text-muted-foreground line-through' : 'text-foreground'
                                 }`}>
                                   {item.title}
                                 </p>
                                 <Badge 
                                   variant="outline" 
-                                  className="text-xs border-slate-700 text-slate-500 shrink-0"
+                                  className="text-xs border-border text-muted-foreground shrink-0"
                                 >
                                   {item.estimateMinutes} min
                                 </Badge>
@@ -296,7 +296,7 @@ export default function PlanPage() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-7 text-xs text-slate-500 hover:text-slate-400"
+                                    className="h-7 text-xs text-muted-foreground hover:text-muted-foreground"
                                     onClick={() => handleRemoveItem(item.id)}
                                     data-testid={`button-remove-${item.id}`}
                                   >
@@ -311,7 +311,7 @@ export default function PlanPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full text-slate-500 hover:text-slate-400"
+                        className="w-full text-muted-foreground hover:text-muted-foreground"
                         onClick={() => handleAddPlan(id)}
                         data-testid={`button-add-more-${id}`}
                       >
@@ -331,9 +331,9 @@ export default function PlanPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="border-white/5 bg-slate-800/30">
+          <Card className="border-border bg-muted/30">
             <CardContent className="p-4 text-center">
-              <p className="text-sm text-slate-400 italic">
+              <p className="text-sm text-muted-foreground italic">
                 "Small is powerful when it's consistent."
               </p>
             </CardContent>

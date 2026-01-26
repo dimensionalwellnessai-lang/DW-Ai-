@@ -265,7 +265,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-md mx-4 glass-strong rounded-2xl p-6 dark:border dark:border-white/10"
+          className="relative w-full max-w-md mx-4 glass-strong rounded-2xl p-6 dark:border dark:border-border"
         >
           <button
             onClick={onSkip}
@@ -494,7 +494,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                     Here's what we're doing
                   </h2>
                   {selectedResponse && (
-                    <div className="p-4 rounded-xl bg-muted/50 border dark:border-white/5">
+                    <div className="p-4 rounded-xl bg-muted/50 border dark:border-border">
                       <p className="font-medium">
                         {RESPONSE_OPTIONS.find(o => o.id === selectedResponse)?.label}
                       </p>
@@ -551,7 +551,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                   </h2>
                 </div>
 
-                <div className="p-6 rounded-xl bg-muted/50 border dark:border-white/5">
+                <div className="p-6 rounded-xl bg-muted/50 border dark:border-border">
                   <p className="text-lg font-body leading-relaxed text-center italic">
                     "{reframePerspective}"
                   </p>
@@ -622,7 +622,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
                 </div>
 
                 <div className="space-y-3">
-                  <div className="p-4 rounded-xl bg-muted/50 border dark:border-white/5">
+                  <div className="p-4 rounded-xl bg-muted/50 border dark:border-border">
                     <p className="text-sm font-medium mb-2">Suggested structure:</p>
                     <ul className="text-sm text-muted-foreground space-y-1">
                       <li>First 5 min: Get settled (water, bathroom, clear space)</li>

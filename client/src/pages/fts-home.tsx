@@ -136,7 +136,7 @@ export default function FTSHomePage() {
             <h1 className="text-2xl font-bold text-foreground">
               Welcome to Flip the Switch
             </h1>
-            <p className="text-slate-400 leading-relaxed max-w-sm mx-auto">
+            <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto">
               Your life is a system. Each dimension is a switch. 
               We'll find your top switches and help you power them up.
             </p>
@@ -186,7 +186,7 @@ export default function FTSHomePage() {
         >
           <Card className="card-modern bg-gradient-to-br from-slate-800/50 to-slate-900/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-300">
+              <CardTitle className="text-base text-foreground">
                 Your system today
               </CardTitle>
             </CardHeader>
@@ -196,10 +196,10 @@ export default function FTSHomePage() {
                   <RecommendedIcon className={`h-5 w-5 ${colors.text}`} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-slate-400">Top switch to train</p>
+                  <p className="text-sm text-muted-foreground">Top switch to train</p>
                   <p className="font-medium text-foreground capitalize">
                     {recommendation.recommendedSwitchId}
-                    <span className="text-slate-500 ml-2">
+                    <span className="text-muted-foreground ml-2">
                       ({mode === "restoring" ? "Restoring" : "Training"})
                     </span>
                   </p>
@@ -208,7 +208,7 @@ export default function FTSHomePage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <p className="text-xs text-slate-500">Time available</p>
+                  <p className="text-xs text-muted-foreground">Time available</p>
                   <div className="flex flex-wrap gap-1">
                     {TIME_OPTIONS.map(opt => (
                       <Badge
@@ -217,7 +217,7 @@ export default function FTSHomePage() {
                         className={`cursor-pointer text-xs ${
                           signals.timeBand === opt.value
                             ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                            : "border-slate-700 text-slate-400 hover:border-slate-600"
+                            : "border-border text-muted-foreground hover:border-border"
                         }`}
                         onClick={() => handleTimeChange(opt.value)}
                         data-testid={`time-${opt.value}`}
@@ -228,7 +228,7 @@ export default function FTSHomePage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-xs text-slate-500">Energy level</p>
+                  <p className="text-xs text-muted-foreground">Energy level</p>
                   <div className="flex gap-1">
                     {ENERGY_OPTIONS.map(opt => {
                       const Icon = opt.icon;
@@ -239,7 +239,7 @@ export default function FTSHomePage() {
                           className={`cursor-pointer ${
                             signals.energyLevel === opt.value
                               ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                              : "border-slate-700 text-slate-400 hover:border-slate-600"
+                              : "border-border text-muted-foreground hover:border-border"
                           }`}
                           onClick={() => handleEnergyChange(opt.value)}
                           data-testid={`energy-${opt.value}`}
@@ -264,10 +264,10 @@ export default function FTSHomePage() {
           <Card className={`card-modern ${colors.bg}`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base text-slate-200">
+                <CardTitle className="text-base text-foreground">
                   Do this next
                 </CardTitle>
-                <Badge variant="outline" className="text-xs border-slate-600 text-slate-400">
+                <Badge variant="outline" className="text-xs border-border text-muted-foreground">
                   {plan.estimateMinutes} min
                 </Badge>
               </div>
@@ -275,12 +275,12 @@ export default function FTSHomePage() {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="font-medium text-foreground mb-2">{plan.actionNow.title}</h3>
-                <p className="text-sm text-slate-400 italic mb-3">
+                <p className="text-sm text-muted-foreground italic mb-3">
                   {recommendation.reason}
                 </p>
                 <ul className="space-y-1.5">
                   {plan.actionNow.steps.slice(0, 3).map((step, i) => (
-                    <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
+                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
                       <span className={`${colors.text} mt-0.5`}>•</span>
                       {step}
                     </li>
@@ -324,9 +324,9 @@ export default function FTSHomePage() {
             transition={{ delay: 0.2 }}
           >
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-slate-300">Recent switches</h2>
+              <h2 className="text-sm font-medium text-foreground">Recent switches</h2>
               <Link href="/switchboard">
-                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-300">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                   View all
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -338,13 +338,13 @@ export default function FTSHomePage() {
                 const switchColors = SWITCH_COLORS[switchId];
                 return (
                   <Link key={switchId} href={`/switch/${switchId}`}>
-                    <Card className="border-white/5 hover:border-white/10 transition-colors cursor-pointer">
+                    <Card className="border-border hover:border-border transition-colors cursor-pointer">
                       <CardContent className="p-3 text-center">
                         <div className={`w-10 h-10 mx-auto rounded-lg ${switchColors.bg} flex items-center justify-center mb-2`}>
                           <Icon className={`h-5 w-5 ${switchColors.text}`} />
                         </div>
-                        <p className="text-xs font-medium text-slate-300 capitalize">{switchId}</p>
-                        <p className="text-xs text-slate-500">{STATUS_LABELS[data.status]}</p>
+                        <p className="text-xs font-medium text-foreground capitalize">{switchId}</p>
+                        <p className="text-xs text-muted-foreground">{STATUS_LABELS[data.status]}</p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -359,9 +359,9 @@ export default function FTSHomePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="border-white/5 bg-slate-800/30">
+          <Card className="border-border bg-muted/30">
             <CardContent className="p-4 text-center">
-              <p className="text-sm text-slate-400 italic">
+              <p className="text-sm text-muted-foreground italic">
                 "Small is powerful when it's consistent."
               </p>
             </CardContent>
