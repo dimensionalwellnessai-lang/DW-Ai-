@@ -32,9 +32,9 @@ export function AdminRoute({ children }: AdminRouteProps) {
   if (data?.role !== "admin") {
     return (
       <div className="p-6 text-center" data-testid="admin-not-authorized">
-        <AlertTriangle className="h-12 w-12 mx-auto text-red-400 mb-4" />
-        <h1 className="text-xl font-bold text-white mb-2">Not Authorized</h1>
-        <p className="text-slate-400">
+        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
+        <h1 className="text-xl font-bold text-foreground mb-2">Not Authorized</h1>
+        <p className="text-muted-foreground">
           You don't have permission to access this page.
         </p>
       </div>

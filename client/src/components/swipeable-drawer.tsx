@@ -92,7 +92,7 @@ export function SwipeableDrawer({
 
   return (
     <div 
-      className={`fixed inset-0 bg-black/40 ${elevated ? "z-[10001]" : "z-40"}`}
+      className={`fixed inset-0 bg-background/60 backdrop-blur-sm ${elevated ? "z-[10001]" : "z-40"}`}
       style={{
         top: "calc(env(safe-area-inset-top, 0px) + 52px)" /* Below status bar + header */
       }}

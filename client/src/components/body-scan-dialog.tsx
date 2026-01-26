@@ -570,7 +570,7 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
               </div>
             ) : cameraActive ? (
               <div className="space-y-4">
-                <div className="relative aspect-[4/3] bg-black rounded-md overflow-hidden">
+                <div className="relative aspect-[4/3] bg-muted rounded-md overflow-hidden">
                   <video
                     ref={videoRef}
                     autoPlay

@@ -70,12 +70,12 @@ const MOOD_OPTIONS: { word: MoodWord; icon: typeof Smile; color: string }[] = [
   { word: "grateful", icon: Heart, color: "text-pink-400" },
   { word: "motivated", icon: Zap, color: "text-yellow-400" },
   { word: "energized", icon: TrendingUp, color: "text-orange-400" },
-  { word: "tired", icon: Moon, color: "text-slate-400" },
+  { word: "tired", icon: Moon, color: "text-muted-foreground" },
   { word: "anxious", icon: Activity, color: "text-amber-500" },
   { word: "overwhelmed", icon: Cloud, color: "text-red-400" },
   { word: "frustrated", icon: Frown, color: "text-orange-500" },
   { word: "sad", icon: Frown, color: "text-blue-500" },
-  { word: "scattered", icon: Meh, color: "text-slate-500" },
+  { word: "scattered", icon: Meh, color: "text-muted-foreground" },
 ];
 
 const TIME_OF_DAY_CONFIG: Record<TimeOfDay, { label: string; icon: typeof Sun; range: string }> = {
@@ -691,6 +691,7 @@ function WeeklyCalendarView() {
     const moodConfig = MOOD_OPTIONS.find(m => m.word === mood);
     if (!moodConfig) return "bg-muted";
     
+    // Map text colors to their corresponding background colors for mood indicators
     const colorMap: Record<string, string> = {
       "text-blue-400": "bg-blue-500",
       "text-green-400": "bg-green-500",
@@ -698,12 +699,11 @@ function WeeklyCalendarView() {
       "text-pink-400": "bg-pink-500",
       "text-yellow-400": "bg-yellow-500",
       "text-orange-400": "bg-orange-500",
-      "text-slate-400": "bg-slate-500",
+      "text-muted-foreground": "bg-muted", // Semantic token for neutral/default mood
       "text-amber-500": "bg-amber-500",
       "text-red-400": "bg-red-500",
       "text-orange-500": "bg-orange-600",
       "text-blue-500": "bg-blue-600",
-      "text-slate-500": "bg-slate-600",
     };
     return colorMap[moodConfig.color] || "bg-muted";
   };

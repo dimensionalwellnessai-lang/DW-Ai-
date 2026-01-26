@@ -152,7 +152,7 @@ const LIFE_SWITCHES: LifeSwitch[] = [
 ];
 
 const STATUS_CONFIG: Record<SwitchStatus, { label: string; color: string; bgColor: string }> = {
-  off: { label: "Off", color: "text-slate-400", bgColor: "bg-slate-500/20" },
+  off: { label: "Off", color: "text-muted-foreground", bgColor: "bg-muted" },
   flickering: { label: "Flickering", color: "text-amber-400", bgColor: "bg-amber-500/20" },
   stable: { label: "Stable", color: "text-blue-400", bgColor: "bg-blue-500/20" },
   powered: { label: "Powered", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
@@ -180,7 +180,7 @@ function SwitchCard({
       transition={{ duration: 0.3 }}
     >
       <Card 
-        className={`overflow-hidden transition-all duration-300 cursor-pointer border-white/10 hover:border-white/20 ${expanded ? 'ring-1 ring-purple-500/30' : ''}`}
+        className={`overflow-hidden transition-all duration-300 cursor-pointer border-border hover:border-primary/20 ${expanded ? 'ring-1 ring-purple-500/30' : ''}`}
         onClick={onToggleExpand}
         data-testid={`card-switch-${switchData.id}`}
       >
@@ -194,7 +194,7 @@ function SwitchCard({
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <h3 className="font-semibold text-foreground">{switchData.name}</h3>
-                    <p className="text-xs text-slate-400">{switchData.subtitle}</p>
+                    <p className="text-xs text-muted-foreground">{switchData.subtitle}</p>
                   </div>
                   <Badge 
                     variant="outline" 
@@ -207,7 +207,7 @@ function SwitchCard({
             </div>
 
             {!expanded && (
-              <p className="text-sm text-slate-400 mt-3 line-clamp-2">
+              <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
                 {switchData.controls}
               </p>
             )}
@@ -220,30 +220,30 @@ function SwitchCard({
               exit={{ opacity: 0, height: 0 }}
               className="px-4 pb-4 space-y-4"
             >
-              <div className="space-y-3 pt-2 border-t border-white/5">
+              <div className="space-y-3 pt-2 border-t border-border">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">What this controls</p>
-                  <p className="text-sm text-slate-300">{switchData.controls}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">What this controls</p>
+                  <p className="text-sm text-foreground">{switchData.controls}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Why it matters</p>
-                  <p className="text-sm text-slate-300">{switchData.whyMatters}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Why it matters</p>
+                  <p className="text-sm text-foreground">{switchData.whyMatters}</p>
                 </div>
 
-                <div className={`p-3 rounded-xl ${switchData.bgColor} border border-white/5`}>
-                  <p className="text-xs font-medium text-slate-400 mb-1">Perspective Training</p>
+                <div className={`p-3 rounded-xl ${switchData.bgColor} border border-border`}>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Perspective Training</p>
                   <p className={`text-sm font-medium ${switchData.color} italic`}>"{switchData.perspective}"</p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">When ignored</p>
-                  <p className="text-sm text-slate-400">{switchData.whenIgnored}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">When ignored</p>
+                  <p className="text-sm text-muted-foreground">{switchData.whenIgnored}</p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">What we train</p>
-                  <p className="text-sm text-slate-300">{switchData.whatWeTrain}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">What we train</p>
+                  <p className="text-sm text-foreground">{switchData.whatWeTrain}</p>
                 </div>
               </div>
 
@@ -288,16 +288,16 @@ export default function LifeSwitchboardPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Your Life Switchboard</h1>
-              <p className="text-sm text-slate-400">One system. Multiple switches. You choose what to power.</p>
+              <p className="text-sm text-muted-foreground">One system. Multiple switches. You choose what to power.</p>
             </div>
           </div>
 
           <Card className="border-purple-500/20 bg-gradient-to-br from-purple-900/20 to-blue-900/20">
             <CardContent className="p-4 space-y-3">
-              <p className="text-slate-300 text-sm leading-relaxed">
+              <p className="text-foreground text-sm leading-relaxed">
                 This isn't about doing more. It's about understanding what's actually draining or fueling your life.
               </p>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Each switch controls a different part of your system. You don't need to flip them all — just the right ones, at the right time.
               </p>
               
@@ -340,7 +340,7 @@ export default function LifeSwitchboardPage() {
         </motion.div>
 
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <ChevronRight className="h-4 w-4 text-purple-400" />
             Your Switches
           </h2>
@@ -364,9 +364,9 @@ export default function LifeSwitchboardPage() {
           </div>
         </div>
 
-        <Card className="border-white/5 bg-slate-800/30">
+        <Card className="border-border bg-muted/30">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               The goal is clarity, not pressure. Power the right parts of life, intentionally.
             </p>
           </CardContent>
