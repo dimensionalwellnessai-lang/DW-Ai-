@@ -262,7 +262,7 @@ export default function PlanPage() {
                               className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                                 item.completed 
                                   ? 'bg-emerald-500 border-emerald-500' 
-                                  : 'border-slate-500 hover:border-slate-400'
+                                  : 'border-border hover:border-primary'
                               }`}
                               data-testid={`checkbox-${item.id}`}
                             >
