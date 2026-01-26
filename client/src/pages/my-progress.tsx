@@ -223,7 +223,7 @@ export default function MyProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="border-white/10">
+          <Card className="card-modern hover-lift">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Battery className="h-4 w-4 text-blue-400" />
@@ -283,7 +283,7 @@ export default function MyProgressPage() {
                   href={`/switch/${switchItem.switchId}`}
                   data-testid={`switch-card-${switchItem.switchId}`}
                 >
-                  <Card className="border-white/10 hover-elevate cursor-pointer h-full">
+                  <Card className="card-modern hover-lift cursor-pointer h-full">
                     <CardContent className="p-3">
                       <div className="flex items-start justify-between mb-2">
                         <div className={`p-2 rounded-lg ${colors.bg}`}>
@@ -314,7 +314,7 @@ export default function MyProgressPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="border-white/10">
+          <Card className="card-modern">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-400" />

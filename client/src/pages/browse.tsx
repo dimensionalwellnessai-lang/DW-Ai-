@@ -488,7 +488,7 @@ ${contentList}`,
       
       <div className="sticky top-0 z-40 bg-background border-b">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "browse" | "community")} className="w-full">
-          <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-none">
+          <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl">
             <TabsTrigger value="browse" className="data-[state=active]:bg-primary/10" data-testid="tab-browse">
               Browse
             </TabsTrigger>

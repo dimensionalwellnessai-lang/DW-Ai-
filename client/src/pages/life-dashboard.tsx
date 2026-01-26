@@ -486,7 +486,7 @@ export default function LifeDashboardPage() {
             </Button>
           </div>
 
-        <Card>
+        <Card className="card-modern">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">Dimensions Set Up</span>
@@ -502,7 +502,7 @@ export default function LifeDashboardPage() {
         </Card>
 
         {quickSummary.length > 0 && (
-          <Card className="bg-muted/30">
+          <Card className="card-modern bg-muted/30">
             <CardContent className="p-4">
               <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <Sun className="w-4 h-4 text-amber-500" />
@@ -520,7 +520,7 @@ export default function LifeDashboardPage() {
         )}
 
         {connectionInsights.length > 0 && (
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="card-modern border-primary/20 bg-primary/5">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-medium flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />

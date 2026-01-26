@@ -100,10 +100,10 @@ export function ProactiveCard({
   return (
     <Card 
       className={cn(
-        "relative overflow-visible border-0 shadow-lg",
+        "relative overflow-visible card-modern hover-lift shadow-lg",
         "bg-gradient-to-br",
         config.gradient,
-        "dark:glass dark:border dark:border-white/10",
+        "dark:glass dark:border-white/10",
         priority === "high" && "ring-2 ring-primary/30",
         className
       )}

@@ -13,6 +13,7 @@ import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import { MobilityCapabilitiesModal } from "@/components/mobility-capabilities-modal";
 import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
 import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { PremiumFeaturesDialog } from "@/components/premium-features-dialog";
 import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import {
   User,
@@ -45,6 +46,7 @@ export function SettingsPage() {
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showMobilityModal, setShowMobilityModal] = useState(false);
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
+  const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
@@ -129,6 +131,31 @@ export function SettingsPage() {
               data-testid="button-edit-mobility"
             >
               Edit Mobility & Capabilities
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="card-modern">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-accent" />
+              <div>
+                <CardTitle className="text-base">Premium Features</CardTitle>
+                <CardDescription>Optional tools for power users</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              All core wellness features are free forever. Premium tools add convenience for power users.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPremiumDialog(true)}
+              data-testid="button-view-premium"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              View Premium Options
             </Button>
           </CardContent>
         </Card>
@@ -364,6 +391,11 @@ export function SettingsPage() {
         open={isOpen}
         onComplete={handleTourComplete}
         onSkip={handleTourSkip}
+      />
+
+      <PremiumFeaturesDialog
+        open={showPremiumDialog}
+        onOpenChange={setShowPremiumDialog}
       />
     </div>
   );
