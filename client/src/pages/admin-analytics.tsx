@@ -127,6 +127,23 @@ const SWITCH_COLORS: Record<string, string> = {
   identity: "#10b981",
 };
 
+// Custom Tooltip component that uses semantic tokens
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-popover border border-popover-border rounded-lg p-3 shadow-lg">
+        <p className="text-sm font-medium text-popover-foreground mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm text-muted-foreground">
+            {entry.name}: <span className="font-semibold text-foreground">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 function KPITile({ 
   label, 
   value, 
@@ -141,10 +158,10 @@ function KPITile({
   isLoading?: boolean;
 }) {
   return (
-    <Card className="border-white/10 bg-slate-800/50">
+    <Card className="border-border bg-card">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-700/50">
+          <div className="p-2 rounded-lg bg-muted">
             <Icon className={`h-5 w-5 ${color}`} />
           </div>
           <div>
@@ -153,7 +170,7 @@ function KPITile({
             ) : (
               <p className="text-xl font-bold text-foreground" data-testid={`kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>{value}</p>
             )}
-            <p className="text-xs text-slate-400">{label}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
           </div>
         </div>
       </CardContent>
@@ -177,11 +194,11 @@ function FunnelStep({
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
-        <span className="text-slate-300">{label}</span>
+        <span className="text-foreground">{label}</span>
         {isLoading ? (
           <Skeleton className="h-4 w-16" />
         ) : (
-          <span className="text-slate-400">{count} {conversion !== null && `(${rate}%)`}</span>
+          <span className="text-muted-foreground">{count} {conversion !== null && `(${rate}%)`}</span>
         )}
       </div>
       {isLoading ? (
@@ -264,9 +281,9 @@ export default function AdminAnalyticsPage() {
   if (summaryError) {
     return (
       <div className="p-6 text-center" data-testid="admin-not-authorized">
-        <AlertTriangle className="h-12 w-12 mx-auto text-red-400 mb-4" />
+        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
         <h1 className="text-xl font-bold text-foreground mb-2">Not Authorized</h1>
-        <p className="text-slate-400">
+        <p className="text-muted-foreground">
           You don't have permission to access this page.
         </p>
       </div>
@@ -303,7 +320,7 @@ export default function AdminAnalyticsPage() {
         >
           <div>
             <h1 className="text-xl font-bold text-foreground" data-testid="admin-title">Admin Analytics</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               Aggregated metrics for growth and debugging
             </p>
           </div>
@@ -332,7 +349,7 @@ export default function AdminAnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Health KPIs
           </h2>
@@ -374,34 +391,34 @@ export default function AdminAnalyticsPage() {
           transition={{ delay: 0.15 }}
         >
           <div className="grid grid-cols-3 gap-3">
-            <Card className="border-white/10 bg-slate-800/30">
+            <Card className="border-border bg-card">
               <CardContent className="p-3 text-center">
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
                   <p className="text-2xl font-bold text-foreground">{summary?.kpis?.dau ?? 0}</p>
                 )}
-                <p className="text-xs text-slate-400">Daily Active</p>
+                <p className="text-xs text-muted-foreground">Daily Active</p>
               </CardContent>
             </Card>
-            <Card className="border-white/10 bg-slate-800/30">
+            <Card className="border-border bg-card">
               <CardContent className="p-3 text-center">
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
                   <p className="text-2xl font-bold text-foreground">{summary?.kpis?.wau ?? 0}</p>
                 )}
-                <p className="text-xs text-slate-400">Weekly Active</p>
+                <p className="text-xs text-muted-foreground">Weekly Active</p>
               </CardContent>
             </Card>
-            <Card className="border-white/10 bg-slate-800/30">
+            <Card className="border-border bg-card">
               <CardContent className="p-3 text-center">
                 {summaryLoading ? (
                   <Skeleton className="h-8 w-12 mx-auto" />
                 ) : (
                   <p className="text-2xl font-bold text-foreground">{summary?.kpis?.mau ?? 0}</p>
                 )}
-                <p className="text-xs text-slate-400">Monthly Active</p>
+                <p className="text-xs text-muted-foreground">Monthly Active</p>
               </CardContent>
             </Card>
           </div>
@@ -412,7 +429,7 @@ export default function AdminAnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Activity className="h-4 w-4 text-purple-400" />
@@ -438,7 +455,7 @@ export default function AdminAnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
         >
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-400" />
@@ -455,10 +472,7 @@ export default function AdminAnalyticsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis type="number" stroke="#94a3b8" fontSize={12} />
                       <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} width={90} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
-                        labelStyle={{ color: '#f8fafc' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="completions" name="Completions">
                         {switchChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={SWITCH_COLORS[entry.switchId] || "#8884d8"} />
@@ -468,16 +482,16 @@ export default function AdminAnalyticsPage() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic text-center py-8">No switch data yet</p>
+                <p className="text-sm text-muted-foreground italic text-center py-8">No switch data yet</p>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
-                <Badge variant="outline" className="bg-slate-800/50">
+                <Badge variant="outline" className="bg-muted">
                   Total Views: {switches?.totals?.detailViews ?? 0}
                 </Badge>
-                <Badge variant="outline" className="bg-slate-800/50">
+                <Badge variant="outline" className="bg-muted">
                   Plans Generated: {switches?.totals?.plansGenerated ?? 0}
                 </Badge>
-                <Badge variant="outline" className="bg-slate-800/50">
+                <Badge variant="outline" className="bg-muted">
                   Items Completed: {switches?.totals?.itemsCompleted ?? 0}
                 </Badge>
               </div>
@@ -491,7 +505,7 @@ export default function AdminAnalyticsPage() {
           transition={{ delay: 0.3 }}
           className="grid md:grid-cols-2 gap-4"
         >
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-400" />
@@ -506,21 +520,18 @@ export default function AdminAnalyticsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                       <YAxis stroke="#94a3b8" fontSize={12} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
-                        labelStyle={{ color: '#f8fafc' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="value" fill="#3b82f6" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic text-center py-8">No data yet</p>
+                <p className="text-sm text-muted-foreground italic text-center py-8">No data yet</p>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 text-green-400" />
@@ -535,10 +546,7 @@ export default function AdminAnalyticsPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
                       <YAxis stroke="#94a3b8" fontSize={12} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
-                        labelStyle={{ color: '#f8fafc' }}
-                      />
+                      <Tooltip content={<CustomTooltip />} />
                       <Bar dataKey="value" fill="#22c55e" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -555,7 +563,7 @@ export default function AdminAnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
         >
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <Flag className="h-4 w-4 text-orange-400" />
@@ -584,7 +592,7 @@ export default function AdminAnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="border-white/10">
+          <Card className="border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
@@ -600,31 +608,31 @@ export default function AdminAnalyticsPage() {
               ) : (
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-300">Errors per session</span>
-                    <span className="text-slate-400">{errors?.errorsPerSession ?? 0}</span>
+                    <span className="text-foreground">Errors per session</span>
+                    <span className="text-muted-foreground">{errors?.errorsPerSession ?? 0}</span>
                   </div>
                   {errors?.topErrorCodes?.length ? (
                     <div className="space-y-2">
-                      <p className="text-xs text-slate-500">Top Error Codes:</p>
+                      <p className="text-xs text-muted-foreground">Top Error Codes:</p>
                       {errors.topErrorCodes.map((e) => (
                         <div key={e.errorCode} className="flex justify-between text-sm">
-                          <code className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">
+                          <code className="text-xs bg-muted px-2 py-1 rounded text-foreground">
                             {e.errorCode}
                           </code>
-                          <span className="text-slate-400">{e.count}</span>
+                          <span className="text-muted-foreground">{e.count}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500 italic">No errors recorded</p>
+                    <p className="text-sm text-muted-foreground italic">No errors recorded</p>
                   )}
                   {errors?.topScreens?.length ? (
                     <div className="space-y-2 mt-4">
-                      <p className="text-xs text-slate-500">Top Screens with Errors:</p>
+                      <p className="text-xs text-muted-foreground">Top Screens with Errors:</p>
                       {errors.topScreens.map((s) => (
                         <div key={s.screenId} className="flex justify-between text-sm">
-                          <span className="text-slate-300">{s.screenId}</span>
-                          <span className="text-slate-400">{s.count}</span>
+                          <span className="text-foreground">{s.screenId}</span>
+                          <span className="text-muted-foreground">{s.count}</span>
                         </div>
                       ))}
                     </div>

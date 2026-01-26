@@ -258,7 +258,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
       
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div 
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
           onClick={onSkip}
         />
         <motion.div 
