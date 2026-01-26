@@ -26,9 +26,9 @@ if [ -d "node_modules/.vite" ]; then
 fi
 
 # Clear TypeScript build cache
-if [ -d ".tsbuildinfo" ]; then
+if [ -f ".tsbuildinfo" ]; then
   echo "  - Clearing TypeScript cache..."
-  rm -rf .tsbuildinfo
+  rm -f .tsbuildinfo
 fi
 
 echo ""
