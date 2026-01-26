@@ -229,12 +229,25 @@ For detailed documentation, see [Voice Integration Guide](./docs/VOICE_INTEGRATI
 - Premium features coming soon
 - Mobile responsiveness ongoing
 
+## Troubleshooting
+
+If changes aren't showing up in your simulator or web app:
+- **Quick Fix**: Hard refresh browser (`Cmd+Shift+R` or `Ctrl+Shift+R`)
+- **Clean Build**: Run `./script/fresh-build.sh` to clear all caches
+- **Full Guide**: See [Troubleshooting UI Changes](docs/TROUBLESHOOTING_UI_CHANGES.md) for detailed solutions
+
+Common issues:
+- Browser/app cache serving old version → Hard refresh
+- Build not completed → Run `npm run build` then restart server
+- Simulator not synced → Run `npm run sync:ios` (or `sync:android`)
+
 ## Contributing
 
 This project is currently in private beta. For feedback or issues, use the in-app feedback button.
 
 ## Documentation
 
+- **[Troubleshooting UI Changes](docs/TROUBLESHOOTING_UI_CHANGES.md)** - Fix issues with changes not showing up
 - **[Enhanced Features Guide](docs/ENHANCED_FEATURES.md)** - Comprehensive guide to new v2.0 features
 - **[Security Summary](docs/SECURITY_SUMMARY.md)** - Security analysis and recommendations
 - **[Design Guidelines](design_guidelines.md)** - UI/UX design principles
