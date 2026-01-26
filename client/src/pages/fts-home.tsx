@@ -147,7 +147,7 @@ export default function FTSHomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="border-purple-500/20 bg-purple-500/5">
+            <Card className="card-modern border-purple-500/20 bg-purple-500/5">
               <CardContent className="p-4">
                 <p className="text-sm text-purple-300 italic text-center">
                   "We're not fixing your whole life today. 
@@ -184,7 +184,7 @@ export default function FTSHomePage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="border-white/10 bg-gradient-to-br from-slate-800/50 to-slate-900/50">
+          <Card className="card-modern bg-gradient-to-br from-slate-800/50 to-slate-900/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-slate-300">
                 Your system today
@@ -261,7 +261,7 @@ export default function FTSHomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className={`border-white/10 ${colors.bg}`}>
+          <Card className={`card-modern ${colors.bg}`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base text-slate-200">
