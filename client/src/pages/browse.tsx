@@ -619,7 +619,7 @@ ${contentList}`,
               return (
                 <Card
                   key={item.id}
-                  className="overflow-visible hover-elevate cursor-pointer transition-all hover:shadow-lg"
+                  className="card-modern hover-lift cursor-pointer transition-all"
                   onClick={() => handleContentClick(item)}
                   data-testid={`card-content-${item.id}`}
                 >
@@ -775,7 +775,7 @@ ${contentList}`,
                   return (
                     <Card
                       key={group.id}
-                      className="overflow-visible hover-elevate cursor-pointer transition-all"
+                      className="card-modern hover-lift cursor-pointer transition-all"
                       onClick={handleComingSoon}
                       data-testid={`card-group-${group.id}`}
                     >
@@ -805,7 +805,7 @@ ${contentList}`,
             <main className="p-4">
               <div className="space-y-3">
                 {COMMUNITY_POSTS.map((post) => (
-                  <Card key={post.id} className="overflow-visible" data-testid={`card-post-${post.id}`}>
+                  <Card key={post.id} className="card-modern" data-testid={`card-post-${post.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
