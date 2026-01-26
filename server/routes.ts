@@ -1529,6 +1529,88 @@ export async function registerRoutes(
     }
   });
 
+  // Streaming chat endpoint for improved performance
+  app.post("/api/chat/stream", async (req, res) => {
+    try {
+      const { message, conversationHistory, context, systemOverride } = req.body;
+      let userId = req.session.userId;
+      
+      if (!userId) {
+        let devUser = await storage.getUserByEmail("dev@wellness.local");
+        if (!devUser) {
+          devUser = await storage.createUser({
+            email: "dev@wellness.local",
+            password: "devpassword123",
+          });
+        }
+        userId = devUser.id;
+        req.session.userId = userId;
+      }
+      
+      // Set headers for SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      
+      // Fetch user context
+      const [user, goals, habits] = await Promise.all([
+        storage.getUser(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+      ]);
+      
+      const userContext = {
+        category: context,
+        systemName: user?.systemName || undefined,
+        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
+          title: g.title, 
+          progress: g.progress || 0 
+        })),
+        habits: habits.filter(h => h.isActive).map(h => ({ 
+          title: h.title, 
+          streak: h.streak || 0 
+        })),
+      };
+      
+      // Use OpenAI streaming
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      
+      const systemPrompt = systemOverride || `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+
+TODAY: ${today} at ${currentTime}
+
+Provide helpful, concise, and supportive responses. Focus on being present, validating, and offering gentle guidance.`;
+      
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        ...(conversationHistory || []),
+        { role: "user" as const, content: message },
+      ];
+      
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        stream: true,
+        temperature: 0.7,
+      });
+      
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) {
+          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        }
+      }
+      
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } catch (error) {
+      console.error("Streaming chat error:", error);
+      res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);
+      res.end();
+    }
+  });
+
   app.post("/api/workout/generate", async (req, res) => {
     try {
       const { preferences } = req.body;
