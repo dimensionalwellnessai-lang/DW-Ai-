@@ -691,6 +691,7 @@ function WeeklyCalendarView() {
     const moodConfig = MOOD_OPTIONS.find(m => m.word === mood);
     if (!moodConfig) return "bg-muted";
     
+    // Map text colors to their corresponding background colors for mood indicators
     const colorMap: Record<string, string> = {
       "text-blue-400": "bg-blue-500",
       "text-green-400": "bg-green-500",
@@ -698,7 +699,7 @@ function WeeklyCalendarView() {
       "text-pink-400": "bg-pink-500",
       "text-yellow-400": "bg-yellow-500",
       "text-orange-400": "bg-orange-500",
-      "text-muted-foreground": "bg-muted",
+      "text-muted-foreground": "bg-muted", // Semantic token for neutral/default mood
       "text-amber-500": "bg-amber-500",
       "text-red-400": "bg-red-500",
       "text-orange-500": "bg-orange-600",
