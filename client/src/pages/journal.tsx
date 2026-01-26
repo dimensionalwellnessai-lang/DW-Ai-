@@ -248,10 +248,6 @@ export default function JournalPage() {
     handleContentChange(prompt);
   };
 
-  const handlePromptClick = (prompt: string) => {
-    setContent(prompt + "\n\n");
-  };
-
   const todayEntries = entries.filter(e => {
     const entryDate = new Date(e.createdAt).toDateString();
     return entryDate === new Date().toDateString();
