@@ -1549,12 +1549,12 @@ export function AIWorkspace() {
             
             {/* Next Best Step Card - once per day for activated users (only when there are messages) */}
             {messages.length > 0 && showNextStep && userActivated && nextStepSuggestion && !showWeeklyRecap && !showNudge && !shouldShowSpotlight && (
-              <Card className="mb-2 border-muted bg-muted/30" data-testid="card-next-step">
+              <Card className="mb-2 border-muted bg-muted/30 text-foreground" data-testid="card-next-step">
                 <CardContent className="p-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Today's suggestion</p>
-                      <p className="text-sm font-medium" data-testid="text-next-step">
+                      <p className="text-sm font-medium text-foreground" data-testid="text-next-step">
                         {nextStepSuggestion.title}
                       </p>
                     </div>
@@ -1646,7 +1646,7 @@ export function AIWorkspace() {
                           className={`px-4 py-3 rounded-2xl cursor-pointer select-none ${
                             message.role === "user"
                               ? "bg-primary text-primary-foreground glow-purple-sm"
-                              : "bg-muted glass"
+                              : "bg-muted text-foreground glass"
                           }`}
                           data-testid={`message-${index}`}
                           onTouchStart={handleLongPressStart}

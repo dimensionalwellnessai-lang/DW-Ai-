@@ -161,7 +161,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                 experience so we can support you better.
               </p>
             </div>
-            <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-left">
+            <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-left text-foreground">
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-primary shrink-0" />
                 <span>Track moods and wellness across dimensions</span>
@@ -426,7 +426,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                 Connect your fitness tracker for enhanced insights
               </p>
             </div>
-            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3 text-foreground">
               <h4 className="font-medium text-sm">Benefits:</h4>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
@@ -482,7 +482,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                 Your preferences are saved. Here's how we'll optimize your DW-Ai experience:
               </p>
             </div>
-            <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4">
+            <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4 text-foreground">
               {data.wellnessGoals.length > 0 && (
                 <div className="flex items-start gap-2 text-sm">
                   <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />

@@ -192,10 +192,10 @@ summary::marker {
   --primary-foreground: 0 0% 100%;
   /* Secondary - Neutral outline */
   --secondary: 217 19% 27%;
-  --secondary-foreground: 218 11% 83%;
-  /* Muted text levels */
+  --secondary-foreground: 220 14% 96%;
+  /* Muted text levels - increased lightness for better contrast on dark backgrounds */
   --muted: 217 33% 17%;
-  --muted-foreground: 218 11% 65%;
+  --muted-foreground: 220 14% 80%;
   /* Growth Green #5FCFA5 */
   --accent: 158 51% 59%;
   --accent-foreground: 222 47% 11%;

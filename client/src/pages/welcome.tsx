@@ -318,7 +318,7 @@ export default function Welcome() {
             </p>
           </div>
           
-          <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4">
+          <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4 text-foreground">
             <div className="flex items-center gap-2 text-sm">
               <Check className="w-4 h-4 text-primary shrink-0" />
               <span data-testid="text-line-rhythm">{successCopy.lines.rhythm}</span>
