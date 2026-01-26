@@ -552,7 +552,7 @@ export default function AdminAnalyticsPage() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic text-center py-8">No data yet</p>
+                <p className="text-sm text-muted-foreground italic text-center py-8">No data yet</p>
               )}
             </CardContent>
           </Card>
@@ -575,13 +575,13 @@ export default function AdminAnalyticsPage() {
                 <div className="space-y-2">
                   {flags.topFlags.map(f => (
                     <div key={f.flagKey} className="flex justify-between items-center text-sm">
-                      <span className="text-slate-300 capitalize">{f.flagKey.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <span className="text-foreground capitalize">{f.flagKey.replace(/([A-Z])/g, ' $1').trim()}</span>
                       <Badge variant="secondary">{f.count}</Badge>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic">No flags recorded</p>
+                <p className="text-sm text-muted-foreground italic">No flags recorded</p>
               )}
             </CardContent>
           </Card>

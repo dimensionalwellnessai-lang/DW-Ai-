@@ -175,7 +175,7 @@ const SWITCH_INFO: Record<SwitchId, SwitchInfo> = {
 };
 
 const STATUS_CONFIG: Record<SwitchStatus, { label: string; color: string; bgColor: string }> = {
-  off: { label: "Off", color: "text-muted-foreground", bgColor: "bg-slate-500/20" },
+  off: { label: "Off", color: "text-muted-foreground", bgColor: "bg-muted" },
   flickering: { label: "Flickering", color: "text-amber-400", bgColor: "bg-amber-500/20" },
   stable: { label: "Stable", color: "text-blue-400", bgColor: "bg-blue-500/20" },
   powered: { label: "Powered", color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
