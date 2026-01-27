@@ -253,7 +253,7 @@ The app is fully compatible with iPad devices:
 
 ### 1. Login with Demo Account
 - Email: `demo@fliptheswitch.app`
-- Password: `AppStore2026!`
+- Password: _Provided in App Store Connect review notes_
 
 ### 2. Explore Pre-Populated Features
 

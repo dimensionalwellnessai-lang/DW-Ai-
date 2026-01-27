@@ -27,7 +27,7 @@ Before submitting, verify the demo account works:
 
 1. **Login on iPad:**
    - Open app on iPad Air 11-inch
-   - Use credentials: demo@fliptheswitch.app / (password from notes)
+   - Use credentials: demo@fliptheswitch.app / _[password in App Store Connect notes]_
    - Should login successfully
 
 2. **Test Key Features:**

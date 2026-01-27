@@ -438,12 +438,13 @@ export function LoginPage() {
               </ul>
             </div>
             <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-              <h4 className="font-semibold text-sm mb-2">Demo Credentials</h4>
+              <h4 className="font-semibold text-sm mb-2">Demo Access</h4>
               <div className="space-y-1 text-xs font-mono">
-                <p className="text-muted-foreground">Email:</p>
+                <p className="text-muted-foreground">Demo email (for reference only):</p>
                 <p className="font-semibold select-all">{DEMO_CREDENTIALS.username}</p>
-                <p className="text-muted-foreground mt-2">Password:</p>
-                <p className="font-semibold select-all">{DEMO_CREDENTIALS.password}</p>
+                <p className="text-muted-foreground mt-2">
+                  No password required – demo runs locally on your device.
+                </p>
               </div>
               <p className="text-xs text-muted-foreground mt-3 italic">
                 Note: Demo mode uses local storage only - no server authentication required

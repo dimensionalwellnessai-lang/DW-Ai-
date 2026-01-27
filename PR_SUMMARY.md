@@ -81,7 +81,7 @@ This PR successfully addresses all 4 critical issues raised in the App Store rev
 **Demo Credentials:**
 ```
 Email: demo@fliptheswitch.app
-Password: AppStore2026!
+Password: [Provided in App Store Connect review notes]
 ```
 
 **Result:** App Store reviewers can fully test all features with pre-populated data.

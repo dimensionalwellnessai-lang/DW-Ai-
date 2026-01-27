@@ -13,12 +13,16 @@
    - Review goals and habits
    - Explore personalized insights
 
-### 📱 Demo Credentials (Optional)
-If you need to reference sample credentials:
-- **Email**: demo@dimensionalwellness.app
-- **Password**: DemoWellness2026!
+### 📱 Demo Mode (No Login Required)
 
-_(Note: Demo mode uses local storage - no server login required)_
+Tap "Try Demo Mode" on the login screen to explore with pre-populated data:
+- Chat with AI wellness assistant
+- View calendar with scheduled workouts and routines
+- Check mood tracking data (7 days)
+- Review goals and habits
+- Explore personalized insights
+
+_Note: Demo mode uses local storage - no server authentication required_
 
 ---
 

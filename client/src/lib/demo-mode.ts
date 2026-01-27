@@ -20,8 +20,8 @@ import {
 
 export const DEMO_CREDENTIALS = {
   username: "demo@dimensionalwellness.app",
-  password: "DemoWellness2026!",
-  note: "This is a demo account with pre-populated wellness data"
+  password: "",
+  note: "Demo mode runs locally on your device - no password required"
 };
 
 /**
@@ -29,8 +29,15 @@ export const DEMO_CREDENTIALS = {
  * This creates a realistic wellness journey for reviewers to explore
  */
 export function initializeDemoMode(): void {
-  // Clear any existing data first
-  localStorage.clear();
+  // Clear only demo-related keys to preserve user settings
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith("fts:") || key === "guestData")) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
   
   // Set demo mode flag
   localStorage.setItem("fts:demo_mode", "true");
@@ -138,7 +145,9 @@ function createDemoConversations(): void {
   ];
   
   conversations.forEach(conv => {
-    saveConversation(conv.id, conv.title, conv.category, conv.messages);
+    if (typeof saveConversation === "function") {
+      saveConversation(conv.id, conv.title, conv.category, conv.messages);
+    }
   });
 }
 
@@ -288,14 +297,16 @@ function createDemoMoodLogs(): void {
     const energyLevels = [3, 4, 3, 2, 4];
     const clarityLevels = [4, 4, 3, 3, 5];
     
-    saveMoodLog({
-      mood: moods[i % moods.length],
-      energy: energyLevels[i % energyLevels.length],
-      clarity: clarityLevels[i % clarityLevels.length],
-      tags: i === 0 ? ["productive", "focused"] : i === 3 ? ["tired", "stressed"] : ["balanced"],
-      notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
-      timestamp: date.getTime(),
-    });
+    if (typeof saveMoodLog === "function") {
+      saveMoodLog({
+        mood: moods[i % moods.length],
+        energy: energyLevels[i % energyLevels.length],
+        clarity: clarityLevels[i % clarityLevels.length],
+        tags: i === 0 ? ["productive", "focused"] : i === 3 ? ["tired", "stressed"] : ["balanced"],
+        notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
+        timestamp: date.getTime(),
+      });
+    }
   }
 }
 

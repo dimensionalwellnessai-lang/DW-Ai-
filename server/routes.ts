@@ -377,8 +377,7 @@ export async function registerRoutes(
       // Set session
       req.session.userId = user.id;
 
-      // Attempt to save session, but do not fail registration if this step fails.
-      let sessionEstablished = true;
+      // Save session - fail registration if session cannot be established
       try {
         await new Promise<void>((resolve, reject) => {
           req.session.save((err) => {
@@ -391,26 +390,20 @@ export async function registerRoutes(
           });
         });
       } catch (sessionError) {
-        // The user account has been created, but the session could not be established.
-        // Log the error and instruct the client to prompt the user to log in manually.
-        sessionEstablished = false;
+        // Session save failed - registration cannot continue without a valid session
+        console.error("Failed to establish session for new user:", sessionError);
+        return res.status(500).json({
+          error: "Unable to create your session. Please try again or contact support if the issue persists."
+        });
       }
       
-      // Return success (account is created). If the session is not established,
-      // include guidance so the client can prompt the user to log in manually.
+      // Return success with user data
       res.json({ 
         user: { 
           id: user.id, 
           email: user.email, 
           onboardingCompleted: user.onboardingCompleted || false
-        },
-        sessionEstablished,
-        ...(sessionEstablished
-          ? {}
-          : {
-              message:
-                "Your account was created, but we couldn't start your session. Please log in to continue.",
-            })
+        }
       });
     } catch (error) {
       console.error("Registration error:", error);
