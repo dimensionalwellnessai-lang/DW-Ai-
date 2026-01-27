@@ -376,26 +376,41 @@ export async function registerRoutes(
       
       // Set session
       req.session.userId = user.id;
-      
-      // Save session with promise wrapper for better error handling
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error("Session save error:", err);
-            reject(err);
-          } else {
-            resolve();
-          }
+
+      // Attempt to save session, but do not fail registration if this step fails.
+      let sessionEstablished = true;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error("Session save error during registration:", err);
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
         });
-      });
+      } catch (sessionError) {
+        // The user account has been created, but the session could not be established.
+        // Log the error and instruct the client to prompt the user to log in manually.
+        sessionEstablished = false;
+      }
       
-      // Return success
+      // Return success (account is created). If the session is not established,
+      // include guidance so the client can prompt the user to log in manually.
       res.json({ 
         user: { 
           id: user.id, 
           email: user.email, 
           onboardingCompleted: user.onboardingCompleted || false
-        } 
+        },
+        sessionEstablished,
+        ...(sessionEstablished
+          ? {}
+          : {
+              message:
+                "Your account was created, but we couldn't start your session. Please log in to continue.",
+            })
       });
     } catch (error) {
       console.error("Registration error:", error);
