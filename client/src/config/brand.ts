@@ -2,7 +2,7 @@ export const BRAND = {
   appName: "DW",
   fullName: "Dimensional Wellness",
   descriptor: "Your Energy-Based Life System",
-  tagline: "Build wellness your way, one dimension at a time.",
+  tagline: "Your wellness life operation system",
   shortName: "DW",
   assistantName: "DW",
 };
