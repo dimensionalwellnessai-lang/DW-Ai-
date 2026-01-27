@@ -5,7 +5,7 @@
         <key>CFBundleDevelopmentRegion</key>
         <string>en</string>
         <key>CFBundleDisplayName</key>
-        <string>Dimensional Wellness</string>
+        <string>DW</string>
         <key>CFBundleExecutable</key>
         <string>$(EXECUTABLE_NAME)</string>
         <key>CFBundleIdentifier</key>
@@ -60,11 +60,11 @@
         
         <!-- Microphone permission for voice input -->
         <key>NSMicrophoneUsageDescription</key>
-        <string>DW-Ai needs microphone access to enable voice input for conversations with your wellness assistant.</string>
+        <string>DW needs microphone access to enable voice input for conversations with your wellness assistant.</string>
         
         <!-- Speech recognition permission -->
         <key>NSSpeechRecognitionUsageDescription</key>
-        <string>DW-Ai uses speech recognition to convert your voice into text for better interaction with your wellness assistant.</string>
+        <string>DW uses speech recognition to convert your voice into text for better interaction with your wellness assistant.</string>
         
         <!-- Custom URL scheme for deep linking -->
         <key>CFBundleURLTypes</key>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X, Upload } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Image, X, Upload } from "lucide-react";
 import { 
   getBodyProfile, 
   saveBodyProfile,

@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { MessageCircle, CalendarDays, Sparkles, BookOpen, Lightbulb } from "lucide-react";
+import { MessageCircle, CalendarDays, Sparkles, BookOpen, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -13,7 +13,7 @@ const navItems: NavItem[] = [
   { path: "/today", icon: CalendarDays, label: "Today" },
   { path: "/", icon: MessageCircle, label: "DW" },
   { path: "/journal", icon: BookOpen, label: "Journal" },
-  { path: "/astrology", icon: Lightbulb, label: "Insights" },
+  { path: "/browse", icon: Compass, label: "Browse" },
 ];
 
 // Map paths to tour data attributes
@@ -21,7 +21,7 @@ const tourDataMap: Record<string, string> = {
   "/": "chat",
   "/plans": "tasks",
   "/today": "dashboard",
-  "/astrology": "insights",
+  "/browse": "browse",
   "/journal": "tasks",
 };
 

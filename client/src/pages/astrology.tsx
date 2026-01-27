@@ -823,7 +823,7 @@ ${voiceRules}`;
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader title="Personalized Insights" />
+      <PageHeader title="Cosmic Insight" />
 
       <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="insights">
