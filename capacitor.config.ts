@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.reilbrown.fliptheswitch',
-  appName: 'DW-Ai',
+  appName: 'Flip the Switch',
   webDir: 'dist/public',
   ios: {
     contentInset: 'always'

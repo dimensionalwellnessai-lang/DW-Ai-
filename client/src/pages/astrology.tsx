@@ -19,7 +19,8 @@ import {
   Settings2,
   RefreshCw,
   Loader2,
-  MessageSquareText
+  MessageSquareText,
+  Lightbulb
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { apiRequest } from "@/lib/queryClient";
@@ -822,24 +823,40 @@ ${voiceRules}`;
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader title="Astrology" />
+      <PageHeader title="Personalized Insights" />
 
       <ScrollArea className="flex-1">
-        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="astrology">
+        <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="insights">
+          
+          {/* Introductory guidance */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-sm">Personalized Guidance for Your Wellness Journey</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Explore patterns, insights, and personalized recommendations to support your growth. 
+                    Astrology and cosmic rhythms are offered as optional tools for deeper self-reflection.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="charts" className="flex-1" data-testid="tab-charts">
                 <Star className="mr-1 h-4 w-4" />
-                Charts
+                Astrology
               </TabsTrigger>
               <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar" data-tour="calendar">
                 <Calendar className="mr-1 h-4 w-4" />
-                Calendar
+                Moon Cycles
               </TabsTrigger>
               <TabsTrigger value="journal" className="flex-1" data-testid="tab-journal">
                 <MessageSquareText className="mr-1 h-4 w-4" />
-                Journal
+                Reflections
               </TabsTrigger>
               <TabsTrigger value="education" className="flex-1" data-testid="tab-education">
                 <Sparkles className="mr-1 h-4 w-4" />
