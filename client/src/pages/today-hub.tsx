@@ -365,7 +365,7 @@ export default function TodayHubPage() {
                     <Layers className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm mb-1">Build Your Life System</h3>
+                    <h3 className="font-semibold text-sm mb-1 text-foreground">Build Your Life System</h3>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Not just wellness — how everything in your life works together.
                     </p>
@@ -689,7 +689,7 @@ export default function TodayHubPage() {
                   <MessageSquare className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm">Talk to DW</h3>
+                  <h3 className="font-semibold text-sm text-foreground">Talk to DW</h3>
                   <p className="text-xs text-muted-foreground">
                     Process thoughts, plan your day, or just chat
                   </p>
