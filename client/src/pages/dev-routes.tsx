@@ -42,7 +42,7 @@ export default function DevRoutesPage() {
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-green-600">{enabledRoutes.length}</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{enabledRoutes.length}</div>
                 <div className="text-sm text-muted-foreground">Enabled</div>
               </CardContent>
             </Card>
@@ -54,7 +54,7 @@ export default function DevRoutesPage() {
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-amber-600">{missingTargets.length}</div>
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{missingTargets.length}</div>
                 <div className="text-sm text-muted-foreground">Missing Targets</div>
               </CardContent>
             </Card>
@@ -74,7 +74,7 @@ export default function DevRoutesPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {missingTargets.map(target => (
-                    <Badge key={target} variant="outline" className="text-amber-600">
+                    <Badge key={target} variant="outline" className="text-amber-600 dark:text-amber-400">
                       {target}
                     </Badge>
                   ))}
