@@ -348,26 +348,66 @@ export async function registerRoutes(
 
   app.post("/api/auth/register", async (req, res) => {
     try {
+      // Validate input data
       const data = insertUserSchema.parse(req.body);
-      const existing = await storage.getUserByEmail(data.email);
+      
+      // Normalize email to lowercase
+      const email = data.email.toLowerCase().trim();
+      
+      // Check if email already exists
+      const existing = await storage.getUserByEmail(email);
       if (existing) {
         return res.status(400).json({ error: "Email already registered" });
       }
+      
+      // Hash password
       const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-      const user = await storage.createUser({ ...data, password: hashedPassword });
+      
+      // Create user
+      const user = await storage.createUser({ 
+        email, 
+        password: hashedPassword 
+      });
+      
+      if (!user || !user.id) {
+        console.error("User creation failed - no user returned");
+        return res.status(500).json({ error: "Failed to create account" });
+      }
+      
+      // Set session
       req.session.userId = user.id;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ error: "Session error" });
-        }
-        res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+      
+      // Save session with promise wrapper for better error handling
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      // Return success
+      res.json({ 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          onboardingCompleted: user.onboardingCompleted || false
+        } 
       });
     } catch (error) {
+      console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ 
+          error: "Invalid input",
+          details: error.errors 
+        });
       }
-      res.status(500).json({ error: "Registration failed" });
+      res.status(500).json({ 
+        error: "Registration failed. Please try again." 
+      });
     }
   });
 

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X, Upload } from "lucide-react";
 import { 
   getBodyProfile, 
@@ -61,6 +62,7 @@ const POSE_INSTRUCTIONS = [
 ];
 
 export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProps) {
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<BodyProfile>({
     currentState: "",
@@ -177,27 +179,67 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current) {
+      console.error("Video reference not available");
+      return;
+    }
     
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Ensure video has valid dimensions before capturing
+    const videoWidth = videoRef.current.videoWidth;
+    const videoHeight = videoRef.current.videoHeight;
     
-    ctx.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
+      console.error("Video dimensions not ready:", { videoWidth, videoHeight });
+      toast({
+        title: "Camera not ready",
+        description: "Please wait for the camera to fully initialize.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    const newPhoto: BodyPhoto = {
-      id: Date.now().toString(),
-      dataUrl,
-      pose: currentPose,
-      capturedAt: Date.now(),
-    };
-    
-    const existingPhotos = profile.photos || [];
-    const filteredPhotos = existingPhotos.filter(p => p.pose !== currentPose);
-    setProfile({ ...profile, photos: [...filteredPhotos, newPhoto] });
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+      
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        console.error("Failed to get canvas 2D context");
+        toast({
+          title: "Photo capture failed",
+          description: "Unable to process the photo. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      ctx.drawImage(videoRef.current, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      
+      const newPhoto: BodyPhoto = {
+        id: Date.now().toString(),
+        dataUrl,
+        pose: currentPose,
+        capturedAt: Date.now(),
+      };
+      
+      const existingPhotos = profile.photos || [];
+      const filteredPhotos = existingPhotos.filter(p => p.pose !== currentPose);
+      setProfile({ ...profile, photos: [...filteredPhotos, newPhoto] });
+      
+      toast({
+        title: "Photo captured!",
+        description: `${currentPose} photo saved successfully.`,
+      });
+    } catch (error) {
+      console.error("Error capturing photo:", error);
+      toast({
+        title: "Photo capture failed",
+        description: "An error occurred while taking the photo. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const removePhoto = (photoId: string) => {

@@ -46,6 +46,14 @@
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <true/>
         
+        <!-- Camera permission for photo features -->
+        <key>NSCameraUsageDescription</key>
+        <string>DW-Ai needs camera access to capture body progress photos and visual wellness tracking.</string>
+        
+        <!-- Photo library permission -->
+        <key>NSPhotoLibraryUsageDescription</key>
+        <string>DW-Ai needs photo library access to save and view your wellness progress photos.</string>
+        
         <!-- Microphone permission for voice input -->
         <key>NSMicrophoneUsageDescription</key>
         <string>DW-Ai needs microphone access to enable voice input for conversations with your wellness assistant.</string>
