@@ -28,8 +28,8 @@ export default function EnhancedOnboardingPage() {
 
     // Mark as activated
     markActivated({
-      actionType: "onboarding_completed",
-      source: "enhanced-onboarding",
+      actionType: "starter_object_created",
+      source: "welcome",
       tsLocal: new Date().toISOString(),
     });
 

@@ -4,18 +4,21 @@
  */
 
 import {
-  saveConversation,
+  saveGuestConversation,
   saveProfileSetup,
   saveCalendarEvent,
-  saveMoodLog,
   saveUserResource,
   saveBodyProfile,
   saveMealPrepPreferences,
   saveWorkoutPreferences,
   saveFinanceProfile,
   saveSpiritualProfile,
+  saveScheduleEvent,
+  addMoodCheckin,
   type ChatMessage,
   type WellnessDimension,
+  type GuestConversation,
+  type MoodWord,
 } from "./guest-storage";
 
 export const DEMO_CREDENTIALS = {
@@ -53,8 +56,8 @@ export function initializeDemoMode(): void {
   // Create demo conversations
   createDemoConversations();
   
-  // Create demo wellness data
-  createDemoWellnessData();
+  // Note: Demo wellness goals/habits removed - guest storage doesn't support these types
+  // The demo focuses on conversations, calendar events, mood logs, and profiles
   
   // Create demo calendar events
   createDemoCalendarEvents();
@@ -138,61 +141,12 @@ function createDemoConversations(): void {
   ];
   
   conversations.forEach(conv => {
-    saveConversation(conv.id, conv.title, conv.category, conv.messages);
+    saveGuestConversation(conv);
   });
 }
 
-function createDemoWellnessData(): void {
-  // Create demo goals
-  saveUserResource({
-    id: "demo-goal-1",
-    type: "goal",
-    title: "Exercise 3x per week",
-    description: "Build a consistent movement practice with 3 workouts weekly",
-    dimension: "physical",
-    status: "active",
-    tags: ["fitness", "routine"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now() - (1 * 24 * 60 * 60 * 1000),
-  });
-  
-  saveUserResource({
-    id: "demo-goal-2",
-    type: "goal",
-    title: "Daily journaling",
-    description: "Reflect each evening on what went well and what I learned",
-    dimension: "emotional",
-    status: "active",
-    tags: ["mindfulness", "reflection"],
-    createdAt: Date.now() - (5 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
-  
-  // Create demo habits
-  saveUserResource({
-    id: "demo-habit-1",
-    type: "habit",
-    title: "Morning stretch routine",
-    description: "10-minute gentle stretching to wake up the body",
-    dimension: "physical",
-    status: "active",
-    tags: ["morning", "movement"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
-  
-  saveUserResource({
-    id: "demo-habit-2",
-    type: "habit",
-    title: "Drink water first thing",
-    description: "16oz water before coffee to rehydrate",
-    dimension: "physical",
-    status: "active",
-    tags: ["morning", "hydration"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
-}
+// Note: createDemoWellnessData removed - guest storage doesn't support goals/habits
+// Demo focuses on conversations, events, mood logs, and profiles instead
 
 function createDemoCalendarEvents(): void {
   const today = new Date();
@@ -279,22 +233,19 @@ function createDemoCalendarEvents(): void {
 
 function createDemoMoodLogs(): void {
   // Create mood logs for the past 7 days
+  const moods: MoodWord[] = ["energized", "content", "calm", "tired", "motivated", "content", "hopeful"];
+  const timesOfDay = ["morning", "afternoon", "evening", "morning", "afternoon", "evening", "morning"] as const;
+  
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
-    date.setHours(20, 0, 0, 0);
+    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    const moods = ["good", "great", "okay", "tired", "energized"];
-    const energyLevels = [3, 4, 3, 2, 4];
-    const clarityLevels = [4, 4, 3, 3, 5];
-    
-    saveMoodLog({
-      mood: moods[i % moods.length],
-      energy: energyLevels[i % energyLevels.length],
-      clarity: clarityLevels[i % clarityLevels.length],
-      tags: i === 0 ? ["productive", "focused"] : i === 3 ? ["tired", "stressed"] : ["balanced"],
-      notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
-      timestamp: date.getTime(),
+    addMoodCheckin({
+      date: dateStr,
+      timeOfDay: timesOfDay[i],
+      mood: moods[i],
+      customNote: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : undefined,
     });
   }
 }

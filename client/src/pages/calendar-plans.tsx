@@ -268,15 +268,18 @@ export function CalendarPlansPage() {
     events.forEach((event) => {
       saveCalendarEvent({
         title: event.title,
-        description: event.description,
-        startTime: event.startTime,
-        endTime: event.endTime,
+        description: event.description || "",
+        dimension: null,
+        startTime: event.startTime.getTime(),
+        endTime: event.endTime?.getTime() || event.startTime.getTime() + (60 * 60 * 1000), // Default 1 hour
         isAllDay: event.isAllDay || false,
-        location: event.location,
-        dimensionTags: event.dimensionTags || [],
-        linkedRoute: event.linkedRoute,
-        linkedId: event.linkedId,
-        linkedType: event.linkedType,
+        location: event.location || null,
+        virtualLink: null,
+        reminders: [],
+        recurring: false,
+        recurrencePattern: null,
+        relatedFoundationIds: [],
+        tags: event.dimensionTags || [],
       });
     });
     
