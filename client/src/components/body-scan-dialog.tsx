@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Camera, Image, X, Upload } from "lucide-react";
+import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Image, X, Upload } from "lucide-react";
 import { 
   getBodyProfile, 
   saveBodyProfile,
@@ -463,10 +463,10 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
         return (
           <div className="space-y-4">
             <div className="text-center mb-4">
-              <Camera className="w-8 h-8 mx-auto text-primary mb-2" />
+              <Image className="w-8 h-8 mx-auto text-primary mb-2" />
               <h3 className="text-lg font-display font-semibold">Optional: Body Photos</h3>
               <p className="text-sm text-muted-foreground">
-                Take photos for personalized body type analysis. Photos are stored locally on your device only.
+                Choose photos from your gallery for personalized body type analysis. Photos are stored locally on your device only.
               </p>
             </div>
             
@@ -527,20 +527,20 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
                   data-testid="input-photo-upload"
                 />
                 
-                <div className="flex gap-2">
-                  <Button onClick={startCamera} variant="outline" className="flex-1" data-testid="button-start-camera">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Camera
-                  </Button>
+                <div className="space-y-3">
                   <Button 
                     onClick={() => fileInputRef.current?.click()} 
                     variant="outline" 
-                    className="flex-1" 
-                    data-testid="button-upload-photo"
+                    className="w-full" 
+                    data-testid="button-choose-photo"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload
+                    Choose Photo
                   </Button>
+                  
+                  <p className="text-xs text-center text-muted-foreground">
+                    Select an existing photo from your device
+                  </p>
                 </div>
                 
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
