@@ -48,15 +48,15 @@
         
         <!-- Camera permission for photo capture -->
         <key>NSCameraUsageDescription</key>
-        <string>Flip the Switch needs camera access to help you track physical progress with progress photos and document meal plans or workout routines.</string>
+        <string>DW needs camera access to help you track physical progress with progress photos and document meal plans or workout routines.</string>
         
         <!-- Photo Library permission for choosing photos -->
         <key>NSPhotoLibraryUsageDescription</key>
-        <string>Flip the Switch needs photo library access to let you choose and save wellness-related images, meal plans, and workout documents.</string>
+        <string>DW needs photo library access to let you choose and save wellness-related images, meal plans, and workout documents.</string>
         
         <!-- Photo Library Add permission for saving photos -->
         <key>NSPhotoLibraryAddUsageDescription</key>
-        <string>Flip the Switch would like to save wellness images and documents to your photo library.</string>
+        <string>DW would like to save wellness images and documents to your photo library.</string>
         
         <!-- Microphone permission for voice input -->
         <key>NSMicrophoneUsageDescription</key>
