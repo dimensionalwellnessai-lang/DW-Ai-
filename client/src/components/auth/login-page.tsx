@@ -7,13 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sparkles, ArrowLeft, Loader2, Mail } from "lucide-react";
+import { Sparkles, ArrowLeft, Loader2, Mail, TestTube } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getGuestData, clearGuestData, getGuestMessageCount } from "@/lib/guest-storage";
+import { initializeDemoMode, DEMO_CREDENTIALS } from "@/lib/demo-mode";
 
 const TERMS_OF_USE = `
 Terms of Use & Disclaimer
@@ -70,6 +71,7 @@ export function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotEmailSent, setForgotEmailSent] = useState(false);
+  const [showDemoInfo, setShowDemoInfo] = useState(false);
   
   const guestMessageCount = getGuestMessageCount();
 
@@ -184,6 +186,15 @@ export function LoginPage() {
     });
   };
 
+  const handleDemoMode = () => {
+    initializeDemoMode();
+    toast({
+      title: "Demo Mode Activated",
+      description: "Exploring the app with pre-populated wellness data",
+    });
+    setLocation("/");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col font-body">
       <header className="p-6 flex items-center justify-between">
@@ -216,6 +227,36 @@ export function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Demo Mode Banner for Reviewers */}
+            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <TestTube className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-sm">App Reviewers & Testers</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Explore the full app with pre-populated wellness data - no account needed!
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleDemoMode}
+                  className="flex-1"
+                  data-testid="button-demo-mode"
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  Try Demo Mode
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowDemoInfo(true)}
+                  data-testid="button-demo-info"
+                >
+                  Info
+                </Button>
+              </div>
+            </div>
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login" data-testid="tab-login">Log In</TabsTrigger>
@@ -372,6 +413,47 @@ export function LoginPage() {
           <Button onClick={() => setShowTerms(false)} data-testid="button-close-terms">
             Close
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDemoInfo} onOpenChange={setShowDemoInfo}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Demo Mode Information</DialogTitle>
+            <DialogDescription>
+              For app reviewers and testers
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+              <h4 className="font-semibold text-sm">What's Included</h4>
+              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Pre-filled wellness conversations</li>
+                <li>Sample goals, habits, and routines</li>
+                <li>Mood tracking data (7 days)</li>
+                <li>Calendar events and schedules</li>
+                <li>Wellness insights and recommendations</li>
+                <li>Complete profile configurations</li>
+              </ul>
+            </div>
+            <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+              <h4 className="font-semibold text-sm mb-2">Demo Credentials</h4>
+              <div className="space-y-1 text-xs font-mono">
+                <p className="text-muted-foreground">Email:</p>
+                <p className="font-semibold select-all">{DEMO_CREDENTIALS.username}</p>
+                <p className="text-muted-foreground mt-2">Password:</p>
+                <p className="font-semibold select-all">{DEMO_CREDENTIALS.password}</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 italic">
+                Note: Demo mode uses local storage only - no server authentication required
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowDemoInfo(false)} data-testid="button-close-demo-info">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
