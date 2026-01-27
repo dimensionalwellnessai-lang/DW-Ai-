@@ -422,7 +422,8 @@ export async function registerRoutes(
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password, rememberMe } = req.body;
-      const user = await storage.getUserByEmail(email);
+      const normalizedEmail = email.toLowerCase().trim();
+      const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }

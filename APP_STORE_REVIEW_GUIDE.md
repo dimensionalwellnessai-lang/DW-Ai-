@@ -51,8 +51,8 @@ _Note: Demo mode uses local storage - no server authentication required_
 - ✅ Clear permission requests
 
 ### What's Fixed
-- ✅ No camera crashes on iPad
-- ✅ Photo library picker (safer than camera)
+- ✅ No crashes on iPad
+- ✅ Photo library picker only
 - ✅ Graceful error handling
 - ✅ Optional feature (app works without photos)
 
@@ -79,10 +79,10 @@ _Note: Demo mode uses local storage - no server authentication required_
 ## What Changed from Previous Version
 
 1. **Added Demo Mode** - Instant app exploration
-2. **Fixed Camera Issues** - Photo library only (no crashes)
+2. **Fixed Photo Selection** - Photo library only (no crashes)
 3. **Repositioned Astrology** - Now part of "Insights"
 4. **Clearer Branding** - "DW: Wellness Planner"
-5. **Better Permissions** - Clear explanations for camera/photo access
+5. **Better Permissions** - Clear explanations for photo library access
 
 ---
 

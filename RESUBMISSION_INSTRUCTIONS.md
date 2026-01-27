@@ -46,10 +46,10 @@ Before submitting, verify the demo account works:
    - Should complete successfully
    - Should redirect to welcome/onboarding
 
-4. **Test Camera (if unlocked):**
+4. **Test Photo Selection (if unlocked):**
    - Permission request should appear
-   - Camera preview should load
-   - Photo capture should work
+   - Photo library picker should open
+   - Photo selection should work
    - No crashes
 
 ### 3. Update App Store Connect
@@ -58,12 +58,12 @@ Before submitting, verify the demo account works:
 2. **Navigate to:** Your App → App Review Information
 3. **Add Demo Account:**
    - Username: `demo@fliptheswitch.app`
-   - Password: `AppStore2026!`
+   - Password: `[See App Store Connect review notes]`
 4. **Add Notes for Reviewers:**
    ```
    Demo Account Provided:
    - Email: demo@fliptheswitch.app
-   - Password: AppStore2026!
+   - Password: [See App Store Connect review notes]
    
    The demo account has pre-populated content across all features including:
    - Active wellness goals
@@ -76,7 +76,7 @@ Before submitting, verify the demo account works:
    
    Fixes Applied:
    1. Account creation bug resolved with enhanced error handling
-   2. Camera crash fixed with proper iOS permissions
+   2. Photo selection uses library picker only (no camera, no iPad crashes)
    3. App uniqueness enhanced - this is a dimensional wellness system, not an astrology app
    4. Astrology features are now dormant/disabled by default
    
@@ -97,10 +97,10 @@ Click **Submit for Review** in App Store Connect.
 - **Fixed:** Enhanced error handling, email validation, session promise wrapper
 - **Test:** Create new account → Should succeed
 
-### Issue 2: Camera Crash ✅
-- **Problem:** App crashed when "Take Photo" clicked
-- **Fixed:** iOS permissions added, null safety, dimension validation
-- **Test:** Use camera → Should request permission, no crash
+### Issue 2: Photo Selection ✅
+- **Problem:** App crashed on iPad with photo features
+- **Fixed:** Photo library picker only, no camera access
+- **Test:** Use photo selection → Should request permission, no crash
 
 ### Issue 3: App Uniqueness ✅
 - **Problem:** Flagged as astrology duplicate
@@ -110,7 +110,7 @@ Click **Submit for Review** in App Store Connect.
 ### Issue 4: Demo Account ✅
 - **Problem:** No demo with pre-populated content
 - **Fixed:** Comprehensive demo with all features populated
-- **Credentials:** demo@fliptheswitch.app / AppStore2026!
+- **Credentials:** demo@fliptheswitch.app / [See App Store Connect review notes]
 
 ---
 

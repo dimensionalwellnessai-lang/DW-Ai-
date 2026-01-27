@@ -12,10 +12,10 @@
 - **Fixed:** Robust error handling, email normalization, session validation
 - **Test:** Try creating a new account - works reliably now
 
-### 2. Camera Crash ✅
-- **Problem:** App crashed when "Take Photo" button clicked
-- **Fixed:** Added iOS camera permissions, null safety checks, video validation
-- **Test:** Camera features now request permissions properly, no crashes
+### 2. Photo Selection ✅
+- **Problem:** App crashed on iPad with photo features
+- **Fixed:** Photo library picker only, no camera access
+- **Test:** Photo selection now requests permissions properly, no crashes
 
 ### 3. App Uniqueness ✅
 - **Problem:** Flagged as astrology/horoscope duplicate
@@ -50,7 +50,7 @@
 
 **Device Compatibility:** iPad Air 11-inch (M3), iPadOS 26.2  
 **Orientations:** Portrait, Landscape (all directions)  
-**Permissions:** Camera, Photo Library (properly requested)  
+**Permissions:** Photo Library (properly requested)  
 
 ## 📄 Documentation
 

@@ -145,13 +145,7 @@ function createDemoConversations(): void {
   ];
   
   conversations.forEach(conv => {
-<<<<<<< HEAD
-    if (typeof saveConversation === "function") {
-      saveConversation(conv.id, conv.title, conv.category, conv.messages);
-    }
-=======
     saveConversation(conv.id, conv.title, conv.category, conv.messages);
->>>>>>> 0f7d9c91ba9919cbf0342fc0615f8ed4d92a6203
   });
 }
 
@@ -301,18 +295,6 @@ function createDemoMoodLogs(): void {
     const energyLevels = [3, 4, 3, 2, 4];
     const clarityLevels = [4, 4, 3, 3, 5];
     
-<<<<<<< HEAD
-    if (typeof saveMoodLog === "function") {
-      saveMoodLog({
-        mood: moods[i % moods.length],
-        energy: energyLevels[i % energyLevels.length],
-        clarity: clarityLevels[i % clarityLevels.length],
-        tags: i === 0 ? ["productive", "focused"] : i === 3 ? ["tired", "stressed"] : ["balanced"],
-        notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
-        timestamp: date.getTime(),
-      });
-    }
-=======
     saveMoodLog({
       mood: moods[i % moods.length],
       energy: energyLevels[i % energyLevels.length],
@@ -321,7 +303,6 @@ function createDemoMoodLogs(): void {
       notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
       timestamp: date.getTime(),
     });
->>>>>>> 0f7d9c91ba9919cbf0342fc0615f8ed4d92a6203
   }
 }
 
@@ -405,5 +386,13 @@ export function isDemoMode(): boolean {
  * Exit demo mode and clear demo data
  */
 export function exitDemoMode(): void {
-  localStorage.clear();
+  const keysToRemove = [
+    'demo_mode',
+    'demo_user',
+    'demo_profile',
+    'demo_dimensions',
+    'demo_mood_logs',
+    'demo_conversations'
+  ];
+  keysToRemove.forEach(key => localStorage.removeItem(key));
 }

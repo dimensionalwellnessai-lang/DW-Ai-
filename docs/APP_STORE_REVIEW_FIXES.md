@@ -30,41 +30,36 @@ This pull request addresses all critical issues raised in the App Store review f
 
 ---
 
-### 2. ✅ Camera Crash (Guideline 2.1 - Performance)
+### 2. ✅ Photo Library Implementation (Guideline 2.1 - Performance)
 
-**Issue:** App crashed when users interacted with the "Take Photo" button.
+**Issue:** App needed reliable photo selection without camera crashes on iPad.
 
-**Root Causes:**
-1. Missing iOS camera permissions in Info.plist
-2. No null safety checks for canvas 2D context
-3. No validation of video dimensions before capture
-4. Missing error handling for capture failures
+**Solution:**
+Implemented photo library picker-only approach (removed camera capture to prevent iPad crashes).
 
 **Fixes:**
 
 #### iOS Permissions (`ios/App/App/Info.plist`):
-- Added `NSCameraUsageDescription` with clear explanation
 - Added `NSPhotoLibraryUsageDescription` for photo access
+- Added `NSPhotoLibraryAddUsageDescription` for saving photos
 - Ensures iOS prompts users for permission properly
 
-#### Crash Prevention (`client/src/components/body-scan-dialog.tsx`):
-- Added video dimension validation before capture
-- Added null safety check for canvas `getContext("2d")`
-- Wrapped capture logic in try-catch block
-- Added user-friendly toast notifications for errors
-- Added success feedback when photo is captured
-- Prevents crash if video stream isn't ready
+#### Safe Photo Selection (`client/src/components/body-scan-dialog.tsx`):
+- Uses Capacitor Camera API with `source: CameraSource.Photos` (photo library only)
+- No direct camera access to prevent iPad crashes
+- Proper error handling for photo selection
+- User-friendly feedback when photos are selected
 
 **Files Changed:**
-- `ios/App/App/Info.plist` - Added camera and photo library permissions
-- `client/src/components/body-scan-dialog.tsx` - Enhanced capture safety
+- `ios/App/App/Info.plist` - Added photo library permissions
+- `android/app/src/main/AndroidManifest.xml` - Added photo library permissions
+- `client/src/components/body-scan-dialog.tsx` - Photo library selection only
 
 **Testing:**
-- Camera permission request now appears on iOS
-- App gracefully handles camera access denial
-- Captures are only attempted when video is ready
+- Photo library permission request appears on iOS
+- App gracefully handles photo access denial
+- No crashes on iPad when selecting photos
 - Users receive clear feedback on success/failure
-- No crashes when canvas context fails to initialize
 
 ---
 
@@ -220,11 +215,12 @@ The app is fully compatible with iPad devices:
 
 ### Files Modified:
 1. `server/routes.ts` - Enhanced registration endpoint
-2. `ios/App/App/Info.plist` - Added camera/photo permissions
-3. `client/src/components/body-scan-dialog.tsx` - Fixed camera crash
-4. `client/src/lib/feature-visibility.ts` - De-emphasized astrology
-5. `client/src/config/brand.ts` - Enhanced unique branding
-6. `package.json` - Added seed:demo script
+2. `ios/App/App/Info.plist` - Added photo library permissions
+3. `android/app/src/main/AndroidManifest.xml` - Added photo library permissions
+4. `client/src/components/body-scan-dialog.tsx` - Photo library selection only
+5. `client/src/lib/feature-visibility.ts` - De-emphasized astrology
+6. `client/src/config/brand.ts` - Enhanced unique branding
+7. `package.json` - Added seed:demo script
 
 ### Files Created:
 1. `server/seed-demo-account.ts` - Demo account seeder
@@ -236,8 +232,8 @@ The app is fully compatible with iPad devices:
 ## App Store Review Checklist
 
 - [x] Account creation works reliably
-- [x] No crashes when using camera features
-- [x] Camera permissions properly requested on iOS
+- [x] No crashes when selecting photos from library
+- [x] Photo library permissions properly requested on iOS and Android
 - [x] App demonstrates unique value beyond astrology features
 - [x] Astrology features de-emphasized (dormant by default)
 - [x] Demo account created with comprehensive data
@@ -303,11 +299,11 @@ The app is fully compatible with iPad devices:
 - Verify successful registration
 - Complete onboarding flow
 
-### 4. Test Camera Feature (Body Scan)
+### 4. Test Photo Selection Feature (Body Scan)
 - This feature is dormant by default (design choice)
 - Can be unlocked via AI conversation request
-- When unlocked, camera properly requests permissions
-- No crashes when taking photos
+- When unlocked, photo library properly requests permissions
+- No crashes when selecting photos from library
 
 ---
 

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, ChevronLeft, Check, User, Target, Ruler, Image, X, Upload } from "lucide-react";
 import { 
   getBodyProfile, 
@@ -62,7 +61,6 @@ const POSE_INSTRUCTIONS = [
 ];
 
 export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProps) {
-  const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<BodyProfile>({
     currentState: "",

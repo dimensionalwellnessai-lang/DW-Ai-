@@ -63,5 +63,4 @@
     
     <!-- For Android 13+ (API 33+) - granular media permissions -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 </manifest>

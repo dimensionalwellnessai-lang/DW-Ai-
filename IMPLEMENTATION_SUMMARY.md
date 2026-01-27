@@ -27,26 +27,25 @@ This document summarizes the comprehensive changes made to address iOS App Store
 
 ---
 
-### 2. Take Photo Crashes ✅ FIXED
+### 2. Photo Selection Implementation ✅ FIXED
 
 **Root Cause**: Camera API crashes on iPad
 
 **Solution Implemented**:
-- Removed "Take Photo" button entirely
-- Replaced with "Choose Photo" (photo library picker only)
+- Photo library picker only (no camera capture)
 - Updated UI copy: "Choose photos from your gallery"
-- Added comprehensive permissions:
-  - iOS: NSCameraUsageDescription, NSPhotoLibraryUsageDescription, NSPhotoLibraryAddUsageDescription
-  - Android: Camera, READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, storage permissions
+- Added photo library permissions only:
+  - iOS: NSPhotoLibraryUsageDescription, NSPhotoLibraryAddUsageDescription
+  - Android: READ_MEDIA_IMAGES, storage permissions
 - All permissions marked as optional features
 - Graceful error handling when permissions denied
 
 **Files Changed**:
-- `ios/App/App/Info.plist`: Added 3 permission descriptions
-- `android/app/src/main/AndroidManifest.xml`: Added 7 permission entries
-- `client/src/components/body-scan-dialog.tsx`: Removed camera button, kept photo library
+- `ios/App/App/Info.plist`: Added photo library permission descriptions
+- `android/app/src/main/AndroidManifest.xml`: Added photo library permission entries
+- `client/src/components/body-scan-dialog.tsx`: Photo library selection only
 
-**Impact**: No more crashes. Photo selection now works reliably on all devices.
+**Impact**: No crashes. Photo selection works reliably on all devices including iPad.
 
 ---
 
@@ -250,7 +249,7 @@ Make it crystal clear in app description and screenshots:
 ### Priority 3: Address Photo Concerns Proactively
 In reviewer notes, mention:
 
-> "Photo functionality uses photo library picker only (no camera crashes). Tested on iPad. Permissions clearly explained to users."
+> "Photo functionality uses photo library picker only. No camera access. Tested on iPad with no crashes. Permissions clearly explained to users."
 
 ---
 
@@ -275,7 +274,7 @@ If reviewers:
    
 3. **"Photo feature crashes"**
    - **Response**: Updated to photo library only; tested on iPad
-   - **Evidence**: Code changes show camera API removed
+   - **Evidence**: Code changes show no camera API, only photo library picker
 
 ---
 

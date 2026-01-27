@@ -29,30 +29,28 @@
 
 ---
 
-### 2. **Camera & Photo Permissions** 
-**Purpose:** Fix iPad camera crashes and ensure proper permission handling across iOS and Android.
+### 2. **Photo Library Permissions** 
+**Purpose:** Ensure proper photo selection without iPad crashes.
 
 **What's Changed:**
 - **iOS Permissions (Info.plist)**:
-  - `NSCameraUsageDescription`: Explains camera use for progress photos and document scanning
   - `NSPhotoLibraryUsageDescription`: Explains photo library access for choosing images
   - `NSPhotoLibraryAddUsageDescription`: Explains saving images to photo library
   
 - **Android Permissions (AndroidManifest.xml)**:
-  - Camera permission with `android:required="false"` (optional feature)
   - Read/Write external storage (scoped to API levels)
-  - Android 13+ granular media permissions (READ_MEDIA_IMAGES, READ_MEDIA_VIDEO)
+  - Android 13+ granular media permissions (READ_MEDIA_IMAGES)
 
 - **UI Changes**:
-  - Replaced "Take Photo" button with "Choose Photo"
-  - Photo selection now uses photo library picker only (safer, more reliable)
+  - "Choose Photo" button uses photo library picker only
+  - Photo selection from library is safer and more reliable than camera
   - Graceful error handling when permissions are denied
   - Clear messaging: "Choose photos from your gallery"
 
 **Impact:**
-- ✅ No more iPad camera crashes
+- ✅ No iPad crashes
 - ✅ Works reliably on all device types
-- ✅ Users can still track progress with existing photos
+- ✅ Users can track progress with existing photos
 - ✅ Permissions clearly explained to users
 
 ---
@@ -91,11 +89,11 @@
 
 ### New Features
 1. **Demo Mode** - Try the app instantly with pre-filled wellness data
-2. **Enhanced Photo Selection** - Reliable photo library integration (no camera crashes)
+2. **Enhanced Photo Selection** - Reliable photo library integration
 3. **Clearer Navigation** - "Insights" section for personalized guidance
 
 ### Bug Fixes
-1. Fixed camera crashes on iPad
+1. Fixed photo selection on iPad (photo library only, no crashes)
 2. Improved permission handling across iOS and Android
 3. Better error messaging when permissions are denied
 
@@ -117,12 +115,11 @@
 
 ### iOS
 - Updated: `ios/App/App/Info.plist`:
-  - Added camera, photo library permissions
+  - Added photo library permissions
   - Changed display name to "DW"
 
 ### Android
 - Updated: `android/app/src/main/AndroidManifest.xml`:
-  - Added camera permissions (optional)
   - Added photo/media permissions
   - Android 13+ granular permissions
 - Updated: `android/app/src/main/res/values/strings.xml`:
@@ -163,8 +160,8 @@
 ## 📦 Release Checklist
 
 - [x] Demo mode implemented and tested
-- [x] Camera/photo permissions added to both platforms
-- [x] "Take Photo" replaced with "Choose Photo"
+- [x] Photo library permissions added to both platforms
+- [x] Photo selection uses library picker only
 - [x] App name updated to "DW"
 - [x] Navigation rebranded (Astrology → Insights)
 - [x] Insights page reframed with wellness-first messaging
