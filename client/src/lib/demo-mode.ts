@@ -4,10 +4,10 @@
  */
 
 import {
-  saveConversation,
+  saveGuestConversation,
   saveProfileSetup,
   saveCalendarEvent,
-  saveMoodLog,
+  addMoodCheckin,
   saveUserResource,
   saveBodyProfile,
   saveMealPrepPreferences,
@@ -138,60 +138,14 @@ function createDemoConversations(): void {
   ];
   
   conversations.forEach(conv => {
-    saveConversation(conv.id, conv.title, conv.category, conv.messages);
+    saveGuestConversation(conv);
   });
 }
 
 function createDemoWellnessData(): void {
-  // Create demo goals
-  saveUserResource({
-    id: "demo-goal-1",
-    type: "goal",
-    title: "Exercise 3x per week",
-    description: "Build a consistent movement practice with 3 workouts weekly",
-    dimension: "physical",
-    status: "active",
-    tags: ["fitness", "routine"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now() - (1 * 24 * 60 * 60 * 1000),
-  });
-  
-  saveUserResource({
-    id: "demo-goal-2",
-    type: "goal",
-    title: "Daily journaling",
-    description: "Reflect each evening on what went well and what I learned",
-    dimension: "emotional",
-    status: "active",
-    tags: ["mindfulness", "reflection"],
-    createdAt: Date.now() - (5 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
-  
-  // Create demo habits
-  saveUserResource({
-    id: "demo-habit-1",
-    type: "habit",
-    title: "Morning stretch routine",
-    description: "10-minute gentle stretching to wake up the body",
-    dimension: "physical",
-    status: "active",
-    tags: ["morning", "movement"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
-  
-  saveUserResource({
-    id: "demo-habit-2",
-    type: "habit",
-    title: "Drink water first thing",
-    description: "16oz water before coffee to rehydrate",
-    dimension: "physical",
-    status: "active",
-    tags: ["morning", "hydration"],
-    createdAt: Date.now() - (6 * 24 * 60 * 60 * 1000),
-    updatedAt: Date.now(),
-  });
+  // Note: Goals and habits are managed through the server-side API when user is authenticated
+  // For demo mode, we'll skip creating these as they require user authentication
+  // The conversations and profiles are enough to showcase the app's capabilities
 }
 
 function createDemoCalendarEvents(): void {
@@ -284,17 +238,23 @@ function createDemoMoodLogs(): void {
     date.setDate(date.getDate() - i);
     date.setHours(20, 0, 0, 0);
     
-    const moods = ["good", "great", "okay", "tired", "energized"];
-    const energyLevels = [3, 4, 3, 2, 4];
-    const clarityLevels = [4, 4, 3, 3, 5];
+    const moods: Array<"calm" | "energized" | "tired" | "content" | "motivated"> = ["calm", "energized", "content", "tired", "motivated"];
+    const timeOfDay: "evening" = "evening";
+    const notes = [
+      "Great energy today!",
+      "Feeling balanced",
+      "Good progress",
+      "Long day at work, need better sleep",
+      "Productive day",
+      "Steady energy",
+      "Focused and clear"
+    ];
     
-    saveMoodLog({
+    addMoodCheckin({
+      date: date.toISOString().split('T')[0], // YYYY-MM-DD format
+      timeOfDay,
       mood: moods[i % moods.length],
-      energy: energyLevels[i % energyLevels.length],
-      clarity: clarityLevels[i % clarityLevels.length],
-      tags: i === 0 ? ["productive", "focused"] : i === 3 ? ["tired", "stressed"] : ["balanced"],
-      notes: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : "",
-      timestamp: date.getTime(),
+      customNote: notes[i],
     });
   }
 }
