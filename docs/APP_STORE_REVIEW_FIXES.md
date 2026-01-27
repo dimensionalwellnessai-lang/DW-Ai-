@@ -137,12 +137,10 @@ This pull request addresses all critical issues raised in the App Store review f
 
 **Solution:**
 
-#### Demo Account Credentials:
-```
-Email: demo@fliptheswitch.app
-Password: AppStore2026!
-```
+#### Demo Account Access:
 
+- Demo account email: `demo@fliptheswitch.app`
+- Demo account password: Provided securely in App Store Connect review notes (not stored in this repository).
 #### Automated Demo Account Seeder:
 
 **Script:** `server/seed-demo-account.ts`
