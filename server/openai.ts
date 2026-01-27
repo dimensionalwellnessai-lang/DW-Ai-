@@ -6,6 +6,9 @@ const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
 
+// Export the openai instance for direct use in routes
+export { openai };
+
 interface ChatMessage {
   role: "assistant" | "user";
   content: string;

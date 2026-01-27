@@ -7,15 +7,18 @@ import {
   saveGuestConversation,
   saveProfileSetup,
   saveCalendarEvent,
-  addMoodCheckin,
   saveUserResource,
   saveBodyProfile,
   saveMealPrepPreferences,
   saveWorkoutPreferences,
   saveFinanceProfile,
   saveSpiritualProfile,
+  saveScheduleEvent,
+  addMoodCheckin,
   type ChatMessage,
   type WellnessDimension,
+  type GuestConversation,
+  type MoodWord,
 } from "./guest-storage";
 
 export const DEMO_CREDENTIALS = {
@@ -53,8 +56,8 @@ export function initializeDemoMode(): void {
   // Create demo conversations
   createDemoConversations();
   
-  // Create demo wellness data
-  createDemoWellnessData();
+  // Note: Demo wellness goals/habits removed - guest storage doesn't support these types
+  // The demo focuses on conversations, calendar events, mood logs, and profiles
   
   // Create demo calendar events
   createDemoCalendarEvents();
@@ -142,11 +145,8 @@ function createDemoConversations(): void {
   });
 }
 
-function createDemoWellnessData(): void {
-  // Note: Goals and habits are managed through the server-side API when user is authenticated
-  // For demo mode, we'll skip creating these as they require user authentication
-  // The conversations and profiles are enough to showcase the app's capabilities
-}
+// Note: createDemoWellnessData removed - guest storage doesn't support goals/habits
+// Demo focuses on conversations, events, mood logs, and profiles instead
 
 function createDemoCalendarEvents(): void {
   const today = new Date();
@@ -233,29 +233,19 @@ function createDemoCalendarEvents(): void {
 
 function createDemoMoodLogs(): void {
   // Create mood logs for the past 7 days
-  const moods: Array<"calm" | "energized" | "tired" | "content" | "motivated" | "hopeful" | "grateful"> = [
-    "grateful", "energized", "content", "tired", "motivated", "calm", "hopeful"
-  ];
-  const notes = [
-    "Great energy today!",
-    "Feeling balanced",
-    "Good progress",
-    "Long day at work, need better sleep",
-    "Productive day",
-    "Steady energy",
-    "Focused and clear"
-  ];
+  const moods: MoodWord[] = ["energized", "content", "calm", "tired", "motivated", "content", "hopeful"];
+  const timesOfDay = ["morning", "afternoon", "evening", "morning", "afternoon", "evening", "morning"] as const;
   
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
-    date.setHours(20, 0, 0, 0);
+    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
     
     addMoodCheckin({
-      date: date.toISOString().split('T')[0], // YYYY-MM-DD format
-      timeOfDay: "evening",
-      mood: moods[6 - i], // Map to corresponding mood
-      customNote: notes[6 - i], // Map to corresponding note
+      date: dateStr,
+      timeOfDay: timesOfDay[i],
+      mood: moods[i],
+      customNote: i === 3 ? "Long day at work, need better sleep" : i === 0 ? "Great energy today!" : undefined,
     });
   }
 }

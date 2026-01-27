@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -1786,7 +1786,7 @@ Provide helpful, concise, and supportive responses. Focus on being present, vali
       
       // Count completions
       const activeGoalsCount = goals.filter(g => g.isActive).length;
-      const completedGoalsCount = goals.filter(g => !g.isActive && g.progress >= 100).length;
+      const completedGoalsCount = goals.filter(g => !g.isActive && (g.progress ?? 0) >= 100).length;
       const activeHabitsCount = habits.filter(h => h.isActive).length;
       const activeRoutinesCount = routines.filter(r => r.isActive).length;
       
@@ -1860,7 +1860,7 @@ Provide helpful, concise, and supportive responses. Focus on being present, vali
       if (searchCategories.includes("projects")) {
         const projects = await storage.getProjects(userId);
         const matchingProjects = projects.filter(project =>
-          project.title?.toLowerCase().includes(searchTerm) ||
+          project.name?.toLowerCase().includes(searchTerm) ||
           project.description?.toLowerCase().includes(searchTerm) ||
           project.dimensionTags?.some(tag => tag.toLowerCase().includes(searchTerm))
         );
@@ -1868,10 +1868,10 @@ Provide helpful, concise, and supportive responses. Focus on being present, vali
         results.push(...matchingProjects.map(project => ({
           id: project.id,
           type: "project",
-          title: project.title,
+          title: project.name,
           description: project.description,
-          status: project.status,
-          relevanceScore: calculateRelevance(project.title, project.description, searchTerm)
+          status: project.isActive ? "active" : "inactive",
+          relevanceScore: calculateRelevance(project.name, project.description, searchTerm)
         })));
       }
       
@@ -1879,18 +1879,18 @@ Provide helpful, concise, and supportive responses. Focus on being present, vali
       if (searchCategories.includes("routines")) {
         const routines = await storage.getRoutines(userId);
         const matchingRoutines = routines.filter(routine =>
-          routine.title?.toLowerCase().includes(searchTerm) ||
-          routine.description?.toLowerCase().includes(searchTerm)
+          routine.name?.toLowerCase().includes(searchTerm) ||
+          routine.explainWhy?.toLowerCase().includes(searchTerm)
         );
         
         results.push(...matchingRoutines.map(routine => ({
           id: routine.id,
           type: "routine",
-          title: routine.title,
-          description: routine.description,
+          title: routine.name,
+          description: routine.explainWhy,
           isActive: routine.isActive,
-          duration: routine.duration,
-          relevanceScore: calculateRelevance(routine.title, routine.description, searchTerm)
+          duration: routine.totalDurationMinutes,
+          relevanceScore: calculateRelevance(routine.name, routine.explainWhy, searchTerm)
         })));
       }
       
