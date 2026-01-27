@@ -134,7 +134,7 @@ export default function FTSHomePage() {
               <Sparkles className="h-10 w-10 text-purple-400" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">
-              Welcome to Flip the Switch
+              Welcome to Dimensional Wellness
             </h1>
             <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto">
               Your life is a system. Each dimension is a switch. 

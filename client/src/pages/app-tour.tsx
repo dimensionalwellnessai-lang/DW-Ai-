@@ -179,7 +179,7 @@ export default function AppTourPage() {
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           <div className="text-center py-4">
-            <h2 className="text-xl font-display font-semibold mb-2">Welcome to Flip the Switch</h2>
+            <h2 className="text-xl font-display font-semibold mb-2">Welcome to Dimensional Wellness</h2>
             <p className="text-muted-foreground">
               Your wellness companion that adapts to you. Here's how to get the most out of it.
             </p>

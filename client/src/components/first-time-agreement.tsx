@@ -97,7 +97,7 @@ export function FirstTimeAgreement({ onAccept }: FirstTimeAgreementProps) {
           <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Sparkles className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-display font-semibold">Welcome to Flip the Switch</h1>
+          <h1 className="text-2xl font-display font-semibold">Welcome to Dimensional Wellness</h1>
           <p className="text-muted-foreground">
             Before we begin, please review our terms
           </p>
