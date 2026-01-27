@@ -3,7 +3,7 @@
 ## 🔑 Demo Account Access
 
 **Email:** `demo@fliptheswitch.app`  
-**Password:** `AppStore2026!`
+**Password:** Provided in App Store Connect review notes (or via secure channel)
 
 ## ✅ Issues Fixed in PR #45
 
