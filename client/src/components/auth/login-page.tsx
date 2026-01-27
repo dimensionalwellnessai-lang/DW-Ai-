@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getGuestData, clearGuestData, getGuestMessageCount } from "@/lib/guest-storage";
 import { initializeDemoMode, DEMO_CREDENTIALS } from "@/lib/demo-mode";
+import { BRAND } from "@/config/brand";
 
 const TERMS_OF_USE = `
 Terms of Use & Disclaimer
@@ -215,9 +216,9 @@ export function LoginPage() {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <span className="font-display font-bold text-2xl tracking-tight">Flip the Switch</span>
+                <span className="font-display font-bold text-2xl tracking-tight">{BRAND.appName}</span>
               </div>
-              <span className="text-xs text-muted-foreground tracking-wide uppercase">A Dimensional Wellness AI</span>
+              <span className="text-xs text-muted-foreground tracking-wide uppercase">{BRAND.descriptor}</span>
             </div>
             <CardTitle className="text-2xl font-display">Welcome</CardTitle>
             <CardDescription className="font-body">

@@ -1,4 +1,4 @@
-# Flip the Switch - App Store Submission Changelog
+# Dimensional Wellness - App Store Submission Changelog
 
 ## Version 2.1.0 - iOS/Android Submission Fixes
 
@@ -231,7 +231,7 @@ This update reinforces our core design principles:
 ## 📞 Support
 
 For questions about this release:
-- Email: support@fliptheswitch.app
+- Email: support@dimensionalwellness.app
 - In-app feedback: Settings → Feedback
 
 ---

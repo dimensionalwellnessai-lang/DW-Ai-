@@ -15,7 +15,7 @@ This document summarizes the comprehensive changes made to address iOS App Store
 - Created comprehensive Demo Mode that bypasses account creation entirely
 - Pre-populated with realistic wellness data (conversations, goals, habits, calendar, mood logs)
 - Added prominent "Try Demo Mode" button on login screen
-- Displayed demo credentials for reviewers (demo@fliptheswitch.app)
+- Displayed demo credentials for reviewers (demo@dimensionalwellness.app)
 - Users can explore full app without creating an account
 
 **What Still Needs Testing**:

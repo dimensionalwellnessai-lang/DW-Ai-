@@ -269,13 +269,13 @@ Download now and start building a wellness system that works for you.
 "Thank you so much for sharing your experience! 💚 We're honored to be part of your wellness journey. Keep flipping those switches! 🌟"
 
 ### Feature Request
-"Thanks for the suggestion! We're always improving based on user feedback. I've passed this along to our team. In the meantime, you might find [existing feature] helpful. Feel free to reach out at support@fliptheswitch.app with more ideas!"
+"Thanks for the suggestion! We're always improving based on user feedback. I've passed this along to our team. In the meantime, you might find [existing feature] helpful. Feel free to reach out at support@dimensionalwellness.app with more ideas!"
 
 ### Bug Report
-"We're sorry you experienced this issue. We'd love to help! Please email support@fliptheswitch.app with details about your device and we'll get this sorted out ASAP. Thanks for your patience!"
+"We're sorry you experienced this issue. We'd love to help! Please email support@dimensionalwellness.app with details about your device and we'll get this sorted out ASAP. Thanks for your patience!"
 
 ### Negative Review (Misunderstanding)
-"Thanks for your feedback. We'd love to help! Just to clarify, [explanation]. If you have other questions, please reach out at support@fliptheswitch.app. We're here to help make your experience better!"
+"Thanks for your feedback. We'd love to help! Just to clarify, [explanation]. If you have other questions, please reach out at support@dimensionalwellness.app. We're here to help make your experience better!"
 
 ---
 

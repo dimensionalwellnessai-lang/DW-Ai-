@@ -19,7 +19,7 @@ import {
 } from "./guest-storage";
 
 export const DEMO_CREDENTIALS = {
-  username: "demo@fliptheswitch.app",
+  username: "demo@dimensionalwellness.app",
   password: "DemoWellness2026!",
   note: "This is a demo account with pre-populated wellness data"
 };

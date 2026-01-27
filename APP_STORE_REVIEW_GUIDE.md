@@ -15,7 +15,7 @@
 
 ### 📱 Demo Credentials (Optional)
 If you need to reference sample credentials:
-- **Email**: demo@fliptheswitch.app
+- **Email**: demo@dimensionalwellness.app
 - **Password**: DemoWellness2026!
 
 _(Note: Demo mode uses local storage - no server login required)_
@@ -124,12 +124,12 @@ _(Note: Demo mode uses local storage - no server login required)_
 ## Support Contacts
 
 **For Review Questions**:
-- Email: support@fliptheswitch.app
+- Email: support@dimensionalwellness.app
 - Response time: Within 24 hours
 
 **For Technical Issues**:
 - Include: Device model, iOS/Android version, screenshot
-- Email: support@fliptheswitch.app
+- Email: support@dimensionalwellness.app
 
 ---
 

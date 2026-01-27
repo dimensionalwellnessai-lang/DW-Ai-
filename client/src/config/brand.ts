@@ -1,8 +1,8 @@
 export const BRAND = {
-  appName: "DW",
-  fullName: "DW | Flip the Switch",
-  descriptor: "Your Personal Life Operating System",
-  tagline: "Pause. Name it. Flip it. One step.",
+  appName: "Dimensional Wellness",
+  fullName: "Dimensional Wellness",
+  descriptor: "Your Personal Wellness AI",
+  tagline: "Holistic wellness, habits, and life coaching",
   shortName: "DW",
   assistantName: "DW",
 };
