@@ -51,16 +51,24 @@ This demo account has been pre-populated with comprehensive data across all app 
 
 ## How to Set Up the Demo Account
 
-The demo account is automatically seeded in the production database. To re-seed or update:
+### Manual Setup (Recommended for App Store Review)
 
-```bash
-npm run seed:demo
-```
+1. **Create the account** through the app's registration flow:
+   - Email: `demo@fliptheswitch.app`
+   - Password: (Provided in App Store Connect review notes)
 
-This will:
-1. Create or update the demo user account
-2. Clear any existing demo data
-3. Populate fresh demo content across all features
+2. **Populate demo data** by using the app normally:
+   - Create 2-3 sample goals in different wellness dimensions
+   - Add a few daily habits
+   - Set up a basic routine
+   - Log some mood/energy entries
+   - Start a conversation with the AI assistant
+
+This approach ensures reviewers can test the actual user experience including account creation and onboarding flows.
+
+### Alternative: Pre-populated Account
+
+If you need a fully pre-populated account for testing, the demo account can be set up manually in the production database with sample data. Contact the development team for assistance.
 
 ## App Store Submission Notes
 

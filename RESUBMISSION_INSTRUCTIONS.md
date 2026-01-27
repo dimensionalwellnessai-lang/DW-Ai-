@@ -2,44 +2,24 @@
 
 ## 🚀 Before Re-Submitting to App Store
 
-### 1. Seed the Demo Account in Production
+### 1. Set Up the Demo Account
 
-Run this command in your production environment to create the demo account with all pre-populated data:
+Create the demo account manually through the app's registration flow:
 
-```bash
-npm run seed:demo
-```
+1. **Register the account:**
+   - Email: `demo@fliptheswitch.app`
+   - Password: (Use password from App Store Connect notes)
+   - Complete the onboarding flow
 
-**Expected Output:**
-```
-Starting demo account seeding...
-Demo user ID: [uuid]
-Cleared existing demo data
-Created demo goals
-Created demo habits
-Created demo routines
-Created demo schedule blocks
-Created demo mood logs
-Created demo check-ins
-Created demo meal plans
-Created demo workouts
-Created demo AI conversation
-✅ Demo account seeding complete!
+2. **Add sample data:**
+   - Create 2-3 goals in different wellness dimensions
+   - Add daily habits
+   - Set up a routine
+   - Create some schedule blocks
+   - Log a few mood entries
+   - Start an AI conversation
 
-📧 Demo Account Credentials:
-Email: demo@fliptheswitch.app
-Password: AppStore2026!
-
-This account has pre-populated data including:
-- 3 active goals (fitness, meditation, savings)
-- 3 daily habits with streak tracking
-- 2 wellness routines (morning & evening)
-- Daily schedule blocks
-- Mood tracking entries
-- Weekly check-in data
-- Meal plans and workouts
-- AI conversation history
-```
+This approach allows reviewers to test the complete user experience including registration and onboarding.
 
 ### 2. Test the Demo Account
 
@@ -47,7 +27,7 @@ Before submitting, verify the demo account works:
 
 1. **Login on iPad:**
    - Open app on iPad Air 11-inch
-   - Use credentials: demo@fliptheswitch.app / AppStore2026!
+   - Use credentials: demo@fliptheswitch.app / (password from notes)
    - Should login successfully
 
 2. **Test Key Features:**
@@ -169,9 +149,9 @@ When reviewers login with the demo account, they'll immediately see:
 
 ## ⚠️ Important Notes
 
-1. **Demo Account Password:** Do NOT change the password in production. App Store reviewers need the documented credentials.
+1. **Demo Account Password:** Do NOT change the password after creation. App Store reviewers need the documented credentials.
 
-2. **Seeding Timing:** Run the seeder RIGHT BEFORE submission to ensure fresh data.
+2. **Manual Setup:** Create the demo account through the app's registration to allow reviewers to test the onboarding flow.
 
 3. **Testing:** Always test the demo login yourself before submitting.
 
@@ -184,7 +164,8 @@ When reviewers login with the demo account, they'll immediately see:
 
 ## ✅ Checklist Before Submission
 
-- [ ] Ran `npm run seed:demo` in production
+- [ ] Created demo account through registration
+- [ ] Added sample data to demo account
 - [ ] Tested demo login on iPad
 - [ ] Verified all features work with demo account
 - [ ] Tested new account creation

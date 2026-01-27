@@ -190,15 +190,13 @@ This pull request addresses all critical issues raised in the App Store review f
    - Multiple message exchanges showing AI capabilities
    - Demonstrates contextual awareness and personalized guidance
 
-**Running the Seeder:**
-```bash
-npm run seed:demo
-```
+**Setting Up Demo Account:**
+
+The demo account should be created manually through the app's registration flow to allow reviewers to test the actual onboarding experience. See `docs/APP_STORE_DEMO_ACCOUNT.md` for detailed setup instructions.
 
 **Files Created:**
-- `server/seed-demo-account.ts` - Comprehensive seeding script
 - `docs/APP_STORE_DEMO_ACCOUNT.md` - Documentation for reviewers
-- `package.json` - Added `seed:demo` script
+- `APP_STORE_QUICK_REFERENCE.md` - Quick reference with credentials
 
 ---
 
