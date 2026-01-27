@@ -370,7 +370,7 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-background flex flex-col" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
       <header className="p-4 flex justify-between items-center">
         {step > 1 ? (
           <Button variant="ghost" size="sm" onClick={handleBack} data-testid="button-back">

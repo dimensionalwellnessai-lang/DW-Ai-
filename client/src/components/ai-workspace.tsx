@@ -1125,7 +1125,7 @@ export function AIWorkspace() {
   const moreFeatures = getMoreMenuFeatures();
 
   return (
-    <div className="flex flex-col w-full bg-background gradient-bg-animated" style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="flex flex-col w-full bg-background gradient-bg-animated" style={{ height: '100dvh', paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
       {/* Sticky header - positioned under safe area */}
       <header className="shrink-0 bg-background z-50 flex flex-col items-center px-3 pt-3 pb-1">
         <div className="relative w-full flex items-center justify-center">

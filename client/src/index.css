@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* iOS Safe Area Variables */
+/* Safe Area Variables - Works on iOS, Android with fallbacks */
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -11,6 +11,10 @@
   /* Legacy aliases */
   --safe-top: var(--sat);
   --safe-bottom: var(--sab);
+  /* Android status bar height fallback (24dp = ~24px at 1x density) */
+  --android-status-bar: 24px;
+  /* Android nav bar height fallback */
+  --android-nav-bar: 48px;
 }
 
 html, body {
@@ -45,12 +49,22 @@ html, body {
   transition: background-color 0.3s ease;
 }
 
-/* Content area - just a container, pages handle their own safe area */
+/* Content area - container with safe area handling for pages that use PageHeader */
 .app-content {
   min-height: 100dvh;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   /* Ensure background color consistency */
+  background-color: hsl(var(--background));
+}
+
+/* Pages that don't use PageHeader can apply this class for safe area */
+.app-content-safe {
+  min-height: 100dvh;
+  padding-top: max(env(safe-area-inset-top, 0px), var(--android-status-bar, 0px));
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--android-nav-bar, 0px));
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   background-color: hsl(var(--background));
 }
 
@@ -238,6 +252,19 @@ summary::marker {
 @layer utilities {
   .safe-area-bottom {
     padding-bottom: var(--sab);
+  }
+  
+  .safe-area-top {
+    padding-top: var(--sat);
+  }
+  
+  /* Android-aware safe area - uses max of env() and fallback */
+  .safe-area-top-android {
+    padding-top: max(var(--sat), var(--android-status-bar));
+  }
+  
+  .safe-area-bottom-android {
+    padding-bottom: max(var(--sab), var(--android-nav-bar));
   }
   
   /* Page header that respects Dynamic Island */

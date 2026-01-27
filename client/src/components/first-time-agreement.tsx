@@ -91,7 +91,7 @@ export function FirstTimeAgreement({ onAccept }: FirstTimeAgreementProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
