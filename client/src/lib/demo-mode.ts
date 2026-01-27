@@ -233,28 +233,29 @@ function createDemoCalendarEvents(): void {
 
 function createDemoMoodLogs(): void {
   // Create mood logs for the past 7 days
+  const moods: Array<"calm" | "energized" | "tired" | "content" | "motivated" | "hopeful" | "grateful"> = [
+    "grateful", "energized", "content", "tired", "motivated", "calm", "hopeful"
+  ];
+  const notes = [
+    "Great energy today!",
+    "Feeling balanced",
+    "Good progress",
+    "Long day at work, need better sleep",
+    "Productive day",
+    "Steady energy",
+    "Focused and clear"
+  ];
+  
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     date.setHours(20, 0, 0, 0);
     
-    const moods: Array<"calm" | "energized" | "tired" | "content" | "motivated"> = ["calm", "energized", "content", "tired", "motivated"];
-    const timeOfDay: "evening" = "evening";
-    const notes = [
-      "Great energy today!",
-      "Feeling balanced",
-      "Good progress",
-      "Long day at work, need better sleep",
-      "Productive day",
-      "Steady energy",
-      "Focused and clear"
-    ];
-    
     addMoodCheckin({
       date: date.toISOString().split('T')[0], // YYYY-MM-DD format
-      timeOfDay,
-      mood: moods[i % moods.length],
-      customNote: notes[i],
+      timeOfDay: "evening",
+      mood: moods[6 - i], // Map to corresponding mood
+      customNote: notes[6 - i], // Map to corresponding note
     });
   }
 }
