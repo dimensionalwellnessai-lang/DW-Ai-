@@ -20,8 +20,8 @@ import {
 
 export const DEMO_CREDENTIALS = {
   username: "demo@dimensionalwellness.app",
-  password: "",
-  note: "Demo mode runs locally on your device - no password required"
+  password: "DemoWellness2026!",
+  note: "This is a demo account with pre-populated wellness data"
 };
 
 /**
@@ -29,15 +29,8 @@ export const DEMO_CREDENTIALS = {
  * This creates a realistic wellness journey for reviewers to explore
  */
 export function initializeDemoMode(): void {
-  // Clear only demo-related keys to preserve user settings
-  const keysToRemove: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && (key.startsWith("fts:") || key === "guestData")) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+  // Clear any existing data first
+  localStorage.clear();
   
   // Set demo mode flag
   localStorage.setItem("fts:demo_mode", "true");
@@ -386,13 +379,5 @@ export function isDemoMode(): boolean {
  * Exit demo mode and clear demo data
  */
 export function exitDemoMode(): void {
-  const keysToRemove = [
-    'demo_mode',
-    'demo_user',
-    'demo_profile',
-    'demo_dimensions',
-    'demo_mood_logs',
-    'demo_conversations'
-  ];
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+  localStorage.clear();
 }

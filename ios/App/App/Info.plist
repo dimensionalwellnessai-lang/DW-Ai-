@@ -46,6 +46,10 @@
         <key>UIViewControllerBasedStatusBarAppearance</key>
         <true/>
         
+        <!-- Camera permission for photo capture -->
+        <key>NSCameraUsageDescription</key>
+        <string>DW needs camera access to help you track physical progress with progress photos and document meal plans or workout routines.</string>
+        
         <!-- Photo Library permission for choosing photos -->
         <key>NSPhotoLibraryUsageDescription</key>
         <string>DW needs photo library access to let you choose and save wellness-related images, meal plans, and workout documents.</string>

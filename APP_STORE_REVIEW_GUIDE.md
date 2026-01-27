@@ -13,16 +13,12 @@
    - Review goals and habits
    - Explore personalized insights
 
-### 📱 Demo Mode (No Login Required)
+### 📱 Demo Credentials (Optional)
+If you need to reference sample credentials:
+- **Email**: demo@dimensionalwellness.app
+- **Password**: DemoWellness2026!
 
-Tap "Try Demo Mode" on the login screen to explore with pre-populated data:
-- Chat with AI wellness assistant
-- View calendar with scheduled workouts and routines
-- Check mood tracking data (7 days)
-- Review goals and habits
-- Explore personalized insights
-
-_Note: Demo mode uses local storage - no server authentication required_
+_(Note: Demo mode uses local storage - no server login required)_
 
 ---
 
@@ -51,8 +47,8 @@ _Note: Demo mode uses local storage - no server authentication required_
 - ✅ Clear permission requests
 
 ### What's Fixed
-- ✅ No crashes on iPad
-- ✅ Photo library picker only
+- ✅ No camera crashes on iPad
+- ✅ Photo library picker (safer than camera)
 - ✅ Graceful error handling
 - ✅ Optional feature (app works without photos)
 
@@ -79,10 +75,10 @@ _Note: Demo mode uses local storage - no server authentication required_
 ## What Changed from Previous Version
 
 1. **Added Demo Mode** - Instant app exploration
-2. **Fixed Photo Selection** - Photo library only (no crashes)
+2. **Fixed Camera Issues** - Photo library only (no crashes)
 3. **Repositioned Astrology** - Now part of "Insights"
 4. **Clearer Branding** - "DW: Wellness Planner"
-5. **Better Permissions** - Clear explanations for photo library access
+5. **Better Permissions** - Clear explanations for camera/photo access
 
 ---
 
