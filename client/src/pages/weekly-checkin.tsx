@@ -366,7 +366,7 @@ export default function WeeklyCheckinPage() {
                         <Badge variant="secondary" className="text-xs">Current</Badge>
                       )}
                       {isCompleted && (
-                        <Badge variant="outline" className="text-xs text-green-600">Submitted</Badge>
+                        <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400">Submitted</Badge>
                       )}
                       {!isLocked && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </div>

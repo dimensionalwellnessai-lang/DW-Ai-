@@ -1500,7 +1500,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                   className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 group"
                                 >
                                   <div className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center">
-                                    <Check className="h-3 w-3 text-emerald-600" />
+                                    <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                                   </div>
                                   <span className="flex-1 text-sm text-muted-foreground">{item.name}</span>
                                   <Button
