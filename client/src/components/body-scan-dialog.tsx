@@ -72,18 +72,14 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     photos: [],
     updatedAt: Date.now(),
   });
-  const [cameraActive, setCameraActive] = useState(false);
-  const [currentPose, setCurrentPose] = useState<"front" | "side" | "back">("front");
-  const [cameraError, setCameraError] = useState<string | null>(null);
   const [useMetric, setUseMetricLocal] = useState(() => getUseMetricUnits());
   
   const handleUnitToggle = (checked: boolean) => {
     setUseMetricLocal(checked);
     setUseMetricUnits(checked);
   };
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentPose, setCurrentPose] = useState<"front" | "side" | "back">("front");
 
   useEffect(() => {
     if (open) {
@@ -117,30 +113,19 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     return () => clearTimeout(timer);
   }, [profile, open]);
 
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
   const handleComplete = () => {
-    stopCamera();
     saveBodyProfile(profile);
     clearBodyScanDraft();
     onComplete();
   };
 
   const handleSkipToEnd = () => {
-    stopCamera();
     saveBodyProfile(profile);
     clearBodyScanDraft();
     onClose();
   };
   
   const handleSkipPhotoStep = () => {
-    stopCamera();
     setStep(6);
   };
 
@@ -149,55 +134,6 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
       ? profile.focusAreas.filter(a => a !== area)
       : [...profile.focusAreas, area];
     setProfile({ ...profile, focusAreas: areas });
-  };
-
-  const startCamera = async () => {
-    setCameraError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setCameraActive(true);
-    } catch (err) {
-      setCameraError("Camera access denied. Please allow camera permissions to take photos.");
-      console.error("Camera error:", err);
-    }
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current) return;
-    
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
-    ctx.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    
-    const newPhoto: BodyPhoto = {
-      id: Date.now().toString(),
-      dataUrl,
-      pose: currentPose,
-      capturedAt: Date.now(),
-    };
-    
-    const existingPhotos = profile.photos || [];
-    const filteredPhotos = existingPhotos.filter(p => p.pose !== currentPose);
-    setProfile({ ...profile, photos: [...filteredPhotos, newPhoto] });
   };
 
   const removePhoto = (photoId: string) => {
@@ -470,23 +406,7 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
               </p>
             </div>
             
-            {cameraError && (
-              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md mb-4">
-                {cameraError}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full mt-2"
-                  onClick={handleSkipPhotoStep}
-                  data-testid="button-skip-photos-error"
-                >
-                  Skip photos for now
-                </Button>
-              </div>
-            )}
-            
-            {!cameraActive && !cameraError ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2">
                   {POSE_INSTRUCTIONS.map((poseInfo) => {
                     const photo = getPhotoForPose(poseInfo.pose);
@@ -567,48 +487,7 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
                 >
                   Skip photos
                 </button>
-              </div>
-            ) : cameraActive ? (
-              <div className="space-y-4">
-                <div className="relative aspect-[4/3] bg-muted rounded-md overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  {POSE_INSTRUCTIONS.map((poseInfo) => (
-                    <Button
-                      key={poseInfo.pose}
-                      variant={currentPose === poseInfo.pose ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPose(poseInfo.pose)}
-                      data-testid={`button-pose-${poseInfo.pose}`}
-                    >
-                      {poseInfo.label}
-                    </Button>
-                  ))}
-                </div>
-                
-                <p className="text-sm text-center text-muted-foreground">
-                  {POSE_INSTRUCTIONS.find(p => p.pose === currentPose)?.instruction}
-                </p>
-                
-                <div className="flex gap-2">
-                  <Button onClick={capturePhoto} className="flex-1" data-testid="button-capture">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Capture {POSE_INSTRUCTIONS.find(p => p.pose === currentPose)?.label}
-                  </Button>
-                  <Button variant="ghost" onClick={stopCamera} data-testid="button-stop-camera">
-                    Done
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+            </div>
           </div>
         );
 
@@ -636,7 +515,6 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
   };
 
   const handleDialogClose = () => {
-    stopCamera();
     onClose();
   };
 
@@ -655,10 +533,7 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                if (step === 5) stopCamera();
-                setStep(step - 1);
-              }}
+              onClick={() => setStep(step - 1)}
               data-testid="button-prev-step"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />

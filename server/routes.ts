@@ -348,33 +348,82 @@ export async function registerRoutes(
 
   app.post("/api/auth/register", async (req, res) => {
     try {
+      // Validate input data
       const data = insertUserSchema.parse(req.body);
-      const existing = await storage.getUserByEmail(data.email);
+      
+      // Normalize email to lowercase
+      const email = data.email.toLowerCase().trim();
+      
+      // Check if email already exists
+      const existing = await storage.getUserByEmail(email);
       if (existing) {
         return res.status(400).json({ error: "Email already registered" });
       }
+      
+      // Hash password
       const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-      const user = await storage.createUser({ ...data, password: hashedPassword });
+      
+      // Create user
+      const user = await storage.createUser({ 
+        email, 
+        password: hashedPassword 
+      });
+      
+      if (!user || !user.id) {
+        console.error("User creation failed - no user returned");
+        return res.status(500).json({ error: "Failed to create account" });
+      }
+      
+      // Set session
       req.session.userId = user.id;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ error: "Session error" });
+
+      // Save session - fail registration if session cannot be established
+      try {
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error("Session save error during registration:", err);
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
+      } catch (sessionError) {
+        // Session save failed - registration cannot continue without a valid session
+        console.error("Failed to establish session for new user:", sessionError);
+        return res.status(500).json({
+          error: "Unable to create your session. Please try again or contact support if the issue persists."
+        });
+      }
+      
+      // Return success with user data
+      res.json({ 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          onboardingCompleted: user.onboardingCompleted || false
         }
-        res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
       });
     } catch (error) {
+      console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ 
+          error: "Invalid input",
+          details: error.errors 
+        });
       }
-      res.status(500).json({ error: "Registration failed" });
+      res.status(500).json({ 
+        error: "Registration failed. Please try again." 
+      });
     }
   });
 
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password, rememberMe } = req.body;
-      const user = await storage.getUserByEmail(email);
+      const normalizedEmail = email.toLowerCase().trim();
+      const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
