@@ -154,3 +154,65 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     return false;
   }
 }
+
+export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      dateStyle: 'full',
+      timeStyle: 'long'
+    });
+    
+    await client.emails.send({
+      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
+      to: toEmail,
+      subject: 'Your Flip the Switch Account Has Been Deleted',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">Flip the Switch</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">A Dimensional Wellness AI</p>
+          </div>
+          
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 20px;">
+            <h2 style="margin: 0 0 15px; color: #333; font-size: 20px;">Account Deletion Confirmed</h2>
+            <p style="margin: 0 0 20px; color: #666;">
+              This email confirms that your Flip the Switch account and all associated data have been permanently deleted.
+            </p>
+            <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #666; font-size: 14px;">
+                <strong>Deletion completed:</strong> ${timestamp}
+              </p>
+            </div>
+            <p style="margin: 20px 0 0; color: #666; font-size: 14px;">
+              All your wellness data, conversations, goals, habits, and personal information have been removed from our systems. We're sorry to see you go, and we hope your wellness journey continues to thrive.
+            </p>
+            <p style="margin: 20px 0 0; color: #666; font-size: 14px;">
+              If you deleted your account by mistake or would like to return in the future, you're welcome to create a new account at any time.
+            </p>
+          </div>
+          
+          <div style="text-align: center; color: #888; font-size: 12px;">
+            <p style="margin: 0;">
+              Flip the Switch - Your wellness companion
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to send account deletion email:', error);
+    return false;
+  }
+}

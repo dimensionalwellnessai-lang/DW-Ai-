@@ -340,10 +340,12 @@ export function SettingsPage() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
-            <Button variant="destructive" size="sm" data-testid="button-delete-account">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete my data
-            </Button>
+            <Link href="/account/delete">
+              <Button variant="destructive" size="sm" data-testid="button-delete-account" className="w-full sm:w-auto">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete my data
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 

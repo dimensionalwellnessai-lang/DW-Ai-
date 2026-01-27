@@ -43,6 +43,11 @@ import {
   interactionEvents,
   aiPatternSnapshots,
   birthCharts,
+  chatAttachments,
+  aiLearnings,
+  dailyMoodCheckins,
+  activityCompletions,
+  trackerSettings,
   type Conversation,
   type InsertConversation,
   type AiSyncSession,
@@ -158,6 +163,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<void>;
 
   getOnboardingProfile(userId: string): Promise<OnboardingProfile | undefined>;
   createOnboardingProfile(profile: InsertOnboardingProfile): Promise<OnboardingProfile>;
@@ -583,6 +589,65 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user || undefined;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    // Delete all user-related data in order (child tables first, parent last)
+    // This ensures referential integrity even without CASCADE
+    await db.delete(chatAttachments).where(eq(chatAttachments.userId, id));
+    await db.delete(aiPatternSnapshots).where(eq(aiPatternSnapshots.userId, id));
+    await db.delete(wellnessBlueprints).where(eq(wellnessBlueprints.userId, id));
+    await db.delete(baselineProfiles).where(eq(baselineProfiles.userId, id));
+    await db.delete(stressSignals).where(eq(stressSignals.userId, id));
+    await db.delete(stabilizingActions).where(eq(stabilizingActions.userId, id));
+    await db.delete(supportPreferences).where(eq(supportPreferences.userId, id));
+    await db.delete(recoveryReflections).where(eq(recoveryReflections.userId, id));
+    await db.delete(projectChats).where(eq(projectChats.userId, id));
+    await db.delete(projects).where(eq(projects.userId, id));
+    await db.delete(routineLogs).where(eq(routineLogs.userId, id));
+    await db.delete(routines).where(eq(routines.userId, id));
+    await db.delete(calendarEvents).where(eq(calendarEvents.userId, id));
+    await db.delete(tasks).where(eq(tasks.userId, id));
+    await db.delete(challenges).where(eq(challenges.userId, id));
+    await db.delete(bodyScans).where(eq(bodyScans.userId, id));
+    await db.delete(systemModules).where(eq(systemModules.userId, id));
+    await db.delete(dailyScheduleEvents).where(eq(dailyScheduleEvents.userId, id));
+    await db.delete(userSystemPreferences).where(eq(userSystemPreferences.userId, id));
+    await db.delete(mealPlans).where(eq(mealPlans.userId, id));
+    await db.delete(mealPrepPreferences).where(eq(mealPrepPreferences.userId, id));
+    await db.delete(shoppingListItems).where(eq(shoppingListItems.userId, id));
+    await db.delete(shoppingLists).where(eq(shoppingLists.userId, id));
+    await db.delete(wearableData).where(eq(wearableData.userId, id));
+    await db.delete(wearableDevices).where(eq(wearableDevices.userId, id));
+    await db.delete(astrologyPredictions).where(eq(astrologyPredictions.userId, id));
+    await db.delete(importedDocumentItems).where(eq(importedDocumentItems.userId, id));
+    await db.delete(importedDocuments).where(eq(importedDocuments.userId, id));
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, id));
+    await db.delete(conversations).where(eq(conversations.userId, id));
+    await db.delete(userFeedback).where(eq(userFeedback.userId, id));
+    await db.delete(weeklyFeedbackResponses).where(eq(weeklyFeedbackResponses.userId, id));
+    await db.delete(habitLogs).where(eq(habitLogs.userId, id));
+    await db.delete(habits).where(eq(habits.userId, id));
+    await db.delete(goals).where(eq(goals.userId, id));
+    await db.delete(moodLogs).where(eq(moodLogs.userId, id));
+    await db.delete(checkIns).where(eq(checkIns.userId, id));
+    await db.delete(scheduleBlocks).where(eq(scheduleBlocks.userId, id));
+    await db.delete(categoryEntries).where(eq(categoryEntries.userId, id));
+    await db.delete(aiSyncItems).where(eq(aiSyncItems.userId, id));
+    await db.delete(aiSyncSessions).where(eq(aiSyncSessions.userId, id));
+    await db.delete(interactionEvents).where(eq(interactionEvents.userId, id));
+    await db.delete(aiLearnings).where(eq(aiLearnings.userId, id));
+    await db.delete(dailyMoodCheckins).where(eq(dailyMoodCheckins.userId, id));
+    await db.delete(activityCompletions).where(eq(activityCompletions.userId, id));
+    await db.delete(trackerSettings).where(eq(trackerSettings.userId, id));
+    await db.delete(workoutPlans).where(eq(workoutPlans.userId, id));
+    await db.delete(birthCharts).where(eq(birthCharts.userId, id));
+    await db.delete(userProfiles).where(eq(userProfiles.userId, id));
+    await db.delete(onboardingProfiles).where(eq(onboardingProfiles.userId, id));
+    await db.delete(lifeSystems).where(eq(lifeSystems.userId, id));
+    
+    // Finally, delete the user
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async getOnboardingProfile(userId: string): Promise<OnboardingProfile | undefined> {
