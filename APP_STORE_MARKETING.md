@@ -87,7 +87,7 @@
 ### Recommended Structure
 
 **[Hook - What it is]**
-Flip the Switch is your personal wellness companion—an AI-powered life planner that helps you build sustainable habits, track your wellbeing, and create a system that actually works for you.
+DW is your personal wellness companion—an AI-powered life planner that helps you build sustainable habits, track your wellbeing, and create a system that actually works for you.
 
 **[Problem it Solves]**
 Tired of productivity apps that feel like another task? Struggling with streaks that make you feel guilty? Need a wellness system that adapts to your energy, not the other way around?
@@ -214,14 +214,14 @@ Download now and start building a wellness system that works for you.
 ## 🌍 Localization Suggestions
 
 ### Spanish
-**App Name**: Flip the Switch
+**App Name**: DW
 **Subtitle**: Planificador de Bienestar
 
 **Short Description**:
 "Tu coach de bienestar con IA. Crea hábitos, planifica tu día, y crece con insights personalizados."
 
 ### French
-**App Name**: Flip the Switch
+**App Name**: DW
 **Subtitle**: Planificateur de Bien-être
 
 **Short Description**:

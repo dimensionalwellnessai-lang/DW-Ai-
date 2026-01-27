@@ -62,7 +62,7 @@
 
 **What's Changed:**
 - **App Branding**:
-  - Display name: "Flip the Switch" (was "DW")
+  - Display name: "DW" (was "DW")
   - Subtitle: "Wellness Planner" (iOS) / "Wellness Planner" (Android)
   - Emphasizes life planning, habit tracking, and wellness coaching
 
@@ -118,7 +118,7 @@
 ### iOS
 - Updated: `ios/App/App/Info.plist`:
   - Added camera, photo library permissions
-  - Changed display name to "Flip the Switch"
+  - Changed display name to "DW"
 
 ### Android
 - Updated: `android/app/src/main/AndroidManifest.xml`:
@@ -126,7 +126,7 @@
   - Added photo/media permissions
   - Android 13+ granular permissions
 - Updated: `android/app/src/main/res/values/strings.xml`:
-  - Changed app name to "Flip the Switch"
+  - Changed app name to "DW"
   - Added "Wellness Planner" subtitle
 
 ### Configuration
@@ -165,7 +165,7 @@
 - [x] Demo mode implemented and tested
 - [x] Camera/photo permissions added to both platforms
 - [x] "Take Photo" replaced with "Choose Photo"
-- [x] App name updated to "Flip the Switch"
+- [x] App name updated to "DW"
 - [x] Navigation rebranded (Astrology → Insights)
 - [x] Insights page reframed with wellness-first messaging
 - [x] Changelog documented
@@ -183,7 +183,7 @@
 "Your personal wellness planner with AI coaching. Build habits, track mood, manage routines, and grow with personalized insights."
 
 ### Recommended Full Description
-**Flip the Switch** is your personalized wellness companion - an AI-powered life planner designed to help you build sustainable habits, track your wellbeing, and create a system that works for you.
+**DW** is your personalized wellness companion - an AI-powered life planner designed to help you build sustainable habits, track your wellbeing, and create a system that works for you.
 
 **Core Features:**
 - 🤖 **AI Wellness Coach**: Get personalized guidance adapted to your energy and goals

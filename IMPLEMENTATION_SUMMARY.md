@@ -85,10 +85,10 @@ This document summarizes the comprehensive changes made to address iOS App Store
 **Changes Made**:
 
 1. **App Naming**:
-   - iOS Display Name: "Flip the Switch" (was "DW")
-   - Android App Name: "Flip the Switch" (was "DW")
-   - Android Activity Title: "Flip the Switch - Wellness Planner"
-   - Capacitor config: "Flip the Switch"
+   - iOS Display Name: "DW" (was "DW")
+   - Android App Name: "DW" (was "DW")
+   - Android Activity Title: "DW - Wellness Planner"
+   - Capacitor config: "DW"
 
 2. **Navigation Rebranding**:
    - Bottom nav: "Astrology" → "Insights" (lightbulb icon instead of star)

@@ -77,7 +77,7 @@ _(Note: Demo mode uses local storage - no server login required)_
 1. **Added Demo Mode** - Instant app exploration
 2. **Fixed Camera Issues** - Photo library only (no crashes)
 3. **Repositioned Astrology** - Now part of "Insights"
-4. **Clearer Branding** - "Flip the Switch: Wellness Planner"
+4. **Clearer Branding** - "DW: Wellness Planner"
 5. **Better Permissions** - Clear explanations for camera/photo access
 
 ---
