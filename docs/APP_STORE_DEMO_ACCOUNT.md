@@ -3,7 +3,8 @@
 ## Demo Account Credentials
 
 **Email:** `demo@fliptheswitch.app`  
-**Password:** `AppStore2026!`
+**Password:** _Provided in App Store Connect review notes_  
+<!-- Actual demo password is not stored in this repository for security reasons. -->
 
 ## About the Demo Account
 
