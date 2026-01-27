@@ -131,7 +131,15 @@ export function UnifiedSearch({
 
   const filteredResults = activeCategory === "all" 
     ? results 
-    : results.filter(r => r.type === activeCategory);
+    : results.filter(r => {
+        const typeMap: Record<string, string> = {
+          "tasks": "task",
+          "projects": "project",
+          "routines": "routine",
+          "goals": "goal",
+        };
+        return r.type === typeMap[activeCategory];
+      });
 
   const resultsByType = {
     tasks: results.filter(r => r.type === "task").length,

@@ -93,6 +93,7 @@ export async function generateProactiveNudges(userId: string): Promise<Proactive
     // Inactivity reminder - check if no mood logs in the last 24 hours
     const moodLogs = await storage.getMoodLogs(userId);
     const recentLogs = moodLogs.filter(log => {
+      if (!log.createdAt) return false;
       const logDate = new Date(log.createdAt);
       const hoursSince = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60);
       return hoursSince <= 24;
@@ -116,7 +117,7 @@ export async function generateProactiveNudges(userId: string): Promise<Proactive
       const yesterdayStr = yesterday.toISOString().split('T')[0];
       
       const yesterdayMood = moodLogs.find(log => 
-        log.createdAt.toString().startsWith(yesterdayStr)
+        log.createdAt && log.createdAt.toString().startsWith(yesterdayStr)
       );
 
       if (yesterdayMood && yesterdayMood.energyLevel !== null && yesterdayMood.energyLevel <= 4 && hour >= 6 && hour < 11) {
