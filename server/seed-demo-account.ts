@@ -378,15 +378,19 @@ async function seedDemoAccount() {
 }
 
 function getCurrentWeekNumber(): number {
+  // Simple week number calculation for demo purposes
+  // Week 1 is the first week of the year
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = now.getTime() - start.getTime();
-  const oneWeek = 1000 * 60 * 60 * 24 * 7;
-  return Math.floor(diff / oneWeek);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const pastDaysOfYear = (now.getTime() - startOfYear.getTime()) / 86400000;
+  return Math.ceil((pastDaysOfYear + startOfYear.getDay() + 1) / 7);
 }
 
 // Run the seeder if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Using require.main === module pattern for better compatibility
+const isMainModule = process.argv[1]?.includes('seed-demo-account');
+
+if (isMainModule) {
   seedDemoAccount()
     .then(() => {
       console.log("Seeding completed successfully");
