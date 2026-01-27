@@ -89,28 +89,20 @@ async function seedDemoAccount() {
       {
         userId,
         title: "Run a 5K",
-        category: "physical",
-        status: "in_progress" as const,
-        priority: "high" as const,
-        targetDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-        notes: "Training for my first 5K race. Following a 12-week beginner plan.",
+        wellnessDimension: "physical",
+        description: "Training for my first 5K race. Following a 12-week beginner plan.",
       },
       {
         userId,
         title: "Daily Meditation Practice",
-        category: "spiritual",
-        status: "in_progress" as const,
-        priority: "medium" as const,
-        notes: "Building a consistent 10-minute morning meditation habit.",
+        wellnessDimension: "spiritual",
+        description: "Building a consistent 10-minute morning meditation habit.",
       },
       {
         userId,
         title: "Save $5000 Emergency Fund",
-        category: "financial",
-        status: "in_progress" as const,
-        priority: "high" as const,
-        targetDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 6 months
-        notes: "Setting aside $200/month for emergency savings.",
+        wellnessDimension: "financial",
+        description: "Setting aside $200/month for emergency savings.",
       },
     ];
 
