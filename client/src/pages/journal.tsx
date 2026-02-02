@@ -35,7 +35,7 @@ import {
   type JournalCategory 
 } from "@/lib/journal-ai";
 
-const JOURNAL_STORAGE_KEY = "fts_journal_entries";
+const JOURNAL_STORAGE_KEY = "dw_journal_entries";
 
 interface JournalEntry {
   id: string;

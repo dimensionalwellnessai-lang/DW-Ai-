@@ -25,8 +25,8 @@ interface WeekResponse {
   answers: Record<string, string>;
 }
 
-const GUEST_STORAGE_KEY = "fts_weekly_checkin";
-const GUEST_TRIAL_START_KEY = "fts_trial_start_at";
+const GUEST_STORAGE_KEY = "dw_weekly_checkin";
+const GUEST_TRIAL_START_KEY = "dw_trial_start_at";
 
 interface WeekContent {
   intro: string;

@@ -292,13 +292,13 @@ export default function TodayHubPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const data = localStorage.getItem("fts_guest_data");
+                const data = localStorage.getItem("dw_guest_data");
                 if (data) {
                   const parsed = JSON.parse(data);
                   if (parsed.profileSetup) {
                     delete parsed.profileSetup.completedAt;
                   }
-                  localStorage.setItem("fts_guest_data", JSON.stringify(parsed));
+                  localStorage.setItem("dw_guest_data", JSON.stringify(parsed));
                 }
                 window.location.href = "/welcome";
               }}
