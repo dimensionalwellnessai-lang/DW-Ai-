@@ -39,6 +39,7 @@ import AppTourPage from "@/pages/app-tour";
 import JournalPage from "@/pages/journal";
 import WeeklyCheckinPage from "@/pages/weekly-checkin";
 import { TasksPage } from "@/pages/tasks";
+import AccountDeletePage from "@/pages/account-delete";
 
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
@@ -137,6 +138,7 @@ function Router() {
       <Route path="/today" component={TodayHubPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
@@ -197,7 +199,7 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour"];
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed

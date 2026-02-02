@@ -7,7 +7,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { sendPasswordResetEmail, sendFeedbackEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -531,6 +531,39 @@ export async function registerRoutes(
     req.session.destroy(() => {
       res.json({ success: true });
     });
+  });
+
+  app.delete("/api/auth/delete-account", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      
+      // Get user email before deletion for confirmation email
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const userEmail = user.email;
+      
+      // Delete all user data
+      await storage.deleteUser(userId);
+      
+      // Send confirmation email
+      try {
+        await sendAccountDeletionEmail(userEmail);
+      } catch (emailError) {
+        // Log error but don't fail the deletion
+        console.error('Failed to send account deletion email:', emailError);
+      }
+      
+      // Destroy session
+      req.session.destroy(() => {
+        res.json({ success: true, message: "Account deleted successfully" });
+      });
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
   });
 
   app.get("/api/auth/me", requireAuth, async (req, res) => {

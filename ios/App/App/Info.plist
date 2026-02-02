@@ -78,5 +78,11 @@
                         </array>
                 </dict>
         </array>
+        
+        <!-- Account Deletion URL -->
+        <key>NSUserActivityTypes</key>
+        <array>
+                <string>com.dimensionalwellness.DW.deleteaccount</string>
+        </array>
 </dict>
 </plist>
