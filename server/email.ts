@@ -56,7 +56,7 @@ export async function sendFeedbackEmail(
     });
     
     await client.emails.send({
-      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: 'rbisbigred@gmail.com',
       subject: 'Feedback',
       html: `
@@ -107,9 +107,9 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     await client.emails.send({
-      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: toEmail,
-      subject: 'Reset Your Flip the Switch Password',
+      subject: 'Reset Your DW.ai Password',
       html: `
         <!DOCTYPE html>
         <html>
@@ -119,8 +119,8 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">Flip the Switch</h1>
-            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">A Dimensional Wellness AI</p>
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">DW.ai</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Dimensional Wellness AI</p>
           </div>
           
           <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 20px;">
@@ -140,7 +140,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
           
           <div style="text-align: center; color: #888; font-size: 12px;">
             <p style="margin: 0;">
-              Flip the Switch - Your wellness companion
+              DW.ai - Your Life Intelligence System
             </p>
           </div>
         </body>
@@ -166,9 +166,9 @@ export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean
     });
     
     await client.emails.send({
-      from: fromEmail || 'Flip the Switch <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: toEmail,
-      subject: 'Your Flip the Switch Account Has Been Deleted',
+      subject: 'Your DW.ai Account Has Been Deleted',
       html: `
         <!DOCTYPE html>
         <html>
@@ -178,14 +178,14 @@ export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">Flip the Switch</h1>
-            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">A Dimensional Wellness AI</p>
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">DW.ai</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Dimensional Wellness AI</p>
           </div>
           
           <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 20px;">
             <h2 style="margin: 0 0 15px; color: #333; font-size: 20px;">Account Deletion Confirmed</h2>
             <p style="margin: 0 0 20px; color: #666;">
-              This email confirms that your Flip the Switch account and all associated data have been permanently deleted.
+              This email confirms that your DW.ai account and all associated data have been permanently deleted.
             </p>
             <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 20px 0;">
               <p style="margin: 0; color: #666; font-size: 14px;">
@@ -202,7 +202,7 @@ export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean
           
           <div style="text-align: center; color: #888; font-size: 12px;">
             <p style="margin: 0;">
-              Flip the Switch - Your wellness companion
+              DW.ai - Your Life Intelligence System
             </p>
           </div>
         </body>

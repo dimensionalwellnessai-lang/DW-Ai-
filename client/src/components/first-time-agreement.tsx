@@ -12,11 +12,11 @@ Last updated: January 2026
 
 1. Purpose of Service
 
-Flip the Switch ("A Dimensional Wellness AI") is a wellness support tool designed to help users reflect on their wellbeing, organize their daily routines, and explore personal growth. The service provides AI-assisted guidance, tracking features, and educational content.
+DW.ai ("A Dimensional Wellness AI") is a wellness support tool designed to help users reflect on their wellbeing, organize their daily routines, and explore personal growth. The service provides AI-assisted guidance, tracking features, and educational content.
 
 2. Not a Medical Service
 
-IMPORTANT: Flip the Switch is NOT a medical device, healthcare provider, or mental health treatment service. The content, features, and AI responses provided through this platform:
+IMPORTANT: DW.ai is NOT a medical device, healthcare provider, or mental health treatment service. The content, features, and AI responses provided through this platform:
 
 - Are for informational and self-reflection purposes only
 - Do not constitute medical advice, diagnosis, or treatment
@@ -49,8 +49,8 @@ We respect your privacy. Your conversations and personal data are stored securel
 By continuing, you confirm that you have read, understood, and agree to these terms.
 `;
 
-const STORAGE_KEY = "fts_terms_accepted";
-const SPLASH_SHOWN_KEY = "fts_splash_shown";
+const STORAGE_KEY = "dw_terms_accepted";
+const SPLASH_SHOWN_KEY = "dw_splash_shown";
 
 export function hasAcceptedTerms(): boolean {
   try {

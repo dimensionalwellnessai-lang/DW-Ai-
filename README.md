@@ -1,6 +1,6 @@
-# Flip the Switch (FTS) test
+# DW.ai - Dimensional Wellness AI
 
-A Dimensional Wellness AI - a consent-based personal assistant designed to help users build their own life system through adaptive, energy-based guidance rather than prescriptive routines.
+A Life Intelligence System with an AI concierge at the center. A consent-based personal assistant designed to help users build their own life system through adaptive, energy-based guidance rather than prescriptive routines.
 
 ## 🌟 New Features (v2.0)
 
@@ -34,7 +34,7 @@ A Dimensional Wellness AI - a consent-based personal assistant designed to help 
 
 ## Overview
 
-Flip the Switch helps users manage wellness across 13 life dimensions using an energy-based **Pause → Name → Flip → Choose** structure. The AI acts as a concierge - anticipatory, personalized, and pattern-aware.
+DW.ai helps users manage wellness across 8 life dimensions using an energy-based **Pause → Name → Flip → Choose** structure. The AI acts as a concierge - anticipatory, personalized, and pattern-aware.
 
 ### Key Features
 

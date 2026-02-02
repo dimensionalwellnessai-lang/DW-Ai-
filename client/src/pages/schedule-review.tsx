@@ -46,7 +46,7 @@ const SAMPLE_SCHEDULE: ScheduleItem[] = [
   { id: "8", title: "Journal", time: "21:00", duration: 15, category: "mental", selected: true },
 ];
 
-const LOCAL_PLANS_KEY = "fts_local_plans";
+const LOCAL_PLANS_KEY = "dw_local_plans";
 
 export default function ScheduleReviewPage() {
   const [, params] = useRoute("/schedule-review/:draftId");

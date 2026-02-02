@@ -9,11 +9,11 @@ import {
   type FocusArea,
 } from "./guest-storage";
 
-const TONIGHT_PLAN_KEY_PREFIX = "fts:tonightPlanCreated:";
-const WEEKLY_SKELETON_KEY_PREFIX = "fts:weeklySkeletonCreated:";
-const WEEKLY_SIMPLE_KEY_PREFIX = "fts:weeklySimpleCreated:";
-const NEXT_STEP_CREATED_KEY_PREFIX = "fts:nextStepCreated:";
-const HIGHLIGHT_NEXT_KEY = "fts:highlightNext";
+const TONIGHT_PLAN_KEY_PREFIX = "dw:tonightPlanCreated:";
+const WEEKLY_SKELETON_KEY_PREFIX = "dw:weeklySkeletonCreated:";
+const WEEKLY_SIMPLE_KEY_PREFIX = "dw:weeklySimpleCreated:";
+const NEXT_STEP_CREATED_KEY_PREFIX = "dw:nextStepCreated:";
+const HIGHLIGHT_NEXT_KEY = "dw:highlightNext";
 
 function getTodayKey(): string {
   const d = new Date();

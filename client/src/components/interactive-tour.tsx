@@ -320,7 +320,7 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
 export function useInteractiveTour() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasCompletedTour, setHasCompletedTour] = useState(() => {
-    return localStorage.getItem("fts:tour_completed") === "true";
+    return localStorage.getItem("dw:tour_completed") === "true";
   });
 
   const startTour = () => {
@@ -330,7 +330,7 @@ export function useInteractiveTour() {
   const completeTour = () => {
     setIsOpen(false);
     setHasCompletedTour(true);
-    localStorage.setItem("fts:tour_completed", "true");
+    localStorage.setItem("dw:tour_completed", "true");
   };
 
   const skipTour = () => {
@@ -339,7 +339,7 @@ export function useInteractiveTour() {
 
   const resetTour = () => {
     setHasCompletedTour(false);
-    localStorage.removeItem("fts:tour_completed");
+    localStorage.removeItem("dw:tour_completed");
   };
 
   return {

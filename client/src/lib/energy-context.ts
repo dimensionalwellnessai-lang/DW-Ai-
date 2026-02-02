@@ -3,7 +3,7 @@ import { getGuestData, getBodyProfile, getSoftOnboardingMood, type SoftOnboardin
 export type EnergyLevel = "low" | "medium" | "high";
 export type ClarityLevel = "low" | "medium" | "high";
 
-const CLARITY_STORAGE_KEY = "fts_current_clarity";
+const CLARITY_STORAGE_KEY = "dw_current_clarity";
 
 export interface EnergyContext {
   energy: EnergyLevel;

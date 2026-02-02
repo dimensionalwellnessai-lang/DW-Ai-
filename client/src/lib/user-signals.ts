@@ -38,7 +38,7 @@ export interface UserSignals {
   lastUpdated: number;
 }
 
-const STORAGE_KEY = "fts_user_signals";
+const STORAGE_KEY = "dw_user_signals";
 
 const DEFAULT_FLAGS: UserFlags = {
   overwhelmFlag: false,

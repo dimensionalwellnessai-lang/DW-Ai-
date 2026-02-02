@@ -308,7 +308,7 @@ interface PlanItem {
   steps: string[];
 }
 
-const PLAN_STORAGE_KEY = "fts_weekly_plan";
+const PLAN_STORAGE_KEY = "dw_weekly_plan";
 
 function getWeeklyPlan(): PlanItem[] {
   try {

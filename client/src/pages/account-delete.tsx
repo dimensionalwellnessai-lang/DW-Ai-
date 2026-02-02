@@ -211,7 +211,7 @@ export default function AccountDeletePage() {
                   I understand this action cannot be undone
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  All my data will be permanently deleted from Flip the Switch servers.
+                  All my data will be permanently deleted from DW.ai servers.
                 </p>
               </div>
             </div>

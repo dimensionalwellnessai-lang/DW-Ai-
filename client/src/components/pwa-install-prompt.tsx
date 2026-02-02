@@ -7,7 +7,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useTutorial } from "@/contexts/tutorial-context";
 
-const PROMPT_DISMISSED_KEY = "fts_pwa_prompt_dismissed";
+const PROMPT_DISMISSED_KEY = "dw_pwa_prompt_dismissed";
 const PROMPT_DELAY_MS = 5000;
 
 export function PWAInstallPrompt() {

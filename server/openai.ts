@@ -1078,7 +1078,7 @@ export async function generateDashboardInsight(userData: {
     ? userData.habits.reduce((max, h) => (h.streak || 0) > (max.streak || 0) ? h : max, userData.habits[0])
     : null;
 
-  const prompt = `You are Flip the Switch, a calm wellness companion. Provide a brief, grounding reflection for the user's dashboard.
+  const prompt = `You are DW.ai, a Life Intelligence System with an AI concierge. Provide a brief, grounding reflection for the user's dashboard.
 
 User data:
 - Recent mood logs (last 7 days): ${userData.moodLogs.length} entries

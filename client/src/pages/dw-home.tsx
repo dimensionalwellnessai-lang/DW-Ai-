@@ -70,7 +70,7 @@ const TIME_OPTIONS: { value: TimeBand; label: string }[] = [
   { value: "large", label: "90+ min" },
 ];
 
-export default function FTSHomePage() {
+export default function DWHomePage() {
   const [, navigate] = useLocation();
   const [signals, setSignals] = useState(getUserSignals);
   const [switchData, setSwitchData] = useState(getSwitchData);

@@ -36,7 +36,7 @@ export function initializeDemoMode(): void {
   localStorage.clear();
   
   // Set demo mode flag
-  localStorage.setItem("fts:demo_mode", "true");
+  localStorage.setItem("dw:demo_mode", "true");
   
   // Create profile setup (as if user completed onboarding)
   saveProfileSetup({
@@ -51,7 +51,7 @@ export function initializeDemoMode(): void {
   });
   
   // Mark as returning user
-  localStorage.setItem("fts:isReturning", "1");
+  localStorage.setItem("dw:isReturning", "1");
   
   // Create demo conversations
   createDemoConversations();
@@ -323,7 +323,7 @@ function createDemoProfiles(): void {
  * Check if currently in demo mode
  */
 export function isDemoMode(): boolean {
-  return localStorage.getItem("fts:demo_mode") === "true";
+  return localStorage.getItem("dw:demo_mode") === "true";
 }
 
 /**

@@ -61,7 +61,7 @@ import PrivacyTermsPage from "@/pages/privacy-terms";
 import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
-import FTSHomePage from "@/pages/fts-home";
+import DWHomePage from "@/pages/dw-home";
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
 import AdminAnalyticsPage from "@/pages/admin-analytics";
@@ -69,7 +69,7 @@ import MoodTrackerPage from "@/pages/mood-tracker";
 
 function isProfileSetupComplete(): boolean {
   try {
-    const data = localStorage.getItem("fts_guest_data");
+    const data = localStorage.getItem("dw_guest_data");
     if (data) {
       const parsed = JSON.parse(data);
       return !!parsed.profileSetup?.completedAt;
@@ -81,7 +81,7 @@ function isProfileSetupComplete(): boolean {
 function isReturningUser(): boolean {
   try {
     // First check if setup was skipped - skipped users are NOT returning
-    const data = localStorage.getItem("fts_guest_data");
+    const data = localStorage.getItem("dw_guest_data");
     if (data) {
       const parsed = JSON.parse(data);
       const profile = parsed.profileSetup;
@@ -92,17 +92,17 @@ function isReturningUser(): boolean {
     }
     
     // Check explicit returning flag (set on setup completion)
-    if (localStorage.getItem("fts:isReturning") === "1") return true;
+    if (localStorage.getItem("dw:isReturning") === "1") return true;
     
     // Check if activated (took a meaningful action)
-    if (localStorage.getItem("fts:activatedAt")) return true;
+    if (localStorage.getItem("dw:activatedAt")) return true;
   } catch {}
   return false;
 }
 
 function wasSetupSkipped(): boolean {
   try {
-    const data = localStorage.getItem("fts_guest_data");
+    const data = localStorage.getItem("dw_guest_data");
     if (data) {
       const parsed = JSON.parse(data);
       return !!parsed.profileSetup?.skipped;
@@ -146,7 +146,7 @@ function Router() {
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
-      <Route path="/home" component={FTSHomePage} />
+      <Route path="/home" component={DWHomePage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />

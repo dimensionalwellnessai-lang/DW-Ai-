@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 import { X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MENU_TUTORIAL_KEY = "fts:menuTutorialDone";
-const MENU_TUTORIAL_STEP_KEY = "fts:menuTutorialStep";
+const MENU_TUTORIAL_KEY = "dw:menuTutorialDone";
+const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
 
 interface MenuTutorialStep {
   id: string;

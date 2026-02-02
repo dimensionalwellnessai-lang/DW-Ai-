@@ -1,9 +1,9 @@
-const GUEST_DATA_KEY = "fts_guest_data";
-const GUEST_SESSION_KEY = "fts_guest_session";
-const CHAT_DRAFT_KEY = "fts_chat_draft";
-const BODY_SCAN_DRAFT_KEY = "fts_body_scan_draft";
-const SESSION_STARTED_KEY = "fts_session_started";
-const LAST_ACTIVITY_KEY = "fts_last_activity";
+const GUEST_DATA_KEY = "dw_guest_data";
+const GUEST_SESSION_KEY = "dw_guest_session";
+const CHAT_DRAFT_KEY = "dw_chat_draft";
+const BODY_SCAN_DRAFT_KEY = "dw_body_scan_draft";
+const SESSION_STARTED_KEY = "dw_session_started";
+const LAST_ACTIVITY_KEY = "dw_last_activity";
 const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes - if gap is longer, treat as new session
 
 export interface ChatMessage {
@@ -879,8 +879,8 @@ export function hasCompletedOnboarding(): boolean {
   return gtky?.completedAt != null;
 }
 
-const ONBOARDING_COOLDOWN_KEY = "fts_onboarding_dismissed";
-const ONBOARDING_COMPLETED_KEY = "fts_onboarding_completed";
+const ONBOARDING_COOLDOWN_KEY = "dw_onboarding_dismissed";
+const ONBOARDING_COMPLETED_KEY = "dw_onboarding_completed";
 const ONBOARDING_COOLDOWN_DAYS = 1; // Show again after 1 day if not completed
 
 export function dismissOnboardingDialog(): void {
@@ -912,8 +912,8 @@ export function shouldShowOnboardingDialog(): boolean {
   return daysSinceDismissed >= ONBOARDING_COOLDOWN_DAYS;
 }
 
-const SOFT_ONBOARDING_KEY = "fts_soft_onboarding_completed";
-const SOFT_ONBOARDING_SESSION_KEY = "fts_soft_onboarding_shown_this_session";
+const SOFT_ONBOARDING_KEY = "dw_soft_onboarding_completed";
+const SOFT_ONBOARDING_SESSION_KEY = "dw_soft_onboarding_shown_this_session";
 
 export function getSoftOnboarding(): SoftOnboarding | null {
   const data = getGuestData();
@@ -965,7 +965,7 @@ export function getSoftOnboardingMood(): SoftOnboardingMood | null {
   return data?.softOnboarding?.mood || null;
 }
 
-const SOFT_ONBOARDING_PROGRESS_KEY = "fts_soft_onboarding_progress";
+const SOFT_ONBOARDING_PROGRESS_KEY = "dw_soft_onboarding_progress";
 
 export interface SoftOnboardingProgress {
   step: number;

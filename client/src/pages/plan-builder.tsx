@@ -18,7 +18,7 @@ const DIMENSIONS = [
   { id: "schedule", label: "Schedule", icon: Calendar, color: "bg-blue-500" },
 ];
 
-const LOCAL_PLANS_KEY = "fts_local_plans";
+const LOCAL_PLANS_KEY = "dw_local_plans";
 
 interface Plan {
   id: string;
