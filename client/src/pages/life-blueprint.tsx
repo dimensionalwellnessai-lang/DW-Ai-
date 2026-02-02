@@ -510,7 +510,7 @@ function ResetProtocolEditor({ protocol, onSave, onCancel }: any) {
   const [newReset, setNewReset] = useState("");
   const [newBackup, setNewBackup] = useState("");
 
-  const addItem = (value: string, setter: Function, list: string[]) => {
+  const addItemAndClearInput = (value: string, setter: Function, list: string[]) => {
     if (value.trim()) {
       setter([...list, value.trim()]);
       return "";
@@ -547,14 +547,14 @@ function ResetProtocolEditor({ protocol, onSave, onCancel }: any) {
               placeholder="e.g., Skipping workouts 3 days in a row"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  setNewRedFlag(addItem(newRedFlag, setRedFlags, redFlags));
+                  setNewRedFlag(addItemAndClearInput(newRedFlag, setRedFlags, redFlags));
                 }
               }}
             />
             <Button
               type="button"
               variant="outline"
-              onClick={() => setNewRedFlag(addItem(newRedFlag, setRedFlags, redFlags))}
+              onClick={() => setNewRedFlag(addItemAndClearInput(newRedFlag, setRedFlags, redFlags))}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -589,14 +589,14 @@ function ResetProtocolEditor({ protocol, onSave, onCancel }: any) {
               placeholder="e.g., 10-minute walk outside"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  setNewReset(addItem(newReset, setHowIReset, howIReset));
+                  setNewReset(addItemAndClearInput(newReset, setHowIReset, howIReset));
                 }
               }}
             />
             <Button
               type="button"
               variant="outline"
-              onClick={() => setNewReset(addItem(newReset, setHowIReset, howIReset))}
+              onClick={() => setNewReset(addItemAndClearInput(newReset, setHowIReset, howIReset))}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -631,14 +631,14 @@ function ResetProtocolEditor({ protocol, onSave, onCancel }: any) {
               placeholder="e.g., Call my accountability partner"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  setNewBackup(addItem(newBackup, setWhenThingsGetHard, whenThingsGetHard));
+                  setNewBackup(addItemAndClearInput(newBackup, setWhenThingsGetHard, whenThingsGetHard));
                 }
               }}
             />
             <Button
               type="button"
               variant="outline"
-              onClick={() => setNewBackup(addItem(newBackup, setWhenThingsGetHard, whenThingsGetHard))}
+              onClick={() => setNewBackup(addItemAndClearInput(newBackup, setWhenThingsGetHard, whenThingsGetHard))}
             >
               <Plus className="h-4 w-4" />
             </Button>

@@ -436,7 +436,7 @@ ${userContext.patternHistory.slice(0, 10).map(p => `• [${p.patternType}] ${p.d
 PATTERN-BASED RESPONSES:
 - If frequency = 1: Supportive, no judgment
 - If frequency = 2: Gentle acknowledgment ("I'm noticing...")
-- If frequency >= 3: Compassionate accountability ("This is the ${p.frequency}th time...")
+- If frequency >= 3: Compassionate accountability ("This is the [N]th time..." where N is the frequency)
 ` : ""}
 
 *** PLAN ANYTHING CAPABILITY ***

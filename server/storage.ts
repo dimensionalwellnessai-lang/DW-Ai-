@@ -2386,17 +2386,13 @@ export class DatabaseStorage implements IStorage {
 
   // Streaks
   async getStreaks(userId: string, streakType?: string): Promise<Streak[]> {
-    let query = db.select().from(streaks).where(eq(streaks.userId, userId));
+    const conditions = [eq(streaks.userId, userId)];
     
     if (streakType) {
-      query = db.select().from(streaks)
-        .where(and(
-          eq(streaks.userId, userId),
-          eq(streaks.streakType, streakType)
-        )) as any;
+      conditions.push(eq(streaks.streakType, streakType));
     }
     
-    return query;
+    return db.select().from(streaks).where(and(...conditions));
   }
 
   async getStreak(id: string): Promise<Streak | undefined> {
