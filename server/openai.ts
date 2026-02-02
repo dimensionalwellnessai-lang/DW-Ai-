@@ -58,6 +58,27 @@ interface UserLifeContext {
     importedDocuments?: { type: string; title: string; content: string }[];
   };
   energyContext?: EnergyContext;
+  dimensionBlueprints?: {
+    [dimension: string]: {
+      whenAtMyBest?: string;
+      whatIStandFor?: string[];
+      howThisSupportsMe?: string[];
+    };
+  };
+  resetProtocol?: {
+    redFlags?: string[];
+    howIReset?: string[];
+    whenThingsGetHard?: string[];
+    mySupportSystem?: unknown;
+  };
+  patternHistory?: {
+    patternType: string;
+    description: string;
+    frequency: number;
+    lastOccurrence: string;
+    sentiment: string;
+    relatedDimension?: string;
+  }[];
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -392,6 +413,31 @@ ${userContext?.lifeSystem?.scheduleEvents?.length ? `SCHEDULED EVENTS: ${userCon
 ${userContext?.lifeSystem?.mealPrepPreferences ? `HAS MEAL PREFERENCES: Yes` : ""}
 ${userContext?.lifeSystem?.workoutPreferences ? `HAS WORKOUT PREFERENCES: Yes` : ""}
 ${userContext?.lifeSystem?.importedDocuments?.length ? `IMPORTED DOCUMENTS: ${userContext.lifeSystem.importedDocuments.map(d => `${d.type}: ${d.title}`).join(", ")}` : ""}
+${userContext?.dimensionBlueprints && Object.keys(userContext.dimensionBlueprints).length > 0 ? `
+DIMENSION BLUEPRINTS (User's Life Values):
+${Object.entries(userContext.dimensionBlueprints).map(([dim, bp]) => `
+  ${dim.toUpperCase()}:
+  ${bp.whenAtMyBest ? `  • When At My Best: ${bp.whenAtMyBest}` : ""}
+  ${bp.whatIStandFor?.length ? `  • What I Stand For: ${bp.whatIStandFor.join(", ")}` : ""}
+  ${bp.howThisSupportsMe?.length ? `  • How This Supports Me: ${bp.howThisSupportsMe.join(", ")}` : ""}
+`).join("")}
+Use these values as north stars when the user seems misaligned or needs grounding.
+` : ""}
+${userContext?.resetProtocol ? `
+RESET PROTOCOL (User's Recovery System):
+${userContext.resetProtocol.redFlags?.length ? `• Red Flags: ${userContext.resetProtocol.redFlags.join(", ")}` : ""}
+${userContext.resetProtocol.howIReset?.length ? `• How I Reset: ${userContext.resetProtocol.howIReset.join(", ")}` : ""}
+${userContext.resetProtocol.whenThingsGetHard?.length ? `• When Things Get Hard: ${userContext.resetProtocol.whenThingsGetHard.join(", ")}` : ""}
+` : ""}
+${userContext?.patternHistory?.length ? `
+DETECTED PATTERNS (Cross-conversation tracking):
+${userContext.patternHistory.slice(0, 10).map(p => `• [${p.patternType}] ${p.description} (seen ${p.frequency}x, last: ${p.lastOccurrence}, ${p.sentiment})${p.relatedDimension ? ` - relates to ${p.relatedDimension}` : ""}`).join("\n")}
+
+PATTERN-BASED RESPONSES:
+- If frequency = 1: Supportive, no judgment
+- If frequency = 2: Gentle acknowledgment ("I'm noticing...")
+- If frequency >= 3: Compassionate accountability ("This is the [N]th time..." where N is the frequency)
+` : ""}
 
 *** PLAN ANYTHING CAPABILITY ***
 You are a full-service concierge who can help plan ANYTHING the user needs. You are not limited to wellness.
@@ -851,6 +897,22 @@ When making suggestions, consider:
 - Available free time blocks
 - Peak energy times they've mentioned
 - Existing commitments
+- Energy level right now vs optimal times
+
+SCHEDULE-AWARE DECISION MAKING:
+When suggesting timing or creating plans:
+1. Check TODAY'S SCHEDULE blocks from context
+2. Map energy levels to available slots
+3. Consider PEAK ENERGY TIME preference
+4. Suggest "next available 15-min window" vs "sometime this week"
+5. If suggesting workout → check meal timing from calendar
+6. Ask permission before blocking time
+7. Use get_schedule_gaps function to find available slots
+
+EXAMPLES:
+- User mentions wanting to stretch: "I see you have a gap at 2:15pm today. Want me to add 10 minutes then?"
+- User asks about meditation: "Your schedule shows energy dips around 3pm. What about your peak time at [peakMotivationTime]?"
+- User wants workout: "You have meals at 8am and 1pm. Best window is 10-11am or after 3pm. Preference?"
 
 *** RESPONSE FORMATTING ***
 For longer, multi-part responses, use these formatting patterns:
@@ -1051,6 +1113,52 @@ Calm over speed.`;
             dimension: { type: "string", enum: ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"], description: "Which dimension to reference" }
           },
           required: ["dimension"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_user_blueprint",
+        description: "Retrieve full dimension blueprint for a specific dimension to understand user's values and vision",
+        parameters: {
+          type: "object",
+          properties: {
+            dimension: { type: "string", enum: ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"], description: "Which dimension blueprint to retrieve" }
+          },
+          required: ["dimension"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_tracking_log",
+        description: "Log any trackable metric (sleep, screen time, weight, custom)",
+        parameters: {
+          type: "object",
+          properties: {
+            trackingType: { type: "string", description: "Type of tracking (water, sleep, screen_time, weight, custom)" },
+            value: { type: "string", description: "The value to track" },
+            unit: { type: "string", description: "Unit of measurement (oz, hours, minutes, lbs, etc.)" },
+            relatedDimension: { type: "string", enum: ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"], description: "Which dimension this relates to" },
+            notes: { type: "string", description: "Optional notes" }
+          },
+          required: ["trackingType", "value"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_schedule_gaps",
+        description: "Find available time slots in user's schedule for planning activities",
+        parameters: {
+          type: "object",
+          properties: {
+            date: { type: "string", description: "Date to check (YYYY-MM-DD), defaults to today" },
+            minDuration: { type: "number", description: "Minimum duration needed in minutes, defaults to 15" }
+          }
         }
       }
     }

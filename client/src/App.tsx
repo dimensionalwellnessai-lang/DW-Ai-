@@ -66,6 +66,8 @@ import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
 import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
+import LifeCommandCenter from "@/pages/life-command-center";
+import LifeBlueprintPage from "@/pages/life-blueprint";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -147,6 +149,8 @@ function Router() {
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
       <Route path="/home" component={DWHomePage} />
+      <Route path="/command-center" component={LifeCommandCenter} />
+      <Route path="/life-blueprint" component={LifeBlueprintPage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />

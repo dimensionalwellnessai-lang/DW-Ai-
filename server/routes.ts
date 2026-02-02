@@ -5713,6 +5713,74 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // Achievements endpoints
+  app.get("/api/achievements", requireAuth, async (req, res) => {
+    try {
+      const achievements = await storage.getAchievements(req.user!.id);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Get achievements error:", error);
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+
+  app.post("/api/achievements", requireAuth, async (req, res) => {
+    try {
+      const achievement = await storage.createAchievement({
+        userId: req.user!.id,
+        ...req.body,
+      });
+      res.json(achievement);
+    } catch (error) {
+      console.error("Create achievement error:", error);
+      res.status(500).json({ error: "Failed to create achievement" });
+    }
+  });
+
+  // Streaks endpoints
+  app.get("/api/streaks", requireAuth, async (req, res) => {
+    try {
+      const { streakType } = req.query;
+      const streaks = await storage.getStreaks(
+        req.user!.id,
+        streakType as string | undefined
+      );
+      res.json(streaks);
+    } catch (error) {
+      console.error("Get streaks error:", error);
+      res.status(500).json({ error: "Failed to fetch streaks" });
+    }
+  });
+
+  app.post("/api/streaks", requireAuth, async (req, res) => {
+    try {
+      const streak = await storage.createStreak({
+        userId: req.user!.id,
+        ...req.body,
+      });
+      res.json(streak);
+    } catch (error) {
+      console.error("Create streak error:", error);
+      res.status(500).json({ error: "Failed to create streak" });
+    }
+  });
+
+  app.patch("/api/streaks/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const streak = await storage.updateStreak(id, req.body);
+      
+      if (!streak) {
+        return res.status(404).json({ error: "Streak not found" });
+      }
+      
+      res.json(streak);
+    } catch (error) {
+      console.error("Update streak error:", error);
+      res.status(500).json({ error: "Failed to update streak" });
+    }
+  });
+
   return httpServer;
 }
 
