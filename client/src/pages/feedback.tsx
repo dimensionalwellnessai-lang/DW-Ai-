@@ -42,7 +42,7 @@ export default function FeedbackPage() {
       try {
         await apiRequest("POST", "/api/feedback", feedbackData);
       } catch {
-        localStorage.setItem("fts_feedback_" + Date.now(), JSON.stringify({
+        localStorage.setItem("dw_feedback_" + Date.now(), JSON.stringify({
           ...feedbackData,
           timestamp: new Date().toISOString(),
         }));

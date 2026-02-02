@@ -84,7 +84,7 @@ export type StoredEvent = {
 
 declare global {
   interface Window {
-    __ftsEvents?: StoredEvent[];
+    __dwEvents?: StoredEvent[];
   }
 }
 
@@ -104,8 +104,8 @@ export function trackEvent<K extends AnalyticsEventName>(
       env,
     };
 
-    window.__ftsEvents = window.__ftsEvents ?? [];
-    window.__ftsEvents.push(event);
+    window.__dwEvents = window.__dwEvents ?? [];
+    window.__dwEvents.push(event);
 
     if (import.meta.env.DEV) {
       console.log("[analytics]", name, event);

@@ -31,7 +31,7 @@ interface Plan {
   updatedAt?: string;
 }
 
-const LOCAL_PLANS_KEY = "fts_local_plans";
+const LOCAL_PLANS_KEY = "dw_local_plans";
 
 function getLocalPlans(): Plan[] {
   try {

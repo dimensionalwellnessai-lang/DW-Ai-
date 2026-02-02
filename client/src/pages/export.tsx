@@ -38,7 +38,7 @@ const EXPORT_OPTIONS: ExportOption[] = [
   },
 ];
 
-const LOCAL_PLANS_KEY = "fts_local_plans";
+const LOCAL_PLANS_KEY = "dw_local_plans";
 
 function generateICSContent(planName: string, items: any[]): string {
   const now = new Date();

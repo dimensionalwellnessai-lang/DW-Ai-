@@ -36,8 +36,8 @@ import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
 
-const MENU_TUTORIAL_KEY = "fts:menuTutorialDone";
-const MENU_TUTORIAL_STEP_KEY = "fts:menuTutorialStep";
+const MENU_TUTORIAL_KEY = "dw:menuTutorialDone";
+const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
 
 export function SettingsPage() {
   useTutorialStart("settings", 1000);
