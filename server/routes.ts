@@ -348,30 +348,95 @@ export async function registerRoutes(
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      // Validate input data
-      const data = insertUserSchema.parse(req.body);
-      
-      // Normalize email to lowercase
-      const email = data.email.toLowerCase().trim();
-      
-      // Check if email already exists
-      const existing = await storage.getUserByEmail(email);
-      if (existing) {
-        return res.status(400).json({ error: "Email already registered" });
+      // Log device/user-agent info for debugging (dev mode only)
+      if (process.env.NODE_ENV === "development") {
+        const userAgent = req.headers["user-agent"] || "unknown";
+        const deviceType = /iPad|iPhone|iPod/.test(userAgent) ? "iOS" : 
+                          /Android/.test(userAgent) ? "Android" : "Other";
+        console.log(`[Registration] Device: ${deviceType}, User-Agent: ${userAgent}`);
+      }
+
+      // Validate input data with better error messages
+      let data;
+      try {
+        data = insertUserSchema.parse(req.body);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          const firstError = validationError.errors[0];
+          let userMessage = "Please check your information and try again.";
+          
+          if (firstError.path.includes("email")) {
+            userMessage = "Please enter a valid email address.";
+          } else if (firstError.path.includes("password")) {
+            userMessage = "Password must be at least 6 characters long.";
+          }
+          
+          return res.status(400).json({ 
+            error: userMessage,
+            details: process.env.NODE_ENV === "development" ? validationError.errors : undefined
+          });
+        }
+        throw validationError;
       }
       
-      // Hash password
-      const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+      // Normalize email to lowercase and trim whitespace
+      const email = data.email?.toLowerCase().trim();
+      const password = data.password?.trim();
       
-      // Create user
-      const user = await storage.createUser({ 
-        email, 
-        password: hashedPassword 
-      });
+      // Additional validation
+      if (!email || !password) {
+        return res.status(400).json({ 
+          error: "Email and password are required." 
+        });
+      }
+      
+      // Check if email already exists
+      let existing;
+      try {
+        existing = await storage.getUserByEmail(email);
+      } catch (dbError) {
+        console.error("Database error checking existing user:", dbError);
+        return res.status(500).json({ 
+          error: "We're having trouble connecting. Please try again in a moment." 
+        });
+      }
+      
+      if (existing) {
+        return res.status(400).json({ 
+          error: "This email is already registered. Try logging in instead." 
+        });
+      }
+      
+      // Hash password with error handling
+      let hashedPassword;
+      try {
+        hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+      } catch (hashError) {
+        console.error("Password hashing error:", hashError);
+        return res.status(500).json({ 
+          error: "Unable to secure your password. Please try again." 
+        });
+      }
+      
+      // Create user with error handling
+      let user;
+      try {
+        user = await storage.createUser({ 
+          email, 
+          password: hashedPassword 
+        });
+      } catch (createError) {
+        console.error("User creation error:", createError);
+        return res.status(500).json({ 
+          error: "Unable to create your account. Please try again or contact support." 
+        });
+      }
       
       if (!user || !user.id) {
         console.error("User creation failed - no user returned");
-        return res.status(500).json({ error: "Failed to create account" });
+        return res.status(500).json({ 
+          error: "Account creation incomplete. Please try again." 
+        });
       }
       
       // Set session
@@ -393,11 +458,11 @@ export async function registerRoutes(
         // Session save failed - registration cannot continue without a valid session
         console.error("Failed to establish session for new user:", sessionError);
         return res.status(500).json({
-          error: "Unable to create your session. Please try again or contact support if the issue persists."
+          error: "Your account was created but we couldn't log you in. Please try logging in manually."
         });
       }
       
-      // Return success with user data
+      // Success! Return user data
       res.json({ 
         user: { 
           id: user.id, 
@@ -406,15 +471,23 @@ export async function registerRoutes(
         }
       });
     } catch (error) {
-      console.error("Registration error:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          error: "Invalid input",
-          details: error.errors 
-        });
+      // Catch-all error handler
+      console.error("Unexpected registration error:", error);
+      
+      // Provide helpful error message based on error type
+      let userMessage = "Something went wrong. Please try again.";
+      
+      if (error instanceof Error) {
+        // Check for network-related errors
+        if (error.message.includes("ECONNREFUSED") || error.message.includes("ETIMEDOUT")) {
+          userMessage = "Unable to connect to the server. Please check your internet connection.";
+        } else if (error.message.includes("database") || error.message.includes("pool")) {
+          userMessage = "Database connection issue. Please try again in a moment.";
+        }
       }
+      
       res.status(500).json({ 
-        error: "Registration failed. Please try again." 
+        error: userMessage 
       });
     }
   });
