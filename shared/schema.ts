@@ -1560,6 +1560,7 @@ export const trackingLogs = pgTable("tracking_logs", {
   value: text("value").notNull(),
   unit: text("unit"), // "oz" | "hours" | "minutes" | "lbs" | custom
   notes: text("notes"),
+  relatedDimension: text("related_dimension"), // which of 8 dimensions
   loggedAt: timestamp("logged_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -1647,6 +1648,42 @@ export const completionStatus = pgTable("completion_status", {
 
 export const insertCompletionStatusSchema = createInsertSchema(completionStatus).omit({
   id: true,
+  updatedAt: true,
+});
+
+// Achievements - unlockable milestones
+export const achievements = pgTable("achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  achievementType: text("achievement_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  unlockedAt: timestamp("unlocked_at").defaultNow(),
+  relatedDimension: text("related_dimension"),
+  metadata: jsonb("metadata"),
+});
+
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+  unlockedAt: true,
+});
+
+// Streaks - tracking consecutive completions
+export const streaks = pgTable("streaks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  streakType: text("streak_type").notNull(), // "habit" | "workout" | "meal_logging" | "water" | "journal"
+  relatedId: varchar("related_id"), // habitId, etc.
+  currentStreak: integer("current_streak").default(0),
+  longestStreak: integer("longest_streak").default(0),
+  lastCompletedAt: timestamp("last_completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStreakSchema = createInsertSchema(streaks).omit({
+  id: true,
+  createdAt: true,
   updatedAt: true,
 });
 
@@ -1776,3 +1813,7 @@ export type UniversalPlan = typeof universalPlans.$inferSelect;
 export type InsertUniversalPlan = z.infer<typeof insertUniversalPlanSchema>;
 export type CompletionStatus = typeof completionStatus.$inferSelect;
 export type InsertCompletionStatus = z.infer<typeof insertCompletionStatusSchema>;
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type Streak = typeof streaks.$inferSelect;
+export type InsertStreak = z.infer<typeof insertStreakSchema>;

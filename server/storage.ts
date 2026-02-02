@@ -162,6 +162,8 @@ import {
   waterLogs,
   universalPlans,
   completionStatus,
+  achievements,
+  streaks,
   type DimensionBlueprint,
   type InsertDimensionBlueprint,
   type ResetProtocol,
@@ -178,6 +180,10 @@ import {
   type InsertUniversalPlan,
   type CompletionStatus,
   type InsertCompletionStatus,
+  type Achievement,
+  type InsertAchievement,
+  type Streak,
+  type InsertStreak,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -2364,6 +2370,49 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(completionStatus)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(completionStatus.userId, userId))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Achievements
+  async getAchievements(userId: string): Promise<Achievement[]> {
+    return db.select().from(achievements).where(eq(achievements.userId, userId));
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const [newAchievement] = await db.insert(achievements).values(achievement).returning();
+    return newAchievement;
+  }
+
+  // Streaks
+  async getStreaks(userId: string, streakType?: string): Promise<Streak[]> {
+    let query = db.select().from(streaks).where(eq(streaks.userId, userId));
+    
+    if (streakType) {
+      query = db.select().from(streaks)
+        .where(and(
+          eq(streaks.userId, userId),
+          eq(streaks.streakType, streakType)
+        )) as any;
+    }
+    
+    return query;
+  }
+
+  async getStreak(id: string): Promise<Streak | undefined> {
+    const [streak] = await db.select().from(streaks).where(eq(streaks.id, id));
+    return streak || undefined;
+  }
+
+  async createStreak(streak: InsertStreak): Promise<Streak> {
+    const [newStreak] = await db.insert(streaks).values(streak).returning();
+    return newStreak;
+  }
+
+  async updateStreak(id: string, data: Partial<Streak>): Promise<Streak | undefined> {
+    const [updated] = await db.update(streaks)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(streaks.id, id))
       .returning();
     return updated || undefined;
   }
