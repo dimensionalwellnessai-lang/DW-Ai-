@@ -79,6 +79,10 @@ export function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: async (data: { email: string; password: string; rememberMe?: boolean }) => {
       const res = await apiRequest("POST", "/api/auth/login", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Login failed");
+      }
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
     onSuccess: async (data) => {
@@ -87,10 +91,10 @@ export function LoginPage() {
       toast({ title: "Welcome back!" });
       setLocation("/");
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Login failed",
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     },
@@ -116,6 +120,10 @@ export function LoginPage() {
   const registerMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/register", data);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Registration failed");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -133,10 +141,10 @@ export function LoginPage() {
       }
       setLocation("/welcome");
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Registration failed",
-        description: "Email may already be registered. Please try another.",
+        description: error.message || "Please check your information and try again.",
         variant: "destructive",
       });
     },
