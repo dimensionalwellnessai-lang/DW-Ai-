@@ -154,6 +154,30 @@ import {
   type InsertWearableData,
   type AstrologyPrediction,
   type InsertAstrologyPrediction,
+  dimensionBlueprints,
+  resetProtocol,
+  userPatterns,
+  trackingLogs,
+  mealLogs,
+  waterLogs,
+  universalPlans,
+  completionStatus,
+  type DimensionBlueprint,
+  type InsertDimensionBlueprint,
+  type ResetProtocol,
+  type InsertResetProtocol,
+  type UserPattern,
+  type InsertUserPattern,
+  type TrackingLog,
+  type InsertTrackingLog,
+  type MealLog,
+  type InsertMealLog,
+  type WaterLog,
+  type InsertWaterLog,
+  type UniversalPlan,
+  type InsertUniversalPlan,
+  type CompletionStatus,
+  type InsertCompletionStatus,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -423,6 +447,47 @@ export interface IStorage {
   getUserProgressSwitches(userId: string, range: string): Promise<UserSwitchProgress[]>;
   getUserProgressPatterns(userId: string, range: string): Promise<{ flagKey: string; count: number }[]>;
   getUserRecommendationToday(userId: string): Promise<UserRecommendation>;
+
+  // DW.ai Phase 1 - New tables
+  // Dimension Blueprints
+  getDimensionBlueprints(userId: string, dimension?: string): Promise<DimensionBlueprint[]>;
+  getDimensionBlueprint(id: string): Promise<DimensionBlueprint | undefined>;
+  createDimensionBlueprint(blueprint: InsertDimensionBlueprint): Promise<DimensionBlueprint>;
+  updateDimensionBlueprint(id: string, data: Partial<DimensionBlueprint>): Promise<DimensionBlueprint | undefined>;
+
+  // Reset Protocol
+  getResetProtocol(userId: string): Promise<ResetProtocol | undefined>;
+  createResetProtocol(protocol: InsertResetProtocol): Promise<ResetProtocol>;
+  updateResetProtocol(id: string, data: Partial<ResetProtocol>): Promise<ResetProtocol | undefined>;
+
+  // User Patterns
+  getUserPatterns(userId: string, isActive?: boolean): Promise<UserPattern[]>;
+  getUserPattern(id: string): Promise<UserPattern | undefined>;
+  createUserPattern(pattern: InsertUserPattern): Promise<UserPattern>;
+  updateUserPattern(id: string, data: Partial<UserPattern>): Promise<UserPattern | undefined>;
+
+  // Tracking Logs
+  getTrackingLogs(userId: string, trackingType?: string, limit?: number): Promise<TrackingLog[]>;
+  createTrackingLog(log: InsertTrackingLog): Promise<TrackingLog>;
+
+  // Meal Logs
+  getMealLogs(userId: string, limit?: number): Promise<MealLog[]>;
+  createMealLog(log: InsertMealLog): Promise<MealLog>;
+
+  // Water Logs
+  getWaterLogs(userId: string, limit?: number): Promise<WaterLog[]>;
+  createWaterLog(log: InsertWaterLog): Promise<WaterLog>;
+
+  // Universal Plans
+  getUniversalPlans(userId: string, planType?: string): Promise<UniversalPlan[]>;
+  getUniversalPlan(id: string): Promise<UniversalPlan | undefined>;
+  createUniversalPlan(plan: InsertUniversalPlan): Promise<UniversalPlan>;
+  updateUniversalPlan(id: string, data: Partial<UniversalPlan>): Promise<UniversalPlan | undefined>;
+
+  // Completion Status
+  getCompletionStatus(userId: string): Promise<CompletionStatus | undefined>;
+  createCompletionStatus(status: InsertCompletionStatus): Promise<CompletionStatus>;
+  updateCompletionStatus(userId: string, data: Partial<CompletionStatus>): Promise<CompletionStatus | undefined>;
 }
 
 export interface AdminAnalytics {
@@ -2108,6 +2173,199 @@ export class DatabaseStorage implements IStorage {
       title: `${switchTitles[selectedSwitch]} (10 min)`,
       reason: reasons[selectedSwitch],
     };
+  }
+
+  // ========================================
+  // DW.AI PHASE 1 - NEW TABLE IMPLEMENTATIONS
+  // ========================================
+
+  // Dimension Blueprints
+  async getDimensionBlueprints(userId: string, dimension?: string): Promise<DimensionBlueprint[]> {
+    let query = db.select().from(dimensionBlueprints).where(eq(dimensionBlueprints.userId, userId));
+    
+    if (dimension) {
+      query = db.select().from(dimensionBlueprints)
+        .where(and(
+          eq(dimensionBlueprints.userId, userId),
+          eq(dimensionBlueprints.dimension, dimension)
+        ));
+    }
+    
+    return await query;
+  }
+
+  async getDimensionBlueprint(id: string): Promise<DimensionBlueprint | undefined> {
+    const [blueprint] = await db.select().from(dimensionBlueprints).where(eq(dimensionBlueprints.id, id));
+    return blueprint || undefined;
+  }
+
+  async createDimensionBlueprint(blueprint: InsertDimensionBlueprint): Promise<DimensionBlueprint> {
+    const [newBlueprint] = await db.insert(dimensionBlueprints).values(blueprint).returning();
+    return newBlueprint;
+  }
+
+  async updateDimensionBlueprint(id: string, data: Partial<DimensionBlueprint>): Promise<DimensionBlueprint | undefined> {
+    const [updated] = await db.update(dimensionBlueprints)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(dimensionBlueprints.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Reset Protocol
+  async getResetProtocol(userId: string): Promise<ResetProtocol | undefined> {
+    const [protocol] = await db.select().from(resetProtocol).where(eq(resetProtocol.userId, userId));
+    return protocol || undefined;
+  }
+
+  async createResetProtocol(protocol: InsertResetProtocol): Promise<ResetProtocol> {
+    const [newProtocol] = await db.insert(resetProtocol).values(protocol).returning();
+    return newProtocol;
+  }
+
+  async updateResetProtocol(id: string, data: Partial<ResetProtocol>): Promise<ResetProtocol | undefined> {
+    const [updated] = await db.update(resetProtocol)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(resetProtocol.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // User Patterns
+  async getUserPatterns(userId: string, isActive?: boolean): Promise<UserPattern[]> {
+    let query = db.select().from(userPatterns).where(eq(userPatterns.userId, userId));
+    
+    if (isActive !== undefined) {
+      query = db.select().from(userPatterns)
+        .where(and(
+          eq(userPatterns.userId, userId),
+          eq(userPatterns.isActive, isActive)
+        ));
+    }
+    
+    return await query.orderBy(desc(userPatterns.lastOccurrence));
+  }
+
+  async getUserPattern(id: string): Promise<UserPattern | undefined> {
+    const [pattern] = await db.select().from(userPatterns).where(eq(userPatterns.id, id));
+    return pattern || undefined;
+  }
+
+  async createUserPattern(pattern: InsertUserPattern): Promise<UserPattern> {
+    const [newPattern] = await db.insert(userPatterns).values(pattern).returning();
+    return newPattern;
+  }
+
+  async updateUserPattern(id: string, data: Partial<UserPattern>): Promise<UserPattern | undefined> {
+    const [updated] = await db.update(userPatterns)
+      .set(data)
+      .where(eq(userPatterns.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Tracking Logs
+  async getTrackingLogs(userId: string, trackingType?: string, limit: number = 100): Promise<TrackingLog[]> {
+    let query = db.select().from(trackingLogs).where(eq(trackingLogs.userId, userId));
+    
+    if (trackingType) {
+      query = db.select().from(trackingLogs)
+        .where(and(
+          eq(trackingLogs.userId, userId),
+          eq(trackingLogs.trackingType, trackingType)
+        ));
+    }
+    
+    return await query.orderBy(desc(trackingLogs.loggedAt)).limit(limit);
+  }
+
+  async createTrackingLog(log: InsertTrackingLog): Promise<TrackingLog> {
+    const [newLog] = await db.insert(trackingLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Meal Logs
+  async getMealLogs(userId: string, limit: number = 100): Promise<MealLog[]> {
+    return await db.select().from(mealLogs)
+      .where(eq(mealLogs.userId, userId))
+      .orderBy(desc(mealLogs.loggedAt))
+      .limit(limit);
+  }
+
+  async createMealLog(log: InsertMealLog): Promise<MealLog> {
+    const [newLog] = await db.insert(mealLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Water Logs
+  async getWaterLogs(userId: string, limit: number = 100): Promise<WaterLog[]> {
+    return await db.select().from(waterLogs)
+      .where(eq(waterLogs.userId, userId))
+      .orderBy(desc(waterLogs.loggedAt))
+      .limit(limit);
+  }
+
+  async createWaterLog(log: InsertWaterLog): Promise<WaterLog> {
+    const [newLog] = await db.insert(waterLogs).values(log).returning();
+    return newLog;
+  }
+
+  // Universal Plans
+  async getUniversalPlans(userId: string, planType?: string): Promise<UniversalPlan[]> {
+    let query = db.select().from(universalPlans).where(eq(universalPlans.userId, userId));
+    
+    if (planType) {
+      query = db.select().from(universalPlans)
+        .where(and(
+          eq(universalPlans.userId, userId),
+          eq(universalPlans.planType, planType)
+        ));
+    }
+    
+    return await query.orderBy(desc(universalPlans.createdAt));
+  }
+
+  async getUniversalPlan(id: string): Promise<UniversalPlan | undefined> {
+    const [plan] = await db.select().from(universalPlans).where(eq(universalPlans.id, id));
+    return plan || undefined;
+  }
+
+  async createUniversalPlan(plan: InsertUniversalPlan): Promise<UniversalPlan> {
+    const [newPlan] = await db.insert(universalPlans).values(plan).returning();
+    return newPlan;
+  }
+
+  async updateUniversalPlan(id: string, data: Partial<UniversalPlan>): Promise<UniversalPlan | undefined> {
+    const [updated] = await db.update(universalPlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(universalPlans.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Completion Status
+  async getCompletionStatus(userId: string): Promise<CompletionStatus | undefined> {
+    const [status] = await db.select().from(completionStatus).where(eq(completionStatus.userId, userId));
+    return status || undefined;
+  }
+
+  async createCompletionStatus(status: InsertCompletionStatus): Promise<CompletionStatus> {
+    const [newStatus] = await db.insert(completionStatus).values(status).returning();
+    return newStatus;
+  }
+
+  async updateCompletionStatus(userId: string, data: Partial<CompletionStatus>): Promise<CompletionStatus | undefined> {
+    const [status] = await db.select().from(completionStatus).where(eq(completionStatus.userId, userId));
+    
+    if (!status) {
+      return undefined;
+    }
+    
+    const [updated] = await db.update(completionStatus)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(completionStatus.userId, userId))
+      .returning();
+    return updated || undefined;
   }
 }
 
