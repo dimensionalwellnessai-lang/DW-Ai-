@@ -8,7 +8,12 @@ import { useLocation } from "wouter";
 export function FloatingAIWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+
+  // Don't show on /talk page
+  if (location === "/talk" || location.startsWith("/talk")) {
+    return null;
+  }
 
   const handleSendMessage = () => {
     if (message.trim()) {
