@@ -16,7 +16,7 @@ export default function GoalsPage() {
   const [goalTitle, setGoalTitle] = useState("");
   const [goalDescription, setGoalDescription] = useState("");
 
-  const { data: goals = [] } = useQuery({
+  const { data: goals = [] } = useQuery<any[]>({
     queryKey: ['/api/goals'],
   });
 

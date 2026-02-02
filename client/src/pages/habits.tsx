@@ -14,7 +14,7 @@ export default function HabitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [habitTitle, setHabitTitle] = useState("");
 
-  const { data: habits = [] } = useQuery({
+  const { data: habits = [] } = useQuery<any[]>({
     queryKey: ['/api/habits'],
   });
 
