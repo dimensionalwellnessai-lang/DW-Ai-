@@ -79,7 +79,7 @@ export default function FeedbackPage() {
             </CardTitle>
             <CardDescription>
               {submitted 
-                ? "Your thoughts help us make Flip the Switch better for everyone."
+                ? "Your thoughts help us make DW.ai better for everyone."
                 : "We're in early beta. Your honest feedback helps us improve."}
             </CardDescription>
           </CardHeader>
@@ -123,7 +123,7 @@ export default function FeedbackPage() {
                   <Textarea
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="What's working? What's not? How do you feel using Flip the Switch?"
+                    placeholder="What's working? What's not? How do you feel using DW.ai?"
                     className="min-h-[150px] resize-none"
                     data-testid="input-feedback"
                   />

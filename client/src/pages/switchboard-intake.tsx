@@ -209,7 +209,7 @@ export default function SwitchboardIntakePage() {
     }, {} as Record<SwitchId, SwitchStatus>);
     
     initializeSwitchData(statuses);
-    localStorage.setItem("fts_intake_complete", "true");
+    localStorage.setItem("dw_intake_complete", "true");
     navigate("/switchboard");
   };
 

@@ -39,7 +39,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     if (!isSupported || permission !== "granted") return;
     
     navigator.serviceWorker.ready.then((registration) => {
-      registration.showNotification("Flip the Switch", {
+      registration.showNotification("DW.ai", {
         body: "Notifications are working! You'll receive gentle reminders for check-ins.",
         icon: "/icons/icon-192x192.png",
         badge: "/icons/icon-72x72.png",

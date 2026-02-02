@@ -235,7 +235,7 @@ export function CalendarPlansPage() {
         return e;
       });
       
-      localStorage.setItem("fts_calendar_events", JSON.stringify(updatedEvents));
+      localStorage.setItem("dw_calendar_events", JSON.stringify(updatedEvents));
       setLocalEvents(updatedEvents);
     } else {
       updateEventMutation.mutate({ id: eventId, updates });

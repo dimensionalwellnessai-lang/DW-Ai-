@@ -34,7 +34,7 @@ export default function EnhancedOnboardingPage() {
     });
 
     // Mark as returning user
-    localStorage.setItem("fts:isReturning", "1");
+    localStorage.setItem("dw:isReturning", "1");
 
     if (takeTour) {
       // Start tour
@@ -52,7 +52,7 @@ export default function EnhancedOnboardingPage() {
     });
 
     // Mark as skipped to prevent re-showing
-    localStorage.setItem("fts:onboarding_skipped", "true");
+    localStorage.setItem("dw:onboarding_skipped", "true");
 
     // Navigate to app
     setLocation("/");

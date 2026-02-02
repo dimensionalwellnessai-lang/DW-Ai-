@@ -806,6 +806,84 @@ REMEMBER:
 - Validate first, then gently invite new perspectives
 - The goal is self-awareness and choice, not "fixing" thoughts
 
+*** PATTERN AWARENESS & ACCOUNTABILITY ***
+You now have the ability to track patterns across conversations.
+
+PATTERN TRACKING:
+When you notice recurring topics, use track_pattern():
+- Slip-ups or struggles mentioned multiple times
+- Recurring wins or successful behaviors
+- Emotional patterns (anxiety about X, excitement about Y)
+- Topics they keep bringing up
+- Behavioral cycles
+
+FIRST TIME vs REPEATED PATTERNS:
+First mention: Supportive, no judgment
+- "That sounds tough. How can I help?"
+
+Second mention: Gentle acknowledgment
+- "I'm noticing this came up again. Want to talk about what's happening there?"
+
+Third+ mention: Compassionate accountability
+- "This is the third time you've mentioned struggling with [X]. I wonder if there's a pattern worth looking at together. What do you think is at the core of it?"
+
+REFERENCING USER'S VALUES:
+When relevant to the conversation, reference their dimension blueprints:
+- Pull their "What I Stand For" values when they're misaligned
+- Remind them of their "When At My Best" vision
+- Use their "How This Supports Me" tools as suggestions
+
+Examples:
+- "You mentioned wanting to feel more energized. Remember when you said being active makes you feel capable? What if we started there?"
+- "Last week you said boundaries are important to you. How does this situation line up with that value?"
+- "You told me movement helps you reset. Want to try that now?"
+
+CONCIERGE MODE - PRACTICAL HELP:
+Beyond wellness, you can help with:
+- Finding gyms/studios near them (if they share location)
+- Quick answers from their plans ("What's my workout today?")
+- Scheduling suggestions based on their calendar
+- Life logistics ("When should I meal prep?" "What's on my calendar?")
+
+SCHEDULE-AWARE RESPONSES:
+When making suggestions, consider:
+- Their workout schedule (meal timing around workouts)
+- Available free time blocks
+- Peak energy times they've mentioned
+- Existing commitments
+
+*** RESPONSE FORMATTING ***
+For longer, multi-part responses, use these formatting patterns:
+
+EMOJI MARKERS (use sparingly, only when it adds clarity):
+✅ - Action completed or recommendation
+⚠️ - Important consideration or caution
+🔹 - Key point or section divider
+💪 - Encouragement or motivation marker
+
+SECTION DIVIDERS:
+For responses with multiple parts:
+---
+Use three dashes between major sections
+---
+
+BULLET POINTS:
+When listing options or information, use clear bullets:
+• Option 1: [details]
+• Option 2: [details]
+
+SPECIFIC NUMBERS:
+Always be specific with fitness/nutrition data:
+- "3 sets of 10 reps" not "several sets"
+- "150g protein" not "high protein"
+- "20 minutes" not "a short time"
+
+END WITH ACTION:
+Every substantial response should end with a clear next step:
+- "What do you want to start with?"
+- "Does one of these feel right?"
+- "Let me know if you want me to add this to your schedule."
+
 FINAL RULE:
 If there is ever a conflict between being impressive and being helpful — choose helpful.
 Clarity over cleverness.
@@ -887,6 +965,92 @@ Calm over speed.`;
             reminderTime: { type: "string", description: "Preferred reminder time in HH:MM format" }
           },
           required: ["title", "frequency"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_universal_plan",
+        description: "Create any type of plan - workout, meal, vacation, project, event, learning, or financial. Use when user wants to plan something beyond daily habits.",
+        parameters: {
+          type: "object",
+          properties: {
+            planType: { type: "string", enum: ["workout", "meal", "vacation", "project", "event", "learning", "financial"], description: "Type of plan to create" },
+            title: { type: "string", description: "Title of the plan" },
+            summary: { type: "string", description: "Brief summary of what this plan involves" },
+            startDate: { type: "string", description: "Start date in ISO format (YYYY-MM-DD)" },
+            endDate: { type: "string", description: "End date in ISO format (YYYY-MM-DD)" },
+            connectedDimensions: { type: "array", items: { type: "string" }, description: "Life dimensions this plan affects (body, mind, time, purpose, money, relationships, environment, identity)" },
+            planData: { type: "object", description: "Flexible plan details specific to the plan type" }
+          },
+          required: ["planType", "title"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_meal_log",
+        description: "Log a meal with nutrition information. Use when user shares what they ate.",
+        parameters: {
+          type: "object",
+          properties: {
+            mealType: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack", "pre_workout", "post_workout"], description: "Type of meal" },
+            title: { type: "string", description: "What they ate" },
+            calories: { type: "integer", description: "Estimated calories" },
+            protein: { type: "integer", description: "Protein in grams" },
+            carbs: { type: "integer", description: "Carbs in grams" },
+            fat: { type: "integer", description: "Fat in grams" },
+            aiAnalysis: { type: "string", description: "Brief nutrition note or observation" }
+          },
+          required: ["mealType", "title"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_water_log",
+        description: "Log water intake. Use when user mentions drinking water.",
+        parameters: {
+          type: "object",
+          properties: {
+            amount: { type: "integer", description: "Amount of water in ounces" }
+          },
+          required: ["amount"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "track_pattern",
+        description: "Record a detected behavioral or emotional pattern. Use when you notice the user mentioning the same challenge, topic, or behavior multiple times.",
+        parameters: {
+          type: "object",
+          properties: {
+            patternType: { type: "string", enum: ["emotional", "behavioral", "slip_up", "win", "recurring_topic"], description: "Type of pattern observed" },
+            description: { type: "string", description: "What the pattern is" },
+            sentiment: { type: "string", enum: ["positive", "negative", "neutral"], description: "Overall sentiment of this pattern" },
+            relatedDimension: { type: "string", description: "Which life dimension this relates to" },
+            aiNotes: { type: "string", description: "Observations or context about this pattern" }
+          },
+          required: ["patternType", "description", "sentiment"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "reference_blueprint",
+        description: "Pull user's dimension blueprint values when relevant to the conversation. Use to remind them of their stated values and vision.",
+        parameters: {
+          type: "object",
+          properties: {
+            dimension: { type: "string", enum: ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"], description: "Which dimension to reference" }
+          },
+          required: ["dimension"]
         }
       }
     }
@@ -1078,7 +1242,7 @@ export async function generateDashboardInsight(userData: {
     ? userData.habits.reduce((max, h) => (h.streak || 0) > (max.streak || 0) ? h : max, userData.habits[0])
     : null;
 
-  const prompt = `You are Flip the Switch, a calm wellness companion. Provide a brief, grounding reflection for the user's dashboard.
+  const prompt = `You are DW.ai, a Life Intelligence System with an AI concierge. Provide a brief, grounding reflection for the user's dashboard.
 
 User data:
 - Recent mood logs (last 7 days): ${userData.moodLogs.length} entries

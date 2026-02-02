@@ -478,10 +478,10 @@ export function AIWorkspace() {
       // Check for fresh param - clear ID to show empty state
       const params = new URLSearchParams(window.location.search);
       if (params.get("fresh") === "true") {
-        localStorage.removeItem("fts_active_conversation_id");
+        localStorage.removeItem("dw_active_conversation_id");
         return null;
       }
-      return localStorage.getItem("fts_active_conversation_id") || null;
+      return localStorage.getItem("dw_active_conversation_id") || null;
     }
     return null;
   });
@@ -489,7 +489,7 @@ export function AIWorkspace() {
   // Persist active conversation ID to localStorage
   useEffect(() => {
     if (activeDbConversationId) {
-      localStorage.setItem("fts_active_conversation_id", activeDbConversationId);
+      localStorage.setItem("dw_active_conversation_id", activeDbConversationId);
     }
   }, [activeDbConversationId]);
 
@@ -500,12 +500,12 @@ export function AIWorkspace() {
       const idExists = dbConversations.some(c => c.id === activeDbConversationId);
       if (!idExists) {
         // Clear stale ID - don't auto-select (let user see empty state)
-        localStorage.removeItem("fts_active_conversation_id");
+        localStorage.removeItem("dw_active_conversation_id");
         setActiveDbConversationId(null);
       }
     } else if (isUserAuthenticated && dbConversations.length === 0 && activeDbConversationId) {
       // Clear stale ID if no conversations exist
-      localStorage.removeItem("fts_active_conversation_id");
+      localStorage.removeItem("dw_active_conversation_id");
       setActiveDbConversationId(null);
     }
   }, [isUserAuthenticated, dbConversations]);
@@ -522,7 +522,7 @@ export function AIWorkspace() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("fresh") === "true") {
       clearActiveConversation();
-      localStorage.removeItem("fts_active_conversation_id");
+      localStorage.removeItem("dw_active_conversation_id");
       window.history.replaceState({}, "", "/chat");
       return true;
     }

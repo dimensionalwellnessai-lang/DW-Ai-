@@ -56,7 +56,7 @@ interface PlanItem {
   steps: string[];
 }
 
-const PLAN_STORAGE_KEY = "fts_weekly_plan";
+const PLAN_STORAGE_KEY = "dw_weekly_plan";
 
 function getWeeklyPlan(): PlanItem[] {
   try {
@@ -93,8 +93,8 @@ export default function PlanPage() {
   const [hasIntake, setHasIntake] = useState(false);
 
   useEffect(() => {
-    const intakeComplete = localStorage.getItem("fts_intake_complete");
-    const onboardingComplete = localStorage.getItem("fts_onboarding_completed");
+    const intakeComplete = localStorage.getItem("dw_intake_complete");
+    const onboardingComplete = localStorage.getItem("dw_onboarding_completed");
     setHasIntake(!!intakeComplete || !!onboardingComplete);
   }, []);
 

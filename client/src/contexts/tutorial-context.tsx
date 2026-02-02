@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { getTutorialForPage, NAVIGATION_TUTORIAL, type PageTutorial, type TutorialStep } from "@/config/tutorials";
 
-const STORAGE_KEY = "fts_seen_tutorials";
-const NAV_TUTORIAL_KEY = "fts_seen_nav_tutorial";
+const STORAGE_KEY = "dw_seen_tutorials";
+const NAV_TUTORIAL_KEY = "dw_seen_nav_tutorial";
 
 interface TutorialState {
   isActive: boolean;

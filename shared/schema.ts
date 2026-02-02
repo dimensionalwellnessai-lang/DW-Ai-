@@ -1492,6 +1492,164 @@ export const insertAstrologyPredictionSchema = createInsertSchema(astrologyPredi
   createdAt: true,
 });
 
+// ========================================
+// NEW TABLES FOR DW.AI RESTRUCTURE - PHASE 1
+// ========================================
+
+// Dimension Blueprints - per-dimension values
+export const dimensionBlueprints = pgTable("dimension_blueprints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  dimension: text("dimension").notNull(), // "body" | "mind" | "time" | "purpose" | "money" | "relationships" | "environment" | "identity"
+  whenAtMyBest: text("when_at_my_best"), // Vision - what thriving looks like
+  whatIStandFor: text("what_i_stand_for").array(), // Values/principles for this dimension
+  howThisSupportsMe: text("how_this_supports_me").array(), // Tools - how to use this dimension
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDimensionBlueprintSchema = createInsertSchema(dimensionBlueprints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Reset Protocol - global recovery section
+export const resetProtocol = pgTable("reset_protocol", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  redFlags: text("red_flags").array(), // Early warning signs
+  howIReset: text("how_i_reset").array(), // Tools & actions to get back on track
+  whenThingsGetHard: text("when_things_get_hard").array(), // Plan for tough days
+  mySupportSystem: jsonb("my_support_system"), // People & resources (name, relationship, contact)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertResetProtocolSchema = createInsertSchema(resetProtocol).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// User Patterns - AI pattern tracking
+export const userPatterns = pgTable("user_patterns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  patternType: text("pattern_type"), // "emotional" | "behavioral" | "slip_up" | "win" | "recurring_topic"
+  description: text("description"),
+  frequency: integer("frequency").default(1),
+  lastOccurrence: timestamp("last_occurrence"),
+  sentiment: text("sentiment"), // "positive" | "negative" | "neutral"
+  relatedDimension: text("related_dimension"), // which of 8 dimensions
+  aiNotes: text("ai_notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertUserPatternSchema = createInsertSchema(userPatterns).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Universal Tracking Logs
+export const trackingLogs = pgTable("tracking_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  trackingType: text("tracking_type").notNull(), // "water" | "sleep" | "screen_time" | "weight" | "custom"
+  value: text("value").notNull(),
+  unit: text("unit"), // "oz" | "hours" | "minutes" | "lbs" | custom
+  notes: text("notes"),
+  loggedAt: timestamp("logged_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTrackingLogSchema = createInsertSchema(trackingLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Meal Logs - photo + manual calorie tracking
+export const mealLogs = pgTable("meal_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  mealPlanId: varchar("meal_plan_id").references(() => mealPlans.id), // optional link to plan
+  mealType: text("meal_type"), // "breakfast" | "lunch" | "dinner" | "snack" | "pre_workout" | "post_workout"
+  title: text("title"),
+  photoUrl: text("photo_url"), // if photo was taken
+  calories: integer("calories"),
+  protein: integer("protein"),
+  carbs: integer("carbs"),
+  fat: integer("fat"),
+  items: jsonb("items"), // array of detected/entered food items
+  aiAnalysis: text("ai_analysis"), // AI notes about the meal
+  loggedAt: timestamp("logged_at").defaultNow(),
+  scheduledTime: text("scheduled_time"), // when it was supposed to be eaten
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMealLogSchema = createInsertSchema(mealLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Water Logs
+export const waterLogs = pgTable("water_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  amount: integer("amount").notNull(), // in oz
+  loggedAt: timestamp("logged_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertWaterLogSchema = createInsertSchema(waterLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Universal Plans - connects all plan types
+export const universalPlans = pgTable("universal_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  planType: text("plan_type").notNull(), // "workout" | "meal" | "vacation" | "project" | "event" | "learning" | "financial"
+  title: text("title").notNull(),
+  summary: text("summary"),
+  status: text("status").default("active"), // "draft" | "active" | "paused" | "completed" | "archived"
+  workoutPlanId: varchar("workout_plan_id").references(() => workoutPlans.id),
+  mealPlanId: varchar("meal_plan_id").references(() => mealPlans.id),
+  shoppingListId: varchar("shopping_list_id").references(() => shoppingLists.id),
+  planData: jsonb("plan_data"), // flexible storage for any plan type
+  connectedDimensions: text("connected_dimensions").array(),
+  connectedGoalIds: text("connected_goal_ids").array(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUniversalPlanSchema = createInsertSchema(universalPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Completion Status - track what user has completed
+export const completionStatus = pgTable("completion_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  bodyScanCompleted: boolean("body_scan_completed").default(false),
+  mealPreferencesCompleted: boolean("meal_preferences_completed").default(false),
+  blueprintCompletions: jsonb("blueprint_completions"), // { body: true, mind: false, ... }
+  resetProtocolCompleted: boolean("reset_protocol_completed").default(false),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompletionStatusSchema = createInsertSchema(completionStatus).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1602,3 +1760,19 @@ export type WearableData = typeof wearableData.$inferSelect;
 export type InsertWearableData = z.infer<typeof insertWearableDataSchema>;
 export type AstrologyPrediction = typeof astrologyPredictions.$inferSelect;
 export type InsertAstrologyPrediction = z.infer<typeof insertAstrologyPredictionSchema>;
+export type DimensionBlueprint = typeof dimensionBlueprints.$inferSelect;
+export type InsertDimensionBlueprint = z.infer<typeof insertDimensionBlueprintSchema>;
+export type ResetProtocol = typeof resetProtocol.$inferSelect;
+export type InsertResetProtocol = z.infer<typeof insertResetProtocolSchema>;
+export type UserPattern = typeof userPatterns.$inferSelect;
+export type InsertUserPattern = z.infer<typeof insertUserPatternSchema>;
+export type TrackingLog = typeof trackingLogs.$inferSelect;
+export type InsertTrackingLog = z.infer<typeof insertTrackingLogSchema>;
+export type MealLog = typeof mealLogs.$inferSelect;
+export type InsertMealLog = z.infer<typeof insertMealLogSchema>;
+export type WaterLog = typeof waterLogs.$inferSelect;
+export type InsertWaterLog = z.infer<typeof insertWaterLogSchema>;
+export type UniversalPlan = typeof universalPlans.$inferSelect;
+export type InsertUniversalPlan = z.infer<typeof insertUniversalPlanSchema>;
+export type CompletionStatus = typeof completionStatus.$inferSelect;
+export type InsertCompletionStatus = z.infer<typeof insertCompletionStatusSchema>;

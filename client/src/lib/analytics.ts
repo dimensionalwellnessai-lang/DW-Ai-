@@ -117,10 +117,10 @@ export function trackEvent<K extends AnalyticsEventName>(
 
 // Retention tracking helpers
 const STORAGE_KEYS = {
-  FIRST_OPEN: "fts:firstOpenDateKey",
-  LAST_OPEN: "fts:lastOpenDateKey",
-  OPEN_DAYS: "fts:openDays",
-  ACTIVATED_AT: "fts:activatedAt",
+  FIRST_OPEN: "dw:firstOpenDateKey",
+  LAST_OPEN: "dw:lastOpenDateKey",
+  OPEN_DAYS: "dw:openDays",
+  ACTIVATED_AT: "dw:activatedAt",
 } as const;
 
 function getLocalDateKey(): string {
@@ -244,7 +244,7 @@ export function isActivated(): boolean {
 export function wasNudgeShownToday(): boolean {
   try {
     const dateKey = getLocalDateKey();
-    return !!localStorage.getItem(`fts:nudgeShown:${dateKey}`);
+    return !!localStorage.getItem(`dw:nudgeShown:${dateKey}`);
   } catch {
     return false;
   }
@@ -253,7 +253,7 @@ export function wasNudgeShownToday(): boolean {
 export function markNudgeShownToday(): void {
   try {
     const dateKey = getLocalDateKey();
-    localStorage.setItem(`fts:nudgeShown:${dateKey}`, "1");
+    localStorage.setItem(`dw:nudgeShown:${dateKey}`, "1");
   } catch {
     // Never throw
   }
@@ -316,7 +316,7 @@ export function getWeeklyRecapKey(): string {
 export function wasWeeklyRecapShown(): boolean {
   try {
     const weekKey = getWeeklyRecapKey();
-    return !!localStorage.getItem(`fts:weeklyRecapShown:${weekKey}`);
+    return !!localStorage.getItem(`dw:weeklyRecapShown:${weekKey}`);
   } catch {
     return false;
   }
@@ -325,7 +325,7 @@ export function wasWeeklyRecapShown(): boolean {
 export function markWeeklyRecapShown(): void {
   try {
     const weekKey = getWeeklyRecapKey();
-    localStorage.setItem(`fts:weeklyRecapShown:${weekKey}`, "1");
+    localStorage.setItem(`dw:weeklyRecapShown:${weekKey}`, "1");
   } catch {
     // Never throw
   }
@@ -345,7 +345,7 @@ export function getOpensThisWeek(): number {
 export function wasNextStepShownToday(): boolean {
   try {
     const dateKey = getLocalDateKey();
-    return !!localStorage.getItem(`fts:nextStepShown:${dateKey}`);
+    return !!localStorage.getItem(`dw:nextStepShown:${dateKey}`);
   } catch {
     return false;
   }
@@ -354,7 +354,7 @@ export function wasNextStepShownToday(): boolean {
 export function markNextStepShownToday(): void {
   try {
     const dateKey = getLocalDateKey();
-    localStorage.setItem(`fts:nextStepShown:${dateKey}`, "1");
+    localStorage.setItem(`dw:nextStepShown:${dateKey}`, "1");
   } catch {
     // Never throw
   }
@@ -362,7 +362,7 @@ export function markNextStepShownToday(): void {
 
 export function getLastPlanVisit(): string | null {
   try {
-    return localStorage.getItem("fts:lastPlanVisit");
+    return localStorage.getItem("dw:lastPlanVisit");
   } catch {
     return null;
   }
@@ -371,7 +371,7 @@ export function getLastPlanVisit(): string | null {
 export function markPlanVisit(): void {
   try {
     const dateKey = getLocalDateKey();
-    localStorage.setItem("fts:lastPlanVisit", dateKey);
+    localStorage.setItem("dw:lastPlanVisit", dateKey);
   } catch {
     // Never throw
   }

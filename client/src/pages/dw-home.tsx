@@ -70,17 +70,17 @@ const TIME_OPTIONS: { value: TimeBand; label: string }[] = [
   { value: "large", label: "90+ min" },
 ];
 
-export default function FTSHomePage() {
+export default function DWHomePage() {
   const [, navigate] = useLocation();
   const [signals, setSignals] = useState(getUserSignals);
   const [switchData, setSwitchData] = useState(getSwitchData);
   
   const checkIsFirstTime = () => {
-    const intakeComplete = localStorage.getItem("fts_intake_complete");
-    const onboardingComplete = localStorage.getItem("fts_onboarding_completed");
-    const softOnboardingComplete = localStorage.getItem("fts_soft_onboarding_completed");
+    const intakeComplete = localStorage.getItem("dw_intake_complete");
+    const onboardingComplete = localStorage.getItem("dw_onboarding_completed");
+    const softOnboardingComplete = localStorage.getItem("dw_soft_onboarding_completed");
     try {
-      const profileData = localStorage.getItem("fts_guest_data");
+      const profileData = localStorage.getItem("dw_guest_data");
       const hasProfile = profileData ? JSON.parse(profileData)?.profileSetup?.completedAt : false;
       return !intakeComplete && !onboardingComplete && !softOnboardingComplete && !hasProfile;
     } catch {

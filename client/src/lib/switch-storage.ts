@@ -21,7 +21,7 @@ export interface SwitchData {
   streakDays: number;
 }
 
-const STORAGE_KEY = "fts_switch_data";
+const STORAGE_KEY = "dw_switch_data";
 
 const DEFAULT_SWITCH_DATA: SwitchData = {
   status: "off",

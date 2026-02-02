@@ -227,7 +227,7 @@ export function BlueprintPage() {
 
         <footer className="mt-12 pt-8 border-t">
           <p className="text-xs text-muted-foreground text-center max-w-xl mx-auto">
-            Flip the Switch provides general wellness and self-reflection tools. It is not medical, psychological, or therapeutic treatment and is not affiliated with or endorsed by any proprietary program or trademarked system.
+            DW.ai provides general wellness and self-reflection tools. It is not medical, psychological, or therapeutic treatment and is not affiliated with or endorsed by any proprietary program or trademarked system.
           </p>
         </footer>
       </main>

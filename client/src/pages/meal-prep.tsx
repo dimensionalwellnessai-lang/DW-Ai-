@@ -712,7 +712,7 @@ export default function MealPrepPage() {
   const [videoCategory, setVideoCategory] = useState("All");
   const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
   const [savedVideos, setSavedVideos] = useState<string[]>(() => {
-    const saved = localStorage.getItem("fts_saved_videos");
+    const saved = localStorage.getItem("dw_saved_videos");
     return saved ? JSON.parse(saved) : [];
   });
   const [suggestMealsOpen, setSuggestMealsOpen] = useState(false);
@@ -1057,7 +1057,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
       ? savedVideos.filter(id => id !== videoId)
       : [...savedVideos, videoId];
     setSavedVideos(newSaved);
-    localStorage.setItem("fts_saved_videos", JSON.stringify(newSaved));
+    localStorage.setItem("dw_saved_videos", JSON.stringify(newSaved));
   };
 
   const handleQuickAddGroceryItem = () => {
