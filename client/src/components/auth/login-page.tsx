@@ -206,7 +206,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-body">
-      <header className="p-6 flex items-center justify-between">
+      <header className="p-4 sm:p-6 flex items-center justify-between">
         <Link href="/">
           <Button variant="ghost" data-testid="link-back-home">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -216,50 +216,51 @@ export function LoginPage() {
         <ThemeToggle />
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex flex-col items-center mb-4">
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+        <Card className="w-full max-w-md sm:max-w-lg">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex flex-col items-center">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary-foreground" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
                 </div>
-                <span className="font-display font-bold text-2xl tracking-tight">{BRAND.appName}</span>
+                <span className="font-display font-bold text-2xl sm:text-3xl tracking-tight">{BRAND.appName}</span>
               </div>
               <span className="text-xs text-muted-foreground tracking-wide uppercase">{BRAND.descriptor}</span>
             </div>
-            <CardTitle className="text-2xl font-display">Welcome</CardTitle>
-            <CardDescription className="font-body">
+            <CardTitle className="text-2xl sm:text-3xl font-display">Welcome</CardTitle>
+            <CardDescription className="font-body text-sm sm:text-base">
               {guestMessageCount > 0 
                 ? `Sign up to save your ${guestMessageCount} messages and sync across devices`
                 : "Sign in to your account or create a new one"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {/* Demo Mode Banner for Reviewers */}
-            <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+          <CardContent className="space-y-6">
+            {/* Demo Mode Banner for Reviewers - Enhanced for iPad visibility */}
+            <div className="p-4 sm:p-5 bg-primary/10 border-2 border-primary/30 rounded-xl space-y-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <TestTube className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-sm">App Reviewers & Testers</h3>
+                <TestTube className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <h3 className="font-semibold text-sm sm:text-base">App Reviewers & Testers</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 Explore the full app with pre-populated wellness data - no account needed!
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 sm:gap-3">
                 <Button 
                   variant="outline" 
-                  size="sm" 
+                  size="default"
                   onClick={handleDemoMode}
-                  className="flex-1"
+                  className="flex-1 h-10 sm:h-11 text-sm sm:text-base font-semibold"
                   data-testid="button-demo-mode"
                 >
-                  <TestTube className="h-4 w-4 mr-2" />
+                  <TestTube className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Try Demo Mode
                 </Button>
                 <Button 
                   variant="ghost" 
-                  size="sm"
+                  size="default"
                   onClick={() => setShowDemoInfo(true)}
+                  className="h-10 sm:h-11"
                   data-testid="button-demo-info"
                 >
                   Info
@@ -267,15 +268,15 @@ export function LoginPage() {
               </div>
             </div>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" data-testid="tab-login">Log In</TabsTrigger>
-                <TabsTrigger value="register" data-testid="tab-register">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 h-11 sm:h-12">
+                <TabsTrigger value="login" data-testid="tab-login" className="text-sm sm:text-base">Log In</TabsTrigger>
+                <TabsTrigger value="register" data-testid="tab-register" className="text-sm sm:text-base">Sign Up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login" className="mt-6">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-email" className="text-sm sm:text-base">Email</Label>
                     <Input
                       id="login-email"
                       type="email"
@@ -283,19 +284,20 @@ export function LoginPage() {
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                       placeholder="Enter your email"
                       required
+                      className="h-10 sm:h-11 text-base"
                       data-testid="input-login-email"
                     />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="login-password">Password</Label>
+                      <Label htmlFor="login-password" className="text-sm sm:text-base">Password</Label>
                       <button
                         type="button"
                         onClick={() => {
                           setForgotEmail(loginData.email);
                           setShowForgotPassword(true);
                         }}
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs sm:text-sm text-primary hover:underline min-h-[44px] flex items-center"
                         data-testid="link-forgot-password"
                       >
                         Forgot password?
@@ -308,23 +310,25 @@ export function LoginPage() {
                       onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                       placeholder="Enter your password"
                       required
+                      className="h-10 sm:h-11 text-base"
                       data-testid="input-login-password"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-h-[44px]">
                     <Checkbox
                       id="remember-me"
                       checked={loginData.rememberMe}
                       onCheckedChange={(checked) => setLoginData({ ...loginData, rememberMe: checked === true })}
+                      className="h-5 w-5"
                       data-testid="checkbox-remember-me"
                     />
-                    <label htmlFor="remember-me" className="text-sm text-muted-foreground">
+                    <label htmlFor="remember-me" className="text-sm sm:text-base text-muted-foreground cursor-pointer">
                       Remember me on this device
                     </label>
                   </div>
                   <Button
                     type="submit"
-                    className="w-full rounded-full"
+                    className="w-full rounded-full h-11 sm:h-12 text-base font-semibold"
                     disabled={loginMutation.isPending}
                     data-testid="button-login"
                   >
@@ -336,7 +340,7 @@ export function LoginPage() {
               <TabsContent value="register" className="mt-6">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
+                    <Label htmlFor="register-email" className="text-sm sm:text-base">Email</Label>
                     <Input
                       id="register-email"
                       type="email"
@@ -344,11 +348,12 @@ export function LoginPage() {
                       onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
                       placeholder="Enter your email"
                       required
+                      className="h-10 sm:h-11 text-base"
                       data-testid="input-register-email"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
+                    <Label htmlFor="register-password" className="text-sm sm:text-base">Password</Label>
                     <Input
                       id="register-password"
                       type="password"
@@ -356,11 +361,12 @@ export function LoginPage() {
                       onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                       placeholder="Choose a password (min 6 characters)"
                       required
+                      className="h-10 sm:h-11 text-base"
                       data-testid="input-register-password"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-confirm">Confirm Password</Label>
+                    <Label htmlFor="register-confirm" className="text-sm sm:text-base">Confirm Password</Label>
                     <Input
                       id="register-confirm"
                       type="password"
@@ -368,22 +374,24 @@ export function LoginPage() {
                       onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                       placeholder="Confirm your password"
                       required
+                      className="h-10 sm:h-11 text-base"
                       data-testid="input-register-confirm"
                     />
                   </div>
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2 min-h-[44px]">
                     <Checkbox
                       id="terms"
                       checked={agreedToTerms}
                       onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      className="h-5 w-5 mt-0.5"
                       data-testid="checkbox-terms"
                     />
-                    <label htmlFor="terms" className="text-sm text-muted-foreground leading-tight">
+                    <label htmlFor="terms" className="text-sm sm:text-base text-muted-foreground leading-tight cursor-pointer">
                       I agree to the{" "}
                       <button 
                         type="button"
                         onClick={() => setShowTerms(true)}
-                        className="text-primary underline hover:no-underline"
+                        className="text-primary underline hover:no-underline min-h-[44px] inline-flex items-center"
                         data-testid="link-terms"
                       >
                         Terms of Use
@@ -393,7 +401,7 @@ export function LoginPage() {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full rounded-full"
+                    className="w-full rounded-full h-11 sm:h-12 text-base font-semibold"
                     disabled={registerMutation.isPending || !agreedToTerms}
                     data-testid="button-register"
                   >
