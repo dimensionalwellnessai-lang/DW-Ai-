@@ -60,6 +60,9 @@ export default function TrackingDashboard() {
         credentials: 'include',
         body: JSON.stringify({ amount, loggedAt: new Date() }),
       });
+      if (!res.ok) {
+        throw new Error('Failed to log water');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -67,10 +70,17 @@ export default function TrackingDashboard() {
       setWaterAmount("");
       toast({ title: "Water logged successfully!" });
     },
+    onError: () => {
+      toast({ 
+        title: "Failed to log water", 
+        description: "Please try again",
+        variant: "destructive" 
+      });
+    },
   });
 
   const handleLogWater = () => {
-    const amount = parseInt(waterAmount);
+    const amount = parseInt(waterAmount, 10);
     if (amount && amount > 0) {
       logWaterMutation.mutate(amount);
     }
@@ -231,8 +241,12 @@ export default function TrackingDashboard() {
                       key={habit.id}
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
-                      <button className="h-6 w-6 rounded border-2 border-primary flex items-center justify-center hover:bg-primary/10">
-                        <CheckCircle2 className="h-4 w-4 text-primary opacity-0 hover:opacity-100" />
+                      <button 
+                        className="h-6 w-6 rounded border-2 border-primary flex items-center justify-center hover:bg-primary/10 transition-colors"
+                        onClick={() => toast({ title: "Habit tracking", description: "Full habit completion coming soon!" })}
+                        aria-label={`Mark ${habit.title} as complete`}
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-primary opacity-0 hover:opacity-100 transition-opacity" />
                       </button>
                       <div className="flex-1">
                         <p className="font-medium">{habit.title}</p>
