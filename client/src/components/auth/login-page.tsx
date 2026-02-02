@@ -297,7 +297,7 @@ export function LoginPage() {
                           setForgotEmail(loginData.email);
                           setShowForgotPassword(true);
                         }}
-                        className="text-xs sm:text-sm text-primary hover:underline min-h-[44px] flex items-center"
+                        className="text-xs sm:text-sm text-primary hover:underline min-h-[44px] min-w-[44px] flex items-center justify-center px-2"
                         data-testid="link-forgot-password"
                       >
                         Forgot password?
@@ -391,7 +391,7 @@ export function LoginPage() {
                       <button 
                         type="button"
                         onClick={() => setShowTerms(true)}
-                        className="text-primary underline hover:no-underline min-h-[44px] inline-flex items-center"
+                        className="text-primary underline hover:no-underline min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-1"
                         data-testid="link-terms"
                       >
                         Terms of Use

@@ -417,7 +417,12 @@ async function seedDemoAccount() {
 }
 
 // Run the seed if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Simple check that works reliably with tsx
+const isMainModule = import.meta.url.endsWith(process.argv[1]) || 
+                     import.meta.url === `file://${process.argv[1]}` ||
+                     process.argv[1].endsWith('seed-demo.ts');
+
+if (isMainModule) {
   seedDemoAccount()
     .then(() => {
       console.log("🎉 Seed completed successfully");
