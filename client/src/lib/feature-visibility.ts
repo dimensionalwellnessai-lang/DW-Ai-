@@ -13,34 +13,55 @@ export interface FeatureConfig {
 }
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
-  { id: "command-center", name: "Command Center", path: "/command-center", visibility: "primary", description: "Your wellness dashboard", enabled: true },
-  { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "primary", description: "Your wellness hub", enabled: true },
-  { id: "life-blueprint", name: "Life Blueprint", path: "/life-blueprint", visibility: "primary", description: "Define your values", enabled: true },
-  { id: "tracking", name: "Tracking", path: "/tracking", visibility: "primary", description: "Track daily metrics", enabled: true },
-  { id: "calendar", name: "Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true, group: "calendar" },
-  { id: "daily-schedule", name: "Today", path: "/today", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
-  { id: "meal-prep", name: "Meal Plans", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
-  { id: "workout", name: "Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
-  { id: "recovery", name: "Recovery", path: "/recovery", visibility: "primary", description: "Rest & restore", enabled: true },
-  { id: "journal", name: "Journal", path: "/journal", visibility: "primary", description: "Daily reflections", enabled: true },
-  { id: "meditation", name: "Meditation", path: "/spiritual", visibility: "primary", description: "Inner peace", enabled: true },
-  { id: "browse", name: "Browse", path: "/browse", visibility: "primary", description: "Explore content", enabled: true },
+  // MY IDENTITY section
+  { id: "command-center", name: "⭐ Life Command Center", path: "/", visibility: "primary", description: "Your wellness dashboard", enabled: true },
+  { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", visibility: "primary", description: "Define your values", enabled: true },
+  { id: "goals", name: "🎯 My Goals", path: "/goals", visibility: "primary", description: "Track your goals", enabled: true },
+  { id: "habits", name: "✅ My Habits", path: "/habits", visibility: "primary", description: "Daily habits", enabled: true },
   
-  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "more", description: "Process feelings", enabled: true },
-  { id: "challenges", name: "Challenges", path: "/challenges", visibility: "more", description: "Growth challenges", enabled: true },
-  { id: "routines", name: "Routines", path: "/routines", visibility: "primary", description: "Saved routines", enabled: true, group: "calendar" },
-  { id: "finances", name: "Finances", path: "/finances", visibility: "more", description: "Budget", enabled: true },
-  { id: "astrology", name: "Energy Awareness", path: "/astrology", visibility: "dormant", description: "Personal patterns", enabled: false },
-  { id: "feedback", name: "Feedback", path: "/feedback", visibility: "more", description: "Share thoughts", enabled: true },
+  // BODY & MIND section
+  { id: "workout", name: "🏋️ Workout", path: "/workout", visibility: "primary", description: "Training", enabled: true },
+  { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", visibility: "primary", description: "Recipes & videos", enabled: true },
+  { id: "meditation", name: "🧘 Meditation", path: "/spiritual", visibility: "primary", description: "Inner peace", enabled: true },
+  { id: "journal", name: "📓 Journal", path: "/journal", visibility: "primary", description: "Daily reflections", enabled: true },
+  
+  // LIFE DIMENSIONS section
+  { id: "astrology", name: "✨ Astrology", path: "/astrology", visibility: "primary", description: "Personal patterns", enabled: true },
+  { id: "finances", name: "💰 Finances", path: "/finances", visibility: "primary", description: "Budget", enabled: true },
+  { id: "community", name: "👥 Community", path: "/community", visibility: "primary", description: "Connect", enabled: true },
+  
+  // EXPLORE section
+  { id: "browse", name: "🔍 Browse", path: "/browse", visibility: "primary", description: "Explore content", enabled: true },
+  { id: "challenges", name: "🎯 Challenges", path: "/challenges", visibility: "primary", description: "Growth challenges", enabled: true },
+  { id: "recovery", name: "🔄 Recovery", path: "/recovery", visibility: "primary", description: "Rest & restore", enabled: true },
+  
+  // SYSTEMS section
+  { id: "switchboard", name: "⚡ Switch Training", path: "/switchboard", visibility: "primary", description: "Life dimensions", enabled: true },
+  { id: "progress", name: "📊 My Progress", path: "/profile/progress", visibility: "primary", description: "Track progress", enabled: true },
+  { id: "routines", name: "📝 Routines", path: "/routines", visibility: "primary", description: "Saved routines", enabled: true },
+  { id: "tasks", name: "✅ Tasks", path: "/tasks", visibility: "primary", description: "To-do list", enabled: true },
+  
+  // SETTINGS section
+  { id: "settings", name: "⚙️ Settings", path: "/settings", visibility: "primary", description: "Preferences", enabled: true },
+  { id: "app-tour", name: "🗺️ App Tour", path: "/app-tour", visibility: "primary", description: "App guide", enabled: true },
+  { id: "feedback", name: "📋 Feedback", path: "/feedback", visibility: "primary", description: "Share thoughts", enabled: true },
+  { id: "privacy", name: "🔒 Privacy & Terms", path: "/privacy-terms", visibility: "primary", description: "Legal info", enabled: true },
+  
+  // Hidden in menu but accessible via bottom nav
+  { id: "talk", name: "💬 Talk to DW", path: "/talk", visibility: "primary", description: "AI assistant", enabled: true },
+  { id: "calendar", name: "📅 Life Timeline", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
+  { id: "tracking", name: "📊 Tracking", path: "/tracking", visibility: "primary", description: "Track daily metrics", enabled: true },
+  { id: "daily-schedule", name: "Today", path: "/today", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
+  
+  // More/dormant features
+  { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "more", description: "Your wellness hub", enabled: true },
   { id: "weekly-checkin", name: "Weekly Check-In", path: "/weekly-checkin", visibility: "more", description: "Weekly feedback", enabled: true },
-  { id: "settings", name: "Settings", path: "/settings", visibility: "more", description: "Preferences", enabled: true },
-  { id: "app-tour", name: "App Tour", path: "/app-tour", visibility: "dormant", description: "App guide", enabled: false },
+  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "more", description: "Process feelings", enabled: true },
   
   { id: "body-scan", name: "Body Scan", visibility: "dormant", aiUnlockable: true, description: "Camera features", enabled: false },
   { id: "advanced-challenges", name: "Advanced Challenges", visibility: "dormant", aiUnlockable: true, enabled: false },
   { id: "blueprint-edit", name: "Blueprint Editor", path: "/blueprint", visibility: "dormant", aiUnlockable: true, enabled: false },
   { id: "projects", name: "Projects", path: "/projects", visibility: "dormant", aiUnlockable: true, enabled: false },
-  { id: "community", name: "Community", path: "/community", visibility: "dormant", aiUnlockable: true, enabled: false },
   { id: "systems", name: "Systems Hub", path: "/systems", visibility: "dormant", aiUnlockable: true, enabled: false },
 ];
 

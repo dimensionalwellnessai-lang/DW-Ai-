@@ -70,6 +70,8 @@ import MoodTrackerPage from "@/pages/mood-tracker";
 import LifeCommandCenter from "@/pages/life-command-center";
 import LifeBlueprintPage from "@/pages/life-blueprint";
 import TrackingPage from "@/pages/tracking";
+import GoalsPage from "@/pages/goals";
+import HabitsPage from "@/pages/habits";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -137,8 +139,9 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AIWorkspace} />
+      <Route path="/" component={LifeCommandCenter} />
       <Route path="/chat" component={AIWorkspace} />
+      <Route path="/talk" component={AIWorkspace} />
       <Route path="/today" component={TodayHubPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
@@ -154,6 +157,8 @@ function Router() {
       <Route path="/command-center" component={LifeCommandCenter} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />
       <Route path="/tracking" component={TrackingPage} />
+      <Route path="/goals" component={GoalsPage} />
+      <Route path="/habits" component={HabitsPage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
@@ -171,7 +176,6 @@ function Router() {
       {isRouteEnabled("/astrology") && <Route path="/astrology" component={AstrologyPage} />}
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
       
-      {isRouteEnabled("/talk") && <Route path="/talk" component={TalkItOutPage} />}
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}
       {isRouteEnabled("/routines") && <Route path="/routines" component={RoutinesPage} />}
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
