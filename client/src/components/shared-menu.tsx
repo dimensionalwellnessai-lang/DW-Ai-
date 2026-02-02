@@ -24,11 +24,16 @@ import {
   MessageCircle,
   ChevronDown,
   HelpCircle,
+  Zap,
+  Activity,
 } from "lucide-react";
 
 const MENU_ICON_MAP: Record<string, typeof LayoutGrid> = {
+  "command-center": Zap,
   "daily-schedule": Clock,
   "life-dashboard": LayoutGrid,
+  "life-blueprint": BookOpen,
+  "tracking": Activity,
   "meditation": Heart,
   "workout": Dumbbell,
   "meal-prep": Utensils,

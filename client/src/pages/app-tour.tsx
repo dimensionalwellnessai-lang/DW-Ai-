@@ -51,6 +51,45 @@ const GUIDE_SECTIONS: GuideSection[] = [
     path: "/talk"
   },
   {
+    id: "command-center",
+    title: "Life Command Center",
+    icon: Target,
+    description: "Your central wellness dashboard. See all your metrics, goals, and daily progress in one place.",
+    tips: [
+      "View water intake, calories, and habit tracking",
+      "Monitor all 8 wellness dimensions at a glance",
+      "Quick access to today's schedule and active goals",
+      "One-tap navigation to any wellness area"
+    ],
+    path: "/command-center"
+  },
+  {
+    id: "life-blueprint",
+    title: "Life Blueprint",
+    icon: Target,
+    description: "Define your personal values and vision for each of the 8 wellness dimensions.",
+    tips: [
+      "Create blueprints for Body, Mind, Time, Purpose, Money, Relationships, Environment, and Identity",
+      "Set your 'Reset Protocol' for when things get tough",
+      "Your AI references these values to keep you aligned",
+      "Update anytime as you grow and evolve"
+    ],
+    path: "/life-blueprint"
+  },
+  {
+    id: "tracking",
+    title: "Tracking Dashboard",
+    icon: CheckCircle2,
+    description: "Monitor your daily wellness metrics. Log water, track calories, check off habits, and see your progress.",
+    tips: [
+      "Quick log water intake with preset amounts",
+      "View calorie summary from logged meals",
+      "Check off daily habits and build streaks",
+      "One-tap access to log meals and workouts"
+    ],
+    path: "/tracking"
+  },
+  {
     id: "life-dashboard",
     title: "Life Dashboard",
     icon: Target,

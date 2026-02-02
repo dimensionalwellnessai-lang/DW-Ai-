@@ -11,6 +11,7 @@ import { TutorialProvider } from "@/contexts/tutorial-context";
 import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
+import { FloatingAIWidget } from "@/components/floating-ai-widget";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
 
@@ -68,6 +69,7 @@ import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import LifeCommandCenter from "@/pages/life-command-center";
 import LifeBlueprintPage from "@/pages/life-blueprint";
+import TrackingPage from "@/pages/tracking";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -151,6 +153,7 @@ function Router() {
       <Route path="/home" component={DWHomePage} />
       <Route path="/command-center" component={LifeCommandCenter} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />
+      <Route path="/tracking" component={TrackingPage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
@@ -219,6 +222,7 @@ function AppContent() {
       <Toaster />
       <TutorialOverlay />
       <SyncTray />
+      <FloatingAIWidget />
       <div className={`app-content ${showBottomNav ? "pb-20" : ""}`}>
         <FirstRunGuard>
           <InitialRouteHandler>
