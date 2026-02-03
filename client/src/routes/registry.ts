@@ -101,6 +101,16 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     showInMenu: false,
     enabled: true,
   },
+  {
+    id: "subscription",
+    path: "/subscription",
+    label: "Subscription",
+    icon: "credit-card",
+    type: "page",
+    showInMenu: false,
+    enabled: true,
+    isPublic: true,
+  },
 
   {
     id: "life-dashboard",
