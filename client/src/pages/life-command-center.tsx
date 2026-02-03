@@ -24,6 +24,7 @@ import {
   Circle,
   Sparkles,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { getSwitchData, type SwitchId, type SwitchStatus } from "@/lib/switch-storage";
 
@@ -52,6 +53,9 @@ const SWITCH_COLORS: Record<SwitchId, { text: string; bg: string }> = {
 export default function LifeCommandCenter() {
   const [, navigate] = useLocation();
   const [switchData, setSwitchData] = useState(getSwitchData);
+  const [showIntroBanner, setShowIntroBanner] = useState(
+    !localStorage.getItem('dw_command_center_intro_dismissed')
+  );
   const [todayDate] = useState(new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -112,9 +116,50 @@ export default function LifeCommandCenter() {
           <p className="text-muted-foreground">{todayDate}</p>
         </motion.div>
 
+        {/* First-Time Banner */}
+        {showIntroBanner && (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Welcome to your Command Center
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tap any card to dive deeper. Ask DW anything. 
+                    Start with your Life Blueprint to define who you are.
+                  </p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    localStorage.setItem('dw_command_center_intro_dismissed', 'true');
+                    setShowIntroBanner(false);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" onClick={() => navigate('/life-blueprint')}>
+                  Start Life Blueprint
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/app-tour')}>
+                  Take a Tour
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/tracking')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -127,7 +172,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/tracking')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -140,7 +188,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/goals')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -152,7 +203,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/habits')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -169,7 +223,10 @@ export default function LifeCommandCenter() {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Today's Schedule */}
           <Card>
-            <CardHeader>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+              onClick={() => navigate('/calendar')}
+            >
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Today's Schedule
@@ -186,7 +243,8 @@ export default function LifeCommandCenter() {
                     {calendarEvents.slice(0, 5).map((event: any) => (
                       <div
                         key={event.id}
-                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                        onClick={() => navigate('/calendar')}
                       >
                         <div className="text-xs font-semibold text-muted-foreground min-w-[60px]">
                           {event.startTime || 'All day'}
@@ -207,7 +265,10 @@ export default function LifeCommandCenter() {
 
           {/* Active Goals */}
           <Card>
-            <CardHeader>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+              onClick={() => navigate('/goals')}
+            >
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
                 Active Goals
@@ -223,7 +284,11 @@ export default function LifeCommandCenter() {
                 ) : (
                   <div className="space-y-4">
                     {activeGoals.map((goal: any) => (
-                      <div key={goal.id} className="space-y-2">
+                      <div 
+                        key={goal.id} 
+                        className="space-y-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
+                        onClick={() => navigate('/goals')}
+                      >
                         <div className="flex items-center justify-between">
                           <p className="font-medium">{goal.title}</p>
                           <Badge variant="secondary">{goal.progress}%</Badge>
@@ -244,7 +309,10 @@ export default function LifeCommandCenter() {
 
           {/* Dimension Status */}
           <Card>
-            <CardHeader>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+              onClick={() => navigate('/life-blueprint')}
+            >
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
                 8 Dimensions Status
@@ -260,7 +328,7 @@ export default function LifeCommandCenter() {
                   return (
                     <div
                       key={switchId}
-                      onClick={() => navigate(`/switchboard?focus=${switchId}`)}
+                      onClick={() => navigate(`/life-blueprint?dimension=${switchId}`)}
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
                     >
                       <div className={`p-2 rounded-lg ${colors.bg}`}>
@@ -279,7 +347,10 @@ export default function LifeCommandCenter() {
 
           {/* Today's Habits */}
           <Card>
-            <CardHeader>
+            <CardHeader 
+              className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
+              onClick={() => navigate('/habits')}
+            >
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
                 Today's Habits
@@ -297,7 +368,8 @@ export default function LifeCommandCenter() {
                     {habits.slice(0, 8).map((habit: any) => (
                       <div
                         key={habit.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                        onClick={() => navigate('/habits')}
                       >
                         <div className="h-5 w-5 rounded border-2 border-primary" />
                         <div className="flex-1">
