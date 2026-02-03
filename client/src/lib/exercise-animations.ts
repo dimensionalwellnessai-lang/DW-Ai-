@@ -327,9 +327,13 @@ export const EXERCISE_ANIMATIONS: Record<string, ExerciseAnimationData> = {
 
 // Helper function to get exercises by equipment
 export function getExercisesByEquipment(equipment: string[]): ExerciseAnimationData[] {
+  // If no equipment specified, return all exercises
+  if (equipment.length === 0) {
+    return Object.values(EXERCISE_ANIMATIONS);
+  }
+  
+  // Return exercises that can be done with the available equipment
   return Object.values(EXERCISE_ANIMATIONS).filter(exercise => 
-    equipment.length === 0 || 
-    equipment.includes('bodyweight') ||
     exercise.equipment.some(eq => equipment.includes(eq))
   );
 }

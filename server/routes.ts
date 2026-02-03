@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -1835,6 +1835,12 @@ export async function registerRoutes(
                   });
                   actionsTaken.push(`Created habit: "${args.title}"`);
                 }
+                break;
+              case 'create_workout_plan':
+                // This tool creates a workout plan - the AI will present it in the response
+                // The plan data is embedded in the conversation, not saved to database yet
+                // User will approve/save it through the workout page UI
+                actionsTaken.push(`Generated workout plan based on your preferences`);
                 break;
             }
           } catch (err) {

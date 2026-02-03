@@ -109,7 +109,7 @@ interface Exercise {
   duration?: string;
   restSeconds?: number;
   equipment?: string[];
-  animationId: string; // Reference to animation
+  animationId: string; // Reference to ExerciseAnimationData.id (e.g., 'push-up', 'squat')
   formTips?: string[];
 }
 
@@ -307,6 +307,8 @@ export default function WorkoutPage() {
   const [selectedExercise, setSelectedExercise] = useState<string>("");
   const [selectedExerciseContext, setSelectedExerciseContext] = useState<string>("");
   
+  // AI-generated workout plans - populated when user creates plans via AI chat
+  // Plans will be saved to guest storage or database after user approval
   const [savedWorkoutPlans, setSavedWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
   const [selectedExerciseAnimation, setSelectedExerciseAnimation] = useState<string | null>(null);

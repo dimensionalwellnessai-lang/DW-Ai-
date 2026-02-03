@@ -828,6 +828,8 @@ export function AIWorkspace() {
       const decoder = new TextDecoder();
       let streamedResponse = "";
       let metadata: { actionsTaken?: string[]; syncSessionId?: string } = {};
+      let updateCounter = 0;
+      const UPDATE_FREQUENCY = 3; // Update UI every 3 chunks to reduce re-renders
 
       while (true) {
         const { done, value } = await reader.read();
@@ -840,6 +842,22 @@ export function AIWorkspace() {
           if (line.startsWith("data: ")) {
             const data = line.slice(6);
             if (data === "[DONE]") {
+              // Final update with complete response
+              if (isUserAuthenticated) {
+                setOptimisticMessages([
+                  userMsg,
+                  { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                ]);
+              } else {
+                const conv = getActiveConversation();
+                if (conv && conv.messages.length > 0) {
+                  const lastMsg = conv.messages[conv.messages.length - 1];
+                  if (lastMsg.role === "assistant") {
+                    lastMsg.content = streamedResponse;
+                    setConversationVersion(v => v + 1);
+                  }
+                }
+              }
               break;
             }
 
@@ -847,20 +865,25 @@ export function AIWorkspace() {
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 streamedResponse += parsed.content;
-                // Update UI in real-time
-                if (isUserAuthenticated) {
-                  setOptimisticMessages([
-                    userMsg,
-                    { role: "assistant", content: streamedResponse, timestamp: Date.now() }
-                  ]);
-                } else {
-                  // For guests, update the last assistant message in the conversation
-                  const conv = getActiveConversation();
-                  if (conv && conv.messages.length > 0) {
-                    const lastMsg = conv.messages[conv.messages.length - 1];
-                    if (lastMsg.role === "assistant") {
-                      lastMsg.content = streamedResponse;
-                      setConversationVersion(v => v + 1);
+                updateCounter++;
+                
+                // Update UI periodically, not on every chunk
+                if (updateCounter >= UPDATE_FREQUENCY) {
+                  updateCounter = 0;
+                  if (isUserAuthenticated) {
+                    setOptimisticMessages([
+                      userMsg,
+                      { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                    ]);
+                  } else {
+                    // For guests, update the last assistant message in the conversation
+                    const conv = getActiveConversation();
+                    if (conv && conv.messages.length > 0) {
+                      const lastMsg = conv.messages[conv.messages.length - 1];
+                      if (lastMsg.role === "assistant") {
+                        lastMsg.content = streamedResponse;
+                        setConversationVersion(v => v + 1);
+                      }
                     }
                   }
                 }
