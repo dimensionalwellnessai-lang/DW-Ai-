@@ -398,10 +398,10 @@ export interface ProfileSetup {
   starterSpotlightDismissed: boolean;
   mobilityCapabilities: MobilityCapabilities | null;
   // New onboarding fields
-  name: string | null;
-  currentMood: string | null;
-  currentStruggles: string[];
-  whatWorkedBefore: string[];
+  name?: string | null;
+  currentMood?: string | null;
+  currentStruggles?: string[];
+  whatWorkedBefore?: string[];
 }
 
 export interface EnhancedOnboardingData {
