@@ -1033,6 +1033,55 @@ Calm over speed.`;
     {
       type: "function",
       function: {
+        name: "create_workout_plan",
+        description: "Generate a personalized workout plan based on user's equipment, goals, and fitness level. Ask clarifying questions first: What equipment do you have? What are your fitness goals? How many days per week can you train?",
+        parameters: {
+          type: "object",
+          properties: {
+            goal: { 
+              type: "string", 
+              enum: ["build_muscle", "lose_weight", "tone", "endurance", "strength", "flexibility", "general_fitness"],
+              description: "Primary fitness goal" 
+            },
+            equipment: { 
+              type: "array",
+              items: { 
+                type: "string",
+                enum: ["bodyweight", "resistance-bands", "dumbbells", "kettlebells", "barbell", "pull-up-bar", "yoga-mat", "bench", "cable-machine"]
+              },
+              description: "Available equipment. If empty, assume bodyweight only." 
+            },
+            daysPerWeek: { 
+              type: "integer", 
+              minimum: 1, 
+              maximum: 7,
+              description: "Number of workout days per week" 
+            },
+            fitnessLevel: { 
+              type: "string", 
+              enum: ["beginner", "intermediate", "advanced"],
+              description: "User's current fitness level" 
+            },
+            timePerSession: { 
+              type: "integer",
+              description: "Minutes available per workout session"
+            },
+            focusAreas: {
+              type: "array",
+              items: { 
+                type: "string",
+                enum: ["upper-body", "lower-body", "core", "cardio", "full-body"]
+              },
+              description: "Specific body areas to focus on"
+            }
+          },
+          required: ["goal", "equipment", "daysPerWeek", "fitnessLevel"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
         name: "create_universal_plan",
         description: "Create any type of plan - workout, meal, vacation, project, event, learning, or financial. Use when user wants to plan something beyond daily habits.",
         parameters: {
@@ -1813,6 +1862,55 @@ RESPONSE FORMATTING:
             reminderTime: { type: "string", description: "Preferred reminder time in HH:MM format" }
           },
           required: ["title", "frequency"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_workout_plan",
+        description: "Generate a personalized workout plan based on user's equipment, goals, and fitness level. Ask clarifying questions first: What equipment do you have? What are your fitness goals? How many days per week can you train?",
+        parameters: {
+          type: "object",
+          properties: {
+            goal: { 
+              type: "string", 
+              enum: ["build_muscle", "lose_weight", "tone", "endurance", "strength", "flexibility", "general_fitness"],
+              description: "Primary fitness goal" 
+            },
+            equipment: { 
+              type: "array",
+              items: { 
+                type: "string",
+                enum: ["bodyweight", "resistance-bands", "dumbbells", "kettlebells", "barbell", "pull-up-bar", "yoga-mat", "bench", "cable-machine"]
+              },
+              description: "Available equipment. If empty, assume bodyweight only." 
+            },
+            daysPerWeek: { 
+              type: "integer", 
+              minimum: 1, 
+              maximum: 7,
+              description: "Number of workout days per week" 
+            },
+            fitnessLevel: { 
+              type: "string", 
+              enum: ["beginner", "intermediate", "advanced"],
+              description: "User's current fitness level" 
+            },
+            timePerSession: { 
+              type: "integer",
+              description: "Minutes available per workout session"
+            },
+            focusAreas: {
+              type: "array",
+              items: { 
+                type: "string",
+                enum: ["upper-body", "lower-body", "core", "cardio", "full-body"]
+              },
+              description: "Specific body areas to focus on"
+            }
+          },
+          required: ["goal", "equipment", "daysPerWeek", "fitnessLevel"]
         }
       }
     },
