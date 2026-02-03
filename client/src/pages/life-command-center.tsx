@@ -58,6 +58,9 @@ export default function LifeCommandCenter() {
     month: 'long', 
     day: 'numeric' 
   }));
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return !localStorage.getItem('dw_welcome_dismissed');
+  });
 
   // Fetch today's water logs
   const { data: waterLogs = [] } = useQuery({
@@ -112,9 +115,44 @@ export default function LifeCommandCenter() {
           <p className="text-muted-foreground">{todayDate}</p>
         </motion.div>
 
+        {/* Welcome Banner */}
+        {showWelcome && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <h3 className="font-semibold">Welcome to DW.ai! 👋</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This is your Life Command Center. Tap any card to explore, or start by building your Life Blueprint.
+                </p>
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  <Button size="sm" onClick={() => navigate('/life-blueprint')}>
+                    Start Life Blueprint
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => navigate('/app-tour')}>
+                    Take a Tour
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    localStorage.setItem('dw_welcome_dismissed', 'true');
+                    setShowWelcome(false);
+                  }}>
+                    Dismiss
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Quick Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
+          <Card 
+            onClick={() => navigate('/tracking')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -127,7 +165,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            onClick={() => navigate('/tracking')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -140,7 +181,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            onClick={() => navigate('/goals')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -152,7 +196,10 @@ export default function LifeCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            onClick={() => navigate('/habits')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -168,7 +215,10 @@ export default function LifeCommandCenter() {
         {/* Main Content Grid */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Today's Schedule */}
-          <Card>
+          <Card 
+            onClick={() => navigate('/calendar')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -206,7 +256,10 @@ export default function LifeCommandCenter() {
           </Card>
 
           {/* Active Goals */}
-          <Card>
+          <Card 
+            onClick={() => navigate('/goals')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
@@ -243,7 +296,10 @@ export default function LifeCommandCenter() {
           </Card>
 
           {/* Dimension Status */}
-          <Card>
+          <Card 
+            onClick={() => navigate('/life-blueprint')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -278,7 +334,10 @@ export default function LifeCommandCenter() {
           </Card>
 
           {/* Today's Habits */}
-          <Card>
+          <Card 
+            onClick={() => navigate('/habits')}
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
