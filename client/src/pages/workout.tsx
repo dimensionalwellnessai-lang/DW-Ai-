@@ -72,6 +72,8 @@ import { ExclusionsButton } from "@/components/exclusions-manager";
 import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { ExerciseAnimation } from "@/components/exercise-animation";
+import { EXERCISE_ANIMATIONS, getExercisesByEquipment, EQUIPMENT_TYPES } from "@/lib/exercise-animations";
 
 type TimeFilter = "any" | "10" | "20" | "30";
 type GoalFilter = "any" | "calm" | "strength" | "mobility" | "cardio";
@@ -97,6 +99,36 @@ interface WorkoutData {
   steps: string[];
   equipment?: string[];
   tips?: string[];
+}
+
+interface Exercise {
+  id: string;
+  name: string;
+  sets?: number;
+  reps?: string;
+  duration?: string;
+  restSeconds?: number;
+  equipment?: string[];
+  animationId: string; // Reference to animation
+  formTips?: string[];
+}
+
+interface WorkoutPlan {
+  id: string;
+  title: string;
+  summary: string;
+  source: 'ai-generated' | 'user-created' | 'imported';
+  equipment: string[];
+  goal: string;
+  daysPerWeek: number;
+  days: {
+    dayOfWeek: string;
+    focus: string;
+    exercises: Exercise[];
+    isRestDay: boolean;
+  }[];
+  createdAt: string;
+  approvedAt?: string;
 }
 
 // Helper to construct YouTube thumbnail URL from video ID
@@ -274,6 +306,11 @@ export default function WorkoutPage() {
   const [alternativesOpen, setAlternativesOpen] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<string>("");
   const [selectedExerciseContext, setSelectedExerciseContext] = useState<string>("");
+  
+  const [savedWorkoutPlans, setSavedWorkoutPlans] = useState<WorkoutPlan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
+  const [selectedExerciseAnimation, setSelectedExerciseAnimation] = useState<string | null>(null);
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
   
   const { toast } = useToast();
   
@@ -623,6 +660,47 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   <span className="text-sm capitalize">Energy: {bodyProfile.energyLevel.replace("_", " ")}</span>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* AI Generated Workout Plans */}
+        {savedWorkoutPlans.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wand2 className="w-4 h-4" />
+                My Workout Plans
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {savedWorkoutPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    setSelectedPlan(plan);
+                    setShowPlanDetails(true);
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm mb-1">{plan.title}</h4>
+                      <p className="text-xs text-muted-foreground mb-2">{plan.summary}</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs">
+                          {plan.daysPerWeek} days/week
+                        </Badge>
+                        {plan.equipment.map((eq) => (
+                          <Badge key={eq} variant="secondary" className="text-xs">
+                            {eq.replace('-', ' ')}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
@@ -1378,6 +1456,81 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           context={selectedExerciseContext}
           excludedItems={getDomainExclusions("workouts")}
         />
+
+        {/* Workout Plan Details Dialog */}
+        <Dialog open={showPlanDetails} onOpenChange={setShowPlanDetails}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedPlan?.title}</DialogTitle>
+              <DialogDescription>{selectedPlan?.summary}</DialogDescription>
+            </DialogHeader>
+            
+            {selectedPlan && (
+              <div className="space-y-4">
+                {/* Plan Overview */}
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="outline">{selectedPlan.daysPerWeek} days/week</Badge>
+                  <Badge variant="secondary">{selectedPlan.goal}</Badge>
+                  {selectedPlan.equipment.map((eq) => (
+                    <Badge key={eq} variant="outline" className="text-xs">
+                      {eq.replace('-', ' ')}
+                    </Badge>
+                  ))}
+                </div>
+
+                {/* Days */}
+                {selectedPlan.days.map((day, idx) => (
+                  <Card key={idx}>
+                    <CardHeader>
+                      <CardTitle className="text-sm">
+                        {day.dayOfWeek} - {day.focus}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {day.isRestDay ? (
+                        <p className="text-sm text-muted-foreground">Rest Day - Recovery</p>
+                      ) : (
+                        day.exercises.map((exercise, exIdx) => (
+                          <div
+                            key={exIdx}
+                            className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => setSelectedExerciseAnimation(exercise.animationId)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h5 className="font-medium text-sm">{exercise.name}</h5>
+                                <p className="text-xs text-muted-foreground">
+                                  {exercise.sets && `${exercise.sets} sets × `}
+                                  {exercise.reps || exercise.duration}
+                                  {exercise.restSeconds && ` • ${exercise.restSeconds}s rest`}
+                                </p>
+                              </div>
+                              <Button variant="ghost" size="sm">
+                                <Play className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Exercise Animation Dialog */}
+        <Dialog open={!!selectedExerciseAnimation} onOpenChange={() => setSelectedExerciseAnimation(null)}>
+          <DialogContent className="max-w-lg">
+            {selectedExerciseAnimation && (
+              <ExerciseAnimation 
+                exerciseId={selectedExerciseAnimation} 
+                onClose={() => setSelectedExerciseAnimation(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ScrollArea>
     </div>
