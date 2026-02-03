@@ -328,7 +328,7 @@ export default function LifeCommandCenter() {
                   return (
                     <div
                       key={switchId}
-                      onClick={() => navigate(`/life-blueprint?dimension=${switchId}`)}
+                      onClick={() => navigate("/life-blueprint")}
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
                     >
                       <div className={`p-2 rounded-lg ${colors.bg}`}>
