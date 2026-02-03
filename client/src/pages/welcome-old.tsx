@@ -15,7 +15,6 @@ import {
   DollarSign,
   Sparkles,
   Briefcase,
-  Loader2,
   MessageCircle,
 } from "lucide-react";
 import { COPY } from "@/copy/en";
