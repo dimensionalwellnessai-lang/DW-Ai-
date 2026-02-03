@@ -797,16 +797,118 @@ export function AIWorkspace() {
           ? [...(activeDbConversation.messages as ChatMessage[] || []), userMsg]
           : [...messages, userMsg];
       
-      const response = await apiRequest("POST", "/api/chat/smart", {
-        message,
-        conversationHistory: currentMessages.slice(-10),
-        userProfile: userProfile || undefined,
-        lifeSystemContext: lifeContext,
-        energyContext,
-        documentIds: documentIds || [],
+      // For guests, add an empty assistant message to show streaming in progress
+      if (!isUserAuthenticated) {
+        addMessageToConversation("assistant", "");
+        setConversationVersion(v => v + 1);
+      }
+      
+      // Use streaming endpoint instead of smart endpoint
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          conversationHistory: currentMessages.slice(-10),
+          userProfile: userProfile || undefined,
+          lifeSystemContext: lifeContext,
+          energyContext,
+          documentIds: documentIds || [],
+        }),
       });
-      const data = await response.json();
-      return { data, userMsg, conversationId, messagesOverride };
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to get streaming response");
+      }
+
+      // Handle Server-Sent Events (SSE) streaming
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedResponse = "";
+      let metadata: { actionsTaken?: string[]; syncSessionId?: string } = {};
+      let updateCounter = 0;
+      const UPDATE_FREQUENCY = 3; // Update UI every 3 chunks to reduce re-renders
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            if (data === "[DONE]") {
+              // Final update with complete response
+              if (isUserAuthenticated) {
+                setOptimisticMessages([
+                  userMsg,
+                  { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                ]);
+              } else {
+                const conv = getActiveConversation();
+                if (conv && conv.messages.length > 0) {
+                  const lastMsg = conv.messages[conv.messages.length - 1];
+                  if (lastMsg.role === "assistant") {
+                    lastMsg.content = streamedResponse;
+                    setConversationVersion(v => v + 1);
+                  }
+                }
+              }
+              break;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                streamedResponse += parsed.content;
+                updateCounter++;
+                
+                // Update UI periodically, not on every chunk
+                if (updateCounter >= UPDATE_FREQUENCY) {
+                  updateCounter = 0;
+                  if (isUserAuthenticated) {
+                    setOptimisticMessages([
+                      userMsg,
+                      { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                    ]);
+                  } else {
+                    // For guests, update the last assistant message in the conversation
+                    const conv = getActiveConversation();
+                    if (conv && conv.messages.length > 0) {
+                      const lastMsg = conv.messages[conv.messages.length - 1];
+                      if (lastMsg.role === "assistant") {
+                        lastMsg.content = streamedResponse;
+                        setConversationVersion(v => v + 1);
+                      }
+                    }
+                  }
+                }
+              } else if (parsed.metadata) {
+                metadata = parsed.metadata;
+              } else if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+            } catch (e) {
+              console.error("Failed to parse SSE data:", e);
+            }
+          }
+        }
+      }
+
+      return { 
+        data: { 
+          response: streamedResponse, 
+          actionsTaken: metadata.actionsTaken || [],
+          syncSessionId: metadata.syncSessionId 
+        }, 
+        userMsg, 
+        conversationId, 
+        messagesOverride 
+      };
     },
     onSuccess: async ({ data, userMsg, conversationId, messagesOverride }) => {
       const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now() };
@@ -824,11 +926,9 @@ export function AIWorkspace() {
         }
         // Clear optimistic messages after successful save
         setOptimisticMessages([]);
-      } else {
-        // For guests, add assistant message to local storage
-        addMessageToConversation("assistant", data.response);
-        setConversationVersion(v => v + 1);
       }
+      // For guests, the message was already added and updated during streaming
+      // so we don't need to add it again here
       
       // Show toast notification for actions taken
       if (data.actionsTaken && data.actionsTaken.length > 0) {

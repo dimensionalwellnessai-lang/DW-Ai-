@@ -8,7 +8,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -1634,6 +1634,12 @@ export async function registerRoutes(
                   actionsTaken.push(`Created habit: "${args.title}"`);
                 }
                 break;
+              case 'create_workout_plan':
+                // This tool creates a workout plan - the AI will present it in the response
+                // The plan data is embedded in the conversation, not saved to database yet
+                // User will approve/save it through the workout page UI
+                actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
             }
           } catch (err) {
             console.error(`Failed to execute tool ${toolCall.name}:`, err);
@@ -1695,7 +1701,7 @@ export async function registerRoutes(
   // Streaming chat endpoint for improved performance
   app.post("/api/chat/stream", async (req, res) => {
     try {
-      const { message, conversationHistory, context, systemOverride } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -1715,12 +1721,31 @@ export async function registerRoutes(
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Fetch user context
-      const [user, goals, habits] = await Promise.all([
+      // Fetch user context (same as smart endpoint)
+      const [user, goals, habits, profile] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
+        storage.getUserProfile(userId),
       ]);
+      
+      // Handle document attachments
+      let documentContext = "";
+      if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+        const docs = await Promise.all(
+          documentIds.map((id: string) => storage.getImportedDocument(id))
+        );
+        const validDocs = docs.filter(d => d && d.userId === userId);
+        if (validDocs.length > 0) {
+          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d => 
+            `--- ${d!.fileName} ---\n${d!.rawText?.slice(0, 3000) || "(no content)"}\n---`
+          ).join("\n");
+        }
+      }
+      
+      const enhancedMessage = documentContext 
+        ? `${message}\n${documentContext}`
+        : message;
       
       const userContext = {
         category: context,
@@ -1733,36 +1758,150 @@ export async function registerRoutes(
           title: h.title, 
           streak: h.streak || 0 
         })),
+        profile: profile || clientProfile || null,
+        lifeSystem: lifeSystemContext || null,
+        energyContext: energyContext || null,
       };
       
-      // Use OpenAI streaming
-      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      // Use detectIntentAndRespond to get the AI response with streaming support
+      const result = await detectIntentAndRespondStreaming(
+        enhancedMessage,
+        conversationHistory || [],
+        userContext,
+        res
+      );
       
-      const systemPrompt = systemOverride || `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
-
-TODAY: ${today} at ${currentTime}
-
-Provide helpful, concise, and supportive responses. Focus on being present, validating, and offering gentle guidance.`;
-      
-      const messages = [
-        { role: "system" as const, content: systemPrompt },
-        ...(conversationHistory || []),
-        { role: "user" as const, content: message },
-      ];
-      
-      const stream = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        stream: true,
-        temperature: 0.7,
-      });
-      
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      // Execute tool calls if any (same as smart endpoint)
+      const actionsTaken: string[] = [];
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        for (const toolCall of result.toolCalls) {
+          try {
+            const args = typeof toolCall.arguments === 'string' 
+              ? JSON.parse(toolCall.arguments) 
+              : toolCall.arguments;
+            
+            if (!args || typeof args !== 'object') {
+              console.error(`Invalid tool arguments for ${toolCall.name}:`, toolCall.arguments);
+              continue;
+            }
+            
+            switch (toolCall.name) {
+              case 'create_schedule_block':
+                if (args.title && args.startTime && args.endTime) {
+                  await storage.createScheduleBlock({
+                    userId,
+                    title: args.title,
+                    startTime: args.startTime,
+                    endTime: args.endTime,
+                    dayOfWeek: args.dayOfWeek ?? new Date().getDay(),
+                    category: args.category || 'personal',
+                  });
+                  actionsTaken.push(`Added "${args.title}" to your schedule`);
+                }
+                break;
+              case 'log_mood':
+                if (args.energyLevel && args.moodLevel) {
+                  await storage.createMoodLog({
+                    userId,
+                    energyLevel: args.energyLevel,
+                    moodLevel: args.moodLevel,
+                    clarityLevel: args.clarityLevel,
+                    notes: args.notes,
+                  });
+                  actionsTaken.push(`Logged your mood (energy: ${args.energyLevel}/5, mood: ${args.moodLevel}/5)`);
+                }
+                break;
+              case 'create_goal':
+                if (args.title) {
+                  await storage.createGoal({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    wellnessDimension: args.wellnessDimension,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created goal: "${args.title}"`);
+                }
+                break;
+              case 'create_habit':
+                if (args.title) {
+                  await storage.createHabit({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    frequency: args.frequency || 'daily',
+                    reminderTime: args.reminderTime,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created habit: "${args.title}"`);
+                }
+                break;
+              case 'create_workout_plan':
+                // This tool creates a workout plan - the AI will present it in the response
+                // The plan data is embedded in the conversation, not saved to database yet
+                // User will approve/save it through the workout page UI
+                actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
+            }
+          } catch (err) {
+            console.error(`Failed to execute tool ${toolCall.name}:`, err);
+          }
         }
+      }
+      
+      // Handle syncable items (same as smart endpoint)
+      const syncableItems = extractSyncableItems(message, result.response || "");
+      let syncSessionId: string | undefined;
+      
+      if (syncableItems.length > 0) {
+        try {
+          let session = await storage.getActiveSyncSession(userId);
+          
+          if (!session) {
+            session = await storage.createSyncSession({
+              userId,
+              status: "processing",
+              totalItems: syncableItems.length,
+              sourceType: "chat",
+            });
+          }
+          syncSessionId = session.id;
+          
+          const syncItems = syncableItems.map(item => ({
+            sessionId: session!.id,
+            itemType: item.itemType,
+            title: item.title,
+            description: item.description,
+            startTime: item.startTime ? item.startTime.toISOString() : undefined,
+            endTime: item.endTime ? item.endTime.toISOString() : undefined,
+            recurrencePattern: item.recurrencePattern,
+            recurrenceGroupKey: item.recurrenceGroupKey,
+            dimensionTags: item.dimensionTags,
+            rawExtraction: item.rawExtraction,
+            status: "pending" as const,
+          }));
+          
+          await storage.createSyncItems(syncItems as any);
+          
+          const currentItems = await storage.getSyncItems(session.id);
+          await storage.updateSyncSession(session.id, {
+            status: "awaiting_review",
+            totalItems: currentItems.length,
+            processedItems: currentItems.length,
+          });
+        } catch (err) {
+          console.error("Failed to create sync items:", err);
+        }
+      }
+      
+      // Send actions taken and metadata at the end
+      if (actionsTaken.length > 0 || syncSessionId) {
+        res.write(`data: ${JSON.stringify({ 
+          metadata: { 
+            actionsTaken, 
+            syncSessionId 
+          } 
+        })}\n\n`);
       }
       
       res.write('data: [DONE]\n\n');
