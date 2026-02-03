@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles, Zap, Rocket } from "lucide-react";
 
 type PlanType = 'free' | 'premium' | 'lifetime';
