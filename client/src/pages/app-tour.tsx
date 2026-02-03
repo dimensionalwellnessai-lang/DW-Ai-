@@ -39,14 +39,14 @@ interface GuideSection {
 
 const GUIDE_SECTIONS: GuideSection[] = [
   {
-    id: "talk",
-    title: "Talk It Out",
-    icon: MessageCircle,
-    description: "Your main way to interact with DW.ai. Share what's on your mind, ask for help, or simply chat.",
+    id: "welcome",
+    title: "Welcome to DW.ai",
+    icon: Sparkles,
+    description: "Your personal AI wellness coach. DW adapts to your energy, understands your struggles, and helps you build the life you want - one small step at a time.",
     tips: [
-      "Start with how you're feeling - no judgment here",
-      "Ask for specific help like 'help me plan my morning'",
-      "The AI remembers context from your conversations"
+      "DW is consent-based - it always asks before saving or scheduling",
+      "No streaks, no guilt - just support when you need it",
+      "Works in both authenticated and guest mode"
     ],
     path: "/talk"
   },
@@ -54,24 +54,37 @@ const GUIDE_SECTIONS: GuideSection[] = [
     id: "command-center",
     title: "Life Command Center",
     icon: Target,
-    description: "Your central wellness dashboard. See all your metrics, goals, and daily progress in one place.",
+    description: "Your home base. See everything at a glance - water intake, calories, goals, habits, and all 8 wellness dimensions.",
     tips: [
-      "View water intake, calories, and habit tracking",
-      "Monitor all 8 wellness dimensions at a glance",
-      "Quick access to today's schedule and active goals",
-      "One-tap navigation to any wellness area"
+      "Tap any card to dive deeper into that area",
+      "Quick stats show today's progress",
+      "One-tap access to tracking and planning",
+      "Real-time updates as you log activities"
     ],
-    path: "/command-center"
+    path: "/"
+  },
+  {
+    id: "talk",
+    title: "Talk to DW",
+    icon: MessageCircle,
+    description: "Chat with your AI coach anytime. Ask questions, vent, get advice, or create personalized plans based on your situation.",
+    tips: [
+      "Start with how you're feeling - DW adapts to your energy",
+      "Ask for meal plans, workout routines, or time management help",
+      "DW remembers context from your previous conversations",
+      "Upload documents to get AI-powered summaries and plans"
+    ],
+    path: "/talk"
   },
   {
     id: "life-blueprint",
     title: "Life Blueprint",
-    icon: Target,
-    description: "Define your personal values and vision for each of the 8 wellness dimensions.",
+    icon: Compass,
+    description: "Define who you are across all 8 dimensions: Body, Mind, Time, Purpose, Money, Relationships, Environment, and Identity.",
     tips: [
-      "Create blueprints for Body, Mind, Time, Purpose, Money, Relationships, Environment, and Identity",
-      "Set your 'Reset Protocol' for when things get tough",
-      "Your AI references these values to keep you aligned",
+      "Set your values and vision for each dimension",
+      "Create your personal 'Reset Protocol' for tough times",
+      "DW references your blueprint to keep you aligned",
       "Update anytime as you grow and evolve"
     ],
     path: "/life-blueprint"
@@ -80,101 +93,53 @@ const GUIDE_SECTIONS: GuideSection[] = [
     id: "tracking",
     title: "Tracking Dashboard",
     icon: CheckCircle2,
-    description: "Monitor your daily wellness metrics. Log water, track calories, check off habits, and see your progress.",
+    description: "Track water, calories, workouts, and habits all in one place. Log quickly and see your progress build over time.",
     tips: [
-      "Quick log water intake with preset amounts",
-      "View calorie summary from logged meals",
+      "Quick-log water with preset amounts",
+      "View calorie summary from meal logs",
       "Check off daily habits and build streaks",
-      "One-tap access to log meals and workouts"
+      "One-tap access to detailed meal and workout logging"
     ],
     path: "/tracking"
   },
   {
-    id: "life-dashboard",
-    title: "Life Dashboard",
-    icon: Target,
-    description: "See your wellness across all dimensions. Answer questions to build your personal anchor plans.",
+    id: "plans",
+    title: "Your Plans",
+    icon: Calendar,
+    description: "All your workout routines, meal plans, and project timelines organized in one place.",
     tips: [
-      "Each dimension has questions to understand your needs",
-      "Your answers create personalized support strategies",
-      "Revisit anytime to update as you grow"
+      "View and edit saved workout routines",
+      "Access meal plans with ingredients and instructions",
+      "Track project milestones and tasks",
+      "Create new plans with AI assistance"
     ],
-    path: "/life-dashboard",
-    estimatedMinutes: 15,
-    hasQuestionnaire: true,
-    completionKey: "life-dashboard"
+    path: "/plans"
   },
   {
     id: "calendar",
-    title: "Calendar & Schedule",
+    title: "Life Timeline",
     icon: Calendar,
-    description: "Plan your day, week, or month. Upload documents and let AI help organize your life.",
+    description: "See your whole life in one calendar. Schedule events, plan your week, and stay organized.",
     tips: [
       "Upload work schedules, class timetables, or event lists",
-      "AI will analyze and suggest how to structure your time",
-      "View 'Today' for a focused daily view"
+      "AI analyzes and suggests time structure",
+      "View 'Today' for a focused daily schedule",
+      "Drag and drop to reschedule events"
     ],
     path: "/calendar"
   },
   {
-    id: "meal-prep",
-    title: "Meal Prep",
-    icon: Utensils,
-    description: "Get personalized meal suggestions based on your dietary preferences and goals.",
+    id: "getting-started",
+    title: "Getting Started",
+    icon: Target,
+    description: "Your checklist to unlock the full power of DW.ai. Complete these steps to personalize your experience.",
     tips: [
-      "Set your dietary style and restrictions",
-      "Each meal has ingredients and cooking instructions",
-      "Swap ingredients if needed"
+      "Complete your Life Blueprint",
+      "Set up your first habit",
+      "Log your first meal",
+      "Have a conversation with DW"
     ],
-    path: "/meal-prep",
-    estimatedMinutes: 3,
-    hasQuestionnaire: true,
-    completionKey: "meal-prep"
-  },
-  {
-    id: "workout",
-    title: "Workout",
-    icon: Dumbbell,
-    description: "Find exercises that match your body goals and energy level.",
-    tips: [
-      "Complete a Body Scan to personalize recommendations",
-      "Each workout has video demonstrations",
-      "Save favorites to your routines"
-    ],
-    path: "/workout",
-    estimatedMinutes: 5,
-    hasQuestionnaire: true,
-    completionKey: "body-scan"
-  },
-  {
-    id: "meditation",
-    title: "Meditation",
-    icon: Heart,
-    description: "Guided practices for calm, focus, and inner peace.",
-    tips: [
-      "Choose based on your current mood or need",
-      "Sessions range from 5 to 30 minutes",
-      "Follow along with step-by-step guidance"
-    ],
-    path: "/spiritual",
-    estimatedMinutes: 4,
-    hasQuestionnaire: true,
-    completionKey: "spiritual"
-  },
-  {
-    id: "astrology",
-    title: "Astrology",
-    icon: Sparkles,
-    description: "Explore your birth chart, daily horoscopes, and cosmic insights.",
-    tips: [
-      "Enter your birth details to generate your chart",
-      "Get AI-powered readings for any timeframe",
-      "Track moon phases and retrogrades"
-    ],
-    path: "/astrology",
-    estimatedMinutes: 2,
-    hasQuestionnaire: true,
-    completionKey: "astrology"
+    path: "/app-tour"
   }
 ];
 

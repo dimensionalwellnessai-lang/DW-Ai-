@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -17,6 +18,12 @@ import {
   Briefcase,
   Loader2,
   MessageCircle,
+  User,
+  Heart,
+  Home,
+  Compass as CompassIcon,
+  Users,
+  Sprout,
 } from "lucide-react";
 import { COPY } from "@/copy/en";
 import { 
@@ -28,6 +35,47 @@ import {
   type FocusArea,
 } from "@/lib/guest-storage";
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
+
+type CurrentState = "calm" | "heavy" | "scattered" | "motivated" | "unsure";
+type LifeDimension = "body" | "mind" | "time" | "purpose" | "money" | "relationships" | "environment" | "identity";
+
+const CURRENT_STATE_OPTIONS: { id: CurrentState; label: string }[] = [
+  { id: "calm", label: "Calm" },
+  { id: "heavy", label: "Heavy" },
+  { id: "scattered", label: "Scattered" },
+  { id: "motivated", label: "Motivated" },
+  { id: "unsure", label: "Unsure" },
+];
+
+const DIMENSION_OPTIONS: { id: LifeDimension; icon: typeof Zap; label: string; description: string }[] = [
+  { id: "body", icon: Zap, label: "Body", description: "Physical health, fitness, energy" },
+  { id: "mind", icon: Brain, label: "Mind", description: "Mental clarity, learning, focus" },
+  { id: "time", icon: Clock, label: "Time", description: "Schedule, productivity, balance" },
+  { id: "purpose", icon: CompassIcon, label: "Purpose", description: "Goals, meaning, direction" },
+  { id: "money", icon: DollarSign, label: "Money", description: "Finance, career, security" },
+  { id: "relationships", icon: Users, label: "Relationships", description: "Connection, support, love" },
+  { id: "environment", icon: Home, label: "Environment", description: "Space, comfort, safety" },
+  { id: "identity", icon: Sprout, label: "Identity", description: "Values, growth, authenticity" },
+];
+
+const STRUGGLE_OPTIONS = [
+  "Staying consistent",
+  "Feeling overwhelmed",
+  "Low energy/motivation",
+  "Time management",
+  "Not sure where to start",
+  "Too many things at once",
+];
+
+const WORKED_OPTIONS = [
+  "Having a routine",
+  "Accountability",
+  "Clear goals",
+  "Exercise/movement",
+  "Someone to talk to",
+  "Breaking things into small steps",
+  "Nothing yet / Still figuring it out",
+];
 
 const SCHEDULE_OPTIONS: { id: ScheduleType; label: string }[] = [
   { id: "9to5", label: COPY.quickSetup.schedules["9to5"] },
@@ -133,10 +181,15 @@ function createStarterObject(focusArea: FocusArea): string {
 export default function Welcome() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
+  const [name, setName] = useState("");
+  const [currentState, setCurrentState] = useState<CurrentState | null>(null);
   const [scheduleType, setScheduleType] = useState<ScheduleType | null>(null);
   const [busiestDays, setBusiestDays] = useState<number[]>([]);
   const [wakeTime, setWakeTime] = useState<string>("7:00 AM");
   const [windDownTime, setWindDownTime] = useState<string>("10:00 PM");
+  const [focusDimension, setFocusDimension] = useState<LifeDimension | null>(null);
+  const [struggles, setStruggles] = useState<string[]>([]);
+  const [workedBefore, setWorkedBefore] = useState<string[]>([]);
   const [focusArea, setFocusArea] = useState<FocusArea | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [hasStarterObject, setHasStarterObject] = useState(false);
@@ -195,20 +248,83 @@ export default function Welcome() {
   const copy = COPY.quickSetup;
 
   const handleNext = () => {
-    if (step === 1 && scheduleType) {
-      saveProfileSetup({ scheduleType, busiestDays });
+    if (step === 1 && name.trim()) {
+      // Save name to localStorage for AI context
+      localStorage.setItem('dw_user_name', name.trim());
       setStep(2);
-    } else if (step === 2) {
-      saveProfileSetup({ wakeTime, windDownTime });
+    } else if (step === 2 && currentState) {
+      localStorage.setItem('dw_current_state', currentState);
       setStep(3);
-    } else if (step === 3 && focusArea) {
-      saveProfileSetup({ focusArea });
+    } else if (step === 3 && scheduleType) {
+      saveProfileSetup({ scheduleType, busiestDays });
       setStep(4);
+    } else if (step === 4) {
+      saveProfileSetup({ wakeTime, windDownTime });
+      setStep(5);
+    } else if (step === 5 && focusDimension) {
+      localStorage.setItem('dw_focus_dimension', focusDimension);
+      setStep(6);
+    } else if (step === 6) {
+      localStorage.setItem('dw_struggles', JSON.stringify(struggles));
+      setStep(7);
+    } else if (step === 7) {
+      localStorage.setItem('dw_worked_before', JSON.stringify(workedBefore));
+      setStep(8);
     }
   };
 
   const handleCreateStarter = async () => {
-    if (!focusArea) return;
+    if (!focusArea) {
+      // Map dimension to focus area if not set
+      const dimensionToFocus: Record<LifeDimension, FocusArea> = {
+        body: "body",
+        mind: "mind",
+        time: "work",
+        purpose: "spirit",
+        money: "money",
+        relationships: "spirit",
+        environment: "body",
+        identity: "spirit",
+      };
+      const mappedFocus = focusDimension ? dimensionToFocus[focusDimension] : "body";
+      setFocusArea(mappedFocus);
+      
+      const objectId = createStarterObject(mappedFocus);
+      saveProfileSetup({ 
+        focusArea: mappedFocus,
+        starterObjectId: objectId, 
+        completedAt: Date.now(),
+        metDW: false,
+      });
+      
+      // Mark as returning user (setup completed, not skipped)
+      localStorage.setItem("dw:isReturning", "1");
+
+      trackEvent(EVENTS.STARTER_OBJECT_CREATED, {
+        focusArea: mappedFocus,
+        objectType: "event",
+        starterObjectId: objectId,
+      });
+      
+      // Track first action (starter object created)
+      markActivated({
+        actionType: "starter_object_created",
+        source: "welcome",
+        tsLocal: new Date().toISOString(),
+      });
+
+      const timeToComplete = Math.round((Date.now() - setupStartTimeRef.current) / 1000);
+      trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {
+        scheduleType,
+        focusArea: mappedFocus,
+        hasStarterObject: true,
+        timeToCompleteSeconds: timeToComplete,
+      });
+
+      setHasStarterObject(true);
+      setShowSuccess(true);
+      return;
+    }
 
     const objectId = createStarterObject(focusArea);
     saveProfileSetup({ 
@@ -280,7 +396,26 @@ export default function Welcome() {
     );
   };
 
-  const canContinue = step === 1 ? !!scheduleType : step === 3 ? !!focusArea : true;
+  const toggleStruggle = (struggle: string) => {
+    setStruggles(prev =>
+      prev.includes(struggle) ? prev.filter(s => s !== struggle) : [...prev, struggle]
+    );
+  };
+
+  const toggleWorked = (worked: string) => {
+    setWorkedBefore(prev =>
+      prev.includes(worked) ? prev.filter(w => w !== worked) : [...prev, worked]
+    );
+  };
+
+  const canContinue = 
+    (step === 1 && name.trim().length > 0) ||
+    (step === 2 && currentState !== null) ||
+    (step === 3 && scheduleType !== null) ||
+    (step === 4) ||
+    (step === 5 && focusDimension !== null) ||
+    (step === 6) ||
+    (step === 7);
 
   const getScheduleLabel = () => {
     if (!scheduleType) return "";
@@ -386,10 +521,10 @@ export default function Welcome() {
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
         <div className="w-full max-w-md">
           <div className="flex gap-1.5 justify-center mb-8">
-            {[1, 2, 3, 4].map((s) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
               <div 
                 key={s}
-                className={`h-1 w-8 rounded-full transition-colors ${
+                className={`h-1 w-6 rounded-full transition-colors ${
                   s === step ? "bg-primary" : s < step ? "bg-primary/50" : "bg-muted"
                 }`}
                 data-testid={`progress-step-${s}`}
@@ -401,6 +536,66 @@ export default function Welcome() {
             {step === 1 && (
               <motion.div
                 key="step1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center space-y-2">
+                  <User className="w-10 h-10 mx-auto text-primary" />
+                  <h2 className="text-xl font-display font-semibold">What should I call you?</h2>
+                  <p className="text-sm text-muted-foreground">Help me personalize your experience</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="text-center text-lg"
+                    autoFocus
+                    data-testid="input-name"
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center space-y-2">
+                  <Heart className="w-10 h-10 mx-auto text-primary" />
+                  <h2 className="text-xl font-display font-semibold">How are you feeling right now?</h2>
+                  <p className="text-sm text-muted-foreground">There's no right answer</p>
+                </div>
+
+                <div className="space-y-2">
+                  {CURRENT_STATE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setCurrentState(opt.id)}
+                      className={`w-full p-3 rounded-xl border text-left transition-all ${
+                        currentState === opt.id 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover-elevate"
+                      }`}
+                      data-testid={`state-${opt.id}`}
+                    >
+                      <span className="font-medium text-sm">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div
+                key="step3"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -448,9 +643,9 @@ export default function Welcome() {
               </motion.div>
             )}
 
-            {step === 2 && (
+            {step === 4 && (
               <motion.div
-                key="step2"
+                key="step4"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
