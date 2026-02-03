@@ -34,6 +34,7 @@ import DailySchedulePage from "@/pages/daily-schedule";
 import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
+import SubscriptionPage from "@/pages/subscription";
 import EnhancedOnboardingPage from "@/pages/enhanced-onboarding";
 import ResetPasswordPage from "@/pages/reset-password";
 import AppTourPage from "@/pages/app-tour";
@@ -147,6 +148,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
+      <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}

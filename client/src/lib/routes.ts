@@ -13,6 +13,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/login", name: "Login", enabled: true, isPublic: true },
   { path: "/reset-password", name: "Reset Password", enabled: true, isPublic: true },
   { path: "/welcome", name: "Welcome", enabled: true },
+  { path: "/subscription", name: "Subscription", enabled: true },
   
   { path: "/life-dashboard", name: "Life Dashboard", enabled: true },
   { path: "/calendar", name: "Calendar", enabled: true },
