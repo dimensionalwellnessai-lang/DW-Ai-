@@ -72,6 +72,7 @@ import LifeBlueprintPage from "@/pages/life-blueprint";
 import TrackingPage from "@/pages/tracking";
 import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
+import SubscriptionPage from "@/pages/subscription";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -147,6 +148,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
+      <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
