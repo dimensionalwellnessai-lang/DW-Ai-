@@ -1616,6 +1616,290 @@ export async function detectIntentAndRespond(
   };
 }
 
+// Streaming version of detectIntentAndRespond for real-time chat
+export async function detectIntentAndRespondStreaming(
+  userMessage: string,
+  conversationHistory: ChatMessage[],
+  userContext: UserLifeContext | undefined,
+  res: any
+): Promise<{
+  response: string;
+  intent: "workout" | "meditation" | "learn" | "general";
+  toolCalls?: { name: string; arguments: Record<string, any> }[];
+}> {
+  const lowerMessage = userMessage.toLowerCase();
+  
+  // Check if user is EXPLICITLY asking to generate/create something NOW
+  const explicitGenerateKeywords = [
+    "generate it", "create it", "make it", "build it", "give me the plan",
+    "yes please", "go ahead", "sounds good", "let's do it", "that works",
+    "yes, create", "yes create", "perfect, create", "ready to see", "show me the plan"
+  ];
+  const isExplicitGenerate = explicitGenerateKeywords.some(k => lowerMessage.includes(k));
+  
+  // Check conversation history to see if AI already asked clarifying questions
+  const recentAIMessages = conversationHistory.filter(m => m.role === "assistant").slice(-3);
+  const hasAskedClarifyingQuestions = recentAIMessages.some(m => 
+    m.content.includes("?") && (
+      m.content.toLowerCase().includes("what time") ||
+      m.content.toLowerCase().includes("what elements") ||
+      m.content.toLowerCase().includes("how many days") ||
+      m.content.toLowerCase().includes("what's your") ||
+      m.content.toLowerCase().includes("would you like") ||
+      m.content.toLowerCase().includes("which") ||
+      m.content.toLowerCase().includes("tell me more")
+    )
+  );
+  
+  const workoutKeywords = ["workout", "exercise", "gym", "fitness", "training", "work out", "get fit", "build muscle", "lose weight", "cardio"];
+  const meditationKeywords = ["meditat", "mindful", "calm", "relax", "breathing", "stress relief", "anxiety", "sleep better", "peaceful"];
+  
+  const isWorkoutIntent = workoutKeywords.some(k => lowerMessage.includes(k));
+  const isMeditationIntent = meditationKeywords.some(k => lowerMessage.includes(k));
+  
+  let intent: "workout" | "meditation" | "learn" | "general" = "general";
+  
+  // Only generate content if explicitly requested or confirmed after clarifying questions
+  const shouldGenerateContent = isExplicitGenerate || (hasAskedClarifyingQuestions && (
+    lowerMessage.includes("yes") || 
+    lowerMessage.includes("sure") || 
+    lowerMessage.includes("please") ||
+    lowerMessage.includes("go ahead") ||
+    lowerMessage.includes("sounds good")
+  ));
+  
+  if (isWorkoutIntent || isMeditationIntent) {
+    intent = isWorkoutIntent ? "workout" : "meditation";
+  }
+  
+  // Use streaming version of generateChatResponse
+  const { response, toolCalls } = await generateChatResponseStreaming(
+    userMessage, 
+    conversationHistory, 
+    userContext, 
+    res
+  );
+  
+  return {
+    response,
+    intent,
+    toolCalls,
+  };
+}
+
+// Streaming version of generateChatResponse
+async function generateChatResponseStreaming(
+  userMessage: string,
+  conversationHistory: ChatMessage[],
+  userContext: UserLifeContext | undefined,
+  res: any
+): Promise<{ response: string; toolCalls?: { name: string; arguments: Record<string, any> }[] }> {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  
+  // Use the same system prompt as the non-streaming version
+  const systemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+
+TODAY: ${today} at ${currentTime}
+
+DW SYSTEM IDENTITY:
+You are the user's personal concierge — like a thoughtful, anticipatory assistant who knows them well and helps orchestrate their day and life.
+
+You are not therapy.
+You are not a coach.
+You do not diagnose, treat, or promise outcomes.
+You provide structure, reflection, perspective, and optional guidance.
+
+Your role is to help users organize their life, energy, routines, and decisions in a calm, realistic, consent-based way.
+You are not here to fix people — you help them see clearly, choose intentionally, and follow through at their own pace.
+
+CONCIERGE MINDSET:
+Think of yourself as a high-end personal concierge who:
+• Anticipates needs before they're expressed
+• Remembers preferences and patterns
+• Makes personalized suggestions based on context (time of day, energy, schedule)
+• Handles logistics so the user can focus on what matters
+• Never pushy, always available
+• Creates a sense of being taken care of
+
+${userContext?.energyContext ? getEnergyToneGuidance(userContext.energyContext.currentEnergy || "medium") : ""}
+${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.energyContext.currentMood}` : ""}
+${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
+
+USER CONTEXT:
+${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}
+${userContext?.category ? `Current Category: ${userContext.category}` : ""}
+${userContext?.activeGoals?.length ? `Active Goals:\n${userContext.activeGoals.map(g => `• ${g.title} (${g.progress}% complete)`).join('\n')}` : ""}
+${userContext?.habits?.length ? `Active Habits:\n${userContext.habits.map(h => `• ${h.title} (${h.streak} day streak)`).join('\n')}` : ""}
+
+RESPONSE FORMATTING:
+• Use clear, calm language
+• End with a clear next step or question
+• Be specific with numbers and details
+• Clarity over cleverness`;
+
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    ...conversationHistory.map((msg) => ({
+      role: msg.role as "assistant" | "user",
+      content: msg.content,
+    })),
+    { role: "user", content: userMessage },
+  ];
+
+  const tools: OpenAI.Chat.ChatCompletionTool[] = [
+    {
+      type: "function",
+      function: {
+        name: "create_schedule_block",
+        description: "Create a time block on the user's schedule. Use this when the user confirms they want to add something to their schedule. Always ask for confirmation first.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Name of the activity" },
+            startTime: { type: "string", description: "Start time in HH:MM format (24-hour)" },
+            endTime: { type: "string", description: "End time in HH:MM format (24-hour)" },
+            dayOfWeek: { type: "integer", description: "Day of week (0=Sunday, 1=Monday, ..., 6=Saturday)" },
+            category: { type: "string", enum: ["work", "wellness", "personal", "social", "rest", "routine"], description: "Category of the activity" }
+          },
+          required: ["title", "startTime", "endTime", "dayOfWeek"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "log_mood",
+        description: "Log the user's current energy and mood. Use when user shares how they're feeling and you want to save it for them.",
+        parameters: {
+          type: "object",
+          properties: {
+            energyLevel: { type: "integer", minimum: 1, maximum: 5, description: "Energy level from 1-5" },
+            moodLevel: { type: "integer", minimum: 1, maximum: 5, description: "Mood level from 1-5" },
+            clarityLevel: { type: "integer", minimum: 1, maximum: 5, description: "Mental clarity from 1-5" },
+            notes: { type: "string", description: "Brief note about the mood/state" }
+          },
+          required: ["energyLevel", "moodLevel"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_goal",
+        description: "Create a new goal or intention for the user. Use when user expresses a goal they want to track.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Short, clear goal title" },
+            description: { type: "string", description: "Brief description of the goal" },
+            wellnessDimension: { type: "string", enum: ["physical", "mental", "emotional", "spiritual", "social", "financial", "career", "creative"], description: "Which life area this goal belongs to" }
+          },
+          required: ["title"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_habit",
+        description: "Create a new habit for the user to track. Use when user wants to build a recurring practice.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "Name of the habit" },
+            description: { type: "string", description: "What the habit involves" },
+            frequency: { type: "string", enum: ["daily", "weekly", "weekdays", "weekends"], description: "How often to do this habit" },
+            reminderTime: { type: "string", description: "Preferred reminder time in HH:MM format" }
+          },
+          required: ["title", "frequency"]
+        }
+      }
+    },
+  ];
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      tools,
+      tool_choice: "auto",
+      stream: true,
+      max_completion_tokens: 800,
+      temperature: 0.7,
+    });
+
+    let fullResponse = "";
+    let toolCalls: { name: string; arguments: Record<string, any> }[] = [];
+    let currentToolCall: { id: string; name: string; arguments: string } | null = null;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta;
+      
+      // Handle text content
+      if (delta?.content) {
+        fullResponse += delta.content;
+        res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+      }
+      
+      // Handle tool calls
+      if (delta?.tool_calls) {
+        for (const toolCall of delta.tool_calls) {
+          if (toolCall.function) {
+            if (!currentToolCall || toolCall.id) {
+              // New tool call
+              if (currentToolCall) {
+                // Finish previous tool call
+                try {
+                  toolCalls.push({
+                    name: currentToolCall.name,
+                    arguments: JSON.parse(currentToolCall.arguments)
+                  });
+                } catch (e) {
+                  console.error("Failed to parse tool arguments:", currentToolCall.arguments);
+                }
+              }
+              currentToolCall = {
+                id: toolCall.id || "",
+                name: toolCall.function.name || "",
+                arguments: toolCall.function.arguments || ""
+              };
+            } else if (currentToolCall) {
+              // Continue current tool call
+              if (toolCall.function.name) {
+                currentToolCall.name += toolCall.function.name;
+              }
+              if (toolCall.function.arguments) {
+                currentToolCall.arguments += toolCall.function.arguments;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Finish last tool call if any
+    if (currentToolCall) {
+      try {
+        toolCalls.push({
+          name: currentToolCall.name,
+          arguments: JSON.parse(currentToolCall.arguments)
+        });
+      } catch (e) {
+        console.error("Failed to parse tool arguments:", currentToolCall.arguments);
+      }
+    }
+
+    return {
+      response: fullResponse || "I'm here with you. Take your time - there's no rush.",
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined
+    };
+  } catch (error) {
+    console.error("OpenAI streaming error:", error);
+    throw error;
+  }
+}
+
 export async function generateLearnModeQuestion(
   previousAnswers: { topic: string; answer: string }[],
   focusArea?: string
