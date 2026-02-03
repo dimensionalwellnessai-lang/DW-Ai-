@@ -14,7 +14,8 @@ import {
   Sparkles,
   Upload,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Compass
 } from "lucide-react";
 import { Link } from "wouter";
 import {
