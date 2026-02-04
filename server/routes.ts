@@ -3096,6 +3096,263 @@ export async function registerRoutes(
     }
   });
 
+  // Explore Content APIs - External content discovery
+  // Note: API keys should be set in environment variables
+  // For now, these return mock data as placeholders until API keys are configured
+
+  app.post("/api/explore/youtube", requireAuth, async (req, res) => {
+    try {
+      const { query, maxResults = 10 } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.YOUTUBE_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "YouTube API key not configured. Set YOUTUBE_API_KEY in environment variables.",
+        });
+      }
+
+      // YouTube Data API v3 integration
+      const youtubeUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+      youtubeUrl.searchParams.set("part", "snippet");
+      youtubeUrl.searchParams.set("q", query);
+      youtubeUrl.searchParams.set("maxResults", String(maxResults));
+      youtubeUrl.searchParams.set("type", "video");
+      youtubeUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY);
+
+      const response = await fetch(youtubeUrl.toString());
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "YouTube API request failed");
+      }
+
+      // Format results
+      const formatted = data.items?.map((item: any) => ({
+        id: item.id.videoId,
+        type: "video",
+        source: "YouTube",
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnail: item.snippet.thumbnails?.medium?.url,
+        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        metadata: {
+          channel: item.snippet.channelTitle,
+          publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(),
+        },
+      })) || [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("YouTube API error:", error);
+      res.status(500).json({ 
+        error: "Failed to search YouTube",
+        items: [],
+      });
+    }
+  });
+
+  app.post("/api/explore/articles", requireAuth, async (req, res) => {
+    try {
+      const { query, category = "health" } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.NEWS_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "NewsAPI key not configured. Set NEWS_API_KEY in environment variables.",
+        });
+      }
+
+      // NewsAPI integration
+      const newsUrl = new URL("https://newsapi.org/v2/everything");
+      newsUrl.searchParams.set("q", `${query} ${category}`);
+      newsUrl.searchParams.set("language", "en");
+      newsUrl.searchParams.set("sortBy", "relevancy");
+      newsUrl.searchParams.set("pageSize", "10");
+      newsUrl.searchParams.set("apiKey", process.env.NEWS_API_KEY);
+
+      const response = await fetch(newsUrl.toString());
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "NewsAPI request failed");
+      }
+
+      // Format results
+      const formatted = data.articles?.map((article: any, idx: number) => ({
+        id: `article-${idx}`,
+        type: "article",
+        source: article.source.name,
+        title: article.title,
+        description: article.description || article.content?.substring(0, 200),
+        thumbnail: article.urlToImage,
+        url: article.url,
+        metadata: {
+          publishedAt: new Date(article.publishedAt).toLocaleDateString(),
+        },
+      })) || [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("NewsAPI error:", error);
+      res.status(500).json({ 
+        error: "Failed to search articles",
+        items: [],
+      });
+    }
+  });
+
+  app.post("/api/explore/exercises", requireAuth, async (req, res) => {
+    try {
+      const { query, muscle, type } = req.body;
+      
+      if (!query && !muscle && !type) {
+        return res.status(400).json({ error: "At least one search parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.EXERCISE_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "Exercise API key not configured. Set EXERCISE_API_KEY in environment variables.",
+        });
+      }
+
+      // API-Ninjas Exercise Database integration
+      const exerciseUrl = new URL("https://api.api-ninjas.com/v1/exercises");
+      if (query) exerciseUrl.searchParams.set("name", query);
+      if (muscle) exerciseUrl.searchParams.set("muscle", muscle);
+      if (type) exerciseUrl.searchParams.set("type", type);
+
+      const response = await fetch(exerciseUrl.toString(), {
+        headers: {
+          "X-Api-Key": process.env.EXERCISE_API_KEY,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error("Exercise API request failed");
+      }
+
+      // Format results
+      const formatted = Array.isArray(data) ? data.map((exercise: any, idx: number) => ({
+        id: `exercise-${idx}`,
+        type: "exercise",
+        source: "API-Ninjas Exercise DB",
+        title: exercise.name,
+        description: exercise.instructions,
+        duration: `${exercise.difficulty} difficulty`,
+        url: `#exercise-${exercise.name.replace(/\s+/g, "-").toLowerCase()}`,
+        metadata: {
+          type: exercise.type,
+          muscle: exercise.muscle,
+          equipment: exercise.equipment,
+          difficulty: exercise.difficulty,
+        },
+      })) : [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("Exercise API error:", error);
+      res.status(500).json({ 
+        error: "Failed to search exercises",
+        items: [],
+      });
+    }
+  });
+
+  app.get("/api/explore/suggestions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+
+      // Fetch user data for personalized suggestions
+      const [dimensionBlueprints, goals, habits, userProfile] = await Promise.all([
+        storage.getDimensionBlueprints(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+        storage.getUserProfile(userId),
+      ]);
+
+      // Build context for AI
+      const context = {
+        dimensions: dimensionBlueprints.map(d => ({
+          dimension: d.dimension,
+          focus: d.focusAreas,
+        })),
+        goals: goals.slice(0, 3).map(g => ({ title: g.title, category: g.category })),
+        habits: habits.slice(0, 3).map(h => ({ title: h.title })),
+        fitnessGoal: userProfile?.fitnessGoal,
+      };
+
+      // Generate AI suggestions
+      const prompt = `Based on the user's wellness data:
+- Dimensions: ${context.dimensions.map(d => d.dimension).join(", ")}
+- Active Goals: ${context.goals.map(g => g.title).join(", ")}
+- Current Habits: ${context.habits.map(h => h.title).join(", ")}
+${context.fitnessGoal ? `- Fitness Goal: ${context.fitnessGoal}` : ""}
+
+Generate 3-4 personalized topic suggestions for content discovery. For each suggestion:
+1. A brief title explaining the connection to their wellness focus
+2. A short description (1-2 sentences)
+3. 3 specific topic keywords they can explore
+
+Return as JSON array with format:
+[{
+  "dimension": "dimension name",
+  "title": "suggestion title",
+  "description": "why this is relevant",
+  "keywords": ["keyword1", "keyword2", "keyword3"]
+}]`;
+
+      const aiResponse = await generateChatResponse(prompt, [], "system");
+      
+      // Parse AI response
+      let suggestions = [];
+      try {
+        const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          suggestions = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.error("Failed to parse AI suggestions:", e);
+      }
+
+      // Fallback suggestions if AI fails
+      if (suggestions.length === 0) {
+        suggestions = [
+          {
+            dimension: "Body",
+            title: "Explore wellness content for your body",
+            description: "Discover workouts, nutrition tips, and recovery techniques.",
+            keywords: ["workout routines", "nutrition basics", "recovery tips"],
+          },
+        ];
+      }
+
+      res.json({ suggestions });
+    } catch (error) {
+      console.error("AI suggestions error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate suggestions",
+        suggestions: [],
+      });
+    }
+  });
+
   app.get("/api/system-modules", requireAuth, async (req, res) => {
     try {
       const modules = await storage.getSystemModules(req.session.userId!);
