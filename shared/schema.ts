@@ -592,6 +592,28 @@ export const wellnessContent = pgTable("wellness_content", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const savedContent = pgTable("saved_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  contentType: text("content_type").notNull(), // video, article, exercise, blog
+  title: text("title").notNull(),
+  description: text("description"),
+  url: text("url").notNull(),
+  thumbnail: text("thumbnail"),
+  source: text("source"), // YouTube, Healthline, etc.
+  duration: text("duration"), // "5 min read" or "10:32"
+  metadata: jsonb("metadata"), // views, channel, publishedAt, etc.
+  savedAt: timestamp("saved_at").defaultNow(),
+  isRead: boolean("is_read").default(false),
+});
+
+export const savedContentRelations = relations(savedContent, ({ one }) => ({
+  user: one(users, {
+    fields: [savedContent.userId],
+    references: [users.id],
+  }),
+}));
+
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -1084,6 +1106,11 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
 export const insertWellnessContentSchema = createInsertSchema(wellnessContent).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
+  id: true,
+  savedAt: true,
 });
 
 export const insertChallengeSchema = createInsertSchema(challenges).omit({
@@ -1747,6 +1774,8 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type WellnessContent = typeof wellnessContent.$inferSelect;
 export type InsertWellnessContent = z.infer<typeof insertWellnessContentSchema>;
+export type SavedContent = typeof savedContent.$inferSelect;
+export type InsertSavedContent = z.infer<typeof insertSavedContentSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;

@@ -29,6 +29,7 @@ import {
   insertProjectChatSchema,
   insertCalendarEventSchema,
   insertUserProfileSchema,
+  insertSavedContentSchema,
   insertChallengeSchema,
   insertBodyScanSchema,
   insertSystemModuleSchema,
@@ -3035,6 +3036,63 @@ export async function registerRoutes(
       res.json(content);
     } catch (error) {
       res.status(500).json({ error: "Failed to load content" });
+    }
+  });
+
+  // Saved Content Routes
+  app.get("/api/saved-content", requireAuth, async (req, res) => {
+    try {
+      const content = await storage.getSavedContent(req.session.userId!);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load saved content" });
+    }
+  });
+
+  app.post("/api/saved-content", requireAuth, async (req, res) => {
+    try {
+      const data = insertSavedContentSchema.parse({ 
+        ...req.body, 
+        userId: req.session.userId! 
+      });
+      const created = await storage.createSavedContent(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save content" });
+    }
+  });
+
+  app.patch("/api/saved-content/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateSavedContent(
+        req.params.id,
+        req.session.userId!,
+        req.body
+      );
+      if (!updated) {
+        return res.status(404).json({ error: "Saved content not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update saved content" });
+    }
+  });
+
+  app.delete("/api/saved-content/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteSavedContent(
+        req.params.id,
+        req.session.userId!
+      );
+      if (!deleted) {
+        return res.status(404).json({ error: "Saved content not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete saved content" });
     }
   });
 
