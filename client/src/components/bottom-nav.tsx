@@ -35,7 +35,7 @@ export function BottomNav() {
       role="navigation"
     >
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-2">
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const isActive = item.path && (location === item.path || 
             (item.path !== "/" && location.startsWith(item.path)));
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
