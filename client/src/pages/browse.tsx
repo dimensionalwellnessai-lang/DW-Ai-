@@ -32,6 +32,8 @@ import {
   ChevronRight,
   Calendar,
   Plus,
+  Bookmark,
+  Compass,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -45,6 +47,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { WellnessContent, UserProfile } from "@shared/schema";
+import { ExploreFeedCard } from "@/components/explore-feed-card";
+import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
 
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
@@ -304,7 +308,7 @@ interface LocalResource {
 export default function Browse() {
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"browse" | "community">("browse");
+  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "saved" | "community">("for-you");
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -463,7 +467,7 @@ ${contentList}`,
     <div className="flex flex-col h-full bg-background">
       <PageHeader
         title="Browse"
-        rightContent={activeTab === "browse" ? (
+        rightContent={activeTab === "explore" ? (
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -487,10 +491,19 @@ ${contentList}`,
       />
       
       <div className="sticky top-0 z-40 bg-background border-b">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "browse" | "community")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "explore" | "saved" | "community")} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl">
-            <TabsTrigger value="browse" className="data-[state=active]:bg-primary/10" data-testid="tab-browse">
-              Browse
+            <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10" data-testid="tab-for-you">
+              <Sparkles className="h-4 w-4 mr-1" />
+              For You
+            </TabsTrigger>
+            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10" data-testid="tab-explore">
+              <Compass className="h-4 w-4 mr-1" />
+              Explore
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10" data-testid="tab-saved">
+              <Bookmark className="h-4 w-4 mr-1" />
+              Saved
             </TabsTrigger>
             <TabsTrigger value="community" className="data-[state=active]:bg-primary/10" data-testid="tab-community">
               <Users className="h-4 w-4 mr-1" />
@@ -500,7 +513,19 @@ ${contentList}`,
         </Tabs>
       </div>
       
-      {activeTab === "browse" && (
+      {activeTab === "for-you" && (
+        <main className="p-4">
+          <div className="text-center py-12">
+            <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="font-medium mb-2">AI-Curated Just for You</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Your personalized content feed will appear here based on your wellness goals, energy levels, and preferences.
+            </p>
+          </div>
+        </main>
+      )}
+
+      {activeTab === "explore" && (
         <>
           <div className="sticky top-[109px] z-30 bg-background border-b px-4 py-3">
             <div className="relative">
@@ -585,7 +610,7 @@ ${contentList}`,
         </>
       )}
 
-      {activeTab === "browse" && userProfile && (
+      {activeTab === "explore" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -611,7 +636,7 @@ ${contentList}`,
         </div>
       )}
 
-      {activeTab === "browse" && (
+      {activeTab === "explore" && (
         <main className="p-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredContent.map((item) => {
@@ -730,6 +755,18 @@ ${contentList}`,
               )}
             </div>
           )}
+        </main>
+      )}
+
+      {activeTab === "saved" && (
+        <main className="p-4">
+          <div className="text-center py-12">
+            <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="font-medium mb-2">Your Saved Content</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Content you save for later will appear here. Start exploring to build your collection!
+            </p>
+          </div>
         </main>
       )}
 
