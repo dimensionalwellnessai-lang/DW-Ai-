@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
 import { CheckSquare, Plus, Circle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -72,23 +73,16 @@ export default function HabitsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <CheckSquare className="h-8 w-8 text-primary" />
-              My Habits
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Build consistency one day at a time
-            </p>
-          </div>
+      <PageHeader 
+        title="My Habits" 
+        rightContent={
           <Button onClick={() => setShowForm(!showForm)} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Habit
           </Button>
-        </div>
+        }
+      />
+      <div className="container max-w-4xl mx-auto p-4 space-y-6">
 
         {/* Create Form */}
         {showForm && (

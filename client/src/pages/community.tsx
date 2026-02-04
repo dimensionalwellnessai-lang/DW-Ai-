@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 import {
   ArrowLeft,
   Users,
@@ -170,19 +171,7 @@ export default function CommunityPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <header className="flex items-center justify-between gap-4 p-4 border-b sticky top-0 bg-background z-50">
-        <div className="flex items-center gap-3">
-          <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="font-display font-bold text-xl">Community Wellness</h1>
-            <p className="text-sm text-muted-foreground">Your impact on the world around you</p>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Community Wellness" />
 
       <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto space-y-6">
