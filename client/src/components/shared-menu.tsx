@@ -36,7 +36,17 @@ import {
   Clock,
 } from "lucide-react";
 
-const MENU_SECTIONS = [
+const MENU_SECTIONS: Array<{
+  title?: string;
+  collapsible?: boolean;
+  items: Array<{
+    id: string;
+    name: string;
+    path: string;
+    icon: any;
+    dimension?: string;
+  }>;
+}> = [
   {
     items: [
       { id: "command-center", name: "⭐ Life Command Center", path: "/", icon: Zap },
@@ -189,11 +199,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
             {section.title && section.collapsible ? (
               <Collapsible
                 open={expandedSections.has(section.title)}
-                onOpenChange={() => toggleSection(section.title)}
+                onOpenChange={() => section.title && toggleSection(section.title)}
               >
                 <CollapsibleTrigger className="w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 flex items-center justify-between hover:text-foreground transition-colors">
                   {section.title}
-                  <ChevronDown className={`h-3 w-3 transition-transform ${expandedSections.has(section.title) ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3 w-3 transition-transform ${section.title && expandedSections.has(section.title) ? 'rotate-180' : ''}`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-1 mt-1">

@@ -80,27 +80,27 @@ export default function LifeCommandCenter() {
   });
 
   // Fetch today's water logs
-  const { data: waterLogs = [] } = useQuery({
+  const { data: waterLogs = [] } = useQuery<any[]>({
     queryKey: ['/api/water-logs'],
   });
 
   // Fetch today's meal logs
-  const { data: mealLogs = [] } = useQuery({
+  const { data: mealLogs = [] } = useQuery<any[]>({
     queryKey: ['/api/meal-logs'],
   });
 
   // Fetch active goals
-  const { data: goals = [] } = useQuery({
+  const { data: goals = [] } = useQuery<any[]>({
     queryKey: ['/api/goals'],
   });
 
   // Fetch today's habits
-  const { data: habits = [] } = useQuery({
+  const { data: habits = [] } = useQuery<any[]>({
     queryKey: ['/api/habits'],
   });
 
   // Fetch upcoming calendar events
-  const { data: calendarEvents = [], isLoading: eventsLoading } = useQuery({
+  const { data: calendarEvents = [], isLoading: eventsLoading } = useQuery<any[]>({
     queryKey: ['/api/calendar/events'],
   });
 

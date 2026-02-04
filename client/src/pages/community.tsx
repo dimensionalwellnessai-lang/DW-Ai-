@@ -316,7 +316,7 @@ export default function CommunityPage() {
                   <div className="p-4">
                     {(() => {
                       const opp = displayOpportunities.find((o: any) => o.featured)!;
-                      const style = OPPORTUNITY_STYLES[opp.type];
+                      const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
                       const Icon = style.icon;
                       return (
                         <>
@@ -364,7 +364,7 @@ export default function CommunityPage() {
             {/* Regular Opportunities */}
             <div className="space-y-3">
               {displayOpportunities.filter((opp: any) => !opp.featured).map((opp: any) => {
-                const style = OPPORTUNITY_STYLES[opp.type];
+                const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
                 const Icon = style.icon;
                 
                 return (
