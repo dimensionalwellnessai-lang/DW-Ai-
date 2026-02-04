@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, CalendarDays, MessageCircle, Activity, Menu } from "lucide-react";
+import { Home, CalendarDays, MessageCircle, Search, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { SharedMenu } from "./shared-menu";
@@ -16,7 +16,7 @@ const tourDataMap: Record<string, string> = {
   "/": "home",
   "/calendar": "calendar",
   "/talk": "chat",
-  "/tracking": "tracking",
+  "/browse": "browse",
 };
 
 export function BottomNav() {
@@ -24,10 +24,10 @@ export function BottomNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navItems: NavItem[] = [
-    { path: "/", icon: Home, label: "Home" },
     { path: "/calendar", icon: CalendarDays, label: "Calendar" },
+    { path: "/browse", icon: Search, label: "Browse" },
+    { path: "/", icon: Home, label: "Home" },
     { path: "/talk", icon: MessageCircle, label: "DW" },
-    { path: "/tracking", icon: Activity, label: "Track" },
     { icon: Menu, label: "Menu", action: () => setMenuOpen(true) },
   ];
 

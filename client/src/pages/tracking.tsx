@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
 import {
   Droplets,
@@ -93,18 +94,11 @@ export default function TrackingDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <PageHeader title="Tracking Dashboard" />
       <div className="container max-w-6xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-2 pt-6 pb-4"
-        >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Tracking Dashboard
-          </h1>
-          <p className="text-muted-foreground">Monitor your daily wellness metrics</p>
-        </motion.div>
+        <p className="text-muted-foreground text-center">
+          Monitor your daily wellness metrics
+        </p>
 
         {/* Quick Stats */}
         <div className="grid md:grid-cols-3 gap-4">

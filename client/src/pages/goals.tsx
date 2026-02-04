@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 import { Target, Plus, CheckCircle2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -78,23 +79,19 @@ export default function GoalsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Target className="h-8 w-8 text-primary" />
-              My Goals
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Track your progress toward what matters most
-            </p>
-          </div>
+      <PageHeader 
+        title="My Goals" 
+        rightContent={
           <Button onClick={() => setShowForm(!showForm)} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Goal
           </Button>
-        </div>
+        }
+      />
+      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+        <p className="text-muted-foreground text-center">
+          Track your progress toward what matters most
+        </p>
 
         {/* Create Form */}
         {showForm && (

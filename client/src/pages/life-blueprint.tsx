@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
 import {
   Zap,
@@ -136,16 +137,9 @@ export default function LifeBlueprintPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <PageHeader title="Life Blueprint" />
       <div className="container max-w-6xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-4 pt-6 pb-4"
-        >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Life Blueprint
-          </h1>
+        <div className="text-center space-y-4">
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Define what matters most in each dimension of your life. Your AI will reference these values to keep you aligned.
           </p>
@@ -162,7 +156,7 @@ export default function LifeBlueprintPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
         <Tabs defaultValue="dimensions" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
