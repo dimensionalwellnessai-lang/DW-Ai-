@@ -7,7 +7,7 @@ import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
-import { getRecentPages } from "@/lib/recent-pages";
+import { getRecentPages, addRecentPage } from "@/lib/recent-pages";
 import {
   Zap,
   MessageCircle,
@@ -210,13 +210,21 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                     {section.items.map((item) => (
                       <Link key={item.id} href={item.path}>
                         <button
-                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors ${
-                            item.dimension ? DIMENSION_COLORS[item.dimension] || '' : ''
-                          }`}
-                          onClick={onClose}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors`}
+                          onClick={() => {
+                            addRecentPage({ 
+                              id: item.id, 
+                              name: item.name, 
+                              path: item.path, 
+                              icon: item.name.split(' ')[0] 
+                            });
+                            onClose();
+                          }}
                           data-testid={`menu-item-${item.id}`}
                         >
-                          <span className="text-sm text-foreground">{item.name}</span>
+                          <span className={`text-sm ${item.dimension ? DIMENSION_COLORS[item.dimension] : 'text-foreground'}`}>
+                            {item.name}
+                          </span>
                         </button>
                       </Link>
                     ))}
@@ -234,13 +242,21 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                   {section.items.map((item) => (
                     <Link key={item.id} href={item.path}>
                       <button
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors ${
-                          item.dimension ? DIMENSION_COLORS[item.dimension] || '' : ''
-                        }`}
-                        onClick={onClose}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors`}
+                        onClick={() => {
+                          addRecentPage({ 
+                            id: item.id, 
+                            name: item.name, 
+                            path: item.path, 
+                            icon: item.name.split(' ')[0] 
+                          });
+                          onClose();
+                        }}
                         data-testid={`menu-item-${item.id}`}
                       >
-                        <span className="text-sm text-foreground">{item.name}</span>
+                        <span className={`text-sm ${item.dimension ? DIMENSION_COLORS[item.dimension] : 'text-foreground'}`}>
+                          {item.name}
+                        </span>
                       </button>
                     </Link>
                   ))}

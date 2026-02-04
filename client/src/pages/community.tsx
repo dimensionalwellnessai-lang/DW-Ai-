@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   ArrowLeft,
@@ -69,7 +68,12 @@ const CAUSE_OPTIONS = [
   "Community Development",
 ];
 
-const SAMPLE_OPPORTUNITIES = [
+// Extended type for display purposes
+interface OpportunityDisplay extends CommunityOpportunity {
+  featured?: boolean;
+}
+
+const SAMPLE_OPPORTUNITIES: OpportunityDisplay[] = [
   {
     id: "1",
     title: "Weekend Park Cleanup",
@@ -78,7 +82,10 @@ const SAMPLE_OPPORTUNITIES = [
     type: "volunteering" as CommunityFocus,
     isOnline: false,
     location: "Local parks",
+    url: null,
     tags: ["environment", "outdoors", "group"],
+    matchScore: 0.85,
+    discoveredAt: Date.now() - 86400000, // 1 day ago
     featured: true,
   },
   {
@@ -89,7 +96,10 @@ const SAMPLE_OPPORTUNITIES = [
     type: "mentoring" as CommunityFocus,
     isOnline: true,
     location: null,
+    url: null,
     tags: ["mentoring", "career", "remote"],
+    matchScore: 0.9,
+    discoveredAt: Date.now() - 172800000, // 2 days ago
   },
   {
     id: "3",
@@ -99,7 +109,10 @@ const SAMPLE_OPPORTUNITIES = [
     type: "volunteering" as CommunityFocus,
     isOnline: false,
     location: "Community center",
+    url: null,
     tags: ["food", "gardening", "local"],
+    matchScore: 0.8,
+    discoveredAt: Date.now() - 259200000, // 3 days ago
   },
   {
     id: "4",
@@ -109,7 +122,10 @@ const SAMPLE_OPPORTUNITIES = [
     type: "advocacy" as CommunityFocus,
     isOnline: true,
     location: null,
+    url: null,
     tags: ["environment", "advocacy", "policy"],
+    matchScore: 0.75,
+    discoveredAt: Date.now() - 345600000, // 4 days ago
   },
   {
     id: "5",
@@ -119,7 +135,10 @@ const SAMPLE_OPPORTUNITIES = [
     type: "local_events" as CommunityFocus,
     isOnline: false,
     location: "City Hall Plaza",
+    url: null,
     tags: ["arts", "culture", "events"],
+    matchScore: 0.7,
+    discoveredAt: Date.now() - 432000000, // 5 days ago
   },
 ];
 
@@ -303,7 +322,7 @@ export default function CommunityPage() {
             </div>
 
             {/* Featured Opportunity */}
-            {displayOpportunities.find((opp: any) => opp.featured) && (
+            {displayOpportunities.find((opp: OpportunityDisplay) => opp.featured) && (
               <Card className="hover-elevate cursor-pointer border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-transparent" data-testid="card-featured-opportunity">
                 <CardContent className="p-0">
                   {/* Featured Image Placeholder */}
@@ -315,7 +334,7 @@ export default function CommunityPage() {
                   </div>
                   <div className="p-4">
                     {(() => {
-                      const opp = displayOpportunities.find((o: any) => o.featured)!;
+                      const opp = displayOpportunities.find((o: OpportunityDisplay) => o.featured)!;
                       const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
                       const Icon = style.icon;
                       return (
@@ -363,7 +382,7 @@ export default function CommunityPage() {
 
             {/* Regular Opportunities */}
             <div className="space-y-3">
-              {displayOpportunities.filter((opp: any) => !opp.featured).map((opp: any) => {
+              {displayOpportunities.filter((opp: OpportunityDisplay) => !opp.featured).map((opp: OpportunityDisplay) => {
                 const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
                 const Icon = style.icon;
                 

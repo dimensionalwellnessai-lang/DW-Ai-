@@ -8,14 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Target, Plus, Edit2, Trash2, CheckCircle2, Repeat } from "lucide-react";
+import { Target, Plus, CheckCircle2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 
 export default function GoalsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, navigate] = useLocation();
   const [showForm, setShowForm] = useState(false);
   const [goalTitle, setGoalTitle] = useState("");
   const [goalDescription, setGoalDescription] = useState("");
@@ -63,7 +61,7 @@ export default function GoalsPage() {
       setSelectedGoal(null);
       toast({ 
         title: "Habit created!", 
-        description: "Your new habit has been linked to your goal." 
+        description: "Your new habit has been created to support your goal." 
       });
     },
   });
@@ -223,13 +221,16 @@ function CreateHabitDialog({ open, onOpenChange, goal, onCreateHabit }: CreateHa
   const [habitTitle, setHabitTitle] = useState("");
   const [habitDescription, setHabitDescription] = useState("");
 
-  // Pre-fill based on goal when dialog opens
+  // Pre-fill based on goal when dialog opens and reset on close
   React.useEffect(() => {
-    if (goal) {
+    if (open && goal) {
       setHabitTitle(`Daily action for: ${goal.title}`);
       setHabitDescription(`Build momentum toward "${goal.title}" by taking consistent daily action.`);
+    } else if (!open) {
+      setHabitTitle("");
+      setHabitDescription("");
     }
-  }, [goal]);
+  }, [goal, open]);
 
   const handleCreate = () => {
     if (!habitTitle.trim()) return;
@@ -237,7 +238,6 @@ function CreateHabitDialog({ open, onOpenChange, goal, onCreateHabit }: CreateHa
     onCreateHabit({
       title: habitTitle,
       description: habitDescription,
-      goalId: goal?.id,
       frequency: 'daily',
       isActive: true,
     });

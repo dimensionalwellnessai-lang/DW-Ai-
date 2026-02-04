@@ -101,7 +101,7 @@ export default function LifeCommandCenter() {
 
   // Fetch upcoming calendar events
   const { data: calendarEvents = [], isLoading: eventsLoading } = useQuery<any[]>({
-    queryKey: ['/api/calendar/events'],
+    queryKey: ['/api/calendar'],
   });
 
   // Get user data for personalized greeting
@@ -160,7 +160,7 @@ export default function LifeCommandCenter() {
       };
     }
 
-    // Priority 3: Active goal with lowest progress
+    // Priority 3: Active goal with lowest progress (use copy to avoid mutation)
     const lowestProgressGoal = [...activeGoals]
       .sort((a: any, b: any) => (a.progress || 0) - (b.progress || 0))[0];
     
@@ -200,7 +200,7 @@ export default function LifeCommandCenter() {
           className="text-center space-y-2 pt-6 pb-4"
         >
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            {getTimeBasedGreeting(user?.email?.split('@')[0])}
+            {getTimeBasedGreeting(user?.firstName || user?.systemName)}
           </h1>
           <p className="text-muted-foreground">{todayDate}</p>
         </motion.div>

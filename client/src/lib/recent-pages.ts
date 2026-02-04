@@ -62,21 +62,29 @@ export function clearRecentPages(): void {
 
 /**
  * Hook to track page visits automatically
+ * Use this in page components to automatically track visits
  */
 export function usePageTracking(pageInfo: Omit<RecentPage, 'timestamp'>) {
-  // Track on mount, but exclude command center and common pages from tracking
   const shouldTrack = ![
     '/',
     '/login',
     '/signup',
   ].includes(pageInfo.path);
 
-  if (shouldTrack && typeof window !== 'undefined') {
-    // Add slight delay to avoid tracking bounces
+  // Use useEffect for proper React lifecycle management
+  if (typeof window === 'undefined') return;
+
+  // Track after a delay to avoid recording bounces
+  React.useEffect(() => {
+    if (!shouldTrack) return;
+    
     const timer = setTimeout(() => {
       addRecentPage(pageInfo);
     }, 2000);
     
     return () => clearTimeout(timer);
-  }
+  }, [pageInfo.path]); // Only re-run if path changes
 }
+
+// Import React for useEffect
+import * as React from 'react';

@@ -48,13 +48,17 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
     try {
       // Add to calendar for today
       const today = new Date();
-      await apiRequest("POST", "/api/calendar/events", {
+      const startTime = today.toISOString();
+      const endTime = new Date(
+        today.getTime() + (item.duration ?? 60) * 60 * 1000
+      ).toISOString();
+
+      await apiRequest("POST", "/api/calendar", {
         title: item.title,
         description: item.description,
-        date: today.toISOString().split('T')[0],
-        startTime: null,
-        duration: item.duration,
-        type: item.type,
+        startTime,
+        endTime,
+        eventType: item.type,
       });
 
       toast({
@@ -88,13 +92,17 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
         return;
       }
 
-      await apiRequest("POST", "/api/calendar/events", {
+      const startTime = selectedDate.toISOString();
+      const endTime = new Date(
+        selectedDate.getTime() + (item.duration ?? 60) * 60 * 1000
+      ).toISOString();
+
+      await apiRequest("POST", "/api/calendar", {
         title: item.title,
         description: item.description,
-        date: selectedDate.toISOString().split('T')[0],
-        startTime: null,
-        duration: item.duration,
-        type: item.type,
+        startTime,
+        endTime,
+        eventType: item.type,
       });
 
       toast({
@@ -118,13 +126,12 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
   const handleAddToRoutine = async () => {
     setIsAdding(true);
     try {
-      // Add to routine (as a recurring event)
+      // Add to routine (backend expects name and steps fields)
       await apiRequest("POST", "/api/routines", {
-        title: item.title,
+        name: item.title,
         description: item.description,
-        type: item.type,
-        duration: item.duration,
-        frequency: 'weekly', // Default to weekly
+        steps: [], // Start with empty steps
+        totalDurationMinutes: item.duration,
         isActive: true,
       });
 
@@ -149,17 +156,11 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
   const handleSaveToLibrary = async () => {
     setIsAdding(true);
     try {
-      // Save to user's library for later
-      await apiRequest("POST", "/api/library", {
-        title: item.title,
-        description: item.description,
-        type: item.type,
-        duration: item.duration,
-      });
-
+      // Library API is not yet implemented on the backend.
+      // Instead of calling a non-existent route, inform the user.
       toast({
-        title: "Saved to Library",
-        description: `${item.title} has been saved to your library.`,
+        title: "Library coming soon",
+        description: "Saving items to your library isn't available yet. We're still building this feature.",
       });
 
       onAdded?.('library');
