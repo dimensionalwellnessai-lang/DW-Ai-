@@ -36,9 +36,23 @@ interface GuideSection {
   estimatedMinutes?: number;
   hasQuestionnaire?: boolean;
   completionKey?: string;
+  isFullTour?: boolean;
 }
 
 const GUIDE_SECTIONS: GuideSection[] = [
+  {
+    id: "full-tour",
+    title: "Tour the Whole App",
+    icon: Sparkles,
+    description: "Take a complete guided tour through all of DW.ai's features. Perfect for first-time users.",
+    tips: [
+      "Learn about all 8 wellness dimensions",
+      "See how tracking, planning, and AI work together",
+      "Takes about 5-10 minutes"
+    ],
+    path: "/",
+    isFullTour: true
+  },
   {
     id: "welcome",
     title: "Welcome to DW.ai",
@@ -234,55 +248,52 @@ export default function AppTourPage() {
               const isCompleted = section.completionKey ? completionStatus[section.completionKey] : false;
               
               return (
-                <Card key={section.id} data-testid={`card-guide-${section.id}`}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-medium text-foreground">{section.title}</h4>
-                          {section.hasQuestionnaire && (
-                            <>
-                              {isCompleted ? (
-                                <Badge variant="secondary" className="gap-1 text-xs">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Complete
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="gap-1 text-xs">
-                                  <Clock className="w-3 h-3" />
-                                  {section.estimatedMinutes} min
-                                </Badge>
-                              )}
-                            </>
-                          )}
+                <Link key={section.id} href={section.path}>
+                  <Card 
+                    data-testid={`card-guide-${section.id}`}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Icon className="w-5 h-5 text-primary" />
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {section.description}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="ml-[52px] space-y-2">
-                      {section.tips.map((tip, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                          <span className="text-muted-foreground">-</span>
-                          <span>{tip}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-medium text-foreground">{section.title}</h4>
+                            {section.hasQuestionnaire && (
+                              <>
+                                {isCompleted ? (
+                                  <Badge variant="secondary" className="gap-1 text-xs">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Complete
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="gap-1 text-xs">
+                                    <Clock className="w-3 h-3" />
+                                    {section.estimatedMinutes} min
+                                  </Badge>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {section.description}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                    
-                    <div className="ml-[52px]">
-                      <Link href={section.path}>
-                        <Button variant="outline" size="sm" data-testid={`button-go-${section.id}`}>
-                          {section.hasQuestionnaire && isCompleted ? "View" : "Try it out"}
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </div>
+                      
+                      <div className="ml-[52px] space-y-2">
+                        {section.tips.map((tip, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                            <span className="text-muted-foreground">-</span>
+                            <span>{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               );
             })}
           </div>
