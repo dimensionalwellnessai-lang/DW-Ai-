@@ -330,7 +330,17 @@ export default function Browse() {
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [searchDialogType, setSearchDialogType] = useState<"youtube" | "articles" | "exercises">("youtube");
   const [externalSearchQuery, setExternalSearchQuery] = useState("");
-  const [externalSearchResults, setExternalSearchResults] = useState<any[]>([]);
+  const [externalSearchResults, setExternalSearchResults] = useState<Array<{
+    id: string;
+    type: string;
+    source: string;
+    title: string;
+    description: string;
+    thumbnail?: string;
+    duration?: string;
+    url: string;
+    metadata?: any;
+  }>>([]);
   const [isExternalSearching, setIsExternalSearching] = useState(false);
 
   // Reset local resources when switching away from local tab
@@ -548,7 +558,7 @@ ${contentList}`,
     setExternalSearchResults([]);
     try {
       let endpoint = "";
-      let body: any = { query: externalSearchQuery };
+      const body: { query: string } = { query: externalSearchQuery };
 
       if (searchDialogType === "youtube") {
         endpoint = "/api/explore/youtube";
