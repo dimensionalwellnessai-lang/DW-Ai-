@@ -139,6 +139,24 @@ export default function LifeBlueprintPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Life Blueprint" />
       <div className="container max-w-6xl mx-auto p-4 space-y-6">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Define what matters most in each dimension of your life. Your AI will reference these values to keep you aligned.
+          </p>
+          
+          {/* Completion Progress */}
+          <Card className="max-w-md mx-auto">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Blueprint Completion</span>
+                  <span className="font-semibold">{completedDimensions}/8 dimensions</span>
+                </div>
+                <Progress value={completionPercentage} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Tabs defaultValue="dimensions" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">

@@ -96,6 +96,9 @@ export default function TrackingDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Tracking Dashboard" />
       <div className="container max-w-6xl mx-auto p-4 space-y-6">
+        <p className="text-muted-foreground text-center">
+          Monitor your daily wellness metrics
+        </p>
 
         {/* Quick Stats */}
         <div className="grid md:grid-cols-3 gap-4">

@@ -175,6 +175,9 @@ export default function CommunityPage() {
 
       <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto space-y-6">
+          <p className="text-sm text-muted-foreground text-center">
+            Your impact on the world around you
+          </p>
           {/* Profile Setup Banner (smaller, non-blocking) */}
           {!hasProfile && (
             <Card className="border-dashed border-teal-500/50 bg-teal-500/5">
