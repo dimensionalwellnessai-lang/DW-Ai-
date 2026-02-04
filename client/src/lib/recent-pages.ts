@@ -71,19 +71,16 @@ export function usePageTracking(pageInfo: Omit<RecentPage, 'timestamp'>) {
     '/signup',
   ].includes(pageInfo.path);
 
-  // Use useEffect for proper React lifecycle management
-  if (typeof window === 'undefined') return;
-
   // Track after a delay to avoid recording bounces
   React.useEffect(() => {
-    if (!shouldTrack) return;
+    if (typeof window === 'undefined' || !shouldTrack) return;
     
     const timer = setTimeout(() => {
       addRecentPage(pageInfo);
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [pageInfo.path]); // Only re-run if path changes
+  }, [pageInfo.path, shouldTrack]); // Include shouldTrack in dependencies
 }
 
 // Import React for useEffect

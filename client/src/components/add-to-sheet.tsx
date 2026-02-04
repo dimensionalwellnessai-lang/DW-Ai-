@@ -153,27 +153,17 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
     }
   };
 
-  const handleSaveToLibrary = async () => {
-    setIsAdding(true);
-    try {
-      // Library API is not yet implemented on the backend.
-      // Instead of calling a non-existent route, inform the user.
-      toast({
-        title: "Library coming soon",
-        description: "Saving items to your library isn't available yet. We're still building this feature.",
-      });
+  const handleSaveToLibrary = () => {
+    // Library API is not yet implemented on the backend.
+    // Inform the user that this feature is not available yet.
+    toast({
+      title: "Library coming soon",
+      description: "Saving items to your library isn't available yet. We're still building this feature.",
+    });
 
-      onAdded?.('library');
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save to library. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAdding(false);
-    }
+    // Do not call onAdded('library') because nothing was actually saved.
+    onOpenChange(false);
+    setIsAdding(false);
   };
 
   return (
