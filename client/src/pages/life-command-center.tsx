@@ -161,9 +161,8 @@ export default function LifeCommandCenter() {
     }
 
     // Priority 3: Active goal with lowest progress
-    const lowestProgressGoal = activeGoals.sort((a: any, b: any) => 
-      (a.progress || 0) - (b.progress || 0)
-    )[0];
+    const lowestProgressGoal = [...activeGoals]
+      .sort((a: any, b: any) => (a.progress || 0) - (b.progress || 0))[0];
     
     if (lowestProgressGoal) {
       return {
