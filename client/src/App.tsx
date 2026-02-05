@@ -212,7 +212,7 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete"];
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed

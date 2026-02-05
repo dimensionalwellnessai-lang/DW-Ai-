@@ -158,7 +158,7 @@ export default function Welcome() {
   useEffect(() => {
     if (showSuccess) {
       autoAdvanceTimerRef.current = setTimeout(() => {
-        setLocation("/chat");
+        setLocation("/subscription");
       }, 3000);
       
       return () => {
@@ -173,7 +173,7 @@ export default function Welcome() {
     if (autoAdvanceTimerRef.current) {
       clearTimeout(autoAdvanceTimerRef.current);
     }
-    setLocation("/chat");
+    setLocation("/subscription");
   };
   
   const handleViewWhatYouMade = () => {

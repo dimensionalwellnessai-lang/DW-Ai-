@@ -155,6 +155,12 @@ function getCompletionStatus(): Record<string, boolean> {
 function getOverallCompletion(): number {
   const status = getCompletionStatus();
   const questionnaireSections = GUIDE_SECTIONS.filter(s => s.hasQuestionnaire);
+  
+  // If no questionnaire sections, return 0 to avoid NaN
+  if (questionnaireSections.length === 0) {
+    return 0;
+  }
+  
   const completed = questionnaireSections.filter(s => s.completionKey && status[s.completionKey]).length;
   return Math.round((completed / questionnaireSections.length) * 100);
 }
@@ -174,6 +180,7 @@ export default function AppTourPage() {
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();
   const totalTime = getTotalSetupTime();
+  const hasQuestionnaires = GUIDE_SECTIONS.some(s => s.hasQuestionnaire);
   
   return (
     <div className="min-h-screen bg-background">
@@ -188,24 +195,26 @@ export default function AppTourPage() {
             </p>
           </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-4">
-                <CardTitle className="text-base">Your Progress</CardTitle>
-                <span className="text-sm font-medium">{overallCompletion}% complete</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Progress value={overallCompletion} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Complete the questionnaires below to personalize your experience</span>
-                <Badge variant="outline" className="gap-1">
-                  <Clock className="w-3 h-3" />
-                  ~{totalTime} min total
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+          {hasQuestionnaires && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-4">
+                  <CardTitle className="text-base">Your Progress</CardTitle>
+                  <span className="text-sm font-medium">{overallCompletion}% complete</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Progress value={overallCompletion} className="h-2" />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Complete the questionnaires below to personalize your experience</span>
+                  <Badge variant="outline" className="gap-1">
+                    <Clock className="w-3 h-3" />
+                    ~{totalTime} min total
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-2">

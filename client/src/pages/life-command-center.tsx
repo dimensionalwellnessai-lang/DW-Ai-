@@ -63,6 +63,14 @@ export default function LifeCommandCenter() {
     day: 'numeric' 
   }));
 
+  // Helper function for keyboard navigation
+  const handleKeyPress = (e: React.KeyboardEvent, callback: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      callback();
+    }
+  };
+
   // Fetch today's water logs
   const { data: waterLogs = [] } = useQuery({
     queryKey: ['/api/water-logs'],
@@ -138,6 +146,7 @@ export default function LifeCommandCenter() {
                     localStorage.setItem('dw_command_center_intro_dismissed', 'true');
                     setShowIntroBanner(false);
                   }}
+                  aria-label="Dismiss welcome banner"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -159,6 +168,10 @@ export default function LifeCommandCenter() {
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate('/tracking')}
+            onKeyDown={(e) => handleKeyPress(e, () => navigate('/tracking'))}
+            tabIndex={0}
+            role="button"
+            aria-label="View water and calorie tracking"
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -175,6 +188,10 @@ export default function LifeCommandCenter() {
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate('/tracking')}
+            onKeyDown={(e) => handleKeyPress(e, () => navigate('/tracking'))}
+            tabIndex={0}
+            role="button"
+            aria-label="View calorie tracking"
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -191,6 +208,10 @@ export default function LifeCommandCenter() {
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate('/goals')}
+            onKeyDown={(e) => handleKeyPress(e, () => navigate('/goals'))}
+            tabIndex={0}
+            role="button"
+            aria-label="View goals"
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -206,6 +227,10 @@ export default function LifeCommandCenter() {
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate('/habits')}
+            onKeyDown={(e) => handleKeyPress(e, () => navigate('/habits'))}
+            tabIndex={0}
+            role="button"
+            aria-label="View habits"
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -226,6 +251,10 @@ export default function LifeCommandCenter() {
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
               onClick={() => navigate('/calendar')}
+              onKeyDown={(e) => handleKeyPress(e, () => navigate('/calendar'))}
+              tabIndex={0}
+              role="button"
+              aria-label="View calendar"
             >
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
@@ -245,6 +274,10 @@ export default function LifeCommandCenter() {
                         key={event.id}
                         className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                         onClick={() => navigate('/calendar')}
+                        onKeyDown={(e) => handleKeyPress(e, () => navigate('/calendar'))}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View ${event.title} in calendar`}
                       >
                         <div className="text-xs font-semibold text-muted-foreground min-w-[60px]">
                           {event.startTime || 'All day'}
@@ -268,6 +301,10 @@ export default function LifeCommandCenter() {
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
               onClick={() => navigate('/goals')}
+              onKeyDown={(e) => handleKeyPress(e, () => navigate('/goals'))}
+              tabIndex={0}
+              role="button"
+              aria-label="View goals"
             >
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
@@ -288,6 +325,10 @@ export default function LifeCommandCenter() {
                         key={goal.id} 
                         className="space-y-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
                         onClick={() => navigate('/goals')}
+                        onKeyDown={(e) => handleKeyPress(e, () => navigate('/goals'))}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View goal: ${goal.title}`}
                       >
                         <div className="flex items-center justify-between">
                           <p className="font-medium">{goal.title}</p>
@@ -312,6 +353,10 @@ export default function LifeCommandCenter() {
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
               onClick={() => navigate('/life-blueprint')}
+              onKeyDown={(e) => handleKeyPress(e, () => navigate('/life-blueprint'))}
+              tabIndex={0}
+              role="button"
+              aria-label="View life blueprint"
             >
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -329,6 +374,10 @@ export default function LifeCommandCenter() {
                     <div
                       key={switchId}
                       onClick={() => navigate("/life-blueprint")}
+                      onKeyDown={(e) => handleKeyPress(e, () => navigate("/life-blueprint"))}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View ${switchId} dimension`}
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
                     >
                       <div className={`p-2 rounded-lg ${colors.bg}`}>
@@ -350,6 +399,10 @@ export default function LifeCommandCenter() {
             <CardHeader 
               className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg"
               onClick={() => navigate('/habits')}
+              onKeyDown={(e) => handleKeyPress(e, () => navigate('/habits'))}
+              tabIndex={0}
+              role="button"
+              aria-label="View habits"
             >
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
@@ -370,6 +423,10 @@ export default function LifeCommandCenter() {
                         key={habit.id}
                         className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                         onClick={() => navigate('/habits')}
+                        onKeyDown={(e) => handleKeyPress(e, () => navigate('/habits'))}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View habit: ${habit.title}`}
                       >
                         <div className="h-5 w-5 rounded border-2 border-primary" />
                         <div className="flex-1">
