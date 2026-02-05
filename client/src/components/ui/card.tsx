@@ -11,12 +11,19 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
    * - tile: Square aspect ratio (1:1)
    */
   size?: "sm" | "md" | "lg" | "tile";
+  /**
+   * Optional priority level for visual hierarchy
+   * - high: Emphasized with border and shadow (most important)
+   * - medium: Standard appearance (default)
+   * - low: Subtle appearance with reduced opacity (least important)
+   */
+  priority?: "high" | "medium" | "low";
 }
 
 const Card = React.forwardRef<
   HTMLDivElement,
   CardProps
->(({ className, size, ...props }, ref) => (
+>(({ className, size, priority, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
@@ -25,6 +32,9 @@ const Card = React.forwardRef<
       size === "md" && "card-md",
       size === "lg" && "card-lg",
       size === "tile" && "card-tile",
+      priority === "high" && "card-priority-high",
+      priority === "medium" && "card-priority-medium",
+      priority === "low" && "card-priority-low",
       className
     )}
     {...props}

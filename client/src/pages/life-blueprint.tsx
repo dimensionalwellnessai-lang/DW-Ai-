@@ -147,6 +147,24 @@ export default function LifeBlueprintPage() {
     k !== 'id' && k !== 'userId' && k !== 'createdAt' && k !== 'updatedAt' && resetProtocol[k]
   );
 
+  // Calculate priority for each dimension based on completion
+  const getDimensionPriority = (dimId: string): "high" | "medium" | "low" => {
+    const hasBlueprint = blueprints.some((b: any) => b.dimension === dimId);
+    if (!hasBlueprint) return "high"; // Not completed - high priority
+    return "medium"; // Completed - medium priority
+  };
+
+  // Sort dimensions by priority (high first) while maintaining order within priority levels
+  const dimensionsWithPriority = DIMENSIONS.map(dim => ({
+    ...dim,
+    priority: getDimensionPriority(dim.id),
+    hasContent: blueprints.some((b: any) => b.dimension === dim.id)
+  })).sort((a, b) => {
+    // High priority first, then maintain original order
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Life Blueprint" />
@@ -179,14 +197,14 @@ export default function LifeBlueprintPage() {
           <TabsContent value="dimensions" className="space-y-6 mt-6">
             {/* Dimension Selector */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {DIMENSIONS.map((dim) => {
+              {dimensionsWithPriority.map((dim) => {
                 const Icon = dim.icon;
-                const hasContent = blueprints.some((b: any) => b.dimension === dim.id);
                 
                 return (
                   <Card
                     key={dim.id}
-                    className={`cursor-pointer transition-all ${
+                    priority={dim.priority}
+                    className={`cursor-pointer transition-all hover:scale-105 ${
                       selectedDimension === dim.id ? 'ring-2 ring-primary' : ''
                     }`}
                     onClick={() => {
@@ -201,7 +219,7 @@ export default function LifeBlueprintPage() {
                           <Icon className={`h-6 w-6 ${dim.color}`} />
                         </div>
                         <p className="font-medium text-sm">{dim.label}</p>
-                        {hasContent ? (
+                        {dim.hasContent ? (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : (
                           <Circle className="h-4 w-4 text-muted-foreground" />
