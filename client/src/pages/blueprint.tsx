@@ -9,6 +9,7 @@ import {
   type FoundationsProfile,
   type WellnessDimension,
 } from "@/lib/guest-storage";
+import { getQuestionsForDimension } from "@/lib/dimension-questions";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -405,20 +406,58 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 function DimensionsSection() {
   const { toast } = useToast();
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
-  const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[] }>>({});
+  const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[]; questionAnswers?: Record<string, string> }>>({});
   const [newSupport, setNewSupport] = useState("");
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const stored = getDimensionAssessments();
-    const map: Record<string, { level: number; notes: string; supports: string[] }> = {};
+    const map: Record<string, { level: number; notes: string; supports: string[]; questionAnswers?: Record<string, string> }> = {};
     stored.forEach(a => {
-      map[a.dimension] = { level: a.level, notes: a.notes, supports: a.supports };
+      map[a.dimension] = { level: a.level, notes: a.notes, supports: a.supports, questionAnswers: a.questionAnswers };
     });
     setAssessments(map);
   }, []);
 
+  useEffect(() => {
+    if (selectedDimension) {
+      setQuestionAnswers(assessments[selectedDimension]?.questionAnswers || {});
+    }
+  }, [selectedDimension, assessments]);
+
   const selectedData = selectedDimension ? WELLNESS_DIMENSIONS.find(d => d.name === selectedDimension) : null;
   const currentAssessment = selectedDimension ? assessments[selectedDimension] : null;
+  const dimensionQuestions = selectedDimension ? getQuestionsForDimension(selectedDimension) : [];
+
+  const updateQuestionAnswer = (questionIndex: number, answer: string) => {
+    setQuestionAnswers({
+      ...questionAnswers,
+      [`q${questionIndex}`]: answer
+    });
+  };
+
+  const saveQuestionAnswers = () => {
+    if (!selectedDimension) return;
+    const updated = {
+      ...assessments,
+      [selectedDimension]: {
+        level: currentAssessment?.level || 3,
+        notes: currentAssessment?.notes || "",
+        supports: currentAssessment?.supports || [],
+        questionAnswers: questionAnswers,
+      }
+    };
+    setAssessments(updated);
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      level: currentAssessment?.level || 3,
+      notes: currentAssessment?.notes || "",
+      supports: currentAssessment?.supports || [],
+      questionAnswers: questionAnswers,
+      lastUpdated: Date.now(),
+    });
+    toast({ title: "Saved", description: "Your reflections have been saved." });
+  };
 
   const updateLevel = (level: number) => {
     if (!selectedDimension) return;
@@ -428,6 +467,7 @@ function DimensionsSection() {
         level,
         notes: currentAssessment?.notes || "",
         supports: currentAssessment?.supports || [],
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -436,6 +476,7 @@ function DimensionsSection() {
       level,
       notes: currentAssessment?.notes || "",
       supports: currentAssessment?.supports || [],
+      questionAnswers: currentAssessment?.questionAnswers || {},
       lastUpdated: Date.now(),
     });
   };
@@ -448,6 +489,7 @@ function DimensionsSection() {
         level: currentAssessment?.level || 3,
         notes,
         supports: currentAssessment?.supports || [],
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -460,6 +502,7 @@ function DimensionsSection() {
       level: currentAssessment.level || 3,
       notes: currentAssessment.notes,
       supports: currentAssessment.supports,
+      questionAnswers: currentAssessment.questionAnswers || {},
       lastUpdated: Date.now(),
     });
     toast({ title: "Saved", description: "Your reflection has been saved." });
@@ -474,6 +517,7 @@ function DimensionsSection() {
         level: currentAssessment?.level || 3,
         notes: currentAssessment?.notes || "",
         supports,
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -482,6 +526,7 @@ function DimensionsSection() {
       level: currentAssessment?.level || 3,
       notes: currentAssessment?.notes || "",
       supports,
+      questionAnswers: currentAssessment?.questionAnswers || {},
       lastUpdated: Date.now(),
     });
     setNewSupport("");
@@ -554,6 +599,37 @@ function DimensionsSection() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Dimension-Specific Questions */}
+        {dimensionQuestions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Reflective Questions</CardTitle>
+              <CardDescription>Take time to consider these questions about this dimension</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {dimensionQuestions.map((q, idx) => (
+                <div key={idx} className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {q.question}
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">{q.subtext}</p>
+                  <Textarea
+                    placeholder="Your thoughts..."
+                    value={questionAnswers[`q${idx}`] || ""}
+                    onChange={(e) => updateQuestionAnswer(idx, e.target.value)}
+                    className="min-h-20"
+                    data-testid={`input-question-${idx}`}
+                  />
+                </div>
+              ))}
+              <Button onClick={saveQuestionAnswers} size="sm" data-testid="button-save-questions">
+                <Check className="w-4 h-4 mr-2" />
+                Save Reflections
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
