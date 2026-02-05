@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Target, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
+import { Target, Plus, CheckCircle2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function GoalsPage() {
@@ -15,6 +18,8 @@ export default function GoalsPage() {
   const [showForm, setShowForm] = useState(false);
   const [goalTitle, setGoalTitle] = useState("");
   const [goalDescription, setGoalDescription] = useState("");
+  const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<any>(null);
 
   const { data: goals = [] } = useQuery<any[]>({
     queryKey: ['/api/goals'],
@@ -40,6 +45,28 @@ export default function GoalsPage() {
     },
   });
 
+  const createHabitMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/habits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to create habit');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
+      setHabitDialogOpen(false);
+      setSelectedGoal(null);
+      toast({ 
+        title: "Habit created!", 
+        description: "Your new habit has been created to support your goal." 
+      });
+    },
+  });
+
   const handleCreateGoal = () => {
     if (goalTitle.trim()) {
       createGoalMutation.mutate({
@@ -52,23 +79,19 @@ export default function GoalsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <Target className="h-8 w-8 text-primary" />
-              My Goals
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Track your progress toward what matters most
-            </p>
-          </div>
+      <PageHeader 
+        title="My Goals" 
+        rightContent={
           <Button onClick={() => setShowForm(!showForm)} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Goal
           </Button>
-        </div>
+        }
+      />
+      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+        <p className="text-muted-foreground text-center">
+          Track your progress toward what matters most
+        </p>
 
         {/* Create Form */}
         {showForm && (
@@ -144,18 +167,118 @@ export default function GoalsPage() {
                   </Badge>
                 </div>
               </CardHeader>
-              {goal.progress !== undefined && (
-                <CardContent>
-                  <Progress value={goal.progress || 0} className="h-2" />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {goal.progress || 0}% complete
-                  </p>
-                </CardContent>
-              )}
+              <CardContent className="space-y-4">
+                {goal.progress !== undefined && (
+                  <div>
+                    <Progress value={goal.progress || 0} className="h-2" />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {goal.progress || 0}% complete
+                    </p>
+                  </div>
+                )}
+                {goal.status === 'active' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedGoal(goal);
+                      setHabitDialogOpen(true);
+                    }}
+                  >
+                    <Repeat className="h-4 w-4 mr-2" />
+                    Create habit to support this goal
+                  </Button>
+                )}
+              </CardContent>
             </Card>
           ))}
         </div>
+
+        {/* Create Habit Dialog */}
+        <CreateHabitDialog
+          open={habitDialogOpen}
+          onOpenChange={setHabitDialogOpen}
+          goal={selectedGoal}
+          onCreateHabit={(habitData) => createHabitMutation.mutate(habitData)}
+        />
       </div>
     </div>
+  );
+}
+
+interface CreateHabitDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  goal: any;
+  onCreateHabit: (data: any) => void;
+}
+
+function CreateHabitDialog({ open, onOpenChange, goal, onCreateHabit }: CreateHabitDialogProps) {
+  const [habitTitle, setHabitTitle] = useState("");
+  const [habitDescription, setHabitDescription] = useState("");
+
+  // Pre-fill based on goal when dialog opens and reset on close
+  React.useEffect(() => {
+    if (open && goal) {
+      setHabitTitle(`Daily action for: ${goal.title}`);
+      setHabitDescription(`Build momentum toward "${goal.title}" by taking consistent daily action.`);
+    } else if (!open) {
+      setHabitTitle("");
+      setHabitDescription("");
+    }
+  }, [goal, open]);
+
+  const handleCreate = () => {
+    if (!habitTitle.trim()) return;
+    
+    onCreateHabit({
+      title: habitTitle,
+      description: habitDescription,
+      frequency: 'daily',
+      isActive: true,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Supporting Habit</DialogTitle>
+          <DialogDescription>
+            Build a habit that supports your goal: {goal?.title}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 mt-4">
+          <div>
+            <label className="text-sm font-medium">Habit Title</label>
+            <Input
+              value={habitTitle}
+              onChange={(e) => setHabitTitle(e.target.value)}
+              placeholder="e.g., Practice Spanish for 15 minutes"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Description (optional)</label>
+            <Textarea
+              value={habitDescription}
+              onChange={(e) => setHabitDescription(e.target.value)}
+              placeholder="What will you do?"
+              className="mt-1"
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={!habitTitle.trim()}>
+              Create Habit
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

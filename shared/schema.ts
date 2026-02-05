@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -592,6 +592,28 @@ export const wellnessContent = pgTable("wellness_content", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const savedContent = pgTable("saved_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  contentType: text("content_type").notNull(), // video, article, exercise, blog
+  title: text("title").notNull(),
+  description: text("description"),
+  url: text("url").notNull(),
+  thumbnail: text("thumbnail"),
+  source: text("source"), // YouTube, Healthline, etc.
+  duration: text("duration"), // "5 min read" or "10:32"
+  metadata: jsonb("metadata"), // views, channel, publishedAt, etc.
+  savedAt: timestamp("saved_at").defaultNow(),
+  isRead: boolean("is_read").default(false),
+});
+
+export const savedContentRelations = relations(savedContent, ({ one }) => ({
+  user: one(users, {
+    fields: [savedContent.userId],
+    references: [users.id],
+  }),
+}));
+
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -1084,6 +1106,11 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
 export const insertWellnessContentSchema = createInsertSchema(wellnessContent).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
+  id: true,
+  savedAt: true,
 });
 
 export const insertChallengeSchema = createInsertSchema(challenges).omit({
@@ -1687,6 +1714,112 @@ export const insertStreakSchema = createInsertSchema(streaks).omit({
   updatedAt: true,
 });
 
+// Task Accountability Tracking
+export const taskAccountability = pgTable("task_accountability", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  taskId: varchar("task_id"),
+  calendarEventId: varchar("calendar_event_id"),
+  taskName: text("task_name").notNull(),
+  scheduledTime: timestamp("scheduled_time").notNull(),
+  scheduledEndTime: timestamp("scheduled_end_time"),
+  
+  // Pre-task commitment
+  committedAt: timestamp("committed_at"),
+  commitmentResponse: text("commitment_response"), // 'yes', 'remind_later', 'skip'
+  
+  // Post-task confirmation
+  confirmedAt: timestamp("confirmed_at"),
+  completionStatus: text("completion_status"), // 'completed', 'partial', 'skipped', 'no_response'
+  reflectionNote: text("reflection_note"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const taskAccountabilityRelations = relations(taskAccountability, ({ one }) => ({
+  user: one(users, {
+    fields: [taskAccountability.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertTaskAccountabilitySchema = createInsertSchema(taskAccountability).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Accountability Stats
+export const accountabilityStats = pgTable("accountability_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  
+  // Current period stats
+  tasksCommitted: integer("tasks_committed").default(0),
+  tasksCompleted: integer("tasks_completed").default(0),
+  tasksPartial: integer("tasks_partial").default(0),
+  tasksSkipped: integer("tasks_skipped").default(0),
+  
+  // Calculated metrics
+  followThroughRate: real("follow_through_rate").default(0),
+  currentStreak: integer("current_streak").default(0),
+  longestStreak: integer("longest_streak").default(0),
+  lastCompletedDate: timestamp("last_completed_date"),
+  
+  // Stats reset tracking
+  lastResetAt: timestamp("last_reset_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const accountabilityStatsRelations = relations(accountabilityStats, ({ one }) => ({
+  user: one(users, {
+    fields: [accountabilityStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertAccountabilityStatsSchema = createInsertSchema(accountabilityStats).omit({
+  id: true,
+});
+
+// Notification Preferences
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  
+  // Notification settings
+  accountabilityEnabled: boolean("accountability_enabled").default(true),
+  preTaskEnabled: boolean("pre_task_enabled").default(true),
+  postTaskEnabled: boolean("post_task_enabled").default(true),
+  morningBriefingEnabled: boolean("morning_briefing_enabled").default(true),
+  eveningSummaryEnabled: boolean("evening_summary_enabled").default(true),
+  
+  // Timing preferences
+  preTaskMinutes: integer("pre_task_minutes").default(15), // Minutes before task
+  morningBriefingTime: text("morning_briefing_time").default("08:00"),
+  eveningSummaryTime: text("evening_summary_time").default("21:00"),
+  
+  // Quiet hours
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false),
+  quietHoursStart: text("quiet_hours_start").default("22:00"),
+  quietHoursEnd: text("quiet_hours_end").default("08:00"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -1747,6 +1880,8 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type WellnessContent = typeof wellnessContent.$inferSelect;
 export type InsertWellnessContent = z.infer<typeof insertWellnessContentSchema>;
+export type SavedContent = typeof savedContent.$inferSelect;
+export type InsertSavedContent = z.infer<typeof insertSavedContentSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;
@@ -1817,3 +1952,9 @@ export type Achievement = typeof achievements.$inferSelect;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type Streak = typeof streaks.$inferSelect;
 export type InsertStreak = z.infer<typeof insertStreakSchema>;
+export type TaskAccountability = typeof taskAccountability.$inferSelect;
+export type InsertTaskAccountability = z.infer<typeof insertTaskAccountabilitySchema>;
+export type AccountabilityStats = typeof accountabilityStats.$inferSelect;
+export type InsertAccountabilityStats = z.infer<typeof insertAccountabilityStatsSchema>;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;

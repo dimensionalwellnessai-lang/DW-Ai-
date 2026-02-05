@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   getDimensionAssessments, 
   saveDimensionAssessment,
@@ -9,6 +9,7 @@ import {
   type FoundationsProfile,
   type WellnessDimension,
 } from "@/lib/guest-storage";
+import { getQuestionsForDimension } from "@/lib/dimension-questions";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { scrollToRef } from "@/lib/scroll-utils";
 import {
   ArrowLeft,
   Heart,
@@ -251,7 +253,10 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Saved", description: "Your baseline profile has been updated." });
+      toast({ 
+        title: "Baseline saved", 
+        description: "Your baseline profile has been updated successfully." 
+      });
     },
   });
 
@@ -405,20 +410,80 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 function DimensionsSection() {
   const { toast } = useToast();
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
-  const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[] }>>({});
+  const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[]; questionAnswers?: Record<string, string> }>>({});
   const [newSupport, setNewSupport] = useState("");
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const stored = getDimensionAssessments();
-    const map: Record<string, { level: number; notes: string; supports: string[] }> = {};
+    const map: Record<string, { level: number; notes: string; supports: string[]; questionAnswers?: Record<string, string> }> = {};
     stored.forEach(a => {
-      map[a.dimension] = { level: a.level, notes: a.notes, supports: a.supports };
+      map[a.dimension] = { level: a.level, notes: a.notes, supports: a.supports, questionAnswers: a.questionAnswers };
     });
     setAssessments(map);
   }, []);
 
+  useEffect(() => {
+    if (selectedDimension) {
+      setQuestionAnswers(assessments[selectedDimension]?.questionAnswers || {});
+    }
+  }, [selectedDimension, assessments]);
+
   const selectedData = selectedDimension ? WELLNESS_DIMENSIONS.find(d => d.name === selectedDimension) : null;
   const currentAssessment = selectedDimension ? assessments[selectedDimension] : null;
+  const dimensionQuestions = selectedDimension ? getQuestionsForDimension(selectedDimension) : [];
+
+  const updateQuestionAnswer = (questionIndex: number, answer: string) => {
+    setQuestionAnswers((prevAnswers) => {
+      const updatedAnswers = {
+        ...prevAnswers,
+        [`q${questionIndex}`]: answer,
+      };
+
+      if (selectedDimension) {
+        setAssessments((prevAssessments) => {
+          const existing = prevAssessments[selectedDimension] || {
+            level: 3,
+            notes: "",
+            supports: [],
+          };
+
+          return {
+            ...prevAssessments,
+            [selectedDimension]: {
+              ...existing,
+              questionAnswers: updatedAnswers,
+            },
+          };
+        });
+      }
+
+      return updatedAnswers;
+    });
+  };
+
+  const saveQuestionAnswers = () => {
+    if (!selectedDimension) return;
+    const updated = {
+      ...assessments,
+      [selectedDimension]: {
+        level: currentAssessment?.level || 3,
+        notes: currentAssessment?.notes || "",
+        supports: currentAssessment?.supports || [],
+        questionAnswers: questionAnswers,
+      }
+    };
+    setAssessments(updated);
+    saveDimensionAssessment({
+      dimension: selectedDimension,
+      level: currentAssessment?.level || 3,
+      notes: currentAssessment?.notes || "",
+      supports: currentAssessment?.supports || [],
+      questionAnswers: questionAnswers,
+      lastUpdated: Date.now(),
+    });
+    toast({ title: "Saved", description: "Your reflections have been saved." });
+  };
 
   const updateLevel = (level: number) => {
     if (!selectedDimension) return;
@@ -428,6 +493,7 @@ function DimensionsSection() {
         level,
         notes: currentAssessment?.notes || "",
         supports: currentAssessment?.supports || [],
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -436,7 +502,12 @@ function DimensionsSection() {
       level,
       notes: currentAssessment?.notes || "",
       supports: currentAssessment?.supports || [],
+      questionAnswers: currentAssessment?.questionAnswers || {},
       lastUpdated: Date.now(),
+    });
+    toast({ 
+      title: "Level updated",
+      description: `${selectedDimension} dimension has been updated.` 
     });
   };
 
@@ -448,6 +519,7 @@ function DimensionsSection() {
         level: currentAssessment?.level || 3,
         notes,
         supports: currentAssessment?.supports || [],
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -460,6 +532,7 @@ function DimensionsSection() {
       level: currentAssessment.level || 3,
       notes: currentAssessment.notes,
       supports: currentAssessment.supports,
+      questionAnswers: currentAssessment.questionAnswers || {},
       lastUpdated: Date.now(),
     });
     toast({ title: "Saved", description: "Your reflection has been saved." });
@@ -474,6 +547,7 @@ function DimensionsSection() {
         level: currentAssessment?.level || 3,
         notes: currentAssessment?.notes || "",
         supports,
+        questionAnswers: currentAssessment?.questionAnswers || {},
       }
     };
     setAssessments(updated);
@@ -482,6 +556,7 @@ function DimensionsSection() {
       level: currentAssessment?.level || 3,
       notes: currentAssessment?.notes || "",
       supports,
+      questionAnswers: currentAssessment?.questionAnswers || {},
       lastUpdated: Date.now(),
     });
     setNewSupport("");
@@ -513,7 +588,7 @@ function DimensionsSection() {
 
   if (selectedDimension && selectedData) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={dimensionDetailRef}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setSelectedDimension(null)} data-testid="button-back-dimensions">
             <ArrowLeft className="w-5 h-5" />
@@ -554,6 +629,38 @@ function DimensionsSection() {
             ))}
           </CardContent>
         </Card>
+
+        {/* Dimension-Specific Questions */}
+        {dimensionQuestions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-medium">Reflective Questions</CardTitle>
+              <CardDescription>Take time to consider these questions about this dimension</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {dimensionQuestions.map((q, idx) => (
+                <div key={idx} className="space-y-2">
+                  <label htmlFor={`dimension-question-${selectedDimension}-${idx}`} className="text-sm font-medium text-foreground">
+                    {q.question}
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-2">{q.subtext}</p>
+                  <Textarea
+                    id={`dimension-question-${selectedDimension}-${idx}`}
+                    placeholder="Your thoughts..."
+                    value={questionAnswers[`q${idx}`] || ""}
+                    onChange={(e) => updateQuestionAnswer(idx, e.target.value)}
+                    className="min-h-20"
+                    data-testid={`input-question-${idx}`}
+                  />
+                </div>
+              ))}
+              <Button onClick={saveQuestionAnswers} size="sm" data-testid="button-save-questions">
+                <Check className="w-4 h-4 mr-2" />
+                Save Reflections
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -1604,6 +1711,7 @@ function FoundationsSection() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [customInput, setCustomInput] = useState("");
   const [showOther, setShowOther] = useState(false);
+  const questionsRef = useRef<HTMLDivElement>(null);
 
   const currentQuestion = FOUNDATIONS_QUESTIONS[currentQuestionIndex];
   const hasFoundationsData = foundations && foundations.confidence > 0.3;
@@ -1669,11 +1777,13 @@ function FoundationsSection() {
     setIsExploring(true);
     setCurrentQuestionIndex(0);
     setAnswers({});
+    // Scroll to questions after they appear using utility function
+    scrollToRef(questionsRef, 150, 'start');
   };
 
   if (isExploring) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={questionsRef}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Question {currentQuestionIndex + 1} of {FOUNDATIONS_QUESTIONS.length}</span>

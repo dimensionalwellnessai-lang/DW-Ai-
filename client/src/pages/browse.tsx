@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
 import { Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import {
   Play,
@@ -32,6 +32,12 @@ import {
   ChevronRight,
   Calendar,
   Plus,
+  Bookmark,
+  Compass,
+  Youtube,
+  FileText,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -44,7 +50,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { WellnessContent, UserProfile } from "@shared/schema";
+import type { WellnessContent, UserProfile, SavedContent } from "@shared/schema";
+import { ExploreFeedCard } from "@/components/explore-feed-card";
+import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
+import type { ExploreFeedContentType } from "@/components/explore-feed-card";
 
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
@@ -304,7 +313,8 @@ interface LocalResource {
 export default function Browse() {
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"browse" | "community">("browse");
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "saved" | "community">("for-you");
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -317,6 +327,21 @@ export default function Browse() {
   const [selectedContent, setSelectedContent] = useState<WellnessContent | typeof SAMPLE_CONTENT[0] | null>(null);
   const [contentDetailOpen, setContentDetailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchDialogType, setSearchDialogType] = useState<"youtube" | "articles" | "exercises">("youtube");
+  const [externalSearchQuery, setExternalSearchQuery] = useState("");
+  const [externalSearchResults, setExternalSearchResults] = useState<Array<{
+    id: string;
+    type: string;
+    source: string;
+    title: string;
+    description: string;
+    thumbnail?: string;
+    duration?: string;
+    url: string;
+    metadata?: any;
+  }>>([]);
+  const [isExternalSearching, setIsExternalSearching] = useState(false);
 
   // Reset local resources when switching away from local tab
   useEffect(() => {
@@ -333,6 +358,19 @@ export default function Browse() {
 
   const { data: dbContent } = useQuery<WellnessContent[]>({
     queryKey: ["/api/wellness-content"],
+  });
+
+  // For You tab: AI suggestions
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery<{ suggestions: any[] }>({
+    queryKey: ["/api/explore/suggestions"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: activeTab === "for-you",
+  });
+
+  // Saved tab: Saved content
+  const { data: savedContent, isLoading: savedLoading } = useQuery<SavedContent[]>({
+    queryKey: ["/api/saved-content"],
+    enabled: activeTab === "saved",
   });
 
   const aiCustomizeMutation = useMutation({
@@ -357,6 +395,60 @@ ${contentList}`,
         .map((i: number) => content[i].title);
       setAiRecommendations(titles.length > 0 ? titles : null);
       setAiDialogOpen(false);
+    },
+  });
+
+  // Save content mutation
+  const saveContentMutation = useMutation({
+    mutationFn: async (content: {
+      contentType: string;
+      title: string;
+      description: string;
+      url: string;
+      thumbnail?: string;
+      source?: string;
+      duration?: string;
+      metadata?: any;
+    }) => {
+      const response = await apiRequest("POST", "/api/saved-content", content);
+      if (!response.ok) throw new Error("Failed to save content");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
+      toast({ title: "Saved!", description: "Content saved for later" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save content", variant: "destructive" });
+    },
+  });
+
+  // Mark as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("PATCH", `/api/saved-content/${id}`, { isRead: true });
+      if (!response.ok) throw new Error("Failed to mark as read");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
+      toast({ title: "Marked as read" });
+    },
+  });
+
+  // Delete saved content mutation
+  const deleteSavedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/saved-content/${id}`);
+      if (!response.ok) throw new Error("Failed to delete");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
+      toast({ title: "Removed from saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove content", variant: "destructive" });
     },
   });
 
@@ -459,11 +551,52 @@ ${contentList}`,
     }
   };
 
+  const handleExternalSearch = async () => {
+    if (!externalSearchQuery.trim()) return;
+
+    setIsExternalSearching(true);
+    setExternalSearchResults([]);
+    try {
+      let endpoint = "";
+      const body: { query: string } = { query: externalSearchQuery };
+
+      if (searchDialogType === "youtube") {
+        endpoint = "/api/explore/youtube";
+      } else if (searchDialogType === "articles") {
+        endpoint = "/api/explore/articles";
+      } else if (searchDialogType === "exercises") {
+        endpoint = "/api/explore/exercises";
+      }
+
+      const response = await apiRequest("POST", endpoint, body);
+      const data = await response.json();
+      setExternalSearchResults(data.items || []);
+      
+      if (data.message) {
+        toast({ title: "Info", description: data.message });
+      }
+    } catch (error) {
+      console.error("External search error:", error);
+      toast({
+        title: "Search failed",
+        description: "Could not complete the search. Try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExternalSearching(false);
+    }
+  };
+
+  const handleSuggestionExplore = (keyword: string) => {
+    setActiveTab("explore");
+    setSearchQuery(keyword);
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader
         title="Browse"
-        rightContent={activeTab === "browse" ? (
+        rightContent={activeTab === "explore" ? (
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -487,10 +620,19 @@ ${contentList}`,
       />
       
       <div className="sticky top-0 z-40 bg-background border-b">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "browse" | "community")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "explore" | "saved" | "community")} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl">
-            <TabsTrigger value="browse" className="data-[state=active]:bg-primary/10" data-testid="tab-browse">
-              Browse
+            <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10" data-testid="tab-for-you">
+              <Sparkles className="h-4 w-4 mr-1" />
+              For You
+            </TabsTrigger>
+            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10" data-testid="tab-explore">
+              <Compass className="h-4 w-4 mr-1" />
+              Explore
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10" data-testid="tab-saved">
+              <Bookmark className="h-4 w-4 mr-1" />
+              Saved
             </TabsTrigger>
             <TabsTrigger value="community" className="data-[state=active]:bg-primary/10" data-testid="tab-community">
               <Users className="h-4 w-4 mr-1" />
@@ -500,7 +642,45 @@ ${contentList}`,
         </Tabs>
       </div>
       
-      {activeTab === "browse" && (
+      {activeTab === "for-you" && (
+        <main className="p-4">
+          {suggestionsLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading personalized suggestions...</p>
+            </div>
+          ) : suggestionsData?.suggestions && suggestionsData.suggestions.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Curated for You</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {suggestionsData.suggestions.map((suggestion: any, idx: number) => (
+                  <TopicSuggestionCard
+                    key={idx}
+                    dimension={suggestion.dimension}
+                    title={suggestion.title}
+                    description={suggestion.description}
+                    topicKeywords={suggestion.keywords || []}
+                    onExplore={handleSuggestionExplore}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <h3 className="font-medium mb-2">AI-Curated Just for You</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Your personalized content feed will appear here based on your wellness goals, energy levels, and preferences.
+              </p>
+            </div>
+          )}
+        </main>
+      )}
+
+      {activeTab === "explore" && (
         <>
           <div className="sticky top-[109px] z-30 bg-background border-b px-4 py-3">
             <div className="relative">
@@ -585,7 +765,7 @@ ${contentList}`,
         </>
       )}
 
-      {activeTab === "browse" && userProfile && (
+      {activeTab === "explore" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -611,8 +791,53 @@ ${contentList}`,
         </div>
       )}
 
-      {activeTab === "browse" && (
+      {activeTab === "explore" && (
         <main className="p-4">
+          {/* Search External Content Section */}
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-3">Search External Content</h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchDialogType("youtube");
+                  setSearchDialogOpen(true);
+                  setExternalSearchQuery("");
+                  setExternalSearchResults([]);
+                }}
+              >
+                <Youtube className="h-4 w-4 mr-2" />
+                Search YouTube
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchDialogType("articles");
+                  setSearchDialogOpen(true);
+                  setExternalSearchQuery("");
+                  setExternalSearchResults([]);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Search Articles
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchDialogType("exercises");
+                  setSearchDialogOpen(true);
+                  setExternalSearchQuery("");
+                  setExternalSearchResults([]);
+                }}
+              >
+                <Dumbbell className="h-4 w-4 mr-2" />
+                Search Exercises
+              </Button>
+            </div>
+          </div>
+
+          {/* Sample Content Grid */}
+          <h2 className="text-lg font-semibold mb-3">Curated Content</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredContent.map((item) => {
               const CategoryIcon = getCategoryIcon(item.category);
@@ -728,6 +953,54 @@ ${contentList}`,
                   No content found in this category yet.
                 </p>
               )}
+            </div>
+          )}
+        </main>
+      )}
+
+      {activeTab === "saved" && (
+        <main className="p-4">
+          {savedLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading saved content...</p>
+            </div>
+          ) : savedContent && savedContent.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {savedContent.map((item) => (
+                <ExploreFeedCard
+                  key={item.id}
+                  id={item.id}
+                  type={item.contentType as ExploreFeedContentType}
+                  source={item.source || "Unknown"}
+                  title={item.title}
+                  description={item.description || ""}
+                  thumbnail={item.thumbnail || undefined}
+                  duration={item.duration || undefined}
+                  url={item.url}
+                  metadata={item.metadata as any}
+                  isSaved={true}
+                  onOpen={() => window.open(item.url, "_blank")}
+                  onSave={() => {
+                    if (!deleteSavedMutation.isPending) {
+                      deleteSavedMutation.mutate(item.id);
+                    }
+                  }}
+                  onSchedule={() => {
+                    if (!markAsReadMutation.isPending) {
+                      markAsReadMutation.mutate(item.id);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <h3 className="font-medium mb-2">Your Saved Content</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Content you save for later will appear here. Start exploring to build your collection!
+              </p>
             </div>
           )}
         </main>
@@ -1029,6 +1302,84 @@ ${contentList}`,
                 </>
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {searchDialogType === "youtube" && <Youtube className="h-5 w-5" />}
+              {searchDialogType === "articles" && <FileText className="h-5 w-5" />}
+              {searchDialogType === "exercises" && <Dumbbell className="h-5 w-5" />}
+              Search {searchDialogType === "youtube" ? "YouTube" : searchDialogType === "articles" ? "Articles" : "Exercises"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder={`Search for ${searchDialogType}...`}
+                value={externalSearchQuery}
+                onChange={(e) => setExternalSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleExternalSearch()}
+              />
+              <Button onClick={handleExternalSearch} disabled={isExternalSearching || !externalSearchQuery.trim()}>
+                {isExternalSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            {isExternalSearching && (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Searching...</p>
+              </div>
+            )}
+
+            {!isExternalSearching && externalSearchResults.length > 0 && (
+              <div className="grid gap-4">
+                {externalSearchResults.map((result) => (
+                  <ExploreFeedCard
+                    key={result.id}
+                    id={result.id}
+                    type={result.type as ExploreFeedContentType}
+                    source={result.source}
+                    title={result.title}
+                    description={result.description}
+                    thumbnail={result.thumbnail}
+                    duration={result.duration}
+                    url={result.url}
+                    metadata={result.metadata}
+                    onOpen={() => window.open(result.url, "_blank")}
+                    onSave={() => {
+                      if (!saveContentMutation.isPending) {
+                        saveContentMutation.mutate({
+                          contentType: result.type,
+                          title: result.title,
+                          description: result.description,
+                          url: result.url,
+                          thumbnail: result.thumbnail,
+                          source: result.source,
+                          duration: result.duration,
+                          metadata: result.metadata,
+                        });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isExternalSearching && externalSearchResults.length === 0 && externalSearchQuery && (
+              <div className="text-center py-8">
+                <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">No results found</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

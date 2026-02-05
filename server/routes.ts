@@ -7,8 +7,9 @@ import crypto from "crypto";
 import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
+import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -29,6 +30,7 @@ import {
   insertProjectChatSchema,
   insertCalendarEventSchema,
   insertUserProfileSchema,
+  insertSavedContentSchema,
   insertChallengeSchema,
   insertBodyScanSchema,
   insertSystemModuleSchema,
@@ -47,6 +49,9 @@ import {
   insertWaterLogSchema,
   insertUniversalPlanSchema,
   insertCompletionStatusSchema,
+  insertTaskAccountabilitySchema,
+  insertAccountabilityStatsSchema,
+  insertNotificationPreferencesSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1634,6 +1639,12 @@ export async function registerRoutes(
                   actionsTaken.push(`Created habit: "${args.title}"`);
                 }
                 break;
+              case 'create_workout_plan':
+                // This tool creates a workout plan - the AI will present it in the response
+                // The plan data is embedded in the conversation, not saved to database yet
+                // User will approve/save it through the workout page UI
+                actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
             }
           } catch (err) {
             console.error(`Failed to execute tool ${toolCall.name}:`, err);
@@ -1695,7 +1706,7 @@ export async function registerRoutes(
   // Streaming chat endpoint for improved performance
   app.post("/api/chat/stream", async (req, res) => {
     try {
-      const { message, conversationHistory, context, systemOverride } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -1715,12 +1726,31 @@ export async function registerRoutes(
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Fetch user context
-      const [user, goals, habits] = await Promise.all([
+      // Fetch user context (same as smart endpoint)
+      const [user, goals, habits, profile] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
+        storage.getUserProfile(userId),
       ]);
+      
+      // Handle document attachments
+      let documentContext = "";
+      if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+        const docs = await Promise.all(
+          documentIds.map((id: string) => storage.getImportedDocument(id))
+        );
+        const validDocs = docs.filter(d => d && d.userId === userId);
+        if (validDocs.length > 0) {
+          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d => 
+            `--- ${d!.fileName} ---\n${d!.rawText?.slice(0, 3000) || "(no content)"}\n---`
+          ).join("\n");
+        }
+      }
+      
+      const enhancedMessage = documentContext 
+        ? `${message}\n${documentContext}`
+        : message;
       
       const userContext = {
         category: context,
@@ -1733,36 +1763,150 @@ export async function registerRoutes(
           title: h.title, 
           streak: h.streak || 0 
         })),
+        profile: profile || clientProfile || null,
+        lifeSystem: lifeSystemContext || null,
+        energyContext: energyContext || null,
       };
       
-      // Use OpenAI streaming
-      const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      // Use detectIntentAndRespond to get the AI response with streaming support
+      const result = await detectIntentAndRespondStreaming(
+        enhancedMessage,
+        conversationHistory || [],
+        userContext,
+        res
+      );
       
-      const systemPrompt = systemOverride || `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
-
-TODAY: ${today} at ${currentTime}
-
-Provide helpful, concise, and supportive responses. Focus on being present, validating, and offering gentle guidance.`;
-      
-      const messages = [
-        { role: "system" as const, content: systemPrompt },
-        ...(conversationHistory || []),
-        { role: "user" as const, content: message },
-      ];
-      
-      const stream = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        stream: true,
-        temperature: 0.7,
-      });
-      
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      // Execute tool calls if any (same as smart endpoint)
+      const actionsTaken: string[] = [];
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        for (const toolCall of result.toolCalls) {
+          try {
+            const args = typeof toolCall.arguments === 'string' 
+              ? JSON.parse(toolCall.arguments) 
+              : toolCall.arguments;
+            
+            if (!args || typeof args !== 'object') {
+              console.error(`Invalid tool arguments for ${toolCall.name}:`, toolCall.arguments);
+              continue;
+            }
+            
+            switch (toolCall.name) {
+              case 'create_schedule_block':
+                if (args.title && args.startTime && args.endTime) {
+                  await storage.createScheduleBlock({
+                    userId,
+                    title: args.title,
+                    startTime: args.startTime,
+                    endTime: args.endTime,
+                    dayOfWeek: args.dayOfWeek ?? new Date().getDay(),
+                    category: args.category || 'personal',
+                  });
+                  actionsTaken.push(`Added "${args.title}" to your schedule`);
+                }
+                break;
+              case 'log_mood':
+                if (args.energyLevel && args.moodLevel) {
+                  await storage.createMoodLog({
+                    userId,
+                    energyLevel: args.energyLevel,
+                    moodLevel: args.moodLevel,
+                    clarityLevel: args.clarityLevel,
+                    notes: args.notes,
+                  });
+                  actionsTaken.push(`Logged your mood (energy: ${args.energyLevel}/5, mood: ${args.moodLevel}/5)`);
+                }
+                break;
+              case 'create_goal':
+                if (args.title) {
+                  await storage.createGoal({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    wellnessDimension: args.wellnessDimension,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created goal: "${args.title}"`);
+                }
+                break;
+              case 'create_habit':
+                if (args.title) {
+                  await storage.createHabit({
+                    userId,
+                    title: args.title,
+                    description: args.description,
+                    frequency: args.frequency || 'daily',
+                    reminderTime: args.reminderTime,
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created habit: "${args.title}"`);
+                }
+                break;
+              case 'create_workout_plan':
+                // This tool creates a workout plan - the AI will present it in the response
+                // The plan data is embedded in the conversation, not saved to database yet
+                // User will approve/save it through the workout page UI
+                actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
+            }
+          } catch (err) {
+            console.error(`Failed to execute tool ${toolCall.name}:`, err);
+          }
         }
+      }
+      
+      // Handle syncable items (same as smart endpoint)
+      const syncableItems = extractSyncableItems(message, result.response || "");
+      let syncSessionId: string | undefined;
+      
+      if (syncableItems.length > 0) {
+        try {
+          let session = await storage.getActiveSyncSession(userId);
+          
+          if (!session) {
+            session = await storage.createSyncSession({
+              userId,
+              status: "processing",
+              totalItems: syncableItems.length,
+              sourceType: "chat",
+            });
+          }
+          syncSessionId = session.id;
+          
+          const syncItems = syncableItems.map(item => ({
+            sessionId: session!.id,
+            itemType: item.itemType,
+            title: item.title,
+            description: item.description,
+            startTime: item.startTime ? item.startTime.toISOString() : undefined,
+            endTime: item.endTime ? item.endTime.toISOString() : undefined,
+            recurrencePattern: item.recurrencePattern,
+            recurrenceGroupKey: item.recurrenceGroupKey,
+            dimensionTags: item.dimensionTags,
+            rawExtraction: item.rawExtraction,
+            status: "pending" as const,
+          }));
+          
+          await storage.createSyncItems(syncItems as any);
+          
+          const currentItems = await storage.getSyncItems(session.id);
+          await storage.updateSyncSession(session.id, {
+            status: "awaiting_review",
+            totalItems: currentItems.length,
+            processedItems: currentItems.length,
+          });
+        } catch (err) {
+          console.error("Failed to create sync items:", err);
+        }
+      }
+      
+      // Send actions taken and metadata at the end
+      if (actionsTaken.length > 0 || syncSessionId) {
+        res.write(`data: ${JSON.stringify({ 
+          metadata: { 
+            actionsTaken, 
+            syncSessionId 
+          } 
+        })}\n\n`);
       }
       
       res.write('data: [DONE]\n\n');
@@ -2896,6 +3040,337 @@ Provide helpful, concise, and supportive responses. Focus on being present, vali
       res.json(content);
     } catch (error) {
       res.status(500).json({ error: "Failed to load content" });
+    }
+  });
+
+  // Saved Content Routes
+  app.get("/api/saved-content", requireAuth, async (req, res) => {
+    try {
+      const content = await storage.getSavedContent(req.session.userId!);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load saved content" });
+    }
+  });
+
+  app.post("/api/saved-content", requireAuth, async (req, res) => {
+    try {
+      const data = insertSavedContentSchema.parse({ 
+        ...req.body, 
+        userId: req.session.userId! 
+      });
+      const created = await storage.createSavedContent(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save content" });
+    }
+  });
+
+  app.patch("/api/saved-content/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateSavedContent(
+        req.params.id,
+        req.session.userId!,
+        req.body
+      );
+      if (!updated) {
+        return res.status(404).json({ error: "Saved content not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update saved content" });
+    }
+  });
+
+  app.delete("/api/saved-content/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteSavedContent(
+        req.params.id,
+        req.session.userId!
+      );
+      if (!deleted) {
+        return res.status(404).json({ error: "Saved content not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete saved content" });
+    }
+  });
+
+  // Explore Content APIs - External content discovery
+  // Note: API keys should be set in environment variables
+  // For now, these return mock data as placeholders until API keys are configured
+
+  app.post("/api/explore/youtube", requireAuth, async (req, res) => {
+    try {
+      const { query, maxResults = 10 } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.YOUTUBE_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "YouTube API key not configured. Set YOUTUBE_API_KEY in environment variables.",
+        });
+      }
+
+      // YouTube Data API v3 integration
+      const youtubeUrl = new URL("https://www.googleapis.com/youtube/v3/search");
+      youtubeUrl.searchParams.set("part", "snippet");
+      youtubeUrl.searchParams.set("q", query);
+      youtubeUrl.searchParams.set("maxResults", String(maxResults));
+      youtubeUrl.searchParams.set("type", "video");
+      youtubeUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY);
+
+      const response = await fetch(youtubeUrl.toString());
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "YouTube API request failed");
+      }
+
+      // Format results
+      const formatted = data.items?.map((item: any) => ({
+        id: item.id.videoId,
+        type: "video",
+        source: "YouTube",
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnail: item.snippet.thumbnails?.medium?.url,
+        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        metadata: {
+          channel: item.snippet.channelTitle,
+          publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(),
+        },
+      })) || [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("YouTube API error:", error);
+      res.status(500).json({ 
+        error: "Failed to search YouTube",
+        items: [],
+      });
+    }
+  });
+
+  app.post("/api/explore/articles", requireAuth, async (req, res) => {
+    try {
+      const { query, category = "health" } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.NEWS_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "NewsAPI key not configured. Set NEWS_API_KEY in environment variables.",
+        });
+      }
+
+      // NewsAPI integration
+      const newsUrl = new URL("https://newsapi.org/v2/everything");
+      newsUrl.searchParams.set("q", `${query} ${category}`);
+      newsUrl.searchParams.set("language", "en");
+      newsUrl.searchParams.set("sortBy", "relevancy");
+      newsUrl.searchParams.set("pageSize", "10");
+      newsUrl.searchParams.set("apiKey", process.env.NEWS_API_KEY);
+
+      const response = await fetch(newsUrl.toString());
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "NewsAPI request failed");
+      }
+
+      // Format results
+      const formatted = data.articles?.map((article: any) => ({
+        id: `article-${Buffer.from(article.url).toString('base64').substring(0, 16)}`,
+        type: "article",
+        source: article.source.name,
+        title: article.title,
+        description: article.description || article.content?.substring(0, 200),
+        thumbnail: article.urlToImage,
+        url: article.url,
+        metadata: {
+          publishedAt: new Date(article.publishedAt).toLocaleDateString(),
+        },
+      })) || [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("NewsAPI error:", error);
+      res.status(500).json({ 
+        error: "Failed to search articles",
+        items: [],
+      });
+    }
+  });
+
+  app.post("/api/explore/exercises", requireAuth, async (req, res) => {
+    try {
+      const { query, muscle, type } = req.body;
+      
+      if (!query && !muscle && !type) {
+        return res.status(400).json({ error: "At least one search parameter is required" });
+      }
+
+      // Check for API key
+      if (!process.env.EXERCISE_API_KEY) {
+        // Return mock data as fallback
+        return res.json({
+          items: [],
+          message: "Exercise API key not configured. Set EXERCISE_API_KEY in environment variables.",
+        });
+      }
+
+      // API-Ninjas Exercise Database integration
+      const exerciseUrl = new URL("https://api.api-ninjas.com/v1/exercises");
+      if (query) exerciseUrl.searchParams.set("name", query);
+      if (muscle) exerciseUrl.searchParams.set("muscle", muscle);
+      if (type) exerciseUrl.searchParams.set("type", type);
+
+      const response = await fetch(exerciseUrl.toString(), {
+        headers: {
+          "X-Api-Key": process.env.EXERCISE_API_KEY,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error("Exercise API request failed");
+      }
+
+      // Format results
+      const formatted = Array.isArray(data) ? data.map((exercise: any) => ({
+        id: `exercise-${exercise.name.replace(/\s+/g, "-").toLowerCase()}-${exercise.muscle}`,
+        type: "exercise",
+        source: "API-Ninjas Exercise DB",
+        title: exercise.name,
+        description: exercise.instructions,
+        duration: `${exercise.difficulty} difficulty`,
+        url: "", // No external URL available for exercises
+        metadata: {
+          type: exercise.type,
+          muscle: exercise.muscle,
+          equipment: exercise.equipment,
+          difficulty: exercise.difficulty,
+        },
+      })) : [];
+
+      res.json({ items: formatted });
+    } catch (error) {
+      console.error("Exercise API error:", error);
+      res.status(500).json({ 
+        error: "Failed to search exercises",
+        items: [],
+      });
+    }
+  });
+
+  app.get("/api/explore/suggestions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+
+      // Fetch user data for personalized suggestions
+      const [dimensionBlueprints, goals, habits, userProfile] = await Promise.all([
+        storage.getDimensionBlueprints(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+        storage.getUserProfile(userId),
+      ]);
+
+      // Build context for AI
+      const context = {
+        dimensions: dimensionBlueprints.map(d => ({
+          dimension: d.dimension,
+          focus: d.whatIStandFor?.join(", ") || "wellness",
+        })),
+        goals: goals.slice(0, 3).map(g => ({ title: g.title, dimension: g.wellnessDimension })),
+        habits: habits.slice(0, 3).map(h => ({ title: h.title })),
+        fitnessGoal: userProfile?.fitnessGoal,
+      };
+
+      // Generate AI suggestions
+      const prompt = `Based on the user's wellness data:
+- Dimensions: ${context.dimensions.map(d => d.dimension).join(", ")}
+- Active Goals: ${context.goals.map(g => g.title).join(", ")}
+- Current Habits: ${context.habits.map(h => h.title).join(", ")}
+${context.fitnessGoal ? `- Fitness Goal: ${context.fitnessGoal}` : ""}
+
+Generate 3-4 personalized topic suggestions for content discovery. For each suggestion:
+1. A brief title explaining the connection to their wellness focus
+2. A short description (1-2 sentences)
+3. 3 specific topic keywords they can explore
+
+Return as JSON array with format:
+[{
+  "dimension": "dimension name",
+  "title": "suggestion title",
+  "description": "why this is relevant",
+  "keywords": ["keyword1", "keyword2", "keyword3"]
+}]`;
+
+      const aiResponse = await generateChatResponse(prompt, []);
+      
+      // Ensure we have a string response
+      const responseText = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);
+      
+      // Parse AI response - look for JSON array with improved bracket matching
+      let suggestions = [];
+      try {
+        // Find the first '[' and count brackets to find matching ']'
+        const startIdx = responseText.indexOf('[');
+        if (startIdx !== -1) {
+          let depth = 0;
+          let endIdx = startIdx;
+          for (let i = startIdx; i < responseText.length; i++) {
+            if (responseText[i] === '[') depth++;
+            if (responseText[i] === ']') depth--;
+            if (depth === 0) {
+              endIdx = i;
+              break;
+            }
+          }
+          if (endIdx > startIdx) {
+            const jsonStr = responseText.substring(startIdx, endIdx + 1);
+            suggestions = JSON.parse(jsonStr);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse AI suggestions:", e);
+      }
+
+      // Fallback suggestions if AI fails
+      if (suggestions.length === 0) {
+        suggestions = [
+          {
+            dimension: "Body",
+            title: "Explore wellness content for your body",
+            description: "Discover workouts, nutrition tips, and recovery techniques.",
+            keywords: ["workout routines", "nutrition basics", "recovery tips"],
+          },
+        ];
+      }
+
+      res.json({ suggestions });
+    } catch (error) {
+      console.error("AI suggestions error:", error);
+      res.status(500).json({ 
+        error: "Failed to generate suggestions",
+        suggestions: [],
+      });
     }
   });
 
@@ -5778,6 +6253,156 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update streak error:", error);
       res.status(500).json({ error: "Failed to update streak" });
+    }
+  });
+
+  // Accountability tracking routes
+  app.post("/api/accountability/commit", requireAuth, async (req, res) => {
+    try {
+      const {
+        taskId,
+        calendarEventId,
+        taskName,
+        scheduledTime,
+        scheduledEndTime,
+        commitmentResponse
+      } = req.body;
+
+      if (!taskName || !scheduledTime || !commitmentResponse) {
+        return res.status(400).json({ 
+          error: "Missing required fields: taskName, scheduledTime, commitmentResponse" 
+        });
+      }
+
+      if (!['yes', 'remind_later', 'skip'].includes(commitmentResponse)) {
+        return res.status(400).json({ 
+          error: "Invalid commitmentResponse. Must be 'yes', 'remind_later', or 'skip'" 
+        });
+      }
+
+      const record = await accountability.recordCommitment(
+        req.session.userId!,
+        taskId || null,
+        calendarEventId || null,
+        taskName,
+        new Date(scheduledTime),
+        scheduledEndTime ? new Date(scheduledEndTime) : null,
+        commitmentResponse
+      );
+
+      res.json(record);
+    } catch (error) {
+      console.error("Record commitment error:", error);
+      res.status(500).json({ error: "Failed to record commitment" });
+    }
+  });
+
+  app.post("/api/accountability/complete", requireAuth, async (req, res) => {
+    try {
+      const {
+        taskId,
+        calendarEventId,
+        completionStatus,
+        reflectionNote
+      } = req.body;
+
+      if (!completionStatus) {
+        return res.status(400).json({ 
+          error: "Missing required field: completionStatus" 
+        });
+      }
+
+      if (!['completed', 'partial', 'skipped', 'no_response'].includes(completionStatus)) {
+        return res.status(400).json({ 
+          error: "Invalid completionStatus" 
+        });
+      }
+
+      const record = await accountability.recordCompletion(
+        req.session.userId!,
+        taskId || null,
+        calendarEventId || null,
+        completionStatus,
+        reflectionNote
+      );
+
+      res.json(record);
+    } catch (error) {
+      console.error("Record completion error:", error);
+      res.status(500).json({ error: "Failed to record completion" });
+    }
+  });
+
+  app.get("/api/accountability/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await accountability.getAccountabilityStats(req.session.userId!);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get accountability stats error:", error);
+      res.status(500).json({ error: "Failed to get stats" });
+    }
+  });
+
+  app.get("/api/accountability/records", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate as string) : new Date();
+
+      const records = await accountability.getAccountabilityRecords(
+        req.session.userId!,
+        start,
+        end
+      );
+
+      res.json(records);
+    } catch (error) {
+      console.error("Get accountability records error:", error);
+      res.status(500).json({ error: "Failed to get records" });
+    }
+  });
+
+  app.get("/api/accountability/today", requireAuth, async (req, res) => {
+    try {
+      const summary = await accountability.getTodayAccountabilitySummary(req.session.userId!);
+      res.json(summary);
+    } catch (error) {
+      console.error("Get today's accountability error:", error);
+      res.status(500).json({ error: "Failed to get today's summary" });
+    }
+  });
+
+  app.get("/api/accountability/synopsis", requireAuth, async (req, res) => {
+    try {
+      const synopsis = await accountability.getWeeklySynopsis(req.session.userId!);
+      res.json(synopsis);
+    } catch (error) {
+      console.error("Get synopsis error:", error);
+      res.status(500).json({ error: "Failed to get synopsis" });
+    }
+  });
+
+  app.get("/api/accountability/preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await accountability.getNotificationPreferences(req.session.userId!);
+      res.json(prefs);
+    } catch (error) {
+      console.error("Get notification preferences error:", error);
+      res.status(500).json({ error: "Failed to get preferences" });
+    }
+  });
+
+  app.put("/api/accountability/preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await accountability.updateNotificationPreferences(
+        req.session.userId!,
+        req.body
+      );
+      res.json(prefs);
+    } catch (error) {
+      console.error("Update notification preferences error:", error);
+      res.status(500).json({ error: "Failed to update preferences" });
     }
   });
 

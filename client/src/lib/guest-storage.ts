@@ -26,6 +26,7 @@ export interface DimensionAssessment {
   level: number; // 1-5 scale
   notes: string;
   supports: string[];
+  questionAnswers?: Record<string, string>; // Answers to dimension-specific questions
   lastUpdated: number;
 }
 

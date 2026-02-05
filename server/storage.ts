@@ -23,6 +23,7 @@ import {
   calendarEvents,
   userProfiles,
   wellnessContent,
+  savedContent,
   challenges,
   bodyScans,
   systemModules,
@@ -106,6 +107,8 @@ import {
   type InsertUserProfile,
   type WellnessContent,
   type InsertWellnessContent,
+  type SavedContent,
+  type InsertSavedContent,
   type Challenge,
   type InsertChallenge,
   type BodyScan,
@@ -296,6 +299,12 @@ export interface IStorage {
 
   getWellnessContent(filters?: { category?: string; goalTags?: string[]; difficulty?: string }): Promise<WellnessContent[]>;
   getWellnessContentById(id: string): Promise<WellnessContent | undefined>;
+
+  getSavedContent(userId: string): Promise<SavedContent[]>;
+  getSavedContentById(id: string, userId: string): Promise<SavedContent | undefined>;
+  createSavedContent(content: InsertSavedContent): Promise<SavedContent>;
+  updateSavedContent(id: string, userId: string, data: Partial<SavedContent>): Promise<SavedContent | undefined>;
+  deleteSavedContent(id: string, userId: string): Promise<boolean>;
 
   getChallenges(userId: string): Promise<Challenge[]>;
   getChallenge(id: string, userId: string): Promise<Challenge | undefined>;
@@ -1150,6 +1159,38 @@ export class DatabaseStorage implements IStorage {
   async getWellnessContentById(id: string): Promise<WellnessContent | undefined> {
     const [content] = await db.select().from(wellnessContent).where(eq(wellnessContent.id, id));
     return content || undefined;
+  }
+
+  async getSavedContent(userId: string): Promise<SavedContent[]> {
+    return db.select().from(savedContent)
+      .where(eq(savedContent.userId, userId))
+      .orderBy(desc(savedContent.savedAt));
+  }
+
+  async getSavedContentById(id: string, userId: string): Promise<SavedContent | undefined> {
+    const [content] = await db.select().from(savedContent)
+      .where(and(eq(savedContent.id, id), eq(savedContent.userId, userId)));
+    return content || undefined;
+  }
+
+  async createSavedContent(content: InsertSavedContent): Promise<SavedContent> {
+    const [created] = await db.insert(savedContent).values(content).returning();
+    return created;
+  }
+
+  async updateSavedContent(id: string, userId: string, data: Partial<SavedContent>): Promise<SavedContent | undefined> {
+    const [updated] = await db.update(savedContent)
+      .set(data)
+      .where(and(eq(savedContent.id, id), eq(savedContent.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteSavedContent(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(savedContent)
+      .where(and(eq(savedContent.id, id), eq(savedContent.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   async getChallenges(userId: string): Promise<Challenge[]> {

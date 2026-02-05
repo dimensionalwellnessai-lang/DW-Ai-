@@ -2,14 +2,39 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** 
+   * Optional size variant for consistent card heights
+   * - sm: 100px minimum height
+   * - md: 150px minimum height
+   * - lg: 200px minimum height
+   * - tile: Square aspect ratio (1:1)
+   */
+  size?: "sm" | "md" | "lg" | "tile";
+  /**
+   * Optional priority level for visual hierarchy
+   * - high: Emphasized with border and shadow (most important)
+   * - medium: Standard appearance (default)
+   * - low: Subtle appearance with reduced opacity (least important)
+   */
+  priority?: "high" | "medium" | "low";
+}
+
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  CardProps
+>(({ className, size, priority, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
       "shadcn-card rounded-xl border bg-card border-card-border text-card-foreground shadow-sm glass",
+      size === "sm" && "card-sm",
+      size === "md" && "card-md",
+      size === "lg" && "card-lg",
+      size === "tile" && "card-tile",
+      priority === "high" && "card-priority-high",
+      priority === "medium" && "card-priority-medium",
+      priority === "low" && "card-priority-low",
       className
     )}
     {...props}
