@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   getDimensionAssessments, 
   saveDimensionAssessment,
@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { scrollToRef } from "@/lib/scroll-utils";
 import {
   ArrowLeft,
   Heart,
@@ -252,7 +253,10 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Saved", description: "Your baseline profile has been updated." });
+      toast({ 
+        title: "Baseline saved", 
+        description: "Your baseline profile has been updated successfully." 
+      });
     },
   });
 
@@ -501,6 +505,10 @@ function DimensionsSection() {
       questionAnswers: currentAssessment?.questionAnswers || {},
       lastUpdated: Date.now(),
     });
+    toast({ 
+      title: "Level updated",
+      description: `${selectedDimension} dimension has been updated.` 
+    });
   };
 
   const updateNotes = (notes: string) => {
@@ -580,7 +588,7 @@ function DimensionsSection() {
 
   if (selectedDimension && selectedData) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={dimensionDetailRef}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setSelectedDimension(null)} data-testid="button-back-dimensions">
             <ArrowLeft className="w-5 h-5" />
@@ -1703,6 +1711,7 @@ function FoundationsSection() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [customInput, setCustomInput] = useState("");
   const [showOther, setShowOther] = useState(false);
+  const questionsRef = useRef<HTMLDivElement>(null);
 
   const currentQuestion = FOUNDATIONS_QUESTIONS[currentQuestionIndex];
   const hasFoundationsData = foundations && foundations.confidence > 0.3;
@@ -1768,11 +1777,13 @@ function FoundationsSection() {
     setIsExploring(true);
     setCurrentQuestionIndex(0);
     setAnswers({});
+    // Scroll to questions after they appear using utility function
+    scrollToRef(questionsRef, 150, 'start');
   };
 
   if (isExploring) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={questionsRef}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Question {currentQuestionIndex + 1} of {FOUNDATIONS_QUESTIONS.length}</span>

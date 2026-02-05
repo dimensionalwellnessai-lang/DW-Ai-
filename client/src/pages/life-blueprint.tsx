@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
 
 const DIMENSIONS = [
   { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
@@ -50,6 +51,7 @@ export default function LifeBlueprintPage() {
   const [selectedDimension, setSelectedDimension] = useState<string>("body");
   const [editMode, setEditMode] = useState<string | null>(null);
   const [editingResetProtocol, setEditingResetProtocol] = useState(false);
+  const dimensionDetailRef = useRef<HTMLDivElement>(null);
 
   // Fetch dimension blueprints
   const { data: blueprints = [] } = useQuery({
@@ -92,7 +94,12 @@ export default function LifeBlueprintPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/dimension-blueprints'] });
       queryClient.invalidateQueries({ queryKey: ['/api/completion-status'] });
       setEditMode(null);
-      toast({ title: "Blueprint updated successfully!" });
+      toast({ 
+        title: "Blueprint updated successfully!",
+        description: "Your dimension values have been saved."
+      });
+      // Scroll to show the saved content using utility function
+      scrollToRef(dimensionDetailRef, 150, 'center');
     },
   });
 
@@ -121,7 +128,12 @@ export default function LifeBlueprintPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/reset-protocol'] });
       queryClient.invalidateQueries({ queryKey: ['/api/completion-status'] });
       setEditingResetProtocol(false);
-      toast({ title: "Reset Protocol updated successfully!" });
+      toast({ 
+        title: "Reset Protocol updated successfully!",
+        description: "Your recovery system has been saved."
+      });
+      // Scroll to show the saved reset protocol
+      scrollToElement('reset-protocol-view', 200);
     },
   });
 
@@ -134,6 +146,24 @@ export default function LifeBlueprintPage() {
   const resetProtocolComplete = resetProtocol && Object.keys(resetProtocol).some(k => 
     k !== 'id' && k !== 'userId' && k !== 'createdAt' && k !== 'updatedAt' && resetProtocol[k]
   );
+
+  // Calculate priority for each dimension based on completion
+  const getDimensionPriority = (dimId: string): "high" | "medium" | "low" => {
+    const hasBlueprint = blueprints.some((b: any) => b.dimension === dimId);
+    if (!hasBlueprint) return "high"; // Not completed - high priority
+    return "medium"; // Completed - medium priority
+  };
+
+  // Sort dimensions by priority (high first) while maintaining order within priority levels
+  const dimensionsWithPriority = DIMENSIONS.map(dim => ({
+    ...dim,
+    priority: getDimensionPriority(dim.id),
+    hasContent: blueprints.some((b: any) => b.dimension === dim.id)
+  })).sort((a, b) => {
+    // High priority first, then maintain original order
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -167,17 +197,23 @@ export default function LifeBlueprintPage() {
           <TabsContent value="dimensions" className="space-y-6 mt-6">
             {/* Dimension Selector */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {DIMENSIONS.map((dim) => {
+              {dimensionsWithPriority.map((dim) => {
                 const Icon = dim.icon;
-                const hasContent = blueprints.some((b: any) => b.dimension === dim.id);
+                // More pronounced hover effect for high-priority items
+                const hoverScale = dim.priority === "high" ? "hover:scale-110" : "hover:scale-105";
                 
                 return (
                   <Card
                     key={dim.id}
-                    className={`cursor-pointer transition-all ${
+                    priority={dim.priority}
+                    className={`cursor-pointer transition-all ${hoverScale} ${
                       selectedDimension === dim.id ? 'ring-2 ring-primary' : ''
                     }`}
-                    onClick={() => setSelectedDimension(dim.id)}
+                    onClick={() => {
+                      setSelectedDimension(dim.id);
+                      // Scroll to detail view after selecting using utility function
+                      scrollToRef(dimensionDetailRef, 100, 'center');
+                    }}
                   >
                     <CardContent className="pt-6">
                       <div className="flex flex-col items-center text-center gap-2">
@@ -185,7 +221,7 @@ export default function LifeBlueprintPage() {
                           <Icon className={`h-6 w-6 ${dim.color}`} />
                         </div>
                         <p className="font-medium text-sm">{dim.label}</p>
-                        {hasContent ? (
+                        {dim.hasContent ? (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : (
                           <Circle className="h-4 w-4 text-muted-foreground" />
@@ -199,7 +235,7 @@ export default function LifeBlueprintPage() {
 
             {/* Dimension Detail */}
             {currentDimension && (
-              <Card>
+              <Card ref={dimensionDetailRef}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -274,7 +310,9 @@ export default function LifeBlueprintPage() {
                     onCancel={() => setEditingResetProtocol(false)}
                   />
                 ) : resetProtocolComplete ? (
-                  <ResetProtocolView protocol={resetProtocol} />
+                  <div id="reset-protocol-view">
+                    <ResetProtocolView protocol={resetProtocol} />
+                  </div>
                 ) : (
                   <div className="text-center py-8 space-y-4">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
