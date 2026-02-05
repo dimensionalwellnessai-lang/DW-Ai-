@@ -3,7 +3,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Optional size variant for consistent card heights */
+  /** 
+   * Optional size variant for consistent card heights
+   * - sm: 100px minimum height
+   * - md: 150px minimum height
+   * - lg: 200px minimum height
+   * - tile: Square aspect ratio (1:1)
+   */
   size?: "sm" | "md" | "lg" | "tile";
 }
 

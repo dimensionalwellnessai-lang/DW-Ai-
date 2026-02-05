@@ -59,13 +59,3 @@ export const isElementBelowViewport = (elementId: string): boolean => {
   
   return rect.top > viewportHeight;
 };
-
-/**
- * Scrolls to show new content with a slight offset for better UX
- * Useful for scrolling to newly added content
- * @param elementId - The ID of the element to scroll to
- * @param delay - Optional delay before scrolling (default: 150ms)
- */
-export const scrollToNewContent = (elementId: string, delay: number = 150): void => {
-  scrollToElement(elementId, delay, 'center');
-};

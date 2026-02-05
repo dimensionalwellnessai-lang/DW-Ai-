@@ -127,8 +127,8 @@ const saveMutation = useMutation({
       title: "Saved successfully!",
       description: "Your changes have been saved."
     });
-    // Scroll to show the saved content
-    scrollToElement('saved-content', 200);
+    // Scroll to show the saved content with center alignment for better visibility
+    scrollToElement('saved-content', 200, 'center');
   },
 });
 ```
