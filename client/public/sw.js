@@ -53,7 +53,8 @@ self.addEventListener('push', (event) => {
     }
   }
   
-  const options = {
+  // Set notification options based on type
+  let options = {
     body: data.body,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
@@ -61,12 +62,34 @@ self.addEventListener('push', (event) => {
     data: {
       url: data.url || '/',
       dateOfArrival: Date.now(),
+      notificationType: data.notificationType || 'general',
+      taskData: data.taskData || null,
     },
     actions: [
       { action: 'open', title: 'Open' },
       { action: 'dismiss', title: 'Dismiss' }
     ]
   };
+  
+  // Add specific actions for accountability notifications
+  if (data.notificationType === 'pre_task') {
+    options.actions = [
+      { action: 'commit_yes', title: '✅ Yes, I\'ll do it' },
+      { action: 'remind_later', title: '⏰ Remind me later' },
+      { action: 'skip', title: '❌ Skip this time' }
+    ];
+  } else if (data.notificationType === 'post_task') {
+    options.actions = [
+      { action: 'completed', title: '✅ Yes, I did it!' },
+      { action: 'partial', title: '🔄 Partially' },
+      { action: 'skipped', title: '❌ No, I didn\'t' }
+    ];
+  } else if (data.notificationType === 'morning_briefing' || data.notificationType === 'evening_summary') {
+    options.actions = [
+      { action: 'open', title: 'View Details' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ];
+  }
   
   event.waitUntil(
     self.registration.showNotification(data.title, options)
@@ -76,7 +99,43 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   
-  if (event.action === 'dismiss') return;
+  const action = event.action;
+  const notificationType = event.notification.data?.notificationType;
+  const taskData = event.notification.data?.taskData;
+  
+  // Handle accountability notification actions
+  if (notificationType === 'pre_task' || notificationType === 'post_task') {
+    // Send response to the app
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          // Try to send message to existing client
+          if (clientList.length > 0) {
+            const client = clientList[0];
+            client.postMessage({
+              type: 'ACCOUNTABILITY_RESPONSE',
+              notificationType,
+              action,
+              taskData
+            });
+            return client.focus();
+          }
+          
+          // If no client exists, open the app and pass data via URL
+          const responseData = encodeURIComponent(JSON.stringify({
+            type: 'ACCOUNTABILITY_RESPONSE',
+            notificationType,
+            action,
+            taskData
+          }));
+          return clients.openWindow(`/?notification_response=${responseData}`);
+        })
+    );
+    return;
+  }
+  
+  // Handle other notification types (dismiss, open)
+  if (action === 'dismiss') return;
   
   const urlToOpen = event.notification.data?.url || '/';
   
