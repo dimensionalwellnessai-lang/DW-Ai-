@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { scrollToElement } from "@/lib/scroll-utils";
+import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
 
 const DIMENSIONS = [
   { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
@@ -98,10 +98,8 @@ export default function LifeBlueprintPage() {
         title: "Blueprint updated successfully!",
         description: "Your dimension values have been saved."
       });
-      // Scroll to show the saved content
-      if (dimensionDetailRef.current) {
-        dimensionDetailRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      // Scroll to show the saved content using utility function
+      scrollToRef(dimensionDetailRef, 150, 'center');
     },
   });
 
@@ -193,13 +191,8 @@ export default function LifeBlueprintPage() {
                     }`}
                     onClick={() => {
                       setSelectedDimension(dim.id);
-                      // Scroll to detail view after selecting
-                      setTimeout(() => {
-                        dimensionDetailRef.current?.scrollIntoView({ 
-                          behavior: 'smooth', 
-                          block: 'center' 
-                        });
-                      }, 100);
+                      // Scroll to detail view after selecting using utility function
+                      scrollToRef(dimensionDetailRef, 100, 'center');
                     }}
                   >
                     <CardContent className="pt-6">

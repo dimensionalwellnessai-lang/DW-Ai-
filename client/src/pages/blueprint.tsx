@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { scrollToElement } from "@/lib/scroll-utils";
+import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
 import {
   ArrowLeft,
   Heart,
@@ -425,11 +425,9 @@ function DimensionsSection() {
   }, []);
 
   useEffect(() => {
-    // Scroll to detail view when a dimension is selected
+    // Scroll to detail view when a dimension is selected using utility function
     if (selectedDimension && dimensionDetailRef.current) {
-      setTimeout(() => {
-        dimensionDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      scrollToRef(dimensionDetailRef, 100, 'start');
     }
   }, [selectedDimension]);
 
@@ -1690,10 +1688,8 @@ function FoundationsSection() {
     setIsExploring(true);
     setCurrentQuestionIndex(0);
     setAnswers({});
-    // Scroll to questions after they appear
-    setTimeout(() => {
-      questionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
+    // Scroll to questions after they appear using utility function
+    scrollToRef(questionsRef, 150, 'start');
   };
 
   if (isExploring) {

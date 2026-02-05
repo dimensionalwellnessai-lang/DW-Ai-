@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { scrollToElement } from "@/lib/scroll-utils";
 
 interface ScrollIndicatorProps {
   /** Whether to show the indicator */
@@ -45,10 +46,7 @@ export function ScrollIndicator({
 
   const handleClick = () => {
     if (targetId) {
-      const element = document.getElementById(targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      scrollToElement(targetId, 0, 'start');
     }
     setIsVisible(false);
   };
