@@ -48,6 +48,9 @@ import {
   insertWaterLogSchema,
   insertUniversalPlanSchema,
   insertCompletionStatusSchema,
+  insertTaskAccountabilitySchema,
+  insertAccountabilityStatsSchema,
+  insertNotificationPreferencesSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
