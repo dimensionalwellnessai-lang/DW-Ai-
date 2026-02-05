@@ -40,34 +40,31 @@ interface AccountabilitySynopsis {
   patterns: string[];
 }
 
+interface TodaySummary {
+  tasksScheduled: number;
+  tasksCommitted: number;
+  tasksCompleted: number;
+  tasksPartial: number;
+  tasksSkipped: number;
+  followThroughRate: number;
+}
+
 export function AccountabilityDashboard() {
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
 
   // Fetch stats
   const { data: stats, isLoading: statsLoading } = useQuery<AccountabilityStats>({
     queryKey: ['/api/accountability/stats'],
-    queryFn: async () => {
-      const res = await apiRequest('/api/accountability/stats');
-      return res.json();
-    }
   });
 
   // Fetch synopsis
   const { data: synopsis, isLoading: synopsisLoading } = useQuery<AccountabilitySynopsis>({
     queryKey: ['/api/accountability/synopsis'],
-    queryFn: async () => {
-      const res = await apiRequest('/api/accountability/synopsis');
-      return res.json();
-    }
   });
 
   // Fetch today's summary
-  const { data: todaySummary } = useQuery({
+  const { data: todaySummary } = useQuery<TodaySummary>({
     queryKey: ['/api/accountability/today'],
-    queryFn: async () => {
-      const res = await apiRequest('/api/accountability/today');
-      return res.json();
-    }
   });
 
   if (statsLoading || synopsisLoading) {
@@ -162,7 +159,7 @@ export function AccountabilityDashboard() {
                 {todaySummary?.tasksCompleted || 0}/{todaySummary?.tasksScheduled || 0}
               </div>
               <Progress 
-                value={todaySummary?.tasksScheduled > 0 
+                value={todaySummary && todaySummary.tasksScheduled > 0 
                   ? (todaySummary.tasksCompleted / todaySummary.tasksScheduled) * 100 
                   : 0} 
                 className="h-2" 

@@ -24,20 +24,12 @@ export function AccountabilitySettings() {
   // Fetch preferences
   const { data: preferences, isLoading } = useQuery<NotificationPreferences>({
     queryKey: ['/api/accountability/preferences'],
-    queryFn: async () => {
-      const res = await apiRequest('/api/accountability/preferences');
-      return res.json();
-    }
   });
 
   // Update preferences mutation
   const updatePreferences = useMutation({
     mutationFn: async (updates: Partial<NotificationPreferences>) => {
-      const res = await apiRequest('/api/accountability/preferences', {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const res = await apiRequest('PUT', '/api/accountability/preferences', updates);
       return res.json();
     },
     onSuccess: () => {
@@ -159,7 +151,7 @@ export function AccountabilitySettings() {
             </div>
             <Switch
               id="accountability-enabled"
-              checked={preferences.accountabilityEnabled}
+              checked={preferences.accountabilityEnabled ?? false}
               onCheckedChange={(checked) => handleToggle('accountabilityEnabled', checked)}
               disabled={notificationPermission !== 'granted'}
             />
@@ -180,7 +172,7 @@ export function AccountabilitySettings() {
               </div>
               <Switch
                 id="pre-task-enabled"
-                checked={preferences.preTaskEnabled}
+                checked={preferences.preTaskEnabled ?? false}
                 onCheckedChange={(checked) => handleToggle('preTaskEnabled', checked)}
                 disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
               />
@@ -196,7 +188,7 @@ export function AccountabilitySettings() {
                   type="number"
                   min="5"
                   max="60"
-                  value={preferences.preTaskMinutes}
+                  value={preferences.preTaskMinutes ?? 15}
                   onChange={(e) => handleNumberChange('preTaskMinutes', parseInt(e.target.value))}
                   className="w-32"
                 />
@@ -218,7 +210,7 @@ export function AccountabilitySettings() {
             </div>
             <Switch
               id="post-task-enabled"
-              checked={preferences.postTaskEnabled}
+              checked={preferences.postTaskEnabled ?? false}
               onCheckedChange={(checked) => handleToggle('postTaskEnabled', checked)}
               disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
             />
@@ -239,7 +231,7 @@ export function AccountabilitySettings() {
               </div>
               <Switch
                 id="morning-briefing-enabled"
-                checked={preferences.morningBriefingEnabled}
+                checked={preferences.morningBriefingEnabled ?? false}
                 onCheckedChange={(checked) => handleToggle('morningBriefingEnabled', checked)}
                 disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
               />
@@ -254,7 +246,7 @@ export function AccountabilitySettings() {
                 <Input
                   id="morning-briefing-time"
                   type="time"
-                  value={preferences.morningBriefingTime}
+                  value={preferences.morningBriefingTime ?? "08:00"}
                   onChange={(e) => handleTimeChange('morningBriefingTime', e.target.value)}
                   className="w-32"
                 />
@@ -277,7 +269,7 @@ export function AccountabilitySettings() {
               </div>
               <Switch
                 id="evening-summary-enabled"
-                checked={preferences.eveningSummaryEnabled}
+                checked={preferences.eveningSummaryEnabled ?? false}
                 onCheckedChange={(checked) => handleToggle('eveningSummaryEnabled', checked)}
                 disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
               />
@@ -292,7 +284,7 @@ export function AccountabilitySettings() {
                 <Input
                   id="evening-summary-time"
                   type="time"
-                  value={preferences.eveningSummaryTime}
+                  value={preferences.eveningSummaryTime ?? "21:00"}
                   onChange={(e) => handleTimeChange('eveningSummaryTime', e.target.value)}
                   className="w-32"
                 />
@@ -322,7 +314,7 @@ export function AccountabilitySettings() {
             </div>
             <Switch
               id="quiet-hours-enabled"
-              checked={preferences.quietHoursEnabled}
+              checked={preferences.quietHoursEnabled ?? false}
               onCheckedChange={(checked) => handleToggle('quietHoursEnabled', checked)}
               disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
             />
@@ -338,7 +330,7 @@ export function AccountabilitySettings() {
                 <Input
                   id="quiet-hours-start"
                   type="time"
-                  value={preferences.quietHoursStart}
+                  value={preferences.quietHoursStart ?? "22:00"}
                   onChange={(e) => handleTimeChange('quietHoursStart', e.target.value)}
                 />
               </div>
@@ -350,7 +342,7 @@ export function AccountabilitySettings() {
                 <Input
                   id="quiet-hours-end"
                   type="time"
-                  value={preferences.quietHoursEnd}
+                  value={preferences.quietHoursEnd ?? "08:00"}
                   onChange={(e) => handleTimeChange('quietHoursEnd', e.target.value)}
                 />
               </div>
