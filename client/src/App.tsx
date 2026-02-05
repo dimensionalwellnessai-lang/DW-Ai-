@@ -73,6 +73,8 @@ import LifeBlueprintPage from "@/pages/life-blueprint";
 import TrackingPage from "@/pages/tracking";
 import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
+import AccountabilityPage from "@/pages/accountability";
+import AccountabilitySettingsPage from "@/pages/accountability-settings";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -161,6 +163,8 @@ function Router() {
       <Route path="/tracking" component={TrackingPage} />
       <Route path="/goals" component={GoalsPage} />
       <Route path="/habits" component={HabitsPage} />
+      <Route path="/accountability" component={AccountabilityPage} />
+      <Route path="/accountability/settings" component={AccountabilitySettingsPage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
