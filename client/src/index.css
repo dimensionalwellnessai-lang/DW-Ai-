@@ -310,10 +310,19 @@ summary::marker {
 }
 
 /* Ensure all form elements respect dark mode */
-.dark select,
-.dark input,
-.dark textarea,
+/* Exclude elements with explicit background classes to preserve intentional transparent/custom backgrounds */
+.dark select:not([class*="bg-"]),
+.dark input:not([class*="bg-"]),
+.dark textarea:not([class*="bg-"]),
 .dark option {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+}
+
+/* Apply to elements with bg-background explicitly set */
+.dark select.bg-background,
+.dark input.bg-background,
+.dark textarea.bg-background {
   color: hsl(var(--foreground));
   background-color: hsl(var(--background));
 }
