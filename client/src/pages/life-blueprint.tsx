@@ -199,12 +199,14 @@ export default function LifeBlueprintPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {dimensionsWithPriority.map((dim) => {
                 const Icon = dim.icon;
+                // More pronounced hover effect for high-priority items
+                const hoverScale = dim.priority === "high" ? "hover:scale-110" : "hover:scale-105";
                 
                 return (
                   <Card
                     key={dim.id}
                     priority={dim.priority}
-                    className={`cursor-pointer transition-all hover:scale-105 ${
+                    className={`cursor-pointer transition-all ${hoverScale} ${
                       selectedDimension === dim.id ? 'ring-2 ring-primary' : ''
                     }`}
                     onClick={() => {
