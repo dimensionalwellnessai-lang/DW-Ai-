@@ -430,9 +430,31 @@ function DimensionsSection() {
   const dimensionQuestions = selectedDimension ? getQuestionsForDimension(selectedDimension) : [];
 
   const updateQuestionAnswer = (questionIndex: number, answer: string) => {
-    setQuestionAnswers({
-      ...questionAnswers,
-      [`q${questionIndex}`]: answer
+    setQuestionAnswers((prevAnswers) => {
+      const updatedAnswers = {
+        ...prevAnswers,
+        [`q${questionIndex}`]: answer,
+      };
+
+      if (selectedDimension) {
+        setAssessments((prevAssessments) => {
+          const existing = prevAssessments[selectedDimension] || {
+            level: 3,
+            notes: "",
+            supports: [],
+          };
+
+          return {
+            ...prevAssessments,
+            [selectedDimension]: {
+              ...existing,
+              questionAnswers: updatedAnswers,
+            },
+          };
+        });
+      }
+
+      return updatedAnswers;
     });
   };
 
