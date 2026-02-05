@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   getDimensionAssessments, 
   saveDimensionAssessment,
@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { scrollToElement } from "@/lib/scroll-utils";
 import {
   ArrowLeft,
   Heart,
@@ -251,7 +252,12 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Saved", description: "Your baseline profile has been updated." });
+      toast({ 
+        title: "Baseline saved", 
+        description: "Your baseline profile has been updated successfully." 
+      });
+      // Scroll to show saved content
+      scrollToElement('baseline-content', 150);
     },
   });
 
@@ -407,6 +413,7 @@ function DimensionsSection() {
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[] }>>({});
   const [newSupport, setNewSupport] = useState("");
+  const dimensionDetailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = getDimensionAssessments();
@@ -416,6 +423,15 @@ function DimensionsSection() {
     });
     setAssessments(map);
   }, []);
+
+  useEffect(() => {
+    // Scroll to detail view when a dimension is selected
+    if (selectedDimension && dimensionDetailRef.current) {
+      setTimeout(() => {
+        dimensionDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [selectedDimension]);
 
   const selectedData = selectedDimension ? WELLNESS_DIMENSIONS.find(d => d.name === selectedDimension) : null;
   const currentAssessment = selectedDimension ? assessments[selectedDimension] : null;
@@ -437,6 +453,10 @@ function DimensionsSection() {
       notes: currentAssessment?.notes || "",
       supports: currentAssessment?.supports || [],
       lastUpdated: Date.now(),
+    });
+    toast({ 
+      title: "Level updated",
+      description: `${selectedDimension} dimension has been updated.` 
     });
   };
 
@@ -513,7 +533,7 @@ function DimensionsSection() {
 
   if (selectedDimension && selectedData) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={dimensionDetailRef}>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setSelectedDimension(null)} data-testid="button-back-dimensions">
             <ArrowLeft className="w-5 h-5" />
@@ -1604,6 +1624,7 @@ function FoundationsSection() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [customInput, setCustomInput] = useState("");
   const [showOther, setShowOther] = useState(false);
+  const questionsRef = useRef<HTMLDivElement>(null);
 
   const currentQuestion = FOUNDATIONS_QUESTIONS[currentQuestionIndex];
   const hasFoundationsData = foundations && foundations.confidence > 0.3;
@@ -1669,11 +1690,15 @@ function FoundationsSection() {
     setIsExploring(true);
     setCurrentQuestionIndex(0);
     setAnswers({});
+    // Scroll to questions after they appear
+    setTimeout(() => {
+      questionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
   };
 
   if (isExploring) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6" ref={questionsRef}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Question {currentQuestionIndex + 1} of {FOUNDATIONS_QUESTIONS.length}</span>

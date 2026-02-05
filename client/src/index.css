@@ -374,6 +374,42 @@ summary::marker {
   .dark .glow-accent {
     box-shadow: 0 0 20px rgba(95, 207, 165, 0.3);
   }
+  
+  /* Standardized card sizes for consistency */
+  .card-sm {
+    min-height: 100px;
+  }
+  
+  .card-md {
+    min-height: 150px;
+  }
+  
+  .card-lg {
+    min-height: 200px;
+  }
+  
+  .card-tile {
+    aspect-ratio: 1;
+  }
+  
+  /* Content highlight animation for newly added items */
+  .highlight-new {
+    animation: highlightPulse 2s ease-out;
+  }
+}
+
+@keyframes highlightPulse {
+  0% {
+    background-color: hsl(var(--primary) / 0.2);
+    transform: scale(1.02);
+  }
+  50% {
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
 }
 
 @keyframes slideIn {

@@ -2,14 +2,23 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Optional size variant for consistent card heights */
+  size?: "sm" | "md" | "lg" | "tile";
+}
+
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  CardProps
+>(({ className, size, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
       "shadcn-card rounded-xl border bg-card border-card-border text-card-foreground shadow-sm glass",
+      size === "sm" && "card-sm",
+      size === "md" && "card-md",
+      size === "lg" && "card-lg",
+      size === "tile" && "card-tile",
       className
     )}
     {...props}

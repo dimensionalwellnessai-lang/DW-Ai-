@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { scrollToElement } from "@/lib/scroll-utils";
 
 const DIMENSIONS = [
   { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
@@ -50,6 +51,7 @@ export default function LifeBlueprintPage() {
   const [selectedDimension, setSelectedDimension] = useState<string>("body");
   const [editMode, setEditMode] = useState<string | null>(null);
   const [editingResetProtocol, setEditingResetProtocol] = useState(false);
+  const dimensionDetailRef = useRef<HTMLDivElement>(null);
 
   // Fetch dimension blueprints
   const { data: blueprints = [] } = useQuery({
@@ -92,7 +94,14 @@ export default function LifeBlueprintPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/dimension-blueprints'] });
       queryClient.invalidateQueries({ queryKey: ['/api/completion-status'] });
       setEditMode(null);
-      toast({ title: "Blueprint updated successfully!" });
+      toast({ 
+        title: "Blueprint updated successfully!",
+        description: "Your dimension values have been saved."
+      });
+      // Scroll to show the saved content
+      if (dimensionDetailRef.current) {
+        dimensionDetailRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     },
   });
 
@@ -121,7 +130,12 @@ export default function LifeBlueprintPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/reset-protocol'] });
       queryClient.invalidateQueries({ queryKey: ['/api/completion-status'] });
       setEditingResetProtocol(false);
-      toast({ title: "Reset Protocol updated successfully!" });
+      toast({ 
+        title: "Reset Protocol updated successfully!",
+        description: "Your recovery system has been saved."
+      });
+      // Scroll to show the saved reset protocol
+      scrollToElement('reset-protocol-view', 200);
     },
   });
 
@@ -177,7 +191,16 @@ export default function LifeBlueprintPage() {
                     className={`cursor-pointer transition-all ${
                       selectedDimension === dim.id ? 'ring-2 ring-primary' : ''
                     }`}
-                    onClick={() => setSelectedDimension(dim.id)}
+                    onClick={() => {
+                      setSelectedDimension(dim.id);
+                      // Scroll to detail view after selecting
+                      setTimeout(() => {
+                        dimensionDetailRef.current?.scrollIntoView({ 
+                          behavior: 'smooth', 
+                          block: 'center' 
+                        });
+                      }, 100);
+                    }}
                   >
                     <CardContent className="pt-6">
                       <div className="flex flex-col items-center text-center gap-2">
@@ -199,7 +222,7 @@ export default function LifeBlueprintPage() {
 
             {/* Dimension Detail */}
             {currentDimension && (
-              <Card>
+              <Card ref={dimensionDetailRef}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -274,7 +297,9 @@ export default function LifeBlueprintPage() {
                     onCancel={() => setEditingResetProtocol(false)}
                   />
                 ) : resetProtocolComplete ? (
-                  <ResetProtocolView protocol={resetProtocol} />
+                  <div id="reset-protocol-view">
+                    <ResetProtocolView protocol={resetProtocol} />
+                  </div>
                 ) : (
                   <div className="text-center py-8 space-y-4">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
