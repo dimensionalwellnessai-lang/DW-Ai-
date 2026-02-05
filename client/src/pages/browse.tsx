@@ -361,7 +361,7 @@ export default function Browse() {
   });
 
   // For You tab: AI suggestions
-  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery<{ suggestions: any[] }>({
     queryKey: ["/api/explore/suggestions"],
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeTab === "for-you",

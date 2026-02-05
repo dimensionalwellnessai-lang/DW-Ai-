@@ -3190,8 +3190,8 @@ export async function registerRoutes(
       }
 
       // Format results
-      const formatted = data.articles?.map((article: any, idx: number) => ({
-        id: `article-${idx}`,
+      const formatted = data.articles?.map((article: any) => ({
+        id: `article-${Buffer.from(article.url).toString('base64').substring(0, 16)}`,
         type: "article",
         source: article.source.name,
         title: article.title,
@@ -3249,14 +3249,14 @@ export async function registerRoutes(
       }
 
       // Format results
-      const formatted = Array.isArray(data) ? data.map((exercise: any, idx: number) => ({
-        id: `exercise-${idx}`,
+      const formatted = Array.isArray(data) ? data.map((exercise: any) => ({
+        id: `exercise-${exercise.name.replace(/\s+/g, "-").toLowerCase()}-${exercise.muscle}`,
         type: "exercise",
         source: "API-Ninjas Exercise DB",
         title: exercise.name,
         description: exercise.instructions,
         duration: `${exercise.difficulty} difficulty`,
-        url: `#exercise-${exercise.name.replace(/\s+/g, "-").toLowerCase()}`,
+        url: "", // No external URL available for exercises
         metadata: {
           type: exercise.type,
           muscle: exercise.muscle,
@@ -3291,9 +3291,9 @@ export async function registerRoutes(
       const context = {
         dimensions: dimensionBlueprints.map(d => ({
           dimension: d.dimension,
-          focus: d.focusAreas,
+          focus: d.whatIStandFor?.join(", ") || "wellness",
         })),
-        goals: goals.slice(0, 3).map(g => ({ title: g.title, category: g.category })),
+        goals: goals.slice(0, 3).map(g => ({ title: g.title, dimension: g.wellnessDimension })),
         habits: habits.slice(0, 3).map(h => ({ title: h.title })),
         fitnessGoal: userProfile?.fitnessGoal,
       };
@@ -3318,14 +3318,31 @@ Return as JSON array with format:
   "keywords": ["keyword1", "keyword2", "keyword3"]
 }]`;
 
-      const aiResponse = await generateChatResponse(prompt, [], "system");
+      const aiResponse = await generateChatResponse(prompt, []);
       
-      // Parse AI response
+      // Ensure we have a string response
+      const responseText = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);
+      
+      // Parse AI response - look for JSON array with improved bracket matching
       let suggestions = [];
       try {
-        const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          suggestions = JSON.parse(jsonMatch[0]);
+        // Find the first '[' and count brackets to find matching ']'
+        const startIdx = responseText.indexOf('[');
+        if (startIdx !== -1) {
+          let depth = 0;
+          let endIdx = startIdx;
+          for (let i = startIdx; i < responseText.length; i++) {
+            if (responseText[i] === '[') depth++;
+            if (responseText[i] === ']') depth--;
+            if (depth === 0) {
+              endIdx = i;
+              break;
+            }
+          }
+          if (endIdx > startIdx) {
+            const jsonStr = responseText.substring(startIdx, endIdx + 1);
+            suggestions = JSON.parse(jsonStr);
+          }
         }
       } catch (e) {
         console.error("Failed to parse AI suggestions:", e);

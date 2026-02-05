@@ -152,15 +152,17 @@ export function ExploreFeedCard({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1"
-              onClick={onOpen}
-            >
-              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-              Open
-            </Button>
+            {url && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={onOpen}
+              >
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                Open
+              </Button>
+            )}
             
             {onSave && (
               <Button
@@ -189,6 +191,7 @@ export function ExploreFeedCard({
                 variant="ghost"
                 onClick={onSchedule}
                 className="px-2"
+                title="Schedule or mark as read"
               >
                 <Calendar className="w-4 h-4" />
               </Button>
