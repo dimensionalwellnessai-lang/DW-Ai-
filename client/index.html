@@ -36,10 +36,21 @@
   <body>
     <script>
       (function() {
-        const theme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (theme === 'dark' || (!theme && prefersDark)) {
-          document.documentElement.classList.add('dark');
+        try {
+          const theme = window.localStorage ? window.localStorage.getItem('theme') : null;
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (theme === 'dark' || (!theme && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          // Fallback: if accessing localStorage fails, rely only on system preference
+          try {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+              document.documentElement.classList.add('dark');
+            }
+          } catch (_) {
+            // If matchMedia is unavailable or fails, silently do nothing
+          }
         }
       })();
     </script>
