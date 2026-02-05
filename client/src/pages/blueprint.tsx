@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
+import { scrollToRef } from "@/lib/scroll-utils";
 import {
   ArrowLeft,
   Heart,
