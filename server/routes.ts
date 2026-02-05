@@ -7,6 +7,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { storage } from "./storage";
 import { pool } from "./db";
+import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -6252,6 +6253,156 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update streak error:", error);
       res.status(500).json({ error: "Failed to update streak" });
+    }
+  });
+
+  // Accountability tracking routes
+  app.post("/api/accountability/commit", requireAuth, async (req, res) => {
+    try {
+      const {
+        taskId,
+        calendarEventId,
+        taskName,
+        scheduledTime,
+        scheduledEndTime,
+        commitmentResponse
+      } = req.body;
+
+      if (!taskName || !scheduledTime || !commitmentResponse) {
+        return res.status(400).json({ 
+          error: "Missing required fields: taskName, scheduledTime, commitmentResponse" 
+        });
+      }
+
+      if (!['yes', 'remind_later', 'skip'].includes(commitmentResponse)) {
+        return res.status(400).json({ 
+          error: "Invalid commitmentResponse. Must be 'yes', 'remind_later', or 'skip'" 
+        });
+      }
+
+      const record = await accountability.recordCommitment(
+        req.session.userId!,
+        taskId || null,
+        calendarEventId || null,
+        taskName,
+        new Date(scheduledTime),
+        scheduledEndTime ? new Date(scheduledEndTime) : null,
+        commitmentResponse
+      );
+
+      res.json(record);
+    } catch (error) {
+      console.error("Record commitment error:", error);
+      res.status(500).json({ error: "Failed to record commitment" });
+    }
+  });
+
+  app.post("/api/accountability/complete", requireAuth, async (req, res) => {
+    try {
+      const {
+        taskId,
+        calendarEventId,
+        completionStatus,
+        reflectionNote
+      } = req.body;
+
+      if (!completionStatus) {
+        return res.status(400).json({ 
+          error: "Missing required field: completionStatus" 
+        });
+      }
+
+      if (!['completed', 'partial', 'skipped', 'no_response'].includes(completionStatus)) {
+        return res.status(400).json({ 
+          error: "Invalid completionStatus" 
+        });
+      }
+
+      const record = await accountability.recordCompletion(
+        req.session.userId!,
+        taskId || null,
+        calendarEventId || null,
+        completionStatus,
+        reflectionNote
+      );
+
+      res.json(record);
+    } catch (error) {
+      console.error("Record completion error:", error);
+      res.status(500).json({ error: "Failed to record completion" });
+    }
+  });
+
+  app.get("/api/accountability/stats", requireAuth, async (req, res) => {
+    try {
+      const stats = await accountability.getAccountabilityStats(req.session.userId!);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get accountability stats error:", error);
+      res.status(500).json({ error: "Failed to get stats" });
+    }
+  });
+
+  app.get("/api/accountability/records", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate as string) : new Date();
+
+      const records = await accountability.getAccountabilityRecords(
+        req.session.userId!,
+        start,
+        end
+      );
+
+      res.json(records);
+    } catch (error) {
+      console.error("Get accountability records error:", error);
+      res.status(500).json({ error: "Failed to get records" });
+    }
+  });
+
+  app.get("/api/accountability/today", requireAuth, async (req, res) => {
+    try {
+      const summary = await accountability.getTodayAccountabilitySummary(req.session.userId!);
+      res.json(summary);
+    } catch (error) {
+      console.error("Get today's accountability error:", error);
+      res.status(500).json({ error: "Failed to get today's summary" });
+    }
+  });
+
+  app.get("/api/accountability/synopsis", requireAuth, async (req, res) => {
+    try {
+      const synopsis = await accountability.getWeeklySynopsis(req.session.userId!);
+      res.json(synopsis);
+    } catch (error) {
+      console.error("Get synopsis error:", error);
+      res.status(500).json({ error: "Failed to get synopsis" });
+    }
+  });
+
+  app.get("/api/accountability/preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await accountability.getNotificationPreferences(req.session.userId!);
+      res.json(prefs);
+    } catch (error) {
+      console.error("Get notification preferences error:", error);
+      res.status(500).json({ error: "Failed to get preferences" });
+    }
+  });
+
+  app.put("/api/accountability/preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await accountability.updateNotificationPreferences(
+        req.session.userId!,
+        req.body
+      );
+      res.json(prefs);
+    } catch (error) {
+      console.error("Update notification preferences error:", error);
+      res.status(500).json({ error: "Failed to update preferences" });
     }
   });
 
