@@ -256,8 +256,6 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
         title: "Baseline saved", 
         description: "Your baseline profile has been updated successfully." 
       });
-      // Scroll to show saved content
-      scrollToElement('baseline-content', 150);
     },
   });
 
