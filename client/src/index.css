@@ -309,6 +309,27 @@ summary::marker {
   color: hsl(var(--foreground)) !important;
 }
 
+/* Ensure all form elements respect dark mode */
+.dark select,
+.dark input,
+.dark textarea,
+.dark option {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+}
+
+/* Fix dropdown options in dark mode */
+.dark select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+/* Ensure placeholder text is visible */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
 /* Modern UI Enhancements */
 @layer utilities {
   /* Smooth transitions for all theme-aware elements */
