@@ -42,12 +42,6 @@ if (isElementBelowViewport('results-section')) {
 }
 ```
 
-#### `scrollToNewContent(elementId, delay?)`
-Convenience function for scrolling to newly added content with center alignment.
-```typescript
-scrollToNewContent('new-item-123');
-```
-
 ### 2. ScrollIndicator Component (`client/src/components/scroll-indicator.tsx`)
 
 A subtle animated indicator that shows when there's more content below the viewport.

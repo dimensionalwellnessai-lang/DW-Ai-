@@ -51,6 +51,13 @@ export function ScrollIndicator({
     setIsVisible(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (targetId && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -66,6 +73,10 @@ export function ScrollIndicator({
           )}
           style={{ bottom: `${bottomOffset}px` }}
           onClick={targetId ? handleClick : undefined}
+          onKeyDown={targetId ? handleKeyDown : undefined}
+          role={targetId ? "button" : undefined}
+          aria-label={targetId ? `Scroll to ${message}` : undefined}
+          tabIndex={targetId ? 0 : undefined}
         >
           <span className="text-xs text-muted-foreground font-medium px-3 py-1 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-sm">
             {message}

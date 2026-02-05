@@ -2,6 +2,8 @@
  * Utility functions for smooth scrolling behavior
  */
 
+import { RefObject } from 'react';
+
 /**
  * Scrolls to an element by ID with smooth behavior
  * @param elementId - The ID of the element to scroll to
@@ -31,7 +33,7 @@ export const scrollToElement = (
  * @param block - Scroll alignment: 'start', 'center', 'end', or 'nearest' (default: 'start')
  */
 export const scrollToRef = (
-  ref: React.RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement>,
   delay: number = 100,
   block: ScrollLogicalPosition = 'start'
 ): void => {
