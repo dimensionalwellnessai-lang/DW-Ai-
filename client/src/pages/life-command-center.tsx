@@ -69,6 +69,9 @@ function getTimeBasedGreeting(userName?: string): string {
 export default function LifeCommandCenter() {
   const [, navigate] = useLocation();
   const [switchData, setSwitchData] = useState(getSwitchData);
+  const [showIntroBanner, setShowIntroBanner] = useState(
+    !localStorage.getItem('dw_command_center_intro_dismissed')
+  );
   const [todayDate] = useState(new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -78,6 +81,14 @@ export default function LifeCommandCenter() {
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('dw_welcome_dismissed');
   });
+
+  // Helper function for keyboard navigation
+  const handleKeyPress = (e: React.KeyboardEvent, callback: () => void) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      callback();
+    }
+  };
 
   // Fetch today's water logs
   const { data: waterLogs = [] } = useQuery<any[]>({

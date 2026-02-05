@@ -15,7 +15,6 @@ import {
   DollarSign,
   Sparkles,
   Briefcase,
-  Loader2,
   MessageCircle,
 } from "lucide-react";
 import { COPY } from "@/copy/en";
@@ -158,7 +157,7 @@ export default function Welcome() {
   useEffect(() => {
     if (showSuccess) {
       autoAdvanceTimerRef.current = setTimeout(() => {
-        setLocation("/subscription");
+        setLocation("/chat");
       }, 3000);
       
       return () => {
@@ -173,7 +172,7 @@ export default function Welcome() {
     if (autoAdvanceTimerRef.current) {
       clearTimeout(autoAdvanceTimerRef.current);
     }
-    setLocation("/subscription");
+    setLocation("/chat");
   };
   
   const handleViewWhatYouMade = () => {
@@ -468,7 +467,7 @@ export default function Welcome() {
                     <select
                       value={wakeTime}
                       onChange={(e) => setWakeTime(e.target.value)}
-                      className="w-full p-3 rounded-xl border bg-background text-foreground"
+                      className="w-full p-3 rounded-xl border bg-background"
                       data-testid="select-wake-time"
                     >
                       {TIME_OPTIONS.map((t) => (
@@ -482,7 +481,7 @@ export default function Welcome() {
                     <select
                       value={windDownTime}
                       onChange={(e) => setWindDownTime(e.target.value)}
-                      className="w-full p-3 rounded-xl border bg-background text-foreground"
+                      className="w-full p-3 rounded-xl border bg-background"
                       data-testid="select-wind-down-time"
                     >
                       {WIND_DOWN_OPTIONS.map((t) => (
