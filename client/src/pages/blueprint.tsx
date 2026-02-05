@@ -632,11 +632,12 @@ function DimensionsSection() {
             <CardContent className="space-y-6">
               {dimensionQuestions.map((q, idx) => (
                 <div key={idx} className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
+                  <label htmlFor={`dimension-question-${selectedDimension}-${idx}`} className="text-sm font-medium text-foreground">
                     {q.question}
                   </label>
                   <p className="text-xs text-muted-foreground mb-2">{q.subtext}</p>
                   <Textarea
+                    id={`dimension-question-${selectedDimension}-${idx}`}
                     placeholder="Your thoughts..."
                     value={questionAnswers[`q${idx}`] || ""}
                     onChange={(e) => updateQuestionAnswer(idx, e.target.value)}
