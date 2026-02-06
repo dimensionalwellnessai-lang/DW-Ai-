@@ -795,7 +795,7 @@ ${contentList}`,
         <main className="p-4">
           {/* Search External Content Section */}
           <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-3">Search External Content</h2>
+            <h2 className="text-lg font-semibold mb-3 text-foreground">Search External Content</h2>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -837,7 +837,7 @@ ${contentList}`,
           </div>
 
           {/* Sample Content Grid */}
-          <h2 className="text-lg font-semibold mb-3">Curated Content</h2>
+          <h2 className="text-lg font-semibold mb-3 text-foreground">Curated Content</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredContent.map((item) => {
               const CategoryIcon = getCategoryIcon(item.category);

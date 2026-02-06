@@ -33,7 +33,7 @@ export function TasksPage() {
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         <header className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl font-display font-bold">Tasks</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground">Tasks</h1>
             <p className="text-muted-foreground font-body mt-1">
               Track what needs to be done across your wellness journey
             </p>

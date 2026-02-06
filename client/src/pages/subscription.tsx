@@ -34,7 +34,7 @@ export default function SubscriptionPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-2"
         >
-          <h1 className="text-3xl font-bold">Choose Your Plan</h1>
+          <h1 className="text-3xl font-bold text-foreground">Choose Your Plan</h1>
           <p className="text-muted-foreground">
             Start with what fits you best. You can upgrade anytime.
           </p>
