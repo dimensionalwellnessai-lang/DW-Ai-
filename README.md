@@ -135,6 +135,28 @@ On Replit, these are automatically configured via the Secrets tab and Replit AI 
 
 The app will be available at `http://localhost:5000`
 
+### Available Scripts
+
+#### Development
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Run production server
+- `npm run check` - TypeScript type checking
+- `npm test` - Run tests with Vitest
+- `npm run test:ui` - Run tests with UI
+
+#### Mobile Development
+- `npm run ios` - Build and open iOS in Xcode
+- `npm run android` - Build and open Android in Android Studio
+- `npm run sync:ios` - Sync web build to iOS
+- `npm run sync:android` - Sync web build to Android
+- `npm run build:ios` - Build for iOS App Store
+- `npm run build:android` - Build for Play Store
+
+#### Database
+- `npm run db:push` - Push schema changes
+- `npm run seed:demo` - Seed demo data
+
 ### Database Migrations
 
 This project uses Drizzle ORM. To update the database schema:
@@ -247,11 +269,25 @@ This project is currently in private beta. For feedback or issues, use the in-ap
 
 ## Documentation
 
-- **[Troubleshooting UI Changes](docs/TROUBLESHOOTING_UI_CHANGES.md)** - Fix issues with changes not showing up
-- **[Enhanced Features Guide](docs/ENHANCED_FEATURES.md)** - Comprehensive guide to new v2.0 features
+### Getting Started
+- **[Setup Guide](docs/SETUP.md)** - Complete local development setup instructions
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Code structure, patterns, and tech stack
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to web, App Store, and Play Store
+
+### Features & Development
+- **[Enhanced Features Guide](docs/ENHANCED_FEATURES.md)** - Comprehensive guide to v2.0 features
+- **[Voice Integration Guide](docs/VOICE_INTEGRATION.md)** - Voice interaction capabilities
 - **[Security Summary](docs/SECURITY_SUMMARY.md)** - Security analysis and recommendations
+
+### App Store
+- **[App Store Review Guide](APPLE_SUBMISSION_CHECKLIST.md)** - Submission checklist
+- **[Demo Account Guide](DEMO_ACCOUNT_GUIDE.md)** - Demo account for reviewers
+
+### Design & QA
 - **[Design Guidelines](design_guidelines.md)** - UI/UX design principles
 - **[QA Checklist](QA_CHECKLIST.md)** - Quality assurance testing checklist
+- **[Troubleshooting UI Changes](docs/TROUBLESHOOTING_UI_CHANGES.md)** - Fix caching issues
 
 ## License
 
