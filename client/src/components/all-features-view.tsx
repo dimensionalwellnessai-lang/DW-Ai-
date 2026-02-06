@@ -9,6 +9,7 @@ import { FeatureTile } from '@/components/feature-tile';
 import { CategoryHeader } from '@/components/category-header';
 import { useAILearningStore } from '@/stores/useAILearningStore';
 import { ROUTE_REGISTRY } from '@/routes/registry';
+import { getIcon } from '@/lib/icon-mapper';
 
 interface AllFeaturesViewProps {
   open: boolean;
@@ -84,14 +85,14 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
   const mostUsedFeatures = useMemo(() => {
     return mostUsedFeatureIds
       .map((id) => allFeatures.find((f) => f.id === id))
-      .filter(Boolean);
+      .filter((feature): feature is NonNullable<typeof feature> => feature !== undefined);
   }, [mostUsedFeatureIds, allFeatures]);
 
   // Get features by category
   const getFeaturesByCategory = (categoryFeatureIds: string[]) => {
     return categoryFeatureIds
       .map((id) => filteredFeatures.find((f) => f.id === id))
-      .filter(Boolean);
+      .filter((feature): feature is NonNullable<typeof feature> => feature !== undefined);
   };
 
   const hasResults = filteredFeatures.length > 0;
@@ -133,7 +134,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                         key={feature.id}
                         id={feature.id}
                         label={feature.navLabel || feature.label}
-                        icon={feature.icon as any}
+                        icon={getIcon(feature.icon)}
                         path={feature.path}
                         onClick={onClose}
                       />
@@ -160,7 +161,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />
@@ -182,7 +183,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />
@@ -204,7 +205,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />
@@ -226,7 +227,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />
@@ -248,7 +249,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />
@@ -270,7 +271,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                           key={feature.id}
                           id={feature.id}
                           label={feature.navLabel || feature.label}
-                          icon={feature.icon as any}
+                          icon={getIcon(feature.icon)}
                           path={feature.path}
                           onClick={onClose}
                         />

@@ -3,6 +3,10 @@ import { ArrowLeft, Menu, GraduationCap, Clock, History } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
+import { HamburgerMenu } from "@/components/hamburger-menu";
+import { AllFeaturesView } from "@/components/all-features-view";
+import { useNavigationStore } from "@/stores/useNavigationStore";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
@@ -44,6 +48,10 @@ interface PageHeaderProps {
 export function PageHeader({ title, showBack = true, backPath, rightContent }: PageHeaderProps) {
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { menuOpen: navMenuOpen, allFeaturesOpen, toggleMenu, toggleAllFeatures, closeMenu, closeAllFeatures } = useNavigationStore();
+  const useNewNavigation = isFeatureEnabled('NEW_NAVIGATION');
+  const useAllFeaturesView = isFeatureEnabled('ALL_FEATURES_VIEW');
+  
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
   const { 
@@ -58,6 +66,15 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     retry: false
   });
   const user = authData?.user;
+
+  // Sync old menu state with new navigation store
+  useEffect(() => {
+    if (useNewNavigation && menuOpen !== navMenuOpen) {
+      if (menuOpen) {
+        toggleMenu();
+      }
+    }
+  }, [menuOpen, navMenuOpen, useNewNavigation, toggleMenu]);
 
   useEffect(() => {
     if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
@@ -83,6 +100,22 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     }
   };
 
+  const handleMenuToggle = () => {
+    if (useNewNavigation) {
+      toggleMenu();
+    } else {
+      setMenuOpen(true);
+    }
+  };
+
+  const handleMenuClose = () => {
+    if (useNewNavigation) {
+      closeMenu();
+    } else {
+      setMenuOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Header - fixed at top below safe area (uses max for Android compatibility) */}
@@ -101,7 +134,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => setMenuOpen(true)}
+            onClick={handleMenuToggle}
             data-testid="button-menu"
           >
             <Menu className="h-6 w-6 text-foreground" />
@@ -115,7 +148,17 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
       {/* Spacer for fixed header (uses max for Android compatibility) */}
       <div className="h-14" style={{ marginTop: 'max(env(safe-area-inset-top, 0px), 24px)' }} />
 
-      <SwipeableDrawer 
+      {/* Use new navigation if feature flag is enabled */}
+      {useNewNavigation ? (
+        <>
+          <HamburgerMenu open={navMenuOpen} onClose={handleMenuClose} />
+          {useAllFeaturesView && (
+            <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
+          )}
+        </>
+      ) : (
+        // Legacy menu (old implementation)
+        <SwipeableDrawer 
         open={menuOpen} 
         onClose={() => setMenuOpen(false)} 
         title="Menu"
@@ -271,6 +314,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           <p className="text-sm text-muted-foreground">v{APP_VERSION}</p>
         </div>
       </SwipeableDrawer>
+      )}
     </>
   );
 }
