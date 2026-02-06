@@ -17,7 +17,10 @@
     "ios": "npm run sync:ios && npx cap open ios",
     "android": "npm run sync:android && npx cap open android",
     "build:ios": "npm run sync:ios && cd ios && xcodebuild -workspace App/App.xcworkspace -scheme App -configuration Release archive -archivePath App.xcarchive",
-    "build:android": "npm run sync:android && cd android && ./gradlew assembleRelease bundleRelease"
+    "build:android": "npm run sync:android && cd android && ./gradlew assembleRelease bundleRelease",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "prepare": "husky"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",
@@ -133,7 +136,8 @@
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/user-event": "^14.5.2",
     "jsdom": "^24.0.0",
-    "husky": "^9.0.11"
+    "husky": "^9.0.11",
+    "prettier": "^3.2.5"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
