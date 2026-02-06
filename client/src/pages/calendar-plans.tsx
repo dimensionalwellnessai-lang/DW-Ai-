@@ -326,7 +326,7 @@ export function CalendarPlansPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h2 className="font-display font-semibold text-lg">
+            <h2 className="font-display font-semibold text-lg text-foreground">
               {format(currentMonth, "MMMM yyyy")}
             </h2>
             <Button

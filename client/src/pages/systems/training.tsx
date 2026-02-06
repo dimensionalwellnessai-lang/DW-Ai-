@@ -145,7 +145,7 @@ export default function TrainingSystemPage() {
                   <p className="text-sm text-muted-foreground mb-2">
                     Exercise {currentExerciseIndex + 1} of {selectedWorkout.exercises.length}
                   </p>
-                  <h2 className="text-3xl font-bold mb-4">
+                  <h2 className="text-3xl font-bold mb-4 text-foreground">
                     {selectedWorkout.exercises[currentExerciseIndex]}
                   </h2>
                   <div className="flex justify-center gap-3">
