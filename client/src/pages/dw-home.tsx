@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
 import {
   Zap,
@@ -123,8 +124,10 @@ export default function DWHomePage() {
 
   if (isFirstTime) {
     return (
-      <ScrollArea className="h-[calc(100vh-4rem)]">
-        <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
+      <div className="flex flex-col h-full bg-background">
+        <PageHeader title="Home" showBack={false} />
+        <ScrollArea className="flex-1">
+          <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -174,12 +177,15 @@ export default function DWHomePage() {
           </motion.div>
         </div>
       </ScrollArea>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-4rem)]">
-      <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
+    <div className="flex flex-col h-full bg-background">
+      <PageHeader title="Home" showBack={false} />
+      <ScrollArea className="flex-1">
+        <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -369,5 +375,6 @@ export default function DWHomePage() {
         </motion.div>
       </div>
     </ScrollArea>
+    </div>
   );
 }
