@@ -65,7 +65,7 @@ export default function CalendarSchedulePage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Schedule" />
       
       <ScrollArea className="flex-1">

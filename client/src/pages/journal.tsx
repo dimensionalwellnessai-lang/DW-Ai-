@@ -254,7 +254,7 @@ export default function JournalPage() {
   });
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Journal" />
       
       <ScrollArea className="flex-1">

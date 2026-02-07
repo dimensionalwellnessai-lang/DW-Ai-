@@ -143,7 +143,7 @@ export function TalkItOutPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <PageHeader 
         title="Talk It Out" 
         backPath="/"
