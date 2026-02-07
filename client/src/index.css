@@ -21,10 +21,19 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  /* Ensure background extends to edges - matches --background in light mode */
   background-color: hsl(var(--background));
-  /* Smooth transitions for theme changes */
+  color: hsl(var(--foreground));
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
 }
 
 #root {
