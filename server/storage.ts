@@ -187,9 +187,33 @@ import {
   type InsertAchievement,
   type Streak,
   type InsertStreak,
+  lifeDimensionAssessments,
+  type LifeDimensionAssessment,
+  type InsertLifeDimensionAssessment,
+  dimensionSystems,
+  type DimensionSystem,
+  type InsertDimensionSystem,
+  wellnessPreferences,
+  type WellnessPreferences,
+  type InsertWellnessPreferences,
+  featureSettings,
+  type FeatureSettings,
+  type InsertFeatureSettings,
+  householdCleaningTasks,
+  type HouseholdCleaningTask,
+  type InsertHouseholdCleaningTask,
+  householdLaundrySchedule,
+  type HouseholdLaundrySchedule,
+  type InsertHouseholdLaundrySchedule,
+  aiFeatureUsage,
+  type AiFeatureUsage,
+  type InsertAiFeatureUsage,
+  aiSuggestions,
+  type AiSuggestion,
+  type InsertAiSuggestion,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -503,6 +527,50 @@ export interface IStorage {
   getCompletionStatus(userId: string): Promise<CompletionStatus | undefined>;
   createCompletionStatus(status: InsertCompletionStatus): Promise<CompletionStatus>;
   updateCompletionStatus(userId: string, data: Partial<CompletionStatus>): Promise<CompletionStatus | undefined>;
+
+  // PR #3: Life Dimension Assessments
+  getLifeDimensionAssessments(userId: string, dimension?: string): Promise<LifeDimensionAssessment[]>;
+  getLatestDimensionAssessment(userId: string, dimension: string): Promise<LifeDimensionAssessment | undefined>;
+  createLifeDimensionAssessment(assessment: InsertLifeDimensionAssessment): Promise<LifeDimensionAssessment>;
+
+  // PR #3: Dimension Systems
+  getDimensionSystems(userId: string, dimension?: string): Promise<DimensionSystem[]>;
+  getDimensionSystem(id: string): Promise<DimensionSystem | undefined>;
+  createDimensionSystem(system: InsertDimensionSystem): Promise<DimensionSystem>;
+  updateDimensionSystem(id: string, userId: string, data: Partial<DimensionSystem>): Promise<DimensionSystem | undefined>;
+  deleteDimensionSystem(id: string, userId: string): Promise<void>;
+
+  // PR #3: Wellness Preferences
+  getWellnessPreferences(userId: string): Promise<WellnessPreferences | undefined>;
+  createWellnessPreferences(prefs: InsertWellnessPreferences): Promise<WellnessPreferences>;
+  updateWellnessPreferences(id: string, userId: string, data: Partial<WellnessPreferences>): Promise<WellnessPreferences | undefined>;
+
+  // PR #3: Feature Settings
+  getFeatureSettings(userId: string): Promise<FeatureSettings | undefined>;
+  createFeatureSettings(settings: InsertFeatureSettings): Promise<FeatureSettings>;
+  updateFeatureSettings(id: string, userId: string, data: Partial<FeatureSettings>): Promise<FeatureSettings | undefined>;
+
+  // PR #3: Household Cleaning Tasks
+  getHouseholdCleaningTasks(userId: string): Promise<HouseholdCleaningTask[]>;
+  createHouseholdCleaningTask(task: InsertHouseholdCleaningTask): Promise<HouseholdCleaningTask>;
+  updateHouseholdCleaningTask(id: string, userId: string, data: Partial<HouseholdCleaningTask>): Promise<HouseholdCleaningTask | undefined>;
+  deleteHouseholdCleaningTask(id: string, userId: string): Promise<void>;
+
+  // PR #3: Household Laundry Schedule
+  getHouseholdLaundrySchedule(userId: string): Promise<HouseholdLaundrySchedule[]>;
+  createHouseholdLaundrySchedule(schedule: InsertHouseholdLaundrySchedule): Promise<HouseholdLaundrySchedule>;
+  updateHouseholdLaundrySchedule(id: string, userId: string, data: Partial<HouseholdLaundrySchedule>): Promise<HouseholdLaundrySchedule | undefined>;
+  deleteHouseholdLaundrySchedule(id: string, userId: string): Promise<void>;
+
+  // PR #3: AI Feature Usage
+  getAiFeatureUsage(userId: string): Promise<AiFeatureUsage[]>;
+  trackFeatureUsage(userId: string, featureName: string, timeSpentSeconds?: number): Promise<void>;
+  getMostUsedFeatures(userId: string, limit?: number): Promise<AiFeatureUsage[]>;
+
+  // PR #3: AI Suggestions
+  getAiSuggestions(userId: string, status?: string): Promise<AiSuggestion[]>;
+  createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
+  updateAiSuggestion(id: string, userId: string, data: Partial<AiSuggestion>): Promise<AiSuggestion | undefined>;
 }
 
 export interface AdminAnalytics {
@@ -2450,6 +2518,218 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(streaks)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(streaks.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // ========================================
+  // PR #3: NEW STORAGE METHODS
+  // ========================================
+
+  // Life Dimension Assessments
+  async getLifeDimensionAssessments(userId: string, dimension?: string): Promise<LifeDimensionAssessment[]> {
+    const conditions = [eq(lifeDimensionAssessments.userId, userId)];
+    if (dimension) {
+      conditions.push(eq(lifeDimensionAssessments.dimension, dimension));
+    }
+    return db.select()
+      .from(lifeDimensionAssessments)
+      .where(and(...conditions))
+      .orderBy(desc(lifeDimensionAssessments.assessedAt));
+  }
+
+  async getLatestDimensionAssessment(userId: string, dimension: string): Promise<LifeDimensionAssessment | undefined> {
+    const [assessment] = await db.select()
+      .from(lifeDimensionAssessments)
+      .where(and(
+        eq(lifeDimensionAssessments.userId, userId),
+        eq(lifeDimensionAssessments.dimension, dimension)
+      ))
+      .orderBy(desc(lifeDimensionAssessments.assessedAt))
+      .limit(1);
+    return assessment || undefined;
+  }
+
+  async createLifeDimensionAssessment(assessment: InsertLifeDimensionAssessment): Promise<LifeDimensionAssessment> {
+    const [newAssessment] = await db.insert(lifeDimensionAssessments).values(assessment).returning();
+    return newAssessment;
+  }
+
+  // Dimension Systems
+  async getDimensionSystems(userId: string, dimension?: string): Promise<DimensionSystem[]> {
+    const conditions = [eq(dimensionSystems.userId, userId), eq(dimensionSystems.isActive, true)];
+    if (dimension) {
+      conditions.push(eq(dimensionSystems.dimension, dimension));
+    }
+    return db.select().from(dimensionSystems).where(and(...conditions));
+  }
+
+  async getDimensionSystem(id: string): Promise<DimensionSystem | undefined> {
+    const [system] = await db.select().from(dimensionSystems).where(eq(dimensionSystems.id, id));
+    return system || undefined;
+  }
+
+  async createDimensionSystem(system: InsertDimensionSystem): Promise<DimensionSystem> {
+    const [newSystem] = await db.insert(dimensionSystems).values(system).returning();
+    return newSystem;
+  }
+
+  async updateDimensionSystem(id: string, userId: string, data: Partial<DimensionSystem>): Promise<DimensionSystem | undefined> {
+    const [updated] = await db.update(dimensionSystems)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(dimensionSystems.id, id), eq(dimensionSystems.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDimensionSystem(id: string, userId: string): Promise<void> {
+    await db.update(dimensionSystems)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(eq(dimensionSystems.id, id), eq(dimensionSystems.userId, userId)));
+  }
+
+  // Wellness Preferences
+  async getWellnessPreferences(userId: string): Promise<WellnessPreferences | undefined> {
+    const [prefs] = await db.select().from(wellnessPreferences).where(eq(wellnessPreferences.userId, userId));
+    return prefs || undefined;
+  }
+
+  async createWellnessPreferences(prefs: InsertWellnessPreferences): Promise<WellnessPreferences> {
+    const [newPrefs] = await db.insert(wellnessPreferences).values(prefs).returning();
+    return newPrefs;
+  }
+
+  async updateWellnessPreferences(id: string, userId: string, data: Partial<WellnessPreferences>): Promise<WellnessPreferences | undefined> {
+    const [updated] = await db.update(wellnessPreferences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(wellnessPreferences.id, id), eq(wellnessPreferences.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Feature Settings
+  async getFeatureSettings(userId: string): Promise<FeatureSettings | undefined> {
+    const [settings] = await db.select().from(featureSettings).where(eq(featureSettings.userId, userId));
+    return settings || undefined;
+  }
+
+  async createFeatureSettings(settings: InsertFeatureSettings): Promise<FeatureSettings> {
+    const [newSettings] = await db.insert(featureSettings).values(settings).returning();
+    return newSettings;
+  }
+
+  async updateFeatureSettings(id: string, userId: string, data: Partial<FeatureSettings>): Promise<FeatureSettings | undefined> {
+    const [updated] = await db.update(featureSettings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(featureSettings.id, id), eq(featureSettings.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Household Cleaning Tasks
+  async getHouseholdCleaningTasks(userId: string): Promise<HouseholdCleaningTask[]> {
+    return db.select().from(householdCleaningTasks).where(eq(householdCleaningTasks.userId, userId));
+  }
+
+  async createHouseholdCleaningTask(task: InsertHouseholdCleaningTask): Promise<HouseholdCleaningTask> {
+    const [newTask] = await db.insert(householdCleaningTasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateHouseholdCleaningTask(id: string, userId: string, data: Partial<HouseholdCleaningTask>): Promise<HouseholdCleaningTask | undefined> {
+    const [updated] = await db.update(householdCleaningTasks)
+      .set(data)
+      .where(and(eq(householdCleaningTasks.id, id), eq(householdCleaningTasks.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteHouseholdCleaningTask(id: string, userId: string): Promise<void> {
+    await db.delete(householdCleaningTasks)
+      .where(and(eq(householdCleaningTasks.id, id), eq(householdCleaningTasks.userId, userId)));
+  }
+
+  // Household Laundry Schedule
+  async getHouseholdLaundrySchedule(userId: string): Promise<HouseholdLaundrySchedule[]> {
+    return db.select().from(householdLaundrySchedule).where(eq(householdLaundrySchedule.userId, userId));
+  }
+
+  async createHouseholdLaundrySchedule(schedule: InsertHouseholdLaundrySchedule): Promise<HouseholdLaundrySchedule> {
+    const [newSchedule] = await db.insert(householdLaundrySchedule).values(schedule).returning();
+    return newSchedule;
+  }
+
+  async updateHouseholdLaundrySchedule(id: string, userId: string, data: Partial<HouseholdLaundrySchedule>): Promise<HouseholdLaundrySchedule | undefined> {
+    const [updated] = await db.update(householdLaundrySchedule)
+      .set(data)
+      .where(and(eq(householdLaundrySchedule.id, id), eq(householdLaundrySchedule.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteHouseholdLaundrySchedule(id: string, userId: string): Promise<void> {
+    await db.delete(householdLaundrySchedule)
+      .where(and(eq(householdLaundrySchedule.id, id), eq(householdLaundrySchedule.userId, userId)));
+  }
+
+  // AI Feature Usage
+  async getAiFeatureUsage(userId: string): Promise<AiFeatureUsage[]> {
+    return db.select()
+      .from(aiFeatureUsage)
+      .where(eq(aiFeatureUsage.userId, userId))
+      .orderBy(desc(aiFeatureUsage.lastUsedAt));
+  }
+
+  async trackFeatureUsage(userId: string, featureName: string, timeSpentSeconds: number = 0): Promise<void> {
+    // Use atomic INSERT ... ON CONFLICT to avoid race conditions
+    await db.insert(aiFeatureUsage)
+      .values({
+        userId,
+        featureName,
+        usageCount: 1,
+        totalTimeSpentSeconds: timeSpentSeconds,
+        lastUsedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [aiFeatureUsage.userId, aiFeatureUsage.featureName],
+        set: {
+          usageCount: sql`${aiFeatureUsage.usageCount} + 1`,
+          totalTimeSpentSeconds: sql`${aiFeatureUsage.totalTimeSpentSeconds} + ${timeSpentSeconds}`,
+          lastUsedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async getMostUsedFeatures(userId: string, limit: number = 4): Promise<AiFeatureUsage[]> {
+    return db.select()
+      .from(aiFeatureUsage)
+      .where(eq(aiFeatureUsage.userId, userId))
+      .orderBy(desc(aiFeatureUsage.usageCount))
+      .limit(limit);
+  }
+
+  // AI Suggestions
+  async getAiSuggestions(userId: string, status?: string): Promise<AiSuggestion[]> {
+    const conditions = [eq(aiSuggestions.userId, userId)];
+    if (status) {
+      conditions.push(eq(aiSuggestions.status, status));
+    }
+    return db.select()
+      .from(aiSuggestions)
+      .where(and(...conditions))
+      .orderBy(desc(aiSuggestions.createdAt));
+  }
+
+  async createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion> {
+    const [newSuggestion] = await db.insert(aiSuggestions).values(suggestion).returning();
+    return newSuggestion;
+  }
+
+  async updateAiSuggestion(id: string, userId: string, data: Partial<AiSuggestion>): Promise<AiSuggestion | undefined> {
+    const [updated] = await db.update(aiSuggestions)
+      .set(data)
+      .where(and(eq(aiSuggestions.id, id), eq(aiSuggestions.userId, userId)))
       .returning();
     return updated || undefined;
   }

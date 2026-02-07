@@ -52,6 +52,14 @@ import {
   insertTaskAccountabilitySchema,
   insertAccountabilityStatsSchema,
   insertNotificationPreferencesSchema,
+  insertLifeDimensionAssessmentSchema,
+  insertDimensionSystemSchema,
+  insertWellnessPreferencesSchema,
+  insertFeatureSettingsSchema,
+  insertHouseholdCleaningTaskSchema,
+  insertHouseholdLaundryScheduleSchema,
+  insertAiFeatureUsageSchema,
+  insertAiSuggestionSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -6475,3 +6483,391 @@ function categorizeIngredient(ingredient: string): string {
   
   return "other";
 }
+
+// ========================================
+// PR #3: NEW API ROUTES
+// ========================================
+
+// Life Dimension Assessments
+app.get("/api/life-dimension-assessments", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const assessments = await storage.getLifeDimensionAssessments(userId);
+    res.json(assessments);
+  } catch (error) {
+    console.error("Get life dimension assessments error:", error);
+    res.status(500).json({ error: "Failed to get assessments" });
+  }
+});
+
+app.post("/api/life-dimension-assessments", requireAuth, async (req, res) => {
+  try {
+    const data = insertLifeDimensionAssessmentSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const assessment = await storage.createLifeDimensionAssessment(data);
+    res.json(assessment);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create assessment error:", error);
+    res.status(500).json({ error: "Failed to create assessment" });
+  }
+});
+
+// Dimension Systems
+app.get("/api/dimension-systems", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const dimension = req.query.dimension as string | undefined;
+    const systems = await storage.getDimensionSystems(userId, dimension);
+    res.json(systems);
+  } catch (error) {
+    console.error("Get dimension systems error:", error);
+    res.status(500).json({ error: "Failed to get systems" });
+  }
+});
+
+app.post("/api/dimension-systems", requireAuth, async (req, res) => {
+  try {
+    const data = insertDimensionSystemSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const system = await storage.createDimensionSystem(data);
+    res.json(system);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create system error:", error);
+    res.status(500).json({ error: "Failed to create system" });
+  }
+});
+
+app.patch("/api/dimension-systems/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const system = await storage.updateDimensionSystem(id, userId, req.body);
+    if (!system) {
+      return res.status(404).json({ error: "System not found" });
+    }
+    res.json(system);
+  } catch (error) {
+    console.error("Update system error:", error);
+    res.status(500).json({ error: "Failed to update system" });
+  }
+});
+
+app.delete("/api/dimension-systems/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    await storage.deleteDimensionSystem(id, userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete system error:", error);
+    res.status(500).json({ error: "Failed to delete system" });
+  }
+});
+
+// Wellness Preferences
+app.get("/api/wellness-preferences", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const preferences = await storage.getWellnessPreferences(userId);
+    res.json(preferences);
+  } catch (error) {
+    console.error("Get wellness preferences error:", error);
+    res.status(500).json({ error: "Failed to get preferences" });
+  }
+});
+
+app.post("/api/wellness-preferences", requireAuth, async (req, res) => {
+  try {
+    const data = insertWellnessPreferencesSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const preferences = await storage.createWellnessPreferences(data);
+    res.json(preferences);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create wellness preferences error:", error);
+    res.status(500).json({ error: "Failed to create preferences" });
+  }
+});
+
+app.patch("/api/wellness-preferences/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const preferences = await storage.updateWellnessPreferences(id, userId, req.body);
+    if (!preferences) {
+      return res.status(404).json({ error: "Preferences not found" });
+    }
+    res.json(preferences);
+  } catch (error) {
+    console.error("Update wellness preferences error:", error);
+    res.status(500).json({ error: "Failed to update preferences" });
+  }
+});
+
+// Feature Settings
+app.get("/api/feature-settings", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const settings = await storage.getFeatureSettings(userId);
+    res.json(settings);
+  } catch (error) {
+    console.error("Get feature settings error:", error);
+    res.status(500).json({ error: "Failed to get feature settings" });
+  }
+});
+
+app.post("/api/feature-settings", requireAuth, async (req, res) => {
+  try {
+    const data = insertFeatureSettingsSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const settings = await storage.createFeatureSettings(data);
+    res.json(settings);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create feature settings error:", error);
+    res.status(500).json({ error: "Failed to create feature settings" });
+  }
+});
+
+app.patch("/api/feature-settings/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const settings = await storage.updateFeatureSettings(id, userId, req.body);
+    if (!settings) {
+      return res.status(404).json({ error: "Feature settings not found" });
+    }
+    res.json(settings);
+  } catch (error) {
+    console.error("Update feature settings error:", error);
+    res.status(500).json({ error: "Failed to update feature settings" });
+  }
+});
+
+// Household Cleaning Tasks
+app.get("/api/household-cleaning-tasks", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const tasks = await storage.getHouseholdCleaningTasks(userId);
+    res.json(tasks);
+  } catch (error) {
+    console.error("Get cleaning tasks error:", error);
+    res.status(500).json({ error: "Failed to get cleaning tasks" });
+  }
+});
+
+app.post("/api/household-cleaning-tasks", requireAuth, async (req, res) => {
+  try {
+    const data = insertHouseholdCleaningTaskSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const task = await storage.createHouseholdCleaningTask(data);
+    res.json(task);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create cleaning task error:", error);
+    res.status(500).json({ error: "Failed to create cleaning task" });
+  }
+});
+
+app.patch("/api/household-cleaning-tasks/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const task = await storage.updateHouseholdCleaningTask(id, userId, req.body);
+    if (!task) {
+      return res.status(404).json({ error: "Cleaning task not found" });
+    }
+    res.json(task);
+  } catch (error) {
+    console.error("Update cleaning task error:", error);
+    res.status(500).json({ error: "Failed to update cleaning task" });
+  }
+});
+
+app.delete("/api/household-cleaning-tasks/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    await storage.deleteHouseholdCleaningTask(id, userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete cleaning task error:", error);
+    res.status(500).json({ error: "Failed to delete cleaning task" });
+  }
+});
+
+// Household Laundry Schedule
+app.get("/api/household-laundry-schedule", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const schedule = await storage.getHouseholdLaundrySchedule(userId);
+    res.json(schedule);
+  } catch (error) {
+    console.error("Get laundry schedule error:", error);
+    res.status(500).json({ error: "Failed to get laundry schedule" });
+  }
+});
+
+app.post("/api/household-laundry-schedule", requireAuth, async (req, res) => {
+  try {
+    const data = insertHouseholdLaundryScheduleSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const schedule = await storage.createHouseholdLaundrySchedule(data);
+    res.json(schedule);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create laundry schedule error:", error);
+    res.status(500).json({ error: "Failed to create laundry schedule" });
+  }
+});
+
+app.patch("/api/household-laundry-schedule/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const schedule = await storage.updateHouseholdLaundrySchedule(id, userId, req.body);
+    if (!schedule) {
+      return res.status(404).json({ error: "Laundry schedule not found" });
+    }
+    res.json(schedule);
+  } catch (error) {
+    console.error("Update laundry schedule error:", error);
+    res.status(500).json({ error: "Failed to update laundry schedule" });
+  }
+});
+
+app.delete("/api/household-laundry-schedule/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    await storage.deleteHouseholdLaundrySchedule(id, userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete laundry schedule error:", error);
+    res.status(500).json({ error: "Failed to delete laundry schedule" });
+  }
+});
+
+// AI Feature Usage Tracking
+app.get("/api/ai-feature-usage", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const usage = await storage.getAiFeatureUsage(userId);
+    res.json(usage);
+  } catch (error) {
+    console.error("Get AI feature usage error:", error);
+    res.status(500).json({ error: "Failed to get feature usage" });
+  }
+});
+
+const trackFeatureUsageSchema = z.object({
+  featureName: z.string().min(1, "Feature name is required"),
+  timeSpentSeconds: z.number().int().min(0).optional().default(0),
+});
+
+app.post("/api/ai-feature-usage/track", requireAuth, async (req, res) => {
+  try {
+    const { featureName, timeSpentSeconds } = trackFeatureUsageSchema.parse(req.body);
+    const userId = req.session.userId!;
+    await storage.trackFeatureUsage(userId, featureName, timeSpentSeconds);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Track feature usage error:", error);
+    res.status(500).json({ error: "Failed to track usage" });
+  }
+});
+
+app.get("/api/ai-feature-usage/most-used", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    let limit = 4;
+    if (req.query.limit !== undefined) {
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      if (!Number.isNaN(parsedLimit)) {
+        // Clamp to a sane range (1-20) to avoid unexpected behavior
+        limit = Math.min(Math.max(parsedLimit, 1), 20);
+      }
+    }
+    const mostUsed = await storage.getMostUsedFeatures(userId, limit);
+    res.json(mostUsed);
+  } catch (error) {
+    console.error("Get most used features error:", error);
+    res.status(500).json({ error: "Failed to get most used features" });
+  }
+});
+
+// AI Suggestions
+app.get("/api/ai-suggestions", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const status = req.query.status as string | undefined;
+    const suggestions = await storage.getAiSuggestions(userId, status);
+    res.json(suggestions);
+  } catch (error) {
+    console.error("Get AI suggestions error:", error);
+    res.status(500).json({ error: "Failed to get suggestions" });
+  }
+});
+
+app.post("/api/ai-suggestions", requireAuth, async (req, res) => {
+  try {
+    const data = insertAiSuggestionSchema.parse({
+      ...req.body,
+      userId: req.session.userId!,
+    });
+    const suggestion = await storage.createAiSuggestion(data);
+    res.json(suggestion);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    console.error("Create AI suggestion error:", error);
+    res.status(500).json({ error: "Failed to create suggestion" });
+  }
+});
+
+app.patch("/api/ai-suggestions/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId!;
+    const { status } = req.body;
+    const suggestion = await storage.updateAiSuggestion(id, userId, { status, respondedAt: new Date() });
+    if (!suggestion) {
+      return res.status(404).json({ error: "Suggestion not found" });
+    }
+    res.json(suggestion);
+  } catch (error) {
+    console.error("Update AI suggestion error:", error);
+    res.status(500).json({ error: "Failed to update suggestion" });
+  }
+});
+

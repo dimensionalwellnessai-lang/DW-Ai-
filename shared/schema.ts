@@ -1635,6 +1635,166 @@ export const insertWaterLogSchema = createInsertSchema(waterLogs).omit({
   createdAt: true,
 });
 
+// ========================================
+// PR #3: FEATURES & INTELLIGENCE - NEW TABLES
+// ========================================
+
+// Life Dimension Assessments - track assessment scores for 8 life dimensions
+export const lifeDimensionAssessments = pgTable("life_dimension_assessments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  dimension: text("dimension").notNull(), // "physical" | "mental" | "social" | "spiritual" | "financial" | "occupational" | "environmental" | "intellectual"
+  score: real("score").notNull(), // 1-5 scale
+  answers: jsonb("answers"), // Store all assessment responses
+  assessedAt: timestamp("assessed_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLifeDimensionAssessmentSchema = createInsertSchema(lifeDimensionAssessments).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Dimension Systems - frameworks/systems within each life dimension
+export const dimensionSystems = pgTable("dimension_systems", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  dimension: text("dimension").notNull(), // Which dimension this belongs to
+  name: text("name").notNull(),
+  description: text("description"),
+  components: text("components").array(), // Key components of this system
+  relatedGoals: text("related_goals").array(), // Goal IDs
+  relatedRoutines: text("related_routines").array(), // Routine IDs
+  relatedHabits: text("related_habits").array(), // Habit IDs
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDimensionSystemSchema = createInsertSchema(dimensionSystems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Wellness Preferences - user's spiritual/wellness preferences
+export const wellnessPreferences = pgTable("wellness_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  beliefSystem: text("belief_system"), // "religious" | "spiritual" | "secular" | "prefer_not_say"
+  traditions: text("traditions").array(), // ["Christianity", "Buddhism", etc.]
+  otherTradition: text("other_tradition"),
+  meditationEnabled: boolean("meditation_enabled").default(true),
+  journalEnabled: boolean("journal_enabled").default(true),
+  astrologyEnabled: boolean("astrology_enabled").default(false),
+  tarotEnabled: boolean("tarot_enabled").default(false),
+  energyWorkEnabled: boolean("energy_work_enabled").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertWellnessPreferencesSchema = createInsertSchema(wellnessPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Feature Settings - user's enabled/disabled features
+export const featureSettings = pgTable("feature_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  householdTasksEnabled: boolean("household_tasks_enabled").default(false),
+  householdTasksSuggested: boolean("household_tasks_suggested").default(false),
+  householdTasksDismissed: boolean("household_tasks_dismissed").default(false),
+  financialToolsEnabled: boolean("financial_tools_enabled").default(false),
+  advancedAnalyticsEnabled: boolean("advanced_analytics_enabled").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFeatureSettingsSchema = createInsertSchema(featureSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Household Cleaning Schedule
+export const householdCleaningTasks = pgTable("household_cleaning_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  room: text("room").notNull(), // "kitchen" | "bathroom" | "bedroom" | "living_room" | "other"
+  taskName: text("task_name").notNull(),
+  frequency: text("frequency").notNull(), // "daily" | "weekly" | "monthly"
+  lastCompleted: timestamp("last_completed"),
+  nextDue: timestamp("next_due"),
+  isCompleted: boolean("is_completed").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertHouseholdCleaningTaskSchema = createInsertSchema(householdCleaningTasks).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Household Laundry Schedule
+export const householdLaundrySchedule = pgTable("household_laundry_schedule", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  laundryType: text("laundry_type").notNull(), // "clothes" | "towels" | "bedding" | "delicates"
+  scheduledDay: text("scheduled_day"), // "monday" | "tuesday" etc.
+  lastCompleted: timestamp("last_completed"),
+  nextScheduled: timestamp("next_scheduled"),
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertHouseholdLaundryScheduleSchema = createInsertSchema(householdLaundrySchedule).omit({
+  id: true,
+  createdAt: true,
+});
+
+// AI Feature Usage Tracking - enhanced interaction tracking for AI learning
+export const aiFeatureUsage = pgTable("ai_feature_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  featureName: text("feature_name").notNull(), // "workouts" | "meals" | "journal" | "meditation" etc.
+  usageCount: integer("usage_count").default(1),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  totalTimeSpentSeconds: integer("total_time_spent_seconds").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint to support atomic upsert and prevent duplicates
+  userFeatureUnique: sql`UNIQUE (user_id, feature_name)`,
+}));
+
+export const insertAiFeatureUsageSchema = createInsertSchema(aiFeatureUsage).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// AI Suggestions - track AI-generated suggestions
+export const aiSuggestions = pgTable("ai_suggestions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  suggestionType: text("suggestion_type").notNull(), // "feature_discovery" | "household_enable" | "contextual_action"
+  featureName: text("feature_name"), // Which feature is being suggested
+  triggerReason: text("trigger_reason"), // Why this was suggested
+  suggestionText: text("suggestion_text").notNull(),
+  status: text("status").default("pending"), // "pending" | "accepted" | "dismissed" | "not_now"
+  respondedAt: timestamp("responded_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAiSuggestionSchema = createInsertSchema(aiSuggestions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Universal Plans - connects all plan types
 export const universalPlans = pgTable("universal_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1958,3 +2118,19 @@ export type AccountabilityStats = typeof accountabilityStats.$inferSelect;
 export type InsertAccountabilityStats = z.infer<typeof insertAccountabilityStatsSchema>;
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type LifeDimensionAssessment = typeof lifeDimensionAssessments.$inferSelect;
+export type InsertLifeDimensionAssessment = z.infer<typeof insertLifeDimensionAssessmentSchema>;
+export type DimensionSystem = typeof dimensionSystems.$inferSelect;
+export type InsertDimensionSystem = z.infer<typeof insertDimensionSystemSchema>;
+export type WellnessPreferences = typeof wellnessPreferences.$inferSelect;
+export type InsertWellnessPreferences = z.infer<typeof insertWellnessPreferencesSchema>;
+export type FeatureSettings = typeof featureSettings.$inferSelect;
+export type InsertFeatureSettings = z.infer<typeof insertFeatureSettingsSchema>;
+export type HouseholdCleaningTask = typeof householdCleaningTasks.$inferSelect;
+export type InsertHouseholdCleaningTask = z.infer<typeof insertHouseholdCleaningTaskSchema>;
+export type HouseholdLaundrySchedule = typeof householdLaundrySchedule.$inferSelect;
+export type InsertHouseholdLaundrySchedule = z.infer<typeof insertHouseholdLaundryScheduleSchema>;
+export type AiFeatureUsage = typeof aiFeatureUsage.$inferSelect;
+export type InsertAiFeatureUsage = z.infer<typeof insertAiFeatureUsageSchema>;
+export type AiSuggestion = typeof aiSuggestions.$inferSelect;
+export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
