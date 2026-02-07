@@ -66,6 +66,9 @@ export default function WellnessPreferencesPage() {
           credentials: 'include',
           body: JSON.stringify(data),
         });
+        if (!res.ok) {
+          throw new Error('Failed to update preferences');
+        }
         return res.json();
       } else {
         // Create new
@@ -75,6 +78,9 @@ export default function WellnessPreferencesPage() {
           credentials: 'include',
           body: JSON.stringify(data),
         });
+        if (!res.ok) {
+          throw new Error('Failed to create preferences');
+        }
         return res.json();
       }
     },

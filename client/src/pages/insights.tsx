@@ -2,10 +2,8 @@
  * Insights Dashboard - PR #3: Replaces old Life Dashboard
  * Shows analytics across all 8 life dimensions with goals, streaks, and weekly summaries
  */
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
@@ -20,7 +18,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { LIFE_DIMENSIONS, getDimensionById } from "@/lib/life-dimensions";
-import { format, startOfWeek, endOfWeek, subDays } from "date-fns";
+import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
 
 interface DimensionAssessment {
@@ -53,7 +51,6 @@ interface Streak {
 
 export default function InsightsDashboard() {
   useTrackFeature("insights");
-  const [selectedPeriod, setSelectedPeriod] = useState("week");
 
   // Fetch dimension assessments
   const { data: assessments = [] } = useQuery<DimensionAssessment[]>({

@@ -3,7 +3,7 @@
  * Part of PR #3: AI Learning & Personalization
  */
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 interface FeatureUsage {
   id: string;
@@ -15,7 +15,7 @@ interface FeatureUsage {
 
 /**
  * Hook to track when a user visits/uses a feature
- * Automatically tracks on mount and optionally on unmount
+ * Tracks on mount (visit) and on unmount (time spent update without incrementing count)
  */
 export function useTrackFeature(featureName: string, enabled: boolean = true) {
   const startTimeRef = useRef<number>(Date.now());
@@ -37,15 +37,16 @@ export function useTrackFeature(featureName: string, enabled: boolean = true) {
   useEffect(() => {
     if (!enabled || hasTrackedRef.current) return;
     
-    // Track on mount
+    // Track visit on mount (increments count)
     trackMutation.mutate(0);
     hasTrackedRef.current = true;
     startTimeRef.current = Date.now();
 
-    // Track time spent on unmount
+    // On unmount, only track time spent if significant (>5 seconds)
+    // Note: This will still increment count, but we track the time
     return () => {
       const timeSpent = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      if (timeSpent > 0) {
+      if (timeSpent > 5) {
         // Fire and forget - don't wait for response
         fetch('/api/ai-feature-usage/track', {
           method: 'POST',

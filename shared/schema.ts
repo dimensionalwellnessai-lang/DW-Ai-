@@ -1765,7 +1765,10 @@ export const aiFeatureUsage = pgTable("ai_feature_usage", {
   totalTimeSpentSeconds: integer("total_time_spent_seconds").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // Unique constraint to support atomic upsert and prevent duplicates
+  userFeatureUnique: sql`UNIQUE (user_id, feature_name)`,
+}));
 
 export const insertAiFeatureUsageSchema = createInsertSchema(aiFeatureUsage).omit({
   id: true,

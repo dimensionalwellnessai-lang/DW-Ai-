@@ -6550,7 +6550,8 @@ app.post("/api/dimension-systems", requireAuth, async (req, res) => {
 app.patch("/api/dimension-systems/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const system = await storage.updateDimensionSystem(id, req.body);
+    const userId = req.session.userId!;
+    const system = await storage.updateDimensionSystem(id, userId, req.body);
     if (!system) {
       return res.status(404).json({ error: "System not found" });
     }
@@ -6564,7 +6565,8 @@ app.patch("/api/dimension-systems/:id", requireAuth, async (req, res) => {
 app.delete("/api/dimension-systems/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    await storage.deleteDimensionSystem(id);
+    const userId = req.session.userId!;
+    await storage.deleteDimensionSystem(id, userId);
     res.json({ success: true });
   } catch (error) {
     console.error("Delete system error:", error);
@@ -6604,7 +6606,8 @@ app.post("/api/wellness-preferences", requireAuth, async (req, res) => {
 app.patch("/api/wellness-preferences/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const preferences = await storage.updateWellnessPreferences(id, req.body);
+    const userId = req.session.userId!;
+    const preferences = await storage.updateWellnessPreferences(id, userId, req.body);
     if (!preferences) {
       return res.status(404).json({ error: "Preferences not found" });
     }
@@ -6647,7 +6650,8 @@ app.post("/api/feature-settings", requireAuth, async (req, res) => {
 app.patch("/api/feature-settings/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const settings = await storage.updateFeatureSettings(id, req.body);
+    const userId = req.session.userId!;
+    const settings = await storage.updateFeatureSettings(id, userId, req.body);
     if (!settings) {
       return res.status(404).json({ error: "Feature settings not found" });
     }
@@ -6690,7 +6694,8 @@ app.post("/api/household-cleaning-tasks", requireAuth, async (req, res) => {
 app.patch("/api/household-cleaning-tasks/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const task = await storage.updateHouseholdCleaningTask(id, req.body);
+    const userId = req.session.userId!;
+    const task = await storage.updateHouseholdCleaningTask(id, userId, req.body);
     if (!task) {
       return res.status(404).json({ error: "Cleaning task not found" });
     }
@@ -6704,7 +6709,8 @@ app.patch("/api/household-cleaning-tasks/:id", requireAuth, async (req, res) => 
 app.delete("/api/household-cleaning-tasks/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    await storage.deleteHouseholdCleaningTask(id);
+    const userId = req.session.userId!;
+    await storage.deleteHouseholdCleaningTask(id, userId);
     res.json({ success: true });
   } catch (error) {
     console.error("Delete cleaning task error:", error);
@@ -6744,7 +6750,8 @@ app.post("/api/household-laundry-schedule", requireAuth, async (req, res) => {
 app.patch("/api/household-laundry-schedule/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const schedule = await storage.updateHouseholdLaundrySchedule(id, req.body);
+    const userId = req.session.userId!;
+    const schedule = await storage.updateHouseholdLaundrySchedule(id, userId, req.body);
     if (!schedule) {
       return res.status(404).json({ error: "Laundry schedule not found" });
     }
@@ -6758,7 +6765,8 @@ app.patch("/api/household-laundry-schedule/:id", requireAuth, async (req, res) =
 app.delete("/api/household-laundry-schedule/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    await storage.deleteHouseholdLaundrySchedule(id);
+    const userId = req.session.userId!;
+    await storage.deleteHouseholdLaundrySchedule(id, userId);
     res.json({ success: true });
   } catch (error) {
     console.error("Delete laundry schedule error:", error);
@@ -6778,13 +6786,21 @@ app.get("/api/ai-feature-usage", requireAuth, async (req, res) => {
   }
 });
 
+const trackFeatureUsageSchema = z.object({
+  featureName: z.string().min(1, "Feature name is required"),
+  timeSpentSeconds: z.number().int().min(0).optional().default(0),
+});
+
 app.post("/api/ai-feature-usage/track", requireAuth, async (req, res) => {
   try {
-    const { featureName, timeSpentSeconds } = req.body;
+    const { featureName, timeSpentSeconds } = trackFeatureUsageSchema.parse(req.body);
     const userId = req.session.userId!;
     await storage.trackFeatureUsage(userId, featureName, timeSpentSeconds);
     res.json({ success: true });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
     console.error("Track feature usage error:", error);
     res.status(500).json({ error: "Failed to track usage" });
   }
@@ -6793,7 +6809,14 @@ app.post("/api/ai-feature-usage/track", requireAuth, async (req, res) => {
 app.get("/api/ai-feature-usage/most-used", requireAuth, async (req, res) => {
   try {
     const userId = req.session.userId!;
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 4;
+    let limit = 4;
+    if (req.query.limit !== undefined) {
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      if (!Number.isNaN(parsedLimit)) {
+        // Clamp to a sane range (1-20) to avoid unexpected behavior
+        limit = Math.min(Math.max(parsedLimit, 1), 20);
+      }
+    }
     const mostUsed = await storage.getMostUsedFeatures(userId, limit);
     res.json(mostUsed);
   } catch (error) {
@@ -6835,8 +6858,9 @@ app.post("/api/ai-suggestions", requireAuth, async (req, res) => {
 app.patch("/api/ai-suggestions/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.session.userId!;
     const { status } = req.body;
-    const suggestion = await storage.updateAiSuggestion(id, { status, respondedAt: new Date() });
+    const suggestion = await storage.updateAiSuggestion(id, userId, { status, respondedAt: new Date() });
     if (!suggestion) {
       return res.status(404).json({ error: "Suggestion not found" });
     }

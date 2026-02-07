@@ -224,7 +224,9 @@ export default function LifeBlueprintV2() {
     if (!assessmentDimension) return;
     
     const scores = Object.values(assessmentAnswers);
-    if (scores.length < 5) {
+    const expectedQuestions = questions.length;
+    
+    if (scores.length < expectedQuestions) {
       toast({
         title: "Incomplete assessment",
         description: "Please answer all questions.",
