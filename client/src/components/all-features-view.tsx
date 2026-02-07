@@ -30,7 +30,7 @@ const FEATURE_CATEGORIES = {
   wellness: {
     icon: Heart,
     title: 'Wellness',
-    features: ['meditation', 'journal', 'astrology', 'weekly-checkin'],
+    features: ['meditation', 'astrology'],
   },
   household: {
     icon: HomeIcon,
@@ -50,7 +50,7 @@ const FEATURE_CATEGORIES = {
   settings: {
     icon: Settings,
     title: 'Settings & Tools',
-    features: ['settings', 'app-tour', 'feedback', 'import'],
+    features: ['settings', 'app-tour', 'weekly-checkin', 'feedback', 'import'],
   },
 };
 
