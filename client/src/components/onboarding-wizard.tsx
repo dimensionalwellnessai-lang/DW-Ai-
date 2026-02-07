@@ -241,7 +241,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                     }`}
                   >
                     <Icon className={`w-5 h-5 mb-2 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className="text-sm font-medium">{goal.label}</span>
+                    <span className="text-sm font-medium text-foreground">{goal.label}</span>
                   </button>
                 );
               })}
@@ -318,7 +318,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   id="wakeTime"
                   value={data.wakeTime || "7:00 AM"}
                   onChange={(e) => updateData({ wakeTime: e.target.value })}
-                  className="w-full p-3 rounded-xl border bg-background"
+                  className="w-full p-3 rounded-xl border bg-background text-foreground"
                 >
                   {WAKE_TIMES.map((time) => (
                     <option key={time} value={time}>
@@ -333,7 +333,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   id="sleepTime"
                   value={data.sleepTime || "10:00 PM"}
                   onChange={(e) => updateData({ sleepTime: e.target.value })}
-                  className="w-full p-3 rounded-xl border bg-background"
+                  className="w-full p-3 rounded-xl border bg-background text-foreground"
                 >
                   {SLEEP_TIMES.map((time) => (
                     <option key={time} value={time}>
@@ -406,7 +406,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       : "border-border hover-elevate"
                   }`}
                 >
-                  <span className="font-medium">{goal}</span>
+                  <span className="font-medium text-foreground">{goal}</span>
                 </button>
               ))}
             </div>
