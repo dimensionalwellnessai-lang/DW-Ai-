@@ -249,7 +249,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "list",
     type: "page",
     description: "Manage your daily schedule blocks",
-    showInMenu: true,
+    showInMenu: false, // Sub-view, accessible from calendar
     menuSection: "calendar",
     menuOrder: 10,
     menuParentId: "calendar-root",
@@ -262,7 +262,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "calendar",
     type: "page",
     description: "Week view calendar",
-    showInMenu: true,
+    showInMenu: false, // Sub-view, accessible from calendar (also in bottom nav)
     menuSection: "calendar",
     menuOrder: 11,
     menuParentId: "calendar-root",
@@ -275,11 +275,11 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "calendar-days",
     type: "page",
     description: "Month view calendar",
-    showInMenu: true,
+    showInMenu: false, // Sub-view, redundant with calendar-root
     menuSection: "calendar",
     menuOrder: 12,
     menuParentId: "calendar-root",
-    enabled: true,
+    enabled: false, // Disabled to avoid duplicate path conflict with calendar-root
   },
   {
     id: "calendar-schedule",
@@ -288,7 +288,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "list",
     type: "page",
     description: "All events list view",
-    showInMenu: true,
+    showInMenu: false, // Sub-view, accessible from calendar
     menuSection: "calendar",
     menuOrder: 13,
     menuParentId: "calendar-root",
@@ -377,8 +377,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "book-open",
     type: "page",
     description: "Daily reflections",
-    showInMenu: true,
-    menuSection: "primary",
+    showInMenu: false, // In bottom nav
+    menuSection: "bottom",
     menuOrder: 45,
     enabled: true,
   },
@@ -401,8 +401,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "compass",
     type: "page",
     description: "Explore content",
-    showInMenu: true,
-    menuSection: "primary",
+    showInMenu: false, // In bottom nav
+    menuSection: "bottom",
     menuOrder: 55,
     enabled: true,
   },
@@ -486,11 +486,12 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     id: "talk",
     path: "/talk",
     label: "Talk It Out",
+    navLabel: "DW",
     icon: "message-circle",
     type: "page",
     description: "Emotion processing mode",
-    showInMenu: true,
-    menuSection: "more",
+    showInMenu: false, // In bottom nav
+    menuSection: "bottom",
     menuOrder: 70,
     enabled: true,
   },
@@ -537,7 +538,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "settings-2",
     type: "page",
     description: "Manage your life systems",
-    showInMenu: true,
+    showInMenu: false, // Overlaps with other features, hiding from menu
     menuSection: "more",
     menuOrder: 86,
     enabled: true,
@@ -665,8 +666,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "help-circle",
     type: "page",
     description: "Re-run interactive tutorials",
-    showInMenu: false,
-    menuSection: "bottom",
+    showInMenu: true, // Show in All Features (Settings & Tools category)
+    menuSection: "more",
     menuOrder: 98,
     enabled: true,
   },
