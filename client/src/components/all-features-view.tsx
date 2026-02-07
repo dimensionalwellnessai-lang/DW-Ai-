@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -21,7 +20,7 @@ const FEATURE_CATEGORIES = {
   planning: {
     icon: Calendar,
     title: 'Planning & Organizing',
-    features: ['today-hub', 'tasks', 'goals', 'calendar-root', 'routines'],
+    features: ['today-hub', 'tasks', 'calendar-root', 'routines'],
   },
   health: {
     icon: Dumbbell,
@@ -94,6 +93,20 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
       .map((id) => filteredFeatures.find((f) => f.id === id))
       .filter((feature): feature is NonNullable<typeof feature> => feature !== undefined);
   };
+
+  // Get all categorized feature IDs
+  const categorizedFeatureIds = useMemo(() => {
+    const ids = new Set<string>();
+    Object.values(FEATURE_CATEGORIES).forEach((category) => {
+      category.features.forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, []);
+
+  // Get uncategorized features that match search
+  const uncategorizedFeatures = useMemo(() => {
+    return filteredFeatures.filter((feature) => !categorizedFeatureIds.has(feature.id));
+  }, [filteredFeatures, categorizedFeatureIds]);
 
   const hasResults = filteredFeatures.length > 0;
 
@@ -267,6 +280,28 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                     />
                     <div className="grid grid-cols-4 gap-2">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.settings.features).map((feature) => (
+                        <FeatureTile
+                          key={feature.id}
+                          id={feature.id}
+                          label={feature.navLabel || feature.label}
+                          icon={getIcon(feature.icon)}
+                          path={feature.path}
+                          onClick={onClose}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Uncategorized features */}
+                {uncategorizedFeatures.length > 0 && (
+                  <div>
+                    <CategoryHeader
+                      icon={Settings}
+                      title="Other Features"
+                    />
+                    <div className="grid grid-cols-4 gap-2">
+                      {uncategorizedFeatures.map((feature) => (
                         <FeatureTile
                           key={feature.id}
                           id={feature.id}

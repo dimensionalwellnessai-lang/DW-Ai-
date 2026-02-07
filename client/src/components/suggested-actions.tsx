@@ -1,13 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 import { Coffee, Utensils, Calendar, BookOpen, Moon, Sunset, Activity } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { TimeOfDay } from '@/stores/useNavigationStore';
 import { useAILearningStore } from '@/stores/useAILearningStore';
 
 interface ActionItem {
   id: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   path: string;
 }
 
@@ -16,24 +17,24 @@ const SUGGESTED_ACTIONS: Record<TimeOfDay, ActionItem[]> = {
     { id: 'routines', label: 'Morning Routine', icon: Coffee, path: '/routines' },
     { id: 'workout', label: "Today's Workout", icon: Activity, path: '/workout' },
     { id: 'meal-prep', label: 'Breakfast Plan', icon: Utensils, path: '/meal-prep' },
-    { id: 'today', label: "Today's Schedule", icon: Calendar, path: '/today' },
+    { id: 'today-hub', label: "Today's Schedule", icon: Calendar, path: '/today' },
   ],
   afternoon: [
     { id: 'meal-prep', label: 'Lunch Plan', icon: Utensils, path: '/meal-prep' },
-    { id: 'today', label: 'Midday Check-in', icon: Activity, path: '/today' },
+    { id: 'today-hub', label: 'Midday Check-in', icon: Activity, path: '/today' },
     { id: 'tracking', label: 'Review Progress', icon: Calendar, path: '/tracking' },
     { id: 'journal', label: 'Quick Journal', icon: BookOpen, path: '/journal' },
   ],
   evening: [
     { id: 'meal-prep', label: 'Dinner Plan', icon: Utensils, path: '/meal-prep' },
     { id: 'journal', label: 'Evening Reflection', icon: BookOpen, path: '/journal' },
-    { id: 'today', label: "Review Today", icon: Calendar, path: '/today' },
+    { id: 'today-hub', label: "Review Today", icon: Calendar, path: '/today' },
     { id: 'routines', label: 'Wind Down Routine', icon: Sunset, path: '/routines' },
   ],
   night: [
-    { id: 'spiritual', label: 'Sleep Preparation', icon: Moon, path: '/spiritual' },
+    { id: 'meditation', label: 'Sleep Preparation', icon: Moon, path: '/spiritual' },
     { id: 'journal', label: 'Journal Entry', icon: BookOpen, path: '/journal' },
-    { id: 'calendar', label: 'Tomorrow Planning', icon: Calendar, path: '/calendar' },
+    { id: 'calendar-week', label: 'Tomorrow Planning', icon: Calendar, path: '/calendar' },
     { id: 'routines', label: 'Bedtime Routine', icon: Moon, path: '/routines' },
   ],
 };

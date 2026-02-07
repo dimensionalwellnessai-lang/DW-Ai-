@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
-import { X, Grid3x3, Home, MessageCircle } from 'lucide-react';
+import { Grid3x3, Home, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { SwipeableDrawer } from '@/components/swipeable-drawer';
 import { TimeIcon } from '@/components/time-icon';

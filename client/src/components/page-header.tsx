@@ -48,7 +48,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, showBack = true, backPath, rightContent }: PageHeaderProps) {
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { menuOpen: navMenuOpen, allFeaturesOpen, toggleMenu, toggleAllFeatures, closeMenu, closeAllFeatures } = useNavigationStore();
+  const { menuOpen: navMenuOpen, allFeaturesOpen, toggleMenu, closeMenu, closeAllFeatures } = useNavigationStore();
   const useNewNavigation = isFeatureEnabled('NEW_NAVIGATION');
   const useAllFeaturesView = isFeatureEnabled('ALL_FEATURES_VIEW');
   
@@ -66,15 +66,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     retry: false
   });
   const user = authData?.user;
-
-  // Sync old menu state with new navigation store
-  useEffect(() => {
-    if (useNewNavigation && menuOpen !== navMenuOpen) {
-      if (menuOpen) {
-        toggleMenu();
-      }
-    }
-  }, [menuOpen, navMenuOpen, useNewNavigation, toggleMenu]);
 
   useEffect(() => {
     if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {

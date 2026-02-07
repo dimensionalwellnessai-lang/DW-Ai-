@@ -46,16 +46,24 @@ export const useOnboardingStore = create<OnboardingState>()(
       
       setInterests: (interests: UserInterest[]) => {
         set({ interests });
+        get().calculateCompletionPercentage();
       },
       
       setCurrentStep: (step: OnboardingStep) => {
         set({ currentStep: step });
+        get().calculateCompletionPercentage();
       },
       
       skipStep: (step: OnboardingStep) => {
-        set((state) => ({
-          skippedSteps: [...state.skippedSteps, step],
-        }));
+        set((state) => {
+          // Prevent duplicate skipped steps
+          if (state.skippedSteps.includes(step)) {
+            return state;
+          }
+          return {
+            skippedSteps: [...state.skippedSteps, step],
+          };
+        });
         get().calculateCompletionPercentage();
       },
       
@@ -87,7 +95,8 @@ export const useOnboardingStore = create<OnboardingState>()(
                                state.currentStep === 'complete' ? totalSteps : 
                                state.skippedSteps.length + 1;
         
-        const percentage = Math.round((completedSteps / totalSteps) * 100);
+        // Clamp percentage to [0, 100]
+        const percentage = Math.min(100, Math.max(0, Math.round((completedSteps / totalSteps) * 100)));
         set({ completionPercentage: percentage });
         return percentage;
       },
