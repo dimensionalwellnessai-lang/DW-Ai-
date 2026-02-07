@@ -16,6 +16,12 @@ const EVENT_COLORS: Record<string, string> = {
   routine: "bg-purple-500 dark:bg-purple-400",
   event: "bg-blue-500 dark:bg-blue-400",
   task: "bg-yellow-500 dark:bg-yellow-400",
+  // Additional event types used elsewhere in the app
+  meditation: "bg-indigo-500 dark:bg-indigo-400",
+  habit: "bg-cyan-500 dark:bg-cyan-400",
+  goal: "bg-amber-500 dark:bg-amber-400",
+  imported: "bg-slate-500 dark:bg-slate-400",
+  "meal-prep": "bg-orange-500 dark:bg-orange-400",
 };
 
 export default function CalendarMonthPage() {
@@ -131,7 +137,7 @@ export default function CalendarMonthPage() {
                           {dayEvents.slice(0, 3).map((event, i) => (
                             <div
                               key={i}
-                              className={`w-1.5 h-1.5 rounded-full ${EVENT_COLORS[event.eventType || 'event']}`}
+                              className={`w-1.5 h-1.5 rounded-full ${EVENT_COLORS[event.eventType || 'event'] || EVENT_COLORS.event}`}
                             />
                           ))}
                           {dayEvents.length > 3 && (
