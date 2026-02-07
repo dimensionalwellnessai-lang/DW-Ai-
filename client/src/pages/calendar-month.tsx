@@ -137,7 +137,7 @@ export default function CalendarMonthPage() {
                           {dayEvents.slice(0, 3).map((event, i) => (
                             <div
                               key={i}
-                              className={`w-1.5 h-1.5 rounded-full ${EVENT_COLORS[event.eventType || 'event'] || EVENT_COLORS.event}`}
+                              className={`w-1.5 h-1.5 rounded-full ${EVENT_COLORS[event.eventType || 'event']}`}
                             />
                           ))}
                           {dayEvents.length > 3 && (
