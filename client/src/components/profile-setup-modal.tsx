@@ -159,7 +159,7 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
                       }`}
                       data-testid={`edit-schedule-${opt.id}`}
                     >
-                      <span className="text-sm font-medium">{opt.label}</span>
+                      <span className="text-sm font-medium text-foreground">{opt.label}</span>
                     </button>
                   ))}
                 </div>
@@ -202,7 +202,7 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
                     <select
                       value={wakeTime}
                       onChange={(e) => setWakeTime(e.target.value)}
-                      className="w-full p-3 rounded-xl border bg-background text-sm"
+                      className="w-full p-3 rounded-xl border bg-background text-sm text-foreground"
                       data-testid="edit-wake-time"
                     >
                       {TIME_OPTIONS.map((t) => (
@@ -216,7 +216,7 @@ export function ProfileSetupModal({ isOpen, onComplete }: ProfileSetupModalProps
                     <select
                       value={windDownTime}
                       onChange={(e) => setWindDownTime(e.target.value)}
-                      className="w-full p-3 rounded-xl border bg-background text-sm"
+                      className="w-full p-3 rounded-xl border bg-background text-sm text-foreground"
                       data-testid="edit-wind-down-time"
                     >
                       {WIND_DOWN_OPTIONS.map((t) => (

@@ -423,7 +423,7 @@ export default function Welcome() {
                       }`}
                       data-testid={`schedule-${opt.id}`}
                     >
-                      <span className="font-medium text-sm">{opt.label}</span>
+                      <span className="font-medium text-sm text-foreground">{opt.label}</span>
                     </button>
                   ))}
                 </div>
