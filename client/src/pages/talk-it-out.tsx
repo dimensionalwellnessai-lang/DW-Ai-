@@ -143,7 +143,7 @@ export function TalkItOutPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Talk It Out" 
         backPath="/"
@@ -154,7 +154,7 @@ export function TalkItOutPage() {
         }
       />
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-auto">
         <div className="space-y-6 max-w-2xl mx-auto py-4 px-4">
           {messages.map((message, index) => (
             <div
