@@ -275,11 +275,11 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "calendar-days",
     type: "page",
     description: "Month view calendar",
-    showInMenu: false, // Sub-view, accessible from calendar
+    showInMenu: false, // Sub-view, redundant with calendar-root
     menuSection: "calendar",
     menuOrder: 12,
     menuParentId: "calendar-root",
-    enabled: true,
+    enabled: false, // Disabled to avoid duplicate path conflict with calendar-root
   },
   {
     id: "calendar-schedule",
@@ -666,8 +666,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "help-circle",
     type: "page",
     description: "Re-run interactive tutorials",
-    showInMenu: false,
-    menuSection: "bottom",
+    showInMenu: true, // Show in All Features (Settings & Tools category)
+    menuSection: "more",
     menuOrder: 98,
     enabled: true,
   },
