@@ -132,10 +132,10 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "zap",
     type: "page",
     description: "Your Life Switchboard - 8 dimensions of wellness",
-    showInMenu: true,
+    showInMenu: false, // Disabled for home consolidation (PR #2)
     menuSection: "primary",
     menuOrder: 2,
-    enabled: true,
+    enabled: false, // Disabled for home consolidation (PR #2)
   },
   {
     id: "weekly-plan",
