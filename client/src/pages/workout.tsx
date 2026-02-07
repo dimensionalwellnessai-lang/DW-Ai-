@@ -565,10 +565,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
   const recommendedWhy = recommendation?.why || "";
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Workout" />
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
           {/* Planning Horizon & Energy Shift */}
           <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">

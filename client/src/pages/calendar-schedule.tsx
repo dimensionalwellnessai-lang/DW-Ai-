@@ -65,10 +65,10 @@ export default function CalendarSchedulePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Schedule" />
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
           <div className="flex gap-2">
             <div className="relative flex-1">

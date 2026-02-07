@@ -42,7 +42,7 @@ export function SwipeableLayout() {
   }, [emblaApi, onSelect]);
 
   return (
-    <div className="h-screen w-full overflow-hidden relative">
+    <div className="h-dvh min-h-dvh w-full overflow-hidden relative">
       <div ref={emblaRef} className="h-full overflow-hidden">
         <div className="flex h-full">
           {SCREENS.map((screen) => {

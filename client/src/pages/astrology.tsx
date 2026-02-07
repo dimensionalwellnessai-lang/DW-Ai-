@@ -822,10 +822,10 @@ ${voiceRules}`;
   const [activeTab, setActiveTab] = useState("charts");
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Cosmic Insight" />
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-auto">
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="insights">
           
           {/* Introductory guidance */}
