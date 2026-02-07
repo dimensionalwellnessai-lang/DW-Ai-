@@ -193,15 +193,15 @@ export function AccountabilityDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="text-2xl font-bold text-green-600">{synopsis.completed}</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{synopsis.completed}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Partial</p>
-                <p className="text-2xl font-bold text-yellow-600">{synopsis.partial}</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{synopsis.partial}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Skipped</p>
-                <p className="text-2xl font-bold text-red-600">{synopsis.skipped}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{synopsis.skipped}</p>
               </div>
             </div>
 
@@ -215,7 +215,7 @@ export function AccountabilityDashboard() {
                 <div className="space-y-2">
                   {synopsis.patterns.map((pattern, idx) => (
                     <div key={idx} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                       <span>{pattern}</span>
                     </div>
                   ))}
@@ -244,7 +244,7 @@ export function AccountabilityDashboard() {
             {synopsis.followThroughRate >= 75 && (
               <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="flex items-start gap-3">
-                  <Award className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <Award className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="font-semibold text-green-900 dark:text-green-100">
                       Outstanding follow-through!

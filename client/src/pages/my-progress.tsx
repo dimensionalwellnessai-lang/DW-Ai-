@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { getSwitchData, type SwitchId } from "@/lib/switch-storage";
 import { getUserSignals } from "@/lib/user-signals";
+import { SWITCH_COLORS } from "@/lib/switch-colors";
 
 interface ProgressSummary {
   range: string;
@@ -72,17 +73,6 @@ const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   relationships: Users,
   environment: Home,
   identity: Sprout,
-};
-
-const SWITCH_COLORS: Record<SwitchId, { text: string; bg: string }> = {
-  body: { text: "text-red-400", bg: "bg-red-500/10" },
-  mind: { text: "text-purple-400", bg: "bg-purple-500/10" },
-  time: { text: "text-blue-400", bg: "bg-blue-500/10" },
-  purpose: { text: "text-amber-400", bg: "bg-amber-500/10" },
-  money: { text: "text-green-400", bg: "bg-green-500/10" },
-  relationships: { text: "text-pink-400", bg: "bg-pink-500/10" },
-  environment: { text: "text-cyan-400", bg: "bg-cyan-500/10" },
-  identity: { text: "text-emerald-400", bg: "bg-emerald-500/10" },
 };
 
 const STATUS_COLORS: Record<string, string> = {
