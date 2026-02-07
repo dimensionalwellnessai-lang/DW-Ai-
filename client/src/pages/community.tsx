@@ -145,12 +145,12 @@ const SAMPLE_OPPORTUNITIES: OpportunityDisplay[] = [
 
 // Opportunity type styling
 const OPPORTUNITY_STYLES: Record<CommunityFocus, { icon: typeof HandHeart; color: string; bg: string; label: string }> = {
-  volunteering: { icon: HandHeart, color: "text-green-600", bg: "bg-green-500/10", label: "Volunteering" },
-  mentoring: { icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-500/10", label: "Mentoring" },
-  advocacy: { icon: Megaphone, color: "text-orange-600", bg: "bg-orange-500/10", label: "Advocacy" },
-  local_events: { icon: Calendar, color: "text-purple-600", bg: "bg-purple-500/10", label: "Local Event" },
-  online_groups: { icon: Globe, color: "text-teal-600", bg: "bg-teal-500/10", label: "Online Group" },
-  donations: { icon: Heart, color: "text-pink-600", bg: "bg-pink-500/10", label: "Fundraising" },
+  volunteering: { icon: HandHeart, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10 dark:bg-green-400/15", label: "Volunteering" },
+  mentoring: { icon: GraduationCap, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-400/15", label: "Mentoring" },
+  advocacy: { icon: Megaphone, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10 dark:bg-orange-400/15", label: "Advocacy" },
+  local_events: { icon: Calendar, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-400/15", label: "Local Event" },
+  online_groups: { icon: Globe, color: "text-teal-600 dark:text-teal-400", bg: "bg-teal-500/10 dark:bg-teal-400/15", label: "Online Group" },
+  donations: { icon: Heart, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-400/15", label: "Fundraising" },
 };
 
 export default function CommunityPage() {

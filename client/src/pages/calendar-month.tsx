@@ -11,11 +11,11 @@ import type { CalendarEvent } from "@shared/schema";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday } from "date-fns";
 
 const EVENT_COLORS: Record<string, string> = {
-  workout: "bg-green-500",
-  meal: "bg-orange-500",
-  routine: "bg-purple-500",
-  event: "bg-blue-500",
-  task: "bg-yellow-500",
+  workout: "bg-green-500 dark:bg-green-400",
+  meal: "bg-orange-500 dark:bg-orange-400",
+  routine: "bg-purple-500 dark:bg-purple-400",
+  event: "bg-blue-500 dark:bg-blue-400",
+  task: "bg-yellow-500 dark:bg-yellow-400",
 };
 
 export default function CalendarMonthPage() {
@@ -67,7 +67,7 @@ export default function CalendarMonthPage() {
       />
       
       <ScrollArea className="flex-1">
-        <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
+        <div className="p-4 max-w-3xl w-full mx-auto space-y-4 pb-8">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-4">

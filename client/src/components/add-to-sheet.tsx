@@ -206,8 +206,8 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
               disabled={isAdding || !selectedDate}
             >
               <div className="flex items-center gap-3 w-full">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <CalendarDays className="h-5 w-5 text-blue-600" />
+                <div className="p-2 rounded-lg bg-blue-500/10 dark:bg-blue-400/15">
+                  <CalendarDays className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 text-left">
                   <p className="font-medium">Add to This Week</p>
@@ -240,8 +240,8 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
             disabled={isAdding}
           >
             <div className="flex items-center gap-3 w-full">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Repeat className="h-5 w-5 text-purple-600" />
+              <div className="p-2 rounded-lg bg-purple-500/10 dark:bg-purple-400/15">
+                <Repeat className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="font-medium">Add to Routine</p>
@@ -260,8 +260,8 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
             disabled={isAdding}
           >
             <div className="flex items-center gap-3 w-full">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <BookmarkPlus className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-green-500/10 dark:bg-green-400/15">
+                <BookmarkPlus className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="font-medium">Save to Library</p>
