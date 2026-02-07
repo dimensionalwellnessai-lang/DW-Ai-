@@ -70,6 +70,9 @@ import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import LifeCommandCenter from "@/pages/life-command-center";
 import LifeBlueprintPage from "@/pages/life-blueprint";
+import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
+import InsightsDashboard from "@/pages/insights";
+import WellnessPreferencesPage from "@/pages/wellness-preferences";
 import TrackingPage from "@/pages/tracking";
 import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
@@ -160,6 +163,9 @@ function Router() {
       <Route path="/home" component={DWHomePage} />
       <Route path="/command-center" component={LifeCommandCenter} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />
+      <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
+      <Route path="/insights" component={InsightsDashboard} />
+      <Route path="/wellness-preferences" component={WellnessPreferencesPage} />
       <Route path="/tracking" component={TrackingPage} />
       <Route path="/goals" component={GoalsPage} />
       <Route path="/habits" component={HabitsPage} />
