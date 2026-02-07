@@ -247,9 +247,20 @@ export default function LifeBlueprintV2() {
     return allSystems.filter((s) => s.dimension === dimension && s.isActive);
   };
 
-  // Get goals for dimension
+  // Get goals for dimension (with more precise matching)
   const getGoalsForDimension = (dimension: string) => {
-    return goals.filter((g) => g.dimension === dimension || g.title.toLowerCase().includes(dimension));
+    return goals.filter((g) => {
+      // Exact match on dimension field
+      if (g.dimension === dimension) return true;
+      
+      // Check if goal title contains dimension as a standalone word
+      const titleLower = g.title.toLowerCase();
+      const dimensionLower = dimension.toLowerCase();
+      
+      // Use word boundary matching to avoid false positives
+      const wordBoundaryRegex = new RegExp(`\\b${dimensionLower}\\b`, 'i');
+      return wordBoundaryRegex.test(titleLower);
+    });
   };
 
   // Calculate last check-in
@@ -860,9 +871,17 @@ export default function LifeBlueprintV2() {
     );
   };
 
-  const resetProtocolComplete = resetProtocol && Object.keys(resetProtocol).some(k => 
-    k !== 'id' && k !== 'userId' && k !== 'createdAt' && k !== 'updatedAt' && (resetProtocol as any)[k]
-  );
+  // Check if reset protocol is complete
+  const isResetProtocolComplete = (protocol: any): boolean => {
+    if (!protocol) return false;
+    return !!(
+      protocol.redFlags?.length > 0 ||
+      protocol.howIReset?.length > 0 ||
+      protocol.whenThingsGetHard?.length > 0
+    );
+  };
+
+  const resetProtocolComplete = isResetProtocolComplete(resetProtocol);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
