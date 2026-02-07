@@ -631,7 +631,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     type: "page",
     description: "Weekly beta check-in",
     showInMenu: true,
-    menuSection: "more", // Keep in more menu but categorize properly in All Features
+    menuSection: "more",
     menuOrder: 91,
     enabled: true,
   },
