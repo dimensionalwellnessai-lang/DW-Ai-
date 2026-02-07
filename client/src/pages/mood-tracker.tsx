@@ -131,8 +131,8 @@ function MoodCheckinCard({
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-full bg-green-500/20 p-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <div className="rounded-full bg-green-500/20 dark:bg-green-400/25 p-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
             </div>
             <div>
               <p className="font-medium text-foreground">
@@ -152,8 +152,8 @@ function MoodCheckinCard({
     <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-purple-500/20 p-2">
-            <TimeIcon className="h-5 w-5 text-purple-500" />
+          <div className="rounded-full bg-purple-500/20 dark:bg-purple-400/25 p-2">
+            <TimeIcon className="h-5 w-5 text-purple-500 dark:text-purple-400" />
           </div>
           How are you feeling this {timeOfDay}?
         </CardTitle>
@@ -221,8 +221,8 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
     <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-blue-500/20 p-2">
-            <Activity className="h-5 w-5 text-blue-500" />
+          <div className="rounded-full bg-blue-500/20 dark:bg-blue-400/25 p-2">
+            <Activity className="h-5 w-5 text-blue-500 dark:text-blue-400" />
           </div>
           Today's Journey
         </CardTitle>
@@ -334,14 +334,14 @@ const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
 };
 
 const SWITCH_COLORS: Record<SwitchId, { text: string; bg: string }> = {
-  body: { text: "text-red-400", bg: "bg-red-500/10" },
-  mind: { text: "text-purple-400", bg: "bg-purple-500/10" },
-  time: { text: "text-blue-400", bg: "bg-blue-500/10" },
-  purpose: { text: "text-amber-400", bg: "bg-amber-500/10" },
-  money: { text: "text-green-400", bg: "bg-green-500/10" },
-  relationships: { text: "text-pink-400", bg: "bg-pink-500/10" },
-  environment: { text: "text-cyan-400", bg: "bg-cyan-500/10" },
-  identity: { text: "text-emerald-400", bg: "bg-emerald-500/10" },
+  body: { text: "text-red-400", bg: "bg-red-500/10 dark:bg-red-400/15" },
+  mind: { text: "text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-400/15" },
+  time: { text: "text-blue-400", bg: "bg-blue-500/10 dark:bg-blue-400/15" },
+  purpose: { text: "text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-400/15" },
+  money: { text: "text-green-400", bg: "bg-green-500/10 dark:bg-green-400/15" },
+  relationships: { text: "text-pink-400", bg: "bg-pink-500/10 dark:bg-pink-400/15" },
+  environment: { text: "text-cyan-400", bg: "bg-cyan-500/10 dark:bg-cyan-400/15" },
+  identity: { text: "text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-400/15" },
 };
 
 function ActivityCheckinCard({ 
@@ -421,8 +421,8 @@ function ActivityCheckinCard({
     <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-green-500/20 p-2">
-            <ListChecks className="h-5 w-5 text-green-500" />
+          <div className="rounded-full bg-green-500/20 dark:bg-green-400/25 p-2">
+            <ListChecks className="h-5 w-5 text-green-500 dark:text-green-400" />
           </div>
           Activity Check-in
         </CardTitle>
@@ -449,7 +449,7 @@ function ActivityCheckinCard({
                   "flex items-center gap-3 rounded-xl border p-4 transition-all",
                   isLogged 
                     ? completion.completed
-                      ? "border-green-500/30 bg-green-500/10"
+                      ? "border-green-500/30 dark:border-green-400/30 bg-green-500/10 dark:bg-green-400/15"
                       : "border-border bg-muted/50"
                     : "border-border bg-muted/30"
                 )}
@@ -486,10 +486,10 @@ function ActivityCheckinCard({
                       size="icon"
                       variant="ghost"
                       onClick={() => handleLogActivity(item, true)}
-                      className="h-8 w-8 bg-green-500/10 hover:bg-green-500/20"
+                      className="h-8 w-8 bg-green-500/10 dark:bg-green-400/15 hover:bg-green-500/20 dark:hover:bg-green-400/25"
                       data-testid={`complete-activity-${item.id}`}
                     >
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                     </Button>
                     <Button
                       size="icon"
@@ -549,17 +549,17 @@ function TrackerSettingsCard() {
     <Card>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-purple-500/20 p-2">
-            <Settings className="h-5 w-5 text-purple-500" />
+          <div className="rounded-full bg-purple-500/20 dark:bg-purple-400/25 p-2">
+            <Settings className="h-5 w-5 text-purple-500 dark:text-purple-400" />
           </div>
           Tracker Settings
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {notificationsPermission !== "granted" && notificationsPermission !== "unsupported" && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="rounded-xl border border-amber-500/30 dark:border-amber-400/30 bg-amber-500/10 dark:bg-amber-400/15 p-4">
             <div className="flex items-start gap-3">
-              <BellOff className="h-5 w-5 text-amber-500 mt-0.5" />
+              <BellOff className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5" />
               <div className="flex-1">
                 <p className="font-medium text-amber-600 dark:text-amber-400">Enable Notifications</p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -581,9 +581,9 @@ function TrackerSettingsCard() {
         )}
         
         {notificationsPermission === "granted" && (
-          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+          <div className="rounded-xl border border-green-500/30 dark:border-green-400/30 bg-green-500/10 dark:bg-green-400/15 p-4">
             <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-green-500" />
+              <Bell className="h-5 w-5 text-green-500 dark:text-green-400" />
               <p className="text-green-600 dark:text-green-400">Notifications are enabled</p>
             </div>
           </div>
