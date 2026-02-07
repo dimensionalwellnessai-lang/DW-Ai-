@@ -5,7 +5,6 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
-  name?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -20,7 +19,9 @@ const sizeClasses = {
 /**
  * Icon component - wrapper for SVG icons with consistent sizing
  * @example
- * <Icon name="check" size="md" className="text-green-500" />
+ * <Icon size="md" className="text-green-500">
+ *   <path d="M5 13l4 4L19 7" />
+ * </Icon>
  */
 export function Icon({ size = 'md', className, ...props }: IconProps) {
   return (

@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useUserStore } from '../stores/user-store';
 
 describe('useUserStore', () => {
+  beforeEach(() => {
+    // Clear localStorage and reset store to initial state
+    localStorage.clear();
+    useUserStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isGuest: false,
+    });
+  });
+
   it('should initialize with no user', () => {
     const { result } = renderHook(() => useUserStore());
     

@@ -31,7 +31,7 @@ export const useUserStore = create<UserStore>()(
       setGuest: (isGuest) =>
         set({
           isGuest,
-          isAuthenticated: !isGuest,
+          isAuthenticated: false,
           user: null,
         }),
       logout: () =>

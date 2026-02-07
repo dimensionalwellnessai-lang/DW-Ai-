@@ -93,7 +93,7 @@ SENTRY_DSN=https://...
 1. **Provision Ubuntu Server** (20.04 or later)
 2. **Install Node.js and PostgreSQL**:
    ```bash
-   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
    sudo apt-get install -y nodejs postgresql
    ```
 3. **Clone Repository**:
@@ -420,7 +420,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
       - run: npm ci
       - run: npm run build
       - run: npm test

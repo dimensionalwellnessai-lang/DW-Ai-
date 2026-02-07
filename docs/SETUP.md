@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** 18 or higher ([Download](https://nodejs.org/))
+- **Node.js** 22 or higher ([Download](https://nodejs.org/))
 - **PostgreSQL** database (local or cloud)
 - **Xcode** (for iOS development, macOS only)
 - **Android Studio** (for Android development)

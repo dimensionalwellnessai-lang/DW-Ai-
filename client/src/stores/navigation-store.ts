@@ -28,11 +28,12 @@ export const useNavigationStore = create<NavigationStore>((set, get) => ({
       const newCurrent = newHistory[newHistory.length - 1];
       set({
         currentPath: newCurrent,
-        previousPath: history[history.length - 2] || null,
+        previousPath: newHistory[newHistory.length - 2] || null,
         history: newHistory,
       });
       return newCurrent;
     }
+    // When history is empty or has only one item, stay at current path
     return previousPath;
   },
 
