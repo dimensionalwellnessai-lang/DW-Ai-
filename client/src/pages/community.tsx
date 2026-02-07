@@ -170,7 +170,7 @@ export default function CommunityPage() {
   const displayOpportunities = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <PageHeader title="Community Wellness" />
 
       <ScrollArea className="flex-1">
