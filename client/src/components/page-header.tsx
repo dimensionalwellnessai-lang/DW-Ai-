@@ -67,15 +67,29 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   });
   const user = authData?.user;
 
+  // Use the appropriate menu state based on feature flag
+  const effectiveMenuOpen = useNewNavigation ? navMenuOpen : menuOpen;
+  const setEffectiveMenuOpen = useNewNavigation 
+    ? (open: boolean) => open ? toggleMenu() : closeMenu()
+    : setMenuOpen;
+
   useEffect(() => {
-    if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !menuOpen) {
-      setMenuOpen(true);
+    if (tutorialState.isActive && tutorialState.isNavigationTutorial && requiresMenuOpen && !effectiveMenuOpen) {
+      if (useNewNavigation) {
+        toggleMenu();
+      } else {
+        setMenuOpen(true);
+      }
     }
-  }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, menuOpen]);
+  }, [tutorialState.isActive, tutorialState.isNavigationTutorial, requiresMenuOpen, effectiveMenuOpen, useNewNavigation, toggleMenu]);
 
   const handleStartTutorial = () => {
-    const menuWasOpen = menuOpen;
-    setMenuOpen(false);
+    const menuWasOpen = effectiveMenuOpen;
+    if (useNewNavigation) {
+      closeMenu();
+    } else {
+      setMenuOpen(false);
+    }
     setTimeout(() => {
       startNavigationTutorial(true, menuWasOpen);
     }, 500);
