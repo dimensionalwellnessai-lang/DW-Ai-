@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
+import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
 import { 
   MessageCircle, 
   Calendar, 
@@ -17,7 +18,7 @@ import {
   CheckCircle2,
   Compass
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   hasCompletedBodyScan,
   hasCompletedFinanceProfile,
@@ -195,14 +196,35 @@ const QUICK_TIPS = [
 ];
 
 export default function AppTourPage() {
+  const [, setLocation] = useLocation();
+  const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();
   const totalTime = getTotalSetupTime();
   const hasQuestionnaires = GUIDE_SECTIONS.some(s => s.hasQuestionnaire);
+
+  const handleStartFullTour = () => {
+    setLocation("/");
+    setTimeout(() => startTour(), 300);
+  };
+
+  const handleTourComplete = () => {
+    completeTour();
+    setLocation("/");
+  };
+
+  const handleTourSkip = () => {
+    skipTour();
+  };
   
   return (
     <div className="min-h-screen bg-background">
       <PageHeader title="App Tour" />
+      <InteractiveTour
+        open={isOpen}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+      />
       
       <ScrollArea className="h-[calc(100vh-57px)]">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
@@ -257,53 +279,65 @@ export default function AppTourPage() {
             {GUIDE_SECTIONS.map((section) => {
               const Icon = section.icon;
               const isCompleted = section.completionKey ? completionStatus[section.completionKey] : false;
-              
+
+              const cardElement = (
+                <Card 
+                  data-testid={`card-guide-${section.id}`}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-medium text-foreground">{section.title}</h4>
+                          {section.hasQuestionnaire && (
+                            <>
+                              {isCompleted ? (
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Complete
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Clock className="w-3 h-3" />
+                                  {section.estimatedMinutes} min
+                                </Badge>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {section.description}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="ml-[52px] space-y-2">
+                      {section.tips.map((tip, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-sm text-foreground">
+                          <span className="text-muted-foreground">-</span>
+                          <span>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+
+              if (section.isFullTour) {
+                return (
+                  <div key={section.id} onClick={handleStartFullTour}>
+                    {cardElement}
+                  </div>
+                );
+              }
+
               return (
                 <Link key={section.id} href={section.path}>
-                  <Card 
-                    data-testid={`card-guide-${section.id}`}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Icon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-foreground">{section.title}</h4>
-                            {section.hasQuestionnaire && (
-                              <>
-                                {isCompleted ? (
-                                  <Badge variant="secondary" className="gap-1 text-xs">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Complete
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="gap-1 text-xs">
-                                    <Clock className="w-3 h-3" />
-                                    {section.estimatedMinutes} min
-                                  </Badge>
-                                )}
-                              </>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {section.description}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="ml-[52px] space-y-2">
-                        {section.tips.map((tip, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm text-foreground">
-                            <span className="text-muted-foreground">-</span>
-                            <span>{tip}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {cardElement}
                 </Link>
               );
             })}

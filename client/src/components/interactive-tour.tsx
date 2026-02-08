@@ -9,8 +9,6 @@ import {
   Calendar,
   Star,
   TrendingUp,
-  Settings,
-  ListTodo,
   Heart,
   Sparkles,
 } from "lucide-react";
@@ -35,77 +33,57 @@ const TOUR_STEPS: TourStep[] = [
     position: "center",
   },
   {
-    id: "mood-tracking",
-    title: "Mood Tracking & Analytics",
+    id: "home",
+    title: "Your Home Base",
     description:
-      "Track your daily moods and energy levels. We'll show you patterns over time and provide insights to help you understand what influences your wellness.",
-    icon: Heart,
-    targetSelector: "[data-tour='mood-tracker']",
-    position: "bottom",
-    action: "Try logging your first mood entry",
-  },
-  {
-    id: "dashboard",
-    title: "Wellness Dashboard",
-    description:
-      "Your central hub for all wellness dimensions: Calendar, Tasks, Astrology, Routines, and more. Everything you need in one place.",
+      "This is your Life Command Center. See everything at a glance - water intake, calories, goals, habits, and all 8 wellness dimensions. Tap any card to dive deeper.",
     icon: TrendingUp,
-    targetSelector: "[data-tour='dashboard']",
+    targetSelector: "[data-tour='home']",
     position: "bottom",
   },
   {
     id: "calendar",
-    title: "Astrology Calendar",
+    title: "Life Calendar",
     description:
-      "View your personalized astrology calendar. Click on any day to get insights, recommendations, and understand how cosmic energies affect you.",
+      "Plan your days and weeks. Schedule events, import your work schedule, and see everything organized by wellness dimension. Tap the Calendar tab below to explore.",
     icon: Calendar,
     targetSelector: "[data-tour='calendar']",
-    position: "bottom",
-    action: "Click on a day to see your daily insights",
-  },
-  {
-    id: "tasks",
-    title: "Tasks & Routines",
-    description:
-      "Create and manage daily tasks and wellness routines. Build habits that stick and track your progress over time.",
-    icon: ListTodo,
-    targetSelector: "[data-tour='tasks']",
-    position: "bottom",
-    action: "Try creating your first routine",
-  },
-  {
-    id: "astrology",
-    title: "Astrology Insights",
-    description:
-      "Get personalized astrological readings based on your birth chart. Understand planetary influences and how they affect different areas of your life.",
-    icon: Star,
-    targetSelector: "[data-tour='astrology']",
-    position: "bottom",
+    position: "top",
+    action: "Tap Calendar in the bottom nav to explore",
   },
   {
     id: "chat",
-    title: "AI Wellness Assistant",
+    title: "Talk to DW",
     description:
-      "Chat with your AI wellness companion anytime. Ask questions, get advice, or just talk through what's on your mind.",
+      "Chat with your AI wellness companion anytime. Ask questions, get advice, create plans, or just talk through what's on your mind. DW adapts to your energy and communication style.",
     icon: MessageCircle,
     targetSelector: "[data-tour='chat']",
     position: "top",
-    action: "Say hello to your wellness assistant",
+    action: "Tap DW in the bottom nav to start a conversation",
   },
   {
-    id: "personalization",
-    title: "Personalization Settings",
+    id: "browse",
+    title: "Browse Features",
     description:
-      "Refine your preferences anytime. Update your goals, dietary preferences, fitness targets, and more to keep your experience perfectly tailored.",
-    icon: Settings,
-    targetSelector: "[data-tour='settings']",
+      "Explore all of DW's features: mood tracking, meal prep, workout planning, finances, astrology, and more. Use Browse to find and access any feature quickly.",
+    icon: Star,
+    targetSelector: "[data-tour='browse']",
+    position: "top",
+  },
+  {
+    id: "journal",
+    title: "Your Journal",
+    description:
+      "Reflect on your journey with private journal entries. Track your thoughts, feelings, and progress over time. Writing helps process emotions and build self-awareness.",
+    icon: Heart,
+    targetSelector: "[data-tour='journal']",
     position: "top",
   },
   {
     id: "complete",
     title: "You're All Set!",
     description:
-      "You can access this tour anytime from the Help menu in Settings. Explore at your own pace and remember: your wellness journey is uniquely yours.",
+      "You can access this tour anytime from Settings. Explore at your own pace and remember: your wellness journey is uniquely yours. No pressure, just support.",
     icon: Sparkles,
     position: "center",
   },
@@ -201,8 +179,8 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-[100]">
+      {/* Overlay - blocks all background interactions */}
+      <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: 'auto' }}>
         {/* Backdrop */}
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
 
@@ -263,8 +241,9 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
 
               {step?.action && (
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                  <p className="text-xs font-medium text-primary">
-                    💡 {step.action}
+                  <p className="text-xs font-medium text-primary flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    {step.action}
                   </p>
                 </div>
               )}

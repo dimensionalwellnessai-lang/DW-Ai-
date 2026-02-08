@@ -14,6 +14,7 @@ const tourDataMap: Record<string, string> = {
   "/calendar": "calendar",
   "/talk": "chat",
   "/browse": "browse",
+  "/journal": "journal",
 };
 
 export function BottomNav() {
