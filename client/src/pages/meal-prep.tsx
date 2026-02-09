@@ -1971,7 +1971,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                   <div>
                                     <h6 className="text-xs font-medium text-muted-foreground mb-1">Nutrition:</h6>
                                     <p className="text-xs text-foreground font-medium">
-                                      Calories {meal.nutrition.calories} • P {meal.nutrition.protein}g • C {meal.nutrition.carbs}g • F {meal.nutrition.fat}g
+                                      Calories {meal.nutrition.calories} kcal • P {meal.nutrition.protein}g • C {meal.nutrition.carbs}g • F {meal.nutrition.fat}g
                                     </p>
                                   </div>
 
