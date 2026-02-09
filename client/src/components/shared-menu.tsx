@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
@@ -124,7 +124,6 @@ interface SharedMenuProps {
 }
 
 export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
-  const [, navigate] = useLocation();
   const { startNavigationTutorial, state: tutorialState, requiresMenuOpen } = useTutorial();
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
   const { user, logout } = useAuth();

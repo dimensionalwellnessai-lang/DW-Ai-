@@ -25,6 +25,23 @@ export function useAuth() {
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    queryFn: async (): Promise<AuthData | null> => {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (response.status === 401) {
+        // Unauthenticated: represent as null auth state, not an error
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch auth status: ${response.status}`);
+      }
+
+      const data: AuthData = await response.json();
+      return data;
+    },
   });
 
   const invalidateAuth = () => {
@@ -33,10 +50,14 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", {
+      const res = await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
+
+      if (!res.ok) {
+        throw new Error(`Logout request failed with status ${res.status} ${res.statusText}`);
+      }
       
       // Clear auth cache and redirect
       queryClient.setQueryData(["/api/auth/me"], null);

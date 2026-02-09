@@ -86,9 +86,7 @@ export function LoginPage() {
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
     onSuccess: async (data) => {
-      // Set auth data immediately and invalidate to ensure all components refetch
-      // setQueryData provides immediate data, invalidate ensures fresh data from server
-      queryClient.setQueryData(["/api/auth/me"], { user: data.user });
+      // Invalidate auth data so all components refetch the full user from /api/auth/me
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       toast({ title: "Welcome back!" });
       setLocation("/");
