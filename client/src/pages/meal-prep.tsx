@@ -211,6 +211,14 @@ const COMMON_RESTRICTIONS = [
   "Low sugar",
 ];
 
+interface MealNutrition {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+}
+
 interface MealPlanData {
   title: string;
   description: string;
@@ -219,6 +227,7 @@ interface MealPlanData {
     prepTime: number;
     ingredients: string[];
     instructions: string[];
+    nutrition: MealNutrition;
   }[];
   tags: string[];
 }
@@ -232,19 +241,22 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         name: "Overnight Oats with Berries",
         prepTime: 5,
         ingredients: ["1/2 cup rolled oats", "1/2 cup milk (or plant milk)", "1/4 cup Greek yogurt", "1 tbsp honey", "1/4 cup mixed berries", "1 tbsp chia seeds"],
-        instructions: ["Combine oats, milk, yogurt, and honey in a jar", "Stir in chia seeds", "Top with berries", "Refrigerate overnight (or at least 4 hours)", "Enjoy cold or heat for 2 minutes"]
+        instructions: ["Combine oats, milk, yogurt, and honey in a jar", "Stir in chia seeds", "Top with berries", "Refrigerate overnight (or at least 4 hours)", "Enjoy cold or heat for 2 minutes"],
+        nutrition: { calories: 380, protein: 14, carbs: 58, fat: 10, fiber: 7 }
       },
       {
         name: "Grilled Chicken Salad",
         prepTime: 20,
         ingredients: ["4 oz chicken breast", "2 cups mixed greens", "1/4 cup cherry tomatoes", "1/4 cucumber sliced", "2 tbsp olive oil", "1 tbsp lemon juice", "Salt and pepper"],
-        instructions: ["Season chicken with salt and pepper", "Grill chicken 6-7 min per side until cooked through", "Let rest 5 min, then slice", "Arrange greens and vegetables in bowl", "Top with sliced chicken", "Drizzle with olive oil and lemon"]
+        instructions: ["Season chicken with salt and pepper", "Grill chicken 6-7 min per side until cooked through", "Let rest 5 min, then slice", "Arrange greens and vegetables in bowl", "Top with sliced chicken", "Drizzle with olive oil and lemon"],
+        nutrition: { calories: 420, protein: 35, carbs: 8, fat: 28, fiber: 3 }
       },
       {
         name: "Salmon with Quinoa",
         prepTime: 25,
         ingredients: ["4 oz salmon fillet", "1/2 cup quinoa", "1 cup broccoli florets", "1 tbsp olive oil", "Lemon wedge", "Fresh dill", "Salt and pepper"],
-        instructions: ["Cook quinoa according to package (about 15 min)", "Season salmon with salt, pepper, dill", "Pan-sear salmon 4 min per side", "Steam broccoli until tender-crisp (5 min)", "Plate quinoa, top with salmon and broccoli", "Squeeze lemon over and serve"]
+        instructions: ["Cook quinoa according to package (about 15 min)", "Season salmon with salt, pepper, dill", "Pan-sear salmon 4 min per side", "Steam broccoli until tender-crisp (5 min)", "Plate quinoa, top with salmon and broccoli", "Squeeze lemon over and serve"],
+        nutrition: { calories: 480, protein: 38, carbs: 35, fat: 20, fiber: 5 }
       }
     ],
     tags: ["balanced", "high-protein", "meal-prep-friendly"],
@@ -257,19 +269,22 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         name: "Smoothie Bowl",
         prepTime: 5,
         ingredients: ["1 frozen banana", "1/2 cup frozen berries", "1/4 cup milk", "2 tbsp granola", "1 tbsp nut butter", "Fresh fruit for topping"],
-        instructions: ["Blend banana, berries, and milk until thick", "Pour into bowl", "Top with granola, nut butter, and fresh fruit", "Enjoy immediately"]
+        instructions: ["Blend banana, berries, and milk until thick", "Pour into bowl", "Top with granola, nut butter, and fresh fruit", "Enjoy immediately"],
+        nutrition: { calories: 340, protein: 8, carbs: 52, fat: 14, fiber: 6 }
       },
       {
         name: "Veggie Hummus Wrap",
         prepTime: 10,
         ingredients: ["1 large tortilla", "3 tbsp hummus", "1/4 avocado sliced", "1/4 cup shredded carrots", "1/4 cup cucumber", "Handful spinach", "Sprouts (optional)"],
-        instructions: ["Spread hummus on tortilla", "Layer vegetables in center", "Fold sides in, then roll tightly", "Slice in half diagonally", "Wrap in foil for meal prep"]
+        instructions: ["Spread hummus on tortilla", "Layer vegetables in center", "Fold sides in, then roll tightly", "Slice in half diagonally", "Wrap in foil for meal prep"],
+        nutrition: { calories: 380, protein: 10, carbs: 42, fat: 20, fiber: 8 }
       },
       {
         name: "Quick Vegetable Stir-Fry",
         prepTime: 15,
         ingredients: ["2 cups mixed vegetables", "2 tbsp soy sauce", "1 tbsp sesame oil", "1 clove garlic minced", "1 tsp ginger", "Cooked rice or noodles"],
-        instructions: ["Heat sesame oil in wok or pan over high heat", "Add garlic and ginger, cook 30 seconds", "Add vegetables, stir-fry 5-7 minutes", "Add soy sauce, toss to coat", "Serve over rice or noodles"]
+        instructions: ["Heat sesame oil in wok or pan over high heat", "Add garlic and ginger, cook 30 seconds", "Add vegetables, stir-fry 5-7 minutes", "Add soy sauce, toss to coat", "Serve over rice or noodles"],
+        nutrition: { calories: 350, protein: 8, carbs: 52, fat: 12, fiber: 5 }
       }
     ],
     tags: ["quick", "beginner-friendly", "minimal-prep"],
@@ -282,19 +297,22 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         name: "Egg White Omelette",
         prepTime: 10,
         ingredients: ["4 egg whites", "1/4 cup spinach", "2 tbsp feta cheese", "1/4 cup mushrooms", "Salt and pepper", "Cooking spray"],
-        instructions: ["Whisk egg whites with salt and pepper", "Heat pan with cooking spray over medium", "Pour in egg whites, let set 2 min", "Add spinach, mushrooms, and feta to one half", "Fold omelette in half, cook 1 more minute", "Slide onto plate"]
+        instructions: ["Whisk egg whites with salt and pepper", "Heat pan with cooking spray over medium", "Pour in egg whites, let set 2 min", "Add spinach, mushrooms, and feta to one half", "Fold omelette in half, cook 1 more minute", "Slide onto plate"],
+        nutrition: { calories: 180, protein: 22, carbs: 4, fat: 8, fiber: 1 }
       },
       {
         name: "Turkey & Avocado Bowl",
         prepTime: 15,
         ingredients: ["5 oz ground turkey", "1/2 avocado", "1/2 cup brown rice", "1/4 cup black beans", "Salsa", "Lime juice"],
-        instructions: ["Cook brown rice if not prepped", "Brown ground turkey in skillet, season with cumin", "Arrange rice in bowl", "Top with turkey, beans, sliced avocado", "Add salsa and squeeze of lime"]
+        instructions: ["Cook brown rice if not prepped", "Brown ground turkey in skillet, season with cumin", "Arrange rice in bowl", "Top with turkey, beans, sliced avocado", "Add salsa and squeeze of lime"],
+        nutrition: { calories: 520, protein: 40, carbs: 42, fat: 22, fiber: 9 }
       },
       {
         name: "Lean Beef Stir-Fry",
         prepTime: 20,
         ingredients: ["5 oz lean beef strips", "1 cup bell peppers", "1/2 cup snap peas", "2 tbsp soy sauce", "1 tbsp oyster sauce", "Garlic and ginger"],
-        instructions: ["Slice beef into thin strips", "Heat oil in wok over high heat", "Sear beef 2-3 min, remove and set aside", "Stir-fry vegetables 3-4 min", "Return beef, add sauces", "Toss together and serve over rice"]
+        instructions: ["Slice beef into thin strips", "Heat oil in wok over high heat", "Sear beef 2-3 min, remove and set aside", "Stir-fry vegetables 3-4 min", "Return beef, add sauces", "Toss together and serve over rice"],
+        nutrition: { calories: 450, protein: 42, carbs: 18, fat: 22, fiber: 4 }
       }
     ],
     tags: ["high-protein", "muscle-building", "post-workout"],
@@ -307,19 +325,22 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         name: "Acai Bowl",
         prepTime: 5,
         ingredients: ["1 acai packet (frozen)", "1/2 banana", "1/4 cup plant milk", "Granola", "Coconut flakes", "Fresh berries", "Chia seeds"],
-        instructions: ["Blend acai, banana, and milk until thick", "Pour into bowl", "Top with granola, coconut, berries, chia", "Eat immediately while cold"]
+        instructions: ["Blend acai, banana, and milk until thick", "Pour into bowl", "Top with granola, coconut, berries, chia", "Eat immediately while cold"],
+        nutrition: { calories: 320, protein: 6, carbs: 48, fat: 14, fiber: 8 }
       },
       {
         name: "Buddha Bowl with Tofu",
         prepTime: 25,
         ingredients: ["4 oz firm tofu", "1/2 cup quinoa", "1/4 cup chickpeas", "1/2 cup roasted vegetables", "Tahini dressing", "Fresh greens"],
-        instructions: ["Press tofu 15 min, cube and bake at 400F for 20 min", "Cook quinoa", "Roast vegetables (sweet potato, broccoli)", "Arrange all in bowl on bed of greens", "Drizzle with tahini dressing"]
+        instructions: ["Press tofu 15 min, cube and bake at 400F for 20 min", "Cook quinoa", "Roast vegetables (sweet potato, broccoli)", "Arrange all in bowl on bed of greens", "Drizzle with tahini dressing"],
+        nutrition: { calories: 460, protein: 22, carbs: 48, fat: 20, fiber: 10 }
       },
       {
         name: "Lentil Curry",
         prepTime: 30,
         ingredients: ["1 cup red lentils", "1 can coconut milk", "2 tbsp curry paste", "1 onion diced", "2 cloves garlic", "1 can diced tomatoes", "Spinach"],
-        instructions: ["Saute onion and garlic until soft", "Add curry paste, cook 1 min", "Add lentils, tomatoes, coconut milk, 2 cups water", "Simmer 20-25 min until lentils tender", "Stir in spinach at end", "Serve over rice or with naan"]
+        instructions: ["Saute onion and garlic until soft", "Add curry paste, cook 1 min", "Add lentils, tomatoes, coconut milk, 2 cups water", "Simmer 20-25 min until lentils tender", "Stir in spinach at end", "Serve over rice or with naan"],
+        nutrition: { calories: 420, protein: 18, carbs: 52, fat: 16, fiber: 12 }
       }
     ],
     tags: ["vegan", "plant-based", "high-fiber"],
@@ -332,19 +353,22 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         name: "Rice and Beans Bowl",
         prepTime: 20,
         ingredients: ["1 cup rice", "1 can black beans", "1/2 onion", "Cumin and chili powder", "Salsa", "Cilantro", "Lime"],
-        instructions: ["Cook rice according to package", "Saute onion, add beans and spices", "Heat through 5 min", "Serve beans over rice", "Top with salsa, cilantro, lime"]
+        instructions: ["Cook rice according to package", "Saute onion, add beans and spices", "Heat through 5 min", "Serve beans over rice", "Top with salsa, cilantro, lime"],
+        nutrition: { calories: 400, protein: 14, carbs: 72, fat: 4, fiber: 12 }
       },
       {
         name: "Egg Fried Rice",
         prepTime: 15,
         ingredients: ["2 cups day-old rice", "2 eggs", "1/2 cup frozen peas and carrots", "3 tbsp soy sauce", "Sesame oil", "Green onions"],
-        instructions: ["Scramble eggs in wok, set aside", "Add more oil, fry cold rice until heated", "Add frozen vegetables", "Return eggs, add soy sauce", "Finish with sesame oil and green onions"]
+        instructions: ["Scramble eggs in wok, set aside", "Add more oil, fry cold rice until heated", "Add frozen vegetables", "Return eggs, add soy sauce", "Finish with sesame oil and green onions"],
+        nutrition: { calories: 420, protein: 14, carbs: 62, fat: 12, fiber: 3 }
       },
       {
         name: "Lentil Soup with Bread",
         prepTime: 30,
         ingredients: ["1 cup green lentils", "1 onion", "2 carrots", "2 celery stalks", "4 cups broth", "Crusty bread", "Bay leaf"],
-        instructions: ["Saute diced onion, carrots, celery", "Add lentils, broth, bay leaf", "Simmer 25-30 min until lentils soft", "Season with salt and pepper", "Serve with crusty bread for dipping"]
+        instructions: ["Saute diced onion, carrots, celery", "Add lentils, broth, bay leaf", "Simmer 25-30 min until lentils soft", "Season with salt and pepper", "Serve with crusty bread for dipping"],
+        nutrition: { calories: 380, protein: 20, carbs: 62, fat: 4, fiber: 14 }
       }
     ],
     tags: ["budget-friendly", "affordable", "pantry-staples"],
@@ -1864,14 +1888,35 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                     <ChevronDown className="w-3 h-3 text-muted-foreground" />
                                   )}
                                 </div>
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {meal.prepTime} min
-                                </span>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <span className="text-xs font-medium text-primary">{meal.nutrition.calories} cal</span>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {meal.prepTime} min
+                                  </span>
+                                </div>
                               </div>
                               
                               {expandedMeal === `${index}-${mealIdx}` && (
                                 <div className="mt-3 space-y-3">
+                                  <div className="grid grid-cols-4 gap-2 p-2 rounded-md bg-background/50 border">
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-foreground">{meal.nutrition.protein}g</p>
+                                      <p className="text-[10px] text-muted-foreground">Protein</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-foreground">{meal.nutrition.carbs}g</p>
+                                      <p className="text-[10px] text-muted-foreground">Carbs</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-foreground">{meal.nutrition.fat}g</p>
+                                      <p className="text-[10px] text-muted-foreground">Fat</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-foreground">{meal.nutrition.fiber || 0}g</p>
+                                      <p className="text-[10px] text-muted-foreground">Fiber</p>
+                                    </div>
+                                  </div>
                                   <div>
                                     <h6 className="text-xs font-medium text-muted-foreground mb-1">Ingredients:</h6>
                                     <ul className="space-y-0.5">

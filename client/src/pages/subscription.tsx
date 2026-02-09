@@ -3,26 +3,46 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Map } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
 
 type PlanType = "free" | "premium" | "lifetime";
 
 export default function SubscriptionPage() {
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
+  const [showTourPrompt, setShowTourPrompt] = useState(false);
+  const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
 
   const handleSelectPlan = (plan: PlanType) => {
     setSelectedPlan(plan);
-    // Save selection to localStorage (placeholder - no payment processing)
     localStorage.setItem('dw_selected_plan', plan);
-    // Navigate to the app
-    setLocation('/');
+    setShowTourPrompt(true);
   };
 
   const handleMaybeLater = () => {
-    // Default to free plan
     localStorage.setItem('dw_selected_plan', 'free');
+    setShowTourPrompt(true);
+  };
+
+  const handleStartTour = () => {
+    setShowTourPrompt(false);
+    setTimeout(() => startTour(), 300);
+  };
+
+  const handleSkipTour = () => {
+    setShowTourPrompt(false);
+    setLocation('/');
+  };
+
+  const handleTourComplete = () => {
+    completeTour();
+    setLocation('/');
+  };
+
+  const handleTourSkip = () => {
+    skipTour();
     setLocation('/');
   };
 
@@ -191,6 +211,49 @@ export default function SubscriptionPage() {
           </Button>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showTourPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10003] bg-background/80 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <Card className="w-full max-w-sm">
+                <CardContent className="pt-6 text-center space-y-4">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Map className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground">Explore the App</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Take a quick tour to discover everything DW has to offer and find your way around.
+                  </p>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <Button onClick={handleStartTour} data-testid="button-start-tour-after-paywall">
+                      Take a Tour
+                    </Button>
+                    <Button variant="ghost" onClick={handleSkipTour} className="text-muted-foreground" data-testid="button-skip-tour-after-paywall">
+                      Skip for now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <InteractiveTour
+        open={isOpen}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+      />
     </div>
   );
 }
