@@ -90,6 +90,7 @@ import {
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { 
   trackEvent, 
@@ -151,6 +152,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export function AIWorkspace() {
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [location, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
@@ -1426,11 +1428,8 @@ export function AIWorkspace() {
                 className="w-full" 
                 size="sm" 
                 onClick={async () => {
-                  await apiRequest("POST", "/api/auth/logout");
-                  queryClient.setQueryData(["/api/auth/me"], null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  await logout();
                   setMenuOpen(false);
-                  setLocation("/login");
                 }}
                 data-testid="button-signout"
               >

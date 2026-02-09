@@ -553,6 +553,7 @@ export const calendarEvents = pgTable("calendar_events", {
   routineId: varchar("routine_id"),
   isRecurring: boolean("is_recurring").default(false),
   recurrenceRule: text("recurrence_rule"),
+  recurrenceEndDate: text("recurrence_end_date"),
   linkedType: text("linked_type").default("none"),
   linkedId: varchar("linked_id"),
   linkedRoute: text("linked_route"),

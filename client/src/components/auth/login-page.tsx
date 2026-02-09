@@ -86,8 +86,9 @@ export function LoginPage() {
       return res.json() as Promise<{ user: { onboardingCompleted: boolean } }>;
     },
     onSuccess: async (data) => {
+      // Update auth cache and invalidate to trigger refetch across all components
       queryClient.setQueryData(["/api/auth/me"], { user: data.user });
-      queryClient.invalidateQueries();
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       toast({ title: "Welcome back!" });
       setLocation("/");
     },

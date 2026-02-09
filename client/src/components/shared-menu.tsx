@@ -5,8 +5,7 @@ import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { getRecentPages, addRecentPage } from "@/lib/recent-pages";
 import {
   Zap,
@@ -128,12 +127,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
   const [, navigate] = useLocation();
   const { startNavigationTutorial, state: tutorialState, requiresMenuOpen } = useTutorial();
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
-
-  const { data: authData } = useQuery<{ user: any } | null>({
-    queryKey: ["/api/auth/me"],
-    retry: false
-  });
-  const user = authData?.user;
+  const { user, logout } = useAuth();
 
   const recentPages = React.useMemo(() => getRecentPages().slice(0, 3), [open]);
 
@@ -274,11 +268,8 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
             className="w-full" 
             size="sm" 
             onClick={async () => {
-              await apiRequest("POST", "/api/auth/logout");
-              queryClient.setQueryData(["/api/auth/me"], null);
-              queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+              await logout();
               onClose();
-              navigate("/login");
             }}
             data-testid="button-signout"
           >

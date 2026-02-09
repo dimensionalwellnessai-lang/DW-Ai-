@@ -10,7 +10,7 @@ import { WarningBanner } from '@/components/warning-banner';
 import { useNavigationStore } from '@/stores/useNavigationStore';
 import { useOnboardingStore } from '@/stores/useOnboardingStore';
 import { Link, useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
 
 interface HamburgerMenuProps {
   open: boolean;
@@ -27,12 +27,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
   const [location] = useLocation();
   const { timeOfDay, updateTimeOfDay, toggleAllFeatures } = useNavigationStore();
   const { completed: onboardingCompleted, completionPercentage } = useOnboardingStore();
-  
-  const { data: authData } = useQuery<{ user: any } | null>({
-    queryKey: ["/api/auth/me"],
-    retry: false
-  });
-  const user = authData?.user;
+  const { user } = useAuth();
 
   // Update time of day when menu opens
   useEffect(() => {

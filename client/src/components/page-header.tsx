@@ -10,8 +10,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial } from "@/contexts/tutorial-context";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   Sun, Sparkles, Heart, Dumbbell, Utensils, Wallet,
   Settings, Compass, Target, Calendar, LayoutGrid, ChevronDown,
@@ -51,6 +50,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
   const { menuOpen: navMenuOpen, allFeaturesOpen, toggleMenu, closeMenu, closeAllFeatures } = useNavigationStore();
   const useNewNavigation = isFeatureEnabled('NEW_NAVIGATION');
   const useAllFeaturesView = isFeatureEnabled('ALL_FEATURES_VIEW');
+  const { user, logout } = useAuth();
   
   const menuFeatures = getMenuFeatures();
   const moreFeatures = getMoreMenuFeatures();
@@ -60,12 +60,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     hasSeenNavigationTutorial,
     requiresMenuOpen,
   } = useTutorial();
-
-  const { data: authData } = useQuery<{ user: any } | null>({ 
-    queryKey: ["/api/auth/me"],
-    retry: false
-  });
-  const user = authData?.user;
 
   // Use the appropriate menu state based on feature flag
   const effectiveMenuOpen = useNewNavigation ? navMenuOpen : menuOpen;
@@ -296,11 +290,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
                 className="w-full" 
                 size="sm" 
                 onClick={async () => {
-                  await apiRequest("POST", "/api/auth/logout");
-                  queryClient.setQueryData(["/api/auth/me"], null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  await logout();
                   setMenuOpen(false);
-                  setLocation("/login");
                 }}
                 data-testid="button-signout"
               >
