@@ -219,7 +219,7 @@ interface MealPlanData {
     prepTime: number;
     ingredients: string[];
     instructions: string[];
-    nutrition?: {
+    nutrition: {
       calories: number;
       protein: number;
       carbs: number;
@@ -258,10 +258,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["1/2 cup rolled oats", "1/2 cup milk (or plant milk)", "1/4 cup Greek yogurt", "1 tbsp honey", "1/4 cup mixed berries", "1 tbsp chia seeds"],
         instructions: ["Combine oats, milk, yogurt, and honey in a jar", "Stir in chia seeds", "Top with berries", "Refrigerate overnight (or at least 4 hours)", "Enjoy cold or heat for 2 minutes"],
         nutrition: {
-          calories: 320,
+          calories: 350,
           protein: 15,
           carbs: 52,
-          fat: 7
+          fat: 10
         }
       },
       {
@@ -272,8 +272,8 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         nutrition: {
           calories: 380,
           protein: 35,
-          carbs: 12,
-          fat: 22
+          carbs: 8,
+          fat: 24
         }
       },
       {
@@ -282,9 +282,9 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["4 oz salmon fillet", "1/2 cup quinoa", "1 cup broccoli florets", "1 tbsp olive oil", "Lemon wedge", "Fresh dill", "Salt and pepper"],
         instructions: ["Cook quinoa according to package (about 15 min)", "Season salmon with salt, pepper, dill", "Pan-sear salmon 4 min per side", "Steam broccoli until tender-crisp (5 min)", "Plate quinoa, top with salmon and broccoli", "Squeeze lemon over and serve"],
         nutrition: {
-          calories: 485,
+          calories: 520,
           protein: 38,
-          carbs: 35,
+          carbs: 42,
           fat: 20
         }
       }
@@ -301,10 +301,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["1 frozen banana", "1/2 cup frozen berries", "1/4 cup milk", "2 tbsp granola", "1 tbsp nut butter", "Fresh fruit for topping"],
         instructions: ["Blend banana, berries, and milk until thick", "Pour into bowl", "Top with granola, nut butter, and fresh fruit", "Enjoy immediately"],
         nutrition: {
-          calories: 340,
-          protein: 10,
-          carbs: 58,
-          fat: 10
+          calories: 320,
+          protein: 8,
+          carbs: 48,
+          fat: 12
         }
       },
       {
@@ -313,10 +313,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["1 large tortilla", "3 tbsp hummus", "1/4 avocado sliced", "1/4 cup shredded carrots", "1/4 cup cucumber", "Handful spinach", "Sprouts (optional)"],
         instructions: ["Spread hummus on tortilla", "Layer vegetables in center", "Fold sides in, then roll tightly", "Slice in half diagonally", "Wrap in foil for meal prep"],
         nutrition: {
-          calories: 295,
-          protein: 9,
-          carbs: 40,
-          fat: 12
+          calories: 340,
+          protein: 11,
+          carbs: 45,
+          fat: 14
         }
       },
       {
@@ -325,10 +325,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["2 cups mixed vegetables", "2 tbsp soy sauce", "1 tbsp sesame oil", "1 clove garlic minced", "1 tsp ginger", "Cooked rice or noodles"],
         instructions: ["Heat sesame oil in wok or pan over high heat", "Add garlic and ginger, cook 30 seconds", "Add vegetables, stir-fry 5-7 minutes", "Add soy sauce, toss to coat", "Serve over rice or noodles"],
         nutrition: {
-          calories: 380,
-          protein: 12,
-          carbs: 62,
-          fat: 10
+          calories: 280,
+          protein: 7,
+          carbs: 38,
+          fat: 11
         }
       }
     ],
@@ -344,10 +344,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["4 egg whites", "1/4 cup spinach", "2 tbsp feta cheese", "1/4 cup mushrooms", "Salt and pepper", "Cooking spray"],
         instructions: ["Whisk egg whites with salt and pepper", "Heat pan with cooking spray over medium", "Pour in egg whites, let set 2 min", "Add spinach, mushrooms, and feta to one half", "Fold omelette in half, cook 1 more minute", "Slide onto plate"],
         nutrition: {
-          calories: 180,
-          protein: 28,
-          carbs: 5,
-          fat: 5
+          calories: 145,
+          protein: 22,
+          carbs: 4,
+          fat: 4
         }
       },
       {
@@ -356,10 +356,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["5 oz ground turkey", "1/2 avocado", "1/2 cup brown rice", "1/4 cup black beans", "Salsa", "Lime juice"],
         instructions: ["Cook brown rice if not prepped", "Brown ground turkey in skillet, season with cumin", "Arrange rice in bowl", "Top with turkey, beans, sliced avocado", "Add salsa and squeeze of lime"],
         nutrition: {
-          calories: 520,
-          protein: 42,
-          carbs: 38,
-          fat: 20
+          calories: 480,
+          protein: 38,
+          carbs: 42,
+          fat: 16
         }
       },
       {
@@ -368,10 +368,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["5 oz lean beef strips", "1 cup bell peppers", "1/2 cup snap peas", "2 tbsp soy sauce", "1 tbsp oyster sauce", "Garlic and ginger"],
         instructions: ["Slice beef into thin strips", "Heat oil in wok over high heat", "Sear beef 2-3 min, remove and set aside", "Stir-fry vegetables 3-4 min", "Return beef, add sauces", "Toss together and serve over rice"],
         nutrition: {
-          calories: 420,
-          protein: 45,
-          carbs: 25,
-          fat: 15
+          calories: 380,
+          protein: 40,
+          carbs: 18,
+          fat: 16
         }
       }
     ],
@@ -388,9 +388,9 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         instructions: ["Blend acai, banana, and milk until thick", "Pour into bowl", "Top with granola, coconut, berries, chia", "Eat immediately while cold"],
         nutrition: {
           calories: 310,
-          protein: 8,
-          carbs: 54,
-          fat: 9
+          protein: 6,
+          carbs: 52,
+          fat: 10
         }
       },
       {
@@ -399,10 +399,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["4 oz firm tofu", "1/2 cup quinoa", "1/4 cup chickpeas", "1/2 cup roasted vegetables", "Tahini dressing", "Fresh greens"],
         instructions: ["Press tofu 15 min, cube and bake at 400F for 20 min", "Cook quinoa", "Roast vegetables (sweet potato, broccoli)", "Arrange all in bowl on bed of greens", "Drizzle with tahini dressing"],
         nutrition: {
-          calories: 440,
-          protein: 22,
-          carbs: 52,
-          fat: 16
+          calories: 450,
+          protein: 20,
+          carbs: 54,
+          fat: 18
         }
       },
       {
@@ -411,10 +411,10 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["1 cup red lentils", "1 can coconut milk", "2 tbsp curry paste", "1 onion diced", "2 cloves garlic", "1 can diced tomatoes", "Spinach"],
         instructions: ["Saute onion and garlic until soft", "Add curry paste, cook 1 min", "Add lentils, tomatoes, coconut milk, 2 cups water", "Simmer 20-25 min until lentils tender", "Stir in spinach at end", "Serve over rice or with naan"],
         nutrition: {
-          calories: 480,
-          protein: 20,
-          carbs: 65,
-          fat: 15
+          calories: 420,
+          protein: 18,
+          carbs: 48,
+          fat: 18
         }
       }
     ],
@@ -430,8 +430,8 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["1 cup rice", "1 can black beans", "1/2 onion", "Cumin and chili powder", "Salsa", "Cilantro", "Lime"],
         instructions: ["Cook rice according to package", "Saute onion, add beans and spices", "Heat through 5 min", "Serve beans over rice", "Top with salsa, cilantro, lime"],
         nutrition: {
-          calories: 380,
-          protein: 15,
+          calories: 390,
+          protein: 14,
           carbs: 72,
           fat: 3
         }
@@ -442,9 +442,9 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         ingredients: ["2 cups day-old rice", "2 eggs", "1/2 cup frozen peas and carrots", "3 tbsp soy sauce", "Sesame oil", "Green onions"],
         instructions: ["Scramble eggs in wok, set aside", "Add more oil, fry cold rice until heated", "Add frozen vegetables", "Return eggs, add soy sauce", "Finish with sesame oil and green onions"],
         nutrition: {
-          calories: 420,
+          calories: 410,
           protein: 16,
-          carbs: 68,
+          carbs: 62,
           fat: 10
         }
       },
@@ -455,9 +455,9 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
         instructions: ["Saute diced onion, carrots, celery", "Add lentils, broth, bay leaf", "Simmer 25-30 min until lentils soft", "Season with salt and pepper", "Serve with crusty bread for dipping"],
         nutrition: {
           calories: 350,
-          protein: 18,
+          protein: 16,
           carbs: 58,
-          fat: 5
+          fat: 4
         }
       }
     ],
@@ -1989,7 +1989,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                 </div>
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
-                                  {meal.prepTime} min
+                                  {meal.prepTime} min · {meal.nutrition.calories} kcal
                                 </span>
                               </div>
                               
@@ -2016,6 +2016,13 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                               
                               {expandedMeal === `${index}-${mealIdx}` && (
                                 <div className="mt-3 space-y-3">
+                                  <div>
+                                    <h6 className="text-xs font-medium text-muted-foreground mb-1">Nutrition:</h6>
+                                    <p className="text-xs text-foreground font-medium">
+                                      Calories {meal.nutrition.calories} kcal • P {meal.nutrition.protein}g • C {meal.nutrition.carbs}g • F {meal.nutrition.fat}g
+                                    </p>
+                                  </div>
+
                                   <div>
                                     <h6 className="text-xs font-medium text-muted-foreground mb-1">Ingredients:</h6>
                                     <ul className="space-y-0.5">
