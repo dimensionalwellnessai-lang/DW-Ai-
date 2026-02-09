@@ -229,6 +229,24 @@ interface MealPlanData {
   tags: string[];
 }
 
+// Helper function to compute total nutrition from meals
+const getTotalNutrition = (plan: MealPlanData) => {
+  return plan.meals.reduce(
+    (total, meal) => {
+      if (meal.nutrition) {
+        return {
+          calories: total.calories + meal.nutrition.calories,
+          protein: total.protein + meal.nutrition.protein,
+          carbs: total.carbs + meal.nutrition.carbs,
+          fat: total.fat + meal.nutrition.fat,
+        };
+      }
+      return total;
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+};
+
 const SAMPLE_MEAL_PLANS: MealPlanData[] = [
   {
     title: "Balanced Day",
@@ -1887,35 +1905,44 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 Browse Meal Plans
               </h2>
               <div className="space-y-2">
-                {filteredMealPlans.map((plan, index) => (
-                  <Card 
-                    key={index} 
-                    className="hover-elevate cursor-pointer"
-                    data-testid={`card-meal-plan-${index}`}
-                    onClick={() => setExpandedPlan(expandedPlan === index ? null : index)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-foreground">{plan.title}</h3>
-                            {expandedPlan === index ? (
-                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                            )}
+                {filteredMealPlans.map((plan, index) => {
+                  const totalNutrition = plan.meals.some(m => m.nutrition) ? getTotalNutrition(plan) : null;
+                  
+                  return (
+                    <Card 
+                      key={index} 
+                      className="hover-elevate cursor-pointer"
+                      data-testid={`card-meal-plan-${index}`}
+                      onClick={() => setExpandedPlan(expandedPlan === index ? null : index)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-foreground">{plan.title}</h3>
+                              {expandedPlan === index ? (
+                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {plan.description}
+                            </p>
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {plan.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {totalNutrition && (
+                                <Badge variant="secondary" className="text-xs gap-1">
+                                  <Zap className="w-3 h-3" />
+                                  {totalNutrition.calories} kcal
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {plan.description}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {plan.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
                         <Button 
                           size="sm" 
                           variant={isMealPlanSaved(plan.title) ? "secondary" : "outline"}
@@ -1965,6 +1992,27 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                   {meal.prepTime} min · {meal.nutrition.calories} kcal
                                 </span>
                               </div>
+                              
+                              {meal.nutrition && (
+                                <div className="grid grid-cols-4 gap-2 text-xs">
+                                  <div className="text-center">
+                                    <div className="font-medium text-foreground">{meal.nutrition.calories}</div>
+                                    <div className="text-muted-foreground">kcal</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="font-medium text-foreground">{meal.nutrition.protein}g</div>
+                                    <div className="text-muted-foreground">protein</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="font-medium text-foreground">{meal.nutrition.carbs}g</div>
+                                    <div className="text-muted-foreground">carbs</div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="font-medium text-foreground">{meal.nutrition.fat}g</div>
+                                    <div className="text-muted-foreground">fat</div>
+                                  </div>
+                                </div>
+                              )}
                               
                               {expandedMeal === `${index}-${mealIdx}` && (
                                 <div className="mt-3 space-y-3">
@@ -2066,7 +2114,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       )}
                     </CardContent>
                   </Card>
-                ))}
+                );
+                })}
               </div>
             </div>
           </TabsContent>
