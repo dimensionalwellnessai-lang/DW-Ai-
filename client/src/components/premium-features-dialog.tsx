@@ -146,11 +146,34 @@ export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDia
               Premium features are purely optional convenience tools.
             </p>
           </div>
+
+          {/* App Tour CTA */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 text-center space-y-3">
+              <Sparkles className="w-6 h-6 text-primary mx-auto" />
+              <div>
+                <h4 className="font-medium text-foreground">New to DW.ai?</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Take a quick tour to learn about all the free features available to you
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+        <DialogFooter className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              onOpenChange(false);
+              window.location.href = '/app-tour';
+            }}
+            data-testid="button-take-tour"
+          >
+            Take App Tour
+          </Button>
+          <Button variant="default" onClick={() => onOpenChange(false)}>
+            Continue
           </Button>
         </DialogFooter>
       </DialogContent>
