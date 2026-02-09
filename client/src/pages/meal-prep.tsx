@@ -1905,44 +1905,44 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 Browse Meal Plans
               </h2>
               <div className="space-y-2">
-                {filteredMealPlans.map((plan, index) => (
-                  <Card 
-                    key={index} 
-                    className="hover-elevate cursor-pointer"
-                    data-testid={`card-meal-plan-${index}`}
-                    onClick={() => setExpandedPlan(expandedPlan === index ? null : index)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-foreground">{plan.title}</h3>
-                            {expandedPlan === index ? (
-                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {plan.description}
-                          </p>
-                          <div className="flex flex-wrap gap-1 items-center">
-                            {plan.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {plan.meals.some(m => m.nutrition) && (() => {
-                              const totalNutrition = getTotalNutrition(plan);
-                              return (
+                {filteredMealPlans.map((plan, index) => {
+                  const totalNutrition = plan.meals.some(m => m.nutrition) ? getTotalNutrition(plan) : null;
+                  
+                  return (
+                    <Card 
+                      key={index} 
+                      className="hover-elevate cursor-pointer"
+                      data-testid={`card-meal-plan-${index}`}
+                      onClick={() => setExpandedPlan(expandedPlan === index ? null : index)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-foreground">{plan.title}</h3>
+                              {expandedPlan === index ? (
+                                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {plan.description}
+                            </p>
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {plan.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {totalNutrition && (
                                 <Badge variant="secondary" className="text-xs gap-1">
                                   <Zap className="w-3 h-3" />
                                   {totalNutrition.calories} kcal
                                 </Badge>
-                              );
-                            })()}
+                              )}
+                            </div>
                           </div>
-                        </div>
                         <Button 
                           size="sm" 
                           variant={isMealPlanSaved(plan.title) ? "secondary" : "outline"}
@@ -2107,7 +2107,8 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       )}
                     </CardContent>
                   </Card>
-                ))}
+                );
+                })}
               </div>
             </div>
           </TabsContent>
