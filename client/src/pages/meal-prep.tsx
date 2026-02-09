@@ -227,13 +227,25 @@ interface MealPlanData {
     };
   }[];
   tags: string[];
-  totalNutrition?: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  };
 }
+
+// Helper function to compute total nutrition from meals
+const getTotalNutrition = (plan: MealPlanData) => {
+  return plan.meals.reduce(
+    (total, meal) => {
+      if (meal.nutrition) {
+        return {
+          calories: total.calories + meal.nutrition.calories,
+          protein: total.protein + meal.nutrition.protein,
+          carbs: total.carbs + meal.nutrition.carbs,
+          fat: total.fat + meal.nutrition.fat,
+        };
+      }
+      return total;
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
+};
 
 const SAMPLE_MEAL_PLANS: MealPlanData[] = [
   {
@@ -278,12 +290,6 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
       }
     ],
     tags: ["balanced", "high-protein", "meal-prep-friendly"],
-    totalNutrition: {
-      calories: 1185,
-      protein: 88,
-      carbs: 99,
-      fat: 49
-    }
   },
   {
     title: "Quick & Easy",
@@ -327,12 +333,6 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
       }
     ],
     tags: ["quick", "beginner-friendly", "minimal-prep"],
-    totalNutrition: {
-      calories: 1015,
-      protein: 31,
-      carbs: 160,
-      fat: 32
-    }
   },
   {
     title: "High Protein",
@@ -376,12 +376,6 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
       }
     ],
     tags: ["high-protein", "muscle-building", "post-workout"],
-    totalNutrition: {
-      calories: 1120,
-      protein: 115,
-      carbs: 68,
-      fat: 40
-    }
   },
   {
     title: "Plant Power",
@@ -425,12 +419,6 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
       }
     ],
     tags: ["vegan", "plant-based", "high-fiber"],
-    totalNutrition: {
-      calories: 1230,
-      protein: 50,
-      carbs: 171,
-      fat: 40
-    }
   },
   {
     title: "Budget Friendly",
@@ -474,12 +462,6 @@ const SAMPLE_MEAL_PLANS: MealPlanData[] = [
       }
     ],
     tags: ["budget-friendly", "affordable", "pantry-staples"],
-    totalNutrition: {
-      calories: 1150,
-      protein: 49,
-      carbs: 198,
-      fat: 18
-    }
   },
 ];
 
@@ -1950,12 +1932,15 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                 {tag}
                               </Badge>
                             ))}
-                            {plan.totalNutrition && (
-                              <Badge variant="secondary" className="text-xs gap-1">
-                                <Zap className="w-3 h-3" />
-                                {plan.totalNutrition.calories} kcal
-                              </Badge>
-                            )}
+                            {plan.meals.some(m => m.nutrition) && (() => {
+                              const totalNutrition = getTotalNutrition(plan);
+                              return (
+                                <Badge variant="secondary" className="text-xs gap-1">
+                                  <Zap className="w-3 h-3" />
+                                  {totalNutrition.calories} kcal
+                                </Badge>
+                              );
+                            })()}
                           </div>
                         </div>
                         <Button 

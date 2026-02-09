@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +47,6 @@ const PREMIUM_FEATURES = [
 ];
 
 export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDialogProps) {
-  const [selectedTier, setSelectedTier] = useState<"free" | "premium">("free");
   const [, setLocation] = useLocation();
 
   const handleTakeTour = () => {
