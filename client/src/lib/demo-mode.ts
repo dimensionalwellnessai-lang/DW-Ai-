@@ -167,6 +167,7 @@ function createDemoCalendarEvents(): void {
     reminders: [15],
     recurring: true,
     recurrencePattern: "Mon, Wed, Fri",
+    recurrenceEndDate: null,
     relatedFoundationIds: [],
     tags: ["workout", "routine"],
   });
@@ -186,6 +187,7 @@ function createDemoCalendarEvents(): void {
     reminders: [5],
     recurring: true,
     recurrencePattern: "Daily",
+    recurrenceEndDate: null,
     relatedFoundationIds: [],
     tags: ["movement", "break"],
   });
@@ -205,6 +207,7 @@ function createDemoCalendarEvents(): void {
     reminders: [10],
     recurring: true,
     recurrencePattern: "Daily",
+    recurrenceEndDate: null,
     relatedFoundationIds: [],
     tags: ["journaling", "mindfulness"],
   });
@@ -226,6 +229,7 @@ function createDemoCalendarEvents(): void {
     reminders: [60],
     recurring: true,
     recurrencePattern: "Weekly on Sunday",
+    recurrenceEndDate: null,
     relatedFoundationIds: [],
     tags: ["meal-prep", "nutrition"],
   });

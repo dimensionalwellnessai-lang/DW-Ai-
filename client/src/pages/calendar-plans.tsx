@@ -278,6 +278,7 @@ export function CalendarPlansPage() {
         reminders: [],
         recurring: false,
         recurrencePattern: null,
+        recurrenceEndDate: null,
         relatedFoundationIds: [],
         tags: event.dimensionTags || [],
       });
@@ -515,6 +516,7 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
   const [location, setLocation] = useState("");
   const [virtualLink, setVirtualLink] = useState("");
   const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly" | "monthly">("none");
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<string>("");
   const { toast } = useToast();
 
   const handleSave = () => {
@@ -546,6 +548,7 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
       reminders: [],
       recurring: recurrence !== "none",
       recurrencePattern: recurrence !== "none" ? recurrence : null,
+      recurrenceEndDate: recurrence !== "none" && recurrenceEndDate ? recurrenceEndDate : null,
       relatedFoundationIds: [],
       tags: [],
     });
@@ -561,6 +564,7 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
     setLocation("");
     setVirtualLink("");
     setRecurrence("none");
+    setRecurrenceEndDate("");
 
     toast({
       title: "Event added",
@@ -687,6 +691,20 @@ function AddEventDialog({ open, onOpenChange, selectedDate, onSave }: AddEventDi
               </SelectContent>
             </Select>
           </div>
+
+          {recurrence !== "none" && (
+            <div className="space-y-2">
+              <Label htmlFor="recurrence-end-date">Repeat until (optional)</Label>
+              <Input
+                id="recurrence-end-date"
+                type="date"
+                value={recurrenceEndDate}
+                onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                min={format(selectedDate, "yyyy-MM-dd")}
+                data-testid="input-recurrence-end-date"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Dimension (optional)</Label>
@@ -826,6 +844,7 @@ function UploadDocDialog({ open, onOpenChange, selectedDate, onSave }: UploadDoc
           reminders: [],
           recurring: false,
           recurrencePattern: null,
+          recurrenceEndDate: null,
           relatedFoundationIds: [],
           tags: [],
         });

@@ -267,6 +267,7 @@ export function ChallengesPage() {
       reminders: [],
       recurring: false,
       recurrencePattern: null,
+      recurrenceEndDate: null,
       relatedFoundationIds: [],
       tags: ["challenge", selectedChallenge.category],
     });
@@ -483,6 +484,7 @@ export function ChallengesPage() {
                     reminders: [],
                     recurring: false,
                     recurrencePattern: null,
+                    recurrenceEndDate: null,
                     relatedFoundationIds: [],
                     tags: ["challenge", selectedAIPick.category],
                   });

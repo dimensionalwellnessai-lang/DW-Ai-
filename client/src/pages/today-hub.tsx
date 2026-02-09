@@ -43,7 +43,7 @@ import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial, useTutorialStart } from "@/contexts/tutorial-context";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 // Lazy load heavy components for better performance
 const WellnessSummary = lazy(() => import("@/components/wellness-summary").then(m => ({ default: m.WellnessSummary })));
@@ -101,6 +101,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
 export default function TodayHubPage() {
   useTutorialStart("today-hub", 1000);
   const [, navigate] = useLocation();
+  const { logout } = useAuth();
   const today = new Date();
   const dayOfWeek = today.getDay();
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -829,11 +830,8 @@ export default function TodayHubPage() {
                 className="w-full" 
                 size="sm" 
                 onClick={async () => {
-                  await apiRequest("POST", "/api/auth/logout");
-                  queryClient.setQueryData(["/api/auth/me"], null);
-                  queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                  await logout();
                   setMenuOpen(false);
-                  navigate("/login");
                 }}
                 data-testid="button-signout"
               >
