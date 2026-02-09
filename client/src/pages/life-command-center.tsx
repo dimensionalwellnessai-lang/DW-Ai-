@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
+import { PageHeader } from "@/components/page-header";
 import {
   Zap,
   Brain,
@@ -193,17 +194,18 @@ export default function LifeCommandCenter() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <PageHeader title="Home" showBack={false} />
       <div className="container max-w-7xl mx-auto p-4 space-y-6">
-        {/* Header */}
+        {/* Greeting */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-2 pt-6 pb-4"
+          className="text-center space-y-2 pt-2 pb-2"
         >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             {getTimeBasedGreeting(user?.firstName || user?.systemName)}
-          </h1>
-          <p className="text-muted-foreground">{todayDate}</p>
+          </h2>
+          <p className="text-muted-foreground text-sm">{todayDate}</p>
         </motion.div>
 
         {/* Welcome Banner */}
@@ -305,11 +307,10 @@ export default function LifeCommandCenter() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="today" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="goals">Goals</TabsTrigger>
             <TabsTrigger value="habits">Habits</TabsTrigger>
-            <TabsTrigger value="stats">Stats</TabsTrigger>
           </TabsList>
 
           {/* TODAY TAB */}
@@ -479,111 +480,7 @@ export default function LifeCommandCenter() {
             </Card>
           </TabsContent>
 
-          {/* STATS TAB */}
-          <TabsContent value="stats" className="space-y-6">
-            {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card 
-                onClick={() => navigate('/tracking')}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Water</p>
-                      <p className="text-2xl font-bold">{todayWater} oz</p>
-                    </div>
-                    <Droplets className="h-8 w-8 text-blue-500" />
-                  </div>
-                  <Progress value={(todayWater / 64) * 100} className="mt-2" />
-                </CardContent>
-              </Card>
-
-              <Card 
-                onClick={() => navigate('/tracking')}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Calories</p>
-                      <p className="text-2xl font-bold">{todayCalories}</p>
-                    </div>
-                    <Utensils className="h-8 w-8 text-orange-500" />
-                  </div>
-                  <Progress value={(todayCalories / 2000) * 100} className="mt-2" />
-                </CardContent>
-              </Card>
-
-              <Card 
-                onClick={() => navigate('/goals')}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Goals</p>
-                      <p className="text-2xl font-bold">{activeGoals.length}</p>
-                    </div>
-                    <Target className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                onClick={() => navigate('/habits')}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-              >
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Habits</p>
-                      <p className="text-2xl font-bold">{habits.filter((h: any) => h.isActive).length}</p>
-                    </div>
-                    <CheckCircle2 className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 8 Dimensions Status */}
-            <Card 
-              onClick={() => navigate('/life-blueprint')}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  8 Dimensions Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {(Object.keys(SWITCH_ICONS) as SwitchId[]).map((switchId) => {
-                    const Icon = SWITCH_ICONS[switchId];
-                    const colors = SWITCH_COLORS[switchId];
-                    const data = switchData[switchId];
-
-                    return (
-                      <div
-                        key={switchId}
-                        onClick={() => navigate(`/switchboard?focus=${switchId}`)}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                      >
-                        <div className={`p-2 rounded-lg ${colors.bg}`}>
-                          <Icon className={`h-4 w-4 ${colors.text}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm capitalize truncate">{switchId}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{data.status}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          
         </Tabs>
 
         {/* Quick Actions - Improved positioning */}

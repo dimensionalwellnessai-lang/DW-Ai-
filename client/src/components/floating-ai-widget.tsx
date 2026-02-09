@@ -10,8 +10,10 @@ export function FloatingAIWidget() {
   const [message, setMessage] = useState("");
   const [location, navigate] = useLocation();
 
-  // Don't show on /talk page
-  if (location === "/talk" || location.startsWith("/talk")) {
+  const hiddenPages = ["/talk", "/welcome", "/enhanced-onboarding", "/app-tour", "/login", "/reset-password"];
+  const shouldHide = hiddenPages.some(page => location === page || location.startsWith(page + "/") || location.startsWith(page + "?"));
+
+  if (shouldHide) {
     return null;
   }
 
@@ -32,7 +34,7 @@ export function FloatingAIWidget() {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+        className="fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
         size="icon"
         aria-label="Open AI assistant"
       >
@@ -42,7 +44,7 @@ export function FloatingAIWidget() {
   }
 
   return (
-    <Card className="fixed bottom-20 right-4 z-50 w-80 shadow-xl border">
+    <Card className="fixed bottom-24 right-4 z-50 w-80 shadow-xl border">
       <div className="flex items-center justify-between p-3 border-b bg-primary text-primary-foreground rounded-t-lg">
         <span className="font-medium">Ask DW</span>
         <div className="flex gap-1">
