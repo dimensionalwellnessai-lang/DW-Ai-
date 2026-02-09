@@ -91,6 +91,7 @@ export function createTonightPlanBlock(): CreatedObject | null {
     reminders: [],
     recurring: false,
     recurrencePattern: null,
+    recurrenceEndDate: null,
     relatedFoundationIds: [],
     tags: ["momentum", "tonight"],
   });
@@ -151,6 +152,7 @@ export function createWeeklySkeleton(simple: boolean = false): CreatedObject | n
       reminders: [],
       recurring: false,
       recurrencePattern: null,
+      recurrenceEndDate: null,
       relatedFoundationIds: [],
       tags: ["momentum", "weekly", "anchor"],
     });
@@ -210,6 +212,7 @@ export function createNextBestStepObject(rule: NextStepRule): CreatedObject | nu
         reminders: [],
         recurring: false,
         recurrencePattern: null,
+        recurrenceEndDate: null,
         relatedFoundationIds: [],
         tags: ["work", "productivity", "momentum"],
       });

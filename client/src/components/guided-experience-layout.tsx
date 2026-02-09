@@ -132,6 +132,7 @@ export function GuidedExperienceLayout({
       reminders: [],
       recurring: false,
       recurrencePattern: null,
+      recurrenceEndDate: null,
       relatedFoundationIds: [],
       tags: selectedItem.tags || [selectedItem.category],
     });

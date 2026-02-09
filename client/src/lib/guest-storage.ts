@@ -218,6 +218,7 @@ export interface CalendarEvent {
   reminders: number[];
   recurring: boolean;
   recurrencePattern: string | null;
+  recurrenceEndDate: string | null;
   relatedFoundationIds: string[];
   tags: string[];
   createdAt: number;

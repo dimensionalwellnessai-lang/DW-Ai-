@@ -208,6 +208,7 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
       reminders: [],
       recurring: false,
       recurrencePattern: null,
+      recurrenceEndDate: null,
       relatedFoundationIds: [],
       tags: [type, "pause-flow"],
     });
