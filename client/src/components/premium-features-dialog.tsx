@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, Download, Link as LinkIcon, Database } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface PremiumFeaturesDialogProps {
   open: boolean;
@@ -48,6 +49,12 @@ const PREMIUM_FEATURES = [
 
 export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDialogProps) {
   const [selectedTier, setSelectedTier] = useState<"free" | "premium">("free");
+  const [, setLocation] = useLocation();
+
+  const handleTakeTour = () => {
+    onOpenChange(false);
+    setLocation('/app-tour');
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,10 +171,7 @@ export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDia
         <DialogFooter className="flex gap-2">
           <Button 
             variant="outline" 
-            onClick={() => {
-              onOpenChange(false);
-              window.location.href = '/app-tour';
-            }}
+            onClick={handleTakeTour}
             data-testid="button-take-tour"
           >
             Take App Tour
