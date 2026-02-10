@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, Download, Link as LinkIcon, Database } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface PremiumFeaturesDialogProps {
   open: boolean;
@@ -47,7 +47,12 @@ const PREMIUM_FEATURES = [
 ];
 
 export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDialogProps) {
-  const [selectedTier, setSelectedTier] = useState<"free" | "premium">("free");
+  const [, setLocation] = useLocation();
+
+  const handleTakeTour = () => {
+    onOpenChange(false);
+    setLocation('/app-tour');
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,11 +151,31 @@ export function PremiumFeaturesDialog({ open, onOpenChange }: PremiumFeaturesDia
               Premium features are purely optional convenience tools.
             </p>
           </div>
+
+          {/* App Tour CTA */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 text-center space-y-3">
+              <Sparkles className="w-6 h-6 text-primary mx-auto" />
+              <div>
+                <h4 className="font-medium text-foreground">New to DW.ai?</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Take a quick tour to learn about all the free features available to you
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+        <DialogFooter className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleTakeTour}
+            data-testid="button-take-tour"
+          >
+            Take App Tour
+          </Button>
+          <Button variant="default" onClick={() => onOpenChange(false)}>
+            Continue
           </Button>
         </DialogFooter>
       </DialogContent>

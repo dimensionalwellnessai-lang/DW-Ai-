@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Map } from "lucide-react";
+import { Check, Map, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
 
@@ -44,6 +44,10 @@ export default function SubscriptionPage() {
   const handleTourSkip = () => {
     skipTour();
     setLocation('/');
+  };
+
+  const handleAppTour = () => {
+    setLocation('/app-tour');
   };
 
   return (
@@ -200,7 +204,7 @@ export default function SubscriptionPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-center"
+          className="text-center space-y-3"
         >
           <Button 
             variant="ghost" 
@@ -209,6 +213,16 @@ export default function SubscriptionPage() {
           >
             Maybe Later
           </Button>
+          <div className="flex items-center justify-center">
+            <Button 
+              variant="outline" 
+              onClick={handleAppTour}
+              className="gap-2"
+            >
+              <PlayCircle className="w-4 h-4" />
+              Take the App Tour
+            </Button>
+          </div>
         </motion.div>
       </div>
 
