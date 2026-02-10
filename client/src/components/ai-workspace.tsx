@@ -724,7 +724,7 @@ export function AIWorkspace() {
     } else if (allMessages.length > 1) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length, optimisticMessages.length, conversationVersion, hasScrolledInitial]);
+  }, [messages.length, optimisticMessages.length, conversationVersion, activeDbConversationId, hasScrolledInitial]);
 
   // Auto-save chat draft as user types (debounced)
   useEffect(() => {
@@ -1217,10 +1217,6 @@ export function AIWorkspace() {
       setActiveDbConversationId(convo.id);
       // Clear optimistic messages when switching conversations
       setOptimisticMessages([]);
-      // Scroll to bottom after conversation loads
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
     } else {
       setActiveConversation(convo.id);
       setConversationVersion(v => v + 1);
