@@ -341,7 +341,7 @@ export function CalendarPlansPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-1 mb-2">
               {WEEKDAYS.map((day) => (
                 <div
                   key={day}
