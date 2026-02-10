@@ -298,19 +298,27 @@ export function CalendarPlansPage() {
       <PageHeader 
         title="Calendar" 
         rightContent={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setCsvImportOpen(true)} 
               data-testid="button-csv-import"
+              className="gap-1.5"
+              aria-label="Import CSV"
             >
-              <Upload className="h-4 w-4 mr-1" />
-              Import CSV
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Import CSV</span>
             </Button>
-            <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
-              <Plus className="h-4 w-4 mr-1" />
-              Add
+            <Button 
+              size="sm" 
+              onClick={() => setAddEventOpen(true)} 
+              data-testid="button-add-event"
+              className="gap-1.5"
+              aria-label="Add"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add</span>
             </Button>
           </div>
         }
