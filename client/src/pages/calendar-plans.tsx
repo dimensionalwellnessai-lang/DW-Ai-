@@ -325,41 +325,44 @@ export function CalendarPlansPage() {
       />
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 w-full">
-        <div className="flex-1 p-4 border-b lg:border-b-0 lg:border-r overflow-auto min-w-0">
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              data-testid="button-prev-month"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h2 className="font-display font-semibold text-lg text-foreground">
-              {format(currentMonth, "MMMM yyyy")}
-            </h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              data-testid="button-next-month"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {WEEKDAYS.map((day) => (
-              <div
-                key={day}
-                className="text-center text-xs font-medium text-muted-foreground py-2"
+        <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r min-w-0">
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                data-testid="button-prev-month"
               >
-                {day}
-              </div>
-            ))}
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <h2 className="font-display font-semibold text-lg text-foreground">
+                {format(currentMonth, "MMMM yyyy")}
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                data-testid="button-next-month"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {WEEKDAYS.map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-xs font-medium text-muted-foreground py-2"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
+          <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
+            <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, idx) => {
               const dayEvents = getEventsForDay(day);
               const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -394,6 +397,7 @@ export function CalendarPlansPage() {
                 </button>
               );
             })}
+            </div>
           </div>
         </div>
 
