@@ -871,10 +871,12 @@ export function AIWorkspace() {
                     { role: "assistant", content: streamedResponse, timestamp: Date.now() }
                   ]);
                 } else if (!isUserAuthenticated) {
+                  // For guests, check if we still have an active conversation before updating
                   const conv = getActiveConversation();
                   if (conv && conv.messages.length > 0) {
                     const lastMsg = conv.messages[conv.messages.length - 1];
-                    if (lastMsg.role === "assistant") {
+                    // Only update if the last message is an assistant message (not aborted/switched)
+                    if (lastMsg.role === "assistant" && lastMsg.content === "") {
                       lastMsg.content = streamedResponse;
                       setConversationVersion(v => v + 1);
                     }
@@ -903,6 +905,7 @@ export function AIWorkspace() {
                       const conv = getActiveConversation();
                       if (conv && conv.messages.length > 0) {
                         const lastMsg = conv.messages[conv.messages.length - 1];
+                        // Only update if it's an assistant message that's being streamed (empty or partial)
                         if (lastMsg.role === "assistant") {
                           lastMsg.content = streamedResponse;
                           setConversationVersion(v => v + 1);
@@ -1265,6 +1268,7 @@ export function AIWorkspace() {
       if (activeStreamAbortController.current) {
         activeStreamAbortController.current.abort();
         activeStreamAbortController.current = null;
+        activeStreamConversationId.current = undefined;
       }
       
       setActiveDbConversationId(convo.id);
@@ -1273,6 +1277,13 @@ export function AIWorkspace() {
       // Reset scroll state for the new conversation
       setHasScrolledInitial(false);
     } else {
+      // Abort any active stream for guest users too
+      if (activeStreamAbortController.current) {
+        activeStreamAbortController.current.abort();
+        activeStreamAbortController.current = null;
+        activeStreamConversationId.current = undefined;
+      }
+      
       setActiveConversation(convo.id);
       setConversationVersion(v => v + 1);
       // Reset scroll state for the new conversation
