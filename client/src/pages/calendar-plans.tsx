@@ -353,7 +353,7 @@ export function CalendarPlansPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
             <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, idx) => {
               const dayEvents = getEventsForDay(day);
