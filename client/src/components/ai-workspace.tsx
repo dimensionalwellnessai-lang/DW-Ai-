@@ -625,6 +625,9 @@ export function AIWorkspace() {
   
   const [isTyping, setIsTyping] = useState(false);
   
+  // Track optimistic messages for authenticated users (user message added immediately, before AI responds)
+  const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesStartRef = useRef<HTMLDivElement>(null);
   const [hasScrolledInitial, setHasScrolledInitial] = useState(false);
@@ -781,9 +784,6 @@ export function AIWorkspace() {
     },
   });
 
-  // Track optimistic messages for authenticated users (user message added immediately, before AI responds)
-  const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
-  
   const chatMutation = useMutation({
     mutationFn: async ({ message, userMsg, conversationId, documentIds, messagesOverride }: { 
       message: string; 
