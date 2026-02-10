@@ -724,7 +724,7 @@ export function AIWorkspace() {
     } else if (allMessages.length > 1) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length, optimisticMessages.length, conversationVersion, activeDbConversationId, hasScrolledInitial]);
+  }, [messages, optimisticMessages, conversationVersion, activeDbConversationId, hasScrolledInitial]);
 
   // Auto-save chat draft as user types (debounced)
   useEffect(() => {
