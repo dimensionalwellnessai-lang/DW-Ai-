@@ -710,15 +710,18 @@ export function AIWorkspace() {
   }, []);
 
   useEffect(() => {
+    // Combine messages and optimistic messages for scroll calculation
+    const allMessages = [...messages, ...optimisticMessages];
+    
     // For the first message (initial DW greeting), scroll to the top so user sees it
     // For subsequent messages, scroll to bottom
-    if (messages.length === 1 && !hasScrolledInitial) {
+    if (allMessages.length === 1 && !hasScrolledInitial) {
       messagesStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       setHasScrolledInitial(true);
-    } else if (messages.length > 1) {
+    } else if (allMessages.length > 1) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length, conversationVersion, hasScrolledInitial]);
+  }, [messages.length, optimisticMessages.length, conversationVersion, hasScrolledInitial]);
 
   // Auto-save chat draft as user types (debounced)
   useEffect(() => {
@@ -925,9 +928,11 @@ export function AIWorkspace() {
             id: conversationId,
             messages: updatedMessages,
           });
+          // Wait for refetch to complete before clearing optimistic messages
+          await refetchDbConversations();
+          // Clear optimistic messages after refetch completes
+          setOptimisticMessages([]);
         }
-        // Clear optimistic messages after successful save
-        setOptimisticMessages([]);
       }
       // For guests, the message was already added and updated during streaming
       // so we don't need to add it again here
@@ -1210,6 +1215,12 @@ export function AIWorkspace() {
   const handleSelectConversation = (convo: GuestConversation | Conversation) => {
     if (isUserAuthenticated) {
       setActiveDbConversationId(convo.id);
+      // Clear optimistic messages when switching conversations
+      setOptimisticMessages([]);
+      // Scroll to bottom after conversation loads
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } else {
       setActiveConversation(convo.id);
       setConversationVersion(v => v + 1);
