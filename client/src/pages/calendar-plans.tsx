@@ -305,6 +305,7 @@ export function CalendarPlansPage() {
               onClick={() => setCsvImportOpen(true)} 
               data-testid="button-csv-import"
               className="gap-1.5"
+              aria-label="Import CSV"
             >
               <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">Import CSV</span>
@@ -314,6 +315,7 @@ export function CalendarPlansPage() {
               onClick={() => setAddEventOpen(true)} 
               data-testid="button-add-event"
               className="gap-1.5"
+              aria-label="Add"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Add</span>
