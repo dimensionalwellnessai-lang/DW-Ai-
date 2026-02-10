@@ -928,9 +928,7 @@ export function AIWorkspace() {
             id: conversationId,
             messages: updatedMessages,
           });
-          // Wait for refetch to complete before clearing optimistic messages
-          await refetchDbConversations();
-          // Clear optimistic messages after refetch completes
+          // Clear optimistic messages after the conversation has been updated
           setOptimisticMessages([]);
         }
       }
