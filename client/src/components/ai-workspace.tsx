@@ -628,6 +628,10 @@ export function AIWorkspace() {
   // Track optimistic messages for authenticated users (user message added immediately, before AI responds)
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   
+  // Track the active streaming request to allow cancellation
+  const activeStreamAbortController = useRef<AbortController | null>(null);
+  const activeStreamConversationId = useRef<string | undefined>(undefined);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesStartRef = useRef<HTMLDivElement>(null);
   const [hasScrolledInitial, setHasScrolledInitial] = useState(false);
@@ -795,6 +799,16 @@ export function AIWorkspace() {
       const lifeContext = buildLifeSystemContext();
       const energyContext = getEnergyContextForAPI();
       
+      // Cancel any existing stream before starting a new one
+      if (activeStreamAbortController.current) {
+        activeStreamAbortController.current.abort();
+      }
+      
+      // Create new AbortController for this request
+      const abortController = new AbortController();
+      activeStreamAbortController.current = abortController;
+      activeStreamConversationId.current = conversationId;
+      
       // Include the user message we just added in the conversation history
       const currentMessages = messagesOverride 
         ? [...messagesOverride, userMsg]
@@ -822,6 +836,7 @@ export function AIWorkspace() {
           energyContext,
           documentIds: documentIds || [],
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok || !response.body) {
@@ -836,72 +851,92 @@ export function AIWorkspace() {
       let updateCounter = 0;
       const UPDATE_FREQUENCY = 3; // Update UI every 3 chunks to reduce re-renders
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") {
-              // Final update with complete response
-              if (isUserAuthenticated) {
-                setOptimisticMessages([
-                  userMsg,
-                  { role: "assistant", content: streamedResponse, timestamp: Date.now() }
-                ]);
-              } else {
-                const conv = getActiveConversation();
-                if (conv && conv.messages.length > 0) {
-                  const lastMsg = conv.messages[conv.messages.length - 1];
-                  if (lastMsg.role === "assistant") {
-                    lastMsg.content = streamedResponse;
-                    setConversationVersion(v => v + 1);
-                  }
-                }
-              }
-              break;
-            }
-
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                streamedResponse += parsed.content;
-                updateCounter++;
-                
-                // Update UI periodically, not on every chunk
-                if (updateCounter >= UPDATE_FREQUENCY) {
-                  updateCounter = 0;
-                  if (isUserAuthenticated) {
-                    setOptimisticMessages([
-                      userMsg,
-                      { role: "assistant", content: streamedResponse, timestamp: Date.now() }
-                    ]);
-                  } else {
-                    // For guests, update the last assistant message in the conversation
-                    const conv = getActiveConversation();
-                    if (conv && conv.messages.length > 0) {
-                      const lastMsg = conv.messages[conv.messages.length - 1];
-                      if (lastMsg.role === "assistant") {
-                        lastMsg.content = streamedResponse;
-                        setConversationVersion(v => v + 1);
-                      }
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              if (data === "[DONE]") {
+                // Final update with complete response
+                // Only update if this conversation is still active
+                if (isUserAuthenticated && activeStreamConversationId.current === conversationId) {
+                  setOptimisticMessages([
+                    userMsg,
+                    { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                  ]);
+                } else if (!isUserAuthenticated) {
+                  const conv = getActiveConversation();
+                  if (conv && conv.messages.length > 0) {
+                    const lastMsg = conv.messages[conv.messages.length - 1];
+                    if (lastMsg.role === "assistant") {
+                      lastMsg.content = streamedResponse;
+                      setConversationVersion(v => v + 1);
                     }
                   }
                 }
-              } else if (parsed.metadata) {
-                metadata = parsed.metadata;
-              } else if (parsed.error) {
-                throw new Error(parsed.error);
+                break;
               }
-            } catch (e) {
-              console.error("Failed to parse SSE data:", e);
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  streamedResponse += parsed.content;
+                  updateCounter++;
+                  
+                  // Update UI periodically, not on every chunk
+                  if (updateCounter >= UPDATE_FREQUENCY) {
+                    updateCounter = 0;
+                    // Only update if this conversation is still active
+                    if (isUserAuthenticated && activeStreamConversationId.current === conversationId) {
+                      setOptimisticMessages([
+                        userMsg,
+                        { role: "assistant", content: streamedResponse, timestamp: Date.now() }
+                      ]);
+                    } else if (!isUserAuthenticated) {
+                      // For guests, update the last assistant message in the conversation
+                      const conv = getActiveConversation();
+                      if (conv && conv.messages.length > 0) {
+                        const lastMsg = conv.messages[conv.messages.length - 1];
+                        if (lastMsg.role === "assistant") {
+                          lastMsg.content = streamedResponse;
+                          setConversationVersion(v => v + 1);
+                        }
+                      }
+                    }
+                  }
+                } else if (parsed.metadata) {
+                  metadata = parsed.metadata;
+                } else if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+              } catch (e) {
+                console.error("Failed to parse SSE data:", e);
+              }
             }
           }
         }
+      } catch (error: any) {
+        // If aborted, don't throw - just exit gracefully
+        if (error.name === 'AbortError') {
+          return { 
+            data: { 
+              response: "", 
+              actionsTaken: [],
+              syncSessionId: undefined 
+            }, 
+            userMsg, 
+            conversationId, 
+            messagesOverride,
+            aborted: true
+          };
+        }
+        throw error;
       }
 
       return { 
@@ -912,10 +947,17 @@ export function AIWorkspace() {
         }, 
         userMsg, 
         conversationId, 
-        messagesOverride 
+        messagesOverride,
+        aborted: false
       };
     },
-    onSuccess: async ({ data, userMsg, conversationId, messagesOverride }) => {
+    onSuccess: async ({ data, userMsg, conversationId, messagesOverride, aborted }) => {
+      // If the request was aborted, don't process the results
+      if (aborted) {
+        setIsTyping(false);
+        return;
+      }
+      
       const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now() };
       
       if (isUserAuthenticated) {
@@ -957,7 +999,14 @@ export function AIWorkspace() {
       setIsTyping(false);
       setPendingDocumentIds([]);
     },
-    onError: () => {
+    onError: (error: any) => {
+      // If the request was aborted (user switched conversations), don't show error toast
+      if (error.name === 'AbortError') {
+        setIsTyping(false);
+        setPendingDocumentIds([]);
+        return;
+      }
+      
       // Clear optimistic messages on error
       setOptimisticMessages([]);
       toast({
@@ -1212,12 +1261,22 @@ export function AIWorkspace() {
 
   const handleSelectConversation = (convo: GuestConversation | Conversation) => {
     if (isUserAuthenticated) {
+      // Abort any active stream before switching conversations
+      if (activeStreamAbortController.current) {
+        activeStreamAbortController.current.abort();
+        activeStreamAbortController.current = null;
+      }
+      
       setActiveDbConversationId(convo.id);
       // Clear optimistic messages when switching conversations
       setOptimisticMessages([]);
+      // Reset scroll state for the new conversation
+      setHasScrolledInitial(false);
     } else {
       setActiveConversation(convo.id);
       setConversationVersion(v => v + 1);
+      // Reset scroll state for the new conversation
+      setHasScrolledInitial(false);
     }
     setHistoryOpen(false);
   };
