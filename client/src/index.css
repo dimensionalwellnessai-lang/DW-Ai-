@@ -21,6 +21,10 @@
   --header-top: max(env(safe-area-inset-top, 0px), 24px);
   --header-total-height: calc(var(--header-top) + var(--header-height));
   
+  /* Navigation elements */
+  --tabs-height: 48px; /* h-12 = 48px */
+  --search-bar-height: 65px; /* Approximate: input (40px) + py-3 padding (24px) + border */
+  
   /* Bottom nav dimensions */
   --bottom-nav-height: 56px; /* h-14 = 56px */
   --bottom-nav-padding: max(env(safe-area-inset-bottom, 0px), 32px);
