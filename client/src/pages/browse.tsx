@@ -619,7 +619,7 @@ ${contentList}`,
         ) : null}
       />
       
-      <div className="sticky top-0 z-40 bg-background border-b">
+      <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "explore" | "saved" | "community")} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl">
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10" data-testid="tab-for-you">
@@ -682,7 +682,7 @@ ${contentList}`,
 
       {activeTab === "explore" && (
         <>
-          <div className="sticky top-[109px] z-30 bg-background border-b px-4 py-3">
+          <div className="sticky z-30 bg-background border-b px-4 py-3" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -705,7 +705,7 @@ ${contentList}`,
             </div>
           </div>
           
-          <div className="sticky top-[172px] z-30 bg-background border-b">
+          <div className="sticky z-30 bg-background border-b" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px) + var(--search-bar-height, 65px))' }}>
             <div className="overflow-x-auto">
               <div className="flex gap-2 px-4 pb-4 w-max min-w-full">
                 {aiRecommendations && (
@@ -1008,7 +1008,7 @@ ${contentList}`,
 
       {activeTab === "community" && (
         <div className="flex flex-col">
-          <div className="sticky top-[109px] z-30 bg-background border-b">
+          <div className="sticky z-30 bg-background border-b" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
             <div className="flex gap-2 px-4 py-3">
               <Button
                 variant={communityCategory === "groups" ? "default" : "outline"}

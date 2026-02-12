@@ -239,7 +239,7 @@ function AppContent() {
       <TutorialOverlay />
       <SyncTray />
       <FloatingAIWidget />
-      <div className={`app-content ${showBottomNav ? "pb-20" : ""}`}>
+      <div className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
             <Router />
