@@ -17,9 +17,9 @@
   --android-nav-bar: 48px;
   
   /* Header dimensions */
-  --header-height: 56px; /* 3.5rem = 56px for h-14 */
+  --header-height: 60px; /* py-3 (24px) + Button h-9 (36px) ≈ 60px */
   --header-top: max(env(safe-area-inset-top, 0px), 24px); /* 24px = Android status bar minimum */
-  --header-total-height: calc(var(--header-top) + var(--header-height)); /* ~80-103px depending on device */
+  --header-total-height: calc(var(--header-top) + var(--header-height)); /* ~84-107px depending on device */
   
   /* Navigation elements */
   --tabs-height: 48px; /* h-12 = 48px */
