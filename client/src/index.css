@@ -15,6 +15,16 @@
   --android-status-bar: 24px;
   /* Android nav bar height fallback */
   --android-nav-bar: 48px;
+  
+  /* Header dimensions */
+  --header-height: 56px; /* 3.5rem = 56px for h-14 */
+  --header-top: max(env(safe-area-inset-top, 0px), 24px);
+  --header-total-height: calc(var(--header-top) + var(--header-height));
+  
+  /* Bottom nav dimensions */
+  --bottom-nav-height: 56px; /* h-14 = 56px */
+  --bottom-nav-padding: max(env(safe-area-inset-bottom, 0px), 32px);
+  --bottom-nav-total-height: calc(var(--bottom-nav-height) + var(--bottom-nav-padding));
 }
 
 html, body {
