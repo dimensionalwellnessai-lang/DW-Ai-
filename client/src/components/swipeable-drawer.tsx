@@ -102,11 +102,12 @@ export function SwipeableDrawer({
     >
       <div 
         ref={drawerRef}
-        className={`absolute left-0 top-0 h-full ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 pb-20 flex flex-col touch-pan-y safe-area-bottom ${
+        className={`absolute left-0 top-0 h-full ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 flex flex-col touch-pan-y safe-area-bottom ${
           isDragging ? "" : "transition-transform duration-200"
         }`}
         style={{ 
           paddingTop: "12px",
+          paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)",
           transform: `translateX(${translateX}px)` 
         }}
         onClick={(e) => e.stopPropagation()}
@@ -129,7 +130,7 @@ export function SwipeableDrawer({
             <X className="h-5 w-5 text-foreground" />
           </Button>
         </div>
-        <div className="flex-1 overflow-y-auto flex flex-col pb-16">
+        <div className="flex-1 overflow-y-auto flex flex-col">
           {children}
         </div>
         <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
