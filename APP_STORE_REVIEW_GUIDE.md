@@ -2,23 +2,38 @@
 
 ## For App Reviewers
 
-### 🎯 How to Test Demo Mode
+### 🎯 How to Test Demo Mode (Recommended)
 
 1. **Open the App**
 2. **On Login Screen**: Tap "Try Demo Mode" button (blue box at top)
 3. **Explore Pre-Filled Content**:
-   - Chat with AI wellness assistant
+   - Chat with AI wellness assistant (new article-style chat interface!)
    - View calendar with scheduled workouts and routines
    - Check mood tracking data (7 days)
    - Review goals and habits
    - Explore personalized insights
 
-### 📱 Demo Credentials (Optional)
-If you need to reference sample credentials:
+### 📱 Demo Credentials (Alternative Login Method)
+If you prefer to log in with credentials instead of using demo mode:
 - **Email**: demo@dimensionalwellness.app
 - **Password**: DemoWellness2026!
 
-_(Note: Demo mode uses local storage - no server login required)_
+_(Note: Demo mode uses local storage - no server login required. Both methods provide full app access.)_
+
+---
+
+## 🆕 What's New in Version 1.1.1
+
+### DW Chat: Built-In Guide Experience
+- **Article-style responses** instead of chat bubbles
+- DW speaks as the app itself (first-person, integrated concierge)
+- Cleaner visual presentation in light and dark modes
+- All functionality preserved: voice input, text-to-speech, feedback
+
+### Other Improvements
+- AI wellness coach enhancements
+- Scrolling polish and stability fixes
+- Updated permissions messaging
 
 ---
 
@@ -168,4 +183,4 @@ A: Anyone building wellness habits, managing daily routines, tracking mood, or s
 
 **Built with care for reviewers and users alike** 💚
 
-_Last updated: January 27, 2026_
+_Last updated: February 14, 2026 (v1.1.1)_
