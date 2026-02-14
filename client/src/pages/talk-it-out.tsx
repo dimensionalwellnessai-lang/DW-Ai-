@@ -169,7 +169,7 @@ export function TalkItOutPage() {
               {message.role === "user" ? (
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
-                  <p className="font-body text-base leading-relaxed text-foreground/90">{message.content}</p>
+                  <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
                 </div>
               ) : (
                 <div className="space-y-3">

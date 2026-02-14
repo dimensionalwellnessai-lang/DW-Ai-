@@ -1,6 +1,6 @@
 # Dimensional Wellness - App Store Submission Changelog
 
-## Version 1.1.1 - DW Chat Refresh & Polish
+## Version 2.1.1 - DW Chat Refresh & Polish
 
 ### Release Date: February 14, 2026
 
@@ -21,7 +21,7 @@
 - Cleaner visual experience in both light and dark modes
 
 **Technical Details:**
-- Updated `/talk` page to article-style presentation
+- Updated DW Chat interface (routes: `/chat`, `/talk`) to article-style presentation
 - Removed chat bubble styling (rounded-3xl boxes)
 - Assistant messages styled as prose/article sections with subtle borders
 - User messages styled with left accent border for clarity
@@ -57,7 +57,7 @@
 
 ## 📝 App Store Release Notes (Copy-Ready)
 
-**What's New in Version 1.1.1:**
+**What's New in Version 2.1.1:**
 
 • DW chat now feels like a built-in guide—clean, article-style responses without chat bubbles.
 

@@ -22,7 +22,7 @@ _(Note: Demo mode uses local storage - no server login required. Both methods pr
 
 ---
 
-## 🆕 What's New in Version 1.1.1
+## 🆕 What's New in Version 2.1.1
 
 ### DW Chat: Built-In Guide Experience
 - **Article-style responses** instead of chat bubbles
@@ -183,4 +183,4 @@ A: Anyone building wellness habits, managing daily routines, tracking mood, or s
 
 **Built with care for reviewers and users alike** 💚
 
-_Last updated: February 14, 2026 (v1.1.1)_
+_Last updated: February 14, 2026 (v2.1.1)_

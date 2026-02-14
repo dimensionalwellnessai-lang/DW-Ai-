@@ -1793,7 +1793,7 @@ export function AIWorkspace() {
               );
             })()}
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div ref={messagesStartRef} />
                 {/* Combine DB/local messages with optimistic messages for display */}
                 {[...messages, ...optimisticMessages].map((message, index) => {
@@ -1810,19 +1810,20 @@ export function AIWorkspace() {
                   };
                   
                   return (
-                  <div
+                  <article
                     key={index}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
+                    className={`group ${
+                      message.role === "user" 
+                        ? "border-l-4 border-primary/40 pl-4 py-2" 
+                        : ""
+                    }`}
+                    data-testid={`message-${index}`}
                   >
-                    <div className={`max-w-[85%] min-w-0 ${message.role === "assistant" ? "space-y-0" : ""}`}>
-                      <div className={`flex items-start gap-1 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                    {message.role === "user" ? (
+                      <div className="space-y-1">
+                        <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
                         <div
-                          className={`px-4 py-3 rounded-2xl cursor-pointer select-none ${
-                            message.role === "user"
-                              ? "bg-primary text-primary-foreground glow-purple-sm"
-                              : "bg-muted text-foreground glass"
-                          }`}
-                          data-testid={`message-${index}`}
+                          className="cursor-pointer select-none"
                           onTouchStart={handleLongPressStart}
                           onTouchEnd={handleLongPressEnd}
                           onTouchCancel={handleLongPressEnd}
@@ -1834,7 +1835,7 @@ export function AIWorkspace() {
                             setLongPressMenuIndex(index);
                           }}
                         >
-                          <p className="text-sm leading-relaxed whitespace-pre-line break-words">
+                          <p className="font-body text-sm leading-relaxed text-foreground/90 whitespace-pre-line break-words">
                             {message.content}
                           </p>
                         </div>
@@ -1910,23 +1911,122 @@ export function AIWorkspace() {
                           isLoggedIn={!!user}
                         />
                       </div>
-                      {message.role === "assistant" && index > 0 && (
-                        <ChatFeedbackBar 
-                          messageId={`msg-${index}`} 
-                          onFeedback={handleFeedback} 
-                        />
-                      )}
-                    </div>
-                  </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {index === 0 && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Heart className="h-4 w-4 text-primary" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground">DW</p>
+                          </div>
+                        )}
+                        <div 
+                          className="prose prose-sm dark:prose-invert max-w-none cursor-pointer select-none"
+                          onTouchStart={handleLongPressStart}
+                          onTouchEnd={handleLongPressEnd}
+                          onTouchCancel={handleLongPressEnd}
+                          onMouseDown={handleLongPressStart}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setLongPressMenuIndex(index);
+                          }}
+                        >
+                          <p className="font-body text-sm leading-relaxed text-foreground whitespace-pre-line break-words">
+                            {message.content}
+                          </p>
+                        </div>
+                        {index > 0 && (
+                          <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                            <ChatFeedbackBar 
+                              messageId={`msg-${index}`} 
+                              onFeedback={handleFeedback} 
+                            />
+                            <MessageActions
+                              messageIndex={index}
+                              messageContent={message.content}
+                              isUserMessage={message.role === "user"}
+                              isOpen={longPressMenuIndex === index}
+                              onOpenChange={(open) => {
+                                if (!open) setLongPressMenuIndex(null);
+                              }}
+                              showTrigger={false}
+                              onEdit={(content) => {
+                                setEditingMessageIndex(index);
+                                setInput(content);
+                                inputRef.current?.focus();
+                                setLongPressMenuIndex(null);
+                              }}
+                              onDelete={() => {
+                                const updated = deleteMessageFromConversation(index);
+                                if (updated) {
+                                  setActiveConversationState(updated);
+                                  if (updated.messages.length === 0) {
+                                    clearActiveConversation();
+                                    setActiveConversationState(null);
+                                    setStartedFresh(true);
+                                  }
+                                }
+                                setLongPressMenuIndex(null);
+                              }}
+                              onAskFollowUp={(content) => {
+                                setInput(content);
+                                inputRef.current?.focus();
+                                setLongPressMenuIndex(null);
+                              }}
+                              onResend={(content) => {
+                                handleSendMessage(content);
+                                setLongPressMenuIndex(null);
+                              }}
+                              onThinkDeeper={(originalResponse) => {
+                                const thinkDeeperPrompt = `I'd like you to think more deeply about your last response. Can you expand on this with more detail, nuance, or alternative perspectives?\n\nYour previous response was: "${originalResponse.slice(0, 300)}${originalResponse.length > 300 ? '...' : ''}"`;
+                                handleSendMessage(thinkDeeperPrompt);
+                                setLongPressMenuIndex(null);
+                              }}
+                              onRegenerate={() => {
+                                const allMsgs = [...messages, ...optimisticMessages];
+                                const lastUserMsgIndex = allMsgs.map(m => m.role).lastIndexOf("user");
+                                if (lastUserMsgIndex >= 0 && index > lastUserMsgIndex) {
+                                  const lastUserMsg = allMsgs[lastUserMsgIndex].content;
+                                  let prunedMessages: ChatMessage[];
+                                  if (isUserAuthenticated && activeDbConversation) {
+                                    prunedMessages = (activeDbConversation.messages as ChatMessage[]).filter((_, i) => i !== index);
+                                    queryClient.setQueryData<Conversation[]>(["/api/conversations"], (old) =>
+                                      (old || []).map((c) =>
+                                        c.id === activeDbConversation.id ? { ...c, messages: prunedMessages } : c
+                                      )
+                                    );
+                                    updateDbConversationMutation.mutate({
+                                      id: activeDbConversation.id,
+                                      messages: prunedMessages,
+                                    });
+                                  } else {
+                                    prunedMessages = messages.filter((_, i) => i !== index);
+                                    const updated = deleteMessageFromConversation(index);
+                                    if (updated) {
+                                      setActiveConversationState(updated);
+                                    }
+                                  }
+                                  handleSendMessage(lastUserMsg, prunedMessages);
+                                }
+                                setLongPressMenuIndex(null);
+                              }}
+                              isLoggedIn={!!user}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
                   );
                 })}
                 {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Thinking...</span>
-                    </div>
-                  </div>
+                  <article className="flex items-center gap-3 py-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Thinking...</span>
+                  </article>
                 )}
                 <div ref={messagesEndRef} />
               </div>
