@@ -155,44 +155,55 @@ export function TalkItOutPage() {
       />
 
       <ScrollArea className="flex-1 overflow-auto">
-        <div className="space-y-6 max-w-2xl mx-auto py-4 px-4">
+        <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
           {messages.map((message, index) => (
-            <div
+            <article
               key={index}
-              className={`flex animate-fade-in-up ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`animate-fade-in-up ${
+                message.role === "user" 
+                  ? "border-l-4 border-primary/40 pl-4 py-2" 
+                  : ""
+              }`}
+              data-testid={`message-talk-${index}`}
             >
-              <div className={`max-w-[85%] ${message.role === "assistant" ? "space-y-0" : ""}`}>
-                <div
-                  className={`${
-                    message.role === "user"
-                      ? "bg-primary/90 text-primary-foreground px-5 py-3 rounded-3xl glow-purple-sm"
-                      : "bg-card glass px-5 py-4 rounded-3xl border dark:border-white/10"
-                  }`}
-                  data-testid={`message-talk-${index}`}
-                >
-                  <p className="font-body whitespace-pre-line leading-relaxed text-foreground">{message.content}</p>
+              {message.role === "user" ? (
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
+                  <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
                 </div>
-                {message.role === "assistant" && index > 0 && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
-                    <ChatFeedbackBar 
-                      messageId={`talk-${index}`} 
-                      onFeedback={handleFeedback} 
-                    />
+              ) : (
+                <div className="space-y-3">
+                  {index === 0 && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Heart className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">DW</p>
+                    </div>
+                  )}
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
                   </div>
-                )}
-              </div>
-            </div>
+                  {index > 0 && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                      <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
+                      <ChatFeedbackBar 
+                        messageId={`talk-${index}`} 
+                        onFeedback={handleFeedback} 
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </article>
           ))}
           {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-card px-5 py-4 rounded-3xl border">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm font-body">Listening...</span>
-                </div>
+            <article className="animate-fade-in-up">
+              <div className="flex items-center gap-3 py-3">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-body text-muted-foreground">Listening...</span>
               </div>
-            </div>
+            </article>
           )}
           <div ref={messagesEndRef} />
         </div>

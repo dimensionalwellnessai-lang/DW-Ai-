@@ -1,5 +1,74 @@
 # Dimensional Wellness - App Store Submission Changelog
 
+## Version 2.1.1 - DW Chat Refresh & Polish
+
+### Release Date: February 14, 2026
+
+---
+
+## 🎯 What's New in This Release
+
+### 1. **DW Chat: Built-In Guide Experience**
+**What Changed:**
+- DW chat now feels like a built-in guide—clean, article-style responses without chat bubbles
+- Assistant messages appear as flowing sections instead of left/right message boxes
+- First-person tone: DW speaks as the app itself, your personal wellness concierge
+- Maintains all existing functionality: message history, quick actions, voice input, text-to-speech, feedback
+
+**Why It Matters:**
+- More natural, less "chatbot" feeling
+- Better alignment with DW's identity as a calm, integrated life assistant
+- Cleaner visual experience in both light and dark modes
+
+**Technical Details:**
+- Updated DW Chat interface (routes: `/chat`, `/talk`) to article-style presentation
+- Removed chat bubble styling (rounded-3xl boxes)
+- Assistant messages styled as prose/article sections with subtle borders
+- User messages styled with left accent border for clarity
+- Dark mode fully supported
+
+---
+
+### 2. **AI Wellness Coach Improvements**
+**What's New:**
+- Smoother guidance flow with improved context awareness
+- Enhanced nervous system-aware responses
+- Better personalization based on energy and clarity states
+
+---
+
+### 3. **Demo Mode: Instant Access**
+**For Reviewers:**
+- "Try Demo Mode" on login screen provides instant access
+- Pre-filled wellness data showcases all features
+- Demo credentials: `demo@dimensionalwellness.app` / `DemoWellness2026!`
+- No server authentication required for demo exploration
+
+---
+
+### 4. **Stability & Polish**
+**Improvements:**
+- Scrolling polish in chat and calendar views
+- Updated permissions messaging for clarity
+- Performance optimizations across the app
+- UI consistency improvements
+
+---
+
+## 📝 App Store Release Notes (Copy-Ready)
+
+**What's New in Version 2.1.1:**
+
+• DW chat now feels like a built-in guide—clean, article-style responses without chat bubbles.
+
+• AI wellness coach improvements and smoother guidance.
+
+• Demo Mode: instant access with pre-filled wellness data for reviewers.
+
+• Stability fixes, scrolling polish, and updated permissions messaging.
+
+---
+
 ## Version 2.1.0 - iOS/Android Submission Fixes
 
 ### Release Date: January 27, 2026
