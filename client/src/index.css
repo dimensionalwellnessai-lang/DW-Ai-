@@ -40,7 +40,7 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
   /* Prevent horizontal scroll on iOS */
   overflow-x: hidden;
-  max-width: 100dvw;
+  width: 100%;
 }
 
 @layer base {
@@ -55,19 +55,20 @@ html, body {
 
 #root {
   height: 100%;
+  width: 100%;
   /* Ensure root also has background color */
   background-color: hsl(var(--background));
   /* Smooth transitions for theme changes */
   transition: background-color 0.3s ease;
   /* Prevent horizontal overflow */
   overflow-x: hidden;
-  max-width: 100dvw;
 }
 
 /* App Shell - Single source of safe area padding */
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
+  width: 100%;
   /* Apply safe area padding at the shell level */
   padding-top: max(env(safe-area-inset-top, 0px), var(--android-status-bar, 0px));
   padding-left: var(--sal);
@@ -77,10 +78,8 @@ html, body {
   background-color: hsl(var(--background));
   /* Smooth transitions for theme changes */
   transition: background-color 0.3s ease;
-  /* Prevent horizontal scroll and constrain width */
+  /* Prevent horizontal scroll */
   overflow-x: hidden;
-  max-width: 100dvw;
-  width: 100%;
   /* Establish positioning context */
   position: relative;
 }
@@ -88,14 +87,12 @@ html, body {
 /* Content area - container with safe area handling for pages that use PageHeader */
 .app-content {
   min-height: 100dvh;
+  width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   /* Ensure background color consistency */
   background-color: hsl(var(--background));
-  /* Prevent content width from exceeding viewport */
-  max-width: 100dvw;
-  width: 100%;
 }
 
 /* Pages that don't use PageHeader can apply this class for safe area */

@@ -119,7 +119,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
     <>
       {/* Header - sticky at top of content, below safe area handled by app-shell */}
       <header className="sticky top-0 flex items-center gap-2 px-3 py-3 border-b bg-background z-50" style={{ 
-        maxWidth: '100vw',
         width: '100%'
       }}>
         <div className="flex items-center gap-1">
