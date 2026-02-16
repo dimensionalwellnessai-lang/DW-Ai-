@@ -23,63 +23,119 @@ export function SwipeableDrawer({
   const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef(0);
+  const startY = useRef(0);
   const currentX = useRef(0);
+  const currentY = useRef(0);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (open) {
       setTranslateX(0);
+      isHorizontalSwipe.current = null;
     }
   }, [open]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
     currentX.current = e.touches[0].clientX;
+    currentY.current = e.touches[0].clientY;
+    isHorizontalSwipe.current = null;
     setIsDragging(true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
+    
     currentX.current = e.touches[0].clientX;
-    const diff = currentX.current - startX.current;
-    if (diff < 0) {
-      setTranslateX(diff);
+    currentY.current = e.touches[0].clientY;
+    
+    // Determine swipe direction on first move
+    if (isHorizontalSwipe.current === null) {
+      const diffX = Math.abs(currentX.current - startX.current);
+      const diffY = Math.abs(currentY.current - startY.current);
+      
+      // Only treat as horizontal swipe if horizontal movement is significantly larger
+      isHorizontalSwipe.current = diffX > diffY && diffX > 10;
+    }
+    
+    // Only apply translation for horizontal swipes
+    if (isHorizontalSwipe.current) {
+      const diff = currentX.current - startX.current;
+      if (diff < 0) {
+        setTranslateX(diff);
+      }
     }
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    const diff = currentX.current - startX.current;
-    if (diff < -80) {
-      onClose();
+    
+    // Only close if it was a horizontal swipe
+    if (isHorizontalSwipe.current) {
+      const diff = currentX.current - startX.current;
+      if (diff < -80) {
+        onClose();
+      } else {
+        setTranslateX(0);
+      }
     } else {
       setTranslateX(0);
     }
+    
+    isHorizontalSwipe.current = null;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     startX.current = e.clientX;
+    startY.current = e.clientY;
     currentX.current = e.clientX;
+    currentY.current = e.clientY;
+    isHorizontalSwipe.current = null;
     setIsDragging(true);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
+    
     currentX.current = e.clientX;
-    const diff = currentX.current - startX.current;
-    if (diff < 0) {
-      setTranslateX(diff);
+    currentY.current = e.clientY;
+    
+    // Determine swipe direction on first move
+    if (isHorizontalSwipe.current === null) {
+      const diffX = Math.abs(currentX.current - startX.current);
+      const diffY = Math.abs(currentY.current - startY.current);
+      
+      // Only treat as horizontal swipe if horizontal movement is significantly larger
+      isHorizontalSwipe.current = diffX > diffY && diffX > 10;
+    }
+    
+    // Only apply translation for horizontal swipes
+    if (isHorizontalSwipe.current) {
+      const diff = currentX.current - startX.current;
+      if (diff < 0) {
+        setTranslateX(diff);
+      }
     }
   };
 
   const handleMouseUp = () => {
     if (!isDragging) return;
     setIsDragging(false);
-    const diff = currentX.current - startX.current;
-    if (diff < -80) {
-      onClose();
+    
+    // Only close if it was a horizontal swipe
+    if (isHorizontalSwipe.current) {
+      const diff = currentX.current - startX.current;
+      if (diff < -80) {
+        onClose();
+      } else {
+        setTranslateX(0);
+      }
     } else {
       setTranslateX(0);
     }
+    
+    isHorizontalSwipe.current = null;
   };
 
   const handleMouseLeave = () => {
