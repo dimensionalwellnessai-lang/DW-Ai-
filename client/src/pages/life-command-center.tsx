@@ -240,21 +240,21 @@ export default function LifeCommandCenter() {
           </motion.div>
         )}
 
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Quick Stats Row - Compact Version */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card 
             onClick={() => navigate('/tracking')}
             className="cursor-pointer hover:bg-muted/50 transition-colors"
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Water</p>
-                  <p className="text-2xl font-bold">{todayWater} oz</p>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <Droplets className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Water</p>
+                  <p className="text-lg font-bold">{todayWater} oz</p>
                 </div>
-                <Droplets className="h-8 w-8 text-blue-500" />
               </div>
-              <Progress value={(todayWater / 64) * 100} className="mt-2" />
+              <Progress value={(todayWater / 64) * 100} className="mt-2 h-1" />
             </CardContent>
           </Card>
 
@@ -262,15 +262,15 @@ export default function LifeCommandCenter() {
             onClick={() => navigate('/tracking')}
             className="cursor-pointer hover:bg-muted/50 transition-colors"
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Calories</p>
-                  <p className="text-2xl font-bold">{todayCalories}</p>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <Utensils className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Calories</p>
+                  <p className="text-lg font-bold">{todayCalories}</p>
                 </div>
-                <Utensils className="h-8 w-8 text-orange-500" />
               </div>
-              <Progress value={(todayCalories / 2000) * 100} className="mt-2" />
+              <Progress value={(todayCalories / 2000) * 100} className="mt-2 h-1" />
             </CardContent>
           </Card>
 
@@ -278,13 +278,13 @@ export default function LifeCommandCenter() {
             onClick={() => navigate('/goals')}
             className="cursor-pointer hover:bg-muted/50 transition-colors"
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Goals</p>
-                  <p className="text-2xl font-bold">{activeGoals.length}</p>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-green-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Goals</p>
+                  <p className="text-lg font-bold">{activeGoals.length}</p>
                 </div>
-                <Target className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
@@ -293,13 +293,13 @@ export default function LifeCommandCenter() {
             onClick={() => navigate('/habits')}
             className="cursor-pointer hover:bg-muted/50 transition-colors"
           >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Habits</p>
-                  <p className="text-2xl font-bold">{habits.filter((h: any) => h.isActive).length}</p>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-purple-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Habits</p>
+                  <p className="text-lg font-bold">{habits.filter((h: any) => h.isActive).length}</p>
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -315,82 +315,89 @@ export default function LifeCommandCenter() {
 
           {/* TODAY TAB */}
           <TabsContent value="today" className="space-y-6">
-            {/* Focus Now Card */}
-            <Card 
-              onClick={focusNow.action}
-              className="cursor-pointer hover:shadow-lg transition-all border-2 border-primary/20"
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className={`p-4 rounded-xl ${focusNow.bg}`}>
-                    <focusNow.icon className={`h-8 w-8 ${focusNow.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">
-                      Focus Now
-                    </p>
-                    <h3 className="text-xl font-bold mt-1">{focusNow.title}</h3>
-                    <p className="text-muted-foreground mt-1">{focusNow.description}</p>
-                    {focusNow.time && (
-                      <Badge variant="outline" className="mt-2">
-                        {new Date(focusNow.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Badge>
-                    )}
-                  </div>
-                  <Sparkles className="h-6 w-6 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Today's Schedule */}
-            <Card onClick={() => navigate('/calendar')} className="cursor-pointer hover:bg-muted/50 transition-colors">
+            {/* Today's Schedule with integrated Focus Now */}
+            <Card className="hover:bg-muted/50 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   Today's Schedule
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Focus Now - Integrated at top of schedule */}
+                <div 
+                  onClick={focusNow.action}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      focusNow.action();
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Focus Now: Click to view recommended next action"
+                  className="cursor-pointer p-3 rounded-lg bg-primary/5 border border-primary/20 hover:border-primary/30 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${focusNow.bg}`}>
+                      <focusNow.icon className={`h-5 w-5 ${focusNow.color}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Focus Now
+                      </p>
+                      <h4 className="text-sm font-bold mt-0.5">{focusNow.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">{focusNow.description}</p>
+                    </div>
+                    {focusNow.time && (
+                      <Badge variant="outline" className="text-xs">
+                        {new Date(focusNow.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Schedule Events */}
                 {eventsLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : calendarEvents.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground mb-3">No events scheduled today</p>
+                    <div className="flex gap-2 justify-center">
+                      <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate('/calendar'); }}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Event
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate('/talk'); }}>
+                        Ask DW
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[300px]">
-                    {calendarEvents.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground mb-4">No events scheduled today</p>
-                        <div className="flex gap-2 justify-center">
-                          <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate('/calendar'); }}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Event
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate('/talk'); }}>
-                            Ask DW to suggest
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {calendarEvents.slice(0, 5).map((event: any) => (
-                          <div
-                            key={event.id}
-                            className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                          >
-                            <div className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                              {event.startTime || 'All day'}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium">{event.title}</p>
-                              {event.description && (
-                                <p className="text-sm text-muted-foreground">{event.description}</p>
-                              )}
-                            </div>
+                  <ScrollArea className="h-[250px]">
+                    <div className="space-y-2">
+                      {calendarEvents.slice(0, 5).map((event: any) => (
+                        <div
+                          key={event.id}
+                          onClick={() => navigate('/calendar')}
+                          className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 hover:bg-muted cursor-pointer transition-colors"
+                        >
+                          <div className="text-xs font-semibold text-muted-foreground min-w-[55px]">
+                            {event.startTime || 'All day'}
                           </div>
-                        ))}
-                      </div>
-                    )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{event.title}</p>
+                            {event.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">{event.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </ScrollArea>
                 )}
               </CardContent>

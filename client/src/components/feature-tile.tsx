@@ -1,6 +1,5 @@
 import { Link } from 'wouter';
 import { LucideIcon } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { useAILearningStore } from '@/stores/useAILearningStore';
 
 interface FeatureTileProps {
@@ -21,19 +20,17 @@ export function FeatureTile({ id, label, icon: Icon, path, onClick }: FeatureTil
 
   return (
     <Link href={path}>
-      <Card 
-        className="cursor-pointer hover:border-primary/50 transition-colors h-full"
+      <span 
+        className="cursor-pointer hover:scale-105 transition-transform active:scale-95 flex flex-col items-center text-center gap-2 p-2 no-underline block"
         onClick={handleClick}
       >
-        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Icon className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-xs font-medium text-foreground leading-tight">
-            {label}
-          </span>
-        </CardContent>
-      </Card>
+        <span className="p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors inline-block">
+          <Icon className="h-6 w-6 text-primary" />
+        </span>
+        <span className="text-xs font-medium text-foreground leading-tight w-full">
+          {label}
+        </span>
+      </span>
     </Link>
   );
 }
