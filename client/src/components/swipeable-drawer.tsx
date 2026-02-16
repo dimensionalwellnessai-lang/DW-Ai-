@@ -2,6 +2,10 @@ import { useRef, useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Swipe gesture thresholds
+const HORIZONTAL_SWIPE_THRESHOLD = 10; // Minimum horizontal movement to detect swipe
+const SWIPE_CLOSE_THRESHOLD = -80; // Minimum swipe distance to trigger close
+
 interface SwipeableDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -56,7 +60,7 @@ export function SwipeableDrawer({
       const diffY = Math.abs(currentY.current - startY.current);
       
       // Only treat as horizontal swipe if horizontal movement is significantly larger
-      isHorizontalSwipe.current = diffX > diffY && diffX > 10;
+      isHorizontalSwipe.current = diffX > diffY && diffX > HORIZONTAL_SWIPE_THRESHOLD;
     }
     
     // Only apply translation for horizontal swipes
@@ -74,7 +78,7 @@ export function SwipeableDrawer({
     // Only close if it was a horizontal swipe
     if (isHorizontalSwipe.current) {
       const diff = currentX.current - startX.current;
-      if (diff < -80) {
+      if (diff < SWIPE_CLOSE_THRESHOLD) {
         onClose();
       } else {
         setTranslateX(0);
@@ -107,7 +111,7 @@ export function SwipeableDrawer({
       const diffY = Math.abs(currentY.current - startY.current);
       
       // Only treat as horizontal swipe if horizontal movement is significantly larger
-      isHorizontalSwipe.current = diffX > diffY && diffX > 10;
+      isHorizontalSwipe.current = diffX > diffY && diffX > HORIZONTAL_SWIPE_THRESHOLD;
     }
     
     // Only apply translation for horizontal swipes
@@ -126,7 +130,7 @@ export function SwipeableDrawer({
     // Only close if it was a horizontal swipe
     if (isHorizontalSwipe.current) {
       const diff = currentX.current - startX.current;
-      if (diff < -80) {
+      if (diff < SWIPE_CLOSE_THRESHOLD) {
         onClose();
       } else {
         setTranslateX(0);
