@@ -327,7 +327,16 @@ export default function LifeCommandCenter() {
                 {/* Focus Now - Integrated at top of schedule */}
                 <div 
                   onClick={focusNow.action}
-                  className="cursor-pointer p-3 rounded-lg bg-primary/5 border border-primary/20 hover:border-primary/30 transition-all"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      focusNow.action();
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Focus Now: Click to view recommended next action"
+                  className="cursor-pointer p-3 rounded-lg bg-primary/5 border border-primary/20 hover:border-primary/30 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${focusNow.bg}`}>

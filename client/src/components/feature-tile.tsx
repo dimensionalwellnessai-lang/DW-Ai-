@@ -20,17 +20,17 @@ export function FeatureTile({ id, label, icon: Icon, path, onClick }: FeatureTil
 
   return (
     <Link href={path}>
-      <div 
-        className="cursor-pointer hover:scale-105 transition-transform active:scale-95 flex flex-col items-center text-center gap-2 p-2"
+      <span 
+        className="cursor-pointer hover:scale-105 transition-transform active:scale-95 flex flex-col items-center text-center gap-2 p-2 no-underline block"
         onClick={handleClick}
       >
-        <div className="p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors">
+        <span className="p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors inline-block">
           <Icon className="h-6 w-6 text-primary" />
-        </div>
+        </span>
         <span className="text-xs font-medium text-foreground leading-tight w-full">
           {label}
         </span>
-      </div>
+      </span>
     </Link>
   );
 }
