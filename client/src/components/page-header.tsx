@@ -117,8 +117,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      {/* Header - fixed at top below safe area (uses max for Android compatibility) */}
-      <header className="flex items-center gap-2 px-3 py-3 border-b fixed left-0 right-0 bg-background z-50" style={{ top: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
+      {/* Header - sticky at top of content, below safe area handled by app-shell */}
+      <header className="sticky top-0 flex items-center gap-2 px-3 py-3 border-b bg-background z-50">
         <div className="flex items-center gap-1">
           {showBack && (
             <Button 
@@ -144,8 +144,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         </h1>
         {rightContent}
       </header>
-      {/* Spacer for fixed header (uses max for Android compatibility) */}
-      <div className="h-14" style={{ marginTop: 'max(env(safe-area-inset-top, 0px), 24px)' }} />
 
       {/* Use new navigation if feature flag is enabled */}
       {useNewNavigation ? (

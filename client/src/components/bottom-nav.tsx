@@ -31,11 +31,13 @@ export function BottomNav() {
   return (
     <nav 
       className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background backdrop-blur-xl"
-      style={{ paddingBottom: 'var(--bottom-nav-padding, 32px)' }}
+      style={{ 
+        paddingBottom: 'var(--bottom-nav-padding, 32px)'
+      }}
       data-testid="nav-bottom"
       role="navigation"
     >
-      <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-2">
+      <div className="flex items-center justify-around h-14 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
           const isActive = item.path && (location === item.path || 
             (item.path !== "/" && location.startsWith(item.path)));
