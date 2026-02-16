@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings, LogIn, UserPlus } from 'lucide-react';
+import { Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings, LogIn } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
