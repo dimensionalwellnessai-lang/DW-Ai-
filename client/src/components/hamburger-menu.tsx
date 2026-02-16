@@ -117,6 +117,13 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
 
         {/* Footer - Settings, Logout, etc. */}
         <div className="mt-auto pt-4 border-t space-y-2">
+          {!user && (
+            <Link href="/login">
+              <Button className="w-full justify-start" onClick={onClose}>
+                Sign In / Sign Up
+              </Button>
+            </Link>
+          )}
           <Link href="/settings">
             <Button variant="ghost" className="w-full justify-start" onClick={onClose}>
               Settings
