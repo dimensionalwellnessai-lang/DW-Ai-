@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings } from 'lucide-react';
+import { Search, Star, Calendar, Dumbbell, Heart, Home as HomeIcon, Wallet, BarChart3, Settings, LogIn, UserPlus } from 'lucide-react';
+import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -9,6 +11,7 @@ import { CategoryHeader } from '@/components/category-header';
 import { useAILearningStore } from '@/stores/useAILearningStore';
 import { ROUTE_REGISTRY } from '@/routes/registry';
 import { getIcon } from '@/lib/icon-mapper';
+import { useAuth } from '@/hooks/use-auth';
 
 interface AllFeaturesViewProps {
   open: boolean;
@@ -57,6 +60,7 @@ const FEATURE_CATEGORIES = {
 export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { getMostUsed } = useAILearningStore();
+  const { user } = useAuth();
   
   const mostUsedFeatureIds = getMostUsed(4);
 
@@ -141,7 +145,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                     title="Most Used"
                     subtitle="AI learns from your behavior"
                   />
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 gap-3">
                     {mostUsedFeatures.map((feature) => (
                       <FeatureTile
                         key={feature.id}
@@ -168,7 +172,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.planning.icon}
                       title={FEATURE_CATEGORIES.planning.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.planning.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -190,7 +194,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.health.icon}
                       title={FEATURE_CATEGORIES.health.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.health.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -212,7 +216,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.wellness.icon}
                       title={FEATURE_CATEGORIES.wellness.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.wellness.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -234,7 +238,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.financial.icon}
                       title={FEATURE_CATEGORIES.financial.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.financial.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -256,7 +260,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.insights.icon}
                       title={FEATURE_CATEGORIES.insights.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.insights.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -278,7 +282,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={FEATURE_CATEGORIES.settings.icon}
                       title={FEATURE_CATEGORIES.settings.title}
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {getFeaturesByCategory(FEATURE_CATEGORIES.settings.features).map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -300,7 +304,7 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
                       icon={Settings}
                       title="Other Features"
                     />
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {uncategorizedFeatures.map((feature) => (
                         <FeatureTile
                           key={feature.id}
@@ -324,6 +328,33 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
             )}
           </div>
         </ScrollArea>
+
+        {/* Bottom action buttons - Sign In/Sign Up and Settings */}
+        <div className="pt-4 mt-4 border-t space-y-2">
+          {!user && (
+            <Link href="/login">
+              <Button 
+                className="w-full" 
+                size="sm"
+                onClick={onClose}
+              >
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In / Sign Up
+              </Button>
+            </Link>
+          )}
+          <Link href="/settings">
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              size="sm"
+              onClick={onClose}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </Link>
+        </div>
       </div>
     </SwipeableDrawer>
   );
