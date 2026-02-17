@@ -89,10 +89,11 @@ export function SettingsPage() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Settings" backPath="/" />
 
-      <main className="p-4 max-w-2xl mx-auto space-y-4" data-tour="settings">
+      <div className="flex-1 overflow-auto">
+        <main className="p-4 max-w-2xl mx-auto space-y-4" data-tour="settings">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -373,6 +374,7 @@ export function SettingsPage() {
           </Card>
         )}
       </main>
+      </div>
 
       <ProfileSetupModal
         isOpen={showProfileSetup}

@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
@@ -218,7 +217,7 @@ export default function AppTourPage() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="App Tour" />
       <InteractiveTour
         open={isOpen}
@@ -226,7 +225,7 @@ export default function AppTourPage() {
         onSkip={handleTourSkip}
       />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           <div className="text-center py-4">
             <h2 className="text-xl font-display font-semibold mb-2">Welcome to Dimensional Wellness</h2>
@@ -361,7 +360,7 @@ export default function AppTourPage() {
             </CardContent>
           </Card>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

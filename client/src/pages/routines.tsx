@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
@@ -238,10 +237,10 @@ export default function RoutinesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Routines" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           <div className="space-y-3">
             <h2 className="text-sm font-medium text-muted-foreground">Suggested Daily Routines</h2>
@@ -349,7 +348,7 @@ export default function RoutinesPage() {
           </TabsContent>
         </Tabs>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

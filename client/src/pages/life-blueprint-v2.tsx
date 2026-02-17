@@ -886,9 +886,10 @@ export default function LifeBlueprintV2() {
   const resetProtocolComplete = isResetProtocolComplete(resetProtocol);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Life Blueprint" />
-      <div className="container max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="text-center space-y-2 max-w-3xl mx-auto">
           <p className="text-muted-foreground">
             Assess and optimize your life across 8 key dimensions. Build systems that support your wellbeing.
@@ -950,6 +951,7 @@ export default function LifeBlueprintV2() {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );

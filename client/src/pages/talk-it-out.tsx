@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
@@ -154,7 +153,7 @@ export function TalkItOutPage() {
         }
       />
 
-      <ScrollArea className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
           {messages.map((message, index) => (
             <article
@@ -207,7 +206,7 @@ export function TalkItOutPage() {
           )}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="border-t bg-background/95 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto p-4">

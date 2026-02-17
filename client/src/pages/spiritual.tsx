@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
 import { 
   Sparkles, 
@@ -333,10 +332,10 @@ export default function SpiritualPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Meditation" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           <p className="text-muted-foreground text-center">
             Practices that nourish your spirit and ground your being
@@ -489,7 +488,7 @@ export default function SpiritualPage() {
             excludedItems={getDomainExclusions("spiritual")}
           />
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

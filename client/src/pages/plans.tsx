@@ -2,7 +2,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Trash2, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -281,7 +280,7 @@ export default function PlansPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Plans" 
         rightContent={
@@ -292,7 +291,7 @@ export default function PlansPage() {
         }
       />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto pb-8">
           {(momentumEvents.length > 0 || momentumRoutines.length > 0) && (
             <div className="mb-6">
@@ -336,7 +335,7 @@ export default function PlansPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

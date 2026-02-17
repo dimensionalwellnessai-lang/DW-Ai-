@@ -78,7 +78,7 @@ export default function GoalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader 
         title="My Goals" 
         rightContent={
@@ -88,7 +88,8 @@ export default function GoalsPage() {
           </Button>
         }
       />
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-4xl mx-auto p-4 space-y-6">
         <p className="text-muted-foreground text-center">
           Track your progress toward what matters most
         </p>
@@ -202,6 +203,7 @@ export default function GoalsPage() {
           goal={selectedGoal}
           onCreateHabit={(habitData) => createHabitMutation.mutate(habitData)}
         />
+      </div>
       </div>
     </div>
   );

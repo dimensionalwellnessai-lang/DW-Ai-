@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
@@ -166,9 +165,10 @@ export default function LifeBlueprintPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Life Blueprint" />
-      <div className="container max-w-6xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-6xl mx-auto p-4 space-y-6">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Define what matters most in each dimension of your life. Your AI will reference these values to keep you aligned.
@@ -327,6 +327,7 @@ export default function LifeBlueprintPage() {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );

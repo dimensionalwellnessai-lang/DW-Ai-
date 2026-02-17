@@ -129,10 +129,11 @@ export default function AccountDeletePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Delete Account" backPath="/settings" />
 
-      <main className="p-4 max-w-2xl mx-auto space-y-4">
+      <div className="flex-1 overflow-auto">
+        <main className="p-4 max-w-2xl mx-auto space-y-4">
         <Card className="border-destructive">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -238,6 +239,7 @@ export default function AccountDeletePage() {
           </CardContent>
         </Card>
       </main>
+      </div>
 
       <AlertDialog open={showFinalDialog} onOpenChange={setShowFinalDialog}>
         <AlertDialogContent>
