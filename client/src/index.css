@@ -69,10 +69,15 @@ html, body {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
+  /* Flexbox layout for proper content distribution */
+  display: flex;
+  flex-direction: column;
   /* Apply safe area padding at the shell level for both iOS (env) and Android (fallback) */
   padding-top: max(env(safe-area-inset-top, 0px), var(--android-status-bar, 0px));
   padding-left: var(--sal);
   padding-right: var(--sar);
+  /* Add bottom safe-area padding to cover iOS home indicator */
+  padding-bottom: var(--sab);
   box-sizing: border-box;
   /* Ensure consistent background color extends to safe areas including dynamic island */
   background-color: hsl(var(--background));
@@ -86,13 +91,17 @@ html, body {
 
 /* Content area - container with safe area handling for pages that use PageHeader */
 .app-content {
-  min-height: 100dvh;
+  flex: 1;
   width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   /* Ensure background color consistency */
   background-color: hsl(var(--background));
+  /* Allow content to scroll independently */
+  position: relative;
 }
 
 /* Pages that don't use PageHeader can apply this class for safe area */
@@ -315,6 +324,14 @@ summary::marker {
   
   .dark .page-header-fixed {
     border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Page scroll container - for pages with scrollable content under fixed header */
+  .page-scroll {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
   }
   
   /* Ensure scrollable content doesn't overlap header */

@@ -193,9 +193,10 @@ export default function LifeCommandCenter() {
   const focusNow = getFocusNowCard();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Home" showBack={false} />
-      <div className="container max-w-7xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-7xl mx-auto p-4 space-y-6">
         {/* Greeting */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -513,6 +514,7 @@ export default function LifeCommandCenter() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
