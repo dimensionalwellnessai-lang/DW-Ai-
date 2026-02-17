@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, ArrowRight, ArrowLeft, Check, Calendar, Dumbbell, Utensils, Heart, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -111,7 +110,7 @@ export default function PlanBuilderPage() {
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Plan Builder" backPath="/plans" />
       
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-6 pb-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -221,7 +220,7 @@ export default function PlanBuilderPage() {
             </Card>
           )}
         </div>
-      </ScrollArea>
+      </div>
       
       {/* Fixed bottom action bar - always visible */}
       <div className="border-t bg-background p-4 safe-area-bottom">
