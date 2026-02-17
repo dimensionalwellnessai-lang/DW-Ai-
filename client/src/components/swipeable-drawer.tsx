@@ -39,21 +39,8 @@ export function SwipeableDrawer({
     }
   }, [open]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    currentX.current = e.touches[0].clientX;
-    currentY.current = e.touches[0].clientY;
-    isHorizontalSwipe.current = null;
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    
-    currentX.current = e.touches[0].clientX;
-    currentY.current = e.touches[0].clientY;
-    
+  // Helper function to update gesture state during move
+  const updateGesture = () => {
     // Determine swipe direction once movement is significant
     if (isHorizontalSwipe.current === null) {
       const diffX = Math.abs(currentX.current - startX.current);
@@ -77,7 +64,8 @@ export function SwipeableDrawer({
     }
   };
 
-  const handleTouchEnd = () => {
+  // Helper function to finalize gesture on end
+  const finalizeGesture = () => {
     setIsDragging(false);
     
     // Only close if it was a horizontal swipe
@@ -93,6 +81,28 @@ export function SwipeableDrawer({
     }
     
     isHorizontalSwipe.current = null;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    currentX.current = e.touches[0].clientX;
+    currentY.current = e.touches[0].clientY;
+    isHorizontalSwipe.current = null;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    
+    currentX.current = e.touches[0].clientX;
+    currentY.current = e.touches[0].clientY;
+    
+    updateGesture();
+  };
+
+  const handleTouchEnd = () => {
+    finalizeGesture();
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -110,41 +120,12 @@ export function SwipeableDrawer({
     currentX.current = e.clientX;
     currentY.current = e.clientY;
     
-    // Determine swipe direction on first move
-    if (isHorizontalSwipe.current === null) {
-      const diffX = Math.abs(currentX.current - startX.current);
-      const diffY = Math.abs(currentY.current - startY.current);
-      
-      // Only treat as horizontal swipe if horizontal movement is significantly larger
-      isHorizontalSwipe.current = diffX > diffY && diffX > HORIZONTAL_SWIPE_THRESHOLD;
-    }
-    
-    // Only apply translation for horizontal swipes
-    if (isHorizontalSwipe.current) {
-      const diff = currentX.current - startX.current;
-      if (diff < 0) {
-        setTranslateX(diff);
-      }
-    }
+    updateGesture();
   };
 
   const handleMouseUp = () => {
     if (!isDragging) return;
-    setIsDragging(false);
-    
-    // Only close if it was a horizontal swipe
-    if (isHorizontalSwipe.current) {
-      const diff = currentX.current - startX.current;
-      if (diff < SWIPE_CLOSE_THRESHOLD) {
-        onClose();
-      } else {
-        setTranslateX(0);
-      }
-    } else {
-      setTranslateX(0);
-    }
-    
-    isHorizontalSwipe.current = null;
+    finalizeGesture();
   };
 
   const handleMouseLeave = () => {
