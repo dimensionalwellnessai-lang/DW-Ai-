@@ -121,10 +121,11 @@ export default function InsightsDashboard() {
   const topStreaks = [...streaks].sort((a, b) => b.currentStreak - a.currentStreak).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Insights" />
       
-      <div className="container max-w-6xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-6xl mx-auto p-4 space-y-6">
         {/* Overview Card */}
         <Card>
           <CardHeader>
@@ -315,6 +316,7 @@ export default function InsightsDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );

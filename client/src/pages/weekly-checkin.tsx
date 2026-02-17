@@ -278,7 +278,7 @@ export default function WeeklyCheckinPage() {
 
   if (stateLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-col h-full bg-background">
         <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-muted-foreground">Loading...</div>
@@ -289,7 +289,7 @@ export default function WeeklyCheckinPage() {
 
   if (!trialStartAt) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-col h-full bg-background">
         <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 flex items-center justify-center p-6">
           <Card className="w-full max-w-md">
@@ -323,7 +323,7 @@ export default function WeeklyCheckinPage() {
 
   if (!selectedWeek) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex flex-col h-full bg-background">
         <PageHeader title="Beta Feedback" backPath="/" />
         <main className="flex-1 p-6">
           <div className="max-w-md mx-auto space-y-4">
@@ -386,7 +386,7 @@ export default function WeeklyCheckinPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col h-full bg-background">
       <div className="sticky top-0 z-50 bg-background border-b px-4 py-3 flex items-center gap-3">
         <Button 
           variant="ghost" 

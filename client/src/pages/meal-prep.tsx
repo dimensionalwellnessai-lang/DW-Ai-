@@ -5,7 +5,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { useTutorialStart } from "@/contexts/tutorial-context";
@@ -1269,10 +1268,10 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
   const pantryCount = groceryList?.items.filter(i => i.isInPantry).length || 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Meal Plans" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
           {/* Planning Horizon & Energy Shift */}
           <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
@@ -2869,7 +2868,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           }}
         />
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

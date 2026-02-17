@@ -72,7 +72,7 @@ export default function HabitsPage() {
   const today = new Date().toDateString();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader 
         title="My Habits" 
         rightContent={
@@ -82,7 +82,8 @@ export default function HabitsPage() {
           </Button>
         }
       />
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-4xl mx-auto p-4 space-y-6">
         <p className="text-muted-foreground text-center">
           Build consistency one day at a time
         </p>
@@ -169,6 +170,7 @@ export default function HabitsPage() {
             })}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

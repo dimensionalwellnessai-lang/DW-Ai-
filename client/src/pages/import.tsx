@@ -2,7 +2,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight } from "lucide-react";
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
@@ -101,10 +100,10 @@ export default function ImportPage() {
   const selectedOption = IMPORT_OPTIONS.find(o => o.id === selectedType);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Import" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-6 pb-8">
           {!selectedType ? (
             <>
@@ -232,7 +231,7 @@ export default function ImportPage() {
             </>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

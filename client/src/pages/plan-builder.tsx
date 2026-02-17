@@ -108,7 +108,7 @@ export default function PlanBuilderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Plan Builder" backPath="/plans" />
       
       <ScrollArea className="flex-1">

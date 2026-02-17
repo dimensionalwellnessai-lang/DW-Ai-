@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
 import {
@@ -93,9 +92,10 @@ export default function TrackingDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Tracking Dashboard" />
-      <div className="container max-w-6xl mx-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-6xl mx-auto p-4 space-y-6">
         <p className="text-muted-foreground text-center">
           Monitor your daily wellness metrics
         </p>
@@ -290,6 +290,7 @@ export default function TrackingDashboard() {
             </div>
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -1,13 +1,12 @@
 import { PageHeader } from "@/components/page-header";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function PrivacyTermsPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Privacy & Terms" backPath="/settings" />
 
-      <main className="p-4 max-w-2xl mx-auto">
-        <ScrollArea className="h-[calc(100vh-120px)]">
+      <div className="flex-1 overflow-auto">
+        <main className="p-4 max-w-2xl mx-auto">
           <div className="prose prose-sm dark:prose-invert max-w-none space-y-8">
             <section>
               <h1 className="text-2xl font-display font-semibold mb-2">Dimensional Wellness (DW)</h1>
@@ -213,8 +212,8 @@ export default function PrivacyTermsPage() {
               </ul>
             </section>
           </div>
-        </ScrollArea>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

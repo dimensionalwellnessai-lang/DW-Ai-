@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -405,10 +404,10 @@ export function RecoveryPage() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Recovery" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
           <section>
             <div className="flex items-center gap-2 mb-1">
@@ -693,7 +692,7 @@ export function RecoveryPage() {
             </Card>
           </section>
         </div>
-      </ScrollArea>
+      </div>
 
       <Dialog open={calendarConfirmOpen} onOpenChange={setCalendarConfirmOpen}>
         <DialogContent>

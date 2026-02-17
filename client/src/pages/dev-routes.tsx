@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ROUTE_REGISTRY, getMenuRoutes } from "@/routes/registry";
 import { CheckCircle, XCircle, AlertTriangle, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
@@ -28,10 +27,10 @@ export default function DevRoutesPage() {
   const missingTargets = Array.from(actionTargets).filter(t => !registeredPaths.has(t));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Route Audit" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-4xl mx-auto space-y-6 pb-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
@@ -194,7 +193,7 @@ export default function DevRoutesPage() {
             </CardContent>
           </Card>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

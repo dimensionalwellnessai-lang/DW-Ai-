@@ -2,7 +2,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Calendar, FileText, Share2, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
@@ -140,10 +139,10 @@ export default function ExportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Export Plan" backPath="/plans" />
       
-      <ScrollArea className="h-[calc(100vh-57px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-6 pb-8">
           <Card>
             <CardHeader>
@@ -226,7 +225,7 @@ export default function ExportPage() {
             </Button>
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

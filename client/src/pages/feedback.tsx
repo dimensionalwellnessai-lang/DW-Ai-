@@ -65,10 +65,11 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Feedback" backPath="/" />
 
-      <main className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 overflow-auto">
+        <div className="flex items-center justify-center p-6 min-h-full">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -170,7 +171,8 @@ export default function FeedbackPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+        </div>
+      </div>
     </div>
   );
 }

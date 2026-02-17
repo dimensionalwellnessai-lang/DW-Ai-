@@ -2,7 +2,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Edit, Save, CalendarPlus, ArrowLeft, Clock, Check, 
@@ -125,7 +124,7 @@ export default function ScheduleReviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Suggested Schedule" 
         backPath="/plans"
@@ -141,7 +140,7 @@ export default function ScheduleReviewPage() {
         }
       />
       
-      <ScrollArea className="h-[calc(100vh-57px-140px)]">
+      <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
           <Card>
             <CardHeader className="pb-2">
@@ -204,7 +203,7 @@ export default function ScheduleReviewPage() {
             })}
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 safe-area-bottom">
         <div className="max-w-lg mx-auto space-y-3">

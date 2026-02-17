@@ -868,14 +868,15 @@ export default function MoodTrackerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Mood & Activity Tracker" 
         showBack 
         backPath="/today"
       />
       
-      <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24" data-tour="mood-tracker">
+      <div className="flex-1 overflow-auto">
+        <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24" data-tour="mood-tracker">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="checkin" data-testid="tab-checkin">
@@ -976,6 +977,7 @@ export default function MoodTrackerPage() {
             <TrackerSettingsCard />
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );
