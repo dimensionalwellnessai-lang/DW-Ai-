@@ -54,13 +54,18 @@ export function SwipeableDrawer({
     currentX.current = e.touches[0].clientX;
     currentY.current = e.touches[0].clientY;
     
-    // Determine swipe direction on first move
+    // Determine swipe direction once movement is significant
     if (isHorizontalSwipe.current === null) {
       const diffX = Math.abs(currentX.current - startX.current);
       const diffY = Math.abs(currentY.current - startY.current);
+
+      // If movement is still small on both axes, don't decide yet
+      if (diffX <= HORIZONTAL_SWIPE_THRESHOLD && diffY <= HORIZONTAL_SWIPE_THRESHOLD) {
+        return;
+      }
       
-      // Only treat as horizontal swipe if horizontal movement is significantly larger
-      isHorizontalSwipe.current = diffX > diffY && diffX > HORIZONTAL_SWIPE_THRESHOLD;
+      // Lock direction once one axis clearly dominates
+      isHorizontalSwipe.current = diffX > diffY;
     }
     
     // Only apply translation for horizontal swipes
