@@ -27,7 +27,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
   const [location] = useLocation();
   const { timeOfDay, updateTimeOfDay, toggleAllFeatures } = useNavigationStore();
   const { completed: onboardingCompleted, completionPercentage } = useOnboardingStore();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // Update time of day when menu opens
   useEffect(() => {
@@ -119,22 +119,32 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
         <div className="mt-auto pt-4 border-t space-y-2">
           {!user && (
             <Link href="/login">
-              <Button className="w-full justify-start" onClick={onClose}>
+              <Button className="w-full justify-start" onClick={onClose} data-testid="button-signin">
                 Sign In / Sign Up
               </Button>
             </Link>
           )}
+          {user && (
+            <div className="px-2 py-1.5 text-sm text-muted-foreground" data-testid="text-logged-in">
+              Logged in as {user.firstName || user.email?.split('@')[0] || 'User'}
+            </div>
+          )}
           <Link href="/settings">
-            <Button variant="ghost" className="w-full justify-start" onClick={onClose}>
+            <Button variant="ghost" className="w-full justify-start" onClick={onClose} data-testid="button-settings">
               Settings
             </Button>
           </Link>
           {user && (
             <Link href="/profile/progress">
-              <Button variant="ghost" className="w-full justify-start" onClick={onClose}>
+              <Button variant="ghost" className="w-full justify-start" onClick={onClose} data-testid="button-progress">
                 My Progress
               </Button>
             </Link>
+          )}
+          {user && (
+            <Button variant="ghost" className="w-full justify-start text-destructive" onClick={() => { logout(); onClose(); }} data-testid="button-logout">
+              Log Out
+            </Button>
           )}
         </div>
       </div>
