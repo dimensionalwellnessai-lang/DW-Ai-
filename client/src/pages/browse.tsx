@@ -621,20 +621,20 @@ ${contentList}`,
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "explore" | "saved" | "community")} className="w-full">
-          <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl">
-            <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10" data-testid="tab-for-you">
+          <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl overflow-x-auto flex-nowrap">
+            <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
               For You
             </TabsTrigger>
-            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10" data-testid="tab-explore">
+            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-explore">
               <Compass className="h-4 w-4 mr-1" />
               Explore
             </TabsTrigger>
-            <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10" data-testid="tab-saved">
+            <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-saved">
               <Bookmark className="h-4 w-4 mr-1" />
               Saved
             </TabsTrigger>
-            <TabsTrigger value="community" className="data-[state=active]:bg-primary/10" data-testid="tab-community">
+            <TabsTrigger value="community" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-community">
               <Users className="h-4 w-4 mr-1" />
               Community
             </TabsTrigger>
