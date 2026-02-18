@@ -114,9 +114,8 @@ export default function DWHomePage() {
 
   if (isFirstTime) {
     return (
-      <div className="flex flex-col h-full bg-background">
+      <div className="bg-background">
         <PageHeader title="Home" showBack={false} />
-        <ScrollArea className="flex-1">
           <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -166,15 +165,13 @@ export default function DWHomePage() {
             </Link>
           </motion.div>
         </div>
-      </ScrollArea>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="bg-background">
       <PageHeader title="Home" showBack={false} />
-      <ScrollArea className="flex-1">
         <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -364,7 +361,6 @@ export default function DWHomePage() {
           </Card>
         </motion.div>
       </div>
-    </ScrollArea>
     </div>
   );
 }
