@@ -101,9 +101,10 @@ export function SwipeableDrawer({
 
   return (
     <div 
-      className={`fixed inset-0 bg-background/60 backdrop-blur-sm ${elevated ? "z-[10001]" : "z-[60]"}`}
+      className={`fixed left-0 right-0 bg-background/60 backdrop-blur-sm ${elevated ? "z-[10001]" : "z-[60]"}`}
       style={{
-        top: "calc(max(env(safe-area-inset-top, 0px), 24px) + 52px)"
+        top: "calc(max(env(safe-area-inset-top, 0px), 24px) + 52px)",
+        bottom: "calc(3.5rem + max(env(safe-area-inset-bottom, 0px), 32px))"
       }}
       onClick={onClose}
       data-testid="swipeable-drawer-overlay"
@@ -111,12 +112,12 @@ export function SwipeableDrawer({
     >
       <div 
         ref={drawerRef}
-        className={`absolute left-0 top-0 h-full ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 flex flex-col safe-area-bottom ${
+        className={`absolute left-0 top-0 bottom-0 ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 flex flex-col ${
           directionLocked.current === "horizontal" ? "" : "transition-transform duration-200"
         }`}
         style={{ 
           paddingTop: "12px",
-          paddingBottom: "max(env(safe-area-inset-bottom, 0px), 16px)",
+          paddingBottom: "12px",
           transform: `translateX(${translateX}px)`,
           overscrollBehavior: "contain"
         }}
@@ -125,7 +126,7 @@ export function SwipeableDrawer({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <span className="font-display font-semibold text-foreground">{title}</span>
           <Button 
             variant="ghost" 
@@ -136,11 +137,8 @@ export function SwipeableDrawer({
             <X className="h-5 w-5 text-foreground" />
           </Button>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
           {children}
-        </div>
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
-          <div className="w-8 h-1 bg-muted-foreground/20 rounded-full" />
         </div>
       </div>
     </div>
