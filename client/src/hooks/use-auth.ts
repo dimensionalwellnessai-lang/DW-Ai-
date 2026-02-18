@@ -24,23 +24,27 @@ export function useAuth() {
   const { data, isLoading, error, refetch } = useQuery<AuthData | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<AuthData | null> => {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
+      try {
+        const response = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
 
-      if (response.status === 401) {
-        // Unauthenticated: represent as null auth state, not an error
+        if (response.status === 401) {
+          return null;
+        }
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data: AuthData = await response.json();
+        return data;
+      } catch {
         return null;
       }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch auth status: ${response.status}`);
-      }
-
-      const data: AuthData = await response.json();
-      return data;
     },
   });
 
