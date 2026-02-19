@@ -306,6 +306,15 @@ export function useInteractiveTour() {
     setIsOpen(true);
   };
 
+  // Start the tour if a pending start request was stored in localStorage
+  // (used when navigating from another page, e.g. app-tour → home)
+  const startTourIfPending = () => {
+    if (localStorage.getItem("dw:tour_pending_start") === "true") {
+      localStorage.removeItem("dw:tour_pending_start");
+      setIsOpen(true);
+    }
+  };
+
   const completeTour = () => {
     setIsOpen(false);
     setHasCompletedTour(true);
@@ -325,6 +334,7 @@ export function useInteractiveTour() {
     isOpen,
     hasCompletedTour,
     startTour,
+    startTourIfPending,
     completeTour,
     skipTour,
     resetTour,

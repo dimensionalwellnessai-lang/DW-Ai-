@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
-import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
 import { 
   MessageCircle, 
   Calendar, 
@@ -196,34 +195,20 @@ const QUICK_TIPS = [
 
 export default function AppTourPage() {
   const [, setLocation] = useLocation();
-  const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();
   const totalTime = getTotalSetupTime();
   const hasQuestionnaires = GUIDE_SECTIONS.some(s => s.hasQuestionnaire);
 
   const handleStartFullTour = () => {
+    // Store a pending flag so the global InteractiveTour in AppContent picks it up after navigation
+    localStorage.setItem("dw:tour_pending_start", "true");
     setLocation("/");
-    setTimeout(() => startTour(), 300);
-  };
-
-  const handleTourComplete = () => {
-    completeTour();
-    setLocation("/");
-  };
-
-  const handleTourSkip = () => {
-    skipTour();
   };
   
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="App Tour" />
-      <InteractiveTour
-        open={isOpen}
-        onComplete={handleTourComplete}
-        onSkip={handleTourSkip}
-      />
       
       <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
