@@ -19,7 +19,7 @@ async function getCredentials() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL 
     : null;
 
-  if (!xReplitToken) {
+  if (!hostname || !xReplitToken) {
     throw new Error('Email service not configured. Set RESEND_API_KEY environment variable.');
   }
 
