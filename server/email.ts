@@ -107,12 +107,31 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
   try {
     const { client, fromEmail } = await getResendClient();
     
-    const baseUrl = process.env.APP_URL
-      || (process.env.REPLIT_DOMAINS 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : process.env.REPL_SLUG 
-          ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-          : 'http://localhost:5000');
+    const explicitAppUrl = process.env.APP_URL;
+    const replitDomain =
+      process.env.REPLIT_DOMAINS && process.env.REPLIT_DOMAINS.length > 0
+        ? process.env.REPLIT_DOMAINS.split(',')[0]
+        : null;
+    const replitSlugDomain =
+      process.env.REPL_SLUG && process.env.REPL_OWNER
+        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : null;
+
+    let baseUrl: string;
+
+    if (explicitAppUrl) {
+      baseUrl = explicitAppUrl;
+    } else if (replitDomain) {
+      baseUrl = `https://${replitDomain}`;
+    } else if (replitSlugDomain) {
+      baseUrl = `https://${replitSlugDomain}`;
+    } else if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'APP_URL environment variable must be set in production (or provide REPLIT_DOMAINS / REPL_SLUG & REPL_OWNER) to generate password reset links.',
+      );
+    } else {
+      baseUrl = 'http://localhost:5000';
+    }
     
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
