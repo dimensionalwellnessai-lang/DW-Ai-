@@ -1,5 +1,5 @@
 import { OnboardingWizard, type OnboardingData } from "@/components/onboarding-wizard";
-import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { useInteractiveTour } from "@/components/interactive-tour";
 import { useLocation } from "wouter";
 import { saveEnhancedOnboarding, isEnhancedOnboardingComplete } from "@/lib/guest-storage";
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
@@ -78,11 +78,6 @@ export default function EnhancedOnboardingPage() {
       <OnboardingWizard
         onComplete={handleOnboardingComplete}
         onSkip={handleSkip}
-      />
-      <InteractiveTour
-        open={isOpen}
-        onComplete={handleTourComplete}
-        onSkip={handleTourSkip}
       />
     </>
   );

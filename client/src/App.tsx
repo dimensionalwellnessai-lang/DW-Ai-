@@ -16,6 +16,7 @@ import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-ag
 import { trackNewDayOpen } from "@/lib/analytics";
 
 import { LoginPage } from "@/components/auth/login-page";
+import { InteractiveTour, InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour";
 import { AIWorkspace } from "@/components/ai-workspace";
 import { ChallengesPage } from "@/pages/challenges";
 import { TalkItOutPage } from "@/pages/talk-it-out";
@@ -232,6 +233,12 @@ function InitialRouteHandler({ children }: { children: React.ReactNode }) {
 function AppContent() {
   const [location] = useLocation();
   const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
+  const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
+
+  // Start interactive tour if triggered from another page (e.g. app-tour page)
+  useEffect(() => {
+    startTourIfPending();
+  }, [location]);
 
   return (
     <div className="app-shell">
@@ -239,6 +246,11 @@ function AppContent() {
       <TutorialOverlay />
       <SyncTray />
       <FloatingAIWidget />
+      <InteractiveTour
+        open={isOpen}
+        onComplete={completeTour}
+        onSkip={skipTour}
+      />
       <div className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
@@ -270,13 +282,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <TutorialProvider>
-            {showSplash && <SplashScreen onComplete={onSplashComplete} />}
-            {needsTerms && (
-              <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
-            )}
-            {showApp && <AppContent />}
-          </TutorialProvider>
+          <InteractiveTourProvider>
+            <TutorialProvider>
+              {showSplash && <SplashScreen onComplete={onSplashComplete} />}
+              {needsTerms && (
+                <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
+              )}
+              {showApp && <AppContent />}
+            </TutorialProvider>
+          </InteractiveTourProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
