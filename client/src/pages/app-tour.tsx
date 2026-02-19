@@ -201,8 +201,14 @@ export default function AppTourPage() {
   const hasQuestionnaires = GUIDE_SECTIONS.some(s => s.hasQuestionnaire);
 
   const handleStartFullTour = () => {
-    // Store a pending flag so the global InteractiveTour in AppContent picks it up after navigation
-    localStorage.setItem("dw:tour_pending_start", "true");
+    // Store a pending flag so the global InteractiveTour in AppContent picks it up after navigation.
+    // localStorage.setItem can throw (e.g., storage disabled or quota exceeded), so guard it to avoid
+    // breaking navigation and leaving the button as a no-op.
+    try {
+      localStorage.setItem("dw:tour_pending_start", "true");
+    } catch (error) {
+      console.warn("Unable to set tour pending flag in localStorage:", error);
+    }
     setLocation("/");
   };
   
