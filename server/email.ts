@@ -3,6 +3,15 @@ import { Resend } from 'resend';
 let connectionSettings: any;
 
 async function getCredentials() {
+  // If a direct RESEND_API_KEY environment variable is set, use it
+  if (process.env.RESEND_API_KEY) {
+    return {
+      apiKey: process.env.RESEND_API_KEY,
+      fromEmail: process.env.RESEND_FROM_EMAIL || null,
+    };
+  }
+
+  // Fall back to Replit connectors
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
@@ -10,8 +19,8 @@ async function getCredentials() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL 
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+  if (!hostname || !xReplitToken) {
+    throw new Error('Email service not configured. Set RESEND_API_KEY environment variable.');
   }
 
   connectionSettings = await fetch(
@@ -31,10 +40,10 @@ async function getCredentials() {
 }
 
 export async function getResendClient() {
-  const { apiKey } = await getCredentials();
+  const { apiKey, fromEmail } = await getCredentials();
   return {
     client: new Resend(apiKey),
-    fromEmail: connectionSettings.settings.from_email
+    fromEmail
   };
 }
 
@@ -98,11 +107,31 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
   try {
     const { client, fromEmail } = await getResendClient();
     
-    const baseUrl = process.env.REPLIT_DOMAINS 
-      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-      : process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : 'http://localhost:5000';
+    const explicitAppUrl = process.env.APP_URL;
+    const replitDomain =
+      process.env.REPLIT_DOMAINS && process.env.REPLIT_DOMAINS.length > 0
+        ? process.env.REPLIT_DOMAINS.split(',')[0]
+        : null;
+    const replitSlugDomain =
+      process.env.REPL_SLUG && process.env.REPL_OWNER
+        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : null;
+
+    let baseUrl: string;
+
+    if (explicitAppUrl) {
+      baseUrl = explicitAppUrl;
+    } else if (replitDomain) {
+      baseUrl = `https://${replitDomain}`;
+    } else if (replitSlugDomain) {
+      baseUrl = `https://${replitSlugDomain}`;
+    } else if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'APP_URL environment variable must be set in production (or provide REPLIT_DOMAINS / REPL_SLUG & REPL_OWNER) to generate password reset links.',
+      );
+    } else {
+      baseUrl = 'http://localhost:5000';
+    }
     
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
