@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Map, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { useInteractiveTour } from "@/components/interactive-tour";
 
 type PlanType = "free" | "premium" | "lifetime";
 
@@ -262,12 +262,6 @@ export default function SubscriptionPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <InteractiveTour
-        open={isOpen}
-        onComplete={handleTourComplete}
-        onSkip={handleTourSkip}
-      />
     </div>
   );
 }

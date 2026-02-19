@@ -16,7 +16,7 @@ import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-ag
 import { trackNewDayOpen } from "@/lib/analytics";
 
 import { LoginPage } from "@/components/auth/login-page";
-import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { InteractiveTour, InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour";
 import { AIWorkspace } from "@/components/ai-workspace";
 import { ChallengesPage } from "@/pages/challenges";
 import { TalkItOutPage } from "@/pages/talk-it-out";
@@ -282,13 +282,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <TutorialProvider>
-            {showSplash && <SplashScreen onComplete={onSplashComplete} />}
-            {needsTerms && (
-              <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
-            )}
-            {showApp && <AppContent />}
-          </TutorialProvider>
+          <InteractiveTourProvider>
+            <TutorialProvider>
+              {showSplash && <SplashScreen onComplete={onSplashComplete} />}
+              {needsTerms && (
+                <FirstTimeAgreement onAccept={() => setTermsAccepted(true)} />
+              )}
+              {showApp && <AppContent />}
+            </TutorialProvider>
+          </InteractiveTourProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

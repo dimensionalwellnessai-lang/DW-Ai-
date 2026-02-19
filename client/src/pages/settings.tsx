@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
 import { MobilityCapabilitiesModal } from "@/components/mobility-capabilities-modal";
 import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
-import { InteractiveTour, useInteractiveTour } from "@/components/interactive-tour";
+import { useInteractiveTour } from "@/components/interactive-tour";
 import { PremiumFeaturesDialog } from "@/components/premium-features-dialog";
 import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import {
@@ -389,12 +389,6 @@ export function SettingsPage() {
       <AnalyticsDebugPanel
         open={showAnalyticsDebug}
         onClose={() => setShowAnalyticsDebug(false)}
-      />
-
-      <InteractiveTour
-        open={isOpen}
-        onComplete={handleTourComplete}
-        onSkip={handleTourSkip}
       />
 
       <PremiumFeaturesDialog
