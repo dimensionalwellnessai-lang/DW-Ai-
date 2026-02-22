@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -169,6 +169,103 @@ const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+// ─── Pure positioning utility (exported for unit testing) ────────────────────
+
+export interface CardPositionInput {
+  targetRect: { top: number; left: number; width: number; height: number; bottom: number; right: number };
+  cardWidth: number;
+  cardHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  preferredPosition: "top" | "bottom" | "left" | "right";
+  /** Pixels reserved at the bottom (e.g. bottom nav height). Default 0. */
+  bottomReserved?: number;
+  /** Minimum distance from any viewport edge. Default 16. */
+  padding?: number;
+  /** Gap between the target element and the card. Default 12. */
+  gap?: number;
+}
+
+export function computeCardPosition({
+  targetRect,
+  cardWidth,
+  cardHeight,
+  viewportWidth,
+  viewportHeight,
+  preferredPosition,
+  bottomReserved = 0,
+  padding = 16,
+  gap = 12,
+}: CardPositionInput): { top: number; left: number } {
+  const usableHeight = viewportHeight - bottomReserved;
+
+  // Center card horizontally over target, clamped to stay within viewport
+  let left = targetRect.left + targetRect.width / 2 - cardWidth / 2;
+  left = Math.max(padding, Math.min(left, viewportWidth - cardWidth - padding));
+
+  const spaceAbove = targetRect.top - padding;
+  const spaceBelow = usableHeight - targetRect.bottom - padding;
+  const cardNeeds = cardHeight + gap;
+
+  let top: number;
+
+  if (preferredPosition === "top") {
+    if (spaceAbove >= cardNeeds) {
+      top = targetRect.top - cardHeight - gap;
+    } else if (spaceBelow >= cardNeeds) {
+      // flip: not enough space above, try below
+      top = targetRect.bottom + gap;
+    } else {
+      // neither side fits – pick whichever has more room
+      top =
+        spaceAbove >= spaceBelow
+          ? Math.max(padding, targetRect.top - cardHeight - gap)
+          : Math.min(usableHeight - cardHeight - padding, targetRect.bottom + gap);
+    }
+  } else if (preferredPosition === "bottom") {
+    if (spaceBelow >= cardNeeds) {
+      top = targetRect.bottom + gap;
+    } else if (spaceAbove >= cardNeeds) {
+      // flip: not enough space below, try above
+      top = targetRect.top - cardHeight - gap;
+    } else {
+      top =
+        spaceAbove >= spaceBelow
+          ? Math.max(padding, targetRect.top - cardHeight - gap)
+          : Math.min(usableHeight - cardHeight - padding, targetRect.bottom + gap);
+    }
+  } else {
+    // left/right or unknown – default to centering vertically in usable area
+    top = Math.max(padding, (usableHeight - cardHeight) / 2);
+  }
+
+  // Final clamp: keep card fully within [padding, usableHeight - cardHeight - padding]
+  top = Math.max(padding, Math.min(top, usableHeight - cardHeight - padding));
+
+  return { top: Math.round(top), left: Math.round(left) };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Returns the height of the fixed bottom navigation bar, if present. */
+function getBottomNavHeight(): number {
+  try {
+    // Look for a fixed nav element pinned to the bottom of the screen
+    const nav = document.querySelector("nav") as HTMLElement | null;
+    if (nav) {
+      const rect = nav.getBoundingClientRect();
+      if (rect.height > 0 && rect.bottom >= window.innerHeight - 4) {
+        return Math.round(rect.height);
+      }
+    }
+  } catch {
+    // DOM not available (SSR / test env)
+  }
+  return 88; // fallback matches --bottom-nav-total-height default (defined in client/src/index.css)
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 interface InteractiveTourProps {
   open: boolean;
   onComplete: () => void;
@@ -177,10 +274,40 @@ interface InteractiveTourProps {
 
 export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const step = TOUR_STEPS[currentStep];
   const Icon = step?.icon;
+
+  // Determine if this step should be centered (no target, or target not visible)
+  const isCenter = step?.position === "center" || !step?.targetSelector || !targetRect;
+  const isFinal = currentStep === TOUR_STEPS.length - 1;
+
+  /** Re-measure the target element and store its DOMRect in state. */
+  const updateTargetRect = useCallback(() => {
+    if (!open || !step?.targetSelector) {
+      setTargetRect(null);
+      return;
+    }
+    const el = document.querySelector(step.targetSelector) as HTMLElement | null;
+    if (el) {
+      // Read the rect once and reuse it for both the visibility check and state update
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const visible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom >= 0 &&
+        rect.right >= 0 &&
+        rect.top <= vh &&
+        rect.left <= vw;
+      setTargetRect(visible ? rect : null);
+    } else {
+      setTargetRect(null);
+    }
+  }, [open, step?.targetSelector]);
 
   // Reset to first step whenever the tour is opened
   useEffect(() => {
@@ -189,19 +316,41 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
     }
   }, [open]);
 
+  // Update target rect when the step changes, and scroll into view
   useEffect(() => {
-    if (open && step?.targetSelector) {
-      const element = document.querySelector(step.targetSelector) as HTMLElement;
-      setTargetElement(element);
-      
-      // Scroll element into view
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!open) return;
+    // Clear stale rect immediately so the previous step's highlight isn't shown
+    setTargetRect(null);
+    if (step?.targetSelector) {
+      const el = document.querySelector(step.targetSelector) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Allow scroll to settle before measuring
+        const timer = setTimeout(updateTargetRect, 300);
+        return () => clearTimeout(timer);
       }
-    } else {
-      setTargetElement(null);
     }
-  }, [open, currentStep, step?.targetSelector]);
+    updateTargetRect();
+  }, [open, currentStep, step?.targetSelector, updateTargetRect]);
+
+  // Recompute on resize, orientation change, and scroll
+  useEffect(() => {
+    if (!open) return;
+    let rafId = 0; // initialize so cancelAnimationFrame is always called with a valid handle
+    const handle = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateTargetRect);
+    };
+    window.addEventListener("resize", handle);
+    window.addEventListener("orientationchange", handle);
+    window.addEventListener("scroll", handle, { passive: true, capture: true });
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handle);
+      window.removeEventListener("orientationchange", handle);
+      window.removeEventListener("scroll", handle, { capture: true });
+    };
+  }, [open, updateTargetRect]);
 
   if (!open) return null;
 
@@ -224,79 +373,75 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
     onSkip();
   };
 
-  const isCenter = step?.position === "center" || !step?.targetSelector;
-  const isFinal = currentStep === TOUR_STEPS.length - 1;
-
-  // Calculate position for non-center cards
+  /** Build `style` for the positioned (non-center) tour card. */
   const getCardStyle = (): React.CSSProperties | undefined => {
-    if (isCenter || !targetElement) return undefined;
+    if (isCenter || !targetRect) return undefined;
 
-    const rect = targetElement.getBoundingClientRect();
-    const windowHeight = window.innerHeight;
-    const cardWidth = 450; // max-w-md = ~450px
-    const cardMargin = 16; // mx-4 = 16px
+    // Use the actual rendered width if available, otherwise derive from the viewport.
+    // We set an explicit width in the style so `w-full`/`mx-4` don't add extra margin
+    // that pushes the card outside the clamped bounds.
+    const card = cardRef.current;
+    const cardWidth = card ? card.offsetWidth : Math.min(448, window.innerWidth - 32); // 448 = Tailwind max-w-md (~28rem)
+    const cardHeight = card ? card.offsetHeight : 300; // 300px: conservative estimate for card content (title + description + nav)
 
-    switch (step?.position) {
-      case "top":
-        return {
-          left: "50%",
-          transform: "translateX(-50%)",
-          bottom: windowHeight - rect.top + 20,
-        };
-      case "bottom":
-        return {
-          left: "50%",
-          transform: "translateX(-50%)",
-          top: rect.bottom + 20,
-        };
-      case "left":
-        return {
-          right: window.innerWidth - rect.left + 20,
-          top: rect.top,
-        };
-      case "right":
-        return {
-          left: rect.right + 20,
-          top: rect.top,
-        };
-      default:
-        return undefined;
-    }
+    const pos = computeCardPosition({
+      targetRect,
+      cardWidth,
+      cardHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      preferredPosition: (step?.position as "top" | "bottom" | "left" | "right") ?? "top",
+      bottomReserved: getBottomNavHeight(),
+    });
+
+    return {
+      position: "absolute",
+      top: pos.top,
+      left: pos.left,
+      // Explicit width prevents `w-full` + `mx-4` from overflowing the clamped bounds
+      width: cardWidth,
+    };
+  };
+
+  /** Crisp spotlight style – all values rounded to whole pixels. */
+  const getSpotlightStyle = (): React.CSSProperties | undefined => {
+    if (isCenter || !targetRect) return undefined;
+    const border = 4;
+    return {
+      top: Math.round(targetRect.top) - border,
+      left: Math.round(targetRect.left) - border,
+      width: Math.round(targetRect.width) + border * 2,
+      height: Math.round(targetRect.height) + border * 2,
+      boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.6)",
+    };
   };
 
   return (
     <>
       {/* Overlay - blocks all background interactions */}
-      <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: 'auto' }}>
+      <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: "auto" }}>
         {/* Backdrop */}
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
 
         {/* Spotlight on target element */}
-        {targetElement && !isCenter && (
+        {!isCenter && targetRect && (
           <div
             className="absolute border-4 border-primary rounded-lg pointer-events-none transition-all duration-300"
-            style={{
-              top: targetElement.getBoundingClientRect().top - 4,
-              left: targetElement.getBoundingClientRect().left - 4,
-              width: targetElement.offsetWidth + 8,
-              height: targetElement.offsetHeight + 8,
-              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.6)",
-            }}
+            style={getSpotlightStyle()}
           />
         )}
 
         {/* Tour Card */}
         <AnimatePresence mode="wait">
           <motion.div
+            ref={cardRef}
             key={currentStep}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={`absolute w-full max-w-md mx-4 glass-strong rounded-2xl p-6 shadow-2xl ${
-              isCenter
-                ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                : ""
+              isCenter ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : ""
             }`}
             style={isCenter ? undefined : getCardStyle()}
           >
