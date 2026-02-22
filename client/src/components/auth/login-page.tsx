@@ -73,6 +73,7 @@ export function LoginPage() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotEmailSent, setForgotEmailSent] = useState(false);
   const [showDemoInfo, setShowDemoInfo] = useState(false);
+  const [showDemoFallback, setShowDemoFallback] = useState(false);
   
   const guestMessageCount = getGuestMessageCount();
 
@@ -88,10 +89,15 @@ export function LoginPage() {
     onSuccess: async (data) => {
       // Invalidate auth data so all components refetch the full user from /api/auth/me
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setShowDemoFallback(false);
       toast({ title: "Welcome back!" });
       setLocation("/");
     },
     onError: (error: Error) => {
+      if (import.meta.env.DEV) {
+        console.warn("[auth] Login failed:", error.message);
+      }
+      setShowDemoFallback(true);
       toast({
         title: "Login failed",
         description: error.message || "Please check your credentials and try again.",
@@ -128,6 +134,7 @@ export function LoginPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries();
+      setShowDemoFallback(false);
       const guestData = getGuestData();
       const messageCount = guestData?.conversations.reduce((sum, conv) => sum + conv.messages.length, 0) || 0;
       if (messageCount > 0) {
@@ -142,6 +149,10 @@ export function LoginPage() {
       setLocation("/welcome");
     },
     onError: (error: Error) => {
+      if (import.meta.env.DEV) {
+        console.warn("[auth] Registration failed:", error.message);
+      }
+      setShowDemoFallback(true);
       toast({
         title: "Registration failed",
         description: error.message || "Please check your information and try again.",
@@ -410,6 +421,28 @@ export function LoginPage() {
                 </form>
               </TabsContent>
             </Tabs>
+
+            {/* Fallback: shown after a failed login or registration attempt */}
+            {showDemoFallback && (
+              <div
+                className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2"
+                data-testid="demo-fallback-banner"
+                role="alert"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Having trouble signing in? Explore the full app without an account.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDemoMode}
+                  className="w-full"
+                  data-testid="button-demo-fallback"
+                >
+                  Continue in Demo Mode
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

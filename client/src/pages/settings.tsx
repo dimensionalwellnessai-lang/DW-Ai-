@@ -15,6 +15,7 @@ import { AnalyticsDebugPanel } from "@/components/analytics-debug-panel";
 import { useInteractiveTour } from "@/components/interactive-tour";
 import { PremiumFeaturesDialog } from "@/components/premium-features-dialog";
 import { saveEnhancedOnboarding } from "@/lib/guest-storage";
+import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import {
   User,
   Bell,
@@ -31,6 +32,7 @@ import {
   HelpCircle,
   Activity,
   Sparkles,
+  TestTube,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -47,6 +49,7 @@ export function SettingsPage() {
   const [showMobilityModal, setShowMobilityModal] = useState(false);
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
+  const [demoActive, setDemoActive] = useState(() => isDemoMode());
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
@@ -86,6 +89,19 @@ export function SettingsPage() {
 
   const handleTourSkip = () => {
     skipTour();
+  };
+
+  const handleToggleDemo = (checked: boolean) => {
+    if (checked) {
+      initializeDemoMode();
+      setDemoActive(true);
+      toast({ title: "Demo Mode enabled", description: "Sample wellness data loaded" });
+    } else {
+      exitDemoMode();
+      setDemoActive(false);
+      toast({ title: "Demo Mode disabled", description: "Demo data cleared" });
+      setLocation("/login");
+    }
   };
   
   return (
@@ -373,6 +389,37 @@ export function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <TestTube className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Demo Mode</CardTitle>
+                <CardDescription>
+                  Explore with pre-populated sample data — no account required
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="demo-mode-toggle" className="text-sm">
+                {demoActive ? "Demo Mode is active" : "Demo Mode is off"}
+              </Label>
+              <Switch
+                id="demo-mode-toggle"
+                checked={demoActive}
+                onCheckedChange={handleToggleDemo}
+                data-testid="switch-demo-mode"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enabling Demo Mode loads sample wellness data so you can explore all features without creating an account.
+              Disabling it clears demo data and returns you to the login screen.
+            </p>
+          </CardContent>
+        </Card>
       </main>
       </div>
 

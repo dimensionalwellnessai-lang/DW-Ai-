@@ -193,7 +193,84 @@ Searches across all system data with intelligent relevance scoring.
 
 For complete API documentation, see [ENHANCED_FEATURES.md](docs/ENHANCED_FEATURES.md).
 
-## Design Philosophy
+## App Review & Demo Mode
+
+### For Apple / Google App Reviewers
+
+All features are available without creating an account using **Demo Mode**.
+
+#### How to Activate Demo Mode
+
+**Option 1 – Tap "Try Demo Mode" on the Login screen**
+Open the app → tap **Try Demo Mode** on the first screen. Sample wellness data is loaded instantly.
+
+**Option 2 – URL query param (web or Capacitor WebView)**
+Append `?demo=true` to the app URL when loading in a browser or Capacitor WebView:
+```
+https://<your-domain>/?demo=true
+```
+Note: Native Capacitor deep links (`dwai://...`) use a separate listener and do not populate
+`window.location.search`, so the `?demo=true` param only works via the web URL.
+
+**Option 3 – Settings toggle (when already inside the app)**
+Settings → scroll to **Demo Mode** → toggle on.
+
+#### What Demo Mode provides
+- Pre-filled AI conversations (3 topics: wellness intro, meal planning, stress management)
+- Sample calendar events (daily workout, midday walk, evening journaling, weekly meal prep)
+- 7 days of mood tracking data
+- Body, meal-prep, workout, finance, and spiritual profiles
+- All features accessible without a network connection or account
+
+#### Disabling Demo Mode
+Settings → **Demo Mode** toggle → off (returns to login screen and clears sample data).
+Or tap **Exit Demo** in the top banner visible on every screen while demo is active.
+
+---
+
+## Guided Tour
+
+The app includes an **interactive step-by-step tour** that highlights key UI elements.
+
+### How to Launch the Tour
+
+1. From the **App Tour** page (`/app-tour`) – tap **Tour the Whole App**
+2. From **Settings** → **App Tours** → **Take Interactive Tour**
+
+The tour walks through: Welcome → Home → Calendar → Chat → Browse → Journal → Complete.
+Each step has Back / Next / Skip controls.
+
+---
+
+## Building for iOS and Android (Capacitor)
+
+### Prerequisites
+- Xcode 15+ (iOS)
+- Android Studio (Android)
+- Node.js 22+
+
+### Sync & open in IDE
+```bash
+# Build web assets and sync to iOS
+npm run sync:ios      # then open in Xcode manually, or:
+npm run ios           # build + open Xcode in one step
+
+# Build web assets and sync to Android
+npm run sync:android  # then open in Android Studio, or:
+npm run android       # build + open Android Studio in one step
+```
+
+### Release builds
+```bash
+npm run build:ios     # outputs App.xcarchive in ios/
+npm run build:android # outputs APK + AAB in android/app/build/outputs/
+```
+
+### Troubleshooting Capacitor
+- After any code change, run `npm run sync:ios` (or `sync:android`) before testing in a simulator.
+- Hard-refresh the WebView on device: shake device → **Reload** in dev mode.
+- Ensure `capacitor.config.ts` `webDir` points to `dist/public` (already set).
+
 
 - **Energy-based guidance** over productivity metrics
 - **Meaning over metrics** - no streaks or leaderboards

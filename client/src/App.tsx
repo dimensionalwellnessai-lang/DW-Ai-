@@ -14,6 +14,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingAIWidget } from "@/components/floating-ai-widget";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
+import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { InteractiveTour, InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour";
@@ -230,18 +231,56 @@ function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Non-intrusive banner shown at the top of the app shell when Demo Mode is active. */
+function DemoModeBanner({ onExit }: { onExit: () => void }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="demo-mode-banner"
+      className="flex items-center justify-between gap-2 px-4 py-1.5 bg-primary/10 border-b border-primary/20 text-xs font-medium text-primary"
+    >
+      <span>🧪 Demo Mode — sample data only, no account required</span>
+      <button
+        onClick={onExit}
+        className="shrink-0 underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+        aria-label="Exit Demo Mode"
+        data-testid="button-exit-demo"
+      >
+        Exit Demo
+      </button>
+    </div>
+  );
+}
+
 function AppContent() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const [demoActive, setDemoActive] = useState(() => isDemoMode());
   const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
   const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
+
+  // Keep demoActive in sync on every navigation. The banner needs to appear when demo
+  // is activated from the Login page or Settings (same-document localStorage writes),
+  // and disappear when demo is exited. A per-navigation read is the lightest approach
+  // because storage events only fire for cross-document writes (other tabs/iframes).
+  useEffect(() => {
+    setDemoActive(isDemoMode());
+  }, [location]);
 
   // Start interactive tour if triggered from another page (e.g. app-tour page)
   useEffect(() => {
     startTourIfPending();
   }, [location]);
 
+  const handleExitDemo = () => {
+    exitDemoMode();
+    setDemoActive(false);
+    setLocation("/login");
+  };
+
   return (
     <div className="app-shell">
+      {demoActive && <DemoModeBanner onExit={handleExitDemo} />}
       <Toaster />
       <TutorialOverlay />
       <SyncTray />
