@@ -73,6 +73,7 @@ const SALT_ROUNDS = 10;
 declare module "express-session" {
   interface SessionData {
     userId?: string;
+    oauthState?: string;
   }
 }
 
@@ -394,24 +395,41 @@ export async function registerRoutes(
     res: Response,
     opts: { provider: string; oauthId: string; email: string; firstName?: string }
   ) {
-    const { provider, oauthId, email, firstName } = opts;
+    const { provider, oauthId, firstName } = opts;
 
-    // 1. Look up by OAuth identity
+    // Basic email format validation before touching the database
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(opts.email)) {
+      throw new Error(`Invalid email address received from ${provider}`);
+    }
+    const email = opts.email.toLowerCase().trim();
+
+    // 1. Look up by OAuth identity (most common path after first sign-in)
     let user = await storage.getUserByOAuthId(provider, oauthId);
 
     if (!user) {
-      // 2. Fall back to email match so existing email/password accounts are linked
-      user = await storage.getUserByEmail(email.toLowerCase().trim());
-      if (user) {
-        // Attach OAuth identity to the existing account
-        const updated = await storage.updateUser(user.id, { oauthProvider: provider, oauthId });
-        if (updated) {
+      // 2. Check for an existing email/password account with this email.
+      //    Only link automatically when the current session already belongs to
+      //    that account (i.e. the user is already signed in and adding OAuth).
+      //    Otherwise, create a fresh account to prevent account takeover.
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        if (req.session.userId && req.session.userId === existingUser.id) {
+          // The user is already authenticated as this account – safe to link
+          const updated = await storage.updateUser(existingUser.id, { oauthProvider: provider, oauthId });
+          if (!updated) {
+            throw new Error("Failed to link OAuth credentials to existing account");
+          }
           user = updated;
+        } else {
+          // An account with this email exists but the caller is not authenticated
+          // as that account. Prevent silent account takeover by rejecting.
+          throw new Error("account_exists_use_password");
         }
       } else {
         // 3. Create a brand-new account (no password for OAuth users)
         user = await storage.createUser({
-          email: email.toLowerCase().trim(),
+          email,
           oauthProvider: provider,
           oauthId,
           ...(firstName ? { firstName } : {}),
@@ -419,11 +437,20 @@ export async function registerRoutes(
       }
     }
 
-    // Set session
+    // Set session with a 30-day cookie (same as the email/password default)
     req.session.userId = user.id;
     req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
     await new Promise<void>((resolve, reject) =>
-      req.session.save((err) => (err ? reject(err) : resolve()))
+      req.session.save((err) => {
+        if (err) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[auth] Session save error after OAuth login:", err);
+          }
+          reject(new Error("Failed to establish session after OAuth login"));
+        } else {
+          resolve();
+        }
+      })
     );
     return user;
   }
@@ -432,10 +459,11 @@ export async function registerRoutes(
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-  // Rate limiter shared by all OAuth callback routes (20 requests / 15 min per IP)
+  // Rate limiter applied only to OAuth callback endpoints (50 requests / 15 min per IP).
+  // Initiation endpoints are not rate-limited; they just redirect to the provider.
   const oauthCallbackLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many auth requests. Please try again later." },
@@ -454,20 +482,34 @@ export async function registerRoutes(
       )
     );
 
-    // Initiate Google OAuth
-    app.get(
-      "/api/auth/google",
-      oauthCallbackLimiter,
-      passport.authenticate("google", {
-        scope: ["profile", "email"],
-        session: false,
-      })
-    );
+    // Initiate Google OAuth – generate a CSRF state, save to session, then redirect
+    app.get("/api/auth/google", (req, res, next) => {
+      const state = crypto.randomBytes(16).toString("hex");
+      req.session.oauthState = state;
+      req.session.save((err) => {
+        if (err) return next(err);
+        passport.authenticate("google", {
+          scope: ["profile", "email"],
+          session: false,
+          state,
+        })(req, res, next);
+      });
+    });
 
-    // Google OAuth callback
+    // Google OAuth callback – validate CSRF state before processing the profile
     app.get(
       "/api/auth/google/callback",
       oauthCallbackLimiter,
+      (req, res, next) => {
+        const returnedState = typeof req.query.state === "string" ? req.query.state : undefined;
+        const sessionState = req.session.oauthState;
+        // Clear state immediately to prevent replay
+        delete req.session.oauthState;
+        if (!returnedState || !sessionState || returnedState !== sessionState) {
+          return res.redirect("/login?error=invalid_state");
+        }
+        next();
+      },
       passport.authenticate("google", { session: false, failureRedirect: "/login?error=google_failed" }),
       async (req, res) => {
         try {
@@ -487,7 +529,11 @@ export async function registerRoutes(
           if (process.env.NODE_ENV === "development") {
             console.error("[auth] Google callback error:", err);
           }
-          res.redirect("/login?error=google_failed");
+          const errorCode =
+            err instanceof Error && err.message === "account_exists_use_password"
+              ? "account_exists_use_password"
+              : "google_failed";
+          res.redirect(`/login?error=${errorCode}`);
         }
       }
     );
@@ -511,96 +557,123 @@ export async function registerRoutes(
   const appleConfigured = !!(appleClientId && appleTeamId && appleKeyId && applePrivateKey);
 
   if (appleConfigured) {
-    // Initiate Apple OAuth
-    app.get("/api/auth/apple", oauthCallbackLimiter, (_req, res) => {
-      const params = new URLSearchParams({
-        response_type: "code id_token",
-        response_mode: "form_post",
-        client_id: appleClientId!,
-        redirect_uri: `${oauthRedirectBase}/api/auth/apple/callback`,
-        scope: "name email",
-        state: crypto.randomBytes(16).toString("hex"),
+    // Initiate Apple OAuth – generate CSRF state, save to session, then redirect
+    app.get("/api/auth/apple", (req, res, next) => {
+      const state = crypto.randomBytes(16).toString("hex");
+      req.session.oauthState = state;
+      req.session.save((err) => {
+        if (err) return next(err);
+        const params = new URLSearchParams({
+          response_type: "code id_token",
+          response_mode: "form_post",
+          client_id: appleClientId!,
+          redirect_uri: `${oauthRedirectBase}/api/auth/apple/callback`,
+          scope: "name email",
+          state,
+        });
+        res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
       });
-      res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
     });
 
     // Apple OAuth callback (Apple POSTs to this endpoint)
-    app.post("/api/auth/apple/callback", oauthCallbackLimiter, express.urlencoded({ extended: true }), async (req, res) => {
-      try {
-        const { code, id_token, state: _state, user: userJson } = req.body as {
-          code?: string;
-          id_token?: string;
-          state?: string;
-          user?: string;
-        };
+    // Uses express.urlencoded to parse Apple's form_post body (consistent with
+    // the global extended:false setting in server/index.ts).
+    app.post(
+      "/api/auth/apple/callback",
+      oauthCallbackLimiter,
+      express.urlencoded({ extended: false }),
+      async (req, res) => {
+        try {
+          // Validate CSRF state before processing any credentials
+          const returnedState = typeof req.body.state === "string" ? req.body.state : undefined;
+          const sessionState = req.session.oauthState;
+          // Clear state immediately to prevent replay
+          delete req.session.oauthState;
+          if (!returnedState || !sessionState || returnedState !== sessionState) {
+            return res.redirect("/login?error=invalid_state");
+          }
 
-        if (!id_token && !code) {
-          return res.redirect("/login?error=apple_failed");
-        }
+          const { code, id_token, user: userJson } = req.body as {
+            code?: string;
+            id_token?: string;
+            user?: string;
+          };
 
-        let email: string | undefined;
-        let appleUserId: string | undefined;
-        let firstName: string | undefined;
+          if (!id_token && !code) {
+            return res.redirect("/login?error=apple_failed");
+          }
 
-        if (id_token) {
-          // Verify the id_token from Apple
-          const appleIdToken = await appleSignin.verifyIdToken(id_token, {
-            audience: appleClientId!,
-            ignoreExpiration: false,
-          });
-          email = appleIdToken.email;
-          appleUserId = appleIdToken.sub;
-        } else if (code) {
-          // Exchange code for tokens to get the id_token
-          const clientSecret = appleSignin.getClientSecret({
-            clientID: appleClientId!,
-            teamID: appleTeamId!,
-            privateKey: applePrivateKey!,
-            keyIdentifier: appleKeyId!,
-          });
-          const tokens = await appleSignin.getAuthorizationToken(code, {
-            clientID: appleClientId!,
-            redirectUri: `${oauthRedirectBase}/api/auth/apple/callback`,
-            clientSecret,
-          });
-          if (tokens.id_token) {
-            const decoded = await appleSignin.verifyIdToken(tokens.id_token, {
+          let email: string | undefined;
+          let appleUserId: string | undefined;
+          let firstName: string | undefined;
+
+          // When Apple sends both code and id_token (response_type: "code id_token"),
+          // prefer id_token for direct verification – the code path is a fallback
+          // for clients that only receive an authorization code.
+          if (id_token) {
+            // Verify the id_token directly against Apple's JWKS
+            const appleIdToken = await appleSignin.verifyIdToken(id_token, {
               audience: appleClientId!,
               ignoreExpiration: false,
             });
-            email = decoded.email;
-            appleUserId = decoded.sub;
+            email = appleIdToken.email;
+            appleUserId = appleIdToken.sub;
+          } else if (code) {
+            // Exchange code for tokens to obtain the id_token
+            const clientSecret = appleSignin.getClientSecret({
+              clientID: appleClientId!,
+              teamID: appleTeamId!,
+              privateKey: applePrivateKey!,
+              keyIdentifier: appleKeyId!,
+            });
+            const tokens = await appleSignin.getAuthorizationToken(code, {
+              clientID: appleClientId!,
+              redirectUri: `${oauthRedirectBase}/api/auth/apple/callback`,
+              clientSecret,
+            });
+            if (tokens.id_token) {
+              const decoded = await appleSignin.verifyIdToken(tokens.id_token, {
+                audience: appleClientId!,
+                ignoreExpiration: false,
+              });
+              email = decoded.email;
+              appleUserId = decoded.sub;
+            }
           }
-        }
 
-        if (!email || !appleUserId) {
-          return res.redirect("/login?error=apple_no_email");
-        }
-
-        // Apple only sends user name on the first authorization
-        if (userJson) {
-          try {
-            const parsed = JSON.parse(userJson) as { name?: { firstName?: string } };
-            firstName = parsed.name?.firstName;
-          } catch {
-            // ignore parse errors
+          if (!email || !appleUserId) {
+            return res.redirect("/login?error=apple_no_email");
           }
-        }
 
-        await handleOAuthUser(req, res, {
-          provider: "apple",
-          oauthId: appleUserId,
-          email,
-          firstName,
-        });
-        res.redirect("/");
-      } catch (err) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[auth] Apple callback error:", err);
+          // Apple only sends user name on the first authorization
+          if (userJson) {
+            try {
+              const parsed = JSON.parse(userJson) as { name?: { firstName?: string } };
+              firstName = parsed.name?.firstName;
+            } catch {
+              // ignore parse errors
+            }
+          }
+
+          await handleOAuthUser(req, res, {
+            provider: "apple",
+            oauthId: appleUserId,
+            email,
+            firstName,
+          });
+          res.redirect("/");
+        } catch (err) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[auth] Apple callback error:", err);
+          }
+          const errorCode =
+            err instanceof Error && err.message === "account_exists_use_password"
+              ? "account_exists_use_password"
+              : "apple_failed";
+          res.redirect(`/login?error=${errorCode}`);
         }
-        res.redirect("/login?error=apple_failed");
       }
-    });
+    );
   } else {
     // Stub routes so the frontend can detect when Apple OAuth is not configured
     app.get("/api/auth/apple", (_req, res) =>

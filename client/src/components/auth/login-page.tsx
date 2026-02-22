@@ -95,6 +95,9 @@ export function LoginPage() {
         apple_failed: "Apple sign-in failed. Please try again or use email/password.",
         apple_no_email: "Apple did not provide an email address. Please try again.",
         no_email: "Sign-in provider did not return an email address.",
+        invalid_state: "Sign-in request expired or was tampered with. Please try again.",
+        account_exists_use_password:
+          "An account with this email already exists. Please sign in with your email and password, then link your social account from Settings.",
       };
       toast({
         title: "Sign-in failed",

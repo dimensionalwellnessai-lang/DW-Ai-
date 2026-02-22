@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -20,7 +20,10 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
-});
+}, (t) => [
+  // Ensure each OAuth identity maps to exactly one user, and make lookups fast
+  uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),
+]);
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   onboardingProfile: one(onboardingProfiles),
