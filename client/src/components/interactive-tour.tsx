@@ -264,12 +264,6 @@ function getBottomNavHeight(): number {
   return 88; // fallback matches --bottom-nav-total-height default (defined in client/src/index.css)
 }
 
-/** Returns true when an element is in the DOM and has non-zero dimensions. */
-function isElementVisible(el: HTMLElement): boolean {
-  const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface InteractiveTourProps {
@@ -297,8 +291,19 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
       return;
     }
     const el = document.querySelector(step.targetSelector) as HTMLElement | null;
-    if (el && isElementVisible(el)) {
-      setTargetRect(el.getBoundingClientRect());
+    if (el) {
+      // Read the rect once and reuse it for both the visibility check and state update
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const visible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom >= 0 &&
+        rect.right >= 0 &&
+        rect.top <= vh &&
+        rect.left <= vw;
+      setTargetRect(visible ? rect : null);
     } else {
       setTargetRect(null);
     }
@@ -314,6 +319,8 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
   // Update target rect when the step changes, and scroll into view
   useEffect(() => {
     if (!open) return;
+    // Clear stale rect immediately so the previous step's highlight isn't shown
+    setTargetRect(null);
     if (step?.targetSelector) {
       const el = document.querySelector(step.targetSelector) as HTMLElement | null;
       if (el) {
@@ -326,20 +333,22 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
     updateTargetRect();
   }, [open, currentStep, step?.targetSelector, updateTargetRect]);
 
-  // Recompute on resize / orientation change
+  // Recompute on resize, orientation change, and scroll
   useEffect(() => {
     if (!open) return;
-    let rafId: number;
+    let rafId = 0; // initialize so cancelAnimationFrame is always called with a valid handle
     const handle = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(updateTargetRect);
     };
     window.addEventListener("resize", handle);
     window.addEventListener("orientationchange", handle);
+    window.addEventListener("scroll", handle, { passive: true, capture: true });
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", handle);
       window.removeEventListener("orientationchange", handle);
+      window.removeEventListener("scroll", handle, { capture: true });
     };
   }, [open, updateTargetRect]);
 
@@ -368,6 +377,9 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
   const getCardStyle = (): React.CSSProperties | undefined => {
     if (isCenter || !targetRect) return undefined;
 
+    // Use the actual rendered width if available, otherwise derive from the viewport.
+    // We set an explicit width in the style so `w-full`/`mx-4` don't add extra margin
+    // that pushes the card outside the clamped bounds.
     const card = cardRef.current;
     const cardWidth = card ? card.offsetWidth : Math.min(448, window.innerWidth - 32); // 448 = Tailwind max-w-md (~28rem)
     const cardHeight = card ? card.offsetHeight : 300; // 300px: conservative estimate for card content (title + description + nav)
@@ -382,7 +394,13 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
       bottomReserved: getBottomNavHeight(),
     });
 
-    return { position: "absolute", top: pos.top, left: pos.left };
+    return {
+      position: "absolute",
+      top: pos.top,
+      left: pos.left,
+      // Explicit width prevents `w-full` + `mx-4` from overflowing the clamped bounds
+      width: cardWidth,
+    };
   };
 
   /** Crisp spotlight style – all values rounded to whole pixels. */
