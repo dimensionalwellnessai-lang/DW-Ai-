@@ -112,6 +112,46 @@ The following environment variables are required:
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI-compatible API base URL |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` | OpenAI API key |
 
+#### OAuth / Social Sign-In (optional)
+
+Social sign-in is feature-flagged: if the env vars are absent the buttons simply won't appear.
+
+| Variable | Description |
+|----------|-------------|
+| `OAUTH_REDIRECT_BASE_URL` | Base URL for OAuth redirect URIs (defaults to `APP_URL`) |
+| `GOOGLE_CLIENT_ID` | Google OAuth 2.0 client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret |
+| `APPLE_CLIENT_ID` | Apple Services ID (e.g. `com.example.app.signin`) |
+| `APPLE_TEAM_ID` | 10-character Apple Developer Team ID |
+| `APPLE_KEY_ID` | Key ID from the Sign In with Apple key |
+| `APPLE_PRIVATE_KEY` | Full PEM contents of the `.p8` private key (use `\n` for newlines) |
+
+##### Setting up Google OAuth
+
+1. Open [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
+2. Create an **OAuth 2.0 Client ID** (type: *Web application*).
+3. Under **Authorized redirect URIs** add:
+   - `https://yourdomain.com/api/auth/google/callback`
+   - `https://dimensional-wellness-ai--dareiltrader.replit.app/api/auth/google/callback` (Replit staging)
+4. Copy the **Client ID** and **Client secret** into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+
+##### Setting up Apple Sign In
+
+1. In [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers), create or select a **Services ID**.
+2. Enable **Sign In with Apple**, click **Configure**, and add the return URL:
+   `https://yourdomain.com/api/auth/apple/callback`
+3. Set `APPLE_CLIENT_ID` to the Services ID (e.g. `com.example.app.signin`).
+4. Under **Keys**, create a key with **Sign In with Apple** enabled and download the `.p8` file.
+5. Set `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` from the key details.
+
+##### Database migration
+
+After adding the OAuth columns run:
+```bash
+npm run db:push
+```
+This adds `oauth_provider` and `oauth_id` columns and makes `password` nullable (existing rows keep their passwords).
+
 On Replit, these are automatically configured via the Secrets tab and Replit AI Integrations.
 
 ### Running Locally

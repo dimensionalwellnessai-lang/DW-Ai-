@@ -12,12 +12,14 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   username: text("username"),
   firstName: text("first_name"),
-  password: text("password").notNull(),
+  password: text("password"),
   systemName: text("system_name"),
   role: text("role").default("user").$type<UserRole>(),
   onboardingCompleted: boolean("onboarding_completed").default(false),
   trialStartAt: timestamp("trial_start_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  oauthProvider: text("oauth_provider"),
+  oauthId: text("oauth_id"),
 });
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -964,7 +966,9 @@ export const importedDocumentItemsRelations = relations(importedDocumentItems, (
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
-});
+  oauthProvider: true,
+  oauthId: true,
+}).partial({ password: true, oauthProvider: true, oauthId: true });
 
 export const insertOnboardingProfileSchema = createInsertSchema(onboardingProfiles).omit({
   id: true,

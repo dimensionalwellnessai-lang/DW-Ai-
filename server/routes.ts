@@ -1,10 +1,15 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import multer from "multer";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import appleSignin from "apple-signin-auth";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
@@ -367,6 +372,253 @@ export async function registerRoutes(
     })
   );
 
+  // Initialize Passport (used for OAuth strategies; no session serialization needed
+  // since we manage sessions ourselves via express-session)
+  passport.serializeUser((user, done) => done(null, user));
+  passport.deserializeUser((user, done) => done(null, user as Express.User));
+  app.use(passport.initialize());
+
+  // ─── OAuth helpers ─────────────────────────────────────────────────────────
+  // The base URL used for OAuth redirect URIs.  Falls back to the Replit URL
+  // for local/staging use, and can be overridden via OAUTH_REDIRECT_BASE_URL
+  // once a custom domain is in use.
+  const oauthRedirectBase = (
+    process.env.OAUTH_REDIRECT_BASE_URL ||
+    process.env.APP_URL ||
+    "https://dimensional-wellness-ai--dareiltrader.replit.app"
+  ).replace(/\/$/, "");
+
+  /** Find-or-create a user for an OAuth login, then set an Express session. */
+  async function handleOAuthUser(
+    req: Request,
+    res: Response,
+    opts: { provider: string; oauthId: string; email: string; firstName?: string }
+  ) {
+    const { provider, oauthId, email, firstName } = opts;
+
+    // 1. Look up by OAuth identity
+    let user = await storage.getUserByOAuthId(provider, oauthId);
+
+    if (!user) {
+      // 2. Fall back to email match so existing email/password accounts are linked
+      user = await storage.getUserByEmail(email.toLowerCase().trim());
+      if (user) {
+        // Attach OAuth identity to the existing account
+        const updated = await storage.updateUser(user.id, { oauthProvider: provider, oauthId });
+        if (updated) {
+          user = updated;
+        }
+      } else {
+        // 3. Create a brand-new account (no password for OAuth users)
+        user = await storage.createUser({
+          email: email.toLowerCase().trim(),
+          oauthProvider: provider,
+          oauthId,
+          ...(firstName ? { firstName } : {}),
+        });
+      }
+    }
+
+    // Set session
+    req.session.userId = user.id;
+    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+    await new Promise<void>((resolve, reject) =>
+      req.session.save((err) => (err ? reject(err) : resolve()))
+    );
+    return user;
+  }
+
+  // ─── Google OAuth ───────────────────────────────────────────────────────────
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  // Rate limiter shared by all OAuth callback routes (20 requests / 15 min per IP)
+  const oauthCallbackLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many auth requests. Please try again later." },
+  });
+
+  if (googleClientId && googleClientSecret) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: googleClientId,
+          clientSecret: googleClientSecret,
+          callbackURL: `${oauthRedirectBase}/api/auth/google/callback`,
+          passReqToCallback: false,
+        },
+        (_accessToken, _refreshToken, profile, done) => done(null, profile)
+      )
+    );
+
+    // Initiate Google OAuth
+    app.get(
+      "/api/auth/google",
+      oauthCallbackLimiter,
+      passport.authenticate("google", {
+        scope: ["profile", "email"],
+        session: false,
+      })
+    );
+
+    // Google OAuth callback
+    app.get(
+      "/api/auth/google/callback",
+      oauthCallbackLimiter,
+      passport.authenticate("google", { session: false, failureRedirect: "/login?error=google_failed" }),
+      async (req, res) => {
+        try {
+          const profile = req.user as import("passport-google-oauth20").Profile;
+          const email = profile.emails?.[0]?.value;
+          if (!email) {
+            return res.redirect("/login?error=no_email");
+          }
+          await handleOAuthUser(req, res, {
+            provider: "google",
+            oauthId: profile.id,
+            email,
+            firstName: profile.name?.givenName,
+          });
+          res.redirect("/");
+        } catch (err) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[auth] Google callback error:", err);
+          }
+          res.redirect("/login?error=google_failed");
+        }
+      }
+    );
+  } else {
+    // Stub routes so the frontend can detect when Google OAuth is not configured
+    app.get("/api/auth/google", (_req, res) =>
+      res.status(503).json({ error: "Google OAuth not configured" })
+    );
+  }
+
+  // ─── Apple OAuth ────────────────────────────────────────────────────────────
+  // Apple Sign In uses a server-side OAuth 2.0 authorization-code flow.
+  // The callback is a POST (Apple requirement) and Apple returns an id_token JWT.
+
+  const appleClientId = process.env.APPLE_CLIENT_ID;
+  const appleTeamId = process.env.APPLE_TEAM_ID;
+  const appleKeyId = process.env.APPLE_KEY_ID;
+  // The private key may be stored as a multi-line PEM in the env var.
+  const applePrivateKey = process.env.APPLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  const appleConfigured = !!(appleClientId && appleTeamId && appleKeyId && applePrivateKey);
+
+  if (appleConfigured) {
+    // Initiate Apple OAuth
+    app.get("/api/auth/apple", oauthCallbackLimiter, (_req, res) => {
+      const params = new URLSearchParams({
+        response_type: "code id_token",
+        response_mode: "form_post",
+        client_id: appleClientId!,
+        redirect_uri: `${oauthRedirectBase}/api/auth/apple/callback`,
+        scope: "name email",
+        state: crypto.randomBytes(16).toString("hex"),
+      });
+      res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
+    });
+
+    // Apple OAuth callback (Apple POSTs to this endpoint)
+    app.post("/api/auth/apple/callback", oauthCallbackLimiter, express.urlencoded({ extended: true }), async (req, res) => {
+      try {
+        const { code, id_token, state: _state, user: userJson } = req.body as {
+          code?: string;
+          id_token?: string;
+          state?: string;
+          user?: string;
+        };
+
+        if (!id_token && !code) {
+          return res.redirect("/login?error=apple_failed");
+        }
+
+        let email: string | undefined;
+        let appleUserId: string | undefined;
+        let firstName: string | undefined;
+
+        if (id_token) {
+          // Verify the id_token from Apple
+          const appleIdToken = await appleSignin.verifyIdToken(id_token, {
+            audience: appleClientId!,
+            ignoreExpiration: false,
+          });
+          email = appleIdToken.email;
+          appleUserId = appleIdToken.sub;
+        } else if (code) {
+          // Exchange code for tokens to get the id_token
+          const clientSecret = appleSignin.getClientSecret({
+            clientID: appleClientId!,
+            teamID: appleTeamId!,
+            privateKey: applePrivateKey!,
+            keyIdentifier: appleKeyId!,
+          });
+          const tokens = await appleSignin.getAuthorizationToken(code, {
+            clientID: appleClientId!,
+            redirectUri: `${oauthRedirectBase}/api/auth/apple/callback`,
+            clientSecret,
+          });
+          if (tokens.id_token) {
+            const decoded = await appleSignin.verifyIdToken(tokens.id_token, {
+              audience: appleClientId!,
+              ignoreExpiration: false,
+            });
+            email = decoded.email;
+            appleUserId = decoded.sub;
+          }
+        }
+
+        if (!email || !appleUserId) {
+          return res.redirect("/login?error=apple_no_email");
+        }
+
+        // Apple only sends user name on the first authorization
+        if (userJson) {
+          try {
+            const parsed = JSON.parse(userJson) as { name?: { firstName?: string } };
+            firstName = parsed.name?.firstName;
+          } catch {
+            // ignore parse errors
+          }
+        }
+
+        await handleOAuthUser(req, res, {
+          provider: "apple",
+          oauthId: appleUserId,
+          email,
+          firstName,
+        });
+        res.redirect("/");
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[auth] Apple callback error:", err);
+        }
+        res.redirect("/login?error=apple_failed");
+      }
+    });
+  } else {
+    // Stub routes so the frontend can detect when Apple OAuth is not configured
+    app.get("/api/auth/apple", (_req, res) =>
+      res.status(503).json({ error: "Apple OAuth not configured" })
+    );
+    app.post("/api/auth/apple/callback", (_req, res) =>
+      res.status(503).json({ error: "Apple OAuth not configured" })
+    );
+  }
+
+  // Expose which OAuth providers are configured so the frontend can show/hide buttons
+  app.get("/api/auth/providers", (_req, res) => {
+    res.json({
+      google: !!googleClientId && !!googleClientSecret,
+      apple: appleConfigured,
+    });
+  });
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       // Log device/user-agent info for debugging (dev mode only)
@@ -520,6 +772,18 @@ export async function registerRoutes(
       const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
+      }
+      // OAuth-only accounts have no password – direct them to sign in with their provider
+      if (!user.password) {
+        const provider = user.oauthProvider || "social provider";
+        const providerLabels: Record<string, string> = {
+          google: "Continue with Google",
+          apple: "Continue with Apple",
+        };
+        const buttonLabel = providerLabels[provider] ?? `Sign in with ${provider}`;
+        return res.status(401).json({
+          error: `This account uses ${provider} sign-in. Please use the "${buttonLabel}" button.`,
+        });
       }
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {

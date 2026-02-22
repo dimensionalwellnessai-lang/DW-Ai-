@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sparkles, ArrowLeft, Loader2, Mail, TestTube } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -74,8 +74,47 @@ export function LoginPage() {
   const [forgotEmailSent, setForgotEmailSent] = useState(false);
   const [showDemoInfo, setShowDemoInfo] = useState(false);
   const [showDemoFallback, setShowDemoFallback] = useState(false);
-  
+
   const guestMessageCount = getGuestMessageCount();
+
+  // Detect available OAuth providers from the backend
+  const { data: oauthProviders } = useQuery<{ google: boolean; apple: boolean }>({
+    queryKey: ["/api/auth/providers"],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // Check if we've returned from an OAuth redirect with an error
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error) {
+      setShowDemoFallback(true);
+      const messages: Record<string, string> = {
+        google_failed: "Google sign-in failed. Please try again or use email/password.",
+        apple_failed: "Apple sign-in failed. Please try again or use email/password.",
+        apple_no_email: "Apple did not provide an email address. Please try again.",
+        no_email: "Sign-in provider did not return an email address.",
+      };
+      toast({
+        title: "Sign-in failed",
+        description: messages[error] || "Authentication failed. Please try again.",
+        variant: "destructive",
+      });
+      // Clean the error param from the URL without a page reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [toast]);
+
+  const handleGoogleSignIn = () => {
+    window.location.href = "/api/auth/google";
+  };
+
+  const handleAppleSignIn = () => {
+    window.location.href = "/api/auth/apple";
+  };
 
   const loginMutation = useMutation({
     mutationFn: async (data: { email: string; password: string; rememberMe?: boolean }) => {
@@ -279,6 +318,49 @@ export function LoginPage() {
               </div>
             </div>
             <Tabs defaultValue="login" className="w-full">
+              {/* OAuth Sign-In Buttons */}
+              {(oauthProviders?.google || oauthProviders?.apple) && (
+                <div className="space-y-2 mb-4">
+                  {oauthProviders.google && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium flex items-center justify-center gap-3"
+                      onClick={handleGoogleSignIn}
+                      data-testid="button-google-signin"
+                    >
+                      {/* Google "G" logo */}
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                      Continue with Google
+                    </Button>
+                  )}
+                  {oauthProviders.apple && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium flex items-center justify-center gap-3"
+                      onClick={handleAppleSignIn}
+                      data-testid="button-apple-signin"
+                    >
+                      {/* Apple logo */}
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
+                      </svg>
+                      Continue with Apple
+                    </Button>
+                  )}
+                  <div className="relative flex items-center py-1">
+                    <div className="flex-1 border-t border-border" />
+                    <span className="mx-3 text-xs text-muted-foreground">or</span>
+                    <div className="flex-1 border-t border-border" />
+                  </div>
+                </div>
+              )}
               <TabsList className="grid w-full grid-cols-2 h-11 sm:h-12">
                 <TabsTrigger value="login" data-testid="tab-login" className="text-sm sm:text-base">Log In</TabsTrigger>
                 <TabsTrigger value="register" data-testid="tab-register" className="text-sm sm:text-base">Sign Up</TabsTrigger>
