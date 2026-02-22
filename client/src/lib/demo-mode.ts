@@ -28,12 +28,41 @@ export const DEMO_CREDENTIALS = {
 };
 
 /**
+ * Keys that belong exclusively to demo / guest-storage data.
+ * Only these keys are cleared when demo mode is initialized or exited,
+ * so unrelated persisted state (e.g. terms acceptance, theme preference,
+ * tutorial progress) is never wiped.
+ * Note: "dw:demo_mode" is NOT included here — it is set/removed explicitly
+ * by initializeDemoMode/exitDemoMode so its lifecycle is always predictable.
+ */
+const DEMO_OWNED_KEYS = [
+  "dw_guest_data",
+  "dw_guest_session",
+  "dw_chat_draft",
+  "dw_body_scan_draft",
+  "dw_session_started",
+  "dw_last_activity",
+  "dw:isReturning",
+  "dw:activatedAt",
+];
+
+function clearDemoOwnedKeys(): void {
+  DEMO_OWNED_KEYS.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors
+    }
+  });
+}
+
+/**
  * Initialize demo mode with comprehensive pre-filled data
  * This creates a realistic wellness journey for reviewers to explore
  */
 export function initializeDemoMode(): void {
-  // Clear any existing data first
-  localStorage.clear();
+  // Clear only demo/guest-storage keys — preserves terms acceptance, theme, tutorials, etc.
+  clearDemoOwnedKeys();
   
   // Set demo mode flag
   localStorage.setItem("dw:demo_mode", "true");
@@ -331,8 +360,14 @@ export function isDemoMode(): boolean {
 }
 
 /**
- * Exit demo mode and clear demo data
+ * Exit demo mode and clear demo data.
+ * Only removes demo/guest-storage keys — preserves terms acceptance, theme, and other app state.
  */
 export function exitDemoMode(): void {
-  localStorage.clear();
+  clearDemoOwnedKeys();
+  try {
+    localStorage.removeItem("dw:demo_mode");
+  } catch {
+    // Ignore storage errors
+  }
 }

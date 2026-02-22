@@ -259,6 +259,14 @@ function AppContent() {
   const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
   const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
 
+  // Keep demoActive in sync on every navigation. The banner needs to appear when demo
+  // is activated from the Login page or Settings (same-document localStorage writes),
+  // and disappear when demo is exited. A per-navigation read is the lightest approach
+  // because storage events only fire for cross-document writes (other tabs/iframes).
+  useEffect(() => {
+    setDemoActive(isDemoMode());
+  }, [location]);
+
   // Start interactive tour if triggered from another page (e.g. app-tour page)
   useEffect(() => {
     startTourIfPending();

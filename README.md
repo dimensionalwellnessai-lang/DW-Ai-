@@ -204,13 +204,13 @@ All features are available without creating an account using **Demo Mode**.
 **Option 1 – Tap "Try Demo Mode" on the Login screen**
 Open the app → tap **Try Demo Mode** on the first screen. Sample wellness data is loaded instantly.
 
-**Option 2 – URL / deep link (web or Capacitor WebView)**
-Append `?demo=true` to the app URL:
+**Option 2 – URL query param (web or Capacitor WebView)**
+Append `?demo=true` to the app URL when loading in a browser or Capacitor WebView:
 ```
 https://<your-domain>/?demo=true
-# or for Capacitor:
-dwai://home?demo=true
 ```
+Note: Native Capacitor deep links (`dwai://...`) use a separate listener and do not populate
+`window.location.search`, so the `?demo=true` param only works via the web URL.
 
 **Option 3 – Settings toggle (when already inside the app)**
 Settings → scroll to **Demo Mode** → toggle on.
@@ -236,7 +236,6 @@ The app includes an **interactive step-by-step tour** that highlights key UI ele
 
 1. From the **App Tour** page (`/app-tour`) – tap **Tour the Whole App**
 2. From **Settings** → **App Tours** → **Take Interactive Tour**
-3. Programmatically (deep link): `dwai://home` then navigate to `/app-tour`
 
 The tour walks through: Welcome → Home → Calendar → Chat → Browse → Journal → Complete.
 Each step has Back / Next / Skip controls.
