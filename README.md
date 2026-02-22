@@ -131,7 +131,7 @@ Social sign-in is feature-flagged: if the env vars are absent the buttons simply
 1. Open [Google Cloud Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials).
 2. Create an **OAuth 2.0 Client ID** (type: *Web application*).
 3. Under **Authorized redirect URIs** add:
-   - `https://yourdomain.com/api/auth/google/callback`
+   - `https://dimensionalwellnessai.com/api/auth/google/callback`
    - `https://dimensional-wellness-ai--dareiltrader.replit.app/api/auth/google/callback` (Replit staging)
 4. Copy the **Client ID** and **Client secret** into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 
@@ -139,7 +139,7 @@ Social sign-in is feature-flagged: if the env vars are absent the buttons simply
 
 1. In [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers), create or select a **Services ID**.
 2. Enable **Sign In with Apple**, click **Configure**, and add the return URL:
-   `https://yourdomain.com/api/auth/apple/callback`
+   `https://dimensionalwellnessai.com/api/auth/apple/callback`
 3. Set `APPLE_CLIENT_ID` to the Services ID (e.g. `com.example.app.signin`).
 4. Under **Keys**, create a key with **Sign In with Apple** enabled and download the `.p8` file.
 5. Set `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` from the key details.
