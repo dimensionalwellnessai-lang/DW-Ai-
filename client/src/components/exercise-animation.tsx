@@ -2,14 +2,18 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { getExerciseWithMatchType, type ExerciseAnimationData } from "@/lib/exercise-animations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Flag } from "lucide-react";
+import { X, Flag, AlertCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { findClosestMotion } from "@/lib/avatar-motion-library";
+import { ReportIssueModal } from "@/components/report-issue-modal";
 
 // Lazy-load the heavy Babylon.js viewer so it doesn't block initial render
 const AvatarViewer = lazy(() =>
   import("@/components/avatar-viewer").then((m) => ({ default: m.AvatarViewer }))
 );
+
+const AVATAR_HEIGHT = 400;
 
 interface ExerciseAnimationProps {
   exerciseId: string;
@@ -19,9 +23,10 @@ interface ExerciseAnimationProps {
   requestedExercise?: string;
 }
 
-export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: ExerciseAnimationProps) {
+export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true, requestedExercise }: ExerciseAnimationProps) {
   const result = getExerciseWithMatchType(exerciseId);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const [reportOpen, setReportOpen] = useState(false);
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -33,6 +38,12 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
   }
 
   const { exercise, isClosestMatch, requestedId } = result;
+
+  const { name: displayName, category, difficulty, equipment, muscleGroups } = exercise;
+  const { motion, score, isFallback } = findClosestMotion(exerciseId);
+  const youtubeUrl = motion.youtubeVideoId
+    ? `https://www.youtube.com/watch?v=${motion.youtubeVideoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(motion.youtubeSearch)}`;
 
   const handleReportMismatch = () => {
     const params = new URLSearchParams({
