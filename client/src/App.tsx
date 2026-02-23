@@ -85,6 +85,7 @@ import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
 import SupportReportPage from "@/pages/support-report";
+import ExpandMyWeekPage from "@/pages/expand-my-week";
 
 function isProfileSetupComplete(): boolean {
   try {
