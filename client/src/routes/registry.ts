@@ -102,6 +102,17 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "voice-onboarding",
+    path: "/voice-onboarding",
+    label: "Voice Onboarding",
+    icon: "mic",
+    type: "page",
+    description: "Voice-first onboarding conversation with DW",
+    showInMenu: false,
+    enabled: true,
+    isPublic: true,
+  },
+  {
     id: "subscription",
     path: "/subscription",
     label: "Subscription",
