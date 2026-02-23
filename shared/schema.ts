@@ -620,6 +620,24 @@ export const savedContentRelations = relations(savedContent, ({ one }) => ({
   }),
 }));
 
+export const feedInteractions = pgTable("feed_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  contentType: text("content_type"), // video, article, exercise, blog
+  contentTitle: text("content_title"),
+  contentUrl: text("content_url"),
+  action: text("action").notNull(), // "not_interested" | "saved" | "scheduled"
+  topic: text("topic"), // topic/category for personalization learning
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const feedInteractionsRelations = relations(feedInteractions, ({ one }) => ({
+  user: one(users, {
+    fields: [feedInteractions.userId],
+    references: [users.id],
+  }),
+}));
+
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -1119,6 +1137,11 @@ export const insertWellnessContentSchema = createInsertSchema(wellnessContent).o
 export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
   id: true,
   savedAt: true,
+});
+
+export const insertFeedInteractionSchema = createInsertSchema(feedInteractions).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertChallengeSchema = createInsertSchema(challenges).omit({
@@ -2050,6 +2073,8 @@ export type WellnessContent = typeof wellnessContent.$inferSelect;
 export type InsertWellnessContent = z.infer<typeof insertWellnessContentSchema>;
 export type SavedContent = typeof savedContent.$inferSelect;
 export type InsertSavedContent = z.infer<typeof insertSavedContentSchema>;
+export type FeedInteraction = typeof feedInteractions.$inferSelect;
+export type InsertFeedInteraction = z.infer<typeof insertFeedInteractionSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;

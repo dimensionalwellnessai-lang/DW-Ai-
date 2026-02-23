@@ -11,6 +11,8 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
+  ThumbsDown,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +24,7 @@ export interface ExploreFeedCardProps {
   source: string;
   title: string;
   description: string;
+  whyItMatters?: string;
   thumbnail?: string;
   duration?: string;
   url: string;
@@ -34,6 +37,7 @@ export interface ExploreFeedCardProps {
   onSave?: () => void;
   onSchedule?: () => void;
   onOpen?: () => void;
+  onNotInterested?: () => void;
   className?: string;
 }
 
@@ -75,6 +79,7 @@ export function ExploreFeedCard({
   source,
   title,
   description,
+  whyItMatters,
   thumbnail,
   duration,
   url,
@@ -83,6 +88,7 @@ export function ExploreFeedCard({
   onSave,
   onSchedule,
   onOpen,
+  onNotInterested,
   className,
 }: ExploreFeedCardProps) {
   const config = typeConfig[type];
@@ -120,14 +126,19 @@ export function ExploreFeedCard({
 
         {/* Content Section */}
         <div className="p-4 space-y-3">
-          {/* Source */}
+          {/* Source + type (no thumbnail case) */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Icon className="w-3.5 h-3.5" />
-            <span className="font-medium">{source}</span>
+            {!thumbnail && (
+              <Badge variant="secondary" className={cn("font-semibold text-xs", config.badgeColor)}>
+                {config.emoji} {config.label}
+              </Badge>
+            )}
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-medium truncate">{source}</span>
             {metadata?.publishedAt && (
               <>
                 <span>•</span>
-                <span>{metadata.publishedAt}</span>
+                <span className="shrink-0">{metadata.publishedAt}</span>
               </>
             )}
           </div>
@@ -141,6 +152,14 @@ export function ExploreFeedCard({
           <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
             {description}
           </p>
+
+          {/* Why It Matters */}
+          {whyItMatters && (
+            <div className="flex items-start gap-2 rounded-md bg-primary/5 px-3 py-2 text-xs text-muted-foreground border border-primary/10">
+              <Lightbulb className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />
+              <span className="leading-relaxed"><span className="font-semibold text-foreground">Why it matters: </span>{whyItMatters}</span>
+            </div>
+          )}
 
           {/* Metadata */}
           {metadata?.channel && (
@@ -191,9 +210,21 @@ export function ExploreFeedCard({
                 variant="ghost"
                 onClick={onSchedule}
                 className="px-2"
-                title="Schedule or mark as read"
+                title="Add to schedule"
               >
                 <Calendar className="w-4 h-4" />
+              </Button>
+            )}
+
+            {onNotInterested && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onNotInterested}
+                className="px-2 text-muted-foreground hover:text-destructive"
+                title="Not interested"
+              >
+                <ThumbsDown className="w-4 h-4" />
               </Button>
             )}
           </div>
@@ -202,3 +233,4 @@ export function ExploreFeedCard({
     </Card>
   );
 }
+

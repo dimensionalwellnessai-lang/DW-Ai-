@@ -36,6 +36,7 @@ import {
   insertCalendarEventSchema,
   insertUserProfileSchema,
   insertSavedContentSchema,
+  insertFeedInteractionSchema,
   insertChallengeSchema,
   insertBodyScanSchema,
   insertSystemModuleSchema,
@@ -3442,6 +3443,73 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete saved content" });
+    }
+  });
+
+  // Feed Interaction Routes (not-interested, personalization signals)
+  app.post("/api/feed-interactions", requireAuth, async (req, res) => {
+    try {
+      const data = insertFeedInteractionSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const created = await storage.createFeedInteraction(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to record feed interaction" });
+    }
+  });
+
+  app.get("/api/feed-interactions/not-interested", requireAuth, async (req, res) => {
+    try {
+      const interactions = await storage.getFeedInteractionsByAction(
+        req.session.userId!,
+        "not_interested"
+      );
+      res.json(interactions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load feed interactions" });
+    }
+  });
+
+  // Add content to schedule from feed
+  app.post("/api/feed/add-to-schedule", requireAuth, async (req, res) => {
+    try {
+      const { title, scheduledTime, contentUrl, contentType, notes } = req.body;
+      if (!title || !scheduledTime) {
+        return res.status(400).json({ error: "title and scheduledTime are required" });
+      }
+      // Normalize scheduledTime: if it's only HH:MM, combine with today's date
+      let normalizedTime = scheduledTime as string;
+      if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+        const today = new Date();
+        const [hours, minutes] = normalizedTime.split(":");
+        today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        normalizedTime = today.toISOString();
+      }
+      const event = await storage.createScheduleEvent({
+        userId: req.session.userId!,
+        title,
+        scheduledTime: normalizedTime,
+        systemReference: contentUrl || null,
+        systemType: contentType || "feed_content",
+        notes: notes || null,
+      });
+      // Also record a scheduled interaction for personalization
+      await storage.createFeedInteraction({
+        userId: req.session.userId!,
+        contentType: contentType || null,
+        contentTitle: title,
+        contentUrl: contentUrl || null,
+        action: "scheduled",
+        topic: req.body.topic || null,
+      });
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add to schedule" });
     }
   });
 
