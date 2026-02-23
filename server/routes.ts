@@ -1620,6 +1620,60 @@ export async function registerRoutes(
     }
   });
 
+  // Guided CookSession recipe generation
+  app.post("/api/ai/cook-session", async (req, res) => {
+    try {
+      const { query, preferences, mode } = req.body;
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ error: "query is required" });
+      }
+      if (query.length > 300) {
+        return res.status(400).json({ error: "query must be 300 characters or fewer" });
+      }
+      const validModes = ["lightweight", "full"];
+      const sessionMode = validModes.includes(mode) ? mode : "full";
+
+      // Normalize preferences to avoid runtime errors from malformed input
+      const rawPreferences = preferences && typeof preferences === "object" ? preferences : {};
+      const normalizeStringArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        return (value as unknown[])
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+      };
+      const prefsRecord = rawPreferences as Record<string, unknown>;
+      const normalizeValues = (value: unknown): string[] => {
+        if (Array.isArray(value)) {
+          return normalizeStringArray(value);
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          return trimmed.length > 0 ? [trimmed] : [];
+        }
+        return [];
+      };
+      const dietaryStyle =
+        typeof prefsRecord.dietaryStyle === "string"
+          ? prefsRecord.dietaryStyle.trim() || undefined
+          : undefined;
+      const sanitizedPreferences = {
+        ...prefsRecord,
+        restrictions: normalizeStringArray(prefsRecord.restrictions),
+        allergies: normalizeStringArray(prefsRecord.allergies),
+        bannedIngredients: normalizeStringArray(prefsRecord.bannedIngredients),
+        dietaryStyle,
+        values: normalizeValues(prefsRecord.values),
+      };
+
+      const recipe = await generateCookSessionRecipe(query, sanitizedPreferences, sessionMode);
+      res.json(recipe);
+    } catch (error) {
+      console.error("Cook session generation error:", error);
+      res.status(500).json({ error: "Failed to generate cook session recipe" });
+    }
+  });
+
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, conversationHistory, context } = req.body;
