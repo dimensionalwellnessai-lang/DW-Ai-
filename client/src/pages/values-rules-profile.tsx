@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -78,18 +77,21 @@ function ChecklistGroup({
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      {options.map((opt) => (
-        <div key={opt} className="flex items-center space-x-2">
-          <Checkbox
-            id={`chk-${opt}`}
-            checked={selected.includes(opt)}
-            onCheckedChange={() => onChange(toggleItem(selected, opt))}
-          />
-          <Label htmlFor={`chk-${opt}`} className="font-normal cursor-pointer text-sm">
-            {opt}
-          </Label>
-        </div>
-      ))}
+      {options.map((opt, index) => {
+        const checkboxId = `chk-${index}-${opt.replace(/[^a-zA-Z0-9-]/g, "-")}`;
+        return (
+          <div key={opt} className="flex items-center space-x-2">
+            <Checkbox
+              id={checkboxId}
+              checked={selected.includes(opt)}
+              onCheckedChange={() => onChange(toggleItem(selected, opt))}
+            />
+            <Label htmlFor={checkboxId} className="font-normal cursor-pointer text-sm">
+              {opt}
+            </Label>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -186,26 +188,34 @@ export default function ValuesRulesProfilePage() {
   });
 
   const handleSave = async () => {
-    await Promise.all([
-      saveValuesMutation.mutateAsync({
-        faithDietaryExclusions,
-        strongFoodDislikes,
-        mealBudgetLevel,
-        maxMealPrepTimeMin,
-        movementEnvironment,
-        accessibilityNeeds,
-        sensoryNeeds,
-        fixedScheduleNotes,
-        reminderStyle,
-        additionalNotes,
-      }),
-      saveProfileMutation.mutateAsync({
-        dietRestrictions,
-        allergies,
-        workoutEquipment,
-      }),
-    ]);
-    toast({ title: "Saved", description: "Your values & rules have been updated." });
+    try {
+      await Promise.all([
+        saveValuesMutation.mutateAsync({
+          faithDietaryExclusions,
+          strongFoodDislikes,
+          mealBudgetLevel,
+          maxMealPrepTimeMin,
+          movementEnvironment,
+          accessibilityNeeds,
+          sensoryNeeds,
+          fixedScheduleNotes,
+          reminderStyle,
+          additionalNotes,
+        }),
+        saveProfileMutation.mutateAsync({
+          dietRestrictions,
+          allergies,
+          workoutEquipment,
+        }),
+      ]);
+      toast({ title: "Saved", description: "Your values & rules have been updated." });
+    } catch (error) {
+      toast({
+        title: "Unable to save",
+        description: "Something went wrong while saving your values & rules. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isSaving = saveValuesMutation.isPending || saveProfileMutation.isPending;
@@ -281,7 +291,7 @@ export default function ValuesRulesProfilePage() {
                       e.target.value
                         .split(",")
                         .map((s) => s.trim())
-                        .filter(Boolean)
+                        .filter((s) => s.length > 0)
                     )
                   }
                   rows={2}
