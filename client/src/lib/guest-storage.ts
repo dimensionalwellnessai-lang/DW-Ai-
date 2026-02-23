@@ -2591,9 +2591,29 @@ export function getCookSessionHistory(): CookSessionHistoryEntry[] {
 
 function saveCookSessionHistoryAll(entries: CookSessionHistoryEntry[]): void {
   try {
-    localStorage.setItem(COOK_SESSION_HISTORY_KEY, JSON.stringify(entries.slice(0, MAX_COOK_SESSION_HISTORY)));
+    localStorage.setItem(
+      COOK_SESSION_HISTORY_KEY,
+      JSON.stringify(entries.slice(0, MAX_COOK_SESSION_HISTORY)),
+    );
   } catch (e) {
-    console.error("Failed to save cook session history:", e);
+    // Handle storage quota issues explicitly to provide clearer feedback
+    if (
+      typeof DOMException !== "undefined" &&
+      e instanceof DOMException &&
+      (e.name === "QuotaExceededError" ||
+        // Firefox
+        e.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        // Legacy codes
+        (typeof (e as any).code === "number" &&
+          ((e as any).code === 22 || (e as any).code === 1014)))
+    ) {
+      console.error(
+        "Unable to save cook session history: browser storage quota has been exceeded.",
+        e,
+      );
+    } else {
+      console.error("Failed to save cook session history:", e);
+    }
   }
 }
 
