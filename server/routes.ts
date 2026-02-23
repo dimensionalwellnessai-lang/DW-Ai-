@@ -36,6 +36,7 @@ import {
   insertCalendarEventSchema,
   insertUserProfileSchema,
   insertSavedContentSchema,
+  insertFeedInteractionSchema,
   insertChallengeSchema,
   insertBodyScanSchema,
   insertSystemModuleSchema,
@@ -3497,6 +3498,105 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete saved content" });
+    }
+  });
+
+  // Feed Interaction Routes (not-interested, personalization signals)
+  app.post("/api/feed-interactions", requireAuth, async (req, res) => {
+    try {
+      const data = insertFeedInteractionSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const created = await storage.createFeedInteraction(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to record feed interaction" });
+    }
+  });
+
+  app.get("/api/feed-interactions/not-interested", requireAuth, async (req, res) => {
+    try {
+      const interactions = await storage.getFeedInteractionsByAction(
+        req.session.userId!,
+        "not_interested"
+      );
+      res.json(interactions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load feed interactions" });
+    }
+  });
+
+  // Add content to schedule from feed
+  app.post("/api/feed/add-to-schedule", requireAuth, async (req, res) => {
+    const bodySchema = z.object({
+      title: z.string().min(1),
+      scheduledTime: z.string().min(1),
+      contentUrl: z.string().optional(),
+      contentType: z.string().optional(),
+      notes: z.string().optional(),
+      topic: z.string().optional(),
+    });
+    try {
+      const body = bodySchema.parse(req.body);
+      const { title, scheduledTime, contentUrl, contentType, notes, topic } = body;
+
+      /**
+       * Normalize scheduledTime so we always store a UTC ISO 8601 timestamp.
+       *
+       * Accepted inputs:
+       * - "HH:MM"  → interpreted as today at HH:MM (server local), stored as UTC ISO.
+       *              If that time is already in the past today, advanced to tomorrow.
+       * - Any Date-parseable string (e.g. ISO 8601 with timezone) → stored as UTC ISO.
+       *
+       * dailyScheduleEvents.scheduledTime is a text column expected to always contain
+       * a full ISO 8601 timestamp in UTC (e.g. "2024-02-01T10:00:00.000Z").
+       */
+      let normalizedTime: string;
+      if (/^\d{2}:\d{2}$/.test(scheduledTime)) {
+        const now = new Date();
+        const scheduledDate = new Date(now);
+        const [hours, minutes] = scheduledTime.split(":");
+        scheduledDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        // If the computed time is in the past for today, schedule for tomorrow instead
+        if (scheduledDate.getTime() < now.getTime()) {
+          scheduledDate.setDate(scheduledDate.getDate() + 1);
+        }
+        normalizedTime = scheduledDate.toISOString();
+      } else {
+        const parsed = new Date(scheduledTime);
+        if (Number.isNaN(parsed.getTime())) {
+          return res.status(400).json({ error: "Invalid scheduledTime format" });
+        }
+        normalizedTime = parsed.toISOString();
+      }
+
+      const event = await storage.createScheduleEvent({
+        userId: req.session.userId!,
+        title,
+        scheduledTime: normalizedTime,
+        systemReference: contentUrl || null,
+        systemType: contentType || "feed_content",
+        notes: notes || null,
+      });
+      // Also record a scheduled interaction for personalization
+      await storage.createFeedInteraction({
+        userId: req.session.userId!,
+        contentType: contentType || null,
+        contentTitle: title,
+        contentUrl: contentUrl || null,
+        action: "scheduled",
+        topic: topic || null,
+      });
+      res.json(event);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to add to schedule" });
     }
   });
 

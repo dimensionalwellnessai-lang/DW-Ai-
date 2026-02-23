@@ -24,6 +24,7 @@ import {
   userProfiles,
   wellnessContent,
   savedContent,
+  feedInteractions,
   challenges,
   bodyScans,
   systemModules,
@@ -109,6 +110,8 @@ import {
   type InsertWellnessContent,
   type SavedContent,
   type InsertSavedContent,
+  type FeedInteraction,
+  type InsertFeedInteraction,
   type Challenge,
   type InsertChallenge,
   type BodyScan,
@@ -330,6 +333,9 @@ export interface IStorage {
   createSavedContent(content: InsertSavedContent): Promise<SavedContent>;
   updateSavedContent(id: string, userId: string, data: Partial<SavedContent>): Promise<SavedContent | undefined>;
   deleteSavedContent(id: string, userId: string): Promise<boolean>;
+
+  createFeedInteraction(data: InsertFeedInteraction): Promise<FeedInteraction>;
+  getFeedInteractionsByAction(userId: string, action: string): Promise<FeedInteraction[]>;
 
   getChallenges(userId: string): Promise<Challenge[]>;
   getChallenge(id: string, userId: string): Promise<Challenge | undefined>;
@@ -1266,6 +1272,17 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(savedContent.id, id), eq(savedContent.userId, userId)))
       .returning();
     return result.length > 0;
+  }
+
+  async createFeedInteraction(data: InsertFeedInteraction): Promise<FeedInteraction> {
+    const [created] = await db.insert(feedInteractions).values(data).returning();
+    return created;
+  }
+
+  async getFeedInteractionsByAction(userId: string, action: string): Promise<FeedInteraction[]> {
+    return db.select().from(feedInteractions)
+      .where(and(eq(feedInteractions.userId, userId), eq(feedInteractions.action, action)))
+      .orderBy(desc(feedInteractions.createdAt));
   }
 
   async getChallenges(userId: string): Promise<Challenge[]> {
