@@ -80,6 +80,7 @@ import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import ExpandMyWeekPage from "@/pages/expand-my-week";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -214,6 +215,7 @@ function Router() {
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
       {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
+      {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />

@@ -7137,6 +7137,181 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ── Week Planner Conversational Endpoints ─────────────────────────────────
+
+  app.post("/api/week-planner/chat", async (req, res) => {
+    try {
+      const { message, conversationHistory = [], questionCount = 0 } = req.body;
+
+      let userId = req.session.userId;
+      if (!userId) {
+        let devUser = await storage.getUserByEmail("dev@wellness.local");
+        if (!devUser) {
+          devUser = await storage.createUser({ email: "dev@wellness.local", password: "devpassword123" });
+        }
+        userId = devUser.id;
+        req.session.userId = userId;
+      }
+
+      const [goals, habits, scheduleBlocks, profile] = await Promise.all([
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+        storage.getScheduleBlocks(userId),
+        storage.getUserProfile(userId),
+      ]);
+
+      const activeGoals = goals.filter(g => g.isActive).map(g => g.title);
+      const activeHabits = habits.filter(h => h.isActive).map(h => h.title);
+      const existingBlocks = scheduleBlocks.map(b => `${b.title} (${b.category}, day ${b.dayOfWeek} ${b.startTime}-${b.endTime})`);
+
+      const MAX_QUESTIONS = 8;
+      const nextQuestionNumber = questionCount + 1;
+      const isLastQuestion = nextQuestionNumber >= MAX_QUESTIONS;
+
+      const systemPrompt = `You are DW, a calm and insightful week-planning assistant helping the user build their ideal week through a short conversation.
+
+USER CONTEXT:
+- Active goals: ${activeGoals.length > 0 ? activeGoals.join(", ") : "none yet"}
+- Active habits: ${activeHabits.length > 0 ? activeHabits.join(", ") : "none yet"}
+- Existing schedule blocks: ${existingBlocks.length > 0 ? existingBlocks.join("; ") : "none yet"}
+- Profile: ${profile ? JSON.stringify({ goals: profile.goals, fitnessGoal: profile.fitnessGoal, dietRestrictions: profile.dietRestrictions, scheduleAvailability: profile.scheduleAvailability }) : "not set"}
+
+PHASE TRACKING:
+- Questions asked so far: ${questionCount}
+- Maximum questions: ${MAX_QUESTIONS}
+- This is question ${nextQuestionNumber} of ${MAX_QUESTIONS}
+${isLastQuestion ? "- THIS IS THE FINAL QUESTION. After this response you MUST move to the proposal phase." : ""}
+
+INSTRUCTIONS:
+Your goal is to gather enough information about commitments, preferences, goals, and constraints to build a personalised week schedule. Ask one clear, focused question at a time.
+
+Topics to cover (choose what's most relevant given the conversation so far):
+1. Wake-up time and morning energy preferences
+2. Work/school hours and fixed commitments
+3. Exercise goals and preferred times
+4. Nutrition/meal prep priorities
+5. Social or family commitments
+6. Personal growth or learning goals
+7. Rest, wind-down, and sleep preferences
+8. Any constraints or things to avoid
+
+${isLastQuestion
+  ? `IMPORTANT: You have gathered enough information. Now generate a proposed week schedule.
+
+Respond with a JSON block embedded in your message using this exact format (the JSON must be valid):
+<SCHEDULE_PROPOSAL>
+{
+  "blocks": [
+    {
+      "id": "block-1",
+      "title": "Morning Workout",
+      "day": 1,
+      "startTime": "07:00",
+      "endTime": "08:00",
+      "category": "workout",
+      "why": "You mentioned wanting to exercise 3x/week and prefer mornings — Monday is a clean start to the week."
+    }
+  ]
+}
+</SCHEDULE_PROPOSAL>
+
+Rules for the proposal:
+- Include 8–14 blocks spread across the week (days 0=Sun through 6=Sat)
+- Each block needs: id, title, day (0-6), startTime (HH:mm), endTime (HH:mm), category (workout/meal/work/personal/social/wellness/sleep), why
+- Reference the user's actual stated values and goals in each "why" field
+- Respect constraints they mentioned
+- After the JSON block, write a warm 2–3 sentence summary of the proposed schedule`
+  : `Ask the next most relevant question. Keep it brief (1-2 sentences max). Be warm and conversational, not clinical.`}`;
+
+      const messages = [
+        { role: "system" as const, content: systemPrompt },
+        ...conversationHistory.map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        { role: "user" as const, content: message },
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        temperature: 0.7,
+        max_tokens: 1200,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || "I'm having trouble connecting right now. Please try again.";
+
+      // Detect if a proposal is embedded
+      const proposalMatch = responseText.match(/<SCHEDULE_PROPOSAL>([\s\S]*?)<\/SCHEDULE_PROPOSAL>/);
+      let proposedSchedule = null;
+      let cleanResponse = responseText;
+
+      if (proposalMatch) {
+        try {
+          const parsed = JSON.parse(proposalMatch[1].trim());
+          proposedSchedule = parsed.blocks || [];
+          // Remove the JSON block from the visible response
+          cleanResponse = responseText.replace(/<SCHEDULE_PROPOSAL>[\s\S]*?<\/SCHEDULE_PROPOSAL>/, "").trim();
+        } catch {
+          // If JSON parse fails, keep full response
+        }
+      }
+
+      const newQuestionCount = proposedSchedule ? questionCount : questionCount + 1;
+      const phase = proposedSchedule ? "proposal" : "questions";
+
+      res.json({
+        response: cleanResponse,
+        phase,
+        questionCount: newQuestionCount,
+        proposedSchedule,
+      });
+    } catch (error) {
+      console.error("Week planner chat error:", error);
+      res.status(500).json({ error: "Failed to generate planner response" });
+    }
+  });
+
+  app.post("/api/week-planner/confirm", async (req, res) => {
+    try {
+      let userId = req.session.userId;
+      if (!userId) {
+        let devUser = await storage.getUserByEmail("dev@wellness.local");
+        if (!devUser) {
+          devUser = await storage.createUser({ email: "dev@wellness.local", password: "devpassword123" });
+        }
+        userId = devUser.id;
+        req.session.userId = userId;
+      }
+
+      const { confirmedItems } = req.body;
+      if (!Array.isArray(confirmedItems) || confirmedItems.length === 0) {
+        return res.status(400).json({ error: "No confirmed items provided" });
+      }
+
+      const created: unknown[] = [];
+      for (const item of confirmedItems) {
+        if (!item.title || item.day === undefined || !item.startTime) continue;
+        const block = await storage.createScheduleBlock({
+          userId,
+          title: item.title,
+          dayOfWeek: item.day,
+          startTime: item.startTime,
+          endTime: item.endTime || item.startTime,
+          category: item.category || "personal",
+        });
+        created.push(block);
+      }
+
+      res.json({ success: true, created: created.length });
+    } catch (error) {
+      console.error("Week planner confirm error:", error);
+      res.status(500).json({ error: "Failed to save schedule" });
+    }
+  });
+
+  // ── End Week Planner ────────────────────────────────────────────────────────
+
   return httpServer;
 }
 
