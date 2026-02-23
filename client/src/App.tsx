@@ -37,6 +37,7 @@ import DailySchedulePage from "@/pages/daily-schedule";
 import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
+import VoiceOnboardingPage from "@/pages/voice-onboarding";
 import SubscriptionPage from "@/pages/subscription";
 import EnhancedOnboardingPage from "@/pages/enhanced-onboarding";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -81,6 +82,7 @@ import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import SupportReportPage from "@/pages/support-report";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -156,6 +158,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
+      <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
@@ -201,6 +204,7 @@ function Router() {
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
+      {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
@@ -216,6 +220,7 @@ function Router() {
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
       {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
+      {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
@@ -226,7 +231,7 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/voice-onboarding", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed

@@ -383,6 +383,10 @@ export default function CookSessionPage() {
     else if (entryTab === "have") query = `Make something with: ${haveIngredients.trim()}`;
     else query = aiPrompt.trim() || "Suggest a healthy meal based on my preferences";
     if (!query) return;
+    if (query.length > 300) {
+      toast({ title: "Query too long", description: "Please keep your request under 300 characters.", variant: "destructive" });
+      return;
+    }
     generateMutation.mutate({ query, preferences, mode: sessionMode });
   }
 
