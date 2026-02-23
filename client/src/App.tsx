@@ -77,6 +77,7 @@ import LifeBlueprintPage from "@/pages/life-blueprint";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
+import ValuesRulesProfilePage from "@/pages/values-rules-profile";
 import TrackingPage from "@/pages/tracking";
 import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
@@ -172,6 +173,7 @@ function Router() {
       <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
       <Route path="/insights" component={InsightsDashboard} />
       <Route path="/wellness-preferences" component={WellnessPreferencesPage} />
+      <Route path="/values-rules-profile" component={ValuesRulesProfilePage} />
       <Route path="/tracking" component={TrackingPage} />
       <Route path="/goals" component={GoalsPage} />
       <Route path="/habits" component={HabitsPage} />

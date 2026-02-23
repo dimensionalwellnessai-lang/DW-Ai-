@@ -711,6 +711,16 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "values-rules-profile",
+    path: "/values-rules-profile",
+    label: "Values & Rules",
+    icon: "shield-check",
+    type: "page",
+    description: "Dietary, movement, belief and life constraints — single source of truth for personalization",
+    showInMenu: false,
+    enabled: true,
+  },
+  {
     id: "app-tour",
     path: "/app-tour",
     label: "App Tour",

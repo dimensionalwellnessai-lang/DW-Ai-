@@ -61,6 +61,7 @@ import {
   insertLifeDimensionAssessmentSchema,
   insertDimensionSystemSchema,
   insertWellnessPreferencesSchema,
+  insertUserValuesRulesSchema,
   insertFeatureSettingsSchema,
   insertHouseholdCleaningTaskSchema,
   insertHouseholdLaundryScheduleSchema,
@@ -7245,6 +7246,54 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update wellness preferences error:", error);
       res.status(500).json({ error: "Failed to update preferences" });
+    }
+  });
+
+  // User Values & Rules
+  app.get("/api/user-values-rules", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const record = await storage.getUserValuesRules(userId);
+      res.json(record || null);
+    } catch (error) {
+      console.error("Get user values rules error:", error);
+      res.status(500).json({ error: "Failed to get values & rules" });
+    }
+  });
+
+  app.post("/api/user-values-rules", requireAuth, async (req, res) => {
+    try {
+      const data = insertUserValuesRulesSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const record = await storage.createUserValuesRules(data);
+      res.json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create user values rules error:", error);
+      res.status(500).json({ error: "Failed to create values & rules" });
+    }
+  });
+
+  app.patch("/api/user-values-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId!;
+      const data = insertUserValuesRulesSchema.omit({ userId: true }).partial().parse(req.body);
+      const record = await storage.updateUserValuesRules(id, userId, data);
+      if (!record) {
+        return res.status(404).json({ error: "Values & rules not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Update user values rules error:", error);
+      res.status(500).json({ error: "Failed to update values & rules" });
     }
   });
 
