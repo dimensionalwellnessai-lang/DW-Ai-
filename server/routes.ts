@@ -1638,11 +1638,28 @@ export async function registerRoutes(
           .map((v) => v.trim())
           .filter((v) => v.length > 0);
       };
+      const prefsRecord = rawPreferences as Record<string, unknown>;
+      const normalizeValues = (value: unknown): string[] => {
+        if (Array.isArray(value)) {
+          return normalizeStringArray(value);
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          return trimmed.length > 0 ? [trimmed] : [];
+        }
+        return [];
+      };
+      const dietaryStyle =
+        typeof prefsRecord.dietaryStyle === "string"
+          ? prefsRecord.dietaryStyle.trim() || undefined
+          : undefined;
       const sanitizedPreferences = {
-        ...(rawPreferences as Record<string, unknown>),
-        restrictions: normalizeStringArray((rawPreferences as Record<string, unknown>).restrictions),
-        allergies: normalizeStringArray((rawPreferences as Record<string, unknown>).allergies),
-        bannedIngredients: normalizeStringArray((rawPreferences as Record<string, unknown>).bannedIngredients),
+        ...prefsRecord,
+        restrictions: normalizeStringArray(prefsRecord.restrictions),
+        allergies: normalizeStringArray(prefsRecord.allergies),
+        bannedIngredients: normalizeStringArray(prefsRecord.bannedIngredients),
+        dietaryStyle,
+        values: normalizeValues(prefsRecord.values),
       };
 
       const recipe = await generateCookSessionRecipe(query, sanitizedPreferences, sessionMode);
