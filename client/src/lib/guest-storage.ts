@@ -2599,9 +2599,9 @@ function saveCookSessionHistoryAll(entries: CookSessionHistoryEntry[]): void {
 
 export function upsertCookSessionHistoryEntry(entry: CookSessionHistoryEntry): void {
   const entries = getCookSessionHistory();
-  const idx = entries.findIndex(e => e.id === entry.id);
-  if (idx >= 0) {
-    entries[idx] = entry;
+  const existingIndex = entries.findIndex(e => e.id === entry.id);
+  if (existingIndex >= 0) {
+    entries[existingIndex] = entry;
   } else {
     entries.unshift(entry);
   }

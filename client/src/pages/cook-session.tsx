@@ -474,6 +474,10 @@ Answer questions briefly and helpfully. If asked what to do next, reference the 
     setHistory(getCookSessionHistory());
   }
 
+  function handleRecookSession(recipe: CookSessionRecipe) {
+    startSession({ ...recipe, id: generateId(), createdAt: Date.now() });
+  }
+
   // ─── ENTRY SCREEN ────────────────────────────────────────────────────────
   if (view === "entry") {
     return (
@@ -660,7 +664,7 @@ Answer questions briefly and helpfully. If asked what to do next, reference the 
                       </Button>
                     )}
                     {h.status === "completed" && (
-                      <Button size="sm" variant="outline" onClick={() => { startSession({ ...h.recipe, id: generateId(), createdAt: Date.now() }); }} data-testid={`button-recook-${h.id}`}>
+                      <Button size="sm" variant="outline" onClick={() => handleRecookSession(h.recipe)} data-testid={`button-recook-${h.id}`}>
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />
                         Cook again
                       </Button>
@@ -762,7 +766,7 @@ Answer questions briefly and helpfully. If asked what to do next, reference the 
               <Utensils className="h-4 w-4 text-muted-foreground" />
               Ingredients ({checkedIngredients.size}/{recipe.ingredients.length} checked)
             </span>
-            {showIngredients ? <ChevronLeft className="h-4 w-4 rotate-90" /> : <ChevronRight className="h-4 w-4 rotate-90" />}
+            {showIngredients ? <ChevronLeft className="h-4 w-4 -rotate-90" /> : <ChevronRight className="h-4 w-4 rotate-90" />}
           </button>
           {showIngredients && (
             <CardContent className="px-4 pb-4 pt-0 space-y-2">

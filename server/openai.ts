@@ -3105,15 +3105,20 @@ Respond with valid JSON only:
   "tips": ["Optional cooking tip 1"]
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-    response_format: { type: "json_object" },
-    max_completion_tokens: 2000,
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("No response from AI");
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty response from AI");
 
-  return JSON.parse(content) as CookSessionRecipeResult;
+    return JSON.parse(content) as CookSessionRecipeResult;
+  } catch (error) {
+    console.error("Failed to generate cook session recipe:", error);
+    throw new Error("Failed to generate cook session recipe. Please try again.");
+  }
 }
