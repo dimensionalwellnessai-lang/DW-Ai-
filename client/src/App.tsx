@@ -224,6 +224,7 @@ function Router() {
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
+      <Route path="/support/report" component={SupportReportPage} />
       <Route path="/404" component={NotFound404Page} />
       
       <Route component={NotFound404Page} />

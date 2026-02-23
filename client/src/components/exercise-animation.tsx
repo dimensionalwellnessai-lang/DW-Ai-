@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { getExerciseById, type ExerciseAnimationData } from "@/lib/exercise-animations";
+import { getExerciseWithMatchType, type ExerciseAnimationData } from "@/lib/exercise-animations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 interface ExerciseAnimationProps {
   exerciseId: string;
@@ -12,16 +13,49 @@ interface ExerciseAnimationProps {
 }
 
 export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: ExerciseAnimationProps) {
-  const exercise = getExerciseById(exerciseId);
+  const result = getExerciseWithMatchType(exerciseId);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const [, setLocation] = useLocation();
 
-  if (!exercise) {
+  useEffect(() => {
+    setIsPlaying(autoPlay);
+  }, [exerciseId, autoPlay]);
+
+  if (!result) {
     return null;
   }
+
+  const { exercise, isClosestMatch, requestedId } = result;
+
+  const handleReportMismatch = () => {
+    const params = new URLSearchParams({
+      type: "mismatch",
+      desc: `Exercise demo mismatch: requested "${requestedId}" but showed "${exercise.id}" (${exercise.name}) as the closest match.`,
+    });
+    onClose?.();
+    setLocation(`/support/report?${params.toString()}`);
+  };
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="p-6">
+        {/* Closest-match notice */}
+        {isClosestMatch && (
+          <div className="flex items-center justify-between rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 mb-4 text-xs text-amber-800 dark:text-amber-300">
+            <span>Showing closest match for &quot;{requestedId}&quot;</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900"
+              onClick={handleReportMismatch}
+              data-testid="button-report-mismatch"
+            >
+              <Flag className="h-3 w-3 mr-1" />
+              Report mismatch
+            </Button>
+          </div>
+        )}
+
         {/* Header with close button */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">

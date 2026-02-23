@@ -116,7 +116,10 @@ export default function SupportReportPage() {
         : undefined,
       includeConversationSnippet: includeConversation,
       conversationSnippet: includeConversation
-        ? { lastUserMessage: description.trim() }
+        ? {
+            lastUserMessage: description.trim(),
+            lastDwReply: "(Conversation history not yet captured in beta — description included as context)",
+          }
         : undefined,
       includeConstraintsSnapshot: false,
     };
@@ -252,7 +255,7 @@ export default function SupportReportPage() {
                     Conversation snippet
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Last message you sent and DW's reply
+                    Your description will be included as context. Full conversation history is not yet captured in beta.
                   </p>
                 </div>
                 <Switch
