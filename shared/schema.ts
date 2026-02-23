@@ -1707,6 +1707,33 @@ export const insertWellnessPreferencesSchema = createInsertSchema(wellnessPrefer
   updatedAt: true,
 });
 
+// User Values & Rules - unified source of truth for dietary, movement, belief, and life constraints
+export const userValuesRules = pgTable("user_values_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  // Food rules
+  faithDietaryExclusions: text("faith_dietary_exclusions").array(), // halal, kosher, no pork, no beef, fasting, vegan-by-faith, etc.
+  strongFoodDislikes: text("strong_food_dislikes").array(),
+  mealBudgetLevel: text("meal_budget_level"), // "budget" | "moderate" | "flexible"
+  maxMealPrepTimeMin: integer("max_meal_prep_time_min"),
+  // Movement rules
+  movementEnvironment: text("movement_environment").array(), // outdoor, indoor, gym, home, water
+  accessibilityNeeds: text("accessibility_needs").array(), // seated, low-impact, adaptive, etc.
+  // Life/state constraints
+  sensoryNeeds: text("sensory_needs"),
+  fixedScheduleNotes: text("fixed_schedule_notes"),
+  reminderStyle: text("reminder_style"), // "gentle" | "regular" | "proactive"
+  additionalNotes: text("additional_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserValuesRulesSchema = createInsertSchema(userValuesRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Feature Settings - user's enabled/disabled features
 export const featureSettings = pgTable("feature_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2132,6 +2159,8 @@ export type DimensionSystem = typeof dimensionSystems.$inferSelect;
 export type InsertDimensionSystem = z.infer<typeof insertDimensionSystemSchema>;
 export type WellnessPreferences = typeof wellnessPreferences.$inferSelect;
 export type InsertWellnessPreferences = z.infer<typeof insertWellnessPreferencesSchema>;
+export type UserValuesRules = typeof userValuesRules.$inferSelect;
+export type InsertUserValuesRules = z.infer<typeof insertUserValuesRulesSchema>;
 export type FeatureSettings = typeof featureSettings.$inferSelect;
 export type InsertFeatureSettings = z.infer<typeof insertFeatureSettingsSchema>;
 export type HouseholdCleaningTask = typeof householdCleaningTasks.$inferSelect;

@@ -33,6 +33,7 @@ import {
   Activity,
   Sparkles,
   TestTube,
+  BookHeart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -149,6 +150,25 @@ export function SettingsPage() {
             >
               Edit Mobility & Capabilities
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <BookHeart className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Values &amp; Rules</CardTitle>
+                <CardDescription>Dietary rules, movement constraints, and life boundaries</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Link href="/values-rules-profile">
+              <Button variant="outline" data-testid="button-edit-values-rules">
+                Edit Values &amp; Rules
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 

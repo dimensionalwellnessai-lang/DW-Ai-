@@ -196,6 +196,9 @@ import {
   wellnessPreferences,
   type WellnessPreferences,
   type InsertWellnessPreferences,
+  userValuesRules,
+  type UserValuesRules,
+  type InsertUserValuesRules,
   featureSettings,
   type FeatureSettings,
   type InsertFeatureSettings,
@@ -545,6 +548,11 @@ export interface IStorage {
   getWellnessPreferences(userId: string): Promise<WellnessPreferences | undefined>;
   createWellnessPreferences(prefs: InsertWellnessPreferences): Promise<WellnessPreferences>;
   updateWellnessPreferences(id: string, userId: string, data: Partial<WellnessPreferences>): Promise<WellnessPreferences | undefined>;
+
+  // User Values & Rules
+  getUserValuesRules(userId: string): Promise<UserValuesRules | undefined>;
+  createUserValuesRules(data: InsertUserValuesRules): Promise<UserValuesRules>;
+  updateUserValuesRules(id: string, userId: string, data: Partial<UserValuesRules>): Promise<UserValuesRules | undefined>;
 
   // PR #3: Feature Settings
   getFeatureSettings(userId: string): Promise<FeatureSettings | undefined>;
@@ -2610,6 +2618,25 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(wellnessPreferences)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(wellnessPreferences.id, id), eq(wellnessPreferences.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  // User Values & Rules
+  async getUserValuesRules(userId: string): Promise<UserValuesRules | undefined> {
+    const [record] = await db.select().from(userValuesRules).where(eq(userValuesRules.userId, userId));
+    return record || undefined;
+  }
+
+  async createUserValuesRules(data: InsertUserValuesRules): Promise<UserValuesRules> {
+    const [record] = await db.insert(userValuesRules).values(data).returning();
+    return record;
+  }
+
+  async updateUserValuesRules(id: string, userId: string, data: Partial<UserValuesRules>): Promise<UserValuesRules | undefined> {
+    const [updated] = await db.update(userValuesRules)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(userValuesRules.id, id), eq(userValuesRules.userId, userId)))
       .returning();
     return updated || undefined;
   }
