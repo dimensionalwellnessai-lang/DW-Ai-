@@ -131,29 +131,38 @@ function wasSetupSkipped(): boolean {
   return false;
 }
 
+function isOnboardingComplete(): boolean {
+  if (localStorage.getItem("dw_onboarding_completed") === "1") return true;
+  return isProfileSetupComplete();
+}
+
 function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const setupComplete = isProfileSetupComplete();
-  const returning = isReturningUser();
+  const setupComplete = isOnboardingComplete();
   
   // Not setup complete and not on welcome page -> go to welcome
   if (!setupComplete && location !== "/welcome") {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to DW chat
+  // Setup complete, on welcome -> go to /talk
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/" />;
+    return <Redirect to="/talk" />;
   }
   
-  // App always launches to DW chat at "/" - route definition handles this
   return <>{children}</>;
+}
+
+function HomeRedirect() {
+  const complete =
+    localStorage.getItem("dw_onboarding_completed") === "1" || isProfileSetupComplete();
+  return complete ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
 }
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LifeCommandCenter} />
+      <Route path="/" component={HomeRedirect} />
       <Route path="/chat" component={AIWorkspace} />
       <Route path="/talk" component={AIWorkspace} />
       <Route path="/today" component={TodayHubPage} />

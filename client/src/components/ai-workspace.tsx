@@ -188,7 +188,22 @@ export function AIWorkspace() {
   const [isUploading, setIsUploading] = useState(false);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [input, setInput] = useState(() => getChatDraft() || "");
+  const [input, setInput] = useState(() => {
+    // Seed input from onboarding intent (consumed once, then removed)
+    const intent = localStorage.getItem("dw_first_intent");
+    if (intent) {
+      localStorage.removeItem("dw_first_intent");
+      const seeded: Record<string, string> = {
+        stress: "I'm stressed and overwhelmed. Help me work through what's going on.",
+        plan: "I need help making a plan and getting organized.",
+        move: "I want to get moving. Help me with a workout or movement plan.",
+        eat: "I need help with eating better. Let's talk nutrition and meal planning.",
+        talk: "I just need to talk. I have a lot on my mind.",
+      };
+      if (seeded[intent]) return seeded[intent];
+    }
+    return getChatDraft() || "";
+  });
   const [conversationVersion, setConversationVersion] = useState(0);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
