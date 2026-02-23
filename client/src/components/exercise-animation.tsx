@@ -6,6 +6,11 @@ import { X, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
+// Lazy-load the heavy Babylon.js viewer so it doesn't block initial render
+const AvatarViewer = lazy(() =>
+  import("@/components/avatar-viewer").then((m) => ({ default: m.AvatarViewer }))
+);
+
 interface ExerciseAnimationProps {
   exerciseId: string;
   onClose?: () => void;
@@ -61,17 +66,19 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
         {/* Header with close button */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold">{exercise.name}</h3>
+            <h3 className="text-lg font-semibold">{displayName}</h3>
             <div className="flex gap-2 mt-2 flex-wrap">
               <Badge variant="secondary" className="text-xs">
-                {exercise.category}
+                {category}
               </Badge>
-              <Badge variant="outline" className="text-xs">
-                {exercise.difficulty}
-              </Badge>
-              {exercise.equipment.map((eq) => (
+              {difficulty && (
+                <Badge variant="outline" className="text-xs">
+                  {difficulty}
+                </Badge>
+              )}
+              {equipment.map((eq) => (
                 <Badge key={eq} variant="outline" className="text-xs">
-                  {eq.replace('-', ' ')}
+                  {eq.replace(/-/g, " ")}
                 </Badge>
               ))}
             </div>
@@ -88,35 +95,83 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
           )}
         </div>
 
-        {/* Animation Container */}
-        <div className="bg-muted rounded-lg p-8 mb-4 flex items-center justify-center min-h-[300px]">
-          <div className={`exercise-animation ${isPlaying ? 'playing' : 'paused'}`}>
-            <SilhouetteFigure exercise={exercise} isPlaying={isPlaying} />
+        {/* Closest-match notice */}
+        {isFallback && (
+          <div className="flex items-start gap-2 mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              No exact demo found for &ldquo;{exerciseId}&rdquo;. Showing
+              closest match: <strong>{motion.name}</strong> (score {score}/100).
+            </span>
           </div>
+        )}
+
+        {/* 3D Avatar Viewer */}
+        <div className="mb-4 rounded-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center" style={{ minHeight: AVATAR_HEIGHT }}>
+          <Suspense
+            fallback={
+              <div
+                className="flex items-center justify-center"
+                style={{ height: AVATAR_HEIGHT, width: "100%" }}
+                role="status"
+                aria-live="polite"
+                aria-label="Loading exercise demo"
+              >
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            }
+          >
+            <AvatarViewer
+              motion={motion}
+              isPlaying={isPlaying}
+              width={320}
+              height={AVATAR_HEIGHT}
+            />
+          </Suspense>
         </div>
 
-        {/* Play/Pause Control */}
-        <div className="flex justify-center mb-4">
+        {/* Controls row */}
+        <div className="flex items-center justify-between gap-2 mb-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsPlaying(!isPlaying)}
           >
-            {isPlaying ? 'Pause' : 'Play'} Animation
+            {isPlaying ? "Pause" : "Play"} Demo
+          </Button>
+
+          {/* YouTube fallback */}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-muted-foreground hover:text-foreground gap-1"
+          >
+            <a
+              href={youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Watch ${displayName} on YouTube`}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Watch on YouTube
+            </a>
           </Button>
         </div>
 
         {/* Muscle Groups */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium mb-2">Target Muscles:</h4>
-          <div className="flex gap-1 flex-wrap">
-            {exercise.muscleGroups.map((muscle) => (
-              <Badge key={muscle} variant="secondary" className="text-xs">
-                {muscle}
-              </Badge>
-            ))}
+        {muscleGroups.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Target Muscles:</h4>
+            <div className="flex gap-1 flex-wrap">
+              {muscleGroups.map((muscle) => (
+                <Badge key={muscle} variant="secondary" className="text-xs">
+                  {muscle}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form Tips */}
         <div>
@@ -301,52 +356,5 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
         }
       `}</style>
     </Card>
-  );
-}
-
-// Silhouette Figure Component - SVG-based human mannequin
-function SilhouetteFigure({ exercise, isPlaying }: { exercise: ExerciseAnimationData; isPlaying: boolean }) {
-  const animationName = exercise.animationKeyframes;
-  const duration = exercise.category === 'cardio' ? '1s' : '2s';
-
-  return (
-    <svg
-      viewBox="0 0 200 300"
-      xmlns="http://www.w3.org/2000/svg"
-      className="silhouette-figure w-full h-full"
-      style={{
-        animation: isPlaying ? `${animationName} ${duration} ease-in-out infinite` : 'none',
-      }}
-    >
-      {/* Head - circle with no facial features */}
-      <circle cx="100" cy="40" r="25" className="fill-current" />
-      
-      {/* Torso - rounded rectangle */}
-      <rect x="70" y="65" width="60" height="100" rx="15" className="fill-current" />
-      
-      {/* Left Arm */}
-      <g>
-        <rect x="45" y="70" width="25" height="70" rx="12" className="fill-current" />
-        <rect x="40" y="135" width="20" height="50" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Right Arm */}
-      <g>
-        <rect x="130" y="70" width="25" height="70" rx="12" className="fill-current" />
-        <rect x="140" y="135" width="20" height="50" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Left Leg */}
-      <g>
-        <rect x="75" y="165" width="22" height="90" rx="11" className="fill-current" />
-        <rect x="70" y="250" width="25" height="40" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Right Leg */}
-      <g>
-        <rect x="103" y="165" width="22" height="90" rx="11" className="fill-current" />
-        <rect x="105" y="250" width="25" height="40" rx="10" className="fill-current" />
-      </g>
-    </svg>
   );
 }

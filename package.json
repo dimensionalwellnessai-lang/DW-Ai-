@@ -26,6 +26,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@babylonjs/core": "^8.52.0",
+    "@babylonjs/loaders": "^8.52.0",
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
