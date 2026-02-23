@@ -348,7 +348,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     id: "cook-session",
     path: "/cook-session",
     label: "Cook Session",
-    icon: "chef-hat",
+    icon: "utensils",
     type: "page",
     description: "Guided step-by-step cooking with timers and substitutions",
     showInMenu: true,
@@ -358,7 +358,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     linkedType: "meal",
     enabled: true,
     actions: [
-      { id: "start-cooking", label: "Start cooking", handler: "openCookSession", icon: "chef-hat" },
+      { id: "start-cooking", label: "Start cooking", handler: "openCookSession", icon: "utensils" },
     ],
   },
   {

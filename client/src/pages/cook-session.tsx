@@ -63,7 +63,9 @@ function formatTime(seconds: number): string {
 }
 
 function buildRecipeFromAIResult(result: Record<string, unknown>): CookSessionRecipe {
-  const rawIngredients = (result.ingredients as { name: string; amount: string; unit: string; notes?: string }[]) ?? [];
+  const rawIngredients = Array.isArray(result.ingredients)
+    ? (result.ingredients as { name: string; amount: string; unit: string; notes?: string }[])
+    : [];
   return {
     id: generateId(),
     title: (result.title as string) ?? "Recipe",
@@ -71,8 +73,8 @@ function buildRecipeFromAIResult(result: Record<string, unknown>): CookSessionRe
     servings: (result.servings as number) ?? 2,
     prepTimeMinutes: (result.prepTimeMinutes as number) ?? 10,
     cookTimeMinutes: (result.cookTimeMinutes as number) ?? 20,
-    tags: (result.tags as string[]) ?? [],
-    dietaryTags: (result.dietaryTags as string[]) ?? [],
+    tags: Array.isArray(result.tags) ? (result.tags as string[]) : [],
+    dietaryTags: Array.isArray(result.dietaryTags) ? (result.dietaryTags as string[]) : [],
     ingredients: rawIngredients.map((ing) => ({
       id: generateId(),
       name: ing.name,
@@ -80,8 +82,10 @@ function buildRecipeFromAIResult(result: Record<string, unknown>): CookSessionRe
       unit: ing.unit,
       notes: ing.notes,
     })),
-    steps: (result.steps as { stepNumber: number; instruction: string; timerSeconds?: number; ingredientsUsed: string[] }[]) ?? [],
-    tips: (result.tips as string[]) ?? [],
+    steps: Array.isArray(result.steps)
+      ? (result.steps as { stepNumber: number; instruction: string; timerSeconds?: number; ingredientsUsed: string[] }[])
+      : [],
+    tips: Array.isArray(result.tips) ? (result.tips as string[]) : [],
     source: "ai-generated",
     createdAt: Date.now(),
   };
@@ -106,7 +110,7 @@ function StepTimer({ totalSeconds, onDone }: StepTimerProps) {
   }, []);
 
   const start = useCallback(() => {
-    if (secondsLeft <= 0) return;
+    if (secondsLeft <= 0 || intervalRef.current) return;
     setRunning(true);
     intervalRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
@@ -287,12 +291,14 @@ export default function CookSessionPage() {
   // ── persist session state on change
   const persistSession = useCallback(
     (update: Partial<CookSessionHistoryEntry>) => {
-      if (!session) return;
-      const updated: CookSessionHistoryEntry = { ...session, ...update };
-      upsertCookSessionHistoryEntry(updated);
-      setSession(updated);
+      setSession((prev) => {
+        if (!prev) return prev;
+        const updated: CookSessionHistoryEntry = { ...prev, ...update };
+        upsertCookSessionHistoryEntry(updated);
+        return updated;
+      });
     },
-    [session]
+    []
   );
 
   // ── generate recipe mutation
@@ -317,21 +323,15 @@ export default function CookSessionPage() {
       const stepsContext = session.recipe.steps
         .map((s) => `Step ${s.stepNumber}: ${s.instruction}`)
         .join("\n");
-      const systemMsg = `You are a helpful cooking assistant walking the user through this recipe step by step.
-Recipe: ${session.recipe.title}
-Steps:
-${stepsContext}
-Current step: ${currentStep + 1}
-Answer questions briefly and helpfully. If asked what to do next, reference the next step.`;
-      const history = [
-        { role: "system" as const, content: systemMsg },
-        ...convMessages.map((m) => ({ role: m.role as "assistant" | "user", content: m.text })),
-        { role: "user" as const, content: message },
-      ];
+      const contextualMessage = `[Cooking: ${session.recipe.title}, step ${currentStep + 1}]\n${stepsContext}\n\nUser question: ${message}`;
+      const conversationHistory = convMessages.map((m) => ({
+        role: m.role as "assistant" | "user",
+        content: m.text,
+      }));
       const response = await apiRequest("POST", "/api/chat", {
-        message,
-        conversationHistory: history.slice(1),
-        context: { systemPrompt: systemMsg },
+        message: contextualMessage,
+        conversationHistory,
+        context: "meals",
       });
       return response.json();
     },
@@ -459,13 +459,14 @@ Answer questions briefly and helpfully. If asked what to do next, reference the 
   }
 
   function resumeHistory(entry: CookSessionHistoryEntry) {
-    setSession(entry);
-    setCurrentStep(entry.currentStep);
-    setCheckedIngredients(new Set(entry.checkedIngredients));
-    setCompletedSteps(new Set(entry.completedSteps));
+    const resumedEntry: CookSessionHistoryEntry = { ...entry, status: "in-progress" };
+    upsertCookSessionHistoryEntry(resumedEntry);
+    setSession(resumedEntry);
+    setCurrentStep(resumedEntry.currentStep);
+    setCheckedIngredients(new Set(resumedEntry.checkedIngredients));
+    setCompletedSteps(new Set(resumedEntry.completedSteps));
     setShowIngredients(true);
     setConvMessages([]);
-    persistSession({ status: "in-progress" });
     setView("session");
   }
 

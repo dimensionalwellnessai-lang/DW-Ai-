@@ -1628,7 +1628,24 @@ export async function registerRoutes(
       }
       const validModes = ["lightweight", "full"];
       const sessionMode = validModes.includes(mode) ? mode : "full";
-      const recipe = await generateCookSessionRecipe(query, preferences, sessionMode);
+
+      // Normalize preferences to avoid runtime errors from malformed input
+      const rawPreferences = preferences && typeof preferences === "object" ? preferences : {};
+      const normalizeStringArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        return (value as unknown[])
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+      };
+      const sanitizedPreferences = {
+        ...(rawPreferences as Record<string, unknown>),
+        restrictions: normalizeStringArray((rawPreferences as Record<string, unknown>).restrictions),
+        allergies: normalizeStringArray((rawPreferences as Record<string, unknown>).allergies),
+        bannedIngredients: normalizeStringArray((rawPreferences as Record<string, unknown>).bannedIngredients),
+      };
+
+      const recipe = await generateCookSessionRecipe(query, sanitizedPreferences, sessionMode);
       res.json(recipe);
     } catch (error) {
       console.error("Cook session generation error:", error);

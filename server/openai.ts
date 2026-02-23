@@ -3066,12 +3066,17 @@ export async function generateCookSessionRecipe(
   },
   mode: "lightweight" | "full" = "full"
 ): Promise<CookSessionRecipeResult> {
+  const restrictions = Array.isArray(preferences?.restrictions) ? preferences.restrictions : [];
+  const allergies = Array.isArray(preferences?.allergies) ? preferences.allergies : [];
+  const bannedIngredients = Array.isArray(preferences?.bannedIngredients) ? preferences.bannedIngredients : [];
+  const values = Array.isArray(preferences?.values) ? preferences.values : [];
+
   const clauses: string[] = [];
   if (preferences?.dietaryStyle) clauses.push(`Dietary style: ${preferences.dietaryStyle}`);
-  if (preferences?.restrictions?.length) clauses.push(`Dietary restrictions: ${preferences.restrictions.join(", ")}`);
-  if (preferences?.allergies?.length) clauses.push(`Allergies - avoid completely: ${preferences.allergies.join(", ")}`);
-  if (preferences?.bannedIngredients?.length) clauses.push(`Do NOT use: ${preferences.bannedIngredients.join(", ")}`);
-  if (preferences?.values?.length) clauses.push(`User values/priorities: ${preferences.values.join(", ")}`);
+  if (restrictions.length) clauses.push(`Dietary restrictions: ${restrictions.join(", ")}`);
+  if (allergies.length) clauses.push(`Allergies - avoid completely: ${allergies.join(", ")}`);
+  if (bannedIngredients.length) clauses.push(`Do NOT use: ${bannedIngredients.join(", ")}`);
+  if (values.length) clauses.push(`User values/priorities: ${values.join(", ")}`);
   const prefBlock = clauses.length ? `\n${clauses.join("\n")}` : "";
 
   const timerNote = mode === "lightweight"
