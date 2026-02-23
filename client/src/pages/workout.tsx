@@ -73,6 +73,8 @@ import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { ExerciseAnimation } from "@/components/exercise-animation";
+import { WorkoutSessionEngine, type WorkoutSessionConfig, type StepType } from "@/components/workout-session-engine";
+import { useUserRole } from "@/hooks/use-user-role";
 import { EXERCISE_ANIMATIONS, getExercisesByEquipment, EQUIPMENT_TYPES } from "@/lib/exercise-animations";
 
 type TimeFilter = "any" | "10" | "20" | "30";
@@ -313,7 +315,10 @@ export default function WorkoutPage() {
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
   const [selectedExerciseAnimation, setSelectedExerciseAnimation] = useState<string | null>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
-  
+  const [sessionEngineOpen, setSessionEngineOpen] = useState(false);
+  const [activeSessionConfig, setActiveSessionConfig] = useState<WorkoutSessionConfig | null>(null);
+  const { isAuthenticated } = useUserRole();
+
   const { toast } = useToast();
   
   const handleFindAlternatives = (exercise: string, workoutTitle: string) => {
@@ -321,6 +326,62 @@ export default function WorkoutPage() {
     setSelectedExercise(exerciseName);
     setSelectedExerciseContext(workoutTitle);
     setAlternativesOpen(true);
+  };
+
+  const inferSessionTypeFromTags = (tags: string[]): StepType => {
+    const normalizedTags = tags.map((tag) => tag.toLowerCase());
+    const scores: Record<StepType, number> = {
+      strength: 0, mobility: 0, breathwork: 0, timed: 0, distance: 0, custom: 0,
+    };
+    normalizedTags.forEach((tag) => {
+      if (["yoga", "mobility", "stretch", "stretching"].includes(tag)) scores.mobility += 1;
+      if (["breathwork", "breathing"].includes(tag)) scores.breathwork += 1;
+      if (["cardio", "run", "running", "hiit"].includes(tag)) scores.timed += 1;
+      if (["strength", "lifting", "weights", "resistance"].includes(tag)) scores.strength += 1;
+    });
+    const maxScore = Math.max(...(Object.values(scores) as number[]));
+    if (maxScore <= 0) return "strength";
+    // Tie-breaker priority: timed > mobility > breathwork > strength
+    const priority: StepType[] = ["timed", "mobility", "breathwork", "strength"];
+    for (const type of priority) {
+      if (scores[type] === maxScore) return type;
+    }
+    return "strength";
+  };
+
+  const extractStepTitle = (stepText: string): string => {
+    const cleaned = stepText.replace(/^[0-9]+\.\s*/, "");
+    const colonIndex = cleaned.indexOf(":");
+    const candidate = colonIndex === -1 ? cleaned : cleaned.slice(0, colonIndex);
+    const trimmed = candidate.trim();
+    return trimmed.length > 0 ? trimmed : stepText.trim();
+  };
+
+  const inferStepType = (stepText: string, fallback: StepType): StepType => {
+    const lower = stepText.toLowerCase();
+    if (/\b(set|rep|push.?up|pull.?up|squat|curl|press|row|lift|dumbbell|barbell|weight)\b/.test(lower)) return "strength";
+    if (/\b(stretch|yoga|pose|mobility|flexibility|foam roll)\b/.test(lower)) return "mobility";
+    if (/\b(breath|inhale|exhale|box breath|pranayama)\b/.test(lower)) return "breathwork";
+    if (/\b(run|jog|sprint|cycle|bike|swim|row|distance|km|mile|meter)\b/.test(lower)) return "distance";
+    if (/\b(min|minute|second|hold|plank|wall sit|timed|interval|hiit|cardio)\b/.test(lower)) return "timed";
+    return fallback;
+  };
+
+  const handleStartSession = (workout: WorkoutData) => {
+    // Determine dominant step type from all tags using scoring
+    const sessionType = inferSessionTypeFromTags(workout.tags);
+
+    const sessionConfig: WorkoutSessionConfig = {
+      title: workout.title,
+      sessionType,
+      steps: workout.steps.map((stepText) => ({
+        title: extractStepTitle(stepText),
+        stepType: inferStepType(stepText, sessionType),
+        notes: stepText,
+      })),
+    };
+    setActiveSessionConfig(sessionConfig);
+    setSessionEngineOpen(true);
   };
   
   useEffect(() => {
@@ -1080,6 +1141,17 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                           <ExternalLink className="w-4 h-4 mr-1" />
                           Find on YouTube
                         </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartSession(workout);
+                          }}
+                          data-testid={`button-start-session-${index}`}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Start Session
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1533,6 +1605,16 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Workout Session Engine */}
+        {activeSessionConfig && (
+          <WorkoutSessionEngine
+            config={activeSessionConfig}
+            open={sessionEngineOpen}
+            onClose={() => setSessionEngineOpen(false)}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
       </div>
     </ScrollArea>
     </div>

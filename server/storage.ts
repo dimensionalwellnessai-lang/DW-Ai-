@@ -145,10 +145,16 @@ import {
   type InsertWeeklyFeedbackResponse,
   workoutPlans,
   exercises,
+  workoutSessions,
+  workoutSessionSteps,
   type WorkoutPlan,
   type InsertWorkoutPlan,
   type Exercise,
   type InsertExercise,
+  type WorkoutSession,
+  type InsertWorkoutSession,
+  type WorkoutSessionStep,
+  type InsertWorkoutSessionStep,
   type BirthChart,
   type InsertBirthChart,
   wearableDevices,
@@ -424,6 +430,14 @@ export interface IStorage {
   createExercises(exercises: InsertExercise[]): Promise<Exercise[]>;
   updateExercise(id: string, data: Partial<Exercise>): Promise<Exercise | undefined>;
   deleteExercise(id: string): Promise<void>;
+
+  getWorkoutSessions(userId: string): Promise<WorkoutSession[]>;
+  getWorkoutSession(id: string): Promise<WorkoutSession | undefined>;
+  createWorkoutSession(session: InsertWorkoutSession): Promise<WorkoutSession>;
+  updateWorkoutSession(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession | undefined>;
+  deleteWorkoutSession(id: string): Promise<void>;
+  getWorkoutSessionSteps(sessionId: string): Promise<WorkoutSessionStep[]>;
+  upsertWorkoutSessionStep(step: InsertWorkoutSessionStep): Promise<WorkoutSessionStep>;
 
   getConversations(userId: string): Promise<Conversation[]>;
   getConversation(id: string): Promise<Conversation | undefined>;
@@ -1706,6 +1720,52 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExercise(id: string): Promise<void> {
     await db.delete(exercises).where(eq(exercises.id, id));
+  }
+
+  async getWorkoutSessions(userId: string): Promise<WorkoutSession[]> {
+    return await db.select().from(workoutSessions)
+      .where(eq(workoutSessions.userId, userId))
+      .orderBy(desc(workoutSessions.startedAt));
+  }
+
+  async getWorkoutSession(id: string): Promise<WorkoutSession | undefined> {
+    const [session] = await db.select().from(workoutSessions).where(eq(workoutSessions.id, id));
+    return session || undefined;
+  }
+
+  async createWorkoutSession(session: InsertWorkoutSession): Promise<WorkoutSession> {
+    const [created] = await db.insert(workoutSessions).values(session).returning();
+    return created;
+  }
+
+  async updateWorkoutSession(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession | undefined> {
+    const [updated] = await db.update(workoutSessions).set(data).where(eq(workoutSessions.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteWorkoutSession(id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(workoutSessionSteps).where(eq(workoutSessionSteps.sessionId, id));
+      await tx.delete(workoutSessions).where(eq(workoutSessions.id, id));
+    });
+  }
+
+  async getWorkoutSessionSteps(sessionId: string): Promise<WorkoutSessionStep[]> {
+    return await db.select().from(workoutSessionSteps)
+      .where(eq(workoutSessionSteps.sessionId, sessionId))
+      .orderBy(workoutSessionSteps.stepIndex);
+  }
+
+  async upsertWorkoutSessionStep(step: InsertWorkoutSessionStep): Promise<WorkoutSessionStep> {
+    const [result] = await db
+      .insert(workoutSessionSteps)
+      .values(step)
+      .onConflictDoUpdate({
+        target: [workoutSessionSteps.sessionId, workoutSessionSteps.stepIndex],
+        set: { ...step, loggedAt: new Date() },
+      })
+      .returning();
+    return result;
   }
 
   async getConversations(userId: string): Promise<Conversation[]> {

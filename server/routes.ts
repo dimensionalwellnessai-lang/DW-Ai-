@@ -4895,6 +4895,151 @@ Return as JSON array with format:
     }
   });
 
+  // ========== WORKOUT SESSIONS ==========
+
+  app.get("/api/workout-sessions", requireAuth, async (req, res) => {
+    try {
+      const sessions = await storage.getWorkoutSessions(req.session.userId!);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout sessions" });
+    }
+  });
+
+  app.get("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const steps = await storage.getWorkoutSessionSteps(req.params.id);
+      res.json({ ...session, steps });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout session" });
+    }
+  });
+
+  app.post("/api/workout-sessions", requireAuth, async (req, res) => {
+    try {
+      const schema = z.object({
+        title: z.string().min(1).max(200),
+        sessionType: z.enum(["strength", "timed", "distance", "breathwork", "mobility", "custom"]).optional(),
+        workoutPlanId: z.string().optional().nullable(),
+        voiceCoachEnabled: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+        metadata: z.record(z.unknown()).optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const session = await storage.createWorkoutSession({
+        userId: req.session.userId!,
+        ...parsed.data,
+      });
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Create workout session error:", error);
+      res.status(500).json({ error: "Failed to create workout session" });
+    }
+  });
+
+  app.patch("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const schema = z.object({
+        status: z.enum(["in_progress", "completed", "cancelled"]).optional(),
+        voiceCoachEnabled: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+        durationSeconds: z.number().int().optional().nullable(),
+        completedAt: z.string().optional().nullable(),
+        metadata: z.record(z.unknown()).optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const updateData: {
+        status?: string;
+        voiceCoachEnabled?: boolean;
+        notes?: string | null;
+        durationSeconds?: number | null;
+        completedAt?: Date | null;
+        metadata?: Record<string, unknown> | null;
+      } = {};
+      if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+      if (parsed.data.voiceCoachEnabled !== undefined) updateData.voiceCoachEnabled = parsed.data.voiceCoachEnabled;
+      if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
+      if (parsed.data.durationSeconds !== undefined) updateData.durationSeconds = parsed.data.durationSeconds;
+      if (parsed.data.metadata !== undefined) updateData.metadata = parsed.data.metadata as Record<string, unknown> | null;
+      if (parsed.data.completedAt) {
+        updateData.completedAt = new Date(parsed.data.completedAt);
+      } else if (parsed.data.completedAt === null) {
+        updateData.completedAt = null;
+      }
+      const updated = await storage.updateWorkoutSession(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update workout session error:", error);
+      res.status(500).json({ error: "Failed to update workout session" });
+    }
+  });
+
+  app.delete("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      await storage.deleteWorkoutSession(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete workout session" });
+    }
+  });
+
+  // Log / update a single step in a session
+  app.put("/api/workout-sessions/:id/steps/:stepIndex", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const stepIndex = parseInt(req.params.stepIndex, 10);
+      if (isNaN(stepIndex) || stepIndex < 0) {
+        return res.status(400).json({ error: "Invalid step index" });
+      }
+      const schema = z.object({
+        title: z.string().min(1).max(200),
+        stepType: z.enum(["strength", "timed", "distance", "breathwork", "mobility", "custom"]),
+        completed: z.boolean().optional(),
+        setsCompleted: z.number().int().optional().nullable(),
+        repsPerSet: z.string().optional().nullable(),
+        weightPerSet: z.string().optional().nullable(),
+        durationSeconds: z.number().int().optional().nullable(),
+        distanceMeters: z.number().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const step = await storage.upsertWorkoutSessionStep({
+        sessionId: req.params.id,
+        userId: req.session.userId!,
+        stepIndex,
+        ...parsed.data,
+      });
+      res.json(step);
+    } catch (error) {
+      console.error("Log workout step error:", error);
+      res.status(500).json({ error: "Failed to log workout step" });
+    }
+  });
+
   // ========== SHOPPING LISTS & MEAL PREP PREFERENCES ==========
 
   // Get meal prep preferences
