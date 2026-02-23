@@ -320,10 +320,12 @@ export default function CookSessionPage() {
   const convMutation = useMutation({
     mutationFn: async (message: string) => {
       if (!session?.recipe) return { reply: "No active recipe." };
+      // Sanitize user input: strip angle brackets and newlines that could alter prompt context
+      const safeMessage = message.replace(/[<>]/g, "").replace(/[\r\n]+/g, " ").trim();
       const stepsContext = session.recipe.steps
         .map((s) => `Step ${s.stepNumber}: ${s.instruction}`)
         .join("\n");
-      const contextualMessage = `[Cooking: ${session.recipe.title}, step ${currentStep + 1}]\n${stepsContext}\n\nUser question: ${message}`;
+      const contextualMessage = `[Cooking: ${session.recipe.title}, step ${currentStep + 1}]\n${stepsContext}\n\nUser question: ${safeMessage}`;
       const conversationHistory = convMessages.map((m) => ({
         role: m.role as "assistant" | "user",
         content: m.text,
