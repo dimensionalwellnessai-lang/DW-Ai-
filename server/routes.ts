@@ -14,7 +14,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, generateCookSessionRecipe, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -1616,6 +1616,23 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Alternatives error:", error);
       res.status(500).json({ error: "Failed to generate alternatives" });
+    }
+  });
+
+  // Guided CookSession recipe generation
+  app.post("/api/ai/cook-session", async (req, res) => {
+    try {
+      const { query, preferences, mode } = req.body;
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ error: "query is required" });
+      }
+      const validModes = ["lightweight", "full"];
+      const sessionMode = validModes.includes(mode) ? mode : "full";
+      const recipe = await generateCookSessionRecipe(query, preferences, sessionMode);
+      res.json(recipe);
+    } catch (error) {
+      console.error("Cook session generation error:", error);
+      res.status(500).json({ error: "Failed to generate cook session recipe" });
     }
   });
 

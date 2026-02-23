@@ -345,6 +345,23 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     ],
   },
   {
+    id: "cook-session",
+    path: "/cook-session",
+    label: "Cook Session",
+    icon: "chef-hat",
+    type: "page",
+    description: "Guided step-by-step cooking with timers and substitutions",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 32,
+    supportsSelectedQuery: false,
+    linkedType: "meal",
+    enabled: true,
+    actions: [
+      { id: "start-cooking", label: "Start cooking", handler: "openCookSession", icon: "chef-hat" },
+    ],
+  },
+  {
     id: "shopping-list",
     path: "/shopping-list",
     label: "Shopping List",
