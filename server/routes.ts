@@ -13,7 +13,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
-import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -7134,6 +7134,90 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update AI suggestion error:", error);
       res.status(500).json({ error: "Failed to update suggestion" });
+    }
+  });
+
+  // Support report endpoint (accessible to both guests and authenticated users)
+  const supportReportLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many support reports. Please try again later." },
+  });
+
+  const supportReportSchema = z.object({
+    category: z.enum(["bug", "demo_mismatch", "voice", "content_feed", "scheduling", "other"]),
+    description: z.string().min(1),
+    stepsToReproduce: z.string().optional(),
+    eventType: z.string().optional(),
+    requestedTerm: z.string().optional(),
+    normalizedTerm: z.string().optional(),
+    closestMatch: z.object({ id: z.string().optional(), name: z.string().optional() }).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    includeTechnicalDetails: z.boolean(),
+    technicalDetails: z.object({
+      appVersion: z.string().optional(),
+      platform: z.string().optional(),
+      deviceModel: z.string().optional(),
+      osVersion: z.string().optional(),
+      userAgent: z.string().optional(),
+    }).optional(),
+    includeRecentContext: z.boolean(),
+    recentContext: z.object({
+      route: z.string().optional(),
+      screen: z.string().optional(),
+      lastAction: z.string().optional(),
+    }).optional(),
+    includeConversationSnippet: z.boolean(),
+    conversationSnippet: z.object({
+      conversationId: z.string().optional(),
+      lastUserMessage: z.string().optional(),
+      lastDwReply: z.string().optional(),
+    }).optional(),
+    includeConstraintsSnapshot: z.boolean(),
+    constraintsSnapshot: z.object({
+      equipment: z.unknown().optional(),
+      injuries: z.unknown().optional(),
+      lowImpact: z.boolean().optional(),
+      dietaryRules: z.unknown().optional(),
+    }).optional(),
+  });
+
+  app.post("/api/support/report", supportReportLimiter, async (req, res) => {
+    try {
+      const data = supportReportSchema.parse(req.body);
+      const createdAt = new Date().toISOString();
+
+      const report = {
+        category: data.category,
+        description: data.description,
+        stepsToReproduce: data.stepsToReproduce,
+        eventType: data.eventType,
+        requestedTerm: data.requestedTerm,
+        normalizedTerm: data.normalizedTerm,
+        closestMatch: data.closestMatch,
+        confidence: data.confidence,
+        technicalDetails: data.includeTechnicalDetails ? data.technicalDetails : undefined,
+        recentContext: data.includeRecentContext ? data.recentContext : undefined,
+        conversationSnippet: data.includeConversationSnippet ? data.conversationSnippet : undefined,
+        constraintsSnapshot: data.includeConstraintsSnapshot ? data.constraintsSnapshot : undefined,
+        createdAt,
+      };
+
+      const sent = await sendSupportReportEmail(report);
+      if (!sent) {
+        console.error("Support report email could not be delivered");
+        return res.status(500).json({ error: "Failed to deliver support report. Please try again or email dimensionalwellnessai@gmail.com directly." });
+      }
+
+      res.json({ success: true, createdAt });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.flatten() });
+      }
+      console.error("Support report error:", error);
+      res.status(500).json({ error: "Failed to submit support report" });
     }
   });
 

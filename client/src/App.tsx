@@ -80,6 +80,7 @@ import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import SupportReportPage from "@/pages/support-report";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -199,6 +200,7 @@ function Router() {
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
+      {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
