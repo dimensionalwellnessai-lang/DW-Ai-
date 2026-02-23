@@ -464,6 +464,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     ],
   },
   {
+    id: "expand-my-week",
+    path: "/expand-my-week",
+    label: "Expand My Week",
+    icon: "calendar-plus",
+    type: "generator",
+    description: "Conversational planner that builds your ideal week through adaptive Q&A",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 56,
+    enabled: true,
+  },
+  {
     id: "schedule-review",
     path: "/schedule-review/:draftId",
     label: "Suggested Schedule",

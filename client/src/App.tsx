@@ -218,6 +218,7 @@ function Router() {
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
       {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
+      {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />

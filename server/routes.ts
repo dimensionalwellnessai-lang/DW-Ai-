@@ -65,6 +65,7 @@ import {
   insertHouseholdLaundryScheduleSchema,
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
+  type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
 
