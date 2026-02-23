@@ -1,9 +1,19 @@
-import { useState, useEffect } from "react";
-import { getExerciseById, type ExerciseAnimationData } from "@/lib/exercise-animations";
+import { lazy, Suspense, useState } from "react";
+import { getExerciseById } from "@/lib/exercise-animations";
+import {
+  getMotionById,
+  findClosestMotion,
+  reportFallback,
+} from "@/lib/avatar-motion-library";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+// Lazy-load the heavy Babylon.js viewer so it doesn't block initial render
+const AvatarViewer = lazy(() =>
+  import("@/components/avatar-viewer").then((m) => ({ default: m.AvatarViewer }))
+);
 
 interface ExerciseAnimationProps {
   exerciseId: string;
@@ -11,31 +21,58 @@ interface ExerciseAnimationProps {
   autoPlay?: boolean;
 }
 
-export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: ExerciseAnimationProps) {
+const AVATAR_HEIGHT = 320;
+
+export function ExerciseAnimation({
+  exerciseId,
+  onClose,
+  autoPlay = true,
+}: ExerciseAnimationProps) {
   const exercise = getExerciseById(exerciseId);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
 
-  if (!exercise) {
-    return null;
+  // Resolve motion: exact match first, then closest match from the motion library
+  const exactMotion = getMotionById(exerciseId);
+  const { motion, score, isFallback } = exactMotion
+    ? { motion: exactMotion, score: 100, isFallback: false }
+    : findClosestMotion(exerciseId);
+
+  if (isFallback) {
+    reportFallback(exerciseId, motion, score);
   }
+
+  // YouTube fallback URL
+  const youtubeUrl = motion.youtubeVideoId
+    ? `https://www.youtube.com/watch?v=${motion.youtubeVideoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(motion.youtubeSearch)}`;
+
+  // Display name: prefer the exercise DB entry, fall back to motion library name
+  const displayName = exercise?.name ?? motion.name;
+  const category = exercise?.category ?? motion.category;
+  const difficulty = exercise?.difficulty;
+  const equipment = exercise?.equipment ?? [];
+  const muscleGroups = exercise?.muscleGroups ?? [];
+  const formTips = exercise?.formTips ?? [];
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="p-6">
-        {/* Header with close button */}
+        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold">{exercise.name}</h3>
+            <h3 className="text-lg font-semibold">{displayName}</h3>
             <div className="flex gap-2 mt-2 flex-wrap">
               <Badge variant="secondary" className="text-xs">
-                {exercise.category}
+                {category}
               </Badge>
-              <Badge variant="outline" className="text-xs">
-                {exercise.difficulty}
-              </Badge>
-              {exercise.equipment.map((eq) => (
+              {difficulty && (
+                <Badge variant="outline" className="text-xs">
+                  {difficulty}
+                </Badge>
+              )}
+              {equipment.map((eq) => (
                 <Badge key={eq} variant="outline" className="text-xs">
-                  {eq.replace('-', ' ')}
+                  {eq.replace("-", " ")}
                 </Badge>
               ))}
             </div>
@@ -52,243 +89,93 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
           )}
         </div>
 
-        {/* Animation Container */}
-        <div className="bg-muted rounded-lg p-8 mb-4 flex items-center justify-center min-h-[300px]">
-          <div className={`exercise-animation ${isPlaying ? 'playing' : 'paused'}`}>
-            <SilhouetteFigure exercise={exercise} isPlaying={isPlaying} />
+        {/* Closest-match notice */}
+        {isFallback && (
+          <div className="flex items-start gap-2 mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              No exact demo found for &ldquo;{exerciseId}&rdquo;. Showing
+              closest match: <strong>{motion.name}</strong> (score {score}/100).
+            </span>
           </div>
+        )}
+
+        {/* 3D Avatar Viewer */}
+        <div className="mb-4 rounded-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center" style={{ minHeight: AVATAR_HEIGHT }}>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center" style={{ height: AVATAR_HEIGHT, width: "100%" }}>
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            }
+          >
+            <AvatarViewer
+              motion={motion}
+              isPlaying={isPlaying}
+              width={320}
+              height={AVATAR_HEIGHT}
+            />
+          </Suspense>
         </div>
 
-        {/* Play/Pause Control */}
-        <div className="flex justify-center mb-4">
+        {/* Controls row */}
+        <div className="flex items-center justify-between gap-2 mb-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsPlaying(!isPlaying)}
           >
-            {isPlaying ? 'Pause' : 'Play'} Animation
+            {isPlaying ? "Pause" : "Play"} Demo
+          </Button>
+
+          {/* YouTube fallback */}
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-muted-foreground hover:text-foreground gap-1"
+          >
+            <a
+              href={youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Watch ${displayName} on YouTube`}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Watch on YouTube
+            </a>
           </Button>
         </div>
 
         {/* Muscle Groups */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium mb-2">Target Muscles:</h4>
-          <div className="flex gap-1 flex-wrap">
-            {exercise.muscleGroups.map((muscle) => (
-              <Badge key={muscle} variant="secondary" className="text-xs">
-                {muscle}
-              </Badge>
-            ))}
+        {muscleGroups.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Target Muscles:</h4>
+            <div className="flex gap-1 flex-wrap">
+              {muscleGroups.map((muscle) => (
+                <Badge key={muscle} variant="secondary" className="text-xs">
+                  {muscle}
+                </Badge>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form Tips */}
-        <div>
-          <h4 className="text-sm font-medium mb-2">Form Tips:</h4>
-          <ul className="space-y-1 text-sm text-muted-foreground">
-            {exercise.formTips.map((tip, index) => (
-              <li key={index} className="flex items-start">
-                <span className="mr-2">•</span>
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {formTips.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">Form Tips:</h4>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {formTips.map((tip, index) => (
+                <li key={index} className="flex items-start">
+                  <span className="mr-2">•</span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
-
-      {/* CSS Animations */}
-      <style>{`
-        .exercise-animation {
-          width: 200px;
-          height: 300px;
-          position: relative;
-        }
-
-        .silhouette-figure {
-          fill: currentColor;
-          color: hsl(var(--foreground));
-          opacity: 0.9;
-        }
-
-        /* Animation States */
-        .exercise-animation.paused .silhouette-figure {
-          animation-play-state: paused !important;
-        }
-
-        .exercise-animation.playing .silhouette-figure {
-          animation-play-state: running !important;
-        }
-
-        /* Push-Up Animation */
-        @keyframes pushUpAnimation {
-          0%, 100% { transform: translateY(0) scaleY(1); }
-          50% { transform: translateY(-20px) scaleY(0.95); }
-        }
-
-        /* Squat Animation */
-        @keyframes squatAnimation {
-          0%, 100% { transform: translateY(0) scaleY(1); }
-          50% { transform: translateY(30px) scaleY(0.85); }
-        }
-
-        /* Curl Animation */
-        @keyframes dumbbellCurlAnimation {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(-15deg); }
-        }
-
-        /* Plank Animation */
-        @keyframes plankAnimation {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(2px); }
-        }
-
-        /* Jumping Jack Animation */
-        @keyframes jumpingJackAnimation {
-          0%, 100% { transform: scaleX(0.8) scaleY(1); }
-          50% { transform: scaleX(1.1) scaleY(0.95); }
-        }
-
-        /* High Knees Animation */
-        @keyframes highKneesAnimation {
-          0%, 100% { transform: translateY(0); }
-          25% { transform: translateY(-10px); }
-          75% { transform: translateY(-10px); }
-        }
-
-        /* Lunge Animation */
-        @keyframes lungeAnimation {
-          0%, 100% { transform: translateY(0) scaleY(1); }
-          50% { transform: translateY(20px) scaleY(0.9); }
-        }
-
-        /* Resistance Band Row Animation */
-        @keyframes resistanceBandRowAnimation {
-          0%, 100% { transform: scaleX(1); }
-          50% { transform: scaleX(0.95); }
-        }
-
-        /* Pull-Up Animation */
-        @keyframes pullUpAnimation {
-          0%, 100% { transform: translateY(20px); }
-          50% { transform: translateY(-10px); }
-        }
-
-        /* Shoulder Press Animation */
-        @keyframes shoulderPressAnimation {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-15px); }
-        }
-
-        /* Deadlift Animation */
-        @keyframes deadliftAnimation {
-          0%, 100% { transform: rotate(0deg) translateY(0); }
-          50% { transform: rotate(15deg) translateY(15px); }
-        }
-
-        /* Calf Raise Animation */
-        @keyframes calfRaiseAnimation {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-20px); }
-        }
-
-        /* Crunch Animation */
-        @keyframes crunchAnimation {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(-10deg); }
-        }
-
-        /* Russian Twist Animation */
-        @keyframes russianTwistAnimation {
-          0%, 100% { transform: rotate(0deg); }
-          25% { transform: rotate(-15deg); }
-          75% { transform: rotate(15deg); }
-        }
-
-        /* Leg Raise Animation */
-        @keyframes legRaiseAnimation {
-          0%, 100% { transform: rotate(0deg); }
-          50% { transform: rotate(-30deg); }
-        }
-
-        /* Burpee Animation */
-        @keyframes burpeeAnimation {
-          0%, 100% { transform: translateY(0) scaleY(1); }
-          25% { transform: translateY(20px) scaleY(0.8); }
-          50% { transform: translateY(-10px) scaleY(1.05); }
-          75% { transform: translateY(20px) scaleY(0.8); }
-        }
-
-        /* Mountain Climber Animation */
-        @keyframes mountainClimberAnimation {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-
-        /* Resistance Band Exercises */
-        @keyframes bandChestPressAnimation {
-          0%, 100% { transform: scaleX(1); }
-          50% { transform: scaleX(1.1); }
-        }
-
-        @keyframes bandSquatAnimation {
-          0%, 100% { transform: translateY(0) scaleY(1); }
-          50% { transform: translateY(30px) scaleY(0.85); }
-        }
-
-        @keyframes bandLateralRaiseAnimation {
-          0%, 100% { transform: scaleX(0.9); }
-          50% { transform: scaleX(1.2); }
-        }
-      `}</style>
     </Card>
-  );
-}
-
-// Silhouette Figure Component - SVG-based human mannequin
-function SilhouetteFigure({ exercise, isPlaying }: { exercise: ExerciseAnimationData; isPlaying: boolean }) {
-  const animationName = exercise.animationKeyframes;
-  const duration = exercise.category === 'cardio' ? '1s' : '2s';
-
-  return (
-    <svg
-      viewBox="0 0 200 300"
-      xmlns="http://www.w3.org/2000/svg"
-      className="silhouette-figure w-full h-full"
-      style={{
-        animation: isPlaying ? `${animationName} ${duration} ease-in-out infinite` : 'none',
-      }}
-    >
-      {/* Head - circle with no facial features */}
-      <circle cx="100" cy="40" r="25" className="fill-current" />
-      
-      {/* Torso - rounded rectangle */}
-      <rect x="70" y="65" width="60" height="100" rx="15" className="fill-current" />
-      
-      {/* Left Arm */}
-      <g>
-        <rect x="45" y="70" width="25" height="70" rx="12" className="fill-current" />
-        <rect x="40" y="135" width="20" height="50" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Right Arm */}
-      <g>
-        <rect x="130" y="70" width="25" height="70" rx="12" className="fill-current" />
-        <rect x="140" y="135" width="20" height="50" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Left Leg */}
-      <g>
-        <rect x="75" y="165" width="22" height="90" rx="11" className="fill-current" />
-        <rect x="70" y="250" width="25" height="40" rx="10" className="fill-current" />
-      </g>
-      
-      {/* Right Leg */}
-      <g>
-        <rect x="103" y="165" width="22" height="90" rx="11" className="fill-current" />
-        <rect x="105" y="250" width="25" height="40" rx="10" className="fill-current" />
-      </g>
-    </svg>
   );
 }
