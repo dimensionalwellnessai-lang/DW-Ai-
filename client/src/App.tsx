@@ -154,9 +154,7 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
 }
 
 function HomeRedirect() {
-  const complete =
-    localStorage.getItem("dw_onboarding_completed") === "1" || isProfileSetupComplete();
-  return complete ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
+  return isOnboardingComplete() ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
 }
 
 function Router() {

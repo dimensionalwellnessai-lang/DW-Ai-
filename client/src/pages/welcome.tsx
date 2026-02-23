@@ -46,12 +46,7 @@ export default function Welcome() {
     setLocation("/talk");
   };
 
-  const canAdvance =
-    step === 1 ||
-    step === 2 ||
-    step === 3 ||
-    step === 4 ||
-    (step === 5 && intent !== null);
+  const canAdvance = step < 5 || (step === 5 && intent !== null);
 
   const handleNext = () => {
     if (step < 5) setStep(step + 1);
