@@ -648,6 +648,17 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "support-report",
+    path: "/support/report",
+    label: "Report a Problem",
+    icon: "flag",
+    type: "page",
+    description: "Submit a consent-based support report",
+    showInMenu: false,
+    enabled: true,
+    isPublic: true,
+  },
+  {
     id: "settings",
     path: "/settings",
     label: "Settings",
