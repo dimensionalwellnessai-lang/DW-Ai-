@@ -73,6 +73,8 @@ import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { ExerciseAnimation } from "@/components/exercise-animation";
+import { WorkoutSessionEngine, type WorkoutSessionConfig, type StepType } from "@/components/workout-session-engine";
+import { useUserRole } from "@/hooks/use-user-role";
 import { EXERCISE_ANIMATIONS, getExercisesByEquipment, EQUIPMENT_TYPES } from "@/lib/exercise-animations";
 
 type TimeFilter = "any" | "10" | "20" | "30";
@@ -313,7 +315,10 @@ export default function WorkoutPage() {
   const [selectedPlan, setSelectedPlan] = useState<WorkoutPlan | null>(null);
   const [selectedExerciseAnimation, setSelectedExerciseAnimation] = useState<string | null>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
-  
+  const [sessionEngineOpen, setSessionEngineOpen] = useState(false);
+  const [activeSessionConfig, setActiveSessionConfig] = useState<WorkoutSessionConfig | null>(null);
+  const { isAuthenticated } = useUserRole();
+
   const { toast } = useToast();
   
   const handleFindAlternatives = (exercise: string, workoutTitle: string) => {
@@ -321,6 +326,30 @@ export default function WorkoutPage() {
     setSelectedExercise(exerciseName);
     setSelectedExerciseContext(workoutTitle);
     setAlternativesOpen(true);
+  };
+
+  const handleStartSession = (workout: WorkoutData) => {
+    // Determine dominant step type from tags
+    let sessionType: StepType = "strength";
+    if (workout.tags.includes("yoga") || workout.tags.includes("mobility") || workout.tags.includes("stretching")) {
+      sessionType = "mobility";
+    } else if (workout.tags.includes("breathwork") || workout.tags.includes("breathing")) {
+      sessionType = "breathwork";
+    } else if (workout.tags.includes("cardio") || workout.tags.includes("run")) {
+      sessionType = "timed";
+    }
+
+    const sessionConfig: WorkoutSessionConfig = {
+      title: workout.title,
+      sessionType,
+      steps: workout.steps.map((stepText) => ({
+        title: stepText.replace(/^[0-9]+\.\s*/, "").split(":")[0].trim(),
+        stepType: sessionType,
+        notes: stepText,
+      })),
+    };
+    setActiveSessionConfig(sessionConfig);
+    setSessionEngineOpen(true);
   };
   
   useEffect(() => {
@@ -1080,6 +1109,17 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                           <ExternalLink className="w-4 h-4 mr-1" />
                           Find on YouTube
                         </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartSession(workout);
+                          }}
+                          data-testid={`button-start-session-${index}`}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Start Session
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1533,6 +1573,16 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Workout Session Engine */}
+        {activeSessionConfig && (
+          <WorkoutSessionEngine
+            config={activeSessionConfig}
+            open={sessionEngineOpen}
+            onClose={() => setSessionEngineOpen(false)}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
       </div>
     </ScrollArea>
     </div>
