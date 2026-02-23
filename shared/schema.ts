@@ -620,6 +620,24 @@ export const savedContentRelations = relations(savedContent, ({ one }) => ({
   }),
 }));
 
+export const feedInteractions = pgTable("feed_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  contentType: text("content_type"), // video, article, exercise, blog
+  contentTitle: text("content_title"),
+  contentUrl: text("content_url"),
+  action: text("action").notNull(), // "not_interested" | "saved" | "scheduled"
+  topic: text("topic"), // topic/category for personalization learning
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const feedInteractionsRelations = relations(feedInteractions, ({ one }) => ({
+  user: one(users, {
+    fields: [feedInteractions.userId],
+    references: [users.id],
+  }),
+}));
+
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -820,6 +838,70 @@ export const exercisesRelations = relations(exercises, ({ one }) => ({
   workoutPlan: one(workoutPlans, {
     fields: [exercises.workoutPlanId],
     references: [workoutPlans.id],
+  }),
+}));
+
+// Workout Sessions - First-class session engine (logging, voice coach, flexible types)
+export const workoutSessions = pgTable("workout_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  workoutPlanId: varchar("workout_plan_id").references(() => workoutPlans.id),
+  title: text("title").notNull(),
+  sessionType: text("session_type").default("strength"), // strength | timed | distance | breathwork | mobility | custom
+  status: text("status").default("in_progress"), // in_progress | completed | cancelled
+  voiceCoachEnabled: boolean("voice_coach_enabled").default(true),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  durationSeconds: integer("duration_seconds"),
+  notes: text("notes"),
+  metadata: jsonb("metadata"), // flexible extra data (e.g. total volume, distance, heart_rate)
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const workoutSessionsRelations = relations(workoutSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [workoutSessions.userId],
+    references: [users.id],
+  }),
+  workoutPlan: one(workoutPlans, {
+    fields: [workoutSessions.workoutPlanId],
+    references: [workoutPlans.id],
+  }),
+  steps: many(workoutSessionSteps),
+}));
+
+// Workout Session Steps - Logged entry per exercise/step
+export const workoutSessionSteps = pgTable("workout_session_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => workoutSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  stepIndex: integer("step_index").notNull(),
+  title: text("title").notNull(),
+  stepType: text("step_type").notNull(), // strength | timed | distance | breathwork | mobility | custom
+  completed: boolean("completed").default(false),
+  // Strength fields
+  setsCompleted: integer("sets_completed"),
+  repsPerSet: text("reps_per_set"), // JSON array e.g. "[10,10,8]"
+  weightPerSet: text("weight_per_set"), // JSON array e.g. "[20,20,22.5]"
+  // Timed / breathwork fields
+  durationSeconds: integer("duration_seconds"),
+  // Distance fields
+  distanceMeters: real("distance_meters"),
+  // Notes / custom
+  notes: text("notes"),
+  loggedAt: timestamp("logged_at").defaultNow(),
+}, (t) => ({
+  sessionStepUnique: uniqueIndex("workout_session_steps_session_id_step_index_idx").on(t.sessionId, t.stepIndex),
+}));
+
+export const workoutSessionStepsRelations = relations(workoutSessionSteps, ({ one }) => ({
+  session: one(workoutSessions, {
+    fields: [workoutSessionSteps.sessionId],
+    references: [workoutSessions.id],
+  }),
+  user: one(users, {
+    fields: [workoutSessionSteps.userId],
+    references: [users.id],
   }),
 }));
 
@@ -1121,6 +1203,11 @@ export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
   savedAt: true,
 });
 
+export const insertFeedInteractionSchema = createInsertSchema(feedInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertChallengeSchema = createInsertSchema(challenges).omit({
   id: true,
   createdAt: true,
@@ -1174,6 +1261,18 @@ export const insertWorkoutPlanSchema = createInsertSchema(workoutPlans).omit({
 export const insertExerciseSchema = createInsertSchema(exercises).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertWorkoutSessionSchema = createInsertSchema(workoutSessions).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertWorkoutSessionStepSchema = createInsertSchema(workoutSessionSteps).omit({
+  id: true,
+  loggedAt: true,
 });
 
 export const insertBirthChartSchema = createInsertSchema(birthCharts).omit({
@@ -2050,6 +2149,8 @@ export type WellnessContent = typeof wellnessContent.$inferSelect;
 export type InsertWellnessContent = z.infer<typeof insertWellnessContentSchema>;
 export type SavedContent = typeof savedContent.$inferSelect;
 export type InsertSavedContent = z.infer<typeof insertSavedContentSchema>;
+export type FeedInteraction = typeof feedInteractions.$inferSelect;
+export type InsertFeedInteraction = z.infer<typeof insertFeedInteractionSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;
@@ -2086,6 +2187,10 @@ export type WorkoutPlan = typeof workoutPlans.$inferSelect;
 export type InsertWorkoutPlan = z.infer<typeof insertWorkoutPlanSchema>;
 export type Exercise = typeof exercises.$inferSelect;
 export type InsertExercise = z.infer<typeof insertExerciseSchema>;
+export type WorkoutSession = typeof workoutSessions.$inferSelect;
+export type InsertWorkoutSession = z.infer<typeof insertWorkoutSessionSchema>;
+export type WorkoutSessionStep = typeof workoutSessionSteps.$inferSelect;
+export type InsertWorkoutSessionStep = z.infer<typeof insertWorkoutSessionStepSchema>;
 export type BirthChart = typeof birthCharts.$inferSelect;
 export type InsertBirthChart = z.infer<typeof insertBirthChartSchema>;
 export type DailyMoodCheckin = typeof dailyMoodCheckins.$inferSelect;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
   Users,
   MessageCircle,
   ThumbsUp,
+  ThumbsDown,
   MapPin,
   Search,
   ExternalLink,
@@ -38,6 +39,8 @@ import {
   FileText,
   Check,
   Trash2,
+  Video,
+  Zap,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -48,6 +51,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { WellnessContent, UserProfile, SavedContent } from "@shared/schema";
@@ -310,13 +314,17 @@ interface LocalResource {
   aiReason?: string;
 }
 
+const FOR_YOU_PAGE_SIZE = 9;
+
 export default function Browse() {
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "saved" | "community">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community">("for-you");
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [lengthFilter, setLengthFilter] = useState<"short" | "medium" | "long" | null>(null);
+  const [topicFilter, setTopicFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [currentMood, setCurrentMood] = useState("");
@@ -342,6 +350,16 @@ export default function Browse() {
     metadata?: any;
   }>>([]);
   const [isExternalSearching, setIsExternalSearching] = useState(false);
+  // Not Interested - track locally for immediate UI feedback
+  const [notInterestedUrls, setNotInterestedUrls] = useState<Set<string>>(new Set());
+  // Add to Schedule dialog state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [scheduleContent, setScheduleContent] = useState<{ title: string; url: string; type: string } | null>(null);
+  const [scheduleTime, setScheduleTime] = useState("");
+  // "Apply this?" guardrail – show prompt after user has seen feedSeenCount items
+  const [feedSeenCount, setFeedSeenCount] = useState(0);
+  const [showApplyPrompt, setShowApplyPrompt] = useState(false);
+  const APPLY_PROMPT_THRESHOLD = 5;
 
   // Reset local resources when switching away from local tab
   useEffect(() => {
@@ -372,6 +390,23 @@ export default function Browse() {
     queryKey: ["/api/saved-content"],
     enabled: activeTab === "saved",
   });
+
+  // Fetch previously not-interested URLs for persistent hiding
+  const { data: notInterestedData } = useQuery<{ contentUrl: string | null }[]>({
+    queryKey: ["/api/feed-interactions/not-interested"],
+  });
+
+  // Hydrate notInterestedUrls from backend data
+  useEffect(() => {
+    if (notInterestedData) {
+      const urls = notInterestedData
+        .map((i) => i.contentUrl)
+        .filter((u): u is string => Boolean(u));
+      if (urls.length > 0) {
+        setNotInterestedUrls(new Set(urls));
+      }
+    }
+  }, [notInterestedData]);
 
   const aiCustomizeMutation = useMutation({
     mutationFn: async (mood: string) => {
@@ -452,6 +487,72 @@ ${contentList}`,
     },
   });
 
+  // Not Interested mutation
+  const notInterestedMutation = useMutation({
+    mutationFn: async (data: { contentTitle: string; contentUrl: string; contentType: string; topic?: string }) => {
+      const response = await apiRequest("POST", "/api/feed-interactions", {
+        ...data,
+        action: "not_interested",
+      });
+      if (!response.ok) throw new Error("Failed to record");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Got it", description: "We'll show less content like this." });
+    },
+  });
+
+  // Add to Schedule mutation
+  const addToScheduleMutation = useMutation({
+    mutationFn: async (data: { title: string; scheduledTime: string; contentUrl: string; contentType: string }) => {
+      const response = await apiRequest("POST", "/api/feed/add-to-schedule", data);
+      if (!response.ok) throw new Error("Failed to schedule");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule-events"] });
+      toast({ title: "Added to schedule!", description: "Content has been added to your schedule." });
+      setScheduleDialogOpen(false);
+      setScheduleContent(null);
+      setScheduleTime("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add to schedule", variant: "destructive" });
+    },
+  });
+
+  const handleNotInterested = (item: { title: string; url: string; type: string; topic?: string }) => {
+    // Immediately hide from feed (optimistic)
+    setNotInterestedUrls(prev => { const s = new Set(prev); s.add(item.url); return s; });
+    // Count as an interaction for "Apply this?" guardrail
+    handleFeedItemSeen();
+    notInterestedMutation.mutate({
+      contentTitle: item.title,
+      contentUrl: item.url,
+      contentType: item.type,
+      topic: item.topic,
+    });
+  };
+
+  const handleAddToSchedule = (item: { title: string; url: string; type: string }) => {
+    setScheduleContent(item);
+    // Default to next hour
+    const next = new Date();
+    next.setHours(next.getHours() + 1, 0, 0, 0);
+    setScheduleTime(next.toTimeString().slice(0, 5));
+    setScheduleDialogOpen(true);
+  };
+
+  const handleFeedItemSeen = useCallback(() => {
+    setFeedSeenCount(prev => {
+      const next = prev + 1;
+      if (next >= APPLY_PROMPT_THRESHOLD) {
+        setShowApplyPrompt(true);
+      }
+      return next;
+    });
+  }, []);
+
   const content = dbContent && dbContent.length > 0 ? dbContent : SAMPLE_CONTENT;
   
   // Apply filters - cast to common type for filtering
@@ -467,6 +568,27 @@ ${contentList}`,
       (c.moodTags && c.moodTags.some(tag => tag.toLowerCase().includes(query)))
     );
   }
+
+  // Topic filter
+  if (topicFilter.trim()) {
+    const tf = topicFilter.toLowerCase();
+    filteredContent = filteredContent.filter((c) =>
+      c.title.toLowerCase().includes(tf) ||
+      (c.description && c.description.toLowerCase().includes(tf)) ||
+      (c.category && c.category.toLowerCase().includes(tf))
+    );
+  }
+
+  // Length filter (short <10min, medium 10-20min, long ≥20min)
+  if (lengthFilter) {
+    filteredContent = filteredContent.filter((c) => {
+      const dur = c.duration ?? 0;
+      if (lengthFilter === "short") return dur < 10;
+      if (lengthFilter === "medium") return dur >= 10 && dur < 20;
+      if (lengthFilter === "long") return dur >= 20;
+      return true;
+    });
+  }
   
   // Category filter
   if (activeCategory) {
@@ -477,6 +599,21 @@ ${contentList}`,
   if (aiRecommendations) {
     filteredContent = filteredContent.filter((c) => aiRecommendations.includes(c.title));
   }
+
+  // Personalized "For You" content: score items matching userProfile goals
+  const goalKey = userProfile?.fitnessGoal?.toLowerCase() || "";
+  const forYouContent = [...filteredContent].sort((a, b) => {
+    const score = (item: typeof filteredContent[0]) => {
+      let s = 0;
+      if (goalKey) {
+        if (item.category?.toLowerCase() === goalKey) s += 3;
+        if (item.goalTags?.some(t => t.toLowerCase().includes(goalKey))) s += 2;
+        if (item.title?.toLowerCase().includes(goalKey)) s += 1;
+      }
+      return s;
+    };
+    return score(b) - score(a);
+  });
 
   const getCategoryIcon = (category: string) => {
     const found = CONTENT_CATEGORIES.find((c) => c.id === category);
@@ -588,7 +725,7 @@ ${contentList}`,
   };
 
   const handleSuggestionExplore = (keyword: string) => {
-    setActiveTab("explore");
+    setActiveTab("all");
     setSearchQuery(keyword);
   };
 
@@ -596,7 +733,7 @@ ${contentList}`,
     <div className="flex flex-col h-full bg-background">
       <PageHeader
         title="Browse"
-        rightContent={activeTab === "explore" ? (
+        rightContent={activeTab === "all" ? (
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -620,15 +757,28 @@ ${contentList}`,
       />
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "explore" | "saved" | "community")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community");
+          // Reset per-tab filters when switching tabs
+          setTopicFilter("");
+          setLengthFilter(null);
+        }} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl overflow-x-auto flex-nowrap">
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
               For You
             </TabsTrigger>
-            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-explore">
+            <TabsTrigger value="video" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-video">
+              <Video className="h-4 w-4 mr-1" />
+              Video
+            </TabsTrigger>
+            <TabsTrigger value="articles" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-articles">
+              <FileText className="h-4 w-4 mr-1" />
+              Articles
+            </TabsTrigger>
+            <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-all">
               <Compass className="h-4 w-4 mr-1" />
-              Explore
+              All
             </TabsTrigger>
             <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-saved">
               <Bookmark className="h-4 w-4 mr-1" />
@@ -643,7 +793,38 @@ ${contentList}`,
       </div>
       
       {activeTab === "for-you" && (
-        <main className="p-4">
+        <main className="p-4 space-y-6">
+          {/* Personalization context banner */}
+          {userProfile && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10 text-sm">
+              <Sparkles className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">
+                Personalized based on your{" "}
+                {userProfile.fitnessGoal && (
+                  <Badge variant="secondary" className="mx-1 text-xs">{userProfile.fitnessGoal}</Badge>
+                )}
+                {userProfile.meditationStyle && (
+                  <Badge variant="secondary" className="mx-1 text-xs">{userProfile.meditationStyle}</Badge>
+                )}
+                profile
+              </span>
+            </div>
+          )}
+
+          {/* Apply this? guardrail prompt */}
+          {showApplyPrompt && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5">
+              <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Apply something you've seen?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You've browsed quite a bit. Want to add one of these to your schedule?</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowApplyPrompt(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
           {suggestionsLoading ? (
             <div className="text-center py-12">
               <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
@@ -651,7 +832,7 @@ ${contentList}`,
             </div>
           ) : suggestionsData?.suggestions && suggestionsData.suggestions.length > 0 ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Curated for You</h2>
               </div>
@@ -668,19 +849,101 @@ ${contentList}`,
                 ))}
               </div>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <h3 className="font-medium mb-2">AI-Curated Just for You</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Your personalized content feed will appear here based on your wellness goals, energy levels, and preferences.
-              </p>
+          ) : null}
+
+          {/* Personalized curated content */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Recommended For You</h2>
             </div>
-          )}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {forYouContent.filter(c => !notInterestedUrls.has((c as any).url || "")).slice(0, FOR_YOU_PAGE_SIZE).map((item) => {
+                const CategoryIcon = getCategoryIcon(item.category);
+                return (
+                  <Card
+                    key={item.id}
+                    className="card-modern hover-lift cursor-pointer transition-all"
+                    onClick={() => handleContentClick(item)}
+                    data-testid={`card-foryou-${item.id}`}
+                  >
+                    <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
+                      <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                      <Button
+                        size="icon"
+                        className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); handleContentClick(item); }}
+                      >
+                        <Play className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base font-medium">{item.title}</CardTitle>
+                        <Badge variant="secondary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {item.duration}m
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {item.goalTags?.slice(0, 2).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                        ))}
+                        {item.difficulty && (
+                          <Badge variant="outline" className="text-xs capitalize">{item.difficulty}</Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: item.category });
+                            handleFeedItemSeen();
+                          }}
+                          data-testid={`button-foryou-schedule-${item.id}`}
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          Schedule
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="px-2 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: item.category });
+                          }}
+                          title="Not interested"
+                          data-testid={`button-foryou-notinterested-${item.id}`}
+                        >
+                          <ThumbsDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            {forYouContent.length === 0 && (
+              <div className="text-center py-12">
+                <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                <h3 className="font-medium mb-2">AI-Curated Just for You</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Your personalized content feed will appear here based on your wellness goals, energy levels, and preferences.
+                </p>
+              </div>
+            )}
+          </div>
         </main>
       )}
 
-      {activeTab === "explore" && (
+      {activeTab === "all" && (
         <>
           <div className="sticky z-30 bg-background border-b px-4 py-3" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
             <div className="relative">
@@ -759,13 +1022,27 @@ ${contentList}`,
                     </Button>
                   );
                 })}
+                {/* Length filters */}
+                <div className="w-px bg-border mx-1 self-stretch" />
+                {(["short", "medium", "long"] as const).map((len) => (
+                  <Button
+                    key={len}
+                    size="sm"
+                    variant={lengthFilter === len ? "default" : "outline"}
+                    onClick={() => setLengthFilter(lengthFilter === len ? null : len)}
+                    data-testid={`button-length-all-${len}`}
+                  >
+                    <Clock className="h-3.5 w-3.5 mr-1" />
+                    {len === "short" ? "<10m" : len === "medium" ? "10-20m" : ">20m"}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
         </>
       )}
 
-      {activeTab === "explore" && userProfile && (
+      {activeTab === "all" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -791,8 +1068,21 @@ ${contentList}`,
         </div>
       )}
 
-      {activeTab === "explore" && (
+      {activeTab === "all" && (
         <main className="p-4">
+          {/* Apply this? guardrail */}
+          {showApplyPrompt && (
+            <div className="flex items-start gap-3 px-4 py-3 mb-4 rounded-lg border border-primary/30 bg-primary/5">
+              <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Apply something you've seen?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You've browsed quite a bit. Want to add one of these to your schedule?</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowApplyPrompt(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           {/* Search External Content Section */}
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-3 text-foreground">Search External Content</h2>
@@ -897,11 +1187,8 @@ ${contentList}`,
                         className="flex-1 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // TODO: Add to calendar/schedule
-                          toast({ 
-                            title: "Schedule feature", 
-                            description: "Quick scheduling coming soon!" 
-                          });
+                          handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: item.category });
+                          handleFeedItemSeen();
                         }}
                         data-testid={`button-schedule-${item.id}`}
                       >
@@ -914,16 +1201,31 @@ ${contentList}`,
                         className="flex-1 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // TODO: Save to project
-                          toast({ 
-                            title: "Saved", 
-                            description: `${item.title} saved to your favorites` 
+                          saveContentMutation.mutate({
+                            contentType: item.category,
+                            title: item.title,
+                            description: item.description || "",
+                            url: (item as any).url || "",
+                            source: "browse",
                           });
                         }}
                         data-testid={`button-save-${item.id}`}
                       >
                         <Plus className="h-3 w-3 mr-1" />
                         Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="px-2 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: item.category });
+                        }}
+                        title="Not interested"
+                        data-testid={`button-notinterested-${item.id}`}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
@@ -958,6 +1260,294 @@ ${contentList}`,
         </main>
       )}
 
+      {/* Video Tab */}
+      {activeTab === "video" && (
+        <main className="p-4 space-y-4">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search videos..."
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="pl-9"
+                data-testid="input-video-search"
+              />
+            </div>
+            <div className="flex gap-1">
+              {(["short", "medium", "long"] as const).map((len) => (
+                <Button
+                  key={len}
+                  size="sm"
+                  variant={lengthFilter === len ? "default" : "outline"}
+                  onClick={() => setLengthFilter(lengthFilter === len ? null : len)}
+                  className="capitalize text-xs"
+                  data-testid={`button-length-${len}`}
+                >
+                  {len === "short" ? "<10m" : len === "medium" ? "10-20m" : ">20m"}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Apply this? guardrail */}
+          {showApplyPrompt && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5">
+              <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Apply something you've seen?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You've browsed quite a bit. Want to add one of these to your schedule?</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowApplyPrompt(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold mb-3">Search YouTube</h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchDialogType("youtube");
+                  setSearchDialogOpen(true);
+                  setExternalSearchQuery("");
+                  setExternalSearchResults([]);
+                }}
+              >
+                <Youtube className="h-4 w-4 mr-2" />
+                Search YouTube
+              </Button>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-semibold mb-3">Video Content</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["workout", "recovery", "video"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).map((item) => {
+              const CategoryIcon = getCategoryIcon(item.category);
+              return (
+                <Card
+                  key={item.id}
+                  className="card-modern hover-lift cursor-pointer transition-all"
+                  onClick={() => handleContentClick(item)}
+                  data-testid={`card-video-${item.id}`}
+                >
+                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
+                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                    <Button
+                      size="icon"
+                      className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
+                      onClick={(e) => { e.stopPropagation(); handleContentClick(item); }}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base font-medium">{item.title}</CardTitle>
+                      <Badge variant="secondary">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {item.duration}m
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: item.category });
+                          handleFeedItemSeen();
+                        }}
+                        data-testid={`button-video-schedule-${item.id}`}
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Schedule
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="px-2 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: item.category });
+                        }}
+                        title="Not interested"
+                        data-testid={`button-video-notinterested-${item.id}`}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["workout", "recovery", "video"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).length === 0 && (
+            <div className="text-center py-12">
+              <Video className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-muted-foreground">No video content found.</p>
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* Articles Tab */}
+      {activeTab === "articles" && (
+        <main className="p-4 space-y-4">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search articles..."
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="pl-9"
+                data-testid="input-articles-search"
+              />
+            </div>
+            <div className="flex gap-1">
+              {(["short", "medium", "long"] as const).map((len) => (
+                <Button
+                  key={len}
+                  size="sm"
+                  variant={lengthFilter === len ? "default" : "outline"}
+                  onClick={() => setLengthFilter(lengthFilter === len ? null : len)}
+                  className="capitalize text-xs"
+                >
+                  {len === "short" ? "<10m" : len === "medium" ? "10-20m" : ">20m"}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Apply this? guardrail */}
+          {showApplyPrompt && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5">
+              <Zap className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Apply something you've seen?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">You've browsed quite a bit. Want to add one of these to your schedule?</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowApplyPrompt(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold mb-3">Search Articles</h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchDialogType("articles");
+                  setSearchDialogOpen(true);
+                  setExternalSearchQuery("");
+                  setExternalSearchResults([]);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Search Articles
+              </Button>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-semibold mb-3">Wellness Articles</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).map((item) => {
+              const CategoryIcon = getCategoryIcon(item.category);
+              return (
+                <Card
+                  key={item.id}
+                  className="card-modern hover-lift cursor-pointer transition-all"
+                  onClick={() => handleContentClick(item)}
+                  data-testid={`card-article-${item.id}`}
+                >
+                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
+                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base font-medium">{item.title}</CardTitle>
+                      <Badge variant="secondary">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {item.duration}m
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: "article" });
+                          handleFeedItemSeen();
+                        }}
+                        data-testid={`button-article-schedule-${item.id}`}
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Schedule
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="px-2 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: "article" });
+                        }}
+                        title="Not interested"
+                        data-testid={`button-article-notinterested-${item.id}`}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).length === 0 && (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-muted-foreground">No articles found.</p>
+            </div>
+          )}
+        </main>
+      )}
+
       {activeTab === "saved" && (
         <main className="p-4">
           {savedLoading ? (
@@ -986,11 +1576,7 @@ ${contentList}`,
                       deleteSavedMutation.mutate(item.id);
                     }
                   }}
-                  onSchedule={() => {
-                    if (!markAsReadMutation.isPending) {
-                      markAsReadMutation.mutate(item.id);
-                    }
-                  }}
+                  onSchedule={() => handleAddToSchedule({ title: item.title, url: item.url, type: item.contentType })}
                 />
               ))}
             </div>
@@ -1252,6 +1838,55 @@ ${contentList}`,
         </div>
       )}
 
+      {/* Add to Schedule Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Add to Schedule
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {scheduleContent && (
+              <p className="text-sm font-medium line-clamp-2">{scheduleContent.title}</p>
+            )}
+            <div className="space-y-1.5">
+              <label className="text-sm text-muted-foreground">Scheduled time (today)</label>
+              <Input
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                data-testid="input-schedule-time"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!scheduleTime || addToScheduleMutation.isPending}
+              onClick={() => {
+                if (!scheduleContent || !scheduleTime) return;
+                addToScheduleMutation.mutate({
+                  title: scheduleContent.title,
+                  scheduledTime: scheduleTime,
+                  contentUrl: scheduleContent.url,
+                  contentType: scheduleContent.type,
+                });
+              }}
+              data-testid="button-confirm-schedule"
+            >
+              {addToScheduleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Calendar className="h-4 w-4 mr-2" />
+              )}
+              Add to Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1355,6 +1990,8 @@ ${contentList}`,
                     url={result.url}
                     metadata={result.metadata}
                     onOpen={() => window.open(result.url, "_blank")}
+                    onSchedule={() => handleAddToSchedule({ title: result.title, url: result.url, type: result.type })}
+                    onNotInterested={() => handleNotInterested({ title: result.title, url: result.url, type: result.type })}
                     onSave={() => {
                       if (!saveContentMutation.isPending) {
                         saveContentMutation.mutate({

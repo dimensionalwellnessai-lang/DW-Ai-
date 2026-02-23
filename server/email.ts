@@ -185,70 +185,43 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
 }
 
 export async function sendSupportReportEmail(
-  userEmail: string | null,
-  userId: string | null,
-  description: string,
-  reportType: string,
-  includeTechDetails: boolean,
-  includeConversation: boolean,
-  includeContext: boolean,
-  techDetails: Record<string, any> | null,
-  conversationSummary: string | null,
-  contextSummary: string | null
+  report: {
+    category: string;
+    description: string;
+    stepsToReproduce?: string;
+    eventType?: string;
+    requestedTerm?: string;
+    normalizedTerm?: string;
+    closestMatch?: { id?: string; name?: string };
+    confidence?: number;
+    technicalDetails?: Record<string, any>;
+    recentContext?: Record<string, any>;
+    conversationSnippet?: { conversationId?: string; lastUserMessage?: string; lastDwReply?: string };
+    constraintsSnapshot?: Record<string, any>;
+    createdAt: string;
+  }
 ): Promise<boolean> {
   try {
     const { client, fromEmail } = await getResendClient();
 
-    const timestamp = new Date().toLocaleString('en-US', {
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const timestamp = new Date(report.createdAt).toLocaleString('en-US', {
       timeZone: 'America/New_York',
       dateStyle: 'full',
       timeStyle: 'long',
     });
 
-    function escapeHtml(str: string): string {
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;');
-    }
-
-    const techSection =
-      includeTechDetails && techDetails
-        ? `
-          <div style="background: #f0f4ff; border-radius: 8px; padding: 16px; margin: 12px 0;">
-            <h3 style="margin-top: 0; font-size: 14px;">Technical Details (user consented)</h3>
-            ${techDetails.userAgent ? `<p style="font-size: 13px;"><strong>Browser:</strong> ${escapeHtml(String(techDetails.userAgent))}</p>` : ''}
-            ${techDetails.platform ? `<p style="font-size: 13px;"><strong>Platform:</strong> ${escapeHtml(String(techDetails.platform))}</p>` : ''}
-            ${techDetails.appVersion ? `<p style="font-size: 13px;"><strong>App Version:</strong> ${escapeHtml(String(techDetails.appVersion))}</p>` : ''}
-            ${techDetails.pageContext ? `<p style="font-size: 13px;"><strong>Page:</strong> ${escapeHtml(String(techDetails.pageContext))}</p>` : ''}
-            ${techDetails.screenSize ? `<p style="font-size: 13px;"><strong>Screen:</strong> ${escapeHtml(String(techDetails.screenSize))}</p>` : ''}
-          </div>`
-        : '';
-
-    const conversationSection =
-      includeConversation && conversationSummary
-        ? `
-          <div style="background: #f0fff4; border-radius: 8px; padding: 16px; margin: 12px 0;">
-            <h3 style="margin-top: 0; font-size: 14px;">Recent Conversation (user consented)</h3>
-            <p style="font-size: 13px; white-space: pre-wrap;">${escapeHtml(conversationSummary)}</p>
-          </div>`
-        : '';
-
-    const contextSection =
-      includeContext && contextSummary
-        ? `
-          <div style="background: #fffbf0; border-radius: 8px; padding: 16px; margin: 12px 0;">
-            <h3 style="margin-top: 0; font-size: 14px;">App Context (user consented)</h3>
-            <p style="font-size: 13px; white-space: pre-wrap;">${escapeHtml(contextSummary)}</p>
-          </div>`
+    const optionalSection = (label: string, data: unknown) =>
+      data != null
+        ? `<div style="margin-top:16px"><strong>${esc(label)}:</strong><pre style="background:#f0f0f0;padding:12px;border-radius:6px;font-size:13px;white-space:pre-wrap">${esc(JSON.stringify(data, null, 2))}</pre></div>`
         : '';
 
     await client.emails.send({
       from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: 'dimensionalwellnessai@gmail.com',
-      subject: `Support Report: ${escapeHtml(reportType)}`,
+      subject: `Support Report [${report.category}]${report.eventType ? ` – ${report.eventType}` : ''}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -256,26 +229,26 @@ export async function sendSupportReportEmail(
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #6366f1;">Support Report Received</h2>
-
           <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <p><strong>Type:</strong> ${escapeHtml(reportType)}</p>
-            <p><strong>User:</strong> ${escapeHtml(userEmail || 'Guest')} ${userId ? `(ID: ${escapeHtml(userId)})` : ''}</p>
-            <p><strong>Time:</strong> ${timestamp}</p>
-            <p><strong>Tech details included:</strong> ${includeTechDetails ? 'Yes' : 'No'}</p>
-            <p><strong>Conversation included:</strong> ${includeConversation ? 'Yes' : 'No'}</p>
-            <p><strong>Context included:</strong> ${includeContext ? 'Yes' : 'No'}</p>
+            <p><strong>Category:</strong> ${esc(report.category)}</p>
+            ${report.eventType ? `<p><strong>Event Type:</strong> ${esc(report.eventType)}</p>` : ''}
+            <p><strong>Submitted:</strong> ${esc(timestamp)}</p>
           </div>
-
-          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 12px 0;">
+          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
             <h3 style="margin-top: 0;">Description:</h3>
-            <p style="white-space: pre-wrap;">${escapeHtml(description)}</p>
+            <p style="white-space: pre-wrap;">${esc(report.description)}</p>
+            ${report.stepsToReproduce ? `<h3>Steps to Reproduce:</h3><p style="white-space:pre-wrap">${esc(report.stepsToReproduce)}</p>` : ''}
+            ${report.requestedTerm ? `<p><strong>Requested Term:</strong> ${esc(report.requestedTerm)}</p>` : ''}
+            ${report.normalizedTerm ? `<p><strong>Normalized Term:</strong> ${esc(report.normalizedTerm)}</p>` : ''}
+            ${report.closestMatch ? `<p><strong>Closest Match:</strong> ${esc(report.closestMatch.name ?? '')} ${report.closestMatch.id ? `(id: ${esc(report.closestMatch.id)})` : ''}</p>` : ''}
+            ${report.confidence != null ? `<p><strong>Confidence:</strong> ${report.confidence}</p>` : ''}
+            ${optionalSection('Technical Details', report.technicalDetails)}
+            ${optionalSection('Recent Context', report.recentContext)}
+            ${optionalSection('Conversation Snippet', report.conversationSnippet)}
+            ${optionalSection('Constraints Snapshot', report.constraintsSnapshot)}
           </div>
-
-          ${techSection}
-          ${conversationSection}
-          ${contextSection}
         </body>
         </html>
       `,

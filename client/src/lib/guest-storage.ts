@@ -470,6 +470,62 @@ export interface TrackerSettings {
   updatedAt: number;
 }
 
+// ============================================
+// CookSession Types
+// ============================================
+
+export interface CookSessionIngredient {
+  id: string;
+  name: string;
+  amount: string;
+  unit: string;
+  notes?: string;
+  substituteFor?: string;
+}
+
+export interface CookSessionStep {
+  stepNumber: number;
+  instruction: string;
+  timerSeconds?: number;
+  ingredientsUsed: string[];
+}
+
+export interface CookSessionRecipe {
+  id: string;
+  title: string;
+  description: string;
+  servings: number;
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  tags: string[];
+  dietaryTags: string[];
+  ingredients: CookSessionIngredient[];
+  steps: CookSessionStep[];
+  tips?: string[];
+  source: "ai-generated" | "user-saved" | "imported";
+  createdAt: number;
+}
+
+export interface CookMismatchReport {
+  type: "ingredient-missing" | "step-unclear" | "time-off" | "other";
+  stepNumber?: number;
+  detail: string;
+  reportedAt: number;
+}
+
+export interface CookSessionHistoryEntry {
+  id: string;
+  recipe: CookSessionRecipe;
+  startedAt: number;
+  completedAt: number | null;
+  currentStep: number;
+  status: "in-progress" | "completed" | "paused" | "abandoned";
+  checkedIngredients: string[];
+  completedSteps: number[];
+  notes: string;
+  mismatchReports: CookMismatchReport[];
+}
+
 export type PlanningHorizon = "today" | "week" | "month";
 export type PlanningDomain = "meals" | "workouts" | "general";
 
@@ -2514,4 +2570,70 @@ export function markTourCompleted(): void {
     data.enhancedOnboarding.tourCompleted = true;
   }
   saveGuestData(data);
+}
+
+// ============================================
+// CookSession Storage
+// ============================================
+
+const COOK_SESSION_HISTORY_KEY = "dw_cook_session_history";
+const MAX_COOK_SESSION_HISTORY = 20;
+
+export function getCookSessionHistory(): CookSessionHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(COOK_SESSION_HISTORY_KEY);
+    if (raw) return JSON.parse(raw) as CookSessionHistoryEntry[];
+  } catch (e) {
+    console.error("Failed to parse cook session history:", e);
+  }
+  return [];
+}
+
+function saveCookSessionHistoryAll(entries: CookSessionHistoryEntry[]): void {
+  try {
+    localStorage.setItem(
+      COOK_SESSION_HISTORY_KEY,
+      JSON.stringify(entries.slice(0, MAX_COOK_SESSION_HISTORY)),
+    );
+  } catch (e) {
+    // Handle storage quota issues explicitly to provide clearer feedback
+    if (
+      typeof DOMException !== "undefined" &&
+      e instanceof DOMException &&
+      (e.name === "QuotaExceededError" ||
+        // Firefox
+        e.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        // Legacy codes
+        (typeof (e as any).code === "number" &&
+          ((e as any).code === 22 || (e as any).code === 1014)))
+    ) {
+      console.error(
+        "Unable to save cook session history: browser storage quota has been exceeded.",
+        e,
+      );
+    } else {
+      console.error("Failed to save cook session history:", e);
+    }
+  }
+}
+
+export function upsertCookSessionHistoryEntry(entry: CookSessionHistoryEntry): void {
+  const entries = getCookSessionHistory();
+  const existingIndex = entries.findIndex(e => e.id === entry.id);
+  if (existingIndex >= 0) {
+    entries[existingIndex] = entry;
+  } else {
+    entries.unshift(entry);
+  }
+  saveCookSessionHistoryAll(entries);
+}
+
+export function deleteCookSessionHistoryEntry(id: string): void {
+  const entries = getCookSessionHistory().filter(e => e.id !== id);
+  saveCookSessionHistoryAll(entries);
+}
+
+export function getActiveCookSession(): CookSessionHistoryEntry | null {
+  const entries = getCookSessionHistory();
+  return entries.find(e => e.status === "in-progress" || e.status === "paused") ?? null;
 }

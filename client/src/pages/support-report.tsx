@@ -1,272 +1,278 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Send, AlertTriangle, Bug, GitMerge, HelpCircle } from "lucide-react";
-import { Link } from "wouter";
+import { AlertCircle, CheckCircle2, Send } from "lucide-react";
+import { APP_VERSION } from "@/routes/registry";
 
-const REPORT_TYPES = [
-  { id: "bug", label: "Something broke", icon: Bug },
-  { id: "mismatch", label: "Wrong result shown", icon: GitMerge },
-  { id: "general", label: "General issue", icon: AlertTriangle },
-  { id: "other", label: "Other", icon: HelpCircle },
+const CATEGORIES = [
+  { value: "bug", label: "Bug / Something broken" },
+  { value: "demo_mismatch", label: "Demo mismatch" },
+  { value: "voice", label: "Voice issue" },
+  { value: "content_feed", label: "Content / Feed issue" },
+  { value: "scheduling", label: "Scheduling issue" },
+  { value: "other", label: "Other" },
 ] as const;
 
-type ReportType = (typeof REPORT_TYPES)[number]["id"];
+type Category = (typeof CATEGORIES)[number]["value"];
 
-function useQueryParams() {
-  return useMemo(() => new URLSearchParams(window.location.search), []);
+interface ReportPayload {
+  category: Category;
+  description: string;
+  stepsToReproduce?: string;
+  includeTechnicalDetails: boolean;
+  technicalDetails?: {
+    appVersion?: string;
+    platform?: string;
+    userAgent?: string;
+  };
+  includeRecentContext: boolean;
+  recentContext?: {
+    route?: string;
+    lastAction?: string;
+  };
+  includeConversationSnippet: boolean;
+  includeConstraintsSnapshot: boolean;
+}
+
+async function submitSupportReport(payload: ReportPayload) {
+  const res = await fetch("/api/support/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message =
+      typeof body?.error === "string"
+        ? body.error
+        : "Failed to submit report";
+    throw new Error(message);
+  }
+  return res.json();
 }
 
 export default function SupportReportPage() {
-  const params = useQueryParams();
-  const rawType = params.get("type") ?? "general";
-  const validTypes: ReportType[] = ["bug", "mismatch", "general", "other"];
-  const initialType: ReportType = validTypes.includes(rawType as ReportType)
-    ? (rawType as ReportType)
-    : "general";
-  const initialDesc = params.get("desc") ?? "";
-
   const { toast } = useToast();
-  const [description, setDescription] = useState(initialDesc);
-  const [reportType, setReportType] = useState<ReportType>(initialType);
-  const [includeTechDetails, setIncludeTechDetails] = useState(true);
-  const [includeConversation, setIncludeConversation] = useState(false);
+  const [category, setCategory] = useState<Category | "">("");
+  const [description, setDescription] = useState("");
+  const [steps, setSteps] = useState("");
+  const [includeTech, setIncludeTech] = useState(true);
   const [includeContext, setIncludeContext] = useState(false);
+  const [includeConversation, setIncludeConversation] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!description.trim()) return;
-    setIsSubmitting(true);
-
-    try {
-      const techDetails = includeTechDetails
-        ? {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            appVersion: import.meta.env.VITE_APP_VERSION ?? "unknown",
-            pageContext: window.location.pathname,
-            screenSize: `${window.screen.width}x${window.screen.height}`,
-          }
-        : null;
-
-      // Collect recent conversation snippet from localStorage when consented
-      let conversationSummary: string | null = null;
-      if (includeConversation) {
-        try {
-          const recentMsgs = localStorage.getItem("dw_recent_messages");
-          conversationSummary = recentMsgs
-            ? JSON.parse(recentMsgs).slice(-6).map((m: { role: string; content: string }) => `[${m.role}]: ${m.content}`).join("\n")
-            : "No recent conversation data available";
-        } catch {
-          conversationSummary = "Conversation data unavailable";
-        }
-      }
-
-      // Collect brief app context from localStorage when consented
-      let contextSummary: string | null = null;
-      if (includeContext) {
-        try {
-          const guestData = localStorage.getItem("dw_guest_data");
-          const parsed = guestData ? JSON.parse(guestData) : {};
-          const lines: string[] = [];
-          if (parsed.profileSetup?.name) lines.push(`Name: ${parsed.profileSetup.name}`);
-          if (parsed.energyLevel) lines.push(`Energy level: ${parsed.energyLevel}`);
-          if (parsed.currentDimension) lines.push(`Active dimension: ${parsed.currentDimension}`);
-          lines.push(`Current path: ${window.location.pathname}`);
-          contextSummary = lines.length > 0 ? lines.join("\n") : "No context data available";
-        } catch {
-          contextSummary = "Context data unavailable";
-        }
-      }
-
-      await apiRequest("POST", "/api/support/report", {
-        description: description.trim(),
-        reportType,
-        includeTechDetails,
-        includeConversation,
-        includeContext,
-        techDetails,
-        conversationSummary,
-        contextSummary,
-      });
-
+  const mutation = useMutation({
+    mutationFn: submitSupportReport,
+    onSuccess: () => {
       setSubmitted(true);
-      toast({ title: "Report sent", description: "Thank you — we'll look into it." });
-    } catch {
+    },
+    onError: (err: Error) => {
       toast({
-        title: "Couldn't send report",
-        description: "Please try again or email us directly.",
+        title: "Failed to send report",
+        description: err.message,
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!category) {
+      toast({ title: "Please select a category", variant: "destructive" });
+      return;
     }
+    if (!description.trim()) {
+      toast({ title: "Please add a description", variant: "destructive" });
+      return;
+    }
+
+    const payload: ReportPayload = {
+      category,
+      description: description.trim(),
+      stepsToReproduce: steps.trim() || undefined,
+      includeTechnicalDetails: includeTech,
+      technicalDetails: includeTech
+        ? {
+            appVersion: APP_VERSION,
+            platform: navigator.platform,
+            userAgent: navigator.userAgent,
+          }
+        : undefined,
+      includeRecentContext: includeContext,
+      recentContext: includeContext
+        ? { route: window.location.pathname }
+        : undefined,
+      includeConversationSnippet: includeConversation,
+      conversationSnippet: includeConversation
+        ? { lastUserMessage: description.trim() }
+        : undefined,
+      includeConstraintsSnapshot: false,
+    };
+
+    mutation.mutate(payload);
   };
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <PageHeader title="Report a Problem" backPath="/settings" />
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-4 max-w-sm">
+            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+            <h2 className="text-xl font-semibold">Report sent</h2>
+            <p className="text-muted-foreground text-sm">
+              Thank you for helping improve DW.ai. We'll review your report and follow up if
+              needed.
+            </p>
+            <Button variant="outline" onClick={() => setSubmitted(false)}>
+              Send another report
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Report a Problem" backPath="/settings" />
 
       <div className="flex-1 overflow-auto">
-        <div className="flex items-start justify-center p-6 min-h-full">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="flex justify-center mb-2">
-                <AlertTriangle className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <CardTitle className="font-display text-xl">
-                {submitted ? "Report received" : "Report a Problem"}
+        <main className="p-4 max-w-2xl mx-auto space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                Describe the issue
               </CardTitle>
               <CardDescription>
-                {submitted
-                  ? "Your report helps us make DW.ai better."
-                  : "Help us improve by describing what went wrong."}
+                Your report helps us improve DW.ai. Only the fields you choose to include will be
+                shared.
               </CardDescription>
             </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={category}
+                  onValueChange={(v) => setCategory(v as Category)}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select a category…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <CardContent>
-              {submitted ? (
-                <div className="text-center space-y-4">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-                  <p className="text-sm text-muted-foreground">
-                    We review every report. Thank you for taking the time.
-                  </p>
-                  <Link href="/settings">
-                    <Button className="w-full" data-testid="button-return-settings">
-                      Back to Settings
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  {/* Report type */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">What kind of issue is this?</p>
-                    <div className="flex flex-wrap gap-2">
-                      {REPORT_TYPES.map((rt) => {
-                        const Icon = rt.icon;
-                        const selected = reportType === rt.id;
-                        return (
-                          <Badge
-                            key={rt.id}
-                            variant={selected ? "default" : "outline"}
-                            className={`cursor-pointer transition-colors ${selected ? "" : "text-muted-foreground"}`}
-                            onClick={() => setReportType(rt.id)}
-                            data-testid={`badge-report-type-${rt.id}`}
-                          >
-                            <Icon className="h-3 w-3 mr-1" />
-                            {rt.label}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  placeholder="What happened? What did you expect?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                />
+              </div>
 
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Describe the problem</Label>
-                    <Textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="What happened? What did you expect instead?"
-                      className="min-h-[120px] resize-none"
-                      data-testid="input-support-description"
-                    />
-                  </div>
-
-                  {/* Consent toggles */}
-                  <div className="space-y-3 rounded-lg border p-4">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                      Include in report (optional)
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="toggle-tech" className="text-sm">
-                          Technical details
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Browser, platform, page path, screen size
-                        </p>
-                      </div>
-                      <Switch
-                        id="toggle-tech"
-                        checked={includeTechDetails}
-                        onCheckedChange={setIncludeTechDetails}
-                        data-testid="switch-include-tech"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="toggle-conv" className="text-sm">
-                          Recent conversation
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Last few messages with the AI (no audio ever included)
-                        </p>
-                      </div>
-                      <Switch
-                        id="toggle-conv"
-                        checked={includeConversation}
-                        onCheckedChange={setIncludeConversation}
-                        data-testid="switch-include-conversation"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="toggle-ctx" className="text-sm">
-                          App context
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Current goals, active plan summary
-                        </p>
-                      </div>
-                      <Switch
-                        id="toggle-ctx"
-                        checked={includeContext}
-                        onCheckedChange={setIncludeContext}
-                        data-testid="switch-include-context"
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Audio is never collected or stored. Only data you explicitly enable above is
-                    included.
-                  </p>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={description.trim().length < 10 || isSubmitting}
-                    data-testid="button-submit-report"
-                  >
-                    {isSubmitting ? (
-                      "Sending…"
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Report
-                      </>
-                    )}
-                  </Button>
-                </form>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="steps">Steps to reproduce (optional)</Label>
+                <Textarea
+                  id="steps"
+                  placeholder="1. Go to… 2. Tap… 3. See…"
+                  value={steps}
+                  onChange={(e) => setSteps(e.target.value)}
+                  rows={3}
+                />
+              </div>
             </CardContent>
           </Card>
-        </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">What to include</CardTitle>
+              <CardDescription>
+                You're in control of what gets shared with the report.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="toggle-tech" className="text-sm font-medium">
+                    Technical details
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    App version, platform, browser
+                  </p>
+                </div>
+                <Switch
+                  id="toggle-tech"
+                  checked={includeTech}
+                  onCheckedChange={setIncludeTech}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="toggle-context" className="text-sm font-medium">
+                    Recent app context
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Current screen / last action
+                  </p>
+                </div>
+                <Switch
+                  id="toggle-context"
+                  checked={includeContext}
+                  onCheckedChange={setIncludeContext}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="toggle-conversation" className="text-sm font-medium">
+                    Conversation snippet
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Last message you sent and DW's reply
+                  </p>
+                </div>
+                <Switch
+                  id="toggle-conversation"
+                  checked={includeConversation}
+                  onCheckedChange={setIncludeConversation}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            className="w-full"
+            onClick={handleSubmit}
+            disabled={mutation.isPending}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {mutation.isPending ? "Sending…" : "Send Report"}
+          </Button>
+        </main>
       </div>
     </div>
   );
