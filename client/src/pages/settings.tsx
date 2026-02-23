@@ -33,6 +33,7 @@ import {
   Activity,
   Sparkles,
   TestTube,
+  Flag,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -149,6 +150,25 @@ export function SettingsPage() {
             >
               Edit Mobility & Capabilities
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <BookHeart className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Values &amp; Rules</CardTitle>
+                <CardDescription>Dietary rules, movement constraints, and life boundaries</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Link href="/values-rules-profile">
+              <Button variant="outline" data-testid="button-edit-values-rules">
+                Edit Values &amp; Rules
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
@@ -331,6 +351,29 @@ export function SettingsPage() {
               <Label>Challenge reminders</Label>
               <Switch data-testid="switch-challenge-reminder" />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Flag className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Support</CardTitle>
+                <CardDescription>Report an issue or unexpected behavior</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Link href="/support/report">
+              <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-support-report">
+                <div className="flex items-center gap-3">
+                  <Flag className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Report a problem</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </Link>
           </CardContent>
         </Card>
 

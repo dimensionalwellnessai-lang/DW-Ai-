@@ -3023,3 +3023,107 @@ Respond with valid JSON:
     };
   }
 }
+
+// ============================================
+// CookSession Recipe Generation
+// ============================================
+
+export interface CookSessionIngredientResult {
+  name: string;
+  amount: string;
+  unit: string;
+  notes?: string;
+}
+
+export interface CookSessionStepResult {
+  stepNumber: number;
+  instruction: string;
+  timerSeconds?: number;
+  ingredientsUsed: string[];
+}
+
+export interface CookSessionRecipeResult {
+  title: string;
+  description: string;
+  servings: number;
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  tags: string[];
+  dietaryTags: string[];
+  ingredients: CookSessionIngredientResult[];
+  steps: CookSessionStepResult[];
+  tips?: string[];
+}
+
+export async function generateCookSessionRecipe(
+  query: string,
+  preferences?: {
+    dietaryStyle?: string;
+    restrictions?: string[];
+    allergies?: string[];
+    bannedIngredients?: string[];
+    values?: string[];
+  },
+  mode: "lightweight" | "full" = "full"
+): Promise<CookSessionRecipeResult> {
+  const restrictions = Array.isArray(preferences?.restrictions) ? preferences.restrictions : [];
+  const allergies = Array.isArray(preferences?.allergies) ? preferences.allergies : [];
+  const bannedIngredients = Array.isArray(preferences?.bannedIngredients) ? preferences.bannedIngredients : [];
+  const values = Array.isArray(preferences?.values) ? preferences.values : [];
+
+  const clauses: string[] = [];
+  if (preferences?.dietaryStyle) clauses.push(`Dietary style: ${preferences.dietaryStyle}`);
+  if (restrictions.length) clauses.push(`Dietary restrictions: ${restrictions.join(", ")}`);
+  if (allergies.length) clauses.push(`Allergies - avoid completely: ${allergies.join(", ")}`);
+  if (bannedIngredients.length) clauses.push(`Do NOT use: ${bannedIngredients.join(", ")}`);
+  if (values.length) clauses.push(`User values/priorities: ${values.join(", ")}`);
+  const prefBlock = clauses.length ? `\n${clauses.join("\n")}` : "";
+
+  const timerNote = mode === "lightweight"
+    ? "Only add timerSeconds for truly critical timed steps (boiling, baking). Omit otherwise."
+    : "Add timerSeconds for every step where timing matters (sautéing, simmering, baking).";
+
+  const prompt = `Generate a step-by-step cooking session for: "${query}"${prefBlock}
+
+${timerNote}
+
+Respond with valid JSON only:
+{
+  "title": "Recipe title",
+  "description": "One-line description",
+  "servings": 2,
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 20,
+  "tags": ["quick", "healthy"],
+  "dietaryTags": ["vegetarian"],
+  "ingredients": [
+    { "name": "chicken breast", "amount": "2", "unit": "pieces", "notes": "boneless, about 150g each" }
+  ],
+  "steps": [
+    {
+      "stepNumber": 1,
+      "instruction": "Detailed step instruction here.",
+      "timerSeconds": 300,
+      "ingredientsUsed": ["chicken breast"]
+    }
+  ],
+  "tips": ["Optional cooking tip 1"]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 2000,
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("Empty response from AI");
+
+    return JSON.parse(content) as CookSessionRecipeResult;
+  } catch (error) {
+    console.error("Failed to generate cook session recipe:", error);
+    throw new Error("Failed to generate cook session recipe. Please try again.");
+  }
+}

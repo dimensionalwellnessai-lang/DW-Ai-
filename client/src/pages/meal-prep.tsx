@@ -1371,6 +1371,26 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               />
             </section>
 
+            {/* Cook Session entry point */}
+            <section>
+              <Card
+                className="bg-amber-500/5 border-amber-500/20 cursor-pointer hover-elevate"
+                onClick={() => setLocation("/cook-session")}
+                data-testid="card-cook-session-cta"
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
+                    <ChefHat className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm text-foreground">Ready to cook?</h4>
+                    <p className="text-xs text-muted-foreground">Step-by-step guidance with timers &amp; substitutions</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            </section>
+
             {/* Wave 6A: Category Thumbnails */}
             <section className="space-y-3">
               <h2 className="font-display font-semibold text-sm text-foreground">Browse by Category</h2>

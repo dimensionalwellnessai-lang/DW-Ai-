@@ -20,7 +20,9 @@ import {
   ChevronRight,
   Sparkles,
   Edit,
-  Trash2
+  Trash2,
+  LayoutList,
+  Grid3X3,
 } from "lucide-react";
 import { useLocation, Link, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -80,13 +82,34 @@ interface DisplayScheduleEvent {
   source: "db" | "local";
 }
 
+const VIEW_MODE_KEY = "dw:schedule:viewMode";
+
+type ViewMode = "timeline" | "block";
+
+function loadViewMode(): ViewMode {
+  try {
+    const v = localStorage.getItem(VIEW_MODE_KEY);
+    if (v === "block") return "block";
+  } catch {}
+  return "timeline";
+}
+
+const MIN_DAY_INDEX = 0; // Sunday
+const MAX_DAY_INDEX = 6; // Saturday
+
 export default function DailySchedulePage() {
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
-  const selectedId = new URLSearchParams(searchParams).get("selected");
+  const params = new URLSearchParams(searchParams);
+  const selectedId = params.get("selected");
+  const dayParam = params.get("day");
   const { toast } = useToast();
   const today = new Date().getDay();
-  const [selectedDay, setSelectedDay] = useState(today);
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const d = dayParam !== null ? parseInt(dayParam, 10) : today;
+    return Number.isFinite(d) && d >= MIN_DAY_INDEX && d <= MAX_DAY_INDEX ? d : today;
+  });
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [eventDetailOpen, setEventDetailOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -251,15 +274,38 @@ export default function DailySchedulePage() {
     return !!(event.linkedRoute || (event.linkedType && event.linkedType !== "none") || event.systemType);
   };
 
+  const toggleViewMode = () => {
+    setViewMode((prev) => {
+      const next: ViewMode = prev === "timeline" ? "block" : "timeline";
+      try { localStorage.setItem(VIEW_MODE_KEY, next); } catch {}
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader 
         title="Daily Schedule" 
         rightContent={
-          <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Something
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleViewMode}
+              title={viewMode === "timeline" ? "Switch to block view" : "Switch to timeline view"}
+              data-testid="button-toggle-view"
+            >
+              {viewMode === "timeline" ? (
+                <Grid3X3 className="w-4 h-4" />
+              ) : (
+                <LayoutList className="w-4 h-4" />
+              )}
+            </Button>
+            <Button size="sm" onClick={() => setAddEventOpen(true)} data-testid="button-add-event">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Something
+            </Button>
+          </div>
         }
       />
       <ScrollArea className="flex-1 overflow-auto">
@@ -311,50 +357,114 @@ export default function DailySchedulePage() {
 
         {allEvents.length > 0 && (
           <div className="space-y-3">
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-              {DAYS[selectedDay]}'s Schedule
-            </h2>
-            <div className="space-y-2">
-              {allEvents.map((event) => {
-                const Icon = getEventIcon(event);
-                const color = getEventColor(event);
-                const isClickable = hasDeepLink(event) || event.source === "db";
-                
-                return (
-                  <Card 
-                    key={event.id}
-                    className={`hover-elevate ${isClickable ? "cursor-pointer" : ""} ${highlightedId === event.id ? "ring-2 ring-primary animate-pulse" : ""}`}
-                    onClick={() => handleEventClick(event)}
-                    data-testid={`card-event-${event.id}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0`}>
-                          <Icon className={`w-5 h-5 ${color}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground truncate">{event.title}</h3>
-                          {event.linkedType && event.linkedType !== "none" && (
-                            <p className="text-sm text-muted-foreground capitalize">
-                              {event.linkedType}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-medium">{formatTime12Hour(event.scheduledTime)}</p>
-                          {event.endTime && (
-                            <p className="text-xs text-muted-foreground">{formatTime12Hour(event.endTime)}</p>
-                          )}
-                        </div>
-                        {isClickable && (
-                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                {DAYS[selectedDay]}'s Schedule
+              </h2>
+              <Badge variant="outline" className="text-xs capitalize">
+                {viewMode === "timeline" ? "Timeline" : "Block"} view
+              </Badge>
+            </div>
+
+            {/* ── Timeline view: time-anchored list ── */}
+            {viewMode === "timeline" && (
+              <div className="relative space-y-0" data-testid="view-timeline">
+                {allEvents.map((event, idx) => {
+                  const Icon = getEventIcon(event);
+                  const color = getEventColor(event);
+                  const isClickable = hasDeepLink(event) || event.source === "db";
+                  const isLast = idx === allEvents.length - 1;
+
+                  return (
+                    <div key={event.id} className="flex gap-3">
+                      {/* Time column */}
+                      <div className="flex flex-col items-center w-14 shrink-0">
+                        <span className="text-xs font-medium text-muted-foreground leading-tight pt-3">
+                          {formatTime12Hour(event.scheduledTime)}
+                        </span>
+                        {/* Vertical connector */}
+                        {!isLast && (
+                          <div className="w-px flex-1 bg-border mt-1 min-h-[12px]" />
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+
+                      {/* Event card */}
+                      <div className="flex-1 pb-3">
+                        <Card
+                          className={`hover-elevate ${isClickable ? "cursor-pointer" : ""} ${highlightedId === event.id ? "ring-2 ring-primary animate-pulse" : ""}`}
+                          onClick={() => handleEventClick(event)}
+                          data-testid={`card-event-${event.id}`}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                <Icon className={`w-4 h-4 ${color}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-foreground truncate text-sm">{event.title}</h3>
+                                {event.endTime && (
+                                  <p className="text-xs text-muted-foreground">
+                                    until {formatTime12Hour(event.endTime)}
+                                  </p>
+                                )}
+                              </div>
+                              {isClickable && (
+                                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Block / segment view: grouped by type ── */}
+            {viewMode === "block" && (
+              <div className="space-y-2" data-testid="view-block">
+                {allEvents.map((event) => {
+                  const Icon = getEventIcon(event);
+                  const color = getEventColor(event);
+                  const isClickable = hasDeepLink(event) || event.source === "db";
+                  
+                  return (
+                    <Card 
+                      key={event.id}
+                      className={`hover-elevate ${isClickable ? "cursor-pointer" : ""} ${highlightedId === event.id ? "ring-2 ring-primary animate-pulse" : ""}`}
+                      onClick={() => handleEventClick(event)}
+                      data-testid={`card-event-${event.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0`}>
+                            <Icon className={`w-5 h-5 ${color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-foreground truncate">{event.title}</h3>
+                            {event.linkedType && event.linkedType !== "none" && (
+                              <p className="text-sm text-muted-foreground capitalize">
+                                {event.linkedType}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-medium">{formatTime12Hour(event.scheduledTime)}</p>
+                            {event.endTime && (
+                              <p className="text-xs text-muted-foreground">{formatTime12Hour(event.endTime)}</p>
+                            )}
+                          </div>
+                          {isClickable && (
+                            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

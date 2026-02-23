@@ -28,14 +28,17 @@ import WorkoutPage from "@/pages/workout";
 import { RecoveryPage } from "@/pages/recovery";
 import MealPrepPage from "@/pages/meal-prep";
 import ShoppingListPage from "@/pages/shopping-list";
+import CookSessionPage from "@/pages/cook-session";
 import FinancesPage from "@/pages/finances";
 import SpiritualPage from "@/pages/spiritual";
 import LifeDashboardPage from "@/pages/life-dashboard";
 import { SettingsPage } from "@/pages/settings";
 import DailySchedulePage from "@/pages/daily-schedule";
+import WeekSchedulePage from "@/pages/week-schedule";
 import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
+import VoiceOnboardingPage from "@/pages/voice-onboarding";
 import SubscriptionPage from "@/pages/subscription";
 import EnhancedOnboardingPage from "@/pages/enhanced-onboarding";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -75,11 +78,13 @@ import LifeBlueprintPage from "@/pages/life-blueprint";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
+import ValuesRulesProfilePage from "@/pages/values-rules-profile";
 import TrackingPage from "@/pages/tracking";
 import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import SupportReportPage from "@/pages/support-report";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -155,6 +160,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
+      <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
@@ -168,6 +174,7 @@ function Router() {
       <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
       <Route path="/insights" component={InsightsDashboard} />
       <Route path="/wellness-preferences" component={WellnessPreferencesPage} />
+      <Route path="/values-rules-profile" component={ValuesRulesProfilePage} />
       <Route path="/tracking" component={TrackingPage} />
       <Route path="/goals" component={GoalsPage} />
       <Route path="/habits" component={HabitsPage} />
@@ -184,6 +191,7 @@ function Router() {
 
       {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
+      {isRouteEnabled("/week-schedule") && <Route path="/week-schedule" component={WeekSchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
@@ -194,11 +202,13 @@ function Router() {
       {isRouteEnabled("/routines") && <Route path="/routines" component={RoutinesPage} />}
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
       {isRouteEnabled("/shopping-list") && <Route path="/shopping-list" component={ShoppingListPage} />}
+      {isRouteEnabled("/cook-session") && <Route path="/cook-session" component={CookSessionPage} />}
       {isRouteEnabled("/finances") && <Route path="/finances" component={FinancesPage} />}
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
+      {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
@@ -214,9 +224,11 @@ function Router() {
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
       {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
+      {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
+      <Route path="/support/report" component={SupportReportPage} />
       <Route path="/404" component={NotFound404Page} />
       
       <Route component={NotFound404Page} />
@@ -224,7 +236,7 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/voice-onboarding", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed

@@ -13,7 +13,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
-import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -36,6 +36,7 @@ import {
   insertCalendarEventSchema,
   insertUserProfileSchema,
   insertSavedContentSchema,
+  insertFeedInteractionSchema,
   insertChallengeSchema,
   insertBodyScanSchema,
   insertSystemModuleSchema,
@@ -60,11 +61,13 @@ import {
   insertLifeDimensionAssessmentSchema,
   insertDimensionSystemSchema,
   insertWellnessPreferencesSchema,
+  insertUserValuesRulesSchema,
   insertFeatureSettingsSchema,
   insertHouseholdCleaningTaskSchema,
   insertHouseholdLaundryScheduleSchema,
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
+  type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -969,6 +972,69 @@ export async function registerRoutes(
     }
   });
 
+  const supportReportSchema = z.object({
+    description: z.string().min(10, "Description must be at least 10 characters").max(5000),
+    reportType: z.enum(["bug", "mismatch", "general", "other"]).default("general"),
+    includeTechDetails: z.boolean().default(true),
+    includeConversation: z.boolean().default(false),
+    includeContext: z.boolean().default(false),
+    conversationSummary: z.string().max(3000).nullable().optional(),
+    contextSummary: z.string().max(3000).nullable().optional(),
+    techDetails: z.object({
+      userAgent: z.string().optional(),
+      platform: z.string().optional(),
+      appVersion: z.string().optional(),
+      pageContext: z.string().optional(),
+      screenSize: z.string().optional(),
+    }).nullable().optional(),
+  });
+
+  app.post("/api/support/report", async (req, res) => {
+    const parse = supportReportSchema.safeParse(req.body);
+    if (!parse.success) {
+      return res.status(400).json({ error: "Invalid report data", details: parse.error.flatten() });
+    }
+
+    const {
+      description,
+      reportType,
+      includeTechDetails,
+      includeConversation,
+      includeContext,
+      conversationSummary,
+      contextSummary,
+      techDetails,
+    } = parse.data;
+
+    const userId = req.session.userId || null;
+    let userEmail: string | null = null;
+    if (userId) {
+      try {
+        const user = await storage.getUser(userId);
+        userEmail = user?.email || null;
+      } catch {
+        // non-critical
+      }
+    }
+
+    sendSupportReportEmail(
+      userEmail,
+      userId,
+      description,
+      reportType,
+      includeTechDetails,
+      includeConversation,
+      includeContext,
+      includeTechDetails ? (techDetails ?? null) : null,
+      includeConversation ? (conversationSummary ?? null) : null,
+      includeContext ? (contextSummary ?? null) : null
+    ).catch((err) => {
+      console.error("Failed to send support report email:", err);
+    });
+
+    res.json({ success: true });
+  });
+
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
       const conversations = await storage.getConversations(req.session.userId!);
@@ -1616,6 +1682,60 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Alternatives error:", error);
       res.status(500).json({ error: "Failed to generate alternatives" });
+    }
+  });
+
+  // Guided CookSession recipe generation
+  app.post("/api/ai/cook-session", async (req, res) => {
+    try {
+      const { query, preferences, mode } = req.body;
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ error: "query is required" });
+      }
+      if (query.length > 300) {
+        return res.status(400).json({ error: "query must be 300 characters or fewer" });
+      }
+      const validModes = ["lightweight", "full"];
+      const sessionMode = validModes.includes(mode) ? mode : "full";
+
+      // Normalize preferences to avoid runtime errors from malformed input
+      const rawPreferences = preferences && typeof preferences === "object" ? preferences : {};
+      const normalizeStringArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        return (value as unknown[])
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+      };
+      const prefsRecord = rawPreferences as Record<string, unknown>;
+      const normalizeValues = (value: unknown): string[] => {
+        if (Array.isArray(value)) {
+          return normalizeStringArray(value);
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          return trimmed.length > 0 ? [trimmed] : [];
+        }
+        return [];
+      };
+      const dietaryStyle =
+        typeof prefsRecord.dietaryStyle === "string"
+          ? prefsRecord.dietaryStyle.trim() || undefined
+          : undefined;
+      const sanitizedPreferences = {
+        ...prefsRecord,
+        restrictions: normalizeStringArray(prefsRecord.restrictions),
+        allergies: normalizeStringArray(prefsRecord.allergies),
+        bannedIngredients: normalizeStringArray(prefsRecord.bannedIngredients),
+        dietaryStyle,
+        values: normalizeValues(prefsRecord.values),
+      };
+
+      const recipe = await generateCookSessionRecipe(query, sanitizedPreferences, sessionMode);
+      res.json(recipe);
+    } catch (error) {
+      console.error("Cook session generation error:", error);
+      res.status(500).json({ error: "Failed to generate cook session recipe" });
     }
   });
 
@@ -3445,6 +3565,105 @@ export async function registerRoutes(
     }
   });
 
+  // Feed Interaction Routes (not-interested, personalization signals)
+  app.post("/api/feed-interactions", requireAuth, async (req, res) => {
+    try {
+      const data = insertFeedInteractionSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const created = await storage.createFeedInteraction(data);
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to record feed interaction" });
+    }
+  });
+
+  app.get("/api/feed-interactions/not-interested", requireAuth, async (req, res) => {
+    try {
+      const interactions = await storage.getFeedInteractionsByAction(
+        req.session.userId!,
+        "not_interested"
+      );
+      res.json(interactions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load feed interactions" });
+    }
+  });
+
+  // Add content to schedule from feed
+  app.post("/api/feed/add-to-schedule", requireAuth, async (req, res) => {
+    const bodySchema = z.object({
+      title: z.string().min(1),
+      scheduledTime: z.string().min(1),
+      contentUrl: z.string().optional(),
+      contentType: z.string().optional(),
+      notes: z.string().optional(),
+      topic: z.string().optional(),
+    });
+    try {
+      const body = bodySchema.parse(req.body);
+      const { title, scheduledTime, contentUrl, contentType, notes, topic } = body;
+
+      /**
+       * Normalize scheduledTime so we always store a UTC ISO 8601 timestamp.
+       *
+       * Accepted inputs:
+       * - "HH:MM"  → interpreted as today at HH:MM (server local), stored as UTC ISO.
+       *              If that time is already in the past today, advanced to tomorrow.
+       * - Any Date-parseable string (e.g. ISO 8601 with timezone) → stored as UTC ISO.
+       *
+       * dailyScheduleEvents.scheduledTime is a text column expected to always contain
+       * a full ISO 8601 timestamp in UTC (e.g. "2024-02-01T10:00:00.000Z").
+       */
+      let normalizedTime: string;
+      if (/^\d{2}:\d{2}$/.test(scheduledTime)) {
+        const now = new Date();
+        const scheduledDate = new Date(now);
+        const [hours, minutes] = scheduledTime.split(":");
+        scheduledDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        // If the computed time is in the past for today, schedule for tomorrow instead
+        if (scheduledDate.getTime() < now.getTime()) {
+          scheduledDate.setDate(scheduledDate.getDate() + 1);
+        }
+        normalizedTime = scheduledDate.toISOString();
+      } else {
+        const parsed = new Date(scheduledTime);
+        if (Number.isNaN(parsed.getTime())) {
+          return res.status(400).json({ error: "Invalid scheduledTime format" });
+        }
+        normalizedTime = parsed.toISOString();
+      }
+
+      const event = await storage.createScheduleEvent({
+        userId: req.session.userId!,
+        title,
+        scheduledTime: normalizedTime,
+        systemReference: contentUrl || null,
+        systemType: contentType || "feed_content",
+        notes: notes || null,
+      });
+      // Also record a scheduled interaction for personalization
+      await storage.createFeedInteraction({
+        userId: req.session.userId!,
+        contentType: contentType || null,
+        contentTitle: title,
+        contentUrl: contentUrl || null,
+        action: "scheduled",
+        topic: topic || null,
+      });
+      res.json(event);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to add to schedule" });
+    }
+  });
+
   // Explore Content APIs - External content discovery
   // Note: API keys should be set in environment variables
   // For now, these return mock data as placeholders until API keys are configured
@@ -4737,6 +4956,151 @@ Return as JSON array with format:
     } catch (error) {
       console.error("Update exercise error:", error);
       res.status(500).json({ error: "Failed to update exercise" });
+    }
+  });
+
+  // ========== WORKOUT SESSIONS ==========
+
+  app.get("/api/workout-sessions", requireAuth, async (req, res) => {
+    try {
+      const sessions = await storage.getWorkoutSessions(req.session.userId!);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout sessions" });
+    }
+  });
+
+  app.get("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const steps = await storage.getWorkoutSessionSteps(req.params.id);
+      res.json({ ...session, steps });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load workout session" });
+    }
+  });
+
+  app.post("/api/workout-sessions", requireAuth, async (req, res) => {
+    try {
+      const schema = z.object({
+        title: z.string().min(1).max(200),
+        sessionType: z.enum(["strength", "timed", "distance", "breathwork", "mobility", "custom"]).optional(),
+        workoutPlanId: z.string().optional().nullable(),
+        voiceCoachEnabled: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+        metadata: z.record(z.unknown()).optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const session = await storage.createWorkoutSession({
+        userId: req.session.userId!,
+        ...parsed.data,
+      });
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Create workout session error:", error);
+      res.status(500).json({ error: "Failed to create workout session" });
+    }
+  });
+
+  app.patch("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const schema = z.object({
+        status: z.enum(["in_progress", "completed", "cancelled"]).optional(),
+        voiceCoachEnabled: z.boolean().optional(),
+        notes: z.string().optional().nullable(),
+        durationSeconds: z.number().int().optional().nullable(),
+        completedAt: z.string().optional().nullable(),
+        metadata: z.record(z.unknown()).optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const updateData: {
+        status?: string;
+        voiceCoachEnabled?: boolean;
+        notes?: string | null;
+        durationSeconds?: number | null;
+        completedAt?: Date | null;
+        metadata?: Record<string, unknown> | null;
+      } = {};
+      if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+      if (parsed.data.voiceCoachEnabled !== undefined) updateData.voiceCoachEnabled = parsed.data.voiceCoachEnabled;
+      if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
+      if (parsed.data.durationSeconds !== undefined) updateData.durationSeconds = parsed.data.durationSeconds;
+      if (parsed.data.metadata !== undefined) updateData.metadata = parsed.data.metadata as Record<string, unknown> | null;
+      if (parsed.data.completedAt) {
+        updateData.completedAt = new Date(parsed.data.completedAt);
+      } else if (parsed.data.completedAt === null) {
+        updateData.completedAt = null;
+      }
+      const updated = await storage.updateWorkoutSession(req.params.id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Update workout session error:", error);
+      res.status(500).json({ error: "Failed to update workout session" });
+    }
+  });
+
+  app.delete("/api/workout-sessions/:id", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      await storage.deleteWorkoutSession(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete workout session" });
+    }
+  });
+
+  // Log / update a single step in a session
+  app.put("/api/workout-sessions/:id/steps/:stepIndex", requireAuth, async (req, res) => {
+    try {
+      const session = await storage.getWorkoutSession(req.params.id);
+      if (!session || session.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Workout session not found" });
+      }
+      const stepIndex = parseInt(req.params.stepIndex, 10);
+      if (isNaN(stepIndex) || stepIndex < 0) {
+        return res.status(400).json({ error: "Invalid step index" });
+      }
+      const schema = z.object({
+        title: z.string().min(1).max(200),
+        stepType: z.enum(["strength", "timed", "distance", "breathwork", "mobility", "custom"]),
+        completed: z.boolean().optional(),
+        setsCompleted: z.number().int().optional().nullable(),
+        repsPerSet: z.string().optional().nullable(),
+        weightPerSet: z.string().optional().nullable(),
+        durationSeconds: z.number().int().optional().nullable(),
+        distanceMeters: z.number().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const step = await storage.upsertWorkoutSessionStep({
+        sessionId: req.params.id,
+        userId: req.session.userId!,
+        stepIndex,
+        ...parsed.data,
+      });
+      res.json(step);
+    } catch (error) {
+      console.error("Log workout step error:", error);
+      res.status(500).json({ error: "Failed to log workout step" });
     }
   });
 
@@ -6885,6 +7249,54 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // User Values & Rules
+  app.get("/api/user-values-rules", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const record = await storage.getUserValuesRules(userId);
+      res.json(record || null);
+    } catch (error) {
+      console.error("Get user values rules error:", error);
+      res.status(500).json({ error: "Failed to get values & rules" });
+    }
+  });
+
+  app.post("/api/user-values-rules", requireAuth, async (req, res) => {
+    try {
+      const data = insertUserValuesRulesSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const record = await storage.createUserValuesRules(data);
+      res.json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create user values rules error:", error);
+      res.status(500).json({ error: "Failed to create values & rules" });
+    }
+  });
+
+  app.patch("/api/user-values-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId!;
+      const data = insertUserValuesRulesSchema.omit({ userId: true }).partial().parse(req.body);
+      const record = await storage.updateUserValuesRules(id, userId, data);
+      if (!record) {
+        return res.status(404).json({ error: "Values & rules not found" });
+      }
+      res.json(record);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Update user values rules error:", error);
+      res.status(500).json({ error: "Failed to update values & rules" });
+    }
+  });
+
   // Feature Settings
   app.get("/api/feature-settings", requireAuth, async (req, res) => {
     try {
@@ -7134,6 +7546,90 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update AI suggestion error:", error);
       res.status(500).json({ error: "Failed to update suggestion" });
+    }
+  });
+
+  // Support report endpoint (accessible to both guests and authenticated users)
+  const supportReportLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many support reports. Please try again later." },
+  });
+
+  const supportReportSchema = z.object({
+    category: z.enum(["bug", "demo_mismatch", "voice", "content_feed", "scheduling", "other"]),
+    description: z.string().min(1),
+    stepsToReproduce: z.string().optional(),
+    eventType: z.string().optional(),
+    requestedTerm: z.string().optional(),
+    normalizedTerm: z.string().optional(),
+    closestMatch: z.object({ id: z.string().optional(), name: z.string().optional() }).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    includeTechnicalDetails: z.boolean(),
+    technicalDetails: z.object({
+      appVersion: z.string().optional(),
+      platform: z.string().optional(),
+      deviceModel: z.string().optional(),
+      osVersion: z.string().optional(),
+      userAgent: z.string().optional(),
+    }).optional(),
+    includeRecentContext: z.boolean(),
+    recentContext: z.object({
+      route: z.string().optional(),
+      screen: z.string().optional(),
+      lastAction: z.string().optional(),
+    }).optional(),
+    includeConversationSnippet: z.boolean(),
+    conversationSnippet: z.object({
+      conversationId: z.string().optional(),
+      lastUserMessage: z.string().optional(),
+      lastDwReply: z.string().optional(),
+    }).optional(),
+    includeConstraintsSnapshot: z.boolean(),
+    constraintsSnapshot: z.object({
+      equipment: z.unknown().optional(),
+      injuries: z.unknown().optional(),
+      lowImpact: z.boolean().optional(),
+      dietaryRules: z.unknown().optional(),
+    }).optional(),
+  });
+
+  app.post("/api/support/report", supportReportLimiter, async (req, res) => {
+    try {
+      const data = supportReportSchema.parse(req.body);
+      const createdAt = new Date().toISOString();
+
+      const report = {
+        category: data.category,
+        description: data.description,
+        stepsToReproduce: data.stepsToReproduce,
+        eventType: data.eventType,
+        requestedTerm: data.requestedTerm,
+        normalizedTerm: data.normalizedTerm,
+        closestMatch: data.closestMatch,
+        confidence: data.confidence,
+        technicalDetails: data.includeTechnicalDetails ? data.technicalDetails : undefined,
+        recentContext: data.includeRecentContext ? data.recentContext : undefined,
+        conversationSnippet: data.includeConversationSnippet ? data.conversationSnippet : undefined,
+        constraintsSnapshot: data.includeConstraintsSnapshot ? data.constraintsSnapshot : undefined,
+        createdAt,
+      };
+
+      const sent = await sendSupportReportEmail(report);
+      if (!sent) {
+        console.error("Support report email could not be delivered");
+        return res.status(500).json({ error: "Failed to deliver support report. Please try again or email dimensionalwellnessai@gmail.com directly." });
+      }
+
+      res.json({ success: true, createdAt });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.flatten() });
+      }
+      console.error("Support report error:", error);
+      res.status(500).json({ error: "Failed to submit support report" });
     }
   });
 
