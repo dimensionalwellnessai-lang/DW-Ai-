@@ -58,6 +58,10 @@ declare global {
 // instructs DW to begin with a welcoming question.
 const START_ONBOARDING_TRIGGER = "[START_ONBOARDING]";
 
+// localStorage keys for tracking onboarding completion state
+const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
+const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
+
 // ─── System prompt ───────────────────────────────────────────────────────────
 
 const ONBOARDING_SYSTEM_PROMPT =
@@ -215,8 +219,15 @@ export default function VoiceOnboardingPage() {
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceStateRef = useRef<VoiceState>("idle"); // Ref mirror to avoid stale closures in event handlers
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Helper: keep both state and ref in sync
+  const updateVoiceState = useCallback((next: VoiceState) => {
+    voiceStateRef.current = next;
+    setVoiceState(next);
+  }, []);
 
   // ── Check voice support ──
   useEffect(() => {
@@ -237,16 +248,26 @@ export default function VoiceOnboardingPage() {
   }, [thread, isReplying]);
 
   // ── AI chat mutation ──
+  // The backend /api/chat/smart doesn't accept a systemOverride parameter, so we
+  // prepend the onboarding system prompt to the first user message. The prompt is
+  // only included in the message sent to the API — it is never stored in the
+  // `thread` state shown to the user, so it won't appear in the rendered thread.
+  // A proper backend systemOverride field would be the cleaner long-term solution.
   const chatMutation = useMutation({
     mutationFn: async (history: ThreadMessage[]) => {
+      const latestMessage = history[history.length - 1];
+      const isFirstMessage = history.length === 1;
+      const messageWithContext = isFirstMessage
+        ? `${ONBOARDING_SYSTEM_PROMPT}\n\n${latestMessage.content}`
+        : latestMessage.content;
+
       const response = await apiRequest("POST", "/api/chat/smart", {
-        message: history[history.length - 1].content,
+        message: messageWithContext,
         context: "voice-onboarding",
         conversationHistory: history.slice(0, -1).map((m) => ({
           role: m.role,
           content: m.content,
         })),
-        systemOverride: ONBOARDING_SYSTEM_PROMPT,
       });
       return response.json();
     },
@@ -303,7 +324,7 @@ export default function VoiceOnboardingPage() {
       recognition.lang = "en-US";
       recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => setVoiceState("listening");
+      recognition.onstart = () => updateVoiceState("listening");
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interim = "";
@@ -317,40 +338,44 @@ export default function VoiceOnboardingPage() {
         }
         setLiveTranscript(final || interim);
         if (final) {
-          setVoiceState("processing");
+          updateVoiceState("processing");
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
           timeoutRef.current = setTimeout(() => {
             sendUserMessage(final.trim());
-            setVoiceState("idle");
+            updateVoiceState("idle");
           }, 400);
         }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        setVoiceState("error");
+        updateVoiceState("error");
         const msg =
           event.error === "not-allowed" || event.error === "permission-denied"
             ? VOICE_SCRIPTS.microphoneError
             : VOICE_SCRIPTS.errorFallback;
         toast({ title: "Voice input", description: msg, variant: "destructive" });
-        timeoutRef.current = setTimeout(() => setVoiceState("idle"), 2000);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
       };
 
+      // Use voiceStateRef (not closed-over voiceState) to avoid reading a stale value
       recognition.onend = () => {
-        if (voiceState === "listening") setVoiceState("idle");
+        if (voiceStateRef.current === "listening") updateVoiceState("idle");
       };
 
       recognition.start();
     } catch {
-      setVoiceState("error");
+      updateVoiceState("error");
       toast({ title: "Voice input", description: VOICE_SCRIPTS.microphoneError, variant: "destructive" });
-      timeoutRef.current = setTimeout(() => setVoiceState("idle"), 2000);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
     }
-  }, [voiceState, sendUserMessage, toast]);
+  }, [sendUserMessage, toast, updateVoiceState]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
-    setVoiceState("idle");
-  }, []);
+    updateVoiceState("idle");
+  }, [updateVoiceState]);
 
   const handleMicClick = useCallback(() => {
     if (voiceState === "listening") {
@@ -399,8 +424,25 @@ export default function VoiceOnboardingPage() {
     ]);
   }, [chatMutation]);
 
-  // ── Skip to app ──
-  const handleSkip = () => setLocation("/");
+  // ── Skip to app (persist skip flag so entry point isn't shown repeatedly) ──
+  const handleSkip = () => {
+    try {
+      localStorage.setItem(LS_VOICE_ONBOARDING_SKIPPED, "true");
+    } catch {
+      // Ignore storage errors to avoid blocking navigation
+    }
+    setLocation("/");
+  };
+
+  // ── Done: mark as completed ──
+  const handleDone = () => {
+    try {
+      localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
+    } catch {
+      // Ignore storage errors to avoid blocking navigation
+    }
+    setLocation("/");
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Intro phase — full-screen avatar
@@ -455,9 +497,7 @@ export default function VoiceOnboardingPage() {
             className="text-muted-foreground"
             onClick={() => {
               setInputMode("text");
-              setPhase("thread");
-              setIsReplying(true);
-              chatMutation.mutate([{ id: "init", role: "user", content: START_ONBOARDING_TRIGGER }]);
+              handleBegin();
             }}
             data-testid="button-use-text-instead"
           >
@@ -485,7 +525,7 @@ export default function VoiceOnboardingPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleSkip}
+          onClick={handleDone}
           className="text-muted-foreground text-xs"
           data-testid="button-finish-onboarding"
         >
@@ -522,7 +562,13 @@ export default function VoiceOnboardingPage() {
 
           {/* Typing indicator */}
           {isReplying && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 py-2">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2 py-2"
+              aria-live="polite"
+              role="status"
+            >
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
               <span className="text-sm text-muted-foreground">DW is thinking…</span>
             </motion.div>
@@ -535,6 +581,7 @@ export default function VoiceOnboardingPage() {
               animate={{ opacity: 1 }}
               className="border-l-4 border-primary/30 pl-4 py-1 italic text-muted-foreground text-sm"
               data-testid="live-transcript-preview"
+              aria-live="polite"
             >
               {liveTranscript}…
             </motion.div>
