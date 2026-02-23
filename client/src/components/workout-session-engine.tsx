@@ -182,17 +182,26 @@ function TimedLogger({ step, log, onChange }: StepLoggerProps) {
   const target = step.durationSeconds ?? 0;
 
   useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => {
-        setElapsed((prev) => {
-          const next = prev + 1;
-          onChange({ durationSeconds: next });
-          return next;
-        });
-      }, 1000);
+    // Always clear any existing interval before creating a new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
+    if (!running) return;
+
+    intervalRef.current = setInterval(() => {
+      setElapsed((prev) => {
+        const next = prev + 1;
+        onChange({ durationSeconds: next });
+        return next;
+      });
+    }, 1000);
+
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [running, onChange]);
 
@@ -464,7 +473,7 @@ export function WorkoutSessionEngine({
       setSessionFinished(false);
       setSessionId(null);
     }
-  }, [open, config.title]);
+  }, [open, config.title, config.sessionType, config.workoutPlanId, config.steps.length]);
 
   function handleStart() {
     setSessionStarted(true);
@@ -549,13 +558,18 @@ export function WorkoutSessionEngine({
       queryClient.invalidateQueries({ queryKey: ["/api/workout-sessions"] });
     }
 
-    toast({ title: "Session complete! 💪", description: "Your workout has been saved." });
+    if (isAuthenticated) {
+      toast({ title: "Session complete! 💪", description: "Your workout has been saved." });
+    } else {
+      toast({ title: "Session complete! 💪", description: "Session finished. Sign in to save your history." });
+    }
   }
 
   function handleSkip() {
     if (currentIdx < totalSteps - 1) {
       setCurrentIdx((i) => i + 1);
-      speak(`Skipped. Next: ${config.steps[currentIdx + 1].title}`, voiceEnabled);
+      const nextTitle = config.steps[currentIdx + 1]?.title ?? "end of workout";
+      speak(`Skipped. Next: ${nextTitle}`, voiceEnabled);
     }
   }
 
@@ -748,15 +762,17 @@ export function WorkoutSessionEngine({
             <div className="flex items-center justify-between">
               <DialogTitle className="pr-6">{config.title}</DialogTitle>
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setShowHistory(true)}
-                  title="Session history"
-                >
-                  <History className="h-4 w-4" />
-                </Button>
+                {isAuthenticated && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setShowHistory(true)}
+                    title="Session history"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
             {!sessionStarted && (

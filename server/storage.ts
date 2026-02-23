@@ -1727,8 +1727,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteWorkoutSession(id: string): Promise<void> {
-    await db.delete(workoutSessionSteps).where(eq(workoutSessionSteps.sessionId, id));
-    await db.delete(workoutSessions).where(eq(workoutSessions.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(workoutSessionSteps).where(eq(workoutSessionSteps.sessionId, id));
+      await tx.delete(workoutSessions).where(eq(workoutSessions.id, id));
+    });
   }
 
   async getWorkoutSessionSteps(sessionId: string): Promise<WorkoutSessionStep[]> {
@@ -1738,18 +1740,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertWorkoutSessionStep(step: InsertWorkoutSessionStep): Promise<WorkoutSessionStep> {
-    // Try updating first; if no row matched, insert
-    const existing = await db.select().from(workoutSessionSteps)
-      .where(and(eq(workoutSessionSteps.sessionId, step.sessionId), eq(workoutSessionSteps.stepIndex, step.stepIndex)));
-    if (existing.length > 0) {
-      const [updated] = await db.update(workoutSessionSteps)
-        .set({ ...step, loggedAt: new Date() })
-        .where(eq(workoutSessionSteps.id, existing[0].id))
-        .returning();
-      return updated;
-    }
-    const [created] = await db.insert(workoutSessionSteps).values(step).returning();
-    return created;
+    const [result] = await db
+      .insert(workoutSessionSteps)
+      .values(step)
+      .onConflictDoUpdate({
+        target: [workoutSessionSteps.sessionId, workoutSessionSteps.stepIndex],
+        set: { ...step, loggedAt: new Date() },
+      })
+      .returning();
+    return result;
   }
 
   async getConversations(userId: string): Promise<Conversation[]> {

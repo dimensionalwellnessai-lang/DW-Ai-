@@ -328,23 +328,55 @@ export default function WorkoutPage() {
     setAlternativesOpen(true);
   };
 
-  const handleStartSession = (workout: WorkoutData) => {
-    // Determine dominant step type from tags
-    let sessionType: StepType = "strength";
-    if (workout.tags.includes("yoga") || workout.tags.includes("mobility") || workout.tags.includes("stretching")) {
-      sessionType = "mobility";
-    } else if (workout.tags.includes("breathwork") || workout.tags.includes("breathing")) {
-      sessionType = "breathwork";
-    } else if (workout.tags.includes("cardio") || workout.tags.includes("run")) {
-      sessionType = "timed";
+  const inferSessionTypeFromTags = (tags: string[]): StepType => {
+    const normalizedTags = tags.map((tag) => tag.toLowerCase());
+    const scores: Record<StepType, number> = {
+      strength: 0, mobility: 0, breathwork: 0, timed: 0, distance: 0, custom: 0,
+    };
+    normalizedTags.forEach((tag) => {
+      if (["yoga", "mobility", "stretch", "stretching"].includes(tag)) scores.mobility += 1;
+      if (["breathwork", "breathing"].includes(tag)) scores.breathwork += 1;
+      if (["cardio", "run", "running", "hiit"].includes(tag)) scores.timed += 1;
+      if (["strength", "lifting", "weights", "resistance"].includes(tag)) scores.strength += 1;
+    });
+    const maxScore = Math.max(...(Object.values(scores) as number[]));
+    if (maxScore <= 0) return "strength";
+    // Tie-breaker priority: timed > mobility > breathwork > strength
+    const priority: StepType[] = ["timed", "mobility", "breathwork", "strength"];
+    for (const type of priority) {
+      if (scores[type] === maxScore) return type;
     }
+    return "strength";
+  };
+
+  const extractStepTitle = (stepText: string): string => {
+    const cleaned = stepText.replace(/^[0-9]+\.\s*/, "");
+    const colonIndex = cleaned.indexOf(":");
+    const candidate = colonIndex === -1 ? cleaned : cleaned.slice(0, colonIndex);
+    const trimmed = candidate.trim();
+    return trimmed.length > 0 ? trimmed : stepText.trim();
+  };
+
+  const inferStepType = (stepText: string, fallback: StepType): StepType => {
+    const lower = stepText.toLowerCase();
+    if (/\b(set|rep|push.?up|pull.?up|squat|curl|press|row|lift|dumbbell|barbell|weight)\b/.test(lower)) return "strength";
+    if (/\b(stretch|yoga|pose|mobility|flexibility|foam roll)\b/.test(lower)) return "mobility";
+    if (/\b(breath|inhale|exhale|box breath|pranayama)\b/.test(lower)) return "breathwork";
+    if (/\b(run|jog|sprint|cycle|bike|swim|row|distance|km|mile|meter)\b/.test(lower)) return "distance";
+    if (/\b(min|minute|second|hold|plank|wall sit|timed|interval|hiit|cardio)\b/.test(lower)) return "timed";
+    return fallback;
+  };
+
+  const handleStartSession = (workout: WorkoutData) => {
+    // Determine dominant step type from all tags using scoring
+    const sessionType = inferSessionTypeFromTags(workout.tags);
 
     const sessionConfig: WorkoutSessionConfig = {
       title: workout.title,
       sessionType,
       steps: workout.steps.map((stepText) => ({
-        title: stepText.replace(/^[0-9]+\.\s*/, "").split(":")[0].trim(),
-        stepType: sessionType,
+        title: extractStepTitle(stepText),
+        stepType: inferStepType(stepText, sessionType),
         notes: stepText,
       })),
     };

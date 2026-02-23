@@ -855,7 +855,7 @@ export const workoutSessionsRelations = relations(workoutSessions, ({ one, many 
 // Workout Session Steps - Logged entry per exercise/step
 export const workoutSessionSteps = pgTable("workout_session_steps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull().references(() => workoutSessions.id),
+  sessionId: varchar("session_id").notNull().references(() => workoutSessions.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id),
   stepIndex: integer("step_index").notNull(),
   title: text("title").notNull(),
@@ -872,7 +872,9 @@ export const workoutSessionSteps = pgTable("workout_session_steps", {
   // Notes / custom
   notes: text("notes"),
   loggedAt: timestamp("logged_at").defaultNow(),
-});
+}, (t) => ({
+  sessionStepUnique: uniqueIndex("workout_session_steps_session_id_step_index_idx").on(t.sessionId, t.stepIndex),
+}));
 
 export const workoutSessionStepsRelations = relations(workoutSessionSteps, ({ one }) => ({
   session: one(workoutSessions, {
