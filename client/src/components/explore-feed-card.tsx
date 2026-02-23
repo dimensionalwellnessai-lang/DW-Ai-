@@ -15,6 +15,9 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { ReportIssueModal } from "@/components/report-issue-modal";
+import type { MismatchEventType } from "@shared/supportReport";
 
 export type ExploreFeedContentType = "video" | "article" | "exercise" | "blog";
 
@@ -93,6 +96,10 @@ export function ExploreFeedCard({
 }: ExploreFeedCardProps) {
   const config = typeConfig[type];
   const Icon = config.icon;
+  const [reportOpen, setReportOpen] = useState(false);
+
+  const contentEventType: MismatchEventType =
+    type === "exercise" ? "exercise_demo_mismatch" : "content_mismatch";
 
   return (
     <Card className={cn(
@@ -230,6 +237,15 @@ export function ExploreFeedCard({
           </div>
         </div>
       </CardContent>
+
+      <ReportIssueModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        eventType={contentEventType}
+        requestedItem={requestedContent || title}
+        closestMatch={title}
+        pageContext={typeof window !== "undefined" ? window.location.pathname : undefined}
+      />
     </Card>
   );
 }

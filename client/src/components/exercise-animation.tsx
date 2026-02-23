@@ -10,6 +10,8 @@ interface ExerciseAnimationProps {
   exerciseId: string;
   onClose?: () => void;
   autoPlay?: boolean;
+  /** Original exercise name the user requested (for mismatch reporting) */
+  requestedExercise?: string;
 }
 
 export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: ExerciseAnimationProps) {
@@ -128,7 +130,29 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
             ))}
           </ul>
         </div>
+
+        {/* Report mismatch */}
+        <div className="pt-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground gap-1"
+            onClick={() => setReportOpen(true)}
+          >
+            <Flag className="w-3 h-3" />
+            Report mismatch
+          </Button>
+        </div>
       </CardContent>
+
+      <ReportIssueModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        eventType="exercise_demo_mismatch"
+        requestedItem={requestedExercise || exercise.name}
+        closestMatch={exercise.name}
+        pageContext={typeof window !== "undefined" ? window.location.pathname : undefined}
+      />
 
       {/* CSS Animations */}
       <style>{`
