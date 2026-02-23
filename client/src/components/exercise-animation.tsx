@@ -2,18 +2,22 @@ import { useState, useEffect } from "react";
 import { getExerciseById, type ExerciseAnimationData } from "@/lib/exercise-animations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ReportIssueModal } from "@/components/report-issue-modal";
 
 interface ExerciseAnimationProps {
   exerciseId: string;
   onClose?: () => void;
   autoPlay?: boolean;
+  /** Original exercise name the user requested (for mismatch reporting) */
+  requestedExercise?: string;
 }
 
-export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: ExerciseAnimationProps) {
+export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true, requestedExercise }: ExerciseAnimationProps) {
   const exercise = getExerciseById(exerciseId);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (!exercise) {
     return null;
@@ -94,7 +98,29 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true }: Exer
             ))}
           </ul>
         </div>
+
+        {/* Report mismatch */}
+        <div className="pt-2 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground gap-1"
+            onClick={() => setReportOpen(true)}
+          >
+            <Flag className="w-3 h-3" />
+            Report mismatch
+          </Button>
+        </div>
       </CardContent>
+
+      <ReportIssueModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        eventType="exercise_demo_mismatch"
+        requestedItem={requestedExercise || exercise.name}
+        closestMatch={exercise.name}
+        pageContext={typeof window !== "undefined" ? window.location.pathname : undefined}
+      />
 
       {/* CSS Animations */}
       <style>{`

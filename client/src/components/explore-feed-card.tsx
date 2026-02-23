@@ -11,8 +11,12 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { ReportIssueModal } from "@/components/report-issue-modal";
+import type { MismatchEventType } from "@shared/supportReport";
 
 export type ExploreFeedContentType = "video" | "article" | "exercise" | "blog";
 
@@ -34,6 +38,8 @@ export interface ExploreFeedCardProps {
   onSave?: () => void;
   onSchedule?: () => void;
   onOpen?: () => void;
+  /** Optional: what the user originally searched/requested (for mismatch reporting) */
+  requestedContent?: string;
   className?: string;
 }
 
@@ -83,10 +89,15 @@ export function ExploreFeedCard({
   onSave,
   onSchedule,
   onOpen,
+  requestedContent,
   className,
 }: ExploreFeedCardProps) {
   const config = typeConfig[type];
   const Icon = config.icon;
+  const [reportOpen, setReportOpen] = useState(false);
+
+  const contentEventType: MismatchEventType =
+    type === "exercise" ? "exercise_demo_mismatch" : "content_mismatch";
 
   return (
     <Card className={cn(
@@ -196,9 +207,28 @@ export function ExploreFeedCard({
                 <Calendar className="w-4 h-4" />
               </Button>
             )}
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="px-2 text-muted-foreground"
+              title="Report mismatch"
+              onClick={() => setReportOpen(true)}
+            >
+              <Flag className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </CardContent>
+
+      <ReportIssueModal
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        eventType={contentEventType}
+        requestedItem={requestedContent || title}
+        closestMatch={title}
+        pageContext={typeof window !== "undefined" ? window.location.pathname : undefined}
+      />
     </Card>
   );
 }

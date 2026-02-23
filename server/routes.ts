@@ -13,7 +13,8 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
-import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendMismatchReportEmail } from "./email";
+import { MISMATCH_EVENT_TYPES, type MismatchReportPayload } from "../shared/supportReport";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -966,6 +967,55 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Feedback error:", error);
       res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+
+  app.post("/api/report-mismatch", async (req, res) => {
+    try {
+      const { eventType, requestedItem, closestMatch, details, pageContext } = req.body as MismatchReportPayload;
+
+      if (!eventType || !requestedItem || !closestMatch) {
+        return res.status(400).json({ error: "eventType, requestedItem, and closestMatch are required" });
+      }
+
+      if (!(MISMATCH_EVENT_TYPES as readonly string[]).includes(eventType)) {
+        return res.status(400).json({ error: `Invalid eventType. Must be one of: ${MISMATCH_EVENT_TYPES.join(", ")}` });
+      }
+
+      const userId = req.session.userId || null;
+      let userEmail: string | null = null;
+      if (userId) {
+        const user = await storage.getUser(userId);
+        userEmail = user?.email || null;
+      }
+
+      const message = [
+        `Requested: ${requestedItem}`,
+        `Closest match: ${closestMatch}`,
+        details ? `Details: ${details}` : null,
+      ].filter(Boolean).join("\n");
+
+      const feedbackData = {
+        userId,
+        guestId: userId ? null : crypto.randomBytes(8).toString('hex'),
+        category: eventType,
+        message,
+        pageContext: pageContext || null,
+        energyLevel: null,
+        metadata: { requestedItem, closestMatch, details: details || null },
+      };
+
+      const result = await storage.createUserFeedback(feedbackData);
+
+      const report: MismatchReportPayload = { eventType, requestedItem, closestMatch, details, pageContext };
+      sendMismatchReportEmail(userEmail, userId, report).catch(err => {
+        console.error("Failed to send mismatch report email:", err);
+      });
+
+      res.json({ success: true, id: result.id });
+    } catch (error) {
+      console.error("Mismatch report error:", error);
+      res.status(500).json({ error: "Failed to save mismatch report" });
     }
   });
 

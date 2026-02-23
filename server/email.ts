@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { MISMATCH_EVENT_LABELS, type MismatchReportPayload } from '../shared/supportReport';
 
 let connectionSettings: any;
 
@@ -99,6 +100,71 @@ export async function sendFeedbackEmail(
     return true;
   } catch (error) {
     console.error('Failed to send feedback email:', error);
+    return false;
+  }
+}
+
+export async function sendMismatchReportEmail(
+  userEmail: string | null,
+  userId: string | null,
+  report: MismatchReportPayload
+): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      dateStyle: 'full',
+      timeStyle: 'long',
+    });
+
+    const eventLabel = MISMATCH_EVENT_LABELS[report.eventType] ?? report.eventType;
+
+    await client.emails.send({
+      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      to: 'rbisbigred@gmail.com',
+      subject: `[Mismatch Report] ${eventLabel}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #6366f1;">Mismatch Report — ${eventLabel}</h2>
+
+          <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p><strong>Event Type:</strong> ${report.eventType}</p>
+            <p><strong>User:</strong> ${userEmail || 'Guest'} ${userId ? `(ID: ${userId})` : ''}</p>
+            <p><strong>Page:</strong> ${report.pageContext || 'Not specified'}</p>
+            <p><strong>Time:</strong> ${timestamp}</p>
+          </div>
+
+          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+            <h3 style="margin-top: 0; color: #555;">Requested / Expected</h3>
+            <p style="white-space: pre-wrap;">${report.requestedItem}</p>
+          </div>
+
+          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+            <h3 style="margin-top: 0; color: #555;">Closest Match Shown</h3>
+            <p style="white-space: pre-wrap;">${report.closestMatch}</p>
+          </div>
+
+          ${report.details ? `
+          <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+            <h3 style="margin-top: 0; color: #555;">Additional Details</h3>
+            <p style="white-space: pre-wrap;">${report.details}</p>
+          </div>
+          ` : ''}
+        </body>
+        </html>
+      `,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to send mismatch report email:', error);
     return false;
   }
 }
