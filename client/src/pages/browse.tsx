@@ -391,6 +391,23 @@ export default function Browse() {
     enabled: activeTab === "saved",
   });
 
+  // Fetch previously not-interested URLs for persistent hiding
+  const { data: notInterestedData } = useQuery<{ contentUrl: string | null }[]>({
+    queryKey: ["/api/feed-interactions/not-interested"],
+  });
+
+  // Hydrate notInterestedUrls from backend data
+  useEffect(() => {
+    if (notInterestedData) {
+      const urls = notInterestedData
+        .map((i) => i.contentUrl)
+        .filter((u): u is string => Boolean(u));
+      if (urls.length > 0) {
+        setNotInterestedUrls(new Set(urls));
+      }
+    }
+  }, [notInterestedData]);
+
   const aiCustomizeMutation = useMutation({
     mutationFn: async (mood: string) => {
       const contentList = content.map((c, i) => `[${i}] ${c.title}`).join("\n");
@@ -506,7 +523,9 @@ ${contentList}`,
 
   const handleNotInterested = (item: { title: string; url: string; type: string; topic?: string }) => {
     // Immediately hide from feed (optimistic)
-    setNotInterestedUrls(prev => new Set([...prev, item.url]));
+    setNotInterestedUrls(prev => { const s = new Set(prev); s.add(item.url); return s; });
+    // Count as an interaction for "Apply this?" guardrail
+    handleFeedItemSeen();
     notInterestedMutation.mutate({
       contentTitle: item.title,
       contentUrl: item.url,
@@ -527,12 +546,12 @@ ${contentList}`,
   const handleFeedItemSeen = useCallback(() => {
     setFeedSeenCount(prev => {
       const next = prev + 1;
-      if (next >= APPLY_PROMPT_THRESHOLD && !showApplyPrompt) {
+      if (next >= APPLY_PROMPT_THRESHOLD) {
         setShowApplyPrompt(true);
       }
       return next;
     });
-  }, [showApplyPrompt]);
+  }, []);
 
   const content = dbContent && dbContent.length > 0 ? dbContent : SAMPLE_CONTENT;
   
@@ -560,13 +579,13 @@ ${contentList}`,
     );
   }
 
-  // Length filter (short <10min, medium 10-20min, long >20min)
+  // Length filter (short <10min, medium 10-20min, long ≥20min)
   if (lengthFilter) {
     filteredContent = filteredContent.filter((c) => {
       const dur = c.duration ?? 0;
       if (lengthFilter === "short") return dur < 10;
-      if (lengthFilter === "medium") return dur >= 10 && dur <= 20;
-      if (lengthFilter === "long") return dur > 20;
+      if (lengthFilter === "medium") return dur >= 10 && dur < 20;
+      if (lengthFilter === "long") return dur >= 20;
       return true;
     });
   }
@@ -738,7 +757,12 @@ ${contentList}`,
       />
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => {
+          setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community");
+          // Reset per-tab filters when switching tabs
+          setTopicFilter("");
+          setLengthFilter(null);
+        }} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl overflow-x-auto flex-nowrap">
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
@@ -1301,7 +1325,12 @@ ${contentList}`,
 
           <h2 className="text-lg font-semibold mb-3">Video Content</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContent.filter(c => !notInterestedUrls.has((c as any).url || "")).map((item) => {
+            {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["workout", "recovery", "video"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).map((item) => {
               const CategoryIcon = getCategoryIcon(item.category);
               return (
                 <Card
@@ -1365,7 +1394,12 @@ ${contentList}`,
               );
             })}
           </div>
-          {filteredContent.filter(c => !notInterestedUrls.has((c as any).url || "")).length === 0 && (
+          {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["workout", "recovery", "video"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).length === 0 && (
             <div className="text-center py-12">
               <Video className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="text-muted-foreground">No video content found.</p>
@@ -1438,7 +1472,12 @@ ${contentList}`,
 
           <h2 className="text-lg font-semibold mb-3">Wellness Articles</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContent.filter(c => !notInterestedUrls.has((c as any).url || "")).map((item) => {
+            {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).map((item) => {
               const CategoryIcon = getCategoryIcon(item.category);
               return (
                 <Card
@@ -1495,7 +1534,12 @@ ${contentList}`,
               );
             })}
           </div>
-          {filteredContent.filter(c => !notInterestedUrls.has((c as any).url || "")).length === 0 && (
+          {filteredContent.filter(c =>
+              !notInterestedUrls.has((c as any).url || "") &&
+              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
+                (c as any).contentType || c.category || ""
+              )
+            ).length === 0 && (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="text-muted-foreground">No articles found.</p>

@@ -3477,19 +3477,48 @@ export async function registerRoutes(
 
   // Add content to schedule from feed
   app.post("/api/feed/add-to-schedule", requireAuth, async (req, res) => {
+    const bodySchema = z.object({
+      title: z.string().min(1),
+      scheduledTime: z.string().min(1),
+      contentUrl: z.string().optional(),
+      contentType: z.string().optional(),
+      notes: z.string().optional(),
+      topic: z.string().optional(),
+    });
     try {
-      const { title, scheduledTime, contentUrl, contentType, notes } = req.body;
-      if (!title || !scheduledTime) {
-        return res.status(400).json({ error: "title and scheduledTime are required" });
+      const body = bodySchema.parse(req.body);
+      const { title, scheduledTime, contentUrl, contentType, notes, topic } = body;
+
+      /**
+       * Normalize scheduledTime so we always store a UTC ISO 8601 timestamp.
+       *
+       * Accepted inputs:
+       * - "HH:MM"  → interpreted as today at HH:MM (server local), stored as UTC ISO.
+       *              If that time is already in the past today, advanced to tomorrow.
+       * - Any Date-parseable string (e.g. ISO 8601 with timezone) → stored as UTC ISO.
+       *
+       * dailyScheduleEvents.scheduledTime is a text column expected to always contain
+       * a full ISO 8601 timestamp in UTC (e.g. "2024-02-01T10:00:00.000Z").
+       */
+      let normalizedTime: string;
+      if (/^\d{2}:\d{2}$/.test(scheduledTime)) {
+        const now = new Date();
+        const scheduledDate = new Date(now);
+        const [hours, minutes] = scheduledTime.split(":");
+        scheduledDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        // If the computed time is in the past for today, schedule for tomorrow instead
+        if (scheduledDate.getTime() < now.getTime()) {
+          scheduledDate.setDate(scheduledDate.getDate() + 1);
+        }
+        normalizedTime = scheduledDate.toISOString();
+      } else {
+        const parsed = new Date(scheduledTime);
+        if (Number.isNaN(parsed.getTime())) {
+          return res.status(400).json({ error: "Invalid scheduledTime format" });
+        }
+        normalizedTime = parsed.toISOString();
       }
-      // Normalize scheduledTime: if it's only HH:MM, combine with today's date
-      let normalizedTime = scheduledTime as string;
-      if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
-        const today = new Date();
-        const [hours, minutes] = normalizedTime.split(":");
-        today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-        normalizedTime = today.toISOString();
-      }
+
       const event = await storage.createScheduleEvent({
         userId: req.session.userId!,
         title,
@@ -3505,10 +3534,13 @@ export async function registerRoutes(
         contentTitle: title,
         contentUrl: contentUrl || null,
         action: "scheduled",
-        topic: req.body.topic || null,
+        topic: topic || null,
       });
       res.json(event);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to add to schedule" });
     }
   });
