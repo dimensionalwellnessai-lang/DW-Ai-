@@ -34,6 +34,7 @@ import SpiritualPage from "@/pages/spiritual";
 import LifeDashboardPage from "@/pages/life-dashboard";
 import { SettingsPage } from "@/pages/settings";
 import DailySchedulePage from "@/pages/daily-schedule";
+import WeekSchedulePage from "@/pages/week-schedule";
 import FeedbackPage from "@/pages/feedback";
 import AstrologyPage from "@/pages/astrology";
 import WelcomePage from "@/pages/welcome";
@@ -190,6 +191,7 @@ function Router() {
 
       {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
+      {isRouteEnabled("/week-schedule") && <Route path="/week-schedule" component={WeekSchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
