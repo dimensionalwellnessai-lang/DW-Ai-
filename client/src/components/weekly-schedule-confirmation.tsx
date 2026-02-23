@@ -34,6 +34,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   work: "hsl(231, 82%, 69%)",
   personal: "hsl(256, 100%, 83%)",
   social: "hsl(4, 64%, 66%)",
+  wellness: "hsl(174, 60%, 51%)",
+  sleep: "hsl(243, 75%, 59%)",
 };
 
 export function WeeklyScheduleConfirmation({
