@@ -247,7 +247,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     path: "/week-schedule",
     label: "Week Overview",
     navLabel: "Week",
-    icon: "calendar-range",
+    icon: "calendar",
     type: "page",
     description: "7-day schedule overview with day drill-down",
     showInMenu: false,

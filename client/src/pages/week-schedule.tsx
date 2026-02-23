@@ -136,7 +136,21 @@ export default function WeekSchedulePage() {
       return;
     }
     // Fall back: go to daily-schedule focused on this event
-    const dayIndex = parseISO(ev.startTime).getDay();
+    // Guard against time-only strings (e.g. "09:00") that parseISO can't resolve to a full date
+    const looksLikeIsoDate =
+      typeof ev.startTime === "string" &&
+      (/\d{4}-\d{2}-\d{2}/.test(ev.startTime) || ev.startTime.includes("T"));
+    let dayIndex: number;
+    if (looksLikeIsoDate) {
+      try {
+        const parsed = parseISO(ev.startTime);
+        dayIndex = isNaN(parsed.getTime()) ? new Date().getDay() : parsed.getDay();
+      } catch {
+        dayIndex = new Date().getDay();
+      }
+    } else {
+      dayIndex = new Date().getDay();
+    }
     setLocation(`/daily-schedule?day=${dayIndex}&selected=${ev.id}`);
   };
 
@@ -169,13 +183,13 @@ export default function WeekSchedulePage() {
 
           {/* 7-day overview grid */}
           {isLoading ? (
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="h-28 bg-muted rounded-lg animate-pulse" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-1.5" data-testid="week-grid">
+            <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5" data-testid="week-grid">
               {weekDays.map((day) => {
                 const key = format(day, "yyyy-MM-dd");
                 const dayEvents = eventsByDay[key] ?? [];
@@ -212,7 +226,11 @@ export default function WeekSchedulePage() {
                             className="flex items-center gap-0.5 overflow-hidden"
                             title={ev.title}
                           >
-                            <Icon className={`w-2.5 h-2.5 shrink-0 ${cfg.colorClass}`} />
+                            <Icon
+                              className={`w-2.5 h-2.5 shrink-0 ${cfg.colorClass}`}
+                              aria-hidden="true"
+                            />
+                            <span className="sr-only">{cfg.label} event</span>
                             <span className="text-[9px] leading-tight truncate text-foreground/80">
                               {ev.title}
                             </span>
