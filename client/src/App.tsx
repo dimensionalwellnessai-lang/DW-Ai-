@@ -80,6 +80,7 @@ import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import SupportReportPage from "@/pages/support-report";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -217,6 +218,7 @@ function Router() {
       
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
+      <Route path="/support/report" component={SupportReportPage} />
       <Route path="/404" component={NotFound404Page} />
       
       <Route component={NotFound404Page} />

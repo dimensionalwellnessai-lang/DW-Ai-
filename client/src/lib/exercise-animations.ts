@@ -350,6 +350,45 @@ export function getExerciseById(id: string): ExerciseAnimationData | undefined {
   return EXERCISE_ANIMATIONS[id];
 }
 
+export interface ExerciseMatchResult {
+  exercise: ExerciseAnimationData;
+  isClosestMatch: boolean;
+  requestedId: string;
+}
+
+/**
+ * Returns the exercise with an exact ID match, or the closest match when
+ * no exact match exists. `isClosestMatch` is true when a fallback was used.
+ */
+export function getExerciseWithMatchType(id: string): ExerciseMatchResult | null {
+  const exact = EXERCISE_ANIMATIONS[id];
+  if (exact) {
+    return { exercise: exact, isClosestMatch: false, requestedId: id };
+  }
+
+  // Simple closest-match: find an exercise whose ID tokens overlap the most
+  const requestedTokens = id.toLowerCase().split(/[-_ ]+/);
+  let bestScore = -1;
+  let bestExercise: ExerciseAnimationData | null = null;
+
+  for (const exercise of Object.values(EXERCISE_ANIMATIONS)) {
+    const candidateTokens = exercise.id.toLowerCase().split(/[-_ ]+/);
+    const overlap = requestedTokens.filter((t) => candidateTokens.includes(t)).length;
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      bestExercise = exercise;
+    }
+  }
+
+  // If no overlap found, fall back to the first available exercise rather than returning null
+  if (!bestExercise) {
+    const first = Object.values(EXERCISE_ANIMATIONS)[0];
+    if (!first) return null;
+    return { exercise: first, isClosestMatch: true, requestedId: id };
+  }
+  return { exercise: bestExercise, isClosestMatch: true, requestedId: id };
+}
+
 // Equipment type definitions
 export const EQUIPMENT_TYPES = [
   { id: 'bodyweight', name: 'Bodyweight Only', icon: '🧘' },
