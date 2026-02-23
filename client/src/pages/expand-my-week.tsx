@@ -50,11 +50,23 @@ function BlockEditor({
   const [startTime, setStartTime] = useState(block.startTime);
   const [endTime, setEndTime] = useState(block.endTime || "");
 
+  const isDirty =
+    title !== block.title ||
+    day !== block.day ||
+    startTime !== block.startTime ||
+    endTime !== (block.endTime || "");
+
+  const handleCancel = () => {
+    if (isDirty && !window.confirm("Discard your changes to this block?")) return;
+    onCancel();
+  };
+
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</label>
+        <label htmlFor={`block-title-${block.id}`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Title</label>
         <input
+          id={`block-title-${block.id}`}
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -63,8 +75,9 @@ function BlockEditor({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Day</label>
+          <label htmlFor={`block-day-${block.id}`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Day</label>
           <select
+            id={`block-day-${block.id}`}
             value={day}
             onChange={(e) => setDay(Number(e.target.value))}
             className="w-full mt-1 px-3 py-1.5 text-sm border rounded-md bg-background"
@@ -75,8 +88,9 @@ function BlockEditor({
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Time</label>
+          <label htmlFor={`block-start-${block.id}`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Time</label>
           <input
+            id={`block-start-${block.id}`}
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
@@ -85,8 +99,11 @@ function BlockEditor({
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">End Time</label>
+        <label htmlFor={`block-end-${block.id}`} className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          End Time <span className="normal-case font-normal">(leave blank to use start time)</span>
+        </label>
         <input
+          id={`block-end-${block.id}`}
           type="time"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
@@ -94,7 +111,7 @@ function BlockEditor({
         />
       </div>
       <div className="flex gap-2 justify-end">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+        <Button variant="ghost" size="sm" onClick={handleCancel}>
           <X className="w-3.5 h-3.5 mr-1" />Cancel
         </Button>
         <Button size="sm" onClick={() => onSave({ ...block, title, day, startTime, endTime: endTime || undefined })}>
@@ -168,23 +185,31 @@ export default function ExpandMyWeekPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, proposedBlocks]);
 
+  // Clean up redirect timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    };
+  }, []);
+
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
       const response = await apiRequest("POST", "/api/week-planner/chat", {
         message,
-        conversationHistory: messages.slice(-12),
+        conversationHistory: messages,
         questionCount,
       });
       return response.json();
     },
     onSuccess: (data) => {
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
-      setQuestionCount(data.questionCount);
+      setQuestionCount(Math.min(data.questionCount, 8));
       setPhase(data.phase);
       if (data.proposedSchedule && data.proposedSchedule.length > 0) {
         setProposedBlocks(data.proposedSchedule);
@@ -204,7 +229,7 @@ export default function ExpandMyWeekPage() {
   const confirmMutation = useMutation({
     mutationFn: async (items: ScheduleItem[]) => {
       const response = await apiRequest("POST", "/api/week-planner/confirm", {
-        confirmedItems: items.filter((i) => i.isConfirmed !== false),
+        confirmedItems: items.filter((i) => i.isConfirmed === true),
       });
       return response.json();
     },
@@ -214,7 +239,7 @@ export default function ExpandMyWeekPage() {
         title: "Week plan saved!",
         description: `${data.created} blocks added to your schedule.`,
       });
-      setTimeout(() => setLocation("/daily-schedule"), 1500);
+      redirectTimeoutRef.current = setTimeout(() => setLocation("/daily-schedule"), 1500);
     },
     onError: () => {
       toast({
@@ -226,7 +251,7 @@ export default function ExpandMyWeekPage() {
   });
 
   const handleSend = () => {
-    if (!input.trim() || isTyping || phase === "proposal") return;
+    if (!input.trim() || isTyping || phase !== "questions") return;
     const userMessage = input.trim();
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setInput("");
@@ -266,6 +291,8 @@ export default function ExpandMyWeekPage() {
     isConfirmed: true,
   }));
 
+  const cappedQuestionCount = Math.min(questionCount, 8);
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader
@@ -286,11 +313,11 @@ export default function ExpandMyWeekPage() {
               <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((questionCount / 8) * 100, 100)}%` }}
+                  style={{ width: `${(cappedQuestionCount / 8) * 100}%` }}
                 />
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {questionCount} / 8 questions
+                {cappedQuestionCount} / 8 questions
               </span>
             </div>
           )}
@@ -403,7 +430,7 @@ export default function ExpandMyWeekPage() {
               />
               <Button
                 onClick={handleSend}
-                disabled={!input.trim() || isTyping}
+                disabled={!input.trim() || isTyping || phase !== "questions"}
                 size="icon"
                 className="rounded-full h-12 w-12 shrink-0"
                 data-testid="button-send-week-planner"

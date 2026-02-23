@@ -65,6 +65,7 @@ import {
   insertHouseholdLaundryScheduleSchema,
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
+  type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -7139,19 +7140,21 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
 
   // ── Week Planner Conversational Endpoints ─────────────────────────────────
 
-  app.post("/api/week-planner/chat", async (req, res) => {
+  app.post("/api/week-planner/chat", requireAuth, async (req, res) => {
     try {
-      const { message, conversationHistory = [], questionCount = 0 } = req.body;
+      const bodySchema = z.object({
+        message: z.string().trim().min(1, "message is required"),
+        conversationHistory: z.array(z.any()).optional().default([]),
+        questionCount: z.number().int().min(0).optional().default(0),
+      });
 
-      let userId = req.session.userId;
-      if (!userId) {
-        let devUser = await storage.getUserByEmail("dev@wellness.local");
-        if (!devUser) {
-          devUser = await storage.createUser({ email: "dev@wellness.local", password: "devpassword123" });
-        }
-        userId = devUser.id;
-        req.session.userId = userId;
+      const parseResult = bodySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request body", details: parseResult.error.errors });
       }
+
+      const { message, conversationHistory, questionCount } = parseResult.data;
+      const userId = req.session.userId!;
 
       const [goals, habits, scheduleBlocks, profile] = await Promise.all([
         storage.getGoals(userId),
@@ -7164,6 +7167,17 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const activeHabits = habits.filter(h => h.isActive).map(h => h.title);
       const existingBlocks = scheduleBlocks.map(b => `${b.title} (${b.category}, day ${b.dayOfWeek} ${b.startTime}-${b.endTime})`);
 
+      const safeProfileSummary = profile
+        ? [
+            profile.goals ? `Goals: ${profile.goals.join(", ")}` : null,
+            profile.fitnessGoal ? `Fitness goal: ${profile.fitnessGoal}` : null,
+            profile.dietRestrictions ? `Diet: ${profile.dietRestrictions.join(", ")}` : null,
+            profile.scheduleAvailability ? `Availability: ${JSON.stringify(profile.scheduleAvailability)}` : null,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join(" | ")
+        : "not set";
+
       const MAX_QUESTIONS = 8;
       const nextQuestionNumber = questionCount + 1;
       const isLastQuestion = nextQuestionNumber >= MAX_QUESTIONS;
@@ -7174,7 +7188,7 @@ USER CONTEXT:
 - Active goals: ${activeGoals.length > 0 ? activeGoals.join(", ") : "none yet"}
 - Active habits: ${activeHabits.length > 0 ? activeHabits.join(", ") : "none yet"}
 - Existing schedule blocks: ${existingBlocks.length > 0 ? existingBlocks.join("; ") : "none yet"}
-- Profile: ${profile ? JSON.stringify({ goals: profile.goals, fitnessGoal: profile.fitnessGoal, dietRestrictions: profile.dietRestrictions, scheduleAvailability: profile.scheduleAvailability }) : "not set"}
+- Profile: ${safeProfileSummary}
 
 PHASE TRACKING:
 - Questions asked so far: ${questionCount}
@@ -7225,10 +7239,12 @@ Rules for the proposal:
 
       const messages = [
         { role: "system" as const, content: systemPrompt },
-        ...conversationHistory.map((m: { role: string; content: string }) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
+        ...conversationHistory
+          .filter((m: { role: string; content: string }) => m.role === "user" || m.role === "assistant")
+          .map((m: { role: string; content: string }) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          })),
         { role: "user" as const, content: message },
       ];
 
@@ -7252,8 +7268,10 @@ Rules for the proposal:
           proposedSchedule = parsed.blocks || [];
           // Remove the JSON block from the visible response
           cleanResponse = responseText.replace(/<SCHEDULE_PROPOSAL>[\s\S]*?<\/SCHEDULE_PROPOSAL>/, "").trim();
-        } catch {
-          // If JSON parse fails, keep full response
+        } catch (parseError) {
+          console.error("Failed to parse schedule proposal JSON:", parseError);
+          // Strip the malformed block so raw JSON is never shown to the user
+          cleanResponse = responseText.replace(/<SCHEDULE_PROPOSAL>[\s\S]*?<\/SCHEDULE_PROPOSAL>/, "").trim();
         }
       }
 
@@ -7272,26 +7290,32 @@ Rules for the proposal:
     }
   });
 
-  app.post("/api/week-planner/confirm", async (req, res) => {
+  app.post("/api/week-planner/confirm", requireAuth, async (req, res) => {
     try {
-      let userId = req.session.userId;
-      if (!userId) {
-        let devUser = await storage.getUserByEmail("dev@wellness.local");
-        if (!devUser) {
-          devUser = await storage.createUser({ email: "dev@wellness.local", password: "devpassword123" });
-        }
-        userId = devUser.id;
-        req.session.userId = userId;
+      const userId = req.session.userId!;
+
+      const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+      const confirmedItemSchema = z.object({
+        title: z.string().min(1, "Title is required"),
+        day: z.number().int().min(0).max(6),
+        startTime: z.string().regex(timePattern, "startTime must be HH:mm"),
+        endTime: z.string().regex(timePattern, "endTime must be HH:mm").optional(),
+        category: z.string().optional(),
+      });
+
+      const bodySchema = z.object({
+        confirmedItems: z.array(confirmedItemSchema).nonempty("confirmedItems must not be empty"),
+      });
+
+      const parseResult = bodySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid confirmed items", details: parseResult.error.flatten() });
       }
 
-      const { confirmedItems } = req.body;
-      if (!Array.isArray(confirmedItems) || confirmedItems.length === 0) {
-        return res.status(400).json({ error: "No confirmed items provided" });
-      }
+      const { confirmedItems } = parseResult.data;
 
-      const created: unknown[] = [];
+      const created: ScheduleBlock[] = [];
       for (const item of confirmedItems) {
-        if (!item.title || item.day === undefined || !item.startTime) continue;
         const block = await storage.createScheduleBlock({
           userId,
           title: item.title,
@@ -7301,6 +7325,14 @@ Rules for the proposal:
           category: item.category || "personal",
         });
         created.push(block);
+      }
+
+      if (created.length === 0) {
+        return res.status(400).json({
+          success: false,
+          created: 0,
+          error: "No schedule blocks were created. Please review your schedule items and try again.",
+        });
       }
 
       res.json({ success: true, created: created.length });
