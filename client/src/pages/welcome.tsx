@@ -31,7 +31,9 @@ export default function Welcome() {
   const [intent, setIntent] = useState<FirstIntent | null>(null);
 
   const handleSkipAll = () => {
-    saveProfileSetup({ completedAt: Date.now(), skipped: true });
+    // Record skip without completedAt to keep "completed" and "skipped" states distinct
+    saveProfileSetup({ skipped: true });
+    // For routing purposes, treat skipped as having passed onboarding
     localStorage.setItem("dw_onboarding_completed", "1");
     setLocation("/talk");
   };
@@ -124,21 +126,24 @@ export default function Welcome() {
             </Button>
           </header>
 
-          {/* Progress dots */}
+          {/* Progress dots: 4 dots representing steps 2-5 (the setup portion) */}
           <div className="flex gap-1.5 justify-center mb-6">
-            {[2, 3, 4, 5].map((s) => (
-              <div
-                key={s}
-                className={`h-1 w-8 rounded-full transition-colors ${
-                  s === step
-                    ? "bg-primary"
-                    : s < step
-                    ? "bg-primary/50"
-                    : "bg-muted"
-                }`}
-                data-testid={`progress-step-${s}`}
-              />
-            ))}
+            {[1, 2, 3, 4].map((i) => {
+              const dotStep = i + 1; // dot 1 → step 2, dot 4 → step 5
+              return (
+                <div
+                  key={i}
+                  className={`h-1 w-8 rounded-full transition-colors ${
+                    dotStep === step
+                      ? "bg-primary"
+                      : dotStep < step
+                      ? "bg-primary/50"
+                      : "bg-muted"
+                  }`}
+                  data-testid={`progress-step-${dotStep}`}
+                />
+              );
+            })}
           </div>
 
           <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
@@ -166,7 +171,6 @@ export default function Welcome() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="text-center text-lg h-12"
-                      autoFocus
                       onKeyDown={(e) => e.key === "Enter" && handleNext()}
                       data-testid="input-name"
                     />

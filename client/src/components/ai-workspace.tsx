@@ -189,7 +189,7 @@ export function AIWorkspace() {
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState(() => {
-    // Seed input from onboarding intent (consumed once, then removed)
+    // Seed input from onboarding intent (always consumed/removed on first mount)
     const intent = localStorage.getItem("dw_first_intent");
     if (intent) {
       localStorage.removeItem("dw_first_intent");
@@ -758,6 +758,10 @@ export function AIWorkspace() {
     const mealPrefs = getMealPrepPreferences();
     const workoutPrefs = getWorkoutPreferences();
     const importedDocs = getImportedDocuments();
+
+    // Onboarding preferences: pass name and voice vibe to the AI for personalization
+    const userName = localStorage.getItem("dw_user_name") || undefined;
+    const voiceVibe = localStorage.getItem("dw_voice_vibe") || undefined;
     
     return {
       preferences: {
@@ -768,6 +772,8 @@ export function AIWorkspace() {
         preferredWakeTime: systemPrefs.preferredWakeTime,
         preferredSleepTime: systemPrefs.preferredSleepTime,
       },
+      ...(userName && { userName }),
+      ...(voiceVibe && { voiceVibe }),
       scheduleEvents: (scheduleEvents.length > 0 ? scheduleEvents : (Array.isArray(guestContext.scheduleEvents) ? guestContext.scheduleEvents : [])).slice(0, 10).map((e: Record<string, unknown>) => ({
         title: e.title as string,
         scheduledTime: e.scheduledTime as string,
