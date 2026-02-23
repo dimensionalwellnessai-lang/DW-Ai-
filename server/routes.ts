@@ -7558,7 +7558,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     message: { error: "Too many support reports. Please try again later." },
   });
 
-  const supportReportSchema = z.object({
+  const detailedSupportReportSchema = z.object({
     category: z.enum(["bug", "demo_mismatch", "voice", "content_feed", "scheduling", "other"]),
     description: z.string().min(1),
     stepsToReproduce: z.string().optional(),
@@ -7596,9 +7596,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }).optional(),
   });
 
-  app.post("/api/support/report", supportReportLimiter, async (req, res) => {
+  app.post("/api/support/detailed-report", supportReportLimiter, async (req, res) => {
     try {
-      const data = supportReportSchema.parse(req.body);
+      const data = detailedSupportReportSchema.parse(req.body);
       const createdAt = new Date().toISOString();
 
       const report = {
