@@ -55,7 +55,11 @@ async function submitSupportReport(payload: ReportPayload) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error ?? "Failed to submit report");
+    const message =
+      typeof body?.error === "string"
+        ? body.error
+        : "Failed to submit report";
+    throw new Error(message);
   }
   return res.json();
 }
@@ -111,6 +115,9 @@ export default function SupportReportPage() {
         ? { route: window.location.pathname }
         : undefined,
       includeConversationSnippet: includeConversation,
+      conversationSnippet: includeConversation
+        ? { lastUserMessage: description.trim() }
+        : undefined,
       includeConstraintsSnapshot: false,
     };
 

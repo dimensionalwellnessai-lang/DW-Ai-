@@ -7138,6 +7138,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   });
 
   // Support report endpoint (accessible to both guests and authenticated users)
+  const supportReportLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many support reports. Please try again later." },
+  });
+
   const supportReportSchema = z.object({
     category: z.enum(["bug", "demo_mismatch", "voice", "content_feed", "scheduling", "other"]),
     description: z.string().min(1),
@@ -7176,7 +7184,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }).optional(),
   });
 
-  app.post("/api/support/report", async (req, res) => {
+  app.post("/api/support/report", supportReportLimiter, async (req, res) => {
     try {
       const data = supportReportSchema.parse(req.body);
       const createdAt = new Date().toISOString();
@@ -7197,14 +7205,16 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         createdAt,
       };
 
-      sendSupportReportEmail(report).catch(err => {
-        console.error("Failed to send support report email:", err);
-      });
+      const sent = await sendSupportReportEmail(report);
+      if (!sent) {
+        console.error("Support report email could not be delivered");
+        return res.status(500).json({ error: "Failed to deliver support report. Please try again or email dimensionalwellnessai@gmail.com directly." });
+      }
 
       res.json({ success: true, createdAt });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ error: "Invalid request", details: error.flatten() });
       }
       console.error("Support report error:", error);
       res.status(500).json({ error: "Failed to submit support report" });

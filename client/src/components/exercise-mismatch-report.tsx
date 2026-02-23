@@ -51,7 +51,11 @@ async function submitMismatchReport(payload: Record<string, unknown>) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error ?? "Failed to submit report");
+    const message =
+      typeof body?.error === "string"
+        ? body.error
+        : "Failed to submit report";
+    throw new Error(message);
   }
   return res.json();
 }
@@ -96,7 +100,7 @@ export function ExerciseMismatchReport({
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [includeTech, setIncludeTech] = useState(true);
-  const [includeConstraints, setIncludeConstraints] = useState(true);
+  const [includeConstraints, setIncludeConstraints] = useState(!!constraintsSnapshot);
   const [includeConversation, setIncludeConversation] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -115,6 +119,7 @@ export function ExerciseMismatchReport({
   });
 
   const handleSend = () => {
+    const fallbackSnippet = `Requested: "${requestedTerm}", got: "${closestMatch?.name ?? "unknown"}"`;
     mutation.mutate({
       category: "demo_mismatch",
       description: note.trim() || `Exercise demo mismatch: requested "${requestedTerm}", got "${closestMatch?.name ?? "unknown"}"`,
@@ -133,8 +138,11 @@ export function ExerciseMismatchReport({
         : undefined,
       includeRecentContext: false,
       includeConversationSnippet: includeConversation,
-      includeConstraintsSnapshot: includeConstraints,
-      constraintsSnapshot: includeConstraints ? constraintsSnapshot : undefined,
+      conversationSnippet: includeConversation
+        ? { lastUserMessage: note.trim() || fallbackSnippet }
+        : undefined,
+      includeConstraintsSnapshot: includeConstraints && !!constraintsSnapshot,
+      constraintsSnapshot: includeConstraints && constraintsSnapshot ? constraintsSnapshot : undefined,
     });
   };
 
