@@ -17,6 +17,7 @@ import {
   Briefcase,
   Loader2,
   MessageCircle,
+  Mic,
 } from "lucide-react";
 import { COPY } from "@/copy/en";
 import { 
@@ -444,6 +445,19 @@ export default function Welcome() {
                       </Badge>
                     ))}
                   </div>
+                </div>
+
+                <div className="pt-2 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground gap-1.5"
+                    onClick={() => setLocation("/voice-onboarding")}
+                    data-testid="button-try-voice-onboarding"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    Prefer to talk? Try voice onboarding
+                  </Button>
                 </div>
               </motion.div>
             )}
