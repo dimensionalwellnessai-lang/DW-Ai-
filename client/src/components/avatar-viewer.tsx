@@ -225,7 +225,17 @@ function getProceduralAnim(clipName: string): ProcAnim {
     case 'shoulder_stretch':
     case 'box_breathing':
     case 'belly_breathing':
+      return [
+        { frame: 0,   torsoY: 1.15, armAngle: 0.0,  legAngle: 0.0 },
+        { frame: 60,  torsoY: 1.17, armAngle: 0.05, legAngle: 0.0 },
+        { frame: 120, torsoY: 1.15, armAngle: 0.0,  legAngle: 0.0 },
+      ];
     case 'tricep_dip':
+      return [
+        { frame: 0,  torsoY: 1.15, armAngle: -0.3, legAngle: 0 },
+        { frame: 35, torsoY: 0.95, armAngle: -0.6, legAngle: 0 },
+        { frame: 70, torsoY: 1.15, armAngle: -0.3, legAngle: 0 },
+      ];
     default:
       return [
         { frame: 0,   torsoY: 1.15, armAngle: 0.0,  legAngle: 0.0 },
@@ -257,6 +267,9 @@ export function AvatarViewer({
   const sceneRef = useRef<unknown>(null);
   /** Unified handle for both GLB animation groups and procedural animatables. */
   const animHandleRef = useRef<AnimHandle | null>(null);
+  /** Stable ref so buildScene can read the current play state without being in its deps. */
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -335,7 +348,7 @@ export function AvatarViewer({
               play: () => ag.play(true),
               pause: () => ag.pause(),
             };
-            if (isPlaying) ag.play(true);
+            if (isPlayingRef.current) ag.play(true);
             else ag.pause();
           }
         }
@@ -350,7 +363,7 @@ export function AvatarViewer({
           play: () => animatables.forEach((a) => a.restart()),
           pause: () => animatables.forEach((a) => a.pause()),
         };
-        if (!isPlaying) animatables.forEach((a) => a.pause());
+        if (!isPlayingRef.current) animatables.forEach((a) => a.pause());
       }
 
       // ---- Floor grid (subtle) ----
@@ -377,7 +390,7 @@ export function AvatarViewer({
         err instanceof Error ? err.message : 'Failed to initialise 3D engine',
       );
     }
-  }, [motion, isPlaying]);
+  }, [motion]);
 
   // Initial mount – rebuild scene when motion changes
   useEffect(() => {
@@ -394,8 +407,7 @@ export function AvatarViewer({
         engine.dispose();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [motion.id]);
+  }, [buildScene]);
 
   // Sync play state without rebuilding the scene
   useEffect(() => {
@@ -418,7 +430,12 @@ export function AvatarViewer({
       />
       {/* Loading overlay */}
       {!isLoaded && !loadError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/60 rounded-lg">
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-muted/60 rounded-lg"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading 3D avatar"
+        >
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       )}

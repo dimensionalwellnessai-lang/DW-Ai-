@@ -23,6 +23,21 @@ interface ExerciseAnimationProps {
 
 const AVATAR_HEIGHT = 320;
 
+/** Map motion-library categories (fine-grained) to exercise-DB display labels. */
+function motionCategoryLabel(cat: string): string {
+  const MAP: Record<string, string> = {
+    'strength-push': 'upper',
+    'strength-pull': 'upper',
+    'strength-lower': 'lower',
+    'core': 'core',
+    'cardio': 'cardio',
+    'stretch': 'stretch',
+    'yoga': 'yoga',
+    'breathwork': 'breathwork',
+  };
+  return MAP[cat] ?? cat;
+}
+
 export function ExerciseAnimation({
   exerciseId,
   onClose,
@@ -48,7 +63,7 @@ export function ExerciseAnimation({
 
   // Display name: prefer the exercise DB entry, fall back to motion library name
   const displayName = exercise?.name ?? motion.name;
-  const category = exercise?.category ?? motion.category;
+  const category = exercise?.category ?? motionCategoryLabel(motion.category);
   const difficulty = exercise?.difficulty;
   const equipment = exercise?.equipment ?? [];
   const muscleGroups = exercise?.muscleGroups ?? [];
@@ -72,7 +87,7 @@ export function ExerciseAnimation({
               )}
               {equipment.map((eq) => (
                 <Badge key={eq} variant="outline" className="text-xs">
-                  {eq.replace("-", " ")}
+                  {eq.replace(/-/g, " ")}
                 </Badge>
               ))}
             </div>
@@ -104,7 +119,13 @@ export function ExerciseAnimation({
         <div className="mb-4 rounded-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center" style={{ minHeight: AVATAR_HEIGHT }}>
           <Suspense
             fallback={
-              <div className="flex items-center justify-center" style={{ height: AVATAR_HEIGHT, width: "100%" }}>
+              <div
+                className="flex items-center justify-center"
+                style={{ height: AVATAR_HEIGHT, width: "100%" }}
+                role="status"
+                aria-live="polite"
+                aria-label="Loading exercise demo"
+              >
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               </div>
             }
