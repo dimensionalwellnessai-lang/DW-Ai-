@@ -86,6 +86,7 @@ import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
 import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
+import PaywallPage from "@/pages/paywall";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -140,6 +141,11 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const setupComplete = isOnboardingComplete();
   
+  // /paywall is accessible after onboarding redirect — don't gate it
+  if (location === "/paywall") {
+    return <>{children}</>;
+  }
+  
   // Not setup complete and not on welcome page -> go to welcome
   if (!setupComplete && location !== "/welcome") {
     return <Redirect to="/welcome" />;
@@ -169,6 +175,7 @@ function Router() {
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome" component={WelcomePage} />
       <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
+      <Route path="/paywall" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
@@ -244,7 +251,7 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/voice-onboarding", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription"];
+const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/voice-onboarding", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription", "/paywall"];
 
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed
