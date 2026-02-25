@@ -19,13 +19,13 @@ import {
   Hash,
   ChevronDown,
   ChevronUp,
-  RotateCcw,
   Info,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
-const BIRTH_CHART_KEY = "dw_cosmic_birth_chart";
+// Reuse the same key as /astrology so both pages share one birth chart record
+const BIRTH_CHART_KEY = "dw_birth_chart";
 const NUMEROLOGY_KEY = "dw_cosmic_numerology";
 const CONSENT_KEY = "dw_cosmic_consent";
 
@@ -344,14 +344,33 @@ function getUpcomingEvents(days = 30): PlanetaryEvent[] {
 function loadBirthData(): BirthData | null {
   try { return JSON.parse(localStorage.getItem(BIRTH_CHART_KEY) ?? "null"); } catch { return null; }
 }
+
+// ─── Date helper (avoids UTC-shift when parsing date-only strings) ─────────────
+function parseLocalDate(dateStr: string): Date | null {
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return null;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  return new Date(year, month - 1, day);
+}
 function saveBirthData(data: BirthData) {
-  localStorage.setItem(BIRTH_CHART_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(BIRTH_CHART_KEY, JSON.stringify(data));
+  } catch {
+    // Storage may be unavailable (quota exceeded, private mode)
+  }
 }
 function loadNumerologyData(): NumerologyData | null {
   try { return JSON.parse(localStorage.getItem(NUMEROLOGY_KEY) ?? "null"); } catch { return null; }
 }
 function saveNumerologyData(data: NumerologyData) {
-  localStorage.setItem(NUMEROLOGY_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(NUMEROLOGY_KEY, JSON.stringify(data));
+  } catch {
+    // Storage may be unavailable
+  }
 }
 function loadConsent(): CosmicConsent {
   try {
@@ -361,7 +380,11 @@ function loadConsent(): CosmicConsent {
   }
 }
 function saveConsent(c: CosmicConsent) {
-  localStorage.setItem(CONSENT_KEY, JSON.stringify(c));
+  try {
+    localStorage.setItem(CONSENT_KEY, JSON.stringify(c));
+  } catch {
+    // Storage may be unavailable
+  }
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -420,7 +443,7 @@ function CalendarTab() {
       ) : (
         <div className="space-y-3" role="list" aria-label="Planetary events">
           {filtered.map((evt, i) => (
-            <Card key={i} role="listitem">
+            <Card key={`${evt.date.toISOString()}-${evt.label}-${evt.type}`} role="listitem">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-sm">{evt.label}</p>
@@ -448,9 +471,15 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
   const moonPhase = getCurrentMoonPhase();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
-  const sunSign = birthData?.birthDate
-    ? getSign(((Math.floor((new Date(birthData.birthDate).getTime() - new Date(new Date(birthData.birthDate).getFullYear(), 0, 0).getTime()) / 86400000) / 365.25) * 360 + 280) % 360, birthData.zodiacSystem)
-    : null;
+  const sunSign = (() => {
+    if (!birthData?.birthDate) return null;
+    const localDate = parseLocalDate(birthData.birthDate);
+    if (!localDate) return null;
+    const dayOfYear = Math.floor(
+      (localDate.getTime() - new Date(localDate.getFullYear(), 0, 0).getTime()) / 86400000,
+    );
+    return getSign(((dayOfYear / 365.25) * 360 + 280) % 360, birthData.zodiacSystem);
+  })();
 
   const lifePath = numerologyData?.birthDate ? calcLifePath(numerologyData.birthDate) : null;
   const personalYear = numerologyData?.birthDate ? calcPersonalYear(numerologyData.birthDate) : null;
@@ -654,7 +683,7 @@ function AstrologyProfileTab() {
               </div>
               <p className="text-xs text-muted-foreground flex items-start gap-1">
                 <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                Whole Sign is traditional and easy to understand. Placidus is the modern Western default.
+                Whole Sign is traditional and easy to understand. Placidus is the modern Western default. House-based placement differences will be reflected in a future update.
               </p>
             </div>
 
@@ -711,23 +740,51 @@ function AstrologyProfileTab() {
       {/* Placement list */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Placements</h3>
-        {placements?.map(p => (
-          <Card key={p.planet} className="cursor-pointer" onClick={() => setExpandedPlanet(expandedPlanet === p.planet ? null : p.planet)}>
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base" aria-hidden="true">{p.symbol}</span>
-                  <span className="text-sm font-medium">{p.planet}</span>
-                  <span className="text-sm text-muted-foreground">{p.signSymbol} {p.sign} {p.degree}°</span>
+        {placements?.map(p => {
+          const isExpanded = expandedPlanet === p.planet;
+          const panelId = `placement-${p.planet}-details`;
+
+          const handleToggle = () => {
+            setExpandedPlanet(isExpanded ? null : p.planet);
+          };
+
+          return (
+            <Card
+              key={p.planet}
+              className="cursor-pointer"
+              onClick={handleToggle}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              aria-controls={panelId}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleToggle();
+                }
+              }}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base" aria-hidden="true">{p.symbol}</span>
+                    <span className="text-sm font-medium">{p.planet}</span>
+                    <span className="text-sm text-muted-foreground">{p.signSymbol} {p.sign} {p.degree}°</span>
+                  </div>
+                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </div>
-                {expandedPlanet === p.planet ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </div>
-              {expandedPlanet === p.planet && (
-                <p className="text-xs text-muted-foreground mt-2">{p.meaning}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                {isExpanded && (
+                  <p
+                    id={panelId}
+                    className="text-xs text-muted-foreground mt-2"
+                  >
+                    {p.meaning}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
