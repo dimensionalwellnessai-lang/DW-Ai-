@@ -586,6 +586,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "cosmic",
+    path: "/cosmic",
+    label: "Cosmic Hub",
+    icon: "star",
+    type: "page",
+    description: "Calendar, insights, astrology profile and numerology — all in one place",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 84,
+    enabled: true,
+  },
+  {
     id: "systems",
     path: "/systems",
     label: "Systems Hub",

@@ -87,6 +87,7 @@ import AccountabilitySettingsPage from "@/pages/accountability-settings";
 import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
+import CosmicHubPage from "@/pages/cosmic";
 
 function isProfileSetupComplete(): boolean {
   try {
@@ -211,6 +212,7 @@ function Router() {
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
       {isRouteEnabled("/astrology") && <Route path="/astrology" component={AstrologyPage} />}
+      <Route path="/cosmic" component={CosmicHubPage} />
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}
