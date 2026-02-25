@@ -766,6 +766,31 @@ export function AIWorkspace() {
     setMessageLimitReached(!canSendMessage());
   }, [location]);
 
+  // Also re-check when the app becomes visible again or crosses local midnight
+  useEffect(() => {
+    const updateLimit = () => setMessageLimitReached(!canSendMessage());
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") updateLimit();
+    };
+    const handleFocus = () => updateLimit();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    // Schedule a one-time refresh at the next local midnight
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const midnightTimer = window.setTimeout(updateLimit, nextMidnight.getTime() - now.getTime());
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.clearTimeout(midnightTimer);
+    };
+  }, []);
+
   const buildLifeSystemContext = () => {
     const guestContext = getLifeSystemContext();
     const mealPrefs = getMealPrepPreferences();
@@ -1198,9 +1223,9 @@ export function AIWorkspace() {
       tsLocal: new Date().toISOString(),
     });
 
-    // Count message toward daily free-tier limit
-    const newCount = incrementMessageCount();
-    if (newCount >= FREE_LIMITS.messagesPerDay) {
+    // Count message toward daily limit and update UI based on entitlement logic
+    incrementMessageCount();
+    if (!canSendMessage()) {
       setMessageLimitReached(true);
     }
     
@@ -2105,7 +2130,7 @@ export function AIWorkspace() {
                 <Button
                   size="sm"
                   className="shrink-0 h-7 text-xs"
-                  onClick={() => setLocation("/paywall")}
+                  onClick={() => setLocation("/paywall?ctx=message_limit")}
                   data-testid="button-upgrade-inline"
                 >
                   DW Plus

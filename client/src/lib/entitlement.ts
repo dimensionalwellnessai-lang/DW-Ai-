@@ -19,7 +19,6 @@ const KEY_BONUS_SESSION = "dw_bonus_session";
 export const FREE_LIMITS = {
   messagesPerDay: 75,
   sessionsPerDay: 3,
-  savedSessionsCap: 3,
 } as const;
 
 // ─── Safe localStorage helpers ───────────────────────────────────────────────
@@ -63,17 +62,24 @@ export function setDWPlus(value: boolean): void {
 
 /**
  * Activate DW Plus (simulated purchase on web/Replit).
- * `context` lets callers grant the appropriate one-time bonus:
- *   - "message_limit" → grants 1 bonus message immediately
- *   - "session_limit" → grants 1 bonus session immediately
+ * `context` lets callers grant the appropriate one-time bonus — but only when
+ * the user is actually at the free-tier cap at the moment of upgrade:
+ *   - "message_limit" → grants 1 bonus message (only if currently at the daily cap)
+ *   - "session_limit" → grants 1 bonus session (only if currently at the daily cap)
  *   - "paywall" / "restore" → no bonus
  */
 export function activateDWPlus(
   context: "message_limit" | "session_limit" | "paywall" | "restore"
 ): void {
   setDWPlus(true);
-  if (context === "message_limit") setItem(KEY_BONUS_MESSAGE, "true");
-  if (context === "session_limit") setItem(KEY_BONUS_SESSION, "true");
+  // Always reset both flags, then selectively grant based on current counters
+  setItem(KEY_BONUS_MESSAGE, "false");
+  setItem(KEY_BONUS_SESSION, "false");
+  if (context === "message_limit" && getMessageCount() >= FREE_LIMITS.messagesPerDay) {
+    setItem(KEY_BONUS_MESSAGE, "true");
+  } else if (context === "session_limit" && getSessionCount() >= FREE_LIMITS.sessionsPerDay) {
+    setItem(KEY_BONUS_SESSION, "true");
+  }
 }
 
 // ─── Daily message counter ────────────────────────────────────────────────────
@@ -87,7 +93,8 @@ export function getMessageCount(): number {
     setItem(KEY_MSG_COUNT, "0");
     return 0;
   }
-  return parseInt(getItem(KEY_MSG_COUNT) ?? "0", 10);
+  const parsed = parseInt(getItem(KEY_MSG_COUNT) ?? "0", 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export function incrementMessageCount(): number {
@@ -112,7 +119,8 @@ export function getSessionCount(): number {
     setItem(KEY_SESSION_COUNT, "0");
     return 0;
   }
-  return parseInt(getItem(KEY_SESSION_COUNT) ?? "0", 10);
+  const parsed = parseInt(getItem(KEY_SESSION_COUNT) ?? "0", 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export function incrementSessionCount(): number {

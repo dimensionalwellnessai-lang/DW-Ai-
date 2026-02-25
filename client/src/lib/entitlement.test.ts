@@ -35,15 +35,20 @@ describe("entitlement service", () => {
     });
 
     it("changes at local midnight", () => {
-      // Simulate a different date by mocking Date
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // Use explicit fixed times for both "today" and "tomorrow" to avoid flakiness
+      const today = new Date("2024-06-15T12:00:00");
+      const tomorrow = new Date("2024-06-16T00:00:01");
+
       vi.useFakeTimers();
+
+      vi.setSystemTime(today);
+      const todayKey = getLocalDateKey();
+
       vi.setSystemTime(tomorrow);
       const tomorrowKey = getLocalDateKey();
+
       vi.useRealTimers();
 
-      const todayKey = getLocalDateKey();
       expect(tomorrowKey).not.toBe(todayKey);
     });
   });
@@ -108,6 +113,13 @@ describe("entitlement service", () => {
       localStorage.setItem("dw_msg_count", String(FREE_LIMITS.messagesPerDay));
       expect(canSendMessage()).toBe(true);
     });
+
+    it("treats corrupted count as 0 (NaN coercion)", () => {
+      localStorage.setItem("dw_msg_date", getLocalDateKey());
+      localStorage.setItem("dw_msg_count", "not-a-number");
+      expect(getMessageCount()).toBe(0);
+      expect(canSendMessage()).toBe(true);
+    });
   });
 
   // ── session counter ─────────────────────────────────────────────────────
@@ -149,6 +161,13 @@ describe("entitlement service", () => {
       localStorage.setItem("dw_session_count", String(FREE_LIMITS.sessionsPerDay));
       expect(canStartNewSession()).toBe(true);
     });
+
+    it("treats corrupted count as 0 (NaN coercion)", () => {
+      localStorage.setItem("dw_session_date", getLocalDateKey());
+      localStorage.setItem("dw_session_count", "not-a-number");
+      expect(getSessionCount()).toBe(0);
+      expect(canStartNewSession()).toBe(true);
+    });
   });
 
   // ── bonus mechanics ─────────────────────────────────────────────────────
@@ -157,13 +176,27 @@ describe("entitlement service", () => {
       expect(getBonusMessageFlag()).toBe(false);
     });
 
-    it("activateDWPlus with message_limit grants bonus message", () => {
+    it("activateDWPlus with message_limit grants bonus message only when at cap", () => {
+      // Simulate being at the daily message cap
+      localStorage.setItem("dw_msg_date", getLocalDateKey());
+      localStorage.setItem("dw_msg_count", String(FREE_LIMITS.messagesPerDay));
       activateDWPlus("message_limit");
       expect(isDWPlus()).toBe(true);
       expect(getBonusMessageFlag()).toBe(true);
     });
 
+    it("activateDWPlus with message_limit does NOT grant bonus when below cap", () => {
+      // Below the cap — no bonus should be granted
+      localStorage.setItem("dw_msg_date", getLocalDateKey());
+      localStorage.setItem("dw_msg_count", "10");
+      activateDWPlus("message_limit");
+      expect(isDWPlus()).toBe(true);
+      expect(getBonusMessageFlag()).toBe(false);
+    });
+
     it("consumeBonusMessage clears the flag", () => {
+      localStorage.setItem("dw_msg_date", getLocalDateKey());
+      localStorage.setItem("dw_msg_count", String(FREE_LIMITS.messagesPerDay));
       activateDWPlus("message_limit");
       consumeBonusMessage();
       expect(getBonusMessageFlag()).toBe(false);
@@ -173,13 +206,26 @@ describe("entitlement service", () => {
       expect(getBonusSessionFlag()).toBe(false);
     });
 
-    it("activateDWPlus with session_limit grants bonus session", () => {
+    it("activateDWPlus with session_limit grants bonus session only when at cap", () => {
+      // Simulate being at the daily session cap
+      localStorage.setItem("dw_session_date", getLocalDateKey());
+      localStorage.setItem("dw_session_count", String(FREE_LIMITS.sessionsPerDay));
       activateDWPlus("session_limit");
       expect(isDWPlus()).toBe(true);
       expect(getBonusSessionFlag()).toBe(true);
     });
 
+    it("activateDWPlus with session_limit does NOT grant bonus when below cap", () => {
+      localStorage.setItem("dw_session_date", getLocalDateKey());
+      localStorage.setItem("dw_session_count", "1");
+      activateDWPlus("session_limit");
+      expect(isDWPlus()).toBe(true);
+      expect(getBonusSessionFlag()).toBe(false);
+    });
+
     it("consumeBonusSession clears the flag", () => {
+      localStorage.setItem("dw_session_date", getLocalDateKey());
+      localStorage.setItem("dw_session_count", String(FREE_LIMITS.sessionsPerDay));
       activateDWPlus("session_limit");
       consumeBonusSession();
       expect(getBonusSessionFlag()).toBe(false);
@@ -188,6 +234,16 @@ describe("entitlement service", () => {
     it("activateDWPlus with paywall context grants no bonus", () => {
       activateDWPlus("paywall");
       expect(isDWPlus()).toBe(true);
+      expect(getBonusMessageFlag()).toBe(false);
+      expect(getBonusSessionFlag()).toBe(false);
+    });
+
+    it("activateDWPlus always resets both flags before setting them", () => {
+      // Pre-set both flags to true via storage directly
+      localStorage.setItem("dw_bonus_message", "true");
+      localStorage.setItem("dw_bonus_session", "true");
+      // Upgrade via paywall (no cap check), both flags should be cleared
+      activateDWPlus("paywall");
       expect(getBonusMessageFlag()).toBe(false);
       expect(getBonusSessionFlag()).toBe(false);
     });

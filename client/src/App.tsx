@@ -141,8 +141,8 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const setupComplete = isOnboardingComplete();
   
-  // /paywall is accessible after onboarding redirect — don't gate it
-  if (location === "/paywall") {
+  // /paywall is accessible after onboarding redirect — don't gate it (allow query params too)
+  if (location.startsWith("/paywall")) {
     return <>{children}</>;
   }
   
