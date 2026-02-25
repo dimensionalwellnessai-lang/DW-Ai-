@@ -114,6 +114,13 @@ import {
   setHighlightNext,
   type NextStepRule,
 } from "@/lib/momentum";
+import {
+  canSendMessage,
+  incrementMessageCount,
+  canStartNewSession,
+  incrementSessionCount,
+  FREE_LIMITS,
+} from "@/lib/entitlement";
 import type { UserProfile, Conversation } from "@shared/schema";
 
 const FIRST_TIME_ACTIONS = [
@@ -184,6 +191,7 @@ export function AIWorkspace() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [messageLimitReached, setMessageLimitReached] = useState(() => !canSendMessage());
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
@@ -753,6 +761,36 @@ export function AIWorkspace() {
     return () => clearTimeout(timer);
   }, [input]);
 
+  // Re-check message limit on every navigation (user may have upgraded on /paywall)
+  useEffect(() => {
+    setMessageLimitReached(!canSendMessage());
+  }, [location]);
+
+  // Also re-check when the app becomes visible again or crosses local midnight
+  useEffect(() => {
+    const updateLimit = () => setMessageLimitReached(!canSendMessage());
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") updateLimit();
+    };
+    const handleFocus = () => updateLimit();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+
+    // Schedule a one-time refresh at the next local midnight
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const midnightTimer = window.setTimeout(updateLimit, nextMidnight.getTime() - now.getTime());
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.clearTimeout(midnightTimer);
+    };
+  }, []);
+
   const buildLifeSystemContext = () => {
     const guestContext = getLifeSystemContext();
     const mealPrefs = getMealPrepPreferences();
@@ -1049,6 +1087,14 @@ export function AIWorkspace() {
     
     if ((!hasInput && !hasFiles) || isTyping || isUploading) return;
 
+    // Free-tier message gate
+    if (!canSendMessage()) {
+      setMessageLimitReached(true);
+      saveChatDraft(input.trim());
+      setLocation("/paywall?ctx=message_limit");
+      return;
+    }
+
     let userMessage = input.trim();
     
     let documentIds: string[] = [];
@@ -1176,6 +1222,12 @@ export function AIWorkspace() {
       source: "chat",
       tsLocal: new Date().toISOString(),
     });
+
+    // Count message toward daily limit and update UI based on entitlement logic
+    incrementMessageCount();
+    if (!canSendMessage()) {
+      setMessageLimitReached(true);
+    }
     
     chatMutation.mutate({ message: userMessage, userMsg, conversationId, documentIds, messagesOverride });
   };
@@ -1270,6 +1322,12 @@ export function AIWorkspace() {
   };
 
   const handleNewConversation = async () => {
+    // Free-tier session gate
+    if (!canStartNewSession()) {
+      setLocation("/paywall?ctx=session_limit");
+      return;
+    }
+
     if (isUserAuthenticated) {
       const result = await createDbConversationMutation.mutateAsync({ 
         title: "New conversation", 
@@ -1280,6 +1338,7 @@ export function AIWorkspace() {
       createNewConversation();
       setConversationVersion(v => v + 1);
     }
+    incrementSessionCount();
     setHistoryOpen(false);
   };
 
@@ -2057,6 +2116,27 @@ export function AIWorkspace() {
 
         <div className="fixed left-0 right-0 px-2 py-2 bg-background z-40" style={{ bottom: 'calc(3.5rem + max(env(safe-area-inset-bottom, 0px), 32px) + 12px)' }}>
           <div className="max-w-2xl mx-auto space-y-1">
+            {/* Message-limit inline upsell */}
+            {messageLimitReached && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 flex items-center justify-between gap-3"
+                data-testid="card-message-limit"
+              >
+                <p className="text-xs text-muted-foreground leading-snug">
+                  You've reached today's {FREE_LIMITS.messagesPerDay}-message limit.
+                </p>
+                <Button
+                  size="sm"
+                  className="shrink-0 h-7 text-xs"
+                  onClick={() => setLocation("/paywall?ctx=message_limit")}
+                  data-testid="button-upgrade-inline"
+                >
+                  DW Plus
+                </Button>
+              </div>
+            )}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 p-2 bg-muted rounded-lg text-sm">
                 {isUploading ? (
@@ -2128,10 +2208,10 @@ export function AIWorkspace() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={messageLimitReached ? "Daily limit reached — upgrade to continue" : "Type a message..."}
                 className="resize-none [min-height:36px] max-h-16 rounded-xl py-2 px-3 text-sm"
                 rows={1}
-                disabled={isTyping || isUploading}
+                disabled={isTyping || isUploading || messageLimitReached}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -2143,7 +2223,7 @@ export function AIWorkspace() {
               <Button
                 size="icon"
                 onClick={handleSend}
-                disabled={(!input.trim() && attachedFiles.length === 0) || isTyping || isUploading}
+                disabled={(!input.trim() && attachedFiles.length === 0) || isTyping || isUploading || messageLimitReached}
                 className="rounded-full shrink-0"
                 data-testid="button-send"
               >

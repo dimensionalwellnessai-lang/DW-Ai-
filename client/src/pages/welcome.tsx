@@ -35,7 +35,7 @@ export default function Welcome() {
     saveProfileSetup({ skipped: true });
     // For routing purposes, treat skipped as having passed onboarding
     localStorage.setItem("dw_onboarding_completed", "1");
-    setLocation("/talk");
+    setLocation("/paywall");
   };
 
   const handleComplete = () => {
@@ -45,7 +45,7 @@ export default function Welcome() {
     if (name.trim()) localStorage.setItem("dw_user_name", name.trim());
     localStorage.setItem("dw_voice_vibe", vibe);
     localStorage.setItem("dw_first_intent", intent);
-    setLocation("/talk");
+    setLocation("/paywall");
   };
 
   const canAdvance = step < 5 || (step === 5 && intent !== null);
