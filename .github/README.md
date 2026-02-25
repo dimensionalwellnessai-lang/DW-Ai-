@@ -1,6 +1,6 @@
 # GitHub Copilot Configuration
 
-This directory contains custom instructions and agents for GitHub Copilot to provide better, more context-aware assistance when working on the Flip the Switch wellness application.
+This directory contains custom instructions and agents for GitHub Copilot to provide better, more context-aware assistance when working on the dimensional wellness application.
 
 ## 📁 Structure
 
