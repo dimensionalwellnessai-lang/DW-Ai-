@@ -18,23 +18,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { Eye, EyeOff, User } from 'lucide-react';
+import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from '@/lib/onboarding';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-/** Pages where the avatar must not appear. */
-const HIDDEN_PAGES = [
-  '/welcome',
-  '/login',
-  '/reset-password',
-  '/voice-onboarding',
-  '/enhanced-onboarding',
-  '/app-tour',
-  '/account/delete',
-  '/subscription',
-  '/paywall',
-];
 
 const PREF_VISIBLE_KEY = 'dw:avatarOverlayVisible';
 const PREF_LAYOUT_KEY = 'dw:avatarOverlayLayout';
@@ -87,24 +75,23 @@ function writeLayout(v: AvatarLayoutMode): void {
   try { localStorage.setItem(PREF_LAYOUT_KEY, v); } catch { /* ignore */ }
 }
 
-function isOnboardingComplete(): boolean {
-  try {
-    if (localStorage.getItem('dw_onboarding_completed') === '1') return true;
-    const data = localStorage.getItem('dw_guest_data');
-    if (data) {
-      const parsed = JSON.parse(data);
-      return !!parsed.profileSetup?.completedAt;
-    }
-  } catch { /* ignore */ }
-  return false;
-}
+/** Reactive reduced-motion hook – updates when the OS preference changes. */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch { return false; }
+  });
 
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  } catch {
-    return false;
-  }
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    } catch { /* non-standard env */ }
+  }, []);
+
+  return reduced;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,20 +143,25 @@ export function DWAvatarOverlay() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
-  const shouldHide = HIDDEN_PAGES.some(
+  const reducedMotion = useReducedMotion();
+
+  const shouldHide = AUTH_ONBOARDING_PAGES.some(
     (p) => location === p || location.startsWith(p + '/'),
   );
   const onboardingDone = isOnboardingComplete();
-  const reducedMotion = prefersReducedMotion();
 
   // Build (or rebuild) the Babylon.js scene
-  const buildScene = useCallback(async () => {
+  const buildScene = useCallback(async (signal: { cancelled: boolean }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     try {
       // Lazy-load Babylon – does not block initial render
       const BABYLON = await import('@babylonjs/core');
+
+      // Bail out if the component unmounted or conditions changed while we
+      // were waiting for the dynamic import to resolve.
+      if (signal.cancelled) return;
 
       // Dispose previous engine if switching layout
       if (engineRef.current) {
@@ -182,6 +174,12 @@ export function DWAvatarOverlay() {
         stencil: false,
         limitDeviceRatio: Math.min(window.devicePixelRatio, 1.5),
       });
+
+      // Check again after synchronous engine creation (belt-and-suspenders)
+      if (signal.cancelled) {
+        engine.dispose();
+        return;
+      }
       engineRef.current = engine;
 
       const scene = new BABYLON.Scene(engine);
@@ -295,21 +293,26 @@ export function DWAvatarOverlay() {
       resizeHandlerRef.current = onResize;
       window.addEventListener('resize', onResize);
 
-      setIsLoaded(true);
+      if (!signal.cancelled) setIsLoaded(true);
     } catch {
-      setLoadError(true);
+      if (!signal.cancelled) setLoadError(true);
     }
   }, [layoutMode]);
 
-  // Mount / re-mount scene when visibility, layout, or routing changes
+  // Mount / re-mount scene when visibility, layout, reducedMotion, or routing changes
   useEffect(() => {
     if (!isVisible || shouldHide || !onboardingDone || reducedMotion) return;
 
     setIsLoaded(false);
     setLoadError(false);
-    buildScene();
+
+    // Cancellation token: set to true on cleanup so any in-flight async import
+    // does not create an engine or call setState after the effect has torn down.
+    const signal = { cancelled: false };
+    buildScene(signal);
 
     return () => {
+      signal.cancelled = true;
       if (resizeHandlerRef.current) {
         window.removeEventListener('resize', resizeHandlerRef.current);
         resizeHandlerRef.current = null;
@@ -319,8 +322,7 @@ export function DWAvatarOverlay() {
         engineRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildScene, isVisible, shouldHide, onboardingDone]);
+  }, [buildScene, isVisible, shouldHide, onboardingDone, reducedMotion]);
 
   // ---- Toggle handlers ----
 
