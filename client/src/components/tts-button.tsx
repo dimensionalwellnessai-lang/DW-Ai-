@@ -10,6 +10,8 @@ interface TTSButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   autoPlay?: boolean;
+  /** Text label shown on the button when not playing (defaults to "Listen") */
+  label?: string;
 }
 
 export function TTSButton({ 
@@ -17,7 +19,8 @@ export function TTSButton({
   variant = "ghost", 
   size = "sm", 
   className,
-  autoPlay = false
+  autoPlay = false,
+  label = "Listen",
 }: TTSButtonProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSupported] = useState(ttsService.isAvailable());
@@ -70,6 +73,7 @@ export function TTSButton({
       size={size}
       onClick={handleSpeak}
       className={cn("gap-1.5", className)}
+      aria-label={isPlaying ? "Stop speaking" : label}
       data-testid="tts-button"
     >
       {isPlaying ? (
@@ -80,7 +84,7 @@ export function TTSButton({
       ) : (
         <>
           <Volume2 className="h-3.5 w-3.5" />
-          <span className="text-xs">Listen</span>
+          <span className="text-xs">{label}</span>
         </>
       )}
     </Button>

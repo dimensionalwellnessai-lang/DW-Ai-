@@ -3,6 +3,40 @@
  * Provides voice synthesis capabilities using Web Speech API
  */
 
+export type VoicePersonality = 'calm' | 'motivating' | 'direct';
+
+export interface VoicePersonalityPreset {
+  name: string;
+  description: string;
+  rate: number;
+  pitch: number;
+  volume: number;
+}
+
+export const VOICE_PERSONALITIES: Record<VoicePersonality, VoicePersonalityPreset> = {
+  calm: {
+    name: 'Calm',
+    description: 'Gentle, soothing pace — ideal for reflection',
+    rate: 0.85,
+    pitch: 0.9,
+    volume: 0.9,
+  },
+  motivating: {
+    name: 'Motivating',
+    description: 'Energetic, uplifting tone — great for action',
+    rate: 1.15,
+    pitch: 1.1,
+    volume: 1.0,
+  },
+  direct: {
+    name: 'Direct',
+    description: 'Clear, neutral delivery — focused and precise',
+    rate: 1.0,
+    pitch: 1.0,
+    volume: 1.0,
+  },
+};
+
 export interface TTSSettings {
   enabled: boolean;
   voice?: string;
@@ -10,6 +44,7 @@ export interface TTSSettings {
   pitch: number; // 0 to 2, default 1
   volume: number; // 0 to 1, default 1
   autoSpeak: boolean; // Auto-speak AI responses
+  voicePersonality: VoicePersonality;
 }
 
 export const DEFAULT_TTS_SETTINGS: TTSSettings = {
@@ -19,6 +54,7 @@ export const DEFAULT_TTS_SETTINGS: TTSSettings = {
   pitch: 1,
   volume: 1,
   autoSpeak: false,
+  voicePersonality: 'direct',
 };
 
 class TTSService {
@@ -55,6 +91,19 @@ class TTSService {
   updateSettings(settings: Partial<TTSSettings>) {
     this.settings = { ...this.settings, ...settings };
     this.saveSettings();
+  }
+
+  /**
+   * Apply a voice personality preset (updates rate, pitch, volume, and personality field)
+   */
+  applyPersonality(personality: VoicePersonality) {
+    const preset = VOICE_PERSONALITIES[personality];
+    this.updateSettings({
+      voicePersonality: personality,
+      rate: preset.rate,
+      pitch: preset.pitch,
+      volume: preset.volume,
+    });
   }
 
   /**

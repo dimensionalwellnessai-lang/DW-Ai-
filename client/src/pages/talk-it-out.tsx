@@ -169,6 +169,7 @@ export function TalkItOutPage() {
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
                   <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
+                  <TTSButton text={message.content} autoPlay={false} label="Read back" />
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -183,15 +184,16 @@ export function TalkItOutPage() {
                   <div className="prose prose-sm dark:prose-invert max-w-none">
                     <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
                   </div>
-                  {index > 0 && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                      <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                    <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
+                    {/* Feedback only available after the first welcome message */}
+                    {index > 0 && (
                       <ChatFeedbackBar 
                         messageId={`talk-${index}`} 
                         onFeedback={handleFeedback} 
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </article>
