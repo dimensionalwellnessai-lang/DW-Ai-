@@ -15,7 +15,7 @@ DW speaks next step → user completes one block → DW celebrates + recap
 
 ### DW Briefing Card
 
-On app open the **Command Center** (`/command-center`) shows a **DW Briefing Card** at the top of the page. It:
+On app open the **Command Center** (`/command-center`) shows a **DW Briefing Card** near the top of the page, below the greeting panel. It:
 
 - Displays the user's _next recommended focus_ (derived from upcoming calendar events, active habits, goals, or Life Blueprint gaps)
 - Has a **"Hear it"** button that speaks the next step aloud via TTS — visible whenever the browser supports `SpeechSynthesis`, regardless of Voice Settings, so fresh-install users can experience voice immediately

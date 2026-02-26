@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,13 @@ export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
   const [dismissed, setDismissed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  // Stop any in-progress speech when the card unmounts (e.g. after navigation).
+  useEffect(() => {
+    return () => {
+      ttsService.stop();
+    };
+  }, []);
+
   if (dismissed) return null;
 
   const handleHearIt = async () => {
@@ -40,6 +47,10 @@ export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
     }
     setIsSpeaking(true);
     try {
+      // Load persisted settings (voice, rate, pitch, volume, personality) so
+      // the utterance honours the user's saved preferences even though the
+      // "enabled" gate is bypassed for this on-demand button.
+      ttsService.loadSettings();
       // Speak directly, bypassing the "enabled" setting so fresh-load users
       // can hear the briefing without first opening Voice Settings.
       await ttsService.speak(nextStep);
@@ -48,6 +59,11 @@ export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
     } finally {
       setIsSpeaking(false);
     }
+  };
+
+  const handleStartWithDW = () => {
+    ttsService.stop();
+    navigate("/talk");
   };
 
   return (
@@ -100,7 +116,7 @@ export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
           )}
           <Button
             size="sm"
-            onClick={() => navigate("/talk")}
+            onClick={handleStartWithDW}
             className="flex-1 min-w-0"
             data-testid="dw-briefing-start-button"
           >
