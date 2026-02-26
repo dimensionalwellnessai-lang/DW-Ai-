@@ -12,6 +12,7 @@ import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingAIWidget } from "@/components/floating-ai-widget";
+import { DWAvatarOverlay } from "@/components/dw-avatar-overlay";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
@@ -152,16 +153,44 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to /talk
+  // Setup complete, on welcome -> go to /home
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/talk" />;
+    return <Redirect to="/home" />;
   }
   
   return <>{children}</>;
 }
 
+const LAST_ROUTE_KEY = "dw:lastRoute";
+
+/** Pages we never want to restore as a last-route (auth / onboarding flows). */
+const NON_RESTORABLE_PREFIXES = [
+  "/welcome",
+  "/login",
+  "/reset-password",
+  "/voice-onboarding",
+  "/enhanced-onboarding",
+  "/account/delete",
+  "/subscription",
+  "/paywall",
+  "/app-tour",
+];
+
+function getLastRoute(): string | null {
+  try {
+    const v = localStorage.getItem(LAST_ROUTE_KEY);
+    if (!v || v === "/") return null;
+    if (NON_RESTORABLE_PREFIXES.some((p) => v === p || v.startsWith(p + "/"))) return null;
+    return v;
+  } catch {
+    return null;
+  }
+}
+
 function HomeRedirect() {
-  return isOnboardingComplete() ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
+  if (!isOnboardingComplete()) return <Redirect to="/welcome" />;
+  const last = getLastRoute();
+  return <Redirect to={last ?? "/home"} />;
 }
 
 function Router() {
@@ -296,6 +325,16 @@ function AppContent() {
     setDemoActive(isDemoMode());
   }, [location]);
 
+  // Persist last visited route so the app can resume there on next open.
+  useEffect(() => {
+    const isAuthPage = NON_RESTORABLE_PREFIXES.some(
+      (p) => location === p || location.startsWith(p + "/"),
+    );
+    if (!isAuthPage && location !== "/" && isOnboardingComplete()) {
+      try { localStorage.setItem(LAST_ROUTE_KEY, location); } catch { /* ignore */ }
+    }
+  }, [location]);
+
   // Start interactive tour if triggered from another page (e.g. app-tour page)
   useEffect(() => {
     startTourIfPending();
@@ -314,6 +353,7 @@ function AppContent() {
       <TutorialOverlay />
       <SyncTray />
       <FloatingAIWidget />
+      <DWAvatarOverlay />
       <InteractiveTour
         open={isOpen}
         onComplete={completeTour}
