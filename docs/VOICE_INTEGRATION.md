@@ -2,7 +2,35 @@
 
 ## Overview
 
-DW-Ai now includes advanced voice interaction capabilities and phone assistant integration, allowing users to interact with the app through voice commands and integrate with Siri (iOS) and Google Assistant (Android).
+DW-Ai includes voice interaction capabilities and phone assistant integration, allowing users to interact with the app through voice commands and integrate with Siri (iOS) and Google Assistant (Android).
+
+## Single-Loop Milestone
+
+The app is aligned around a **single wellness loop** that runs on every open:
+
+```
+Open app → DW Briefing → user confirms plan → schedule shows it →
+DW speaks next step → user completes one block → DW celebrates + recap
+```
+
+### DW Briefing Card
+
+On app open the **Command Center** (`/command-center`) shows a **DW Briefing Card** at the top of the page. It:
+
+- Displays the user's _next recommended focus_ (derived from upcoming calendar events, active habits, goals, or Life Blueprint gaps)
+- Has a **"Hear it"** button that speaks the next step aloud via TTS
+- Has a **"Start with DW"** button that opens the Talk It Out thread (`/talk`) to begin the loop
+- Can be dismissed if the user doesn't want it right now
+
+This card bridges the moment of opening the app with the first spoken step from DW.
+
+### Talk It Out (`/talk`)
+
+The Talk It Out thread is the primary voice-enabled conversation space. It provides:
+
+- **"Listen"** button on every DW response — speaks the response via TTS
+- **"Read back"** button on every user message — re-reads the user's own words aloud
+- **Auto-speak** option (enabled in Voice Settings): new DW responses speak automatically
 
 ## Features
 
@@ -18,20 +46,34 @@ DW-Ai now includes advanced voice interaction capabilities and phone assistant i
 - **Customization**: Adjust voice, speaking rate, pitch, and volume
 - **Voice Selection**: Choose from available system voices
 - **Manual Control**: Click "Listen" button on any AI response to hear it
+- **Read Back**: Click "Read back" on any user message to hear it spoken
 
-### 3. Voice Settings
+### 3. Voice Personality
+
+DW can speak in three distinct personalities. Select one in **Settings → Voice Settings → Voice Personality**:
+
+| Personality | Description | Rate | Pitch |
+|---|---|---|---|
+| **Calm** | Gentle, soothing pace — ideal for reflection | 0.85× | 0.9 |
+| **Motivating** | Energetic, uplifting tone — great for action | 1.15× | 1.1 |
+| **Direct** | Clear, neutral delivery — focused and precise | 1.0× | 1.0 |
+
+The selected personality is saved to `localStorage` under the key `tts-settings` and applied to every TTS utterance.
+
+### 4. Voice Settings
 Access voice settings through: **Settings → Voice Settings**
 
 Available options:
 - Enable/Disable voice responses
 - Toggle auto-speak for AI responses
+- **Voice Personality** (Calm / Motivating / Direct)
 - Select preferred voice
 - Adjust speaking rate (0.5x - 2x)
 - Adjust voice pitch (0.5 - 2.0)
 - Control volume (0% - 100%)
 - Test voice settings
 
-### 4. Phone Assistant Integration
+### 5. Phone Assistant Integration
 
 #### iOS (Siri)
 You can use Siri to interact with DW-Ai through deep links:
@@ -73,19 +115,20 @@ dwai://action?type=<action-name>&param1=value1&param2=value2
 - `journal` - Open journal
 - `checkin` - Start wellness check-in
 
-### 5. Wake Word Activation
+### 6. Wake Word Activation
 
 **"Flip the Switch"** - The app is designed with wake word support in mind. When enabled through device settings:
 - Say "Flip the Switch" to activate voice listening
 - App must have microphone permissions granted
 - Works best in quiet environments
 
-### 6. Privacy & Security
+### 7. Privacy & Security
 
 #### Data Protection
 - Voice data is processed locally using Web Speech API when possible
-- No voice recordings are stored permanently
+- **No voice recordings are stored** — audio never leaves the device
 - Voice transcripts follow the same privacy policy as text input
+- TTS output is rendered locally via the browser's SpeechSynthesis API — no audio is sent to any server
 - End-to-end encryption for data transmission
 
 #### Permissions Required
@@ -99,11 +142,11 @@ dwai://action?type=<action-name>&param1=value1&param2=value2
 - MODIFY_AUDIO_SETTINGS: For audio output control
 
 #### Privacy Controls
-- Voice features can be completely disabled in settings
+- Voice features can be completely disabled in Settings → Voice Settings
 - Clear voice data by clearing app data
 - Review Privacy Policy for more details
 
-### 7. Accessibility Features
+### 8. Accessibility Features
 
 Voice features enhance accessibility for:
 - Users with mobility challenges
@@ -125,6 +168,15 @@ Voice features enhance accessibility for:
 3. Speak your message
 4. Message is automatically transcribed and sent
 5. AI responds (with voice if enabled)
+
+### DW Briefing (Single Loop)
+1. Open the app → land on Command Center
+2. DW Briefing Card shows your next recommended focus
+3. Tap **"Hear it"** to let DW speak the next step aloud
+4. Tap **"Start with DW"** to open Talk It Out
+5. Chat with DW to confirm your plan
+6. Navigate to schedule/calendar to see it
+7. Complete one block and return to Talk to recap
 
 ### Continuous Voice Mode
 1. Enable continuous mode in voice button settings
@@ -181,6 +233,13 @@ Voice features enhance accessibility for:
 - **Firefox**: Limited support (Web Speech API may vary)
 - **Mobile Browsers**: Support varies by platform and browser
 
+### TTS Implementation
+- Uses the browser-native `window.speechSynthesis` (Web Speech API)
+- No external audio service — works offline with local voices, no data leaves the device
+- Settings persisted to `localStorage` under the key `tts-settings`
+- Service singleton exposed as `ttsService` from `client/src/lib/tts-service.ts`
+- `TTSButton` component (`client/src/components/tts-button.tsx`) wraps the service for easy use in any page
+
 ### Supported Languages
 The app currently uses English (en-US) by default but can be extended to support:
 - Spanish (es-ES, es-MX)
@@ -214,4 +273,5 @@ For issues or questions:
 
 ---
 
-**Note**: Voice features respect all existing privacy settings and consent requirements. Users maintain full control over when and how voice features are used.
+**Note**: Voice features respect all existing privacy settings and consent requirements. Users maintain full control over when and how voice features are used. No audio is ever recorded or stored — TTS output is rendered locally only.
+
