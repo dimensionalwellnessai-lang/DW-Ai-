@@ -10,7 +10,7 @@ interface NavItem {
 
 // Map paths to tour data attributes
 const tourDataMap: Record<string, string> = {
-  "/": "home",
+  "/command-center": "home",
   "/calendar": "calendar",
   "/talk": "chat",
   "/browse": "browse",
@@ -23,7 +23,7 @@ export function BottomNav() {
   const navItems: NavItem[] = [
     { path: "/calendar", icon: CalendarDays, label: "Calendar" },
     { path: "/browse", icon: Search, label: "Browse" },
-    { path: "/", icon: Home, label: "Home" },
+    { path: "/command-center", icon: Home, label: "Home" },
     { path: "/talk", icon: MessageCircle, label: "DW" },
     { path: "/journal", icon: BookOpen, label: "Journal" },
   ];
