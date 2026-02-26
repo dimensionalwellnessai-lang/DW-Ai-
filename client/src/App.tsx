@@ -12,9 +12,11 @@ import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingAIWidget } from "@/components/floating-ai-widget";
+import { DWAvatarOverlay } from "@/components/dw-avatar-overlay";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
+import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
 
 import { LoginPage } from "@/components/auth/login-page";
 import { InteractiveTour, InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour";
@@ -89,17 +91,6 @@ import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
 
-function isProfileSetupComplete(): boolean {
-  try {
-    const data = localStorage.getItem("dw_guest_data");
-    if (data) {
-      const parsed = JSON.parse(data);
-      return !!parsed.profileSetup?.completedAt;
-    }
-  } catch {}
-  return false;
-}
-
 function isReturningUser(): boolean {
   try {
     // First check if setup was skipped - skipped users are NOT returning
@@ -133,10 +124,9 @@ function wasSetupSkipped(): boolean {
   return false;
 }
 
-function isOnboardingComplete(): boolean {
-  if (localStorage.getItem("dw_onboarding_completed") === "1") return true;
-  return isProfileSetupComplete();
-}
+// ---------------------------------------------------------------------------
+// Route-level helpers
+// ---------------------------------------------------------------------------
 
 function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -152,16 +142,31 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to /talk
+  // Setup complete, on welcome -> go to /home
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/talk" />;
+    return <Redirect to="/home" />;
   }
   
   return <>{children}</>;
 }
 
+const LAST_ROUTE_KEY = "dw:lastRoute";
+
+function getLastRoute(): string | null {
+  try {
+    const v = localStorage.getItem(LAST_ROUTE_KEY);
+    if (!v || v === "/") return null;
+    if (AUTH_ONBOARDING_PAGES.some((p) => v === p || v.startsWith(p + "/"))) return null;
+    return v;
+  } catch {
+    return null;
+  }
+}
+
 function HomeRedirect() {
-  return isOnboardingComplete() ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
+  if (!isOnboardingComplete()) return <Redirect to="/welcome" />;
+  const last = getLastRoute();
+  return <Redirect to={last ?? "/home"} />;
 }
 
 function Router() {
@@ -253,8 +258,6 @@ function Router() {
   );
 }
 
-const PAGES_WITHOUT_BOTTOM_NAV = ["/login", "/welcome", "/voice-onboarding", "/enhanced-onboarding", "/reset-password", "/app-tour", "/account/delete", "/subscription", "/paywall"];
-
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed
   return <>{children}</>;
@@ -285,7 +288,7 @@ function DemoModeBanner({ onExit }: { onExit: () => void }) {
 function AppContent() {
   const [location, setLocation] = useLocation();
   const [demoActive, setDemoActive] = useState(() => isDemoMode());
-  const showBottomNav = !PAGES_WITHOUT_BOTTOM_NAV.some(path => location.startsWith(path));
+  const showBottomNav = !AUTH_ONBOARDING_PAGES.some(path => location.startsWith(path));
   const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
 
   // Keep demoActive in sync on every navigation. The banner needs to appear when demo
@@ -294,6 +297,21 @@ function AppContent() {
   // because storage events only fire for cross-document writes (other tabs/iframes).
   useEffect(() => {
     setDemoActive(isDemoMode());
+  }, [location]);
+
+  // Persist last visited route so the app can resume there on next open.
+  useEffect(() => {
+    const isAuthPage = AUTH_ONBOARDING_PAGES.some(
+      (p) => location === p || location.startsWith(p + "/"),
+    );
+    // Persist navigated routes for onboarding-complete users so the app can
+    // resume where they left off. The app uses onboarding-gated (not server-
+    // auth-gated) access for core features, so isOnboardingComplete() is the
+    // correct gate here — both authenticated and guest users who finished
+    // onboarding should benefit from route restoration.
+    if (!isAuthPage && location !== "/" && isOnboardingComplete()) {
+      try { localStorage.setItem(LAST_ROUTE_KEY, location); } catch { /* ignore */ }
+    }
   }, [location]);
 
   // Start interactive tour if triggered from another page (e.g. app-tour page)
@@ -314,6 +332,7 @@ function AppContent() {
       <TutorialOverlay />
       <SyncTray />
       <FloatingAIWidget />
+      <DWAvatarOverlay />
       <InteractiveTour
         open={isOpen}
         onComplete={completeTour}
