@@ -8,8 +8,8 @@ import { saveChatFeedback } from "@/lib/guest-storage";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
-import { TTSButton } from "@/components/tts-button";
-import { useMutation } from "@tanstack/react-query";
+import { MessageActions } from "@/components/message-actions";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,6 +39,11 @@ Start by simply being present and inviting them to share.`;
 
 export function TalkItOutPage() {
   const { toast } = useToast();
+  const { data: authData } = useQuery<{ user: any } | null>({
+    queryKey: ["/api/auth/me"],
+    retry: false,
+  });
+  const isLoggedIn = !!(authData?.user);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -169,7 +174,12 @@ export function TalkItOutPage() {
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
                   <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
-                  <TTSButton text={message.content} autoPlay={false} label="Read back" alwaysShow />
+                  <MessageActions
+                    messageIndex={index}
+                    messageContent={message.content}
+                    isUserMessage={true}
+                    isLoggedIn={isLoggedIn}
+                  />
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -185,7 +195,12 @@ export function TalkItOutPage() {
                     <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
                   </div>
                   <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                    <TTSButton text={message.content} autoPlay={index === messages.length - 1} />
+                    <MessageActions
+                      messageIndex={index}
+                      messageContent={message.content}
+                      isUserMessage={false}
+                      isLoggedIn={isLoggedIn}
+                    />
                     {/* Feedback only available after the first welcome message */}
                     {index > 0 && (
                       <ChatFeedbackBar 
