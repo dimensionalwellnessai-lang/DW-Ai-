@@ -48,7 +48,7 @@ export interface TTSSettings {
 }
 
 export const DEFAULT_TTS_SETTINGS: TTSSettings = {
-  enabled: false,
+  enabled: true,
   voice: undefined,
   rate: 1,
   pitch: 1,
