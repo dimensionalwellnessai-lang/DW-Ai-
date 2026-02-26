@@ -57,6 +57,12 @@ import { Link, useLocation } from "wouter";
 import { COPY } from "@/copy/en";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Send,
   Loader2,
   Calendar,
@@ -86,6 +92,7 @@ import {
   MessageCircleHeart,
   Paperclip,
   X,
+  BookOpen,
 } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -129,6 +136,9 @@ const FIRST_TIME_ACTIONS = [
   { id: "calm", text: "Calm my body", icon: Wind, action: "breathing" },
   { id: "unsure", text: "I'm not sure", icon: HelpCircle, action: "unsure" },
 ];
+
+const READBACK_COUNT_OPTIONS = [5, 10, 20] as const;
+type ReadbackCount = (typeof READBACK_COUNT_OPTIONS)[number];
 
 const MENU_ICON_MAP: Record<string, typeof Sun> = {
   "ai-chat": Sun,
@@ -191,16 +201,17 @@ export function AIWorkspace() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSoftOnboarding, setShowSoftOnboarding] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [readbackOpen, setReadbackOpen] = useState(false);
+  const [readbackCount, setReadbackCount] = useState<ReadbackCount>(10);
   const [messageLimitReached, setMessageLimitReached] = useState(() => !canSendMessage());
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState(() => {
-    // Seed input from onboarding intent (always consumed/removed on first mount)
+    // Seed input from onboarding intent (do NOT remove here; welcome-message effect cleans it up)
     const intent = localStorage.getItem("dw_first_intent");
     if (intent) {
-      localStorage.removeItem("dw_first_intent");
       const seeded: Record<string, string> = {
         stress: "I'm stressed and overwhelmed. Help me work through what's going on.",
         plan: "I need help making a plan and getting organized.",
@@ -674,6 +685,30 @@ export function AIWorkspace() {
     if (profile.metDW) return; // Already met DW
     
     welcomeMessageSentRef.current = true; // Mark as sent before async operations
+
+    // Intent-based seeding for users coming from the simple welcome.tsx onboarding
+    // (those users have dw_first_intent but no scheduleType/focusArea)
+    const firstIntent = localStorage.getItem("dw_first_intent");
+    if (!profile.scheduleType && firstIntent) {
+      localStorage.removeItem("dw_first_intent");
+      const intentMessages: Record<string, string> = {
+        stress: "I'm here. Let's slow down and look at what's weighing on you.\n\nWhat's going on?",
+        plan: "Good. Let's get clear on what needs to happen and build from there.\n\nWhat needs sorting first?",
+        move: "Ready when you are. Let's find movement that fits where you're at today.\n\nWhat does your body feel like right now?",
+        eat: "Let's work on this. Eating well doesn't have to be complicated.\n\nTell me where you're starting from.",
+        talk: "This is a space for you. No agenda, no rush.\n\nWhat's on your mind?",
+      };
+      const welcomeMsg = intentMessages[firstIntent] ?? "I'm here. What's on your mind?";
+      const convo = createNewConversation();
+      addMessageToConversation("assistant", welcomeMsg);
+      setActiveConversation(convo.id);
+      setActiveConversationState(getActiveConversation());
+      setStartedFresh(false);
+      setConversationVersion(v => v + 1);
+      trackEvent(EVENTS.DW_FIRST_MESSAGE_SHOWN, { focusArea: firstIntent, scheduleType: null });
+      saveProfileSetup({ metDW: true });
+      return;
+    }
     
     // Build personalized welcome message based on their setup
     const scheduleMap: Record<string, string> = {
@@ -1717,6 +1752,19 @@ export function AIWorkspace() {
         ) : (
         <ScrollArea className="flex-1 px-4">
           <div className="max-w-2xl mx-auto py-1">
+            {/* Read back messages button — visible when conversation has enough messages */}
+            {messages.length >= 3 && (
+              <div className="flex justify-end mb-1">
+                <button
+                  onClick={() => setReadbackOpen(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 px-2 rounded-lg hover:bg-muted/50"
+                  data-testid="button-readback"
+                >
+                  <BookOpen className="h-3 w-3" />
+                  Read back
+                </button>
+              </div>
+            )}
             {/* D2 Return Nudge Card - shows once per day for non-activated users (only when there are messages) */}
             {messages.length > 0 && showNudge && !shouldShowSpotlight && (
               <Card className="mb-2 border-accent/20 bg-accent/5" data-testid="card-d2-nudge">
@@ -2314,6 +2362,57 @@ export function AIWorkspace() {
         onResume={handleCrisisResume}
         userMessage={pendingCrisisMessage}
       />
+
+      {/* Read back messages — visual condensed transcript, no TTS */}
+      <Dialog open={readbackOpen} onOpenChange={setReadbackOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col" data-testid="dialog-readback">
+          <DialogHeader>
+            <DialogTitle className="text-base font-display">Read back</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground pb-2 border-b">
+            <span>Show last</span>
+            {READBACK_COUNT_OPTIONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => setReadbackCount(n)}
+                className={`px-2 py-0.5 rounded-full border transition-colors ${
+                  readbackCount === n
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-border hover:bg-muted/50"
+                }`}
+                data-testid={`readback-count-${n}`}
+              >
+                {n}
+              </button>
+            ))}
+            <span>messages</span>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1">
+            {[...messages, ...optimisticMessages]
+              .slice(-readbackCount)
+              .map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col gap-0.5 ${msg.role === "user" ? "items-end" : "items-start"}`}
+                  data-testid={`readback-message-${i}`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+                    {msg.role === "user" ? "You" : "DW"}
+                  </span>
+                  <div
+                    className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed whitespace-pre-line ${
+                      msg.role === "user"
+                        ? "bg-primary/10 text-foreground"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -152,16 +152,16 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to /command-center
+  // Setup complete, on welcome -> go to /talk
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/command-center" />;
+    return <Redirect to="/talk" />;
   }
   
   return <>{children}</>;
 }
 
 function HomeRedirect() {
-  return isOnboardingComplete() ? <Redirect to="/command-center" /> : <Redirect to="/welcome" />;
+  return isOnboardingComplete() ? <Redirect to="/talk" /> : <Redirect to="/welcome" />;
 }
 
 function Router() {
