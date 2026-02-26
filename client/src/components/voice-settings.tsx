@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ttsService, type TTSSettings } from "@/lib/tts-service";
-import { Mic, Volume2, Gauge, Music, Play, Square } from "lucide-react";
+import { ttsService, type TTSSettings, type VoicePersonality, VOICE_PERSONALITIES } from "@/lib/tts-service";
+import { Mic, Volume2, Gauge, Music, Play, Square, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function VoiceSettings() {
@@ -45,6 +45,11 @@ export function VoiceSettings() {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     ttsService.updateSettings({ [key]: value });
+  };
+
+  const handlePersonalityChange = (personality: VoicePersonality) => {
+    ttsService.applyPersonality(personality);
+    setSettings(ttsService.getSettings());
   };
 
   const handleTestVoice = async () => {
@@ -130,6 +135,36 @@ export function VoiceSettings() {
               onCheckedChange={(checked) => handleSettingChange('autoSpeak', checked)}
               disabled={!settings.enabled}
             />
+          </div>
+
+          {/* Voice Personality */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Voice Personality
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Choose a vibe that fits how you want DW to sound
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.entries(VOICE_PERSONALITIES) as [VoicePersonality, typeof VOICE_PERSONALITIES[VoicePersonality]][]).map(([key, preset]) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={!settings.enabled}
+                  onClick={() => handlePersonalityChange(key)}
+                  className={`p-3 rounded-lg border text-left transition-colors ${
+                    settings.voicePersonality === key
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50 text-foreground'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  data-testid={`voice-personality-${key}`}
+                >
+                  <div className="font-medium text-sm">{preset.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{preset.description}</div>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Voice selection */}
