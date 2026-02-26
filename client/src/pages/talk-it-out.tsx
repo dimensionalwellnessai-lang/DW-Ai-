@@ -169,7 +169,7 @@ export function TalkItOutPage() {
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
                   <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
-                  <TTSButton text={message.content} autoPlay={false} label="Read back" />
+                  <TTSButton text={message.content} autoPlay={false} label="Read back" alwaysShow />
                 </div>
               ) : (
                 <div className="space-y-3">

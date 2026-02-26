@@ -12,6 +12,11 @@ interface TTSButtonProps {
   autoPlay?: boolean;
   /** Text label shown on the button when not playing (defaults to "Listen") */
   label?: string;
+  /**
+   * When true the button is always visible regardless of the global TTS
+   * enabled setting, allowing on-demand reading of individual messages.
+   */
+  alwaysShow?: boolean;
 }
 
 export function TTSButton({ 
@@ -21,6 +26,7 @@ export function TTSButton({
   className,
   autoPlay = false,
   label = "Listen",
+  alwaysShow = false,
 }: TTSButtonProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSupported] = useState(ttsService.isAvailable());
@@ -49,8 +55,10 @@ export function TTSButton({
       return;
     }
 
+    // When alwaysShow is set, bypass the global enabled check so the
+    // on-demand button works even when TTS is otherwise disabled.
     const settings = ttsService.getSettings();
-    if (!settings.enabled) return;
+    if (!alwaysShow && !settings.enabled) return;
 
     setIsPlaying(true);
     try {
@@ -65,7 +73,7 @@ export function TTSButton({
   if (!isSupported) return null;
 
   const settings = ttsService.getSettings();
-  if (!settings.enabled) return null;
+  if (!alwaysShow && !settings.enabled) return null;
 
   return (
     <Button

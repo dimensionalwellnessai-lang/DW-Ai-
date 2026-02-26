@@ -42,6 +42,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ttsService } from "@/lib/tts-service";
 
 export type LifeSystemItemType = "goal" | "habit" | "schedule";
 
@@ -104,7 +105,7 @@ export function MessageActions({
   };
 
   const handleReadAloud = () => {
-    if (!("speechSynthesis" in window)) {
+    if (!ttsService.isAvailable()) {
       toast({
         title: "Not supported",
         description: "Text-to-speech is not supported in your browser.",
@@ -114,34 +115,22 @@ export function MessageActions({
     }
 
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
+      ttsService.stop();
       setIsSpeaking(false);
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(messageContent);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.lang.startsWith("en") && v.name.includes("Natural")) 
-      || voices.find(v => v.lang.startsWith("en"));
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      toast({
-        title: "Could not read message",
-        description: "Text-to-speech encountered an error.",
-        variant: "destructive",
-      });
-    };
-
     setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    ttsService.speak(messageContent)
+      .then(() => setIsSpeaking(false))
+      .catch(() => {
+        setIsSpeaking(false);
+        toast({
+          title: "Could not read message",
+          description: "Text-to-speech encountered an error.",
+          variant: "destructive",
+        });
+      });
   };
 
   const handleCopy = async () => {
