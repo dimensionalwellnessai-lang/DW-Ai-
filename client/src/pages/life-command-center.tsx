@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,9 +63,10 @@ const ORBIT_SHORTCUTS = [
   { label: "Routines",  icon: RefreshCw, href: "/routines",       color: "text-green-500",  bg: "bg-green-500/10"  },
 ];
 
-// Scores used in the Life Balance meter (blueprint-based approximation)
+// Scores used in the Life Balance meter (blueprint-based approximation only).
 // Filled dimensions get a 75% baseline; unfilled get 15% to show they're not empty but incomplete.
-// TODO: enrich these scores with per-dimension goals and habits data.
+// Enhancement note: these scores are intentionally limited to Blueprint data for now and are planned
+// to be extended with per-dimension goals and habits data in a future iteration (tracked in product planning).
 const BALANCE_SCORE_FILLED = 75;
 const BALANCE_SCORE_EMPTY = 15;
 
@@ -118,7 +119,20 @@ export default function LifeCommandCenter() {
   // ── Vibe state ──────────────────────────────────────────────────────────────
   const [vibeId, setVibeId] = useState<string>(() => localStorage.getItem("dw_home_vibe") || "dawn");
   const [showVibePicker, setShowVibePicker] = useState(false);
+  const vibePickerRef = useRef<HTMLDivElement>(null);
   const selectedVibe = VIBE_PRESETS.find((v) => v.id === vibeId) ?? VIBE_PRESETS[0];
+
+  // Close vibe picker when clicking outside of it
+  useEffect(() => {
+    if (!showVibePicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (vibePickerRef.current && !vibePickerRef.current.contains(e.target as Node)) {
+        setShowVibePicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showVibePicker]);
 
   const handleVibeSelect = (id: string) => {
     setVibeId(id);
@@ -177,9 +191,8 @@ export default function LifeCommandCenter() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
-  const activeGoals = goals.filter((g: any) => g.status !== "completed" && g.status !== "archived");
+  const activeGoals = goals.filter((g: any) => g.isActive !== false);
   const activeHabits = habits.filter((h: any) => h.isActive !== false);
-  const habitsCompletedToday = activeHabits.filter((h: any) => h.completedToday).length;
 
   const filledDimensionIds = new Set(
     blueprints.filter((b: any) => b.dimension && (b.vision || b.values?.length)).map((b: any) => b.dimension)
@@ -259,7 +272,7 @@ export default function LifeCommandCenter() {
 
           {/* Vibe picker popover */}
           {showVibePicker && (
-            <div className="absolute top-11 right-3 z-10 bg-background/95 backdrop-blur border border-border rounded-xl p-3 shadow-lg">
+            <div ref={vibePickerRef} className="absolute top-11 right-3 z-10 bg-background/95 backdrop-blur border border-border rounded-xl p-3 shadow-lg">
               <p className="text-xs font-semibold text-muted-foreground mb-2">Choose vibe</p>
               <div className="grid grid-cols-3 gap-2">
                 {VIBE_PRESETS.map((vibe) => (
@@ -435,8 +448,7 @@ export default function LifeCommandCenter() {
             </div>
             <div
               ref={insightsScrollRef}
-              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
-              style={{ scrollbarWidth: "none" }}
+              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               aria-label="Insights carousel"
             >
               {insightItems.map((item) => (
@@ -513,13 +525,13 @@ export default function LifeCommandCenter() {
                       <p className="text-lg font-bold leading-none">{completedDimensions.length}<span className="text-xs text-muted-foreground font-normal">/{DIMENSIONS.length}</span></p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Dimensions</p>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                    <div className="text-center p-2 rounded-lg bg-muted/40" aria-label={`${activeGoals.length} active goals`}>
                       <p className="text-lg font-bold leading-none">{activeGoals.length}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Active Goals</p>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/40" aria-label={`${habitsCompletedToday} of ${activeHabits.length} habits completed today`}>
-                      <p className="text-lg font-bold leading-none">{habitsCompletedToday}<span className="text-xs text-muted-foreground font-normal">/{activeHabits.length}</span></p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Habits Today</p>
+                    <div className="text-center p-2 rounded-lg bg-muted/40" aria-label={`${activeHabits.length} active habits`}>
+                      <p className="text-lg font-bold leading-none">{activeHabits.length}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Habits Active</p>
                     </div>
                   </div>
                 </CardContent>
