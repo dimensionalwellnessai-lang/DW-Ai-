@@ -324,7 +324,7 @@ export default function LifeCommandCenter() {
 
           {/* ── DW Briefing Card ─────────────────────────────────────────── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <DWBriefingCard nextStep={quickSuggestion.text} onStart={quickSuggestion.action} />
+            <DWBriefingCard nextStep={quickSuggestion.text} />
           </motion.div>
 
           {/* ── Icon Tiles Row ───────────────────────────────────────────── */}
