@@ -32,6 +32,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DWBriefingCard } from "@/components/dw-briefing-card";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
 
@@ -319,6 +320,11 @@ export default function LifeCommandCenter() {
                 </Button>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* ── DW Briefing Card ─────────────────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <DWBriefingCard nextStep={quickSuggestion.text} />
           </motion.div>
 
           {/* ── Icon Tiles Row ───────────────────────────────────────────── */}
