@@ -1,9 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -16,9 +14,6 @@ import {
   Dumbbell,
   Utensils,
   RefreshCw,
-  Target,
-  CheckCircle2,
-  Circle,
   ChevronRight,
   Zap,
   Brain,
@@ -28,23 +23,44 @@ import {
   Users,
   Home,
   Sprout,
-  Plus,
   MessageCircle,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DWBriefingCard } from "@/components/dw-briefing-card";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
 
 const DIMENSIONS = [
-  { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
-  { id: "mind", label: "Mind", icon: Brain, color: "text-purple-400", bg: "bg-purple-500/10" },
-  { id: "time", label: "Time", icon: Clock, color: "text-blue-400", bg: "bg-blue-500/10" },
-  { id: "purpose", label: "Purpose", icon: Compass, color: "text-amber-400", bg: "bg-amber-500/10" },
-  { id: "money", label: "Money", icon: Wallet, color: "text-green-400", bg: "bg-green-500/10" },
-  { id: "relationships", label: "Relationships", icon: Users, color: "text-pink-400", bg: "bg-pink-500/10" },
-  { id: "environment", label: "Environment", icon: Home, color: "text-cyan-400", bg: "bg-cyan-500/10" },
-  { id: "identity", label: "Identity", icon: Sprout, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  { id: "body",          label: "Body",          icon: Zap,     color: "text-red-400",     bg: "bg-red-500/10"     },
+  { id: "mind",          label: "Mind",          icon: Brain,   color: "text-purple-400",  bg: "bg-purple-500/10"  },
+  { id: "time",          label: "Time",          icon: Clock,   color: "text-blue-400",    bg: "bg-blue-500/10"    },
+  { id: "purpose",       label: "Purpose",       icon: Compass, color: "text-amber-400",   bg: "bg-amber-500/10"   },
+  { id: "money",         label: "Money",         icon: Wallet,  color: "text-green-400",   bg: "bg-green-500/10"   },
+  { id: "relationships", label: "Relationships", icon: Users,   color: "text-pink-400",    bg: "bg-pink-500/10"    },
+  { id: "environment",   label: "Environment",   icon: Home,    color: "text-cyan-400",    bg: "bg-cyan-500/10"    },
+  { id: "identity",      label: "Identity",      icon: Sprout,  color: "text-emerald-400", bg: "bg-emerald-500/10" },
+];
+
+// ─── Vibe / background presets ───────────────────────────────────────────────
+
+const VIBE_PRESETS = [
+  { id: "dawn",     label: "Dawn",     gradient: "linear-gradient(135deg,#fda085 0%,#f6d365 100%)"             },
+  { id: "cosmic",   label: "Cosmic",   gradient: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)" },
+  { id: "forest",   label: "Forest",   gradient: "linear-gradient(135deg,#11998e 0%,#38ef7d 100%)"             },
+  { id: "ocean",    label: "Ocean",    gradient: "linear-gradient(135deg,#2193b0 0%,#6dd5ed 100%)"             },
+  { id: "golden",   label: "Golden",   gradient: "linear-gradient(135deg,#f7971e 0%,#ffd200 100%)"             },
+  { id: "midnight", label: "Midnight", gradient: "linear-gradient(135deg,#232526 0%,#414345 100%)"             },
+];
+
+// ─── Orbit shortcut destinations ─────────────────────────────────────────────
+
+const ORBIT_SHORTCUTS = [
+  { label: "Calendar",  icon: Calendar,  href: "/calendar",       color: "text-blue-500",   bg: "bg-blue-500/10"   },
+  { label: "Cosmic",    icon: Star,      href: "/cosmic",         color: "text-purple-500", bg: "bg-purple-500/10" },
+  { label: "Blueprint", icon: BookOpen,  href: "/life-blueprint", color: "text-amber-500",  bg: "bg-amber-500/10"  },
+  { label: "Workout",   icon: Dumbbell,  href: "/workout",        color: "text-red-500",    bg: "bg-red-500/10"    },
+  { label: "Meals",     icon: Utensils,  href: "/meal-prep",      color: "text-orange-500", bg: "bg-orange-500/10" },
+  { label: "Routines",  icon: RefreshCw, href: "/routines",       color: "text-green-500",  bg: "bg-green-500/10"  },
 ];
 
 // ─── Daily cosmic insights pool ──────────────────────────────────────────────
@@ -87,43 +103,24 @@ function getTimeBasedGreeting(name?: string): string {
   return name ? `${prefix}, ${name}` : prefix;
 }
 
-// ─── Section header component ─────────────────────────────────────────────────
-
-function SectionHeader({
-  title,
-  href,
-  icon: Icon,
-}: {
-  title: string;
-  href: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
-  const [, navigate] = useLocation();
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <button
-        onClick={() => navigate(href)}
-        className="flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-        aria-label={`Go to ${title}`}
-      >
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-        <span className="font-semibold text-base group-hover:text-primary transition-colors">{title}</span>
-      </button>
-      <button
-        onClick={() => navigate(href)}
-        className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-        aria-label={`See all ${title}`}
-      >
-        See all <ChevronRight className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
-
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function LifeCommandCenter() {
   const [, navigate] = useLocation();
+  const insightsScrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Vibe state ──────────────────────────────────────────────────────────────
+  const [vibeId, setVibeId] = useState<string>(() => localStorage.getItem("dw_home_vibe") || "dawn");
+  const [showVibePicker, setShowVibePicker] = useState(false);
+  const selectedVibe = VIBE_PRESETS.find((v) => v.id === vibeId) ?? VIBE_PRESETS[0];
+
+  const handleVibeSelect = (id: string) => {
+    setVibeId(id);
+    localStorage.setItem("dw_home_vibe", id);
+    setShowVibePicker(false);
+  };
+
+  // ── Energy check-in state ───────────────────────────────────────────────────
   const [energyLevel, setEnergyLevel] = useState<"low" | "medium" | "high" | null>(() => {
     const today = new Date().toDateString();
     const stored = localStorage.getItem("dw_energy_checkin");
@@ -135,6 +132,11 @@ export default function LifeCommandCenter() {
     }
     return null;
   });
+
+  const handleEnergyCheckin = (level: "low" | "medium" | "high") => {
+    setEnergyLevel(level);
+    localStorage.setItem("dw_energy_checkin", JSON.stringify({ date: new Date().toDateString(), level }));
+  };
 
   const todayDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -170,17 +172,16 @@ export default function LifeCommandCenter() {
   // ── Derived data ───────────────────────────────────────────────────────────
 
   const activeGoals = goals.filter((g: any) => g.status !== "completed" && g.status !== "archived");
-
   const activeHabits = habits.filter((h: any) => h.isActive !== false);
+  const habitsCompletedToday = activeHabits.filter((h: any) => h.completedToday).length;
 
   const filledDimensionIds = new Set(
     blueprints.filter((b: any) => b.dimension && (b.vision || b.values?.length)).map((b: any) => b.dimension)
   );
   const completedDimensions = DIMENSIONS.filter((d) => filledDimensionIds.has(d.id));
   const incompleteDimensions = DIMENSIONS.filter((d) => !filledDimensionIds.has(d.id));
-  const blueprintProgress = Math.round((completedDimensions.length / DIMENSIONS.length) * 100);
 
-  // Quick suggestion for DW panel — sort ascending so we pick the *next* event
+  // Quick suggestion
   const getQuickSuggestion = () => {
     const now = new Date();
     const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
@@ -206,17 +207,10 @@ export default function LifeCommandCenter() {
 
   const quickSuggestion = getQuickSuggestion();
 
-  // Save energy check-in
-  const handleEnergyCheckin = (level: "low" | "medium" | "high") => {
-    setEnergyLevel(level);
-    localStorage.setItem("dw_energy_checkin", JSON.stringify({ date: new Date().toDateString(), level }));
-  };
-
-  // Check if cosmic birth data is configured
   const hasBirthData = !!localStorage.getItem("dw_birth_chart");
   const dailyInsight = getDailyInsight();
 
-  // Today's events (filter to today, sorted chronologically with all-day first)
+  // Today events (up to 3)
   const todayStr = new Date().toDateString();
   const todayEvents = calendarEvents
     .filter((e: any) => {
@@ -228,219 +222,262 @@ export default function LifeCommandCenter() {
       const bAllDay = !b.startTime;
       if (aAllDay && !bAllDay) return -1;
       if (!aAllDay && bAllDay) return 1;
-      const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
-      const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
-      return aTime - bTime;
+      return (a.startTime ? new Date(a.startTime).getTime() : 0) - (b.startTime ? new Date(b.startTime).getTime() : 0);
     })
-    .slice(0, 4);
+    .slice(0, 3);
+
+  // Insights carousel items (mixed life / body / mind / money / cosmic)
+  const insightItems = [
+    { id: "life",   label: "Life",   icon: Sparkles, color: "text-purple-500", bg: "bg-purple-500/10", text: dailyInsight,                                                                                                          href: "/cosmic"   },
+    { id: "body",   label: "Body",   icon: Zap,      color: "text-red-500",    bg: "bg-red-500/10",    text: "Movement is medicine. Even 10 minutes counts today.",                                                                   href: "/workout"  },
+    { id: "mind",   label: "Mind",   icon: Brain,    color: "text-blue-500",   bg: "bg-blue-500/10",   text: "Clarity arrives after rest. What's taking up space in your mind?",                                                     href: "/journal"  },
+    { id: "money",  label: "Money",  icon: Wallet,   color: "text-green-500",  bg: "bg-green-500/10",  text: "Small consistent actions compound. Review one financial habit.",                                                        href: "/finances" },
+    { id: "cosmic", label: "Cosmic", icon: Star,     color: "text-amber-500",  bg: "bg-amber-500/10",  text: hasBirthData ? "Your chart holds subtle clues for today." : "Set up your cosmic profile for personalized guidance.",    href: "/cosmic"   },
+  ];
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
+    <div className="flex flex-col h-full bg-background">
       <PageHeader title="Home" showBack={false} />
       <div className="flex-1 overflow-auto">
-        <div className="container max-w-2xl mx-auto p-4 space-y-6 pb-8">
 
-          {/* ── DW Avatar Panel ─────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-4 space-y-3">
-                {/* Greeting row */}
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-lg leading-tight">
-                      {getTimeBasedGreeting(user?.firstName || user?.systemName)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{todayDate}</p>
-                  </div>
-                </div>
+        {/* ── Avatar Zone ───────────────────────────────────────────────── */}
+        <div className="relative" style={{ background: selectedVibe.gradient }}>
+          {/* Vibe picker toggle */}
+          <button
+            onClick={() => setShowVibePicker((v) => !v)}
+            aria-label="Change background vibe"
+            className="absolute top-3 right-3 p-1.5 rounded-full bg-black/20 hover:bg-black/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <Palette className="h-4 w-4 text-white" />
+          </button>
 
-                {/* Quick suggestion */}
-                <button
-                  onClick={quickSuggestion.action}
-                  aria-label={`Suggested focus: ${quickSuggestion.text}`}
-                  className="w-full text-left p-3 rounded-lg bg-background/70 border border-border/50 hover:border-primary/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-0.5 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> Suggested focus
+          {/* Vibe picker popover */}
+          {showVibePicker && (
+            <div className="absolute top-11 right-3 z-10 bg-background/95 backdrop-blur border border-border rounded-xl p-3 shadow-lg">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Choose vibe</p>
+              <div className="grid grid-cols-3 gap-2">
+                {VIBE_PRESETS.map((vibe) => (
+                  <button
+                    key={vibe.id}
+                    onClick={() => handleVibeSelect(vibe.id)}
+                    aria-label={`Set vibe to ${vibe.label}`}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      vibeId === vibe.id ? "border-primary" : "border-transparent hover:border-border"
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-full" style={{ background: vibe.gradient }} />
+                    <span className="text-[10px] text-muted-foreground">{vibe.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Centered avatar + greeting */}
+          <div className="flex flex-col items-center pt-8 pb-6 px-4">
+            {/* DW Avatar */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="w-20 h-20 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center shadow-lg ring-2 ring-white/40"
+            >
+              <Sparkles className="h-8 w-8 text-white" />
+            </motion.div>
+
+            {/* Greeting bubble — anchored to avatar */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-3 px-4 py-1.5 bg-black/25 backdrop-blur-sm rounded-full"
+            >
+              <p className="text-white font-bold text-base">
+                {getTimeBasedGreeting(user?.firstName || user?.systemName)}
+              </p>
+            </motion.div>
+
+            {/* Date */}
+            <p className="text-white/75 text-xs mt-1">{todayDate}</p>
+
+            {/* Suggested focus — short attached line */}
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              onClick={quickSuggestion.action}
+              aria-label={`Suggested focus: ${quickSuggestion.text}`}
+              className="mt-3 max-w-xs text-center text-sm text-white/90 font-medium leading-snug focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded"
+            >
+              <span className="opacity-60">✦ </span>{quickSuggestion.text}
+            </motion.button>
+
+            {/* Energy check-in */}
+            <div className="mt-4 w-full max-w-xs">
+              {!energyLevel ? (
+                <div>
+                  <p className="text-xs text-white/75 text-center mb-2">
+                    {getTimeOfDay() === "morning" ? "How's your energy?" : getTimeOfDay() === "afternoon" ? "Energy right now?" : "Energy today?"}
                   </p>
-                  <p className="text-sm font-medium">{quickSuggestion.text}</p>
-                </button>
-
-                {/* Energy check-in */}
-                {!energyLevel ? (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      {getTimeOfDay() === "morning"
-                        ? "How's your energy this morning?"
-                        : getTimeOfDay() === "afternoon"
-                        ? "How's your energy right now?"
-                        : "How has your energy been today?"}
-                    </p>
-                    <div className="flex gap-2">
-                      {(["low", "medium", "high"] as const).map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => handleEnergyCheckin(level)}
-                          aria-label={`Mark energy as ${level}`}
-                          className="flex-1 py-1.5 text-xs rounded-md border border-border hover:bg-primary/10 hover:border-primary/40 transition-all capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        >
-                          {level === "low" ? "🌙 Low" : level === "medium" ? "⚡ Medium" : "🔥 High"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Energy today:{" "}
-                      <span className="font-medium capitalize text-foreground">
-                        {energyLevel === "low" ? "🌙 Low" : energyLevel === "medium" ? "⚡ Medium" : "🔥 High"}
-                      </span>
-                    </p>
-                    <button
-                      onClick={() => {
-                        setEnergyLevel(null);
-                        localStorage.removeItem("dw_energy_checkin");
-                      }}
-                      aria-label="Change energy check-in"
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                    >
-                      Change
-                    </button>
-                  </div>
-                )}
-
-                {/* Chat with DW */}
-                <Button size="sm" className="w-full" onClick={() => navigate("/talk")}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Chat with DW
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* ── DW Briefing Card ─────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <DWBriefingCard nextStep={quickSuggestion.text} />
-          </motion.div>
-
-          {/* ── Icon Tiles Row ───────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <nav aria-label="Quick navigation" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {[
-                { label: "Calendar", icon: Calendar, href: "/calendar", color: "text-blue-500", bg: "bg-blue-500/10" },
-                { label: "Cosmic", icon: Star, href: "/cosmic", color: "text-purple-500", bg: "bg-purple-500/10" },
-                { label: "Blueprint", icon: BookOpen, href: "/life-blueprint", color: "text-amber-500", bg: "bg-amber-500/10" },
-                { label: "Workout", icon: Dumbbell, href: "/workout", color: "text-red-500", bg: "bg-red-500/10" },
-                { label: "Meals", icon: Utensils, href: "/meal-prep", color: "text-orange-500", bg: "bg-orange-500/10" },
-                { label: "Routines", icon: RefreshCw, href: "/routines", color: "text-green-500", bg: "bg-green-500/10" },
-              ].map(({ label, icon: Icon, href, color, bg }) => (
-                <button
-                  key={label}
-                  onClick={() => navigate(href)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-border/50",
-                    "hover:border-primary/30 hover:bg-muted/60 transition-all",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  )}
-                  aria-label={`Go to ${label}`}
-                >
-                  <div className={cn("p-2 rounded-lg", bg)}>
-                    <Icon className={cn("h-5 w-5", color)} />
-                  </div>
-                  <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
-                </button>
-              ))}
-            </nav>
-          </motion.div>
-
-          {/* ── Today's Schedule ─────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <SectionHeader title="Today" href="/calendar" icon={Calendar} />
-            <Card>
-              <CardContent className="p-4">
-                {eventsLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ) : todayEvents.length === 0 ? (
-                  <div className="text-center py-4 space-y-3">
-                    <p className="text-sm text-muted-foreground">Your day is wide open.</p>
-                    <p className="text-xs text-muted-foreground">
-                      Want DW to help structure it with a schedule built around your energy?
-                    </p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      <Button size="sm" onClick={() => navigate("/calendar")}>
-                        <Plus className="h-4 w-4 mr-1" /> Add Event
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigate("/talk")}>
-                        <Sparkles className="h-4 w-4 mr-1" /> Ask DW to plan
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {todayEvents.map((event: any) => (
+                  <div className="flex gap-2">
+                    {(["low", "medium", "high"] as const).map((level) => (
                       <button
-                        key={event.id}
-                        onClick={() => navigate("/calendar")}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-muted/40 hover:bg-muted transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        key={level}
+                        onClick={() => handleEnergyCheckin(level)}
+                        aria-label={`Mark energy as ${level}`}
+                        className="flex-1 py-1 text-xs rounded-full bg-white/20 hover:bg-white/30 text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                       >
-                        <div className="text-xs font-semibold text-muted-foreground min-w-[50px]">
-                          {event.startTime
-                            ? new Date(event.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                            : "All day"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{event.title}</p>
-                          {event.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">{event.description}</p>
-                          )}
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        {level === "low" ? "🌙 Low" : level === "medium" ? "⚡ Med" : "🔥 High"}
                       </button>
                     ))}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="w-full mt-1"
-                      onClick={() => navigate("/calendar")}
-                    >
-                      View full schedule
-                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xs text-white/80">
+                    Energy: <span className="font-semibold text-white">
+                      {energyLevel === "low" ? "🌙 Low" : energyLevel === "medium" ? "⚡ Medium" : "🔥 High"}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => { setEnergyLevel(null); localStorage.removeItem("dw_energy_checkin"); }}
+                    aria-label="Change energy check-in"
+                    className="text-xs text-white/60 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white rounded"
+                  >
+                    change
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Orbit shortcuts ───────────────────────────────────────────── */}
+        <motion.nav
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          aria-label="Quick navigation"
+          className="grid grid-cols-6 gap-1 px-3 py-3 bg-background border-b border-border/50"
+        >
+          {ORBIT_SHORTCUTS.map(({ label, icon: Icon, href, color, bg }) => (
+            <button
+              key={label}
+              onClick={() => navigate(href)}
+              aria-label={`Go to ${label}`}
+              className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl hover:bg-muted transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div className={cn("p-2 rounded-lg", bg)}>
+                <Icon className={cn("h-4 w-4", color)} />
+              </div>
+              <span className="text-[9px] font-medium text-muted-foreground leading-none">{label}</span>
+            </button>
+          ))}
+        </motion.nav>
+
+        {/* ── Compact content cards ─────────────────────────────────────── */}
+        <div className="container max-w-2xl mx-auto px-4 py-4 space-y-3 pb-8">
+
+          {/* ── Today card ────────────────────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <button
+              onClick={() => navigate("/calendar")}
+              className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+              aria-label="Open calendar"
+            >
+              <Card className="hover:border-blue-400/40 transition-colors">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-semibold">Today</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  {eventsLoading ? (
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-7 w-full" />
+                      <Skeleton className="h-7 w-3/4" />
+                    </div>
+                  ) : todayEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Today is wide open. ✨</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {todayEvents.map((event: any) => (
+                        <div key={event.id} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground min-w-[44px]">
+                            {event.startTime
+                              ? new Date(event.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                              : "All day"}
+                          </span>
+                          <span className="text-sm font-medium truncate">{event.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </button>
           </motion.div>
 
-          {/* ── Cosmic Insights ──────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <SectionHeader title="Cosmic Insights" href="/cosmic" icon={Star} />
-            <button
-              onClick={() => navigate("/cosmic")}
-              className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+          {/* ── Insights carousel ─────────────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Star className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Insights</span>
+            </div>
+            <div
+              ref={insightsScrollRef}
+              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
+              style={{ scrollbarWidth: "none" }}
+              aria-label="Insights carousel"
             >
-              <Card className="hover:border-purple-400/40 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 p-2 rounded-lg bg-purple-500/10">
-                      <Star className="h-5 w-5 text-purple-500" />
+              {insightItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.href)}
+                  aria-label={`${item.label} insight`}
+                  className="flex-shrink-0 w-52 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+                >
+                  <Card className="h-full hover:border-primary/30 transition-colors">
+                    <CardContent className="p-3 space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn("p-1 rounded", item.bg)}>
+                          <item.icon className={cn("h-3.5 w-3.5", item.color)} />
+                        </div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed line-clamp-3">{item.text}</p>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* ── DW Briefing snapshot ──────────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <button
+              onClick={() => navigate("/talk")}
+              className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+              aria-label="Open DW Briefing in Talk It Out"
+            >
+              <Card className="border-primary/20 bg-primary/5 hover:border-primary/40 transition-colors">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wide">DW Briefing</p>
+                        <p className="text-xs text-muted-foreground truncate">{quickSuggestion.text}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                        Today's Insight
-                      </p>
-                      <p className="text-sm leading-relaxed">{dailyInsight}</p>
-                      {!hasBirthData && (
-                        <p className="text-xs text-muted-foreground mt-2 italic">
-                          Set up your cosmic profile for personalized guidance →
-                        </p>
-                      )}
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
                 </CardContent>
@@ -448,169 +485,76 @@ export default function LifeCommandCenter() {
             </button>
           </motion.div>
 
-          {/* ── Life Blueprint ───────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <SectionHeader title="Life Blueprint" href="/life-blueprint" icon={BookOpen} />
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                {/* Progress bar */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">
-                      {completedDimensions.length} of {DIMENSIONS.length} dimensions defined
-                    </span>
-                    <Badge variant="secondary" className="text-xs">{blueprintProgress}%</Badge>
+          {/* ── Blueprint + Goals + Habits snapshot ──────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <button
+              onClick={() => navigate("/life-blueprint")}
+              className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+              aria-label="Open Blueprint, Goals and Habits"
+            >
+              <Card className="hover:border-amber-400/40 transition-colors">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm font-semibold">Blueprint · Goals · Habits</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <Progress value={blueprintProgress} className="h-2" />
-                </div>
-
-                {blueprints.length === 0 ? (
-                  <div className="text-center py-3 space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Your Life Blueprint maps your values and vision across 8 dimensions.
-                    </p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      <Button size="sm" onClick={() => navigate("/life-blueprint")}>
-                        Start Blueprint
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigate("/talk")}>
-                        <Sparkles className="h-4 w-4 mr-1" /> Do it with DW
-                      </Button>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                      <p className="text-lg font-bold leading-none">{completedDimensions.length}<span className="text-xs text-muted-foreground font-normal">/{DIMENSIONS.length}</span></p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Dimensions</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                      <p className="text-lg font-bold leading-none">{activeGoals.length}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Active Goals</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                      <p className="text-lg font-bold leading-none">{habitsCompletedToday}<span className="text-xs text-muted-foreground font-normal">/{activeHabits.length}</span></p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Habits Today</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                </CardContent>
+              </Card>
+            </button>
+          </motion.div>
+
+          {/* ── Life Balance / Palaces meter ──────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+            <button
+              onClick={() => navigate("/tracking")}
+              className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+              aria-label="View life balance breakdown"
+            >
+              <Card className="hover:border-primary/30 transition-colors">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold">Life Balance</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {DIMENSIONS.map((dim) => {
-                      const filled = filledDimensionIds.has(dim.id);
+                      // Blueprint-based score; TODO: enrich with per-dimension goals/habits data
+                      const score = filledDimensionIds.has(dim.id) ? 75 : 15;
                       return (
-                        <button
-                          key={dim.id}
-                          onClick={() =>
-                            filled ? navigate("/life-blueprint") : navigate("/talk")
-                          }
-                          className={cn(
-                            "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all",
-                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                            filled
-                              ? "border-border/50 bg-muted/30 hover:bg-muted/60"
-                              : "border-dashed border-border hover:border-primary/40 hover:bg-muted/30"
-                          )}
-                          aria-label={
-                            filled
-                              ? `View ${dim.label} blueprint`
-                              : `Complete ${dim.label} dimension with DW`
-                          }
-                        >
-                          <div className={cn("p-1 rounded", dim.bg)}>
-                            <dim.icon className={cn("h-3.5 w-3.5", dim.color)} />
-                          </div>
+                        <div key={dim.id} className="flex items-center gap-2">
+                          <dim.icon className={cn("h-3 w-3 flex-shrink-0", dim.color)} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{dim.label}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {filled ? "✓ Defined" : "Complete with DW"}
-                            </p>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-[10px] text-muted-foreground truncate">{dim.label}</span>
+                              <span className="text-[10px] text-muted-foreground ml-1">{score}%</span>
+                            </div>
+                            <Progress value={score} className="h-1" />
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* ── Goals ────────────────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <SectionHeader title="Goals" href="/goals" icon={Target} />
-            <Card>
-              <CardContent className="p-4">
-                {activeGoals.length === 0 ? (
-                  <div className="text-center py-4 space-y-2">
-                    <p className="text-sm text-muted-foreground">Define what matters to you most right now.</p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      <Button size="sm" onClick={() => navigate("/goals")}>
-                        <Plus className="h-4 w-4 mr-1" /> Create a Goal
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigate("/talk")}>
-                        <Sparkles className="h-4 w-4 mr-1" /> Ask DW for ideas
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {activeGoals.slice(0, 3).map((goal: any) => (
-                      <button
-                        key={goal.id}
-                        onClick={() => navigate("/goals")}
-                        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-medium">{goal.title}</p>
-                          <Badge variant="secondary" className="text-xs">{goal.progress ?? 0}%</Badge>
-                        </div>
-                        <Progress value={goal.progress ?? 0} className="h-1.5" />
-                      </button>
-                    ))}
-                    {activeGoals.length > 3 && (
-                      <Button size="sm" variant="ghost" className="w-full" onClick={() => navigate("/goals")}>
-                        +{activeGoals.length - 3} more goals
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* ── Habits ───────────────────────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <SectionHeader title="Habits" href="/habits" icon={CheckCircle2} />
-            <Card>
-              <CardContent className="p-4">
-                {activeHabits.length === 0 ? (
-                  <div className="text-center py-4 space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Build daily practices that shape who you're becoming.
-                    </p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      <Button size="sm" onClick={() => navigate("/habits")}>
-                        <Plus className="h-4 w-4 mr-1" /> Add a Habit
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => navigate("/browse")}>
-                        Browse suggestions
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {activeHabits.slice(0, 5).map((habit: any) => (
-                      <button
-                        key={habit.id}
-                        onClick={() => navigate("/habits")}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-muted/40 hover:bg-muted transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        {habit.completedToday ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{habit.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(habit.streak ?? 0) > 0 ? `${habit.streak} day streak 🔥` : "Start today!"}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                    {activeHabits.length > 5 && (
-                      <Button size="sm" variant="ghost" className="w-full" onClick={() => navigate("/habits")}>
-                        +{activeHabits.length - 5} more habits
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  <p className="text-[10px] text-muted-foreground mt-2 text-center">Based on Blueprint · Tap for full breakdown</p>
+                </CardContent>
+              </Card>
+            </button>
           </motion.div>
 
         </div>
