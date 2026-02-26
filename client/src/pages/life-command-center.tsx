@@ -63,6 +63,12 @@ const ORBIT_SHORTCUTS = [
   { label: "Routines",  icon: RefreshCw, href: "/routines",       color: "text-green-500",  bg: "bg-green-500/10"  },
 ];
 
+// Scores used in the Life Balance meter (blueprint-based approximation)
+// Filled dimensions get a 75% baseline; unfilled get 15% to show they're not empty but incomplete.
+// TODO: enrich these scores with per-dimension goals and habits data.
+const BALANCE_SCORE_FILLED = 75;
+const BALANCE_SCORE_EMPTY = 15;
+
 // ─── Daily cosmic insights pool ──────────────────────────────────────────────
 
 const DAILY_INSIGHTS = [
@@ -454,6 +460,7 @@ export default function LifeCommandCenter() {
                 </button>
               ))}
             </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-1">Swipe to see more insights →</p>
           </motion.div>
 
           {/* ── DW Briefing snapshot ──────────────────────────────────── */}
@@ -502,7 +509,7 @@ export default function LifeCommandCenter() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                    <div className="text-center p-2 rounded-lg bg-muted/40" aria-label={`${completedDimensions.length} of ${DIMENSIONS.length} dimensions filled`}>
                       <p className="text-lg font-bold leading-none">{completedDimensions.length}<span className="text-xs text-muted-foreground font-normal">/{DIMENSIONS.length}</span></p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Dimensions</p>
                     </div>
@@ -510,7 +517,7 @@ export default function LifeCommandCenter() {
                       <p className="text-lg font-bold leading-none">{activeGoals.length}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Active Goals</p>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/40">
+                    <div className="text-center p-2 rounded-lg bg-muted/40" aria-label={`${habitsCompletedToday} of ${activeHabits.length} habits completed today`}>
                       <p className="text-lg font-bold leading-none">{habitsCompletedToday}<span className="text-xs text-muted-foreground font-normal">/{activeHabits.length}</span></p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Habits Today</p>
                     </div>
@@ -536,7 +543,7 @@ export default function LifeCommandCenter() {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {DIMENSIONS.map((dim) => {
                       // Blueprint-based score; TODO: enrich with per-dimension goals/habits data
-                      const score = filledDimensionIds.has(dim.id) ? 75 : 15;
+                      const score = filledDimensionIds.has(dim.id) ? BALANCE_SCORE_FILLED : BALANCE_SCORE_EMPTY;
                       return (
                         <div key={dim.id} className="flex items-center gap-2">
                           <dim.icon className={cn("h-3 w-3 flex-shrink-0", dim.color)} />
