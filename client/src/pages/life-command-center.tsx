@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -30,10 +30,6 @@ import {
   Sprout,
   Plus,
   MessageCircle,
-  Sun,
-  Moon,
-  Droplets,
-  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -183,14 +179,16 @@ export default function LifeCommandCenter() {
   const incompleteDimensions = DIMENSIONS.filter((d) => !filledDimensionIds.has(d.id));
   const blueprintProgress = Math.round((completedDimensions.length / DIMENSIONS.length) * 100);
 
-  // Quick suggestion for DW panel
+  // Quick suggestion for DW panel — sort ascending so we pick the *next* event
   const getQuickSuggestion = () => {
     const now = new Date();
     const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-    const upcomingEvent = calendarEvents.find((e: any) => {
-      const t = e.startTime ? new Date(e.startTime) : null;
-      return t && t > now && t < twoHoursFromNow;
-    });
+    const upcomingEvent = [...calendarEvents]
+      .filter((e: any) => {
+        const t = e.startTime ? new Date(e.startTime) : null;
+        return t && t > now && t < twoHoursFromNow;
+      })
+      .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
     if (upcomingEvent) return { text: `"${upcomingEvent.title}" is coming up soon`, action: () => navigate("/calendar") };
 
     const incompleteHabit = activeHabits.find((h: any) => !h.completedToday);
@@ -217,12 +215,21 @@ export default function LifeCommandCenter() {
   const hasBirthData = !!localStorage.getItem("dw_birth_chart");
   const dailyInsight = getDailyInsight();
 
-  // Today's events (filter to future or today)
+  // Today's events (filter to today, sorted chronologically with all-day first)
   const todayStr = new Date().toDateString();
   const todayEvents = calendarEvents
     .filter((e: any) => {
       if (!e.startTime) return new Date(e.date || e.createdAt || Date.now()).toDateString() === todayStr;
       return new Date(e.startTime).toDateString() === todayStr;
+    })
+    .sort((a: any, b: any) => {
+      const aAllDay = !a.startTime;
+      const bAllDay = !b.startTime;
+      if (aAllDay && !bAllDay) return -1;
+      if (!aAllDay && bAllDay) return 1;
+      const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
+      const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
+      return aTime - bTime;
     })
     .slice(0, 4);
 
@@ -293,7 +300,10 @@ export default function LifeCommandCenter() {
                       </span>
                     </p>
                     <button
-                      onClick={() => setEnergyLevel(null)}
+                      onClick={() => {
+                        setEnergyLevel(null);
+                        localStorage.removeItem("dw_energy_checkin");
+                      }}
                       aria-label="Change energy check-in"
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                     >
