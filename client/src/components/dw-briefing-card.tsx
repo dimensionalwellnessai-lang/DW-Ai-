@@ -2,15 +2,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TTSButton } from "@/components/tts-button";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { Sparkles, ChevronRight, Volume2, Square } from "lucide-react";
 import { ttsService } from "@/lib/tts-service";
 
 interface DWBriefingCardProps {
   /** The "next step" text DW will speak and display */
   nextStep: string;
-  /** Called when the user clicks "Start" / navigates to /talk */
-  onStart?: () => void;
 }
 
 /**
@@ -22,17 +19,35 @@ interface DWBriefingCardProps {
  *
  *   Open app → DW briefing → user confirms plan → schedule shows it →
  *   DW speaks next step → user completes one block → DW celebrates + recap.
+ *
+ * The "Hear it" button speaks the next step directly via SpeechSynthesis
+ * without requiring TTS to be pre-enabled in Voice Settings, so users on a
+ * fresh load can experience voice immediately.
  */
-export function DWBriefingCard({ nextStep, onStart }: DWBriefingCardProps) {
+export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
   const [, navigate] = useLocation();
   const ttsAvailable = ttsService.isAvailable();
   const [dismissed, setDismissed] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   if (dismissed) return null;
 
-  const handleStart = () => {
-    if (onStart) onStart();
-    navigate("/talk");
+  const handleHearIt = async () => {
+    if (isSpeaking) {
+      ttsService.stop();
+      setIsSpeaking(false);
+      return;
+    }
+    setIsSpeaking(true);
+    try {
+      // Speak directly, bypassing the "enabled" setting so fresh-load users
+      // can hear the briefing without first opening Voice Settings.
+      await ttsService.speak(nextStep);
+    } catch {
+      // Ignore speak errors (e.g. interrupted by navigation)
+    } finally {
+      setIsSpeaking(false);
+    }
   };
 
   return (
@@ -62,16 +77,30 @@ export function DWBriefingCard({ nextStep, onStart }: DWBriefingCardProps) {
         {/* Actions */}
         <div className="flex items-center gap-2 flex-wrap">
           {ttsAvailable && (
-            <TTSButton
-              text={nextStep}
-              label="Hear it"
+            <Button
               variant="outline"
               size="sm"
-            />
+              onClick={handleHearIt}
+              className="gap-1.5"
+              aria-label={isSpeaking ? "Stop speaking" : "Hear next step aloud"}
+              data-testid="dw-briefing-hear-button"
+            >
+              {isSpeaking ? (
+                <>
+                  <Square className="h-3.5 w-3.5" />
+                  <span className="text-xs">Stop</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-3.5 w-3.5" />
+                  <span className="text-xs">Hear it</span>
+                </>
+              )}
+            </Button>
           )}
           <Button
             size="sm"
-            onClick={handleStart}
+            onClick={() => navigate("/talk")}
             className="flex-1 min-w-0"
             data-testid="dw-briefing-start-button"
           >

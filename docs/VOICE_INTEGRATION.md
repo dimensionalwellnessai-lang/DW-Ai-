@@ -18,7 +18,7 @@ DW speaks next step → user completes one block → DW celebrates + recap
 On app open the **Command Center** (`/command-center`) shows a **DW Briefing Card** at the top of the page. It:
 
 - Displays the user's _next recommended focus_ (derived from upcoming calendar events, active habits, goals, or Life Blueprint gaps)
-- Has a **"Hear it"** button that speaks the next step aloud via TTS
+- Has a **"Hear it"** button that speaks the next step aloud via TTS — visible whenever the browser supports `SpeechSynthesis`, regardless of Voice Settings, so fresh-install users can experience voice immediately
 - Has a **"Start with DW"** button that opens the Talk It Out thread (`/talk`) to begin the loop
 - Can be dismissed if the user doesn't want it right now
 
@@ -28,9 +28,11 @@ This card bridges the moment of opening the app with the first spoken step from 
 
 The Talk It Out thread is the primary voice-enabled conversation space. It provides:
 
-- **"Listen"** button on every DW response — speaks the response via TTS
-- **"Read back"** button on every user message — re-reads the user's own words aloud
+- **"Listen"** button on every DW response — visible and clickable only when **Voice Settings → Enable Voice Responses** is on
+- **"Read back"** button on every user message — also gated by Voice Settings
 - **Auto-speak** option (enabled in Voice Settings): new DW responses speak automatically
+
+> **Note:** The "Listen" and "Read back" controls in the Talk It Out thread require **Voice Responses** to be enabled in **Settings → Voice Settings**. The "Hear it" button on the Briefing Card is an exception and works without that setting.
 
 ## Features
 
