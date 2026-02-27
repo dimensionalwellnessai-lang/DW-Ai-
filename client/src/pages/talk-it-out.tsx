@@ -72,15 +72,19 @@ export function TalkItOutPage() {
       });
       return response.json();
     },
-    onSuccess: (data) => {
-      // Post-process the assistant response (flag-gated, fail-safe)
-      const lastUserMsg = messages.findLast((m) => m.role === "user");
-      const processed = postProcessAssistantMessage({
-        assistantText: data.response,
-        userMessage: lastUserMsg?.content,
-        conversationHistory: messages,
+    onSuccess: (data, variables) => {
+      // Post-process the assistant response (flag-gated, fail-safe).
+      // Use the functional updater so `prev` includes the user message
+      // just added by handleSend, and `variables` is the exact message
+      // string that was passed to chatMutation.mutate().
+      setMessages((prev) => {
+        const processed = postProcessAssistantMessage({
+          assistantText: data.response,
+          userMessage: variables,
+          conversationHistory: prev,
+        });
+        return [...prev, { role: "assistant", content: processed.text }];
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: processed.text }]);
       setIsTyping(false);
     },
     onError: () => {

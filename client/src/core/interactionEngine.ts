@@ -21,6 +21,7 @@ export type IntentType =
   | "update_check"
   | "general_chat";
 
+// Reserved for future dimension-aware tie-in logic (optional C section in v1+).
 export type Palace =
   | "Body"
   | "Mind"
@@ -54,7 +55,7 @@ const RESEARCH_KEYWORDS =
   /\b(latest|today|news|price|law|regulation|study|research|current|recent|update|updates|status|fact|statistics)\b/i;
 
 const UPDATE_CHECK_KEYWORDS =
-  /\b(what('?s| is) (new|happening|going on|the status)|any updates|check[- ]?in|progress)\b/i;
+  /\b(what(?:'s| is) (new|happening|going on|the status)|any updates|check[- ]?in|progress)\b/i;
 
 /**
  * Heuristic intent detection (MVP).
@@ -89,8 +90,11 @@ export function detectIntent({
 
 // ─── applyTwoQuestionMax ──────────────────────────────────────────────────────
 
-/** Matches a sentence (or sentence fragment) that ends with a question mark. */
-const QUESTION_SENTENCE_RE = /[^.!?]*\?/g;
+/**
+ * Matches a question sentence: starts with a non-whitespace/non-punctuation
+ * character to avoid capturing leading spaces, ends with a "?".
+ */
+const QUESTION_SENTENCE_RE = /[^\s.!?][^.!?]*\?/g;
 
 /**
  * If the assistant text contains more than 2 questions, keep the first two and
@@ -114,16 +118,29 @@ export function applyTwoQuestionMax({
   let questionsRemoved = 0;
   let questionsSeen = 0;
   let result = assistantText;
+  let searchStart = 0;
 
   for (const q of questions) {
+    const idx = result.indexOf(q, searchStart);
+    if (idx === -1) {
+      // Defensively skip if the question can't be located (e.g. already replaced)
+      continue;
+    }
+
     questionsSeen++;
-    if (questionsSeen <= 2) continue;
+
+    // Keep the first two questions exactly as they are
+    if (questionsSeen <= 2) {
+      searchStart = idx + q.length;
+      continue;
+    }
 
     // Replace the question with a declarative next-step suggestion
     const declarative = q.replace(/\?$/, "").trim();
     const replacement = `Consider: ${declarative}.`;
-    result = result.replace(q, replacement);
+    result = result.slice(0, idx) + replacement + result.slice(idx + q.length);
     questionsRemoved++;
+    searchStart = idx + replacement.length;
   }
 
   return { fullText: result, questionsRemoved };
@@ -143,10 +160,10 @@ function isAlreadyStructured(text: string): boolean {
  * Split text into sentences using common punctuation boundaries.
  */
 function splitSentences(text: string): string[] {
-  // Split on whitespace that follows a sentence-ending punctuation mark.
+  // Split on sentence-ending punctuation followed by whitespace or end-of-string.
   // Using a simple replace+split pattern to avoid lookbehind for compatibility.
   return text
-    .replace(/([.!?])\s+/g, "$1\x00")
+    .replace(/([.!?])(?:\s+|$)/g, "$1\x00")
     .split("\x00")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -165,7 +182,9 @@ export function shapeAssistantResponse({
   assistantText,
 }: {
   assistantText: string;
+  // Reserved for future intent-specific shaping logic (MVP does not use these yet).
   intentType?: IntentType;
+  // Reserved for future conversation-aware shaping (e.g., threading, summaries).
   conversationHistory?: Array<{ role: string; content: string }>;
 }): ShapedResponse {
   const trimmed = assistantText.trim();

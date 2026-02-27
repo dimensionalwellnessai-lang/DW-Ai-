@@ -962,7 +962,7 @@ export function AIWorkspace() {
                 streamedResponse = postProcessAssistantMessage({
                   assistantText: streamedResponse,
                   userMessage: message,
-                  conversationHistory: messages,
+                  conversationHistory: currentMessages,
                 }).text;
                 // Final update with complete response
                 // Only update if this conversation is still active
