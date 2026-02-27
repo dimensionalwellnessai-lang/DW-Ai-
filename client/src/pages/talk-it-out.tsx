@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
 import { PageHeader } from "@/components/page-header";
@@ -72,7 +73,14 @@ export function TalkItOutPage() {
       return response.json();
     },
     onSuccess: (data) => {
-      setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      // Post-process the assistant response (flag-gated, fail-safe)
+      const lastUserMsg = messages.findLast((m) => m.role === "user");
+      const processed = postProcessAssistantMessage({
+        assistantText: data.response,
+        userMessage: lastUserMsg?.content,
+        conversationHistory: messages,
+      });
+      setMessages((prev) => [...prev, { role: "assistant", content: processed.text }]);
       setIsTyping(false);
     },
     onError: () => {

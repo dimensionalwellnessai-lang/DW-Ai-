@@ -8,6 +8,7 @@ import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { MessageActions } from "@/components/message-actions";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -957,6 +958,12 @@ export function AIWorkspace() {
             if (line.startsWith("data: ")) {
               const data = line.slice(6);
               if (data === "[DONE]") {
+                // Post-process the completed response (flag-gated, fail-safe)
+                streamedResponse = postProcessAssistantMessage({
+                  assistantText: streamedResponse,
+                  userMessage: message,
+                  conversationHistory: messages,
+                }).text;
                 // Final update with complete response
                 // Only update if this conversation is still active
                 if (isUserAuthenticated && activeStreamConversationId.current === conversationId) {
