@@ -14,6 +14,7 @@ export interface FeatureFlags {
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
+  SAVED_MOMENTS: boolean;           // ⏸️ Save moments from chat to user-owned categories
 }
 
 /**
@@ -31,6 +32,21 @@ function resolveInteractionEngineFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the SAVED_MOMENTS feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_saved_moments', 'true')  — persists across sessions
+ *   ?sm=1 query param                                  — one-time, per URL
+ */
+function resolveSavedMomentsFlag(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  if (localStorage.getItem("dw_saved_moments") === "true") return true;
+  if (typeof location !== "undefined") {
+    return new URLSearchParams(location.search).get("sm") === "1";
+  }
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -40,6 +56,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   HOME_CONSOLIDATION: true,
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
+  SAVED_MOMENTS: resolveSavedMomentsFlag(),
 };
 
 /**

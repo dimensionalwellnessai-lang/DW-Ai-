@@ -90,6 +90,9 @@ import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
+import SavedMomentsPage from "@/pages/saved-moments";
+import SavedCategoryPage from "@/pages/saved-category";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 function isReturningUser(): boolean {
   try {
@@ -248,6 +251,9 @@ function Router() {
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
       {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
+      {isFeatureEnabled("SAVED_MOMENTS") && <Route path="/saved" component={SavedMomentsPage} />}
+      {isFeatureEnabled("SAVED_MOMENTS") && <Route path="/saved/:categoryId" component={SavedCategoryPage} />}
+
       <Route path="/dev/routes" component={DevRoutesPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
       <Route path="/support/report" component={SupportReportPage} />

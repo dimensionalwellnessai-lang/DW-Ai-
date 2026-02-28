@@ -771,6 +771,29 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
 
   {
+    id: "saved-moments",
+    path: "/saved",
+    label: "My Library",
+    navLabel: "Library",
+    icon: "bookmark",
+    type: "page",
+    description: "Saved moments from your conversations, organised by category",
+    showInMenu: false,
+    enabled: true,
+  },
+  {
+    id: "saved-category",
+    path: "/saved/:categoryId",
+    label: "Saved Category",
+    icon: "bookmark",
+    type: "page",
+    description: "Moments saved in a specific category",
+    showInMenu: false,
+    guard: { requiredData: ["categoryId"], fallbackTo: "/saved" },
+    enabled: true,
+  },
+
+  {
     id: "not-found",
     path: "/404",
     label: "Not Found",

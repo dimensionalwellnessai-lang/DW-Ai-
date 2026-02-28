@@ -25,8 +25,11 @@ import {
   Sprout,
   MessageCircle,
   Palette,
+  Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { getCategories, getMomentsByCategory } from "@/lib/saved-moments-storage";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
 
@@ -474,6 +477,62 @@ export default function LifeCommandCenter() {
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-1">Swipe to see more insights →</p>
           </motion.div>
+
+          {/* ── My Library (Saved Moments categories) ────────────────── */}
+          {isFeatureEnabled("SAVED_MOMENTS") && (() => {
+            const savedCategories = getCategories().map((cat) => ({
+              ...cat,
+              count: getMomentsByCategory(cat.id).length,
+            }));
+            return (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Bookmark className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">My Library</span>
+                  </div>
+                  <button
+                    onClick={() => navigate("/saved")}
+                    className="text-xs text-primary hover:underline underline-offset-2"
+                    aria-label="Manage categories"
+                  >
+                    Manage
+                  </button>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {savedCategories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => navigate(`/saved/${cat.id}`)}
+                      aria-label={`${cat.name}: ${cat.count} saved moments`}
+                      className="flex-shrink-0 w-36 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+                    >
+                      <Card className="h-full hover:border-primary/30 transition-colors">
+                        <CardContent className="p-3 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <Bookmark className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-semibold line-clamp-1">{cat.name}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{cat.count} saved</p>
+                        </CardContent>
+                      </Card>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => navigate("/saved")}
+                    aria-label="View all saved categories"
+                    className="flex-shrink-0 w-36 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+                  >
+                    <Card className="h-full border-dashed hover:border-primary/30 transition-colors">
+                      <CardContent className="p-3 flex items-center justify-center h-full min-h-[56px]">
+                        <span className="text-xs text-muted-foreground">View all →</span>
+                      </CardContent>
+                    </Card>
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })()}
 
           {/* ── DW Briefing snapshot ──────────────────────────────────── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>

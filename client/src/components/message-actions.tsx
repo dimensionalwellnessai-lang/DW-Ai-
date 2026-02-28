@@ -43,6 +43,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ttsService } from "@/lib/tts-service";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { SaveMomentModal, type SaveMomentPayload } from "@/components/save-moment-modal";
 
 export type LifeSystemItemType = "goal" | "habit" | "schedule";
 
@@ -72,6 +74,12 @@ interface MessageActionsProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   showTrigger?: boolean;
+  /** For Save to Category: the paired user message (when this is an assistant message) */
+  pairedUserMessage?: string;
+  /** Conversation ID for the source reference */
+  conversationId?: string;
+  /** "Talk" | "Chat" */
+  sourceLabel?: string;
 }
 
 export function MessageActions({
@@ -88,6 +96,9 @@ export function MessageActions({
   isOpen: controlledOpen,
   onOpenChange,
   showTrigger = true,
+  pairedUserMessage,
+  conversationId,
+  sourceLabel,
 }: MessageActionsProps) {
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -96,12 +107,40 @@ export function MessageActions({
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [saveMomentOpen, setSaveMomentOpen] = useState(false);
+  const [saveMomentPayload, setSaveMomentPayload] = useState<SaveMomentPayload | null>(null);
   
   const isControlled = controlledOpen !== undefined;
   const menuOpen = isControlled ? controlledOpen : internalOpen;
   const setMenuOpen = (open: boolean) => {
     if (onOpenChange) onOpenChange(open);
     if (!isControlled) setInternalOpen(open);
+  };
+
+  const savedMomentsEnabled = isFeatureEnabled("SAVED_MOMENTS");
+
+  const handleSaveToCategory = () => {
+    setSaveMomentPayload({
+      text: messageContent,
+      kind: "single_message",
+      role: isUserMessage ? "user" : "assistant",
+      conversationId,
+      messageIndex,
+      sourceLabel,
+    });
+    setSaveMomentOpen(true);
+  };
+
+  const handleSaveExchange = () => {
+    setSaveMomentPayload({
+      text: pairedUserMessage ?? messageContent,
+      assistantText: isUserMessage ? undefined : messageContent,
+      kind: "exchange",
+      conversationId,
+      messageIndex,
+      sourceLabel,
+    });
+    setSaveMomentOpen(true);
   };
 
   const handleReadAloud = () => {
@@ -338,6 +377,15 @@ Can you tell me more about this?`);
                   Resend
                 </DropdownMenuItem>
               )}
+              {savedMomentsEnabled && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSaveToCategory} data-testid={`action-save-moment-${messageIndex}`}>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save to Category
+                  </DropdownMenuItem>
+                </>
+              )}
               {onDelete && (
                 <>
                   <DropdownMenuSeparator />
@@ -385,6 +433,20 @@ Can you tell me more about this?`);
                 )}
                 Save to Life System
               </DropdownMenuItem>
+              {savedMomentsEnabled && (
+                <>
+                  <DropdownMenuItem onClick={handleSaveToCategory} data-testid={`action-save-moment-${messageIndex}`}>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Save to Category
+                  </DropdownMenuItem>
+                  {pairedUserMessage && (
+                    <DropdownMenuItem onClick={handleSaveExchange} data-testid={`action-save-exchange-${messageIndex}`}>
+                      <Bookmark className="h-4 w-4 mr-2" />
+                      Save exchange
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
               {onAskFollowUp && (
                 <DropdownMenuItem onClick={handleAskFollowUp} data-testid={`action-followup-${messageIndex}`}>
                   <MessageSquarePlus className="h-4 w-4 mr-2" />
@@ -470,6 +532,12 @@ Can you tell me more about this?`);
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SaveMomentModal
+        open={saveMomentOpen}
+        onOpenChange={setSaveMomentOpen}
+        payload={saveMomentPayload}
+      />
     </>
   );
 }

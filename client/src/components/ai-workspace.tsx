@@ -210,6 +210,17 @@ export function AIWorkspace() {
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState(() => {
+    // Handle "Continue with DW" from a saved moment
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const savedMoment = params.get("savedMoment");
+      if (savedMoment) {
+        // Clean the param from the URL without a page reload
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, "", cleanUrl);
+        return decodeURIComponent(savedMoment);
+      }
+    }
     // Seed input from onboarding intent (do NOT remove here; welcome-message effect cleans it up)
     const intent = localStorage.getItem("dw_first_intent");
     if (intent) {
