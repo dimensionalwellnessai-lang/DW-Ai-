@@ -13,6 +13,22 @@ export interface FeatureFlags {
   LIFE_BLUEPRINT: boolean;          // ⏸️ Wait for PR #3
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
+  INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
+}
+
+/**
+ * Resolves the initial value for the INTERACTION_ENGINE feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_interaction_engine', 'true')  — persists across sessions
+ *   ?ie=1 query param                                       — one-time, per URL
+ */
+function resolveInteractionEngineFlag(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  if (localStorage.getItem("dw_interaction_engine") === "true") return true;
+  if (typeof location !== "undefined") {
+    return new URLSearchParams(location.search).get("ie") === "1";
+  }
+  return false;
 }
 
 export const FEATURE_FLAGS: FeatureFlags = {
@@ -23,6 +39,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   LIFE_BLUEPRINT: false,
   HOME_CONSOLIDATION: true,
   APP_TOUR: true,
+  INTERACTION_ENGINE: resolveInteractionEngineFlag(),
 };
 
 /**
