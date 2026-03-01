@@ -799,13 +799,17 @@ export function AIWorkspace() {
     return () => clearTimeout(timer);
   }, [input]);
 
-  // Prefill input from insight card "Continue with DW" (?insight=<title>)
+  // Prefill input from insight card "Continue with DW" (?insight=<title>&insightSummary=<summary>)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const insightTitle = params.get("insight");
     if (insightTitle) {
-      setInput(`Continue from this insight: ${decodeURIComponent(insightTitle)}`);
+      const insightSummary = params.get("insightSummary");
+      const context = insightSummary
+        ? `Continue from this insight — "${insightTitle}": ${insightSummary}`
+        : `Continue from this insight: ${insightTitle}`;
+      setInput(context);
       window.history.replaceState({}, "", "/chat");
     }
   }, []);

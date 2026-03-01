@@ -92,7 +92,7 @@ export function TalkItOutPage() {
               saveInsight(buildInsight({
                 userText: variables,
                 assistantText: processed.text,
-                source: { surface: "talk", messageTimestamp: Date.now(), messageIndex: prev.length + 1 },
+                source: { surface: "talk", messageTimestamp: Date.now(), messageIndex: prev.length },
               }));
             }
           } catch {

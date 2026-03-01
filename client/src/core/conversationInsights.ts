@@ -111,9 +111,10 @@ export function buildInsight({
     .replace(/\n+/g, " ")
     .trim();
 
-  // Split into sentences on common punctuation boundaries
+  // Split into sentences on common punctuation boundaries (no lookbehind for wider WebView support)
   const sentences = cleanedText
-    .split(/(?<=[.!?])\s+/)
+    .replace(/([.!?])\s+/g, "$1|")
+    .split("|")
     .map((s) => s.trim())
     .filter(Boolean);
 

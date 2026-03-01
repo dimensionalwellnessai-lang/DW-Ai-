@@ -39,10 +39,14 @@ function resolveInteractionEngineFlag(): boolean {
  *   ?ci=1 query param                                                  — one-time, per URL
  */
 function resolveConversationInsightsFlag(): boolean {
-  if (typeof localStorage === "undefined") return false;
-  if (localStorage.getItem("dw_conversation_insights_enabled") === "true") return true;
-  if (typeof location !== "undefined") {
-    return new URLSearchParams(location.search).get("ci") === "1";
+  try {
+    if (typeof localStorage === "undefined") return false;
+    if (localStorage.getItem("dw_conversation_insights_enabled") === "true") return true;
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ci") === "1";
+    }
+  } catch {
+    // Blocked storage or restricted environment – fail safely
   }
   return false;
 }
