@@ -4,6 +4,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
+import { shouldCaptureInsight, buildInsight, saveInsight } from "@/core/conversationInsights";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
 import { PageHeader } from "@/components/page-header";
@@ -83,6 +85,20 @@ export function TalkItOutPage() {
           userMessage: variables,
           conversationHistory: prev,
         });
+        // Capture conversation insight if the flag is on and exchange is high-signal
+        if (isFeatureEnabled("CONVERSATION_INSIGHTS") && data.response) {
+          try {
+            if (shouldCaptureInsight({ userText: variables, assistantText: processed.text })) {
+              saveInsight(buildInsight({
+                userText: variables,
+                assistantText: processed.text,
+                source: { surface: "talk", messageTimestamp: Date.now(), messageIndex: prev.length + 1 },
+              }));
+            }
+          } catch {
+            // Insight capture is non-critical – swallow any error
+          }
+        }
         return [...prev, { role: "assistant", content: processed.text }];
       });
       setIsTyping(false);

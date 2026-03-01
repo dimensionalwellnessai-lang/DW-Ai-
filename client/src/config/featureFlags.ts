@@ -14,6 +14,7 @@ export interface FeatureFlags {
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
+  CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
 }
 
 /**
@@ -31,6 +32,21 @@ function resolveInteractionEngineFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the CONVERSATION_INSIGHTS feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_conversation_insights_enabled', 'true')  — persists across sessions
+ *   ?ci=1 query param                                                  — one-time, per URL
+ */
+function resolveConversationInsightsFlag(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  if (localStorage.getItem("dw_conversation_insights_enabled") === "true") return true;
+  if (typeof location !== "undefined") {
+    return new URLSearchParams(location.search).get("ci") === "1";
+  }
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -40,6 +56,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   HOME_CONSOLIDATION: true,
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
+  CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
 };
 
 /**
