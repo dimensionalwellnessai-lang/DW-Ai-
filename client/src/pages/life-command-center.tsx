@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,9 +25,21 @@ import {
   Sprout,
   MessageCircle,
   Palette,
+  Pin,
+  PinOff,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getInsights, type Insight } from "@/core/conversationInsights";
+import {
+  getInsights,
+  pinInsight,
+  unpinInsight,
+  deleteInsight,
+  getInsightFrequency,
+  setInsightFrequency,
+  type Insight,
+  type InsightFrequency,
+} from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
@@ -110,6 +122,68 @@ function getTimeBasedGreeting(name?: string): string {
   const tod = getTimeOfDay();
   const prefix = `Good ${tod}`;
   return name ? `${prefix}, ${name}` : prefix;
+}
+
+// ─── DwInsightCard ────────────────────────────────────────────────────────────
+
+interface DwInsightCardProps {
+  insight: Insight;
+  onNavigate: () => void;
+  onPin: () => void;
+  onDelete: () => void;
+}
+
+function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardProps) {
+  return (
+    <div className="flex-shrink-0 w-52 snap-start relative group">
+      <button
+        onClick={() => {
+          try {
+            if (typeof window !== "undefined" && window.sessionStorage) {
+              window.sessionStorage.setItem(`dwInsight:${insight.id}`, JSON.stringify(insight));
+            }
+          } catch {
+            // sessionStorage unavailable – fail silently
+          }
+          onNavigate();
+        }}
+        aria-label={`DW insight: ${insight.title}`}
+        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+      >
+        <Card className={cn("h-full border-primary/20 bg-primary/5 hover:border-primary/40 transition-colors", insight.pinned && "border-amber-400/40 bg-amber-50/5")}>
+          <CardContent className="p-3 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <div className="p-1 rounded bg-primary/10">
+                <MessageCircle className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground truncate">{insight.category}</span>
+              {insight.pinned && <Pin className="h-3 w-3 text-amber-500 ml-auto flex-shrink-0" />}
+            </div>
+            <p className="text-xs font-medium leading-snug line-clamp-2">{insight.title}</p>
+            <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
+            <p className="text-[10px] font-semibold text-primary mt-1">Continue with DW →</p>
+          </CardContent>
+        </Card>
+      </button>
+      {/* Action buttons – visible on hover/focus-within */}
+      <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => { e.stopPropagation(); onPin(); }}
+          aria-label={insight.pinned ? "Unpin insight" : "Pin insight"}
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          {insight.pinned ? <PinOff className="h-3 w-3 text-amber-500" /> : <Pin className="h-3 w-3 text-muted-foreground" />}
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          aria-label="Delete insight"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+        >
+          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Page component ───────────────────────────────────────────────────────────
@@ -257,7 +331,38 @@ export default function LifeCommandCenter() {
   ];
 
   // DW-generated insight cards (feature-flagged)
-  const dwInsights: Insight[] = isFeatureEnabled("CONVERSATION_INSIGHTS") ? getInsights().slice(0, 5) : [];
+  const [dwInsightsRaw, setDwInsightsRaw] = useState<Insight[]>(() =>
+    isFeatureEnabled("CONVERSATION_INSIGHTS") ? getInsights() : []
+  );
+  const [insightFrequency, setInsightFrequencyState] = useState<InsightFrequency>(() => getInsightFrequency());
+
+  const refreshInsights = useCallback(() => {
+    if (isFeatureEnabled("CONVERSATION_INSIGHTS")) {
+      setDwInsightsRaw(getInsights());
+    }
+  }, []);
+
+  const handlePinInsight = useCallback((id: string, currentlyPinned: boolean) => {
+    if (currentlyPinned) unpinInsight(id); else pinInsight(id);
+    refreshInsights();
+  }, [refreshInsights]);
+
+  const handleDeleteInsight = useCallback((id: string) => {
+    deleteInsight(id);
+    refreshInsights();
+  }, [refreshInsights]);
+
+  const handleFrequencyChange = useCallback((freq: InsightFrequency) => {
+    setInsightFrequency(freq);
+    setInsightFrequencyState(freq);
+  }, []);
+
+  const pinnedInsights = dwInsightsRaw
+    .filter((i) => i.pinned)
+    .sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0));
+  const recentInsights = dwInsightsRaw
+    .filter((i) => !i.pinned)
+    .slice(0, 5);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -447,15 +552,65 @@ export default function LifeCommandCenter() {
 
           {/* ── Insights carousel ─────────────────────────────────────── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Star className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Insights</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Insights</span>
+              </div>
+              {isFeatureEnabled("CONVERSATION_INSIGHTS") && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span>Capture:</span>
+                  <button
+                    onClick={() => handleFrequencyChange("rare")}
+                    aria-label="Set capture frequency to rare"
+                    className={cn(
+                      "px-1.5 py-0.5 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                      insightFrequency === "rare" ? "bg-primary/15 text-primary font-semibold" : "hover:bg-muted"
+                    )}
+                  >
+                    Rare
+                  </button>
+                  <button
+                    onClick={() => handleFrequencyChange("normal")}
+                    aria-label="Set capture frequency to normal"
+                    className={cn(
+                      "px-1.5 py-0.5 rounded transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                      insightFrequency === "normal" ? "bg-primary/15 text-primary font-semibold" : "hover:bg-muted"
+                    )}
+                  >
+                    Normal
+                  </button>
+                </div>
+              )}
             </div>
             <div
               ref={insightsScrollRef}
               className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
               aria-label="Insights carousel"
             >
+              {/* Pinned DW insights group */}
+              {pinnedInsights.length > 0 && (
+                <>
+                  <div className="flex-shrink-0 flex items-center self-center">
+                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-500 whitespace-nowrap">
+                      <Pin className="h-3 w-3" aria-hidden />
+                      Pinned
+                    </span>
+                  </div>
+                  {pinnedInsights.map((insight) => (
+                    <DwInsightCard
+                      key={insight.id}
+                      insight={insight}
+                      onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                      onPin={() => handlePinInsight(insight.id, true)}
+                      onDelete={() => handleDeleteInsight(insight.id)}
+                    />
+                  ))}
+                  <div className="flex-shrink-0 w-px self-stretch bg-border/50 mx-1" aria-hidden />
+                </>
+              )}
+
+              {/* Static insight tiles */}
               {insightItems.map((item) => (
                 <button
                   key={item.id}
@@ -476,39 +631,16 @@ export default function LifeCommandCenter() {
                   </Card>
                 </button>
               ))}
-              {dwInsights.map((insight) => (
-                <button
+
+              {/* Recent (unpinned) DW insights */}
+              {recentInsights.map((insight) => (
+                <DwInsightCard
                   key={insight.id}
-                  onClick={() => {
-                    try {
-                      if (typeof window !== "undefined" && window.sessionStorage) {
-                        window.sessionStorage.setItem(
-                          `dwInsight:${insight.id}`,
-                          JSON.stringify(insight),
-                        );
-                      }
-                    } catch {
-                      // sessionStorage unavailable (e.g., privacy mode) – fail silently
-                    }
-                    navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`);
-                  }}
-                  aria-label={`DW insight: ${insight.title}`}
-                  className="flex-shrink-0 w-52 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
-                >
-                  <Card className="h-full border-primary/20 bg-primary/5 hover:border-primary/40 transition-colors">
-                    <CardContent className="p-3 space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="p-1 rounded bg-primary/10">
-                          <MessageCircle className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{insight.category}</span>
-                      </div>
-                      <p className="text-xs font-medium leading-snug line-clamp-2">{insight.title}</p>
-                      <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
-                      <p className="text-[10px] font-semibold text-primary mt-1">Continue with DW →</p>
-                    </CardContent>
-                  </Card>
-                </button>
+                  insight={insight}
+                  onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                  onPin={() => handlePinInsight(insight.id, false)}
+                  onDelete={() => handleDeleteInsight(insight.id)}
+                />
               ))}
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-1">Swipe to see more insights →</p>

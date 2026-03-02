@@ -29,13 +29,17 @@ export interface Insight {
   category: IntentType;
   title: string;
   summary: string;
+  pinned?: boolean;
+  pinnedAt?: number;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "dw_conversation_insights";
+const FREQUENCY_KEY = "dw_conversation_insights_frequency";
 const MAX_INSIGHTS = 50;
 const MIN_WORD_COUNT = 20;
+const MIN_WORD_COUNT_NORMAL = 12;
 
 // Trivial exchanges to skip (short / acknowledgement-only user messages)
 const TRIVIAL_USER_RE =
@@ -67,11 +71,14 @@ export function shouldCaptureInsight({
   userText: string;
   assistantText: string;
 }): boolean {
+  const frequency = getInsightFrequency();
+  const minWords = frequency === "normal" ? MIN_WORD_COUNT_NORMAL : MIN_WORD_COUNT;
+
   const userWords = userText.trim() ? userText.trim().split(/\s+/).length : 0;
   const assistantWords = assistantText.trim() ? assistantText.trim().split(/\s+/).length : 0;
 
   // Skip if either side is too short
-  if (userWords < MIN_WORD_COUNT || assistantWords < MIN_WORD_COUNT) return false;
+  if (userWords < minWords || assistantWords < minWords) return false;
 
   // Skip trivial user messages
   if (TRIVIAL_USER_RE.test(userText.trim())) return false;
@@ -170,5 +177,90 @@ export function getInsights(): Insight[] {
     return parsed as Insight[];
   } catch {
     return [];
+  }
+}
+
+// ─── updateInsight ────────────────────────────────────────────────────────────
+
+/**
+ * Applies a partial patch to an existing insight and persists it.
+ * Silently does nothing if the insight is not found or storage is unavailable.
+ */
+export function updateInsight(id: string, patch: Partial<Insight>): void {
+  try {
+    const insights = getInsights();
+    const idx = insights.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+    insights[idx] = { ...insights[idx], ...patch };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
+  } catch {
+    // Quota exceeded or SSR – fail silently
+  }
+}
+
+// ─── pinInsight ───────────────────────────────────────────────────────────────
+
+/** Marks an insight as pinned (idempotent). */
+export function pinInsight(id: string): void {
+  updateInsight(id, { pinned: true, pinnedAt: Date.now() });
+}
+
+// ─── unpinInsight ─────────────────────────────────────────────────────────────
+
+/** Removes the pin from an insight (idempotent). */
+export function unpinInsight(id: string): void {
+  try {
+    const insights = getInsights();
+    const idx = insights.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+    const { pinnedAt: _pinnedAt, pinned: _pinned, ...rest } = insights[idx];
+    insights[idx] = { ...rest, pinned: false };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
+  } catch {
+    // Quota exceeded or SSR – fail silently
+  }
+}
+
+// ─── deleteInsight ────────────────────────────────────────────────────────────
+
+/**
+ * Permanently removes an insight from storage.
+ * Silently does nothing if the insight is not found or storage is unavailable.
+ */
+export function deleteInsight(id: string): void {
+  try {
+    const insights = getInsights().filter((i) => i.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
+  } catch {
+    // Quota exceeded or SSR – fail silently
+  }
+}
+
+// ─── Frequency setting ────────────────────────────────────────────────────────
+
+export type InsightFrequency = "rare" | "normal";
+
+/**
+ * Returns the current insight capture frequency preference.
+ * Defaults to "rare".
+ */
+export function getInsightFrequency(): InsightFrequency {
+  try {
+    const val = localStorage.getItem(FREQUENCY_KEY);
+    if (val === "normal") return "normal";
+  } catch {
+    // storage unavailable
+  }
+  return "rare";
+}
+
+/**
+ * Persists the insight capture frequency preference.
+ */
+export function setInsightFrequency(frequency: InsightFrequency): void {
+  try {
+    localStorage.setItem(FREQUENCY_KEY, frequency);
+  } catch {
+    // storage unavailable – fail silently
   }
 }
