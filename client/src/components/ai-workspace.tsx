@@ -9,6 +9,8 @@ import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
+import { shouldCaptureInsight, buildInsight, saveInsight } from "@/core/conversationInsights";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import { MessageActions } from "@/components/message-actions";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -797,6 +799,30 @@ export function AIWorkspace() {
     return () => clearTimeout(timer);
   }, [input]);
 
+  // Prefill input from insight card "Continue with DW" (?insightId=<id>)
+  // Insight content is loaded from sessionStorage to avoid putting user content in the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const insightId = params.get("insightId");
+    if (insightId) {
+      try {
+        const stored = window.sessionStorage?.getItem(`dwInsight:${insightId}`);
+        if (stored) {
+          const insight = JSON.parse(stored) as { title?: string; summary?: string };
+          const context = insight.summary
+            ? `Continue from this insight — "${insight.title ?? ""}": ${insight.summary}`
+            : `Continue from this insight: ${insight.title ?? ""}`;
+          setInput(context);
+          window.sessionStorage.removeItem(`dwInsight:${insightId}`);
+        }
+      } catch {
+        // sessionStorage unavailable – skip prefill silently
+      }
+      window.history.replaceState({}, "", "/chat");
+    }
+  }, []);
+
   // Re-check message limit on every navigation (user may have upgraded on /paywall)
   useEffect(() => {
     setMessageLimitReached(!canSendMessage());
@@ -964,6 +990,24 @@ export function AIWorkspace() {
                   userMessage: message,
                   conversationHistory: currentMessages,
                 }).text;
+                // Capture conversation insight if the flag is on and exchange is high-signal
+                if (isFeatureEnabled("CONVERSATION_INSIGHTS") && streamedResponse) {
+                  try {
+                    if (shouldCaptureInsight({ userText: message, assistantText: streamedResponse })) {
+                      saveInsight(buildInsight({
+                        userText: message,
+                        assistantText: streamedResponse,
+                        source: {
+                          surface: "main",
+                          conversationId: conversationId ?? undefined,
+                          messageTimestamp: Date.now(),
+                        },
+                      }));
+                    }
+                  } catch {
+                    // Insight capture is non-critical – swallow any error
+                  }
+                }
                 // Final update with complete response
                 // Only update if this conversation is still active
                 if (isUserAuthenticated && activeStreamConversationId.current === conversationId) {

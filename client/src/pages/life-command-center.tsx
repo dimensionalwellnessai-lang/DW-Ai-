@@ -27,6 +27,8 @@ import {
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getInsights, type Insight } from "@/core/conversationInsights";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
 
@@ -254,6 +256,9 @@ export default function LifeCommandCenter() {
     { id: "cosmic", label: "Cosmic", icon: Star,     color: "text-amber-500",  bg: "bg-amber-500/10",  text: hasBirthData ? "Your chart holds subtle clues for today." : "Set up your cosmic profile for personalized guidance.",    href: "/cosmic"   },
   ];
 
+  // DW-generated insight cards (feature-flagged)
+  const dwInsights: Insight[] = isFeatureEnabled("CONVERSATION_INSIGHTS") ? getInsights().slice(0, 5) : [];
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Home" showBack={false} />
@@ -467,6 +472,40 @@ export default function LifeCommandCenter() {
                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</span>
                       </div>
                       <p className="text-xs leading-relaxed line-clamp-3">{item.text}</p>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
+              {dwInsights.map((insight) => (
+                <button
+                  key={insight.id}
+                  onClick={() => {
+                    try {
+                      if (typeof window !== "undefined" && window.sessionStorage) {
+                        window.sessionStorage.setItem(
+                          `dwInsight:${insight.id}`,
+                          JSON.stringify(insight),
+                        );
+                      }
+                    } catch {
+                      // sessionStorage unavailable (e.g., privacy mode) – fail silently
+                    }
+                    navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`);
+                  }}
+                  aria-label={`DW insight: ${insight.title}`}
+                  className="flex-shrink-0 w-52 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
+                >
+                  <Card className="h-full border-primary/20 bg-primary/5 hover:border-primary/40 transition-colors">
+                    <CardContent className="p-3 space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="p-1 rounded bg-primary/10">
+                          <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{insight.category}</span>
+                      </div>
+                      <p className="text-xs font-medium leading-snug line-clamp-2">{insight.title}</p>
+                      <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
+                      <p className="text-[10px] font-semibold text-primary mt-1">Continue with DW →</p>
                     </CardContent>
                   </Card>
                 </button>
