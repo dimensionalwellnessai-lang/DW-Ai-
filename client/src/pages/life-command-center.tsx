@@ -479,7 +479,19 @@ export default function LifeCommandCenter() {
               {dwInsights.map((insight) => (
                 <button
                   key={insight.id}
-                  onClick={() => navigate(`/chat?insight=${encodeURIComponent(insight.title)}&insightSummary=${encodeURIComponent(insight.summary)}`)}
+                  onClick={() => {
+                    try {
+                      if (typeof window !== "undefined" && window.sessionStorage) {
+                        window.sessionStorage.setItem(
+                          `dwInsight:${insight.id}`,
+                          JSON.stringify(insight),
+                        );
+                      }
+                    } catch {
+                      // sessionStorage unavailable (e.g., privacy mode) – fail silently
+                    }
+                    navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`);
+                  }}
                   aria-label={`DW insight: ${insight.title}`}
                   className="flex-shrink-0 w-52 snap-start text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
                 >

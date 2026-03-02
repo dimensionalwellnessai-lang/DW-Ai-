@@ -799,17 +799,26 @@ export function AIWorkspace() {
     return () => clearTimeout(timer);
   }, [input]);
 
-  // Prefill input from insight card "Continue with DW" (?insight=<title>&insightSummary=<summary>)
+  // Prefill input from insight card "Continue with DW" (?insightId=<id>)
+  // Insight content is loaded from sessionStorage to avoid putting user content in the URL.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const insightTitle = params.get("insight");
-    if (insightTitle) {
-      const insightSummary = params.get("insightSummary");
-      const context = insightSummary
-        ? `Continue from this insight — "${insightTitle}": ${insightSummary}`
-        : `Continue from this insight: ${insightTitle}`;
-      setInput(context);
+    const insightId = params.get("insightId");
+    if (insightId) {
+      try {
+        const stored = window.sessionStorage?.getItem(`dwInsight:${insightId}`);
+        if (stored) {
+          const insight = JSON.parse(stored) as { title?: string; summary?: string };
+          const context = insight.summary
+            ? `Continue from this insight — "${insight.title ?? ""}": ${insight.summary}`
+            : `Continue from this insight: ${insight.title ?? ""}`;
+          setInput(context);
+          window.sessionStorage.removeItem(`dwInsight:${insightId}`);
+        }
+      } catch {
+        // sessionStorage unavailable – skip prefill silently
+      }
       window.history.replaceState({}, "", "/chat");
     }
   }, []);

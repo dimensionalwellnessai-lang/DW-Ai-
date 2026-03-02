@@ -39,15 +39,24 @@ function resolveInteractionEngineFlag(): boolean {
  *   ?ci=1 query param                                                  — one-time, per URL
  */
 function resolveConversationInsightsFlag(): boolean {
+  // Check persisted flag first (localStorage may throw in blocked-storage environments)
   try {
-    if (typeof localStorage === "undefined") return false;
-    if (localStorage.getItem("dw_conversation_insights_enabled") === "true") return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_conversation_insights_enabled") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  // Always attempt the URL param check as a fallback
+  try {
     if (typeof location !== "undefined") {
       return new URLSearchParams(location.search).get("ci") === "1";
     }
   } catch {
-    // Blocked storage or restricted environment – fail safely
+    // URL parsing failed – fail safely
   }
+
   return false;
 }
 

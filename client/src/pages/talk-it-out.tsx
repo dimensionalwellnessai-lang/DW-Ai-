@@ -76,31 +76,33 @@ export function TalkItOutPage() {
     },
     onSuccess: (data, variables) => {
       // Post-process the assistant response (flag-gated, fail-safe).
-      // Use the functional updater so `prev` includes the user message
-      // just added by handleSend, and `variables` is the exact message
-      // string that was passed to chatMutation.mutate().
+      // Capture the processed result in a local variable so insight capture
+      // (a side-effect) can be performed outside the pure state updater,
+      // avoiding duplicate writes in React StrictMode / concurrent rendering.
+      let capturedText = data.response ?? "";
       setMessages((prev) => {
-        const processed = postProcessAssistantMessage({
+        const processedWithHistory = postProcessAssistantMessage({
           assistantText: data.response,
           userMessage: variables,
           conversationHistory: prev,
         });
-        // Capture conversation insight if the flag is on and exchange is high-signal
-        if (isFeatureEnabled("CONVERSATION_INSIGHTS") && data.response) {
-          try {
-            if (shouldCaptureInsight({ userText: variables, assistantText: processed.text })) {
-              saveInsight(buildInsight({
-                userText: variables,
-                assistantText: processed.text,
-                source: { surface: "talk", messageTimestamp: Date.now(), messageIndex: prev.length },
-              }));
-            }
-          } catch {
-            // Insight capture is non-critical – swallow any error
-          }
-        }
-        return [...prev, { role: "assistant", content: processed.text }];
+        capturedText = processedWithHistory.text;
+        return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
+      // Capture conversation insight outside the updater (side-effect safe)
+      if (isFeatureEnabled("CONVERSATION_INSIGHTS") && data.response) {
+        try {
+          if (shouldCaptureInsight({ userText: variables, assistantText: capturedText })) {
+            saveInsight(buildInsight({
+              userText: variables,
+              assistantText: capturedText,
+              source: { surface: "talk", messageTimestamp: Date.now() },
+            }));
+          }
+        } catch {
+          // Insight capture is non-critical – swallow any error
+        }
+      }
       setIsTyping(false);
     },
     onError: () => {

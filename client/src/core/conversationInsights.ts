@@ -67,8 +67,8 @@ export function shouldCaptureInsight({
   userText: string;
   assistantText: string;
 }): boolean {
-  const userWords = userText.trim().split(/\s+/).length;
-  const assistantWords = assistantText.trim().split(/\s+/).length;
+  const userWords = userText.trim() ? userText.trim().split(/\s+/).length : 0;
+  const assistantWords = assistantText.trim() ? assistantText.trim().split(/\s+/).length : 0;
 
   // Skip if either side is too short
   if (userWords < MIN_WORD_COUNT || assistantWords < MIN_WORD_COUNT) return false;
@@ -122,8 +122,9 @@ export function buildInsight({
   const rawTitle = sentences[0] ?? "Insight";
   const title = rawTitle.length > 72 ? rawTitle.slice(0, 69) + "…" : rawTitle;
 
-  // Summary: first 2 sentences joined
-  const summary = sentences.slice(0, 2).join(" ");
+  // Summary: first 2 sentences joined, hard-capped at 300 chars to avoid localStorage bloat
+  const rawSummary = sentences.slice(0, 2).join(" ");
+  const summary = rawSummary.length > 300 ? rawSummary.slice(0, 297) + "…" : rawSummary;
 
   return {
     id: typeof crypto !== "undefined" && crypto.randomUUID ? `ins_${crypto.randomUUID()}` : `ins_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
