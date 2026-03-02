@@ -229,7 +229,23 @@ export function unpinInsight(id: string): void {
  */
 export function deleteInsight(id: string): void {
   try {
-    const insights = getInsights().filter((i) => i.id !== id);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw == null) return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Malformed JSON – treat as no-op to avoid overwriting potentially recoverable data
+      return;
+    }
+
+    if (!Array.isArray(parsed)) {
+      // Non-array data – treat as no-op
+      return;
+    }
+
+    const insights = (parsed as Insight[]).filter((i) => i && i.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
   } catch {
     // Quota exceeded or SSR – fail silently
