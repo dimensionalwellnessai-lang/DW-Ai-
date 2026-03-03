@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
@@ -42,6 +43,7 @@ Start by simply being present and inviting them to share.`;
 
 export function TalkItOutPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: authData } = useQuery<{ user: any } | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
@@ -57,12 +59,46 @@ export function TalkItOutPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Jump-to-moment: handle ?jumpToMessageIndex param on first render
+  useEffect(() => {
+    let targetIndex: number | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("jumpToMessageIndex");
+      if (raw !== null) {
+        const parsed = parseInt(raw, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          targetIndex = parsed;
+        }
+      }
+    } catch {
+      // URL params unavailable or malformed – fail silently
+    }
+
+    if (targetIndex === null) return;
+
+    const idx = targetIndex;
+
+    // Remove query params from URL without adding to history
+    navigate("/talk", { replace: true });
+
+    // Wait for DOM to be ready, then scroll and highlight
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-testid="message-talk-${idx}"]`) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedIndex(idx);
+      setTimeout(() => setHighlightedIndex(null), 2000);
+    });
+  }, [navigate]); // navigate is stable (wouter hook ref), but included for correctness
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -80,6 +116,7 @@ export function TalkItOutPage() {
       // (a side-effect) can be performed outside the pure state updater,
       // avoiding duplicate writes in React StrictMode / concurrent rendering.
       let capturedText = data.response ?? "";
+      let capturedIndex = -1;
       setMessages((prev) => {
         const processedWithHistory = postProcessAssistantMessage({
           assistantText: data.response,
@@ -87,6 +124,7 @@ export function TalkItOutPage() {
           conversationHistory: prev,
         });
         capturedText = processedWithHistory.text;
+        capturedIndex = prev.length; // new assistant message will be at this index
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
       // Capture conversation insight outside the updater (side-effect safe)
@@ -96,7 +134,11 @@ export function TalkItOutPage() {
             saveInsight(buildInsight({
               userText: variables,
               assistantText: capturedText,
-              source: { surface: "talk", messageTimestamp: Date.now() },
+              source: {
+                surface: "talk",
+                messageTimestamp: Date.now(),
+                ...(capturedIndex >= 0 && { messageIndex: capturedIndex }),
+              },
             }));
           }
         } catch {
@@ -193,11 +235,11 @@ export function TalkItOutPage() {
           {messages.map((message, index) => (
             <article
               key={index}
-              className={`animate-fade-in-up ${
+              className={`animate-fade-in-up rounded-lg transition-colors duration-700 ${
                 message.role === "user" 
                   ? "border-l-4 border-primary/40 pl-4 py-2" 
                   : ""
-              }`}
+              } ${highlightedIndex === index ? "ring-2 ring-primary/40 bg-primary/5 px-2" : ""}`}
               data-testid={`message-talk-${index}`}
             >
               {message.role === "user" ? (

@@ -129,11 +129,12 @@ function getTimeBasedGreeting(name?: string): string {
 interface DwInsightCardProps {
   insight: Insight;
   onNavigate: () => void;
+  onJumpToMoment?: () => void;
   onPin: () => void;
   onDelete: () => void;
 }
 
-function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardProps) {
+function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }: DwInsightCardProps) {
   return (
     <div className="flex-shrink-0 w-52 snap-start relative group">
       <button
@@ -161,7 +162,18 @@ function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardPr
             </div>
             <p className="text-xs font-medium leading-snug line-clamp-2">{insight.title}</p>
             <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
-            <p className="text-[10px] font-semibold text-primary mt-1">Continue with DW →</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] font-semibold text-primary">Continue with DW →</p>
+              {insight.source?.messageIndex !== undefined && onJumpToMoment && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onJumpToMoment(); }}
+                  aria-label="Jump to conversation moment"
+                  className="text-[10px] font-semibold text-muted-foreground hover:text-primary underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+                >
+                  Jump to moment
+                </button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </button>
@@ -601,7 +613,13 @@ export default function LifeCommandCenter() {
                     <DwInsightCard
                       key={insight.id}
                       insight={insight}
-                      onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                      onNavigate={() => navigate("/talk")}
+                      onJumpToMoment={insight.source?.messageIndex !== undefined ? () => {
+                        const params = new URLSearchParams();
+                        params.set("jumpToMessageIndex", String(insight.source.messageIndex!));
+                        if (insight.source.conversationId) params.set("conversationId", insight.source.conversationId);
+                        navigate(`/talk?${params.toString()}`);
+                      } : undefined}
                       onPin={() => handlePinInsight(insight.id, true)}
                       onDelete={() => handleDeleteInsight(insight.id)}
                     />
@@ -637,7 +655,13 @@ export default function LifeCommandCenter() {
                 <DwInsightCard
                   key={insight.id}
                   insight={insight}
-                  onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                  onNavigate={() => navigate("/talk")}
+                  onJumpToMoment={insight.source?.messageIndex !== undefined ? () => {
+                    const params = new URLSearchParams();
+                    params.set("jumpToMessageIndex", String(insight.source.messageIndex!));
+                    if (insight.source.conversationId) params.set("conversationId", insight.source.conversationId);
+                    navigate(`/talk?${params.toString()}`);
+                  } : undefined}
                   onPin={() => handlePinInsight(insight.id, false)}
                   onDelete={() => handleDeleteInsight(insight.id)}
                 />
