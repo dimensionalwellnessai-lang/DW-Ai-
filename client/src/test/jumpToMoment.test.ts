@@ -7,9 +7,9 @@ function parseJumpToMessageIndex(search: string): number | null {
   try {
     const params = new URLSearchParams(search);
     const raw = params.get("jumpToMessageIndex");
-    if (raw !== null) {
-      const parsed = parseInt(raw, 10);
-      if (!isNaN(parsed) && parsed >= 0) {
+    if (raw !== null && /^\d+$/.test(raw)) {
+      const parsed = Number(raw);
+      if (Number.isSafeInteger(parsed) && parsed >= 0) {
         return parsed;
       }
     }
@@ -42,9 +42,9 @@ describe("parseJumpToMessageIndex", () => {
     expect(parseJumpToMessageIndex("?jumpToMessageIndex=")).toBeNull();
   });
 
-  it("returns the integer part of a float (parseInt truncates to valid integer)", () => {
-    // parseInt("3.7") === 3, which is valid
-    expect(parseJumpToMessageIndex("?jumpToMessageIndex=3.7")).toBe(3);
+  it("returns null for a float (strict integer validation rejects non-integer strings)", () => {
+    // "3.7" contains a dot so /^\d+$/ rejects it → null
+    expect(parseJumpToMessageIndex("?jumpToMessageIndex=3.7")).toBeNull();
   });
 
   it("ignores extra params and still reads jumpToMessageIndex", () => {

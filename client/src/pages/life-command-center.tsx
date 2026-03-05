@@ -165,13 +165,26 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }:
             <div className="flex items-center justify-between mt-1">
               <p className="text-[10px] font-semibold text-primary">Continue with DW →</p>
               {insight.source?.messageIndex !== undefined && onJumpToMoment && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onJumpToMoment(); }}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onJumpToMoment();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onJumpToMoment();
+                    }
+                  }}
                   aria-label="Jump to conversation moment"
                   className="text-[10px] font-semibold text-muted-foreground hover:text-primary underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
                 >
                   Jump to moment
-                </button>
+                </span>
               )}
             </div>
           </CardContent>
@@ -613,7 +626,7 @@ export default function LifeCommandCenter() {
                     <DwInsightCard
                       key={insight.id}
                       insight={insight}
-                      onNavigate={() => navigate("/talk")}
+                      onNavigate={() => navigate(`/talk?insightId=${encodeURIComponent(insight.id)}`)}
                       onJumpToMoment={insight.source?.messageIndex !== undefined ? () => {
                         const params = new URLSearchParams();
                         params.set("jumpToMessageIndex", String(insight.source.messageIndex!));
@@ -655,7 +668,7 @@ export default function LifeCommandCenter() {
                 <DwInsightCard
                   key={insight.id}
                   insight={insight}
-                  onNavigate={() => navigate("/talk")}
+                  onNavigate={() => navigate(`/talk?insightId=${encodeURIComponent(insight.id)}`)}
                   onJumpToMoment={insight.source?.messageIndex !== undefined ? () => {
                     const params = new URLSearchParams();
                     params.set("jumpToMessageIndex", String(insight.source.messageIndex!));

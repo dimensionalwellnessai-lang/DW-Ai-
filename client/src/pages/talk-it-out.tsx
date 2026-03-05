@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, saveInsight } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
@@ -67,15 +67,56 @@ export function TalkItOutPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Prefill input from insight card "Continue with DW" (?insightId=<id>)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const insightId = params.get("insightId");
+    if (!insightId) return;
+
+    let insight: { title?: string; summary?: string } | null = null;
+
+    // 1) Try sessionStorage
+    try {
+      const stored = window.sessionStorage?.getItem(`dwInsight:${insightId}`);
+      if (stored) {
+        insight = JSON.parse(stored) as { title?: string; summary?: string };
+        window.sessionStorage.removeItem(`dwInsight:${insightId}`);
+      }
+    } catch {
+      // sessionStorage unavailable – continue to fallback
+    }
+
+    // 2) Fallback: find by id in localStorage insights list
+    if (!insight) {
+      try {
+        const found = getInsights().find((i) => i.id === insightId);
+        if (found) insight = found;
+      } catch {
+        // localStorage unavailable – skip
+      }
+    }
+
+    if (insight) {
+      const context = insight.summary
+        ? `Continue from this insight — "${insight.title ?? ""}": ${insight.summary}`
+        : `Continue from this insight: ${insight.title ?? ""}`;
+      setInput(context);
+    }
+
+    // Always remove the query param after reading
+    navigate("/talk", { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Jump-to-moment: handle ?jumpToMessageIndex param on first render
   useEffect(() => {
     let targetIndex: number | null = null;
     try {
       const params = new URLSearchParams(window.location.search);
       const raw = params.get("jumpToMessageIndex");
-      if (raw !== null) {
-        const parsed = parseInt(raw, 10);
-        if (!isNaN(parsed) && parsed >= 0) {
+      if (raw !== null && /^\d+$/.test(raw)) {
+        const parsed = Number(raw);
+        if (Number.isSafeInteger(parsed) && parsed >= 0) {
           targetIndex = parsed;
         }
       }
@@ -91,13 +132,20 @@ export function TalkItOutPage() {
     navigate("/talk", { replace: true });
 
     // Wait for DOM to be ready, then scroll and highlight
-    requestAnimationFrame(() => {
+    let rafId: number;
+    let timerId: ReturnType<typeof setTimeout>;
+    rafId = requestAnimationFrame(() => {
       const el = document.querySelector(`[data-testid="message-talk-${idx}"]`) as HTMLElement | null;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightedIndex(idx);
-      setTimeout(() => setHighlightedIndex(null), 2000);
+      timerId = setTimeout(() => setHighlightedIndex(null), 2000);
     });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+    };
   }, [navigate]); // navigate is stable (wouter hook ref), but included for correctness
 
   const chatMutation = useMutation({
@@ -116,7 +164,9 @@ export function TalkItOutPage() {
       // (a side-effect) can be performed outside the pure state updater,
       // avoiding duplicate writes in React StrictMode / concurrent rendering.
       let capturedText = data.response ?? "";
-      let capturedIndex = -1;
+      // Compute the index the new message will occupy before calling setMessages,
+      // so it's reliably available for the insight capture side-effect.
+      const capturedIndex = messages.length;
       setMessages((prev) => {
         const processedWithHistory = postProcessAssistantMessage({
           assistantText: data.response,
@@ -124,7 +174,6 @@ export function TalkItOutPage() {
           conversationHistory: prev,
         });
         capturedText = processedWithHistory.text;
-        capturedIndex = prev.length; // new assistant message will be at this index
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
       // Capture conversation insight outside the updater (side-effect safe)
@@ -137,7 +186,7 @@ export function TalkItOutPage() {
               source: {
                 surface: "talk",
                 messageTimestamp: Date.now(),
-                ...(capturedIndex >= 0 && { messageIndex: capturedIndex }),
+                messageIndex: capturedIndex,
               },
             }));
           }
