@@ -164,32 +164,22 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }:
             <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
             <div className="flex items-center justify-between mt-1">
               <p className="text-[10px] font-semibold text-primary">Continue with DW →</p>
-              {insight.source?.messageIndex !== undefined && onJumpToMoment && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onJumpToMoment();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onJumpToMoment();
-                    }
-                  }}
-                  aria-label="Jump to conversation moment"
-                  className="text-[10px] font-semibold text-muted-foreground hover:text-primary underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
-                >
-                  Jump to moment
-                </span>
-              )}
             </div>
           </CardContent>
         </Card>
       </button>
+      {insight.source?.messageIndex !== undefined && onJumpToMoment && (
+        <button
+          type="button"
+          onClick={() => {
+            onJumpToMoment();
+          }}
+          aria-label="Jump to conversation moment"
+          className="mt-1 text-[10px] font-semibold text-muted-foreground hover:text-primary underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded self-start"
+        >
+          Jump to moment
+        </button>
+      )}
       {/* Action buttons – visible on hover/focus-within */}
       <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <button
