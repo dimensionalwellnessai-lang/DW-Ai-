@@ -1,24 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-// ─── parseJumpToMessageIndex ──────────────────────────────────────────────────
-// Mirrors the parsing logic used in TalkItOutPage's mount effect.
-
-function parseJumpToMessageIndex(search: string): number | null {
-  try {
-    const params = new URLSearchParams(search);
-    const raw = params.get("jumpToMessageIndex");
-    if (raw !== null && /^\d+$/.test(raw)) {
-      const parsed = Number(raw);
-      if (Number.isSafeInteger(parsed) && parsed >= 0) {
-        return parsed;
-      }
-    }
-  } catch {
-    // URL params unavailable or malformed – fail silently
-  }
-  return null;
-}
-
+import { parseJumpToMessageIndex } from "../pages/TalkItOutPage";
 describe("parseJumpToMessageIndex", () => {
   it("returns the index when a valid non-negative integer is provided", () => {
     expect(parseJumpToMessageIndex("?jumpToMessageIndex=5")).toBe(5);
