@@ -131,20 +131,47 @@ export function TalkItOutPage() {
     // Remove query params from URL without adding to history
     navigate("/talk", { replace: true });
 
-    // Wait for DOM to be ready, then scroll and highlight
-    let rafId: number;
-    let timerId: ReturnType<typeof setTimeout>;
-    rafId = requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-testid="message-talk-${idx}"]`) as HTMLElement | null;
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHighlightedIndex(idx);
-      timerId = setTimeout(() => setHighlightedIndex(null), 2000);
-    });
+    // Wait for the target message element to exist in the DOM, then scroll and highlight.
+    // This polling handles cases where messages are restored/rendered asynchronously.
+    const selector = `[data-testid="message-talk-${idx}"]`;
+    const maxAttempts = 30; // e.g., ~3 seconds at 100ms intervals
+    const intervalMs = 100;
+
+    let attempts = 0;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let highlightTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const tryScroll = () => {
+      attempts += 1;
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (el) {
+        // Found the element – stop polling and perform scroll/highlight
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedIndex(idx);
+        highlightTimeoutId = setTimeout(() => setHighlightedIndex(null), 2000);
+        return;
+      }
+
+      // Stop polling if we've exceeded the maximum attempts
+      if (attempts >= maxAttempts && intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+   intervalId = setInterval(tryScroll, intervalMs);
 
     return () => {
-      cancelAnimationFrame(rafId);
-      clearTimeout(timerId);
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+      }
+      if (highlightTimeoutId !== null) {
+        clearTimeout(highlightTimeoutId);
+      }
     };
   }, [navigate]); // navigate is stable (wouter hook ref), but included for correctness
 
