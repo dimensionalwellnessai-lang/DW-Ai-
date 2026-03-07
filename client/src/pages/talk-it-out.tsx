@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, saveInsight, getInsights, type InsightSource } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, type InsightSource } from "@/core/conversationInsights";
+import { useInsights } from "@/hooks/use-insights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
@@ -79,6 +80,7 @@ export function TalkItOutPage() {
     retry: false,
   });
   const isLoggedIn = !!(authData?.user);
+  const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // When arriving via jump-to-moment, restore prior conversation so the
@@ -122,12 +124,12 @@ export function TalkItOutPage() {
     pendingInsightRef.current = null;
     try {
       if (shouldCaptureInsight({ userText: pending.userText, assistantText: pending.assistantText })) {
-        saveInsight(buildInsight(pending));
+        captureInsight(buildInsight(pending));
       }
     } catch {
       // Insight capture is non-critical – swallow any error
     }
-  }, [messages]);
+  }, [messages, captureInsight]);
 
   // Prefill input from insight card "Continue with DW" (?insightId=<id>)
   useEffect(() => {
@@ -149,13 +151,13 @@ export function TalkItOutPage() {
       // sessionStorage unavailable – continue to fallback
     }
 
-    // 2) Fallback: find by id in localStorage insights list
+    // 2) Fallback: find by id in local or backend insights
     if (!insight) {
       try {
-        const found = getInsights().find((i) => i.id === insightId);
+        const found = insights.find((i) => i.id === insightId);
         if (found) insight = found;
       } catch {
-        // localStorage unavailable – skip
+        // unavailable – skip
       }
     }
 

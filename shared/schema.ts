@@ -2114,6 +2114,33 @@ export const insertNotificationPreferencesSchema = createInsertSchema(notificati
   updatedAt: true,
 });
 
+// Conversation Insight Cards – persisted for authenticated users
+export const conversationInsights = pgTable("conversation_insights", {
+  id: varchar("id").primaryKey(), // client-generated id; ON CONFLICT DO NOTHING prevents duplicate migration uploads
+  userId: varchar("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  source: jsonb("source").notNull(), // InsightSource shape
+  pinned: boolean("pinned").default(false),
+  pinnedAt: timestamp("pinned_at"),
+  hidden: boolean("hidden").default(false),
+});
+
+export const conversationInsightsRelations = relations(conversationInsights, ({ one }) => ({
+  user: one(users, {
+    fields: [conversationInsights.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertConversationInsightSchema = createInsertSchema(conversationInsights).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -2276,3 +2303,5 @@ export type AiFeatureUsage = typeof aiFeatureUsage.$inferSelect;
 export type InsertAiFeatureUsage = z.infer<typeof insertAiFeatureUsageSchema>;
 export type AiSuggestion = typeof aiSuggestions.$inferSelect;
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
+export type ConversationInsight = typeof conversationInsights.$inferSelect;
+export type InsertConversationInsight = z.infer<typeof insertConversationInsightSchema>;

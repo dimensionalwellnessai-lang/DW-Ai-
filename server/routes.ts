@@ -7549,6 +7549,95 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ── Conversation Insight Cards (backend persistence for auth users) ─────────
+
+  // Maximum number of insights that can be uploaded in a single bulk request.
+  // Prevents excessively large payloads during local→backend migration.
+  const MAX_BULK_INSIGHTS = 200;
+
+  app.get("/api/insights", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, MAX_BULK_INSIGHTS);
+      const offset = Math.max(parseInt(String(req.query.offset ?? "0"), 10) || 0, 0);
+      const insights = await storage.getConversationInsights(userId, limit, offset);
+      res.json(insights);
+    } catch (error) {
+      console.error("Get insights error:", error);
+      res.status(500).json({ error: "Failed to get insights" });
+    }
+  });
+
+  app.post("/api/insights", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const insight = await storage.createConversationInsight({ ...req.body, userId });
+      res.status(201).json(insight);
+    } catch (error) {
+      console.error("Create insight error:", error);
+      res.status(500).json({ error: "Failed to create insight" });
+    }
+  });
+
+  // Bulk upsert – used for migrating local insights on first login
+  app.post("/api/insights/bulk", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { insights } = req.body;
+      if (!Array.isArray(insights)) {
+        return res.status(400).json({ error: "insights must be an array" });
+      }
+      const capped = (insights as unknown[]).slice(0, MAX_BULK_INSIGHTS);
+      await storage.bulkUpsertConversationInsights(
+        capped.map((i: unknown) => ({ ...(i as object), userId })) as Parameters<typeof storage.bulkUpsertConversationInsights>[0]
+      );
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Bulk upsert insights error:", error);
+      res.status(500).json({ error: "Failed to bulk upsert insights" });
+    }
+  });
+
+  app.patch("/api/insights/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId!;
+      const { title, summary, pinned, pinnedAt, hidden } = req.body as {
+        title?: string;
+        summary?: string;
+        pinned?: boolean;
+        pinnedAt?: number | null;
+        hidden?: boolean;
+      };
+      const patch: Record<string, unknown> = {};
+      if (title !== undefined) patch.title = title;
+      if (summary !== undefined) patch.summary = summary;
+      if (pinned !== undefined) patch.pinned = pinned;
+      if (pinnedAt !== undefined) patch.pinnedAt = pinnedAt != null ? new Date(pinnedAt) : null;
+      if (hidden !== undefined) patch.hidden = hidden;
+      const updated = await storage.updateConversationInsight(id, userId, patch as Parameters<typeof storage.updateConversationInsight>[2]);
+      if (!updated) {
+        return res.status(404).json({ error: "Insight not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update insight error:", error);
+      res.status(500).json({ error: "Failed to update insight" });
+    }
+  });
+
+  app.delete("/api/insights/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId!;
+      await storage.deleteConversationInsight(id, userId);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Delete insight error:", error);
+      res.status(500).json({ error: "Failed to delete insight" });
+    }
+  });
+
   // Support report endpoint (accessible to both guests and authenticated users)
   const supportReportLimiter = rateLimit({
     windowMs: 60 * 1000,
