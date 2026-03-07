@@ -31,6 +31,8 @@ import {
   Pencil,
   ThumbsDown,
   Check,
+  Copy,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -149,6 +151,52 @@ interface DwInsightCardProps {
 }
 
 function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, onEdit, onNotHelpful }: DwInsightCardProps) {
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  function buildCopyText(): string {
+    const date = new Date(insight.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
+    return `[${insight.category}] ${insight.title}\n\n${insight.summary}\n\nCreated: ${date}`;
+  }
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      navigator.clipboard.writeText(buildCopyText()).then(() => {
+        setCopied(true);
+        if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
+      }).catch(() => {
+        // clipboard write failed – fail silently
+      });
+    } catch {
+      // clipboard API unavailable – fail silently
+    }
+  }
+
+  function handleShare(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (canShare) {
+      navigator.share({
+        title: insight.title,
+        text: buildCopyText(),
+      }).catch(() => {
+        // share cancelled or failed – fail silently
+      });
+    } else {
+      // Fall back to copy if share not supported
+      handleCopy(e);
+    }
+  }
+
   return (
     <div className="flex-shrink-0 w-52 snap-start relative group">
       <button
@@ -194,6 +242,22 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, o
       )}
       {/* Action buttons – visible on hover/focus-within */}
       <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+        <button
+          onClick={handleCopy}
+          aria-label={copied ? "Copied" : "Copy insight"}
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+        </button>
+        {canShare && (
+          <button
+            onClick={handleShare}
+            aria-label="Share insight"
+            className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          >
+            <Share2 className="h-3 w-3 text-muted-foreground" />
+          </button>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           aria-label="Edit insight"
