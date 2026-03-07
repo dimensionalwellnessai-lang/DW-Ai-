@@ -104,8 +104,16 @@ export function TalkItOutPage() {
       setInput(context);
     }
 
-    // Always remove the query param after reading
-    navigate("/talk", { replace: true });
+    // Remove only the insightId query param after reading, preserve others (e.g. jumpToMessageIndex)
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("insightId");
+      const newSearch = url.searchParams.toString();
+      const newPath = newSearch ? `${url.pathname}?${newSearch}` : url.pathname;
+      navigate(newPath, { replace: true });
+    } catch {
+      // If URL parsing fails, fall back silently without changing the URL
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Jump-to-moment: handle ?jumpToMessageIndex param on first render
