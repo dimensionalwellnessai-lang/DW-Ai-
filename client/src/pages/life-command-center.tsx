@@ -43,17 +43,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  getInsights,
-  pinInsight,
-  unpinInsight,
-  deleteInsight,
-  updateInsight,
-  recordNotHelpful,
   getInsightFrequency,
   setInsightFrequency,
   type Insight,
   type InsightFrequency,
 } from "@/core/conversationInsights";
+import { useInsights } from "@/hooks/use-insights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 
 // ─── Life dimension definitions ──────────────────────────────────────────────
@@ -449,9 +444,14 @@ export default function LifeCommandCenter() {
   ];
 
   // DW-generated insight cards (feature-flagged)
-  const [dwInsightsRaw, setDwInsightsRaw] = useState<Insight[]>(() =>
-    isFeatureEnabled("CONVERSATION_INSIGHTS") ? getInsights() : []
-  );
+  const {
+    insights: dwInsightsRaw,
+    updateInsight: updateInsightHook,
+    deleteInsight: deleteInsightHook,
+    pinInsight: pinInsightHook,
+    unpinInsight: unpinInsightHook,
+    recordNotHelpful: recordNotHelpfulHook,
+  } = useInsights();
   const [insightFrequency, setInsightFrequencyState] = useState<InsightFrequency>(() => getInsightFrequency());
 
   // ── Edit insight modal state ─────────────────────────────────────────────
@@ -461,12 +461,6 @@ export default function LifeCommandCenter() {
 
   const TITLE_MAX = 80;
   const SUMMARY_MAX = 300;
-
-  const refreshInsights = useCallback(() => {
-    if (isFeatureEnabled("CONVERSATION_INSIGHTS")) {
-      setDwInsightsRaw(getInsights());
-    }
-  }, []);
 
   const openEditModal = useCallback((insight: Insight) => {
     setEditingInsight(insight);
@@ -485,25 +479,21 @@ export default function LifeCommandCenter() {
     const trimmedTitle = editTitle.trim().slice(0, TITLE_MAX);
     const trimmedSummary = editSummary.trim().slice(0, SUMMARY_MAX);
     if (!trimmedTitle) return; // require non-empty title
-    updateInsight(editingInsight.id, { title: trimmedTitle, summary: trimmedSummary });
-    refreshInsights();
+    updateInsightHook(editingInsight.id, { title: trimmedTitle, summary: trimmedSummary });
     closeEditModal();
-  }, [editingInsight, editTitle, editSummary, refreshInsights, closeEditModal]);
+  }, [editingInsight, editTitle, editSummary, updateInsightHook, closeEditModal]);
 
   const handlePinInsight = useCallback((id: string, currentlyPinned: boolean) => {
-    if (currentlyPinned) unpinInsight(id); else pinInsight(id);
-    refreshInsights();
-  }, [refreshInsights]);
+    if (currentlyPinned) unpinInsightHook(id); else pinInsightHook(id);
+  }, [pinInsightHook, unpinInsightHook]);
 
   const handleDeleteInsight = useCallback((id: string) => {
-    deleteInsight(id);
-    refreshInsights();
-  }, [refreshInsights]);
+    deleteInsightHook(id);
+  }, [deleteInsightHook]);
 
   const handleNotHelpful = useCallback((insight: Insight) => {
-    recordNotHelpful(insight);
-    refreshInsights();
-  }, [refreshInsights]);
+    recordNotHelpfulHook(insight);
+  }, [recordNotHelpfulHook]);
 
   const handleFrequencyChange = useCallback((freq: InsightFrequency) => {
     setInsightFrequency(freq);

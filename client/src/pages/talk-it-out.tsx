@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, saveInsight, getInsights, type InsightSource } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, type InsightSource } from "@/core/conversationInsights";
+import { useInsights } from "@/hooks/use-insights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
@@ -79,6 +80,7 @@ export function TalkItOutPage() {
     retry: false,
   });
   const isLoggedIn = !!(authData?.user);
+  const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // When arriving via jump-to-moment, restore prior conversation so the
@@ -122,15 +124,19 @@ export function TalkItOutPage() {
     pendingInsightRef.current = null;
     try {
       if (shouldCaptureInsight({ userText: pending.userText, assistantText: pending.assistantText })) {
-        saveInsight(buildInsight(pending));
+        captureInsight(buildInsight(pending));
       }
     } catch {
       // Insight capture is non-critical – swallow any error
     }
-  }, [messages]);
+  }, [messages, captureInsight]);
 
   // Prefill input from insight card "Continue with DW" (?insightId=<id>)
+  // Track whether we've already applied the prefill so it only happens once
+  // per page load, even though the effect re-runs as `insights` loads.
+  const insightPrefillApplied = useRef(false);
   useEffect(() => {
+    if (insightPrefillApplied.current) return;
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const insightId = params.get("insightId");
@@ -138,7 +144,7 @@ export function TalkItOutPage() {
 
     let insight: { title?: string; summary?: string } | null = null;
 
-    // 1) Try sessionStorage
+    // 1) Try sessionStorage (works on the same device without waiting for API)
     try {
       const stored = window.sessionStorage?.getItem(`dwInsight:${insightId}`);
       if (stored) {
@@ -149,34 +155,37 @@ export function TalkItOutPage() {
       // sessionStorage unavailable – continue to fallback
     }
 
-    // 2) Fallback: find by id in localStorage insights list
+    // 2) Fallback: find by id in local or backend insights
+    // For auth users this list may be empty until the backend request resolves,
+    // so the effect re-runs via the `insights` dep; the guard above prevents duplication.
     if (!insight) {
       try {
-        const found = getInsights().find((i) => i.id === insightId);
+        const found = insights.find((i) => i.id === insightId);
         if (found) insight = found;
       } catch {
-        // localStorage unavailable – skip
+        // unavailable – skip
       }
     }
 
     if (insight) {
+      insightPrefillApplied.current = true;
       const context = insight.summary
         ? `Continue from this insight — "${insight.title ?? ""}": ${insight.summary}`
         : `Continue from this insight: ${insight.title ?? ""}`;
       setInput(context);
-    }
 
-    // Remove only the insightId query param, preserving any others (e.g. jumpToMessageIndex)
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("insightId");
-      const newSearch = url.searchParams.toString();
-      const newPath = newSearch ? `${url.pathname}?${newSearch}` : url.pathname;
-      navigate(newPath, { replace: true });
-    } catch {
-      // URL parsing failed – fail silently without changing the URL
+      // Remove only the insightId query param, preserving any others (e.g. jumpToMessageIndex)
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("insightId");
+        const newSearch = url.searchParams.toString();
+        const newPath = newSearch ? `${url.pathname}?${newSearch}` : url.pathname;
+        navigate(newPath, { replace: true });
+      } catch {
+        // URL parsing failed – fail silently without changing the URL
+      }
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [insights]); // re-run when backend insights load; guard prevents double-apply
 
   // Jump-to-moment: handle ?jumpToMessageIndex on first render
   useEffect(() => {

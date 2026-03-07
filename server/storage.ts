@@ -223,6 +223,9 @@ import {
   aiSuggestions,
   type AiSuggestion,
   type InsertAiSuggestion,
+  conversationInsights,
+  type ConversationInsight,
+  type InsertConversationInsight,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -600,6 +603,12 @@ export interface IStorage {
   getAiSuggestions(userId: string, status?: string): Promise<AiSuggestion[]>;
   createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
   updateAiSuggestion(id: string, userId: string, data: Partial<AiSuggestion>): Promise<AiSuggestion | undefined>;
+
+  getConversationInsights(userId: string, limit?: number, offset?: number): Promise<ConversationInsight[]>;
+  createConversationInsight(insight: InsertConversationInsight): Promise<ConversationInsight>;
+  updateConversationInsight(id: string, userId: string, data: Partial<ConversationInsight>): Promise<ConversationInsight | undefined>;
+  deleteConversationInsight(id: string, userId: string): Promise<void>;
+  bulkUpsertConversationInsights(insights: InsertConversationInsight[]): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -2843,6 +2852,54 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(aiSuggestions.id, id), eq(aiSuggestions.userId, userId)))
       .returning();
     return updated || undefined;
+  }
+
+  // Conversation Insights
+  async getConversationInsights(userId: string, limit = 50, offset = 0): Promise<ConversationInsight[]> {
+    return db.select()
+      .from(conversationInsights)
+      .where(and(eq(conversationInsights.userId, userId), eq(conversationInsights.hidden, false)))
+      .orderBy(desc(conversationInsights.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async createConversationInsight(insight: InsertConversationInsight): Promise<ConversationInsight> {
+    const [created] = await db.insert(conversationInsights)
+      .values({ ...insight, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async updateConversationInsight(id: string, userId: string, data: Partial<ConversationInsight>): Promise<ConversationInsight | undefined> {
+    const [updated] = await db.update(conversationInsights)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(conversationInsights.id, id), eq(conversationInsights.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteConversationInsight(id: string, userId: string): Promise<void> {
+    await db.delete(conversationInsights)
+      .where(and(eq(conversationInsights.id, id), eq(conversationInsights.userId, userId)));
+  }
+
+  async bulkUpsertConversationInsights(insights: InsertConversationInsight[]): Promise<void> {
+    if (insights.length === 0) return;
+    await db.insert(conversationInsights)
+      .values(insights.map(i => ({ ...i, updatedAt: new Date() })))
+      .onConflictDoUpdate({
+        target: conversationInsights.id,
+        set: {
+          // Only overwrite mutable fields; never overwrite userId or createdAt
+          title: sql`excluded.title`,
+          summary: sql`excluded.summary`,
+          pinned: sql`excluded.pinned`,
+          pinnedAt: sql`excluded.pinned_at`,
+          hidden: sql`excluded.hidden`,
+          updatedAt: new Date(),
+        },
+      });
   }
 }
 
