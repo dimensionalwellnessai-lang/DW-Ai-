@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -167,7 +167,7 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, o
     return `[${insight.category}] ${insight.title}\n\n${insight.summary}\n\nCreated: ${date}`;
   }
 
-  function handleCopy(e: React.MouseEvent) {
+  function handleCopy(e: MouseEvent) {
     e.stopPropagation();
     try {
       navigator.clipboard.writeText(buildCopyText()).then(() => {
@@ -182,19 +182,16 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, o
     }
   }
 
-  function handleShare(e: React.MouseEvent) {
+  function handleShare(e: MouseEvent) {
     e.stopPropagation();
-    if (canShare) {
-      navigator.share({
+    navigator
+      .share({
         title: insight.title,
         text: buildCopyText(),
-      }).catch(() => {
+      })
+      .catch(() => {
         // share cancelled or failed – fail silently
       });
-    } else {
-      // Fall back to copy if share not supported
-      handleCopy(e);
-    }
   }
 
   return (
