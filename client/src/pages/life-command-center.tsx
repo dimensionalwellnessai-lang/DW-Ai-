@@ -205,17 +205,17 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, o
         <button
           onClick={(e) => { e.stopPropagation(); onNotHelpful(); }}
           aria-label="Mark insight as not helpful"
-          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
           title="Not helpful"
         >
-          <ThumbsDown className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+          <ThumbsDown className="h-3 w-3 text-muted-foreground" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           aria-label="Delete insight"
-          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
-          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+          <Trash2 className="h-3 w-3 text-muted-foreground" />
         </button>
       </div>
     </div>

@@ -73,6 +73,13 @@ const PLAN_RE =
 const PATTERN_RE =
   /\b(pattern|patterns|notice|noticed|realiz|realise|tend to|always|never|keep|keep doing|often|usually|cycle|recurring)\b/i;
 
+// Stop-words excluded when deriving keyword suppression hints from insight titles
+const SUPPRESSION_STOP_WORDS = new Set([
+  "this", "that", "with", "your", "have", "from", "they", "will",
+  "been", "more", "when", "what", "then", "than", "just", "like",
+  "into", "some", "also", "most", "over", "such", "here", "there",
+]);
+
 // ─── shouldCaptureInsight ─────────────────────────────────────────────────────
 
 /**
@@ -358,16 +365,11 @@ export function addSuppression(pattern: SuppressionPattern): void {
  */
 function deriveSuppressionPattern(insight: Insight): SuppressionPattern | null {
   // Extract first word from the title that is ≥ 4 chars and not a common stop-word
-  const STOP_WORDS = new Set([
-    "this", "that", "with", "your", "have", "from", "they", "will",
-    "been", "more", "when", "what", "then", "than", "just", "like",
-    "into", "some", "also", "most", "over", "such", "here", "there",
-  ]);
   const words = insight.title
     .toLowerCase()
     .replace(/[^a-z\s]/g, "")
     .split(/\s+/)
-    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
+    .filter((w) => w.length >= 4 && !SUPPRESSION_STOP_WORDS.has(w));
 
   if (words.length === 0) return null;
 
