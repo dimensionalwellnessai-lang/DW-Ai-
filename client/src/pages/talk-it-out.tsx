@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, saveInsight } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
+import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
@@ -19,6 +21,35 @@ import { useToast } from "@/hooks/use-toast";
 interface ChatMessage {
   role: "assistant" | "user";
   content: string;
+}
+
+const TALK_MESSAGES_KEY = "dw_talk_messages";
+
+const TALK_WELCOME_MESSAGE: ChatMessage = {
+  role: "assistant",
+  content: "This is a space for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.",
+};
+
+function loadStoredMessages(): ChatMessage[] | null {
+  try {
+    const raw = localStorage.getItem(TALK_MESSAGES_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ChatMessage[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistMessages(msgs: ChatMessage[]): void {
+  try {
+    if (msgs.length > 1) {
+      localStorage.setItem(TALK_MESSAGES_KEY, JSON.stringify(msgs));
+    }
+  } catch {
+    // storage unavailable – fail silently
+  }
 }
 
 const TALK_SYSTEM_PROMPT = `You are a deeply supportive AI companion in "Talk It Out" mode. Your role is to:
@@ -42,27 +73,138 @@ Start by simply being present and inviting them to share.`;
 
 export function TalkItOutPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: authData } = useQuery<{ user: any } | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
   const isLoggedIn = !!(authData?.user);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: "This is a space for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // When arriving via jump-to-moment, restore prior conversation so the
+    // target message exists in the DOM for scroll/highlight.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("jumpToMessageIndex") !== null) {
+        const stored = loadStoredMessages();
+        if (stored) return stored;
+      }
+    } catch {
+      // URL parsing unavailable – fall through to default
+    }
+    return [TALK_WELCOME_MESSAGE];
+  });
   const [isTyping, setIsTyping] = useState(false);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Persist conversation to localStorage so jump-to-moment can restore it on navigation
+  useEffect(() => {
+    persistMessages(messages);
+  }, [messages]);
+
+  // Prefill input from insight card "Continue with DW" (?insightId=<id>)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const insightId = params.get("insightId");
+    if (!insightId) return;
+
+    let insight: { title?: string; summary?: string } | null = null;
+
+    // 1) Try sessionStorage
+    try {
+      const stored = window.sessionStorage?.getItem(`dwInsight:${insightId}`);
+      if (stored) {
+        insight = JSON.parse(stored) as { title?: string; summary?: string };
+        window.sessionStorage.removeItem(`dwInsight:${insightId}`);
+      }
+    } catch {
+      // sessionStorage unavailable – continue to fallback
+    }
+
+    // 2) Fallback: find by id in localStorage insights list
+    if (!insight) {
+      try {
+        const found = getInsights().find((i) => i.id === insightId);
+        if (found) insight = found;
+      } catch {
+        // localStorage unavailable – skip
+      }
+    }
+
+    if (insight) {
+      const context = insight.summary
+        ? `Continue from this insight — "${insight.title ?? ""}": ${insight.summary}`
+        : `Continue from this insight: ${insight.title ?? ""}`;
+      setInput(context);
+    }
+
+    // Remove only the insightId query param, preserving any others (e.g. jumpToMessageIndex)
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("insightId");
+      const newSearch = url.searchParams.toString();
+      const newPath = newSearch ? `${url.pathname}?${newSearch}` : url.pathname;
+      navigate(newPath, { replace: true });
+    } catch {
+      // URL parsing failed – fail silently without changing the URL
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Jump-to-moment: handle ?jumpToMessageIndex on first render
+  useEffect(() => {
+    const targetIndex = parseJumpToMessageIndex(window.location.search);
+    if (targetIndex === null) return;
+
+    const idx = targetIndex;
+
+    // Remove query params from URL without adding a history entry
+    navigate("/talk", { replace: true });
+
+    // Poll for the target element – messages may render asynchronously after
+    // state restoration, so we retry for up to ~3s before giving up.
+    const selector = `[data-testid="message-talk-${idx}"]`;
+    const maxAttempts = 30;
+    const intervalMs = 100;
+
+    let attempts = 0;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let highlightTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const tryScroll = () => {
+      attempts += 1;
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (el) {
+        if (intervalId !== null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedIndex(idx);
+        highlightTimeoutId = setTimeout(() => setHighlightedIndex(null), 2000);
+        return;
+      }
+      if (attempts >= maxAttempts && intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    intervalId = setInterval(tryScroll, intervalMs);
+
+    return () => {
+      if (intervalId !== null) clearInterval(intervalId);
+      if (highlightTimeoutId !== undefined) clearTimeout(highlightTimeoutId);
+    };
+  }, [navigate]); // navigate is stable (wouter hook ref), included for correctness
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -76,11 +218,13 @@ export function TalkItOutPage() {
     },
     onSuccess: (data, variables) => {
       // Post-process the assistant response (flag-gated, fail-safe).
-      // Capture the processed result in a local variable so insight capture
-      // (a side-effect) can be performed outside the pure state updater,
-      // avoiding duplicate writes in React StrictMode / concurrent rendering.
+      // Capture the processed result and the new message index in local
+      // variables so the insight capture side-effect (run outside the state
+      // updater) has the correct, non-stale values.
       let capturedText = data.response ?? "";
+      let capturedIndex = -1;
       setMessages((prev) => {
+        capturedIndex = prev.length; // the new assistant message will occupy this index
         const processedWithHistory = postProcessAssistantMessage({
           assistantText: data.response,
           userMessage: variables,
@@ -96,7 +240,11 @@ export function TalkItOutPage() {
             saveInsight(buildInsight({
               userText: variables,
               assistantText: capturedText,
-              source: { surface: "talk", messageTimestamp: Date.now() },
+              source: {
+                surface: "talk",
+                messageTimestamp: Date.now(),
+                ...(capturedIndex >= 0 && { messageIndex: capturedIndex }),
+              },
             }));
           }
         } catch {
@@ -193,11 +341,11 @@ export function TalkItOutPage() {
           {messages.map((message, index) => (
             <article
               key={index}
-              className={`animate-fade-in-up ${
+              className={`animate-fade-in-up rounded-lg transition-colors duration-700 ${
                 message.role === "user" 
                   ? "border-l-4 border-primary/40 pl-4 py-2" 
                   : ""
-              }`}
+              } ${highlightedIndex === index ? "ring-2 ring-primary/40 bg-primary/5 px-2" : ""}`}
               data-testid={`message-talk-${index}`}
             >
               {message.role === "user" ? (
