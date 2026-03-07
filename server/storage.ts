@@ -2888,7 +2888,18 @@ export class DatabaseStorage implements IStorage {
     if (insights.length === 0) return;
     await db.insert(conversationInsights)
       .values(insights.map(i => ({ ...i, updatedAt: new Date() })))
-      .onConflictDoNothing({ target: conversationInsights.id });
+      .onConflictDoUpdate({
+        target: conversationInsights.id,
+        set: {
+          // Only overwrite mutable fields; never overwrite userId or createdAt
+          title: sql`excluded.title`,
+          summary: sql`excluded.summary`,
+          pinned: sql`excluded.pinned`,
+          pinnedAt: sql`excluded.pinned_at`,
+          hidden: sql`excluded.hidden`,
+          updatedAt: new Date(),
+        },
+      });
   }
 }
 

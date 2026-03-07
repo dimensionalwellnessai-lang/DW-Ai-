@@ -22,8 +22,10 @@ import {
   type Insight,
 } from "@/core/conversationInsights";
 
-// localStorage flag set after a successful migration so it runs only once.
-const MIGRATION_FLAG_KEY = "dw_insights_migrated";
+// localStorage flag set after a successful migration so it runs only once per user.
+function migrationFlagKey(userId: string): string {
+  return `dw_insights_migrated:${userId}`;
+}
 
 /**
  * Mutable fields for an insight update.
@@ -136,7 +138,7 @@ async function apiBulkUpsert(insights: Insight[]): Promise<void> {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useInsights() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
   const migrationAttempted = useRef(false);
 
@@ -162,31 +164,31 @@ export function useInsights() {
     retry: false,
   });
 
-  // ── Migration: once per authenticated session ──────────────────────────────
+  // ── Migration: once per authenticated user ────────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated || !featureOn) return;
+    if (!isAuthenticated || !featureOn || !user?.id) return;
     if (migrationAttempted.current) return;
     if (typeof localStorage === "undefined") return;
-    if (localStorage.getItem(MIGRATION_FLAG_KEY)) return;
+    if (localStorage.getItem(migrationFlagKey(user.id))) return;
 
     migrationAttempted.current = true;
 
     const localData = getInsights();
     if (localData.length === 0) {
-      localStorage.setItem(MIGRATION_FLAG_KEY, "true");
+      localStorage.setItem(migrationFlagKey(user.id), "true");
       return;
     }
 
     apiBulkUpsert(localData)
       .then(() => {
-        localStorage.setItem(MIGRATION_FLAG_KEY, "true");
+        localStorage.setItem(migrationFlagKey(user.id), "true");
         queryClient.invalidateQueries({ queryKey: ["/api/insights"] });
       })
       .catch(() => {
         // Migration failed silently – will retry on next session if flag not set
         migrationAttempted.current = false;
       });
-  }, [isAuthenticated, featureOn, queryClient]);
+  }, [isAuthenticated, featureOn, user?.id, queryClient]);
 
   // ── Unified helpers ────────────────────────────────────────────────────────
 
