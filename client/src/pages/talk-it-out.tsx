@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, saveInsight, getInsights, type InsightSource } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
@@ -100,6 +100,9 @@ export function TalkItOutPage() {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Staged insight payload: populated inside setMessages updater (where prev.length is
+  // accurate), then flushed in a useEffect so the save runs after React commits the update.
+  const pendingInsightRef = useRef<{ userText: string; assistantText: string; source: InsightSource } | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,6 +111,22 @@ export function TalkItOutPage() {
   // Persist conversation to localStorage so jump-to-moment can restore it on navigation
   useEffect(() => {
     persistMessages(messages);
+  }, [messages]);
+
+  // Flush any staged insight payload after React has committed the messages update.
+  // This guarantees capturedIndex and capturedText reflect the finalized state.
+  useEffect(() => {
+    if (!isFeatureEnabled("CONVERSATION_INSIGHTS")) return;
+    const pending = pendingInsightRef.current;
+    if (!pending) return;
+    pendingInsightRef.current = null;
+    try {
+      if (shouldCaptureInsight({ userText: pending.userText, assistantText: pending.assistantText })) {
+        saveInsight(buildInsight(pending));
+      }
+    } catch {
+      // Insight capture is non-critical – swallow any error
+    }
   }, [messages]);
 
   // Prefill input from insight card "Continue with DW" (?insightId=<id>)
@@ -218,40 +237,30 @@ export function TalkItOutPage() {
       return response.json();
     },
     onSuccess: (data, variables) => {
-      // Post-process the assistant response (flag-gated, fail-safe).
-      // Capture the processed result and the new message index in local
-      // variables so the insight capture side-effect (run outside the state
-      // updater) has the correct, non-stale values.
-      let capturedText = data.response ?? "";
-      let capturedIndex = -1;
+      // Stage the insight payload inside the setMessages updater so we capture
+      // prev.length (the accurate future index) and the post-processed text.
+      // The actual save is deferred to a useEffect that fires after React commits
+      // the state update, guaranteeing the captured values are correct even in
+      // React 18 Concurrent Mode where the updater may run asynchronously.
       setMessages((prev) => {
-        capturedIndex = prev.length; // the new assistant message will occupy this index
         const processedWithHistory = postProcessAssistantMessage({
           assistantText: data.response,
           userMessage: variables,
           conversationHistory: prev,
         });
-        capturedText = processedWithHistory.text;
+        if (data.response) {
+          pendingInsightRef.current = {
+            userText: variables,
+            assistantText: processedWithHistory.text,
+            source: {
+              surface: "talk",
+              messageTimestamp: Date.now(),
+              messageIndex: prev.length, // the new message will occupy this index
+            },
+          };
+        }
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
-      // Capture conversation insight outside the updater (side-effect safe)
-      if (isFeatureEnabled("CONVERSATION_INSIGHTS") && data.response) {
-        try {
-          if (shouldCaptureInsight({ userText: variables, assistantText: capturedText })) {
-            saveInsight(buildInsight({
-              userText: variables,
-              assistantText: capturedText,
-              source: {
-                surface: "talk",
-                messageTimestamp: Date.now(),
-                ...(capturedIndex >= 0 && { messageIndex: capturedIndex }),
-              },
-            }));
-          }
-        } catch {
-          // Insight capture is non-critical – swallow any error
-        }
-      }
       setIsTyping(false);
     },
     onError: () => {
