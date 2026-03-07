@@ -161,6 +161,7 @@ export function TalkItOutPage() {
 
   // Jump-to-moment: handle ?jumpToMessageIndex on first render
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const targetIndex = parseJumpToMessageIndex(window.location.search);
     if (targetIndex === null) return;
 
