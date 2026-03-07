@@ -129,11 +129,12 @@ function getTimeBasedGreeting(name?: string): string {
 interface DwInsightCardProps {
   insight: Insight;
   onNavigate: () => void;
+  onJumpToMoment?: () => void;
   onPin: () => void;
   onDelete: () => void;
 }
 
-function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardProps) {
+function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }: DwInsightCardProps) {
   return (
     <div className="flex-shrink-0 w-52 snap-start relative group">
       <button
@@ -161,10 +162,22 @@ function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardPr
             </div>
             <p className="text-xs font-medium leading-snug line-clamp-2">{insight.title}</p>
             <p className="text-xs leading-relaxed line-clamp-2 text-muted-foreground">{insight.summary}</p>
-            <p className="text-[10px] font-semibold text-primary mt-1">Continue with DW →</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] font-semibold text-primary">Continue with DW →</p>
+            </div>
           </CardContent>
         </Card>
       </button>
+      {insight.source?.messageIndex !== undefined && onJumpToMoment && (
+        <button
+          type="button"
+          onClick={onJumpToMoment}
+          aria-label="Jump to conversation moment"
+          className="mt-1 text-[10px] font-semibold text-muted-foreground hover:text-primary underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+        >
+          Jump to moment
+        </button>
+      )}
       {/* Action buttons – visible on hover/focus-within */}
       <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <button
@@ -191,6 +204,21 @@ function DwInsightCard({ insight, onNavigate, onPin, onDelete }: DwInsightCardPr
 export default function LifeCommandCenter() {
   const [, navigate] = useLocation();
   const insightsScrollRef = useRef<HTMLDivElement>(null);
+
+  // Builds the onJumpToMoment handler for a DwInsightCard – navigates to /talk
+  // with query params so the page can scroll to the originating message.
+  const makeJumpToMomentHandler = useCallback(
+    (insight: Insight): (() => void) | undefined => {
+      if (insight.source?.messageIndex === undefined) return undefined;
+      return () => {
+        const params = new URLSearchParams();
+        params.set("jumpToMessageIndex", String(insight.source.messageIndex!));
+        if (insight.source.conversationId) params.set("conversationId", insight.source.conversationId);
+        navigate(`/talk?${params.toString()}`);
+      };
+    },
+    [navigate]
+  );
 
   // ── Vibe state ──────────────────────────────────────────────────────────────
   const [vibeId, setVibeId] = useState<string>(() => localStorage.getItem("dw_home_vibe") || "dawn");
@@ -601,7 +629,8 @@ export default function LifeCommandCenter() {
                     <DwInsightCard
                       key={insight.id}
                       insight={insight}
-                      onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                      onNavigate={() => navigate(`/talk?insightId=${encodeURIComponent(insight.id)}`)}
+                      onJumpToMoment={makeJumpToMomentHandler(insight)}
                       onPin={() => handlePinInsight(insight.id, true)}
                       onDelete={() => handleDeleteInsight(insight.id)}
                     />
@@ -637,7 +666,8 @@ export default function LifeCommandCenter() {
                 <DwInsightCard
                   key={insight.id}
                   insight={insight}
-                  onNavigate={() => navigate(`/chat?insightId=${encodeURIComponent(insight.id)}`)}
+                  onNavigate={() => navigate(`/talk?insightId=${encodeURIComponent(insight.id)}`)}
+                  onJumpToMoment={makeJumpToMomentHandler(insight)}
                   onPin={() => handlePinInsight(insight.id, false)}
                   onDelete={() => handleDeleteInsight(insight.id)}
                 />
