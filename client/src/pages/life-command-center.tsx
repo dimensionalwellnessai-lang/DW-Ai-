@@ -28,13 +28,25 @@ import {
   Pin,
   PinOff,
   Trash2,
+  Pencil,
+  ThumbsDown,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   getInsights,
   pinInsight,
   unpinInsight,
   deleteInsight,
+  updateInsight,
+  recordNotHelpful,
   getInsightFrequency,
   setInsightFrequency,
   type Insight,
@@ -132,9 +144,11 @@ interface DwInsightCardProps {
   onJumpToMoment?: () => void;
   onPin: () => void;
   onDelete: () => void;
+  onEdit: () => void;
+  onNotHelpful: () => void;
 }
 
-function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }: DwInsightCardProps) {
+function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, onEdit, onNotHelpful }: DwInsightCardProps) {
   return (
     <div className="flex-shrink-0 w-52 snap-start relative group">
       <button
@@ -181,6 +195,13 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }:
       {/* Action buttons – visible on hover/focus-within */}
       <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
         <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label="Edit insight"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onPin(); }}
           aria-label={insight.pinned ? "Unpin insight" : "Pin insight"}
           className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
@@ -188,11 +209,19 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete }:
           {insight.pinned ? <PinOff className="h-3 w-3 text-amber-500" /> : <Pin className="h-3 w-3 text-muted-foreground" />}
         </button>
         <button
+          onClick={(e) => { e.stopPropagation(); onNotHelpful(); }}
+          aria-label="Mark insight as not helpful"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          title="Not helpful"
+        >
+          <ThumbsDown className="h-3 w-3" />
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           aria-label="Delete insight"
-          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
-          <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+          <Trash2 className="h-3 w-3" />
         </button>
       </div>
     </div>
@@ -364,11 +393,41 @@ export default function LifeCommandCenter() {
   );
   const [insightFrequency, setInsightFrequencyState] = useState<InsightFrequency>(() => getInsightFrequency());
 
+  // ── Edit insight modal state ─────────────────────────────────────────────
+  const [editingInsight, setEditingInsight] = useState<Insight | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSummary, setEditSummary] = useState("");
+
+  const TITLE_MAX = 80;
+  const SUMMARY_MAX = 300;
+
   const refreshInsights = useCallback(() => {
     if (isFeatureEnabled("CONVERSATION_INSIGHTS")) {
       setDwInsightsRaw(getInsights());
     }
   }, []);
+
+  const openEditModal = useCallback((insight: Insight) => {
+    setEditingInsight(insight);
+    setEditTitle(insight.title);
+    setEditSummary(insight.summary);
+  }, []);
+
+  const closeEditModal = useCallback(() => {
+    setEditingInsight(null);
+    setEditTitle("");
+    setEditSummary("");
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    if (!editingInsight) return;
+    const trimmedTitle = editTitle.trim().slice(0, TITLE_MAX);
+    const trimmedSummary = editSummary.trim().slice(0, SUMMARY_MAX);
+    if (!trimmedTitle) return; // require non-empty title
+    updateInsight(editingInsight.id, { title: trimmedTitle, summary: trimmedSummary });
+    refreshInsights();
+    closeEditModal();
+  }, [editingInsight, editTitle, editSummary, refreshInsights, closeEditModal]);
 
   const handlePinInsight = useCallback((id: string, currentlyPinned: boolean) => {
     if (currentlyPinned) unpinInsight(id); else pinInsight(id);
@@ -377,6 +436,11 @@ export default function LifeCommandCenter() {
 
   const handleDeleteInsight = useCallback((id: string) => {
     deleteInsight(id);
+    refreshInsights();
+  }, [refreshInsights]);
+
+  const handleNotHelpful = useCallback((insight: Insight) => {
+    recordNotHelpful(insight);
     refreshInsights();
   }, [refreshInsights]);
 
@@ -395,6 +459,60 @@ export default function LifeCommandCenter() {
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Home" showBack={false} />
+
+      {/* ── Edit Insight Dialog ────────────────────────────────────────── */}
+      <Dialog open={editingInsight !== null} onOpenChange={(open) => { if (!open) closeEditModal(); }}>
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Edit insight</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1">
+              <label htmlFor="edit-insight-title" className="text-xs font-medium text-muted-foreground">
+                Title <span className="text-[10px]">({editTitle.length}/{TITLE_MAX})</span>
+              </label>
+              <input
+                id="edit-insight-title"
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value.slice(0, TITLE_MAX))}
+                maxLength={TITLE_MAX}
+                className="w-full text-sm bg-muted/40 border border-border rounded-lg px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="edit-insight-summary" className="text-xs font-medium text-muted-foreground">
+                Summary <span className="text-[10px]">({editSummary.length}/{SUMMARY_MAX})</span>
+              </label>
+              <textarea
+                id="edit-insight-summary"
+                value={editSummary}
+                onChange={(e) => setEditSummary(e.target.value.slice(0, SUMMARY_MAX))}
+                maxLength={SUMMARY_MAX}
+                rows={3}
+                className="w-full text-sm bg-muted/40 border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-2">
+            <button
+              onClick={closeEditModal}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={!editTitle.trim()}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="h-3 w-3" />
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex-1 overflow-auto">
 
         {/* ── Avatar Zone ───────────────────────────────────────────────── */}
@@ -633,6 +751,8 @@ export default function LifeCommandCenter() {
                       onJumpToMoment={makeJumpToMomentHandler(insight)}
                       onPin={() => handlePinInsight(insight.id, true)}
                       onDelete={() => handleDeleteInsight(insight.id)}
+                      onEdit={() => openEditModal(insight)}
+                      onNotHelpful={() => handleNotHelpful(insight)}
                     />
                   ))}
                   <div className="flex-shrink-0 w-px self-stretch bg-border/50 mx-1" aria-hidden />
@@ -670,6 +790,8 @@ export default function LifeCommandCenter() {
                   onJumpToMoment={makeJumpToMomentHandler(insight)}
                   onPin={() => handlePinInsight(insight.id, false)}
                   onDelete={() => handleDeleteInsight(insight.id)}
+                  onEdit={() => openEditModal(insight)}
+                  onNotHelpful={() => handleNotHelpful(insight)}
                 />
               ))}
             </div>
