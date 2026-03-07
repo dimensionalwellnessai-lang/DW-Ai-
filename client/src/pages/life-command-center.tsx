@@ -446,7 +446,6 @@ export default function LifeCommandCenter() {
   // DW-generated insight cards (feature-flagged)
   const {
     insights: dwInsightsRaw,
-    refresh: refreshInsights,
     updateInsight: updateInsightHook,
     deleteInsight: deleteInsightHook,
     pinInsight: pinInsightHook,

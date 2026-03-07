@@ -5,11 +5,14 @@
  * - Guest users: reads/writes via localStorage (local only).
  *
  * Also runs a one-time migration from localStorage → backend on first login.
+ * Both the backend query and migration are gated on the CONVERSATION_INSIGHTS
+ * feature flag so they only run when the feature is active.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import {
   getInsights,
   saveInsight as saveInsightLocal,
@@ -21,6 +24,12 @@ import {
 
 // localStorage flag set after a successful migration so it runs only once.
 const MIGRATION_FLAG_KEY = "dw_insights_migrated";
+
+/**
+ * Mutable fields for an insight update.
+ * `pinnedAt` can be null to explicitly clear the timestamp (unpin).
+ */
+export type InsightPatch = Omit<Partial<Insight>, "pinnedAt"> & { pinnedAt?: number | null };
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
@@ -48,6 +57,15 @@ function rowToInsight(row: Record<string, unknown>): Insight {
   };
 }
 
+/** Throws if the response is not OK so callers' `.catch()` rollbacks fire. */
+async function checkOk(res: Response): Promise<Response> {
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`${res.status}: ${text}`);
+  }
+  return res;
+}
+
 async function fetchInsights(): Promise<Insight[]> {
   const res = await fetch("/api/insights", { credentials: "include" });
   if (!res.ok) return [];
@@ -56,7 +74,7 @@ async function fetchInsights(): Promise<Insight[]> {
 }
 
 async function apiCreate(insight: Insight): Promise<void> {
-  await fetch("/api/insights", {
+  const res = await fetch("/api/insights", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -67,31 +85,34 @@ async function apiCreate(insight: Insight): Promise<void> {
       summary: insight.summary,
       source: insight.source,
       pinned: insight.pinned ?? false,
-      pinnedAt: insight.pinnedAt != null ? new Date(insight.pinnedAt) : null,
+      pinnedAt: insight.pinnedAt != null ? new Date(insight.pinnedAt).toISOString() : null,
       hidden: false,
-      createdAt: new Date(insight.createdAt),
+      createdAt: new Date(insight.createdAt).toISOString(),
     }),
   });
+  await checkOk(res);
 }
 
-async function apiUpdate(id: string, patch: Partial<Insight> & { hidden?: boolean }): Promise<void> {
-  await fetch(`/api/insights/${encodeURIComponent(id)}`, {
+async function apiUpdate(id: string, patch: InsightPatch & { hidden?: boolean }): Promise<void> {
+  const res = await fetch(`/api/insights/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(patch),
   });
+  await checkOk(res);
 }
 
 async function apiDelete(id: string): Promise<void> {
-  await fetch(`/api/insights/${encodeURIComponent(id)}`, {
+  const res = await fetch(`/api/insights/${encodeURIComponent(id)}`, {
     method: "DELETE",
     credentials: "include",
   });
+  await checkOk(res);
 }
 
 async function apiBulkUpsert(insights: Insight[]): Promise<void> {
-  await fetch("/api/insights/bulk", {
+  const res = await fetch("/api/insights/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -103,12 +124,13 @@ async function apiBulkUpsert(insights: Insight[]): Promise<void> {
         summary: i.summary,
         source: i.source,
         pinned: i.pinned ?? false,
-        pinnedAt: i.pinnedAt != null ? new Date(i.pinnedAt) : null,
+        pinnedAt: i.pinnedAt != null ? new Date(i.pinnedAt).toISOString() : null,
         hidden: false,
-        createdAt: new Date(i.createdAt),
+        createdAt: new Date(i.createdAt).toISOString(),
       })),
     }),
   });
+  await checkOk(res);
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -118,9 +140,11 @@ export function useInsights() {
   const queryClient = useQueryClient();
   const migrationAttempted = useRef(false);
 
+  const featureOn = isFeatureEnabled("CONVERSATION_INSIGHTS");
+
   // ── Guest: local state ────────────────────────────────────────────────────
   const [localInsights, setLocalInsights] = useState<Insight[]>(() =>
-    isAuthenticated ? [] : getInsights()
+    featureOn && !isAuthenticated ? getInsights() : []
   );
 
   const refreshLocal = useCallback(() => {
@@ -131,17 +155,16 @@ export function useInsights() {
   const { data: backendInsights, refetch: refetchBackend } = useQuery<Insight[]>({
     queryKey: ["/api/insights"],
     queryFn: fetchInsights,
-    enabled: isAuthenticated,
+    // Only run backend query when the user is authenticated AND the feature is on
+    enabled: isAuthenticated && featureOn,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
     retry: false,
-    // Fail silently – return empty array on error
-    // (react-query already does this via retry: false if queryFn throws)
   });
 
   // ── Migration: once per authenticated session ──────────────────────────────
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !featureOn) return;
     if (migrationAttempted.current) return;
     if (typeof localStorage === "undefined") return;
     if (localStorage.getItem(MIGRATION_FLAG_KEY)) return;
@@ -163,24 +186,27 @@ export function useInsights() {
         // Migration failed silently – will retry on next session if flag not set
         migrationAttempted.current = false;
       });
-  }, [isAuthenticated, queryClient]);
+  }, [isAuthenticated, featureOn, queryClient]);
 
   // ── Unified helpers ────────────────────────────────────────────────────────
 
-  const insights: Insight[] = isAuthenticated
+  const insights: Insight[] = isAuthenticated && featureOn
     ? (backendInsights ?? [])
-    : localInsights;
+    : featureOn
+      ? localInsights
+      : [];
 
   const refresh = useCallback(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && featureOn) {
       refetchBackend();
-    } else {
+    } else if (featureOn) {
       refreshLocal();
     }
-  }, [isAuthenticated, refetchBackend, refreshLocal]);
+  }, [isAuthenticated, featureOn, refetchBackend, refreshLocal]);
 
   // captureInsight: fire-and-forget – safe to call from talk-it-out
   const captureInsight = useCallback((insight: Insight): void => {
+    if (!featureOn) return;
     if (!isAuthenticated) {
       saveInsightLocal(insight);
       refreshLocal();
@@ -194,18 +220,24 @@ export function useInsights() {
         prev.filter((i) => i.id !== insight.id)
       );
     });
-  }, [isAuthenticated, queryClient, refreshLocal]);
+  }, [featureOn, isAuthenticated, queryClient, refreshLocal]);
 
-  const updateInsight = useCallback((id: string, patch: Partial<Insight>): void => {
+  const updateInsight = useCallback((id: string, patch: InsightPatch): void => {
+    // Normalize pinnedAt: null → undefined for localStorage (Insight type uses undefined)
+    const localPatch: Partial<Insight> = {
+      ...patch,
+      pinnedAt: patch.pinnedAt == null ? undefined : patch.pinnedAt,
+    };
     if (!isAuthenticated) {
-      updateInsightLocal(id, patch);
+      updateInsightLocal(id, localPatch);
       refreshLocal();
       return;
     }
-    // Optimistic
+    // For optimistic update, use the same normalized patch
     queryClient.setQueryData<Insight[]>(["/api/insights"], (prev = []) =>
-      prev.map((i) => (i.id === id ? { ...i, ...patch } : i))
+      prev.map((i) => (i.id === id ? { ...i, ...localPatch } : i))
     );
+    // Send raw patch to API so pinnedAt: null explicitly clears the DB column
     apiUpdate(id, patch).catch(() => {
       queryClient.invalidateQueries({ queryKey: ["/api/insights"] });
     });
@@ -231,7 +263,8 @@ export function useInsights() {
   }, [updateInsight]);
 
   const unpinInsight = useCallback((id: string): void => {
-    updateInsight(id, { pinned: false, pinnedAt: undefined });
+    // Use null (not undefined) so JSON.stringify sends the field and the server clears pinnedAt
+    updateInsight(id, { pinned: false, pinnedAt: null });
   }, [updateInsight]);
 
   const recordNotHelpful = useCallback((insight: Insight): void => {

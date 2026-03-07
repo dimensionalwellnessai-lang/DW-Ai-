@@ -67,6 +67,7 @@ import {
   insertHouseholdLaundryScheduleSchema,
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
+  insertConversationInsightSchema,
   type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
@@ -7555,10 +7556,22 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   // Prevents excessively large payloads during local→backend migration.
   const MAX_BULK_INSIGHTS = 200;
 
+  // Zod schema for PATCH /api/insights/:id – only the mutable subset of fields.
+  const patchInsightSchema = z.object({
+    title: z.string().min(1).max(80).optional(),
+    summary: z.string().max(300).optional(),
+    pinned: z.boolean().optional(),
+    // Accept ms-epoch number, ISO string, or explicit null (unpin clears timestamp)
+    pinnedAt: z.union([z.number(), z.string(), z.null()])
+      .optional()
+      .transform((v) => (v != null ? new Date(v) : null)),
+    hidden: z.boolean().optional(),
+  });
+
   app.get("/api/insights", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, MAX_BULK_INSIGHTS);
+      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, MAX_BULK_INSIGHTS));
       const offset = Math.max(parseInt(String(req.query.offset ?? "0"), 10) || 0, 0);
       const insights = await storage.getConversationInsights(userId, limit, offset);
       res.json(insights);
@@ -7571,9 +7584,13 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.post("/api/insights", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const insight = await storage.createConversationInsight({ ...req.body, userId });
+      const data = insertConversationInsightSchema.parse({ ...req.body, userId });
+      const insight = await storage.createConversationInsight(data);
       res.status(201).json(insight);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       console.error("Create insight error:", error);
       res.status(500).json({ error: "Failed to create insight" });
     }
@@ -7588,11 +7605,15 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         return res.status(400).json({ error: "insights must be an array" });
       }
       const capped = (insights as unknown[]).slice(0, MAX_BULK_INSIGHTS);
-      await storage.bulkUpsertConversationInsights(
-        capped.map((i: unknown) => ({ ...(i as object), userId })) as Parameters<typeof storage.bulkUpsertConversationInsights>[0]
-      );
+      const parsed = capped.map((i: unknown) => {
+        return insertConversationInsightSchema.parse({ ...(i as object), userId });
+      });
+      await storage.bulkUpsertConversationInsights(parsed);
       res.json({ ok: true });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       console.error("Bulk upsert insights error:", error);
       res.status(500).json({ error: "Failed to bulk upsert insights" });
     }
@@ -7602,25 +7623,16 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { title, summary, pinned, pinnedAt, hidden } = req.body as {
-        title?: string;
-        summary?: string;
-        pinned?: boolean;
-        pinnedAt?: number | null;
-        hidden?: boolean;
-      };
-      const patch: Record<string, unknown> = {};
-      if (title !== undefined) patch.title = title;
-      if (summary !== undefined) patch.summary = summary;
-      if (pinned !== undefined) patch.pinned = pinned;
-      if (pinnedAt !== undefined) patch.pinnedAt = pinnedAt != null ? new Date(pinnedAt) : null;
-      if (hidden !== undefined) patch.hidden = hidden;
+      const patch = patchInsightSchema.parse(req.body);
       const updated = await storage.updateConversationInsight(id, userId, patch as Parameters<typeof storage.updateConversationInsight>[2]);
       if (!updated) {
         return res.status(404).json({ error: "Insight not found" });
       }
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       console.error("Update insight error:", error);
       res.status(500).json({ error: "Failed to update insight" });
     }

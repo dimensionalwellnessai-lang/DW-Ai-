@@ -2136,8 +2136,17 @@ export const conversationInsightsRelations = relations(conversationInsights, ({ 
   }),
 }));
 
-export const insertConversationInsightSchema = createInsertSchema(conversationInsights).omit({
-  createdAt: true,
+export const insertConversationInsightSchema = createInsertSchema(conversationInsights, {
+  // Allow the client to supply its own createdAt (preserved for migration dedup);
+  // coerce both ISO strings and ms-epoch numbers to a Date.
+  createdAt: z.union([z.string(), z.number(), z.date()])
+    .optional()
+    .transform((v) => (v != null ? (v instanceof Date ? v : new Date(v)) : undefined)),
+  // Coerce pinnedAt similarly – null means "clear the pin timestamp"
+  pinnedAt: z.union([z.string(), z.number(), z.date(), z.null()])
+    .optional()
+    .transform((v) => (v != null ? (v instanceof Date ? v : new Date(v)) : null)),
+}).omit({
   updatedAt: true,
 });
 
