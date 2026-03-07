@@ -31,9 +31,15 @@ import {
   Pencil,
   ThumbsDown,
   Check,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   getInsights,
   pinInsight,
@@ -205,17 +211,17 @@ function DwInsightCard({ insight, onNavigate, onJumpToMoment, onPin, onDelete, o
         <button
           onClick={(e) => { e.stopPropagation(); onNotHelpful(); }}
           aria-label="Mark insight as not helpful"
-          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
           title="Not helpful"
         >
-          <ThumbsDown className="h-3 w-3 text-muted-foreground" />
+          <ThumbsDown className="h-3 w-3" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           aria-label="Delete insight"
-          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          className="p-1 rounded bg-background/80 backdrop-blur-sm border border-border/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
         >
-          <Trash2 className="h-3 w-3 text-muted-foreground" />
+          <Trash2 className="h-3 w-3" />
         </button>
       </div>
     </div>
@@ -454,26 +460,13 @@ export default function LifeCommandCenter() {
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Home" showBack={false} />
 
-      {/* ── Edit Insight Modal ─────────────────────────────────────────── */}
-      {editingInsight && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit insight"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) closeEditModal(); }}
-        >
-          <div className="w-full max-w-sm bg-background border border-border rounded-xl shadow-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Edit insight</h2>
-              <button
-                onClick={closeEditModal}
-                aria-label="Close edit modal"
-                className="p-1 rounded hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
+      {/* ── Edit Insight Dialog ────────────────────────────────────────── */}
+      <Dialog open={editingInsight !== null} onOpenChange={(open) => { if (!open) closeEditModal(); }}>
+        <DialogContent className="max-w-sm p-4">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Edit insight</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
             <div className="space-y-1">
               <label htmlFor="edit-insight-title" className="text-xs font-medium text-muted-foreground">
                 Title <span className="text-[10px]">({editTitle.length}/{TITLE_MAX})</span>
@@ -500,25 +493,25 @@ export default function LifeCommandCenter() {
                 className="w-full text-sm bg-muted/40 border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                onClick={closeEditModal}
-                className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={!editTitle.trim()}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Check className="h-3 w-3" />
-                Save
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="pt-2">
+            <button
+              onClick={closeEditModal}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={!editTitle.trim()}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check className="h-3 w-3" />
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex-1 overflow-auto">
 

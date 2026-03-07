@@ -117,13 +117,17 @@ export function shouldCaptureInsight({
 
   if (!hasSignal) return false;
 
-  // Check local suppression hints – skip capture if any pattern matches
+  // Check local suppression hints – skip capture if any pattern matches.
+  // Use word-boundary matching to avoid false positives (e.g. "plan" ≠ "planet").
   const suppressions = getSuppressions();
   if (suppressions.length > 0) {
     const category = detectIntent({ message: userText });
-    const lowerCombined = combinedText.toLowerCase();
     for (const pattern of suppressions) {
-      if (pattern.category === category && lowerCombined.includes(pattern.keyword.toLowerCase())) {
+      if (pattern.category !== category) continue;
+      // Escape regex metacharacters before building the word-boundary pattern
+      const escaped = pattern.keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\b${escaped}\\b`, "i");
+      if (re.test(combinedText)) {
         return false;
       }
     }
@@ -324,6 +328,7 @@ export function setInsightFrequency(frequency: InsightFrequency): void {
 /**
  * Returns the stored suppression patterns.
  * Returns an empty array if storage is unavailable or data is malformed.
+ * Filters out any entries that are missing required fields or have empty keywords.
  */
 export function getSuppressions(): SuppressionPattern[] {
   try {
@@ -331,7 +336,15 @@ export function getSuppressions(): SuppressionPattern[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed as SuppressionPattern[];
+    return parsed
+      .filter((item): item is { category: string; keyword: string } => {
+        if (!item || typeof item !== "object") return false;
+        const { category, keyword } = item as { category: unknown; keyword: unknown };
+        if (typeof category !== "string" || !category) return false;
+        if (typeof keyword !== "string" || !keyword.trim()) return false;
+        return true;
+      })
+      .map((item) => ({ category: item.category as IntentType, keyword: item.keyword.trim() }));
   } catch {
     return [];
   }
@@ -364,6 +377,9 @@ export function addSuppression(pattern: SuppressionPattern): void {
  * Returns null if no suitable keyword can be extracted.
  */
 function deriveSuppressionPattern(insight: Insight): SuppressionPattern | null {
+  // Guard against corrupted/legacy storage where title may not be a string
+  if (typeof insight.title !== "string" || !insight.title) return null;
+
   // Extract first word from the title that is ≥ 4 chars and not a common stop-word
   const words = insight.title
     .toLowerCase()
