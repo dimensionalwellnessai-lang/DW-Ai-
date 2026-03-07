@@ -6,6 +6,8 @@
  *  - buildInsight:          constructs a small, stable Insight object
  *  - saveInsight:           persists to localStorage (guest/local-only v1)
  *  - getInsights:           retrieves stored insights
+ *  - recordNotHelpful:      marks insight as not helpful, records suppression hint
+ *  - getSuppressions:       returns stored suppression patterns
  *
  * All functions are fail-safe and will not throw even if localStorage is
  * unavailable.
@@ -33,13 +35,26 @@ export interface Insight {
   pinnedAt?: number;
 }
 
+export interface SuppressionPattern {
+  /** Category of the dismissed insight (e.g. "emotional", "planning"). */
+  category: IntentType;
+  /**
+   * A short keyword extracted from the insight title.
+   * Capture is suppressed when the combined text contains this keyword
+   * AND the detected category matches.
+   */
+  keyword: string;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "dw_conversation_insights";
 const FREQUENCY_KEY = "dw_conversation_insights_frequency";
+const SUPPRESSION_KEY = "dw_conversation_insights_suppressions";
 const MAX_INSIGHTS = 50;
 const MIN_WORD_COUNT = 20;
 const MIN_WORD_COUNT_NORMAL = 12;
+const MAX_SUPPRESSIONS = 100;
 
 // Trivial exchanges to skip (short / acknowledgement-only user messages)
 const TRIVIAL_USER_RE =
@@ -63,6 +78,7 @@ const PATTERN_RE =
 /**
  * Returns true when the exchange is meaningful enough to warrant an insight card.
  * This is a purely deterministic heuristic – no extra AI call required.
+ * Also consults local suppression hints before returning true.
  */
 export function shouldCaptureInsight({
   userText,
@@ -86,12 +102,27 @@ export function shouldCaptureInsight({
   const combinedText = `${userText} ${assistantText}`;
 
   // Require at least one high-signal pattern
-  return (
+  const hasSignal =
     EMOTIONAL_PROCESSING_RE.test(combinedText) ||
     DECISION_RE.test(combinedText) ||
     PLAN_RE.test(combinedText) ||
-    PATTERN_RE.test(combinedText)
-  );
+    PATTERN_RE.test(combinedText);
+
+  if (!hasSignal) return false;
+
+  // Check local suppression hints – skip capture if any pattern matches
+  const suppressions = getSuppressions();
+  if (suppressions.length > 0) {
+    const category = detectIntent({ message: userText });
+    const lowerCombined = combinedText.toLowerCase();
+    for (const pattern of suppressions) {
+      if (pattern.category === category && lowerCombined.includes(pattern.keyword.toLowerCase())) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 // ─── buildInsight ─────────────────────────────────────────────────────────────
@@ -278,5 +309,82 @@ export function setInsightFrequency(frequency: InsightFrequency): void {
     localStorage.setItem(FREQUENCY_KEY, frequency);
   } catch {
     // storage unavailable – fail silently
+  }
+}
+
+// ─── Suppression helpers ──────────────────────────────────────────────────────
+
+/**
+ * Returns the stored suppression patterns.
+ * Returns an empty array if storage is unavailable or data is malformed.
+ */
+export function getSuppressions(): SuppressionPattern[] {
+  try {
+    const raw = localStorage.getItem(SUPPRESSION_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as SuppressionPattern[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Adds a suppression pattern derived from the given insight and persists it.
+ * Deduplicates by (category, keyword) to avoid unbounded growth.
+ * Silently does nothing if storage is unavailable.
+ */
+export function addSuppression(pattern: SuppressionPattern): void {
+  try {
+    const existing = getSuppressions();
+    // Deduplicate
+    const alreadyExists = existing.some(
+      (p) => p.category === pattern.category && p.keyword === pattern.keyword
+    );
+    if (alreadyExists) return;
+    // Cap to avoid localStorage bloat
+    const updated = [pattern, ...existing].slice(0, MAX_SUPPRESSIONS);
+    localStorage.setItem(SUPPRESSION_KEY, JSON.stringify(updated));
+  } catch {
+    // Quota exceeded or SSR – fail silently
+  }
+}
+
+/**
+ * Derives a SuppressionPattern from an insight.
+ * Extracts the first meaningful word (≥ 4 chars) from the title as the keyword.
+ * Returns null if no suitable keyword can be extracted.
+ */
+function deriveSuppressionPattern(insight: Insight): SuppressionPattern | null {
+  // Extract first word from the title that is ≥ 4 chars and not a common stop-word
+  const STOP_WORDS = new Set([
+    "this", "that", "with", "your", "have", "from", "they", "will",
+    "been", "more", "when", "what", "then", "than", "just", "like",
+    "into", "some", "also", "most", "over", "such", "here", "there",
+  ]);
+  const words = insight.title
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !STOP_WORDS.has(w));
+
+  if (words.length === 0) return null;
+
+  return { category: insight.category, keyword: words[0] };
+}
+
+/**
+ * Marks an insight as "not helpful":
+ *  1. Deletes the insight from storage.
+ *  2. Records a local suppression hint to reduce similar future captures.
+ *
+ * Silently does nothing if storage is unavailable.
+ */
+export function recordNotHelpful(insight: Insight): void {
+  deleteInsight(insight.id);
+  const pattern = deriveSuppressionPattern(insight);
+  if (pattern) {
+    addSuppression(pattern);
   }
 }
