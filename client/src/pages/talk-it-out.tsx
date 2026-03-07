@@ -187,6 +187,42 @@ export function TalkItOutPage() {
     }
   }, [insights]); // re-run when backend insights load; guard prevents double-apply
 
+  // One-time generic prefill from ?prefill=<encoded-text>&src=home_card (or any src).
+  // Applied only once and only if the input is currently empty.
+  // Removes only the `prefill` (and `src`) params from the URL after applying.
+  const genericPrefillApplied = useRef(false);
+  useEffect(() => {
+    if (genericPrefillApplied.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const prefillText = params.get("prefill");
+    if (!prefillText) return;
+
+    // Apply only if input is currently empty (do not overwrite user's own typing).
+    setInput((current) => {
+      if (current.trim() !== "") return current;
+      genericPrefillApplied.current = true;
+      return decodeURIComponent(prefillText);
+    });
+
+    // Auto-focus the input so the user can start typing immediately.
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+
+    // Remove only the prefill and src params, preserving any others.
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("prefill");
+      url.searchParams.delete("src");
+      const newSearch = url.searchParams.toString();
+      const newPath = newSearch ? `${url.pathname}?${newSearch}` : url.pathname;
+      navigate(newPath, { replace: true });
+    } catch {
+      // URL parsing failed – fail silently
+    }
+  }, []); // intentionally empty deps – run once on mount, guarded by ref
+
   // Jump-to-moment: handle ?jumpToMessageIndex on first render
   useEffect(() => {
     if (typeof window === "undefined") return;
