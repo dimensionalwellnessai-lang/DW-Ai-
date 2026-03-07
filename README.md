@@ -384,6 +384,17 @@ Common issues:
 
 This project is currently in private beta. For feedback or issues, use the in-app feedback button.
 
+## DW Master Specs
+
+Authoritative product, design, and architecture reference for all contributors and AI agents:
+
+- **[DW Master Product Definition](docs/product/DW-Master-Product-Definition.md)** — What DW is, the 13 dimensions, interaction framework, and non-goals
+- **[DW UX Commandments](docs/product/DW-UX-Commandments.md)** — 10 binding rules for every UI decision (progressive disclosure, silence as design, consent-before-action, etc.)
+- **[DW Architecture Blueprint](docs/architecture/DW-Architecture-Blueprint.md)** — 5-layer architecture, data-flow diagram, system-of-record vs AI-interpretation separation
+- **[Copilot & AI-Agent PR Guidelines](docs/development/Copilot-PR-Guidelines.md)** — Contributor rules for feature flags, testing, AI output storage, and endpoint design
+
+---
+
 ## Documentation
 
 ### Getting Started
