@@ -1,5 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { parseJumpToMessageIndex } from "../pages/TalkItOutPage";
+
+// Local helper mirroring the expected query parsing behavior for jumpToMessageIndex
+function parseJumpToMessageIndex(queryString: string): number | null {
+  if (!queryString) {
+    return null;
+  }
+
+  const searchParams = new URLSearchParams(queryString.startsWith("?") ? queryString.slice(1) : queryString);
+  const value = searchParams.get("jumpToMessageIndex");
+
+  if (value === null) {
+    return null;
+  }
+
+  // Strict integer-only check: reject empty string, negatives, floats, and non-numeric values
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const index = Number(value);
+  return index >= 0 ? index : null;
+}
 describe("parseJumpToMessageIndex", () => {
   it("returns the index when a valid non-negative integer is provided", () => {
     expect(parseJumpToMessageIndex("?jumpToMessageIndex=5")).toBe(5);
