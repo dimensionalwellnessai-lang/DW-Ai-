@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import {
   getGuestActivePlan,
+  getGuestElevationPlans,
   getGuestElevationPlanFull,
   getGuestDraftPlanForDay,
   saveGuestElevationPlan,
@@ -194,7 +195,7 @@ export function useElevationPlan() {
         return res.json() as Promise<ElevationPlanItem>;
       }
       updateGuestElevationPlan(id, { title, goal, status });
-      const updated = getGuestActivePlan() ?? { id, title: title ?? "", status: status ?? "draft", startDate: "", endDate: "", createdAt: "" };
+      const updated = getGuestElevationPlans().find((p) => p.id === id) ?? { id, title: title ?? "", status: status ?? "draft", startDate: "", endDate: "", createdAt: "" };
       return updated as unknown as ElevationPlanItem;
     },
     onSuccess: () => {

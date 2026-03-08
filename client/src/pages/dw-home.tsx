@@ -367,7 +367,33 @@ export default function DWHomePage() {
                 const startMs = new Date(plan.startDate).getTime();
                 const todayMs = new Date(new Date().toISOString().slice(0, 10)).getTime();
                 const dayOffset = Math.floor((todayMs - startMs) / 86400000) + 1;
-                const currentDay = days.find((d) => d.dayIndex === Math.min(dayOffset, 7)) ?? days[0];
+                const planComplete = dayOffset > 7;
+
+                if (planComplete) {
+                  return (
+                    <Card className="card-modern border-purple-500/20 bg-purple-500/5">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <TrendingUp className="h-4 w-4 text-purple-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">Plan Complete 🎉</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{plan.title}</p>
+                          </div>
+                        </div>
+                        <Link href="/elevation-plan">
+                          <Button variant="outline" size="sm" className="w-full mt-3 text-xs">
+                            View completed plan
+                            <ChevronRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
+                const currentDay = days.find((d) => d.dayIndex === dayOffset) ?? days[0];
                 const nextAction = currentDay?.actions.find((a) => !a.isCompleted) ?? currentDay?.actions[0];
 
                 return (
@@ -379,7 +405,7 @@ export default function DWHomePage() {
                           Plan in Motion
                         </CardTitle>
                         <Badge variant="outline" className="text-xs border-green-500/40 text-green-400">
-                          Day {Math.min(dayOffset, 7)} of 7
+                          Day {dayOffset} of 7
                         </Badge>
                       </div>
                     </CardHeader>

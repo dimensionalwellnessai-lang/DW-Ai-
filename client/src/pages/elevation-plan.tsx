@@ -194,7 +194,7 @@ export default function ElevationPlanPage() {
 
   // Also check for any draft plan in localStorage (guest) or via query param
   const today = new Date().toISOString().slice(0, 10);
-  const guestDraft = !isLoggedIn ? getGuestDraftPlanForDay(today) : null;
+  const guestDraftMeta = !isLoggedIn ? getGuestDraftPlanForDay(today) : null;
 
   // We need a planId to load – either from activePlan or from URL param
   const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
@@ -220,7 +220,7 @@ export default function ElevationPlanPage() {
   });
 
   const planData: { plan: any; days: any[] } | null =
-    isLoggedIn ? (remotePlan ?? activePlan) : (localDraft ?? (guestDraft ? getGuestElevationPlanFull(guestDraft.id) : null));
+    isLoggedIn ? (remotePlan ?? activePlan) : (localDraft ?? (guestDraftMeta ? getGuestElevationPlanFull(guestDraftMeta.id) : null));
 
   const isLoading = isLoadingActive || isLoadingRemote;
   const [activeDay, setActiveDay] = useState("1");
