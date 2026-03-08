@@ -15,6 +15,13 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 let globalOnDue: OnDueCallback | null = null;
 
 /**
+ * Maximum safe delay for setTimeout (2^31 - 1 ms, ~24.8 days).
+ * Any delay larger than this value will overflow the 32-bit signed integer
+ * and cause the callback to fire immediately in most JS engines.
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
+/**
  * Register a global callback that fires whenever a scheduled reminder fires.
  */
 export function onReminderDue(cb: OnDueCallback): () => void {
@@ -46,11 +53,10 @@ export function scheduleReminderTimer(reminder: {
     return;
   }
 
-  // Max safe setTimeout is ~24.8 days. For far-future reminders, schedule a
-  // chunked timeout that re-checks whether the reminder is actually due before
-  // firing, and re-schedules itself if not.
-  const MAX_TIMEOUT = 2_147_483_647; // ~24.8 days
-  const effectiveDelay = Math.min(delay, MAX_TIMEOUT);
+  // For far-future reminders, schedule a chunked timeout that re-checks
+  // whether the reminder is actually due before firing, and re-schedules
+  // itself if not. Prevents early firing when delay > MAX_TIMEOUT_MS.
+  const effectiveDelay = Math.min(delay, MAX_TIMEOUT_MS);
   const timer = setTimeout(() => {
     const remaining = new Date(reminder.scheduledAt).getTime() - Date.now();
     if (remaining <= 0) {

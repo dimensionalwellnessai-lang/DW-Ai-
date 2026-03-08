@@ -39,10 +39,9 @@ function buildTimeToday(hhmm: string): Date {
 /**
  * Read whether today's check-in already happened.
  * - Guests: check dw_guest_data.moodCheckins in localStorage.
- * - Auth users: use a synchronous XHR call to /api/mood/today as fallback
- *   (acceptable here since this runs once on mount, not on every render).
+ * - Auth users: GET /api/mood/today (async fetch, no UI blocking).
  */
-function hasCheckinToday(isLoggedIn: boolean): boolean {
+async function hasCheckinToday(isLoggedIn: boolean): Promise<boolean> {
   const today = todayIso();
 
   // 1) Guest mode: localStorage-based check
@@ -57,16 +56,13 @@ function hasCheckinToday(isLoggedIn: boolean): boolean {
     // Ignore localStorage/JSON errors
   }
 
-  // 2) Auth users: quick server check
+  // 2) Auth users: async server check
   if (isLoggedIn) {
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("GET", "/api/mood/today", false); // synchronous – only on mount
-      xhr.withCredentials = true;
-      xhr.send(null);
-      if (xhr.status === 200) return true;
+      const res = await fetch("/api/mood/today", { credentials: "include" });
+      if (res.ok) return true;
     } catch {
-      // Network or browser security error – treat as "not checked in"
+      // Network error – treat as "not checked in"
     }
   }
 
@@ -76,9 +72,9 @@ function hasCheckinToday(isLoggedIn: boolean): boolean {
 /**
  * Read whether there's an active elevation plan.
  * - Guests: check localStorage.
- * - Auth users: check /api/elevation-plans/active synchronously on mount.
+ * - Auth users: GET /api/elevation-plans/active (async fetch, no UI blocking).
  */
-function hasActiveElevationPlan(isLoggedIn: boolean): boolean {
+async function hasActiveElevationPlan(isLoggedIn: boolean): Promise<boolean> {
   // Guest path
   try {
     const raw = localStorage.getItem("dw_elevation_plans");
@@ -93,12 +89,9 @@ function hasActiveElevationPlan(isLoggedIn: boolean): boolean {
   // Auth path
   if (isLoggedIn) {
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("GET", "/api/elevation-plans/active", false); // synchronous – only on mount
-      xhr.withCredentials = true;
-      xhr.send(null);
-      if (xhr.status === 200) {
-        const body = JSON.parse(xhr.responseText);
+      const res = await fetch("/api/elevation-plans/active", { credentials: "include" });
+      if (res.ok) {
+        const body = await res.json();
         return Boolean(body?.plan?.id);
       }
     } catch {
@@ -133,7 +126,7 @@ export function useReminderIntegrations(enabled: boolean) {
       try { return localStorage.getItem(LAST_CHECKIN_REMINDER_DATE_KEY) ?? ""; } catch { return ""; }
     })();
 
-    if (lastCheckinReminderDate !== today && !hasCheckinToday(isLoggedIn)) {
+    if (lastCheckinReminderDate !== today) {
       const timeStr = (() => {
         try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
       })();
@@ -141,15 +134,18 @@ export function useReminderIntegrations(enabled: boolean) {
 
       // Only schedule if the reminder time is still in the future
       if (scheduledAt > new Date()) {
-        create({
-          type: "daily_checkin",
-          title: "Daily check-in reminder",
-          body: "Take a moment to log how you're feeling today.",
-          scheduledAt,
-          sourceEntityType: "daily_checkin",
-          sourceEntityId: today,
-        }).then(() => {
-          try { localStorage.setItem(LAST_CHECKIN_REMINDER_DATE_KEY, today); } catch { /* blocked */ }
+        hasCheckinToday(isLoggedIn).then((alreadyDone) => {
+          if (alreadyDone) return;
+          return create({
+            type: "daily_checkin",
+            title: "Daily check-in reminder",
+            body: "Take a moment to log how you're feeling today.",
+            scheduledAt,
+            sourceEntityType: "daily_checkin",
+            sourceEntityId: today,
+          }).then(() => {
+            try { localStorage.setItem(LAST_CHECKIN_REMINDER_DATE_KEY, today); } catch { /* blocked */ }
+          });
         }).catch(() => { /* ignore */ });
       }
     }
@@ -159,21 +155,24 @@ export function useReminderIntegrations(enabled: boolean) {
       try { return localStorage.getItem(LAST_PLAN_REMINDER_DATE_KEY) ?? ""; } catch { return ""; }
     })();
 
-    if (lastPlanReminderDate !== today && hasActiveElevationPlan(isLoggedIn)) {
+    if (lastPlanReminderDate !== today) {
       const planTimeStr = (() => {
         try { return localStorage.getItem(PLAN_REMINDER_TIME_KEY) ?? "09:00"; } catch { return "09:00"; }
       })();
       const scheduledAt = buildTimeToday(planTimeStr);
 
-      create({
-        type: "plan_action",
-        title: "Elevation plan reminder",
-        body: "Your plan is active — check in on today's action.",
-        scheduledAt,
-        sourceEntityType: "elevation_plan",
-        sourceEntityId: today,
-      }).then(() => {
-        try { localStorage.setItem(LAST_PLAN_REMINDER_DATE_KEY, today); } catch { /* blocked */ }
+      hasActiveElevationPlan(isLoggedIn).then((hasActive) => {
+        if (!hasActive) return;
+        return create({
+          type: "plan_action",
+          title: "Elevation plan reminder",
+          body: "Your plan is active — check in on today's action.",
+          scheduledAt,
+          sourceEntityType: "elevation_plan",
+          sourceEntityId: today,
+        }).then(() => {
+          try { localStorage.setItem(LAST_PLAN_REMINDER_DATE_KEY, today); } catch { /* blocked */ }
+        });
       }).catch(() => { /* ignore */ });
     }
     // Run once per day (on mount only)

@@ -33,6 +33,11 @@ export function ReminderBanner() {
   const [activeReminder, setActiveReminder] = useState<ReminderRecord | null>(null);
   const [showSnooze, setShowSnooze] = useState(false);
   const handledRef = useRef<Set<string>>(new Set());
+  // Stable ref for markSent so the callback effect doesn't re-register on every render
+  const markSentRef = useRef(markSent);
+  useEffect(() => {
+    markSentRef.current = markSent;
+  });
 
   // Wire check-in + elevation plan integrations (gated by flag internally)
   useReminderIntegrations(enabled);
@@ -53,11 +58,11 @@ export function ReminderBanner() {
       const full = reminders.find((rem) => rem.id === r.id);
       if (!full) return;
       // Mark as sent immediately so re-loads don't re-fire the same banner
-      await markSent(r.id);
+      await markSentRef.current(r.id);
       setActiveReminder(full);
     });
     return unregister;
-  }, [enabled, reminders, markSent]);
+  }, [enabled, reminders]);
 
   if (!enabled || !activeReminder) return null;
 
