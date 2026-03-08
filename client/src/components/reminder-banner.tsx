@@ -49,9 +49,10 @@ export function ReminderBanner() {
     const unregister = onReminderDue((r) => {
       if (handledRef.current.has(r.id)) return;
       handledRef.current.add(r.id);
-      // Find the full record (we may need the type etc.)
+      // Find the full record; skip if not found (may have been dismissed/cancelled)
       const full = reminders.find((rem) => rem.id === r.id);
-      setActiveReminder(full ?? ({ ...r, scheduledAt: new Date().toISOString(), createdAt: new Date().toISOString(), type: "custom", status: "scheduled" } as ReminderRecord));
+      if (!full) return;
+      setActiveReminder(full);
     });
     return unregister;
   }, [enabled, reminders]);

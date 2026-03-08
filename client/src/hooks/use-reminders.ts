@@ -186,7 +186,7 @@ export function useReminders() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ sourceEntityType, sourceEntityId }),
-        }).catch(() => {/* ignore */});
+        }).catch((err) => { console.warn("[useReminders] cancelBySource network error:", err); });
         queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       } else {
         cancelGuestRemindersBySource(sourceEntityType, sourceEntityId);

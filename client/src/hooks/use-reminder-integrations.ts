@@ -10,8 +10,9 @@
  *   2. Elevation plan daily reminder – fires at the user's configured morning time.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useReminders } from "@/hooks/use-reminders";
+import type { CreateReminderInput } from "@/hooks/use-reminders";
 
 const CHECKIN_REMINDER_TIME_KEY = "dw_checkin_reminder_time";
 const PLAN_REMINDER_TIME_KEY = "dw_plan_reminder_time";
@@ -62,8 +63,16 @@ function hasActiveElevationPlan(): boolean {
 
 export function useReminderIntegrations() {
   const { createReminder } = useReminders();
+  // Capture the latest createReminder in a ref so the effect only runs once
+  // per day (on mount) while still using the up-to-date function reference.
+  const createReminderRef = useRef(createReminder);
+  useEffect(() => {
+    createReminderRef.current = createReminder;
+  });
 
   useEffect(() => {
+    // Convenience alias pointing at the stable ref
+    const create = (input: CreateReminderInput) => createReminderRef.current(input);
     const today = todayIso();
 
     // ── 1. Daily check-in reminder ──────────────────────────────────────────
@@ -77,9 +86,9 @@ export function useReminderIntegrations() {
       })();
       const scheduledAt = buildTimeToday(timeStr);
 
-      // Only schedule if the time hasn't already passed today
-      if (scheduledAt > new Date() || scheduledAt.toDateString() !== new Date().toDateString()) {
-        createReminder({
+      // Only schedule if the reminder time is still in the future
+      if (scheduledAt > new Date()) {
+        create({
           type: "daily_checkin",
           title: "Daily check-in reminder",
           body: "Take a moment to log how you're feeling today.",
@@ -103,7 +112,7 @@ export function useReminderIntegrations() {
       })();
       const scheduledAt = buildTimeToday(planTimeStr);
 
-      createReminder({
+      create({
         type: "plan_action",
         title: "Elevation plan reminder",
         body: "Your plan is active — check in on today's action.",
@@ -114,8 +123,8 @@ export function useReminderIntegrations() {
         try { localStorage.setItem(LAST_PLAN_REMINDER_DATE_KEY, today); } catch { /* blocked */ }
       }).catch(() => { /* ignore */ });
     }
-    // Run once per day (not on every re-render)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Run once per day (on mount only)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 

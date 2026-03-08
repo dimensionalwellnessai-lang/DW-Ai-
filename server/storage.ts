@@ -3088,7 +3088,8 @@ export class DatabaseStorage implements IStorage {
     const whereClause = status && status !== "all"
       ? and(userCond, eq(reminders.status, status))
       : userCond;
-    return db.select().from(reminders).where(whereClause).orderBy(desc(reminders.scheduledAt));
+    // Ascending: most imminent scheduled reminders appear first
+    return db.select().from(reminders).where(whereClause).orderBy(reminders.scheduledAt);
   }
 
   async getDueReminders(userId: string, before: Date): Promise<Reminder[]> {
