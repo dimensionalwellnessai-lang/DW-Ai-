@@ -17,6 +17,7 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
+  ELEVATION_PLAN: boolean;          // ✅ 7-day Elevation Plan with calendar/tasks integration (PR #14)
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
 }
@@ -154,6 +155,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
+  ELEVATION_PLAN: true,
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   DW_LEARNS: true,
 };

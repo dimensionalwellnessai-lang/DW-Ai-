@@ -8163,6 +8163,80 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     description: z.string().max(1000).optional(),
   });
 
+  const elevationPlanAddToCalendarSchema = z.object({
+    planDayIndex: z.number().int().min(1).max(7),
+    planStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    planTitle: z.string().max(200).optional(),
+  });
+
+  const elevationPlanAddToTasksSchema = z.object({
+    planDayIndex: z.number().int().min(1).max(7),
+    planStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  });
+
+  /** Map action timeOfDay string to a wall-clock hour (24h). */
+  function resolveActionHour(timeOfDay: string | null | undefined): number {
+    if (!timeOfDay) return 9;
+    const t = timeOfDay.toLowerCase();
+    if (t.includes("morning")) return 8;
+    if (t.includes("afternoon")) return 13;
+    if (t.includes("evening") || t.includes("night")) return 18;
+    // Try to parse "HH:MM" or "H:MM AM/PM"
+    const match12 = t.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/);
+    if (match12) {
+      let h = parseInt(match12[1], 10);
+      if (match12[3] === "pm" && h !== 12) h += 12;
+      if (match12[3] === "am" && h === 12) h = 0;
+      return h;
+    }
+    const match24 = t.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) return parseInt(match24[1], 10);
+    return 9;
+  }
+
+  /** Add calendar days to a YYYY-MM-DD string without timezone conversion. */
+  function addCalendarDays(dateStr: string, days: number): string {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d + days);
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+  }
+
+  /** Build wall-clock startTime / endTime strings (no timezone offset) for a plan action. */
+  function buildActionEventTimes(
+    planStartDate: string,
+    dayIndex: number,
+    timeOfDay: string | null | undefined,
+    durationMinutes: number | null | undefined
+  ): { startTime: string; endTime: string } {
+    const dateStr = addCalendarDays(planStartDate, dayIndex - 1);
+    const hour = resolveActionHour(timeOfDay);
+    const dur = durationMinutes ?? 30;
+    const startMinutes = hour * 60;
+    const endMinutes = startMinutes + dur;
+    const endHour = Math.floor(endMinutes / 60) % 24;
+    const endMin = endMinutes % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const startTime = `${dateStr}T${pad(hour)}:00:00`;
+    const endTime = `${addCalendarDays(planStartDate, dayIndex - 1 + (endMinutes >= 1440 ? 1 : 0))}T${pad(endHour)}:${pad(endMin)}:00`;
+    return { startTime, endTime };
+  }
+
+  /** Map action type to calendar event type. */
+  function actionTypeToEventType(actionType: string): string {
+    const map: Record<string, string> = {
+      workout: "workout",
+      nutrition: "meal",
+      habit: "routine",
+      reflection: "routine",
+      schedule: "event",
+    };
+    return map[actionType] ?? "event";
+  }
+
   // POST /api/elevation-plans/preview – guest preview (no auth, returns structure only)
   app.post("/api/elevation-plans/preview", elevationPlanLimiter, async (req, res) => {
     try {
@@ -8354,10 +8428,163 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
       const updated = await storage.updateElevationPlanAction(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Action not found" });
+
+      // Sync completion state to a linked task when isCompleted changes
+      if (parsed.data.isCompleted !== undefined && updated.linkedEntity) {
+        const linked = updated.linkedEntity as { type?: string; id?: string } | null;
+        if (linked && linked.type === "task" && linked.id) {
+          try {
+            await storage.updateTask(linked.id, {
+              isCompleted: parsed.data.isCompleted,
+              status: parsed.data.isCompleted ? "done" : "todo",
+            });
+          } catch {
+            // Non-fatal: linked task may have been deleted externally
+          }
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Elevation plan action update error:", error);
       res.status(500).json({ error: "Failed to update elevation plan action" });
+    }
+  });
+
+  // POST /api/elevation-plan-actions/:id/add-to-calendar – create a calendar event from a plan action
+  app.post("/api/elevation-plan-actions/:id/add-to-calendar", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanAddToCalendarSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+
+      const action = await storage.getElevationPlanActionForUser(req.params.id, userId);
+      if (!action) return res.status(404).json({ error: "Action not found" });
+
+      const existing = action.linkedEntity as { type?: string; id?: string } | null;
+      if (existing?.type === "calendar_event" && existing.id) {
+        return res.status(409).json({ error: "Action is already linked to a calendar event", calendarEventId: existing.id });
+      }
+
+      const { startTime, endTime } = buildActionEventTimes(
+        parsed.data.planStartDate,
+        parsed.data.planDayIndex,
+        action.timeOfDay,
+        action.durationMinutes
+      );
+
+      const calendarEvent = await storage.createCalendarEvent({
+        userId,
+        title: action.title,
+        description: action.description ?? "",
+        startTime,
+        endTime,
+        eventType: actionTypeToEventType(action.actionType),
+        linkedType: "elevation_action",
+        linkedId: action.id,
+        linkedRoute: "/elevation-plan",
+        linkedMeta: {
+          planTitle: parsed.data.planTitle ?? "",
+          planDayIndex: parsed.data.planDayIndex,
+          actionType: action.actionType,
+        },
+      });
+
+      const updatedAction = await storage.updateElevationPlanAction(action.id, userId, {
+        linkedEntity: { type: "calendar_event", id: calendarEvent.id },
+      });
+
+      res.json({ action: updatedAction, calendarEvent });
+    } catch (error) {
+      console.error("Elevation plan add-to-calendar error:", error);
+      res.status(500).json({ error: "Failed to add action to calendar" });
+    }
+  });
+
+  // DELETE /api/elevation-plan-actions/:id/remove-from-calendar – remove linked calendar event
+  app.delete("/api/elevation-plan-actions/:id/remove-from-calendar", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const action = await storage.getElevationPlanActionForUser(req.params.id, userId);
+      if (!action) return res.status(404).json({ error: "Action not found" });
+
+      const linked = action.linkedEntity as { type?: string; id?: string } | null;
+      if (linked && linked.type === "calendar_event" && linked.id) {
+        await storage.deleteCalendarEventForUser(linked.id, userId);
+      }
+
+      const updatedAction = await storage.updateElevationPlanAction(action.id, userId, {
+        linkedEntity: null,
+      });
+      res.json({ action: updatedAction, success: true });
+    } catch (error) {
+      console.error("Elevation plan remove-from-calendar error:", error);
+      res.status(500).json({ error: "Failed to remove action from calendar" });
+    }
+  });
+
+  // POST /api/elevation-plan-actions/:id/add-to-tasks – create a task from a plan action
+  app.post("/api/elevation-plan-actions/:id/add-to-tasks", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanAddToTasksSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+
+      const action = await storage.getElevationPlanActionForUser(req.params.id, userId);
+      if (!action) return res.status(404).json({ error: "Action not found" });
+
+      const existing = action.linkedEntity as { type?: string; id?: string } | null;
+      if (existing?.type === "task" && existing.id) {
+        return res.status(409).json({ error: "Action is already linked to a task", taskId: existing.id });
+      }
+
+      // Compute due date for the plan day using pure date arithmetic (no UTC shift)
+      const dueDate = addCalendarDays(parsed.data.planStartDate, parsed.data.planDayIndex - 1);
+
+      const task = await storage.createTask({
+        userId,
+        title: action.title,
+        description: action.description ?? "",
+        status: "todo",
+        isCompleted: false,
+        dueDate,
+        dimensionTags: [action.actionType],
+      });
+
+      const updatedAction = await storage.updateElevationPlanAction(action.id, userId, {
+        linkedEntity: { type: "task", id: task.id },
+      });
+
+      res.json({ action: updatedAction, task });
+    } catch (error) {
+      console.error("Elevation plan add-to-tasks error:", error);
+      res.status(500).json({ error: "Failed to add action to tasks" });
+    }
+  });
+
+  // DELETE /api/elevation-plan-actions/:id/remove-from-tasks – remove linked task
+  app.delete("/api/elevation-plan-actions/:id/remove-from-tasks", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const action = await storage.getElevationPlanActionForUser(req.params.id, userId);
+      if (!action) return res.status(404).json({ error: "Action not found" });
+
+      const linked = action.linkedEntity as { type?: string; id?: string } | null;
+      if (linked && linked.type === "task" && linked.id) {
+        await storage.deleteTask(linked.id);
+      }
+
+      const updatedAction = await storage.updateElevationPlanAction(action.id, userId, {
+        linkedEntity: null,
+      });
+      res.json({ action: updatedAction, success: true });
+    } catch (error) {
+      console.error("Elevation plan remove-from-tasks error:", error);
+      res.status(500).json({ error: "Failed to remove action from tasks" });
     }
   });
 

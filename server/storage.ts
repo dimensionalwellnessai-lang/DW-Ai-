@@ -664,6 +664,7 @@ export interface IStorage {
   getElevationPlanDays(planId: string): Promise<ElevationPlanDay[]>;
   createElevationPlanDay(day: InsertElevationPlanDay): Promise<ElevationPlanDay>;
   getElevationPlanActions(planDayId: string): Promise<ElevationPlanAction[]>;
+  getElevationPlanActionForUser(id: string, userId: string): Promise<ElevationPlanAction | undefined>;
   createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction>;
   updateElevationPlanAction(id: string, userId: string, data: Partial<ElevationPlanAction>): Promise<ElevationPlanAction | undefined>;
   // Reminders (PR #7)
@@ -3178,6 +3179,25 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(elevationPlanActions)
       .where(eq(elevationPlanActions.planDayId, planDayId))
       .orderBy(elevationPlanActions.createdAt);
+  }
+
+  async getElevationPlanActionForUser(id: string, userId: string): Promise<ElevationPlanAction | undefined> {
+    const [row] = await db.select().from(elevationPlanActions)
+      .where(
+        and(
+          eq(elevationPlanActions.id, id),
+          sql`${elevationPlanActions.planDayId} in (
+            select ${elevationPlanDays.id}
+            from ${elevationPlanDays}
+            where ${elevationPlanDays.planId} in (
+              select ${elevationPlans.id}
+              from ${elevationPlans}
+              where ${elevationPlans.userId} = ${userId}
+            )
+          )`
+        )
+      );
+    return row;
   }
 
   async createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction> {
