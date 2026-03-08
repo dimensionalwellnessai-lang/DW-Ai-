@@ -7861,11 +7861,15 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
    * Compute momentum status from a user's existing data.
    * Uses only real data: habits (streak), goals (progress), mood logs (last 7 days).
    * Returns: { momentumStatus, reasons, suggestedFocus }
+   *
+   * @param recentMoods - Mood logs within the last 7 days (pre-filtered by DB query)
+   * @param hasPriorMoodLogs - Whether any mood logs exist before the 7-day window
    */
   function computeMomentumStatus(
     habits: Habit[],
     goals: Goal[],
-    moodLogs: MoodLog[],
+    recentMoods: MoodLog[],
+    hasPriorMoodLogs: boolean,
   ): { momentumStatus: "green" | "yellow" | "red"; reasons: string[]; suggestedFocus?: string } {
     const negativeSignals: string[] = [];
 
@@ -7899,13 +7903,8 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
     }
 
-    // Signal 4: No mood check-ins in last 7 days
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentMoods = moodLogs.filter(
-      (m) => m.createdAt && new Date(m.createdAt) >= sevenDaysAgo,
-    );
-    if (recentMoods.length === 0 && moodLogs.length > 0) {
-      // Only flag this if they've used mood logs before but haven't recently
+    // Signal 4: No mood check-ins in last 7 days (only flagged if they've logged before)
+    if (recentMoods.length === 0 && hasPriorMoodLogs) {
       negativeSignals.push("No energy check-ins in the last 7 days");
     }
 
@@ -7956,13 +7955,22 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  const elevationCheckBodySchema = z.object({
+    force: z.boolean().optional(),
+  });
+
   // POST /api/elevation/check – run (or re-run) today's elevation check
   // Body: { force?: boolean } — force=true bypasses the daily idempotency guard
   app.post("/api/elevation/check", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
       const today = todayDateString();
-      const force = Boolean((req.body as Record<string, unknown>)?.force);
+
+      const parsed = elevationCheckBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+      const force = parsed.data.force === true;
 
       // Idempotency: skip if already checked today (unless force=true)
       if (!force) {
@@ -7972,14 +7980,20 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         }
       }
 
-      // Gather existing data
-      const [habits, goals, moodLogs] = await Promise.all([
+      // Gather only what we need: habits/goals (all active) + mood logs for the last 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [habits, goals, moodData] = await Promise.all([
         storage.getHabits(userId),
         storage.getGoals(userId),
-        storage.getMoodLogs(userId),
+        storage.getRecentMoodLogs(userId, sevenDaysAgo),
       ]);
 
-      const { momentumStatus, reasons, suggestedFocus } = computeMomentumStatus(habits, goals, moodLogs);
+      const { momentumStatus, reasons, suggestedFocus } = computeMomentumStatus(
+        habits,
+        goals,
+        moodData.logs,
+        moodData.hasPriorLogs,
+      );
 
       const check = await storage.upsertElevationCheck({
         userId,

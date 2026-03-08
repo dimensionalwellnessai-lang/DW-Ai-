@@ -274,6 +274,7 @@ export interface IStorage {
   createHabitLog(log: InsertHabitLog): Promise<HabitLog>;
 
   getMoodLogs(userId: string): Promise<MoodLog[]>;
+  getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
   getTodaysMoodLog(userId: string): Promise<MoodLog | undefined>;
   createMoodLog(log: InsertMoodLog): Promise<MoodLog>;
 
@@ -957,6 +958,24 @@ export class DatabaseStorage implements IStorage {
 
   async getMoodLogs(userId: string): Promise<MoodLog[]> {
     return db.select().from(moodLogs).where(eq(moodLogs.userId, userId)).orderBy(desc(moodLogs.createdAt));
+  }
+
+  async getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }> {
+    // Fetch only logs within the window
+    const logs = await db
+      .select()
+      .from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), gte(moodLogs.createdAt, sinceDate)))
+      .orderBy(desc(moodLogs.createdAt));
+
+    // Cheap existence check: does this user have any logs older than the window?
+    const [priorRow] = await db
+      .select({ id: moodLogs.id })
+      .from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), lte(moodLogs.createdAt, sinceDate)))
+      .limit(1);
+
+    return { logs, hasPriorLogs: Boolean(priorRow) };
   }
 
   async getTodaysMoodLog(userId: string): Promise<MoodLog | undefined> {

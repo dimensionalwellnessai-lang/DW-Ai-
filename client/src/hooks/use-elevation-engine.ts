@@ -72,9 +72,16 @@ export function useElevationEngine(): UseElevationEngineResult {
         body: JSON.stringify({ force }),
       });
       if (!res.ok) {
-        throw new Error(`Elevation check failed: ${res.status}`);
+        let errorText = "";
+        try {
+          errorText = (await res.text()).trim();
+        } catch {
+          // ignore errors while reading error body
+        }
+        const detail = errorText || res.statusText || "Unknown error";
+        throw new Error(`Elevation check failed: ${res.status} ${detail}`);
       }
-      return res.json() as Promise<ElevationCheckResult>;
+      return (await res.json()) as ElevationCheckResult;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(QUERY_KEY, data);

@@ -191,7 +191,7 @@ export function useHomeSummary(): HomeSummary {
     latestJournalEntry,
     activeFollowUp,
     todayLabel: buildTodayLabel(),
-    momentumData: elevation.enabled
+    momentumData: elevation.enabled && isLoggedIn
       ? {
           status: elevation.status,
           reasons: elevation.reasons,

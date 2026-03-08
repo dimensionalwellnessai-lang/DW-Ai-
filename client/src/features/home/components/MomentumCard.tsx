@@ -3,9 +3,9 @@
  *
  * When ELEVATION_ENGINE is ON: shows momentum status (green/yellow/red),
  * up to 2 reason strings, and a "Check my momentum" button.
- * When ELEVATION_ENGINE is OFF: falls back to the original habit-streak message.
+ * When ELEVATION_ENGINE is OFF: falls back to a habit/goal-based momentum message
+ * using streaks and active counts from HomeSummary.
  *
- * Uses completedToday: NOT available from /api/habits — see useHomeSummary.
  * Empty state: a gentle prompt to take one action.
  */
 
