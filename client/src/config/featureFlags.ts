@@ -17,8 +17,10 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
+  ELEVATION_PLAN: boolean;          // ⏸️ 7-day Elevation Plan builder (PR #5) — enables the plan page
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
+  SHARE_EXPORT: boolean;            // ⏸️ Share/export elevation plans + weekly summaries (PR #18)
 }
 
 /**
@@ -117,6 +119,58 @@ function resolveElevationEngineFlag(): boolean {
 }
 
 /**
+ * Resolves the initial value for the ELEVATION_PLAN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_elevation_plan', 'true')  — persists across sessions
+ *   ?ep=1 query param                                   — one-time, per URL
+ */
+function resolveElevationPlanFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ep") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the initial value for the SHARE_EXPORT feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_share_export', 'true')  — persists across sessions
+ *   ?se=1 query param                                 — one-time, per URL
+ */
+function resolveShareExportFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_share_export") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("se") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
  * Resolves the initial value for the DAILY_CHECKIN feature flag.
  * Default is OFF; enable locally via:
  *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
@@ -154,8 +208,10 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
+  ELEVATION_PLAN: resolveElevationPlanFlag(),
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   DW_LEARNS: true,
+  SHARE_EXPORT: resolveShareExportFlag(),
 };
 
 /**

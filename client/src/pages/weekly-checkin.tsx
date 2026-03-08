@@ -6,11 +6,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { CheckCircle, Calendar, ChevronRight, Lock, ArrowLeft } from "lucide-react";
+import { CheckCircle, Calendar, ChevronRight, Lock, ArrowLeft, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/page-header";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ShareExportSheet } from "@/components/share-export-sheet";
 
 interface CheckinState {
   trialStartAt: string | null;
@@ -138,6 +139,32 @@ function getSubmittedWeeksGuest(): number[] {
   return submitted;
 }
 
+const WEEK_TITLE: Record<number, string> = {
+  1: "First Impressions",
+  2: "Usage & Flow",
+  3: "Value & Trust",
+  4: "Overall Reflection",
+};
+
+/** Format submitted check-in answers as a plain-text summary */
+function formatCheckinSummary(weekNumber: number, answers: Record<string, string>): string {
+  const content = WEEK_CONTENT[weekNumber];
+  if (!content) return "";
+  const lines: string[] = [];
+  lines.push(`📝 Beta Check-In — Week ${weekNumber}: ${WEEK_TITLE[weekNumber] ?? ""}`);
+  lines.push("");
+  for (const q of content.questions) {
+    if (q.showWhen) continue; // skip conditional sub-questions in summary
+    const answer = answers[q.id];
+    if (!answer?.trim()) continue;
+    lines.push(`Q: ${q.text}`);
+    lines.push(`A: ${answer}`);
+    lines.push("");
+  }
+  lines.push("Shared from DW.ai — Dimensional Wellness AI");
+  return lines.join("\n");
+}
+
 export default function WeeklyCheckinPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -147,6 +174,7 @@ export default function WeeklyCheckinPage() {
   const [isGuest, setIsGuest] = useState(true);
   const [guestTrialStart, setGuestTrialStartState] = useState<Date | null>(null);
   const [guestSubmittedWeeks, setGuestSubmittedWeeks] = useState<number[]>([]);
+  const [shareWeek, setShareWeek] = useState<number | null>(null);
 
   const { data: checkinState, isLoading: stateLoading } = useQuery<CheckinState>({
     queryKey: ["/api/weekly-checkin/state"],
@@ -156,6 +184,12 @@ export default function WeeklyCheckinPage() {
   const { data: weekData } = useQuery<WeekResponse | null>({
     queryKey: ["/api/weekly-checkin", selectedWeek],
     enabled: !!selectedWeek && !isGuest,
+  });
+
+  // Fetch answers for the week being shared (auth users)
+  const { data: shareWeekData } = useQuery<WeekResponse | null>({
+    queryKey: ["/api/weekly-checkin", shareWeek],
+    enabled: !!shareWeek && !isGuest,
   });
 
   useEffect(() => {
@@ -322,6 +356,16 @@ export default function WeeklyCheckinPage() {
   }
 
   if (!selectedWeek) {
+    // Compute share text for the week being shared (if any)
+    const shareWeekAnswers = shareWeek
+      ? (isGuest
+          ? (getGuestWeekData(shareWeek)?.answers ?? {})
+          : (shareWeekData?.answers ?? {}))
+      : {};
+    const shareTextContent = shareWeek
+      ? formatCheckinSummary(shareWeek, shareWeekAnswers)
+      : "";
+
     return (
       <div className="flex flex-col h-full bg-background">
         <PageHeader title="Beta Feedback" backPath="/" />
@@ -368,7 +412,22 @@ export default function WeeklyCheckinPage() {
                       {isCompleted && (
                         <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400">Submitted</Badge>
                       )}
-                      {!isLocked && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                      {isCompleted && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShareWeek(week);
+                          }}
+                          aria-label={`Share Week ${week} summary`}
+                          data-testid={`button-share-week-${week}`}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {!isLocked && !isCompleted && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </div>
                   </CardContent>
                 </Card>
@@ -376,6 +435,18 @@ export default function WeeklyCheckinPage() {
             })}
           </div>
         </main>
+
+        {shareWeek !== null && (
+          <ShareExportSheet
+            open={shareWeek !== null}
+            onOpenChange={(open) => { if (!open) setShareWeek(null); }}
+            title={`Week ${shareWeek}: ${WEEK_TITLE[shareWeek] ?? ""}`}
+            description="Share your check-in summary"
+            shareUrl={`/weekly-checkin`}
+            textContent={shareTextContent}
+            showPrint={false}
+          />
+        )}
       </div>
     );
   }
