@@ -28,6 +28,7 @@ import { useTrackFeature } from "@/hooks/use-ai-learning";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
+import { COPY } from "@/copy/en";
 
 interface DimensionAssessment {
   dimension: string;
@@ -234,7 +235,7 @@ export default function InsightsDashboard() {
                     DW Insight Feed
                   </CardTitle>
                   <CardDescription>
-                    AI-generated insights captured from your conversations
+                    {COPY.whySeeingThis.insights}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -243,9 +244,12 @@ export default function InsightsDashboard() {
                       Sign in to see your DW insights
                     </p>
                   ) : dwInsights.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No DW insights yet — have a conversation and use <strong>Process Conversation</strong> to generate your first insight
-                    </p>
+                    <div className="text-center py-8">
+                      <p className="text-foreground font-medium">{COPY.emptyStates.insights.title}</p>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        {COPY.emptyStates.insights.body}
+                      </p>
+                    </div>
                   ) : (
                     dwInsights.map((insight) => (
                       <div key={insight.id} className="border rounded-lg p-4 space-y-2">
@@ -295,12 +299,16 @@ export default function InsightsDashboard() {
                   <Target className="h-5 w-5" />
                   Active Goals
                 </CardTitle>
+                <CardDescription>{COPY.whySeeingThis.goals}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {activeGoals.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No active goals yet. Create your first goal to get started!
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-foreground font-medium">{COPY.emptyStates.goals.title}</p>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {COPY.emptyStates.goals.body}
+                    </p>
+                  </div>
                 ) : (
                   activeGoals.map(goal => {
                     const dimension = goal.wellnessDimension ? getDimensionById(goal.wellnessDimension) : null;
@@ -340,12 +348,16 @@ export default function InsightsDashboard() {
                   <Flame className="h-5 w-5 text-orange-500" />
                   Current Streaks
                 </CardTitle>
+                <CardDescription>{COPY.whySeeingThis.streaks}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {topStreaks.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No streaks yet. Complete habits consistently to build streaks!
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-foreground font-medium">{COPY.emptyStates.streaks.title}</p>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {COPY.emptyStates.streaks.body}
+                    </p>
+                  </div>
                 ) : (
                   topStreaks.map(streak => (
                     <div key={streak.id} className="flex items-center justify-between p-4 border rounded-lg">
