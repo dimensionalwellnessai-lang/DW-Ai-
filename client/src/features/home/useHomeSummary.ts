@@ -14,7 +14,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn } from "@/lib/queryClient";
-import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight } from "./types";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp } from "./types";
 import type { Habit, Goal } from "@shared/schema";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ export function useHomeSummary(): HomeSummary {
   // Auth user info — uses returnNull on 401 so guests don't cause an error state.
   const { user, isLoading: authLoading } = useAuth();
   const isLoggedIn = Boolean(user);
+  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
 
   // Calendar events – auth users use the API; guests fall back to localStorage.
   const { data: dbEvents = [], isLoading: eventsLoading } = useQuery<Array<Record<string, unknown>>>({
@@ -86,6 +88,21 @@ export function useHomeSummary(): HomeSummary {
 
   // Insights (works for both auth + guest)
   const { insights } = useInsights();
+
+  // DW Insight + Journal Intelligence System (flag-gated, auth only)
+  const { data: latestDwJournal } = useQuery<Record<string, unknown> | null>({
+    queryKey: ["/api/dw/latestJournal"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
+  });
+
+  const { data: dwFollowups = [] } = useQuery<Array<Record<string, unknown>>>({
+    queryKey: ["/api/dw/followups"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
+  });
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -137,6 +154,26 @@ export function useHomeSummary(): HomeSummary {
     };
   }, [insights]);
 
+  const latestJournalEntry: LatestJournalEntry | null = useMemo(() => {
+    if (!dwInsightJournalEnabled || !latestDwJournal) return null;
+    return {
+      id: String(latestDwJournal.id ?? ""),
+      title: String(latestDwJournal.title ?? ""),
+      story: String(latestDwJournal.story ?? ""),
+      tags: Array.isArray(latestDwJournal.tags) ? (latestDwJournal.tags as string[]) : [],
+      createdAt: String(latestDwJournal.createdAt ?? new Date().toISOString()),
+    };
+  }, [dwInsightJournalEnabled, latestDwJournal]);
+
+  const activeFollowUp: ActiveFollowUp | null = useMemo(() => {
+    if (!dwInsightJournalEnabled || !Array.isArray(dwFollowups) || dwFollowups.length === 0) return null;
+    const first = dwFollowups[0];
+    return {
+      id: String(first.id ?? ""),
+      prompt: String(first.prompt ?? ""),
+    };
+  }, [dwInsightJournalEnabled, dwFollowups]);
+
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
   return {
@@ -146,6 +183,9 @@ export function useHomeSummary(): HomeSummary {
     activeGoals,
     activeHabits,
     latestInsight,
+    latestJournalEntry,
+    activeFollowUp,
     todayLabel: buildTodayLabel(),
   };
 }
+

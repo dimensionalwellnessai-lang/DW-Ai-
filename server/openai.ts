@@ -3127,3 +3127,175 @@ Respond with valid JSON only:
     throw new Error("Failed to generate cook session recipe. Please try again.");
   }
 }
+
+// ─── DW Insight + Journal Intelligence Pipeline ───────────────────────────────
+
+export interface DwInsightPipelineResult {
+  insight: {
+    title: string;
+    summary: string;
+    insightLine: string;
+    quotes: string[];
+    theme: string;
+    tags: string[];
+    switchTag?: string;
+  };
+  journalEntry: {
+    title: string;
+    story: string;
+    quotes: string[];
+    tags: string[];
+  };
+  followupPrompt: string;
+}
+
+const MAX_CONVERSATION_CHARS_FOR_INSIGHTS = 8000;
+
+/**
+ * Processes a conversation into structured insight + journal + follow-up records.
+ * Uses a two-call pipeline:
+ *   1. Summarize, extract quotes, generate insight + themes + follow-up
+ *   2. Generate a narrative journal story that references the above
+ */
+export async function processConversationIntoInsights(
+  messages: { role: "user" | "assistant"; content: string }[]
+): Promise<DwInsightPipelineResult | null> {
+  if (!messages || messages.length === 0) return null;
+
+  const fullConversationText = messages
+    .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content}`)
+    .join("\n\n");
+
+  // Truncate to a deterministic, bounded context window to avoid exceeding model limits.
+  let conversationText =
+    fullConversationText.length <= MAX_CONVERSATION_CHARS_FOR_INSIGHTS
+      ? fullConversationText
+      : fullConversationText.slice(-MAX_CONVERSATION_CHARS_FOR_INSIGHTS);
+
+  // Try to align the start of the truncated text to the beginning of a turn label.
+  if (conversationText.length < fullConversationText.length) {
+    const firstUserIdx = conversationText.indexOf("User:");
+    const firstDwIdx = conversationText.indexOf("DW:");
+    const firstLabelIdx =
+      firstUserIdx === -1
+        ? firstDwIdx
+        : firstDwIdx === -1
+        ? firstUserIdx
+        : Math.min(firstUserIdx, firstDwIdx);
+
+    if (firstLabelIdx > 0) {
+      conversationText = conversationText.slice(firstLabelIdx);
+    }
+  }
+
+  if (conversationText.trim().length < 100) return null;
+
+  try {
+    // ── Call 1: Insight analytics ────────────────────────────────────────────
+    const analyticsPrompt = `You are DW, a dimensional wellness AI. Analyze the conversation below and return structured JSON.
+
+CONVERSATION:
+${conversationText}
+
+Return ONLY valid JSON with this exact shape:
+{
+  "title": "<short title capturing the main theme (5–10 words)>",
+  "summary": "<2–3 sentence neutral summary of what was discussed>",
+  "insightLine": "<1 punchy, meaningful insight about this person based on the conversation (max 20 words)>",
+  "quotes": ["<direct quote 1 from User>", "<direct quote 2 from User>", "<direct quote 3 from User>"],
+  "theme": "<single primary theme word or phrase>",
+  "tags": ["<tag1>", "<tag2>", "<tag3>"],
+  "switchTag": "<optional: one wellness dimension if relevant, e.g. 'mind', 'body', 'relationships', 'finances', 'work', or omit>",
+  "followupPrompt": "<1 open-ended follow-up question DW would genuinely ask this person next>"
+}
+
+Rules:
+- quotes must be VERBATIM from the User turns (3–7 quotes).
+- insightLine must be specific to THIS person's words, not generic.
+- tags should be 2–5 lowercase words/phrases.
+- followupPrompt should feel warm and personally relevant.`;
+
+    const analyticsResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: analyticsPrompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 800,
+    });
+
+    const analyticsContent = analyticsResponse.choices[0]?.message?.content;
+    if (!analyticsContent) return null;
+
+    const analytics = JSON.parse(analyticsContent) as {
+      title: string;
+      summary: string;
+      insightLine: string;
+      quotes: string[];
+      theme: string;
+      tags: string[];
+      switchTag?: string;
+      followupPrompt: string;
+    };
+
+    // ── Call 2: Journal story ─────────────────────────────────────────────────
+    const journalPrompt = `You are writing a reflective journal entry on behalf of the user after their conversation with DW (a wellness AI).
+
+CONVERSATION SUMMARY: ${analytics.summary}
+KEY INSIGHT: ${analytics.insightLine}
+THEME: ${analytics.theme}
+QUOTES TO WEAVE IN: ${analytics.quotes.join(" | ")}
+
+Write a first-person narrative journal entry (150–250 words) that:
+- Captures the emotional tone and key realizations from the conversation
+- Naturally weaves in 2–3 of the user's own words/phrases
+- Reads like something the user might have written themselves after reflecting
+- Does NOT mention "DW" or "AI" by name — just "the conversation" or "today"
+- Has a calm, honest, introspective voice
+
+Return ONLY valid JSON:
+{
+  "title": "<journal entry title (5–8 words, personal, not clinical)>",
+  "story": "<the full narrative journal entry>",
+  "quotes": ["<quote woven into story 1>", "<quote woven into story 2>"],
+  "tags": ["<tag1>", "<tag2>"]
+}`;
+
+    const journalResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: journalPrompt }],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 600,
+    });
+
+    const journalContent = journalResponse.choices[0]?.message?.content;
+    if (!journalContent) return null;
+
+    const journal = JSON.parse(journalContent) as {
+      title: string;
+      story: string;
+      quotes: string[];
+      tags: string[];
+    };
+
+    return {
+      insight: {
+        title: analytics.title ?? "Conversation Insight",
+        summary: analytics.summary ?? "",
+        insightLine: analytics.insightLine ?? "",
+        quotes: Array.isArray(analytics.quotes) ? analytics.quotes : [],
+        theme: analytics.theme ?? "",
+        tags: Array.isArray(analytics.tags) ? analytics.tags : [],
+        switchTag: analytics.switchTag || undefined,
+      },
+      journalEntry: {
+        title: journal.title ?? "Reflection",
+        story: journal.story ?? "",
+        quotes: Array.isArray(journal.quotes) ? journal.quotes : [],
+        tags: Array.isArray(journal.tags) ? journal.tags : [],
+      },
+      followupPrompt: analytics.followupPrompt ?? "",
+    };
+  } catch (error) {
+    console.error("Failed to process conversation into insights:", error);
+    return null;
+  }
+}

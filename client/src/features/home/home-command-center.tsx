@@ -17,6 +17,8 @@ import { PlanInMotionCard } from "./components/PlanInMotionCard";
 import { HealthSnapshotCard } from "./components/HealthSnapshotCard";
 import { MomentumCard } from "./components/MomentumCard";
 import { FollowUpCard } from "./components/FollowUpCard";
+import { DWJournalCard } from "./components/DWJournalCard";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 function CardSkeleton() {
   return (
@@ -32,6 +34,7 @@ function CardSkeleton() {
 
 export default function HomeCommandCenter() {
   const summary = useHomeSummary();
+  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -64,6 +67,9 @@ export default function HomeCommandCenter() {
             <>
               <TodayCard summary={summary} />
               <InsightSnapshotCard summary={summary} />
+              {dwInsightJournalEnabled && (
+                <DWJournalCard summary={summary} />
+              )}
               <PlanInMotionCard summary={summary} />
               <HealthSnapshotCard summary={summary} />
               <MomentumCard summary={summary} />

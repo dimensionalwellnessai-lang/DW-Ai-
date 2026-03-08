@@ -226,6 +226,15 @@ import {
   conversationInsights,
   type ConversationInsight,
   type InsertConversationInsight,
+  dwInsights,
+  type DwInsight,
+  type InsertDwInsight,
+  dwJournalEntries,
+  type DwJournalEntry,
+  type InsertDwJournalEntry,
+  dwFollowups,
+  type DwFollowup,
+  type InsertDwFollowup,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -609,6 +618,18 @@ export interface IStorage {
   updateConversationInsight(id: string, userId: string, data: Partial<ConversationInsight>): Promise<ConversationInsight | undefined>;
   deleteConversationInsight(id: string, userId: string): Promise<void>;
   bulkUpsertConversationInsights(insights: InsertConversationInsight[]): Promise<void>;
+
+  // DW Insight + Journal Intelligence System
+  getDwInsights(userId: string, limit?: number): Promise<DwInsight[]>;
+  getLatestDwInsight(userId: string): Promise<DwInsight | undefined>;
+  getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined>;
+  createDwInsight(insight: InsertDwInsight): Promise<DwInsight>;
+  getDwJournalEntries(userId: string, limit?: number): Promise<DwJournalEntry[]>;
+  getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined>;
+  createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry>;
+  getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
+  createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
+  updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
 }
 
 export interface AdminAnalytics {
@@ -2900,6 +2921,86 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         },
       });
+  }
+
+  // DW Insight + Journal Intelligence System
+  async getDwInsights(userId: string, limit = 50): Promise<DwInsight[]> {
+    return db.select()
+      .from(dwInsights)
+      .where(eq(dwInsights.userId, userId))
+      .orderBy(desc(dwInsights.createdAt))
+      .limit(limit);
+  }
+
+  async getLatestDwInsight(userId: string): Promise<DwInsight | undefined> {
+    const [row] = await db.select()
+      .from(dwInsights)
+      .where(eq(dwInsights.userId, userId))
+      .orderBy(desc(dwInsights.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined> {
+    const [row] = await db.select()
+      .from(dwInsights)
+      .where(and(eq(dwInsights.userId, userId), eq(dwInsights.sourceConversationId, conversationId)))
+      .limit(1);
+    return row;
+  }
+
+  async createDwInsight(insight: InsertDwInsight): Promise<DwInsight> {
+    const [created] = await db.insert(dwInsights)
+      .values({ ...insight, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async getDwJournalEntries(userId: string, limit = 50): Promise<DwJournalEntry[]> {
+    return db.select()
+      .from(dwJournalEntries)
+      .where(eq(dwJournalEntries.userId, userId))
+      .orderBy(desc(dwJournalEntries.createdAt))
+      .limit(limit);
+  }
+
+  async getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined> {
+    const [row] = await db.select()
+      .from(dwJournalEntries)
+      .where(eq(dwJournalEntries.userId, userId))
+      .orderBy(desc(dwJournalEntries.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry> {
+    const [created] = await db.insert(dwJournalEntries)
+      .values({ ...entry, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
+    const conditions = [eq(dwFollowups.userId, userId)];
+    if (status) conditions.push(eq(dwFollowups.status, status));
+    return db.select()
+      .from(dwFollowups)
+      .where(and(...conditions))
+      .orderBy(desc(dwFollowups.createdAt))
+      .limit(20);
+  }
+
+  async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
+    const [created] = await db.insert(dwFollowups).values(followup).returning();
+    return created;
+  }
+
+  async updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined> {
+    const [updated] = await db.update(dwFollowups)
+      .set({ status })
+      .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
+      .returning();
+    return updated;
   }
 }
 
