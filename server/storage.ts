@@ -237,7 +237,7 @@ import {
   type InsertDwFollowup,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -629,7 +629,7 @@ export interface IStorage {
   createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry>;
   getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
-  updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+  updateDwFollowup(id: string, userId: string, fields: Partial<Pick<DwFollowup, "status" | "snoozedUntil" | "acceptedAt" | "answeredAt" | "dismissedAt">>): Promise<DwFollowup | undefined>;
 }
 
 export interface AdminAnalytics {
@@ -2982,12 +2982,27 @@ export class DatabaseStorage implements IStorage {
 
   async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
     const conditions = [eq(dwFollowups.userId, userId)];
-    if (status) conditions.push(eq(dwFollowups.status, status));
+    if (status && status !== "all") {
+      if (status === "pending") {
+        // Return pending + snoozed-expired items as actionable
+        conditions.push(
+          or(
+            eq(dwFollowups.status, "pending"),
+            and(
+              eq(dwFollowups.status, "snoozed"),
+              lte(dwFollowups.snoozedUntil, new Date())
+            )
+          )!
+        );
+      } else {
+        conditions.push(eq(dwFollowups.status, status));
+      }
+    }
     return db.select()
       .from(dwFollowups)
       .where(and(...conditions))
       .orderBy(desc(dwFollowups.createdAt))
-      .limit(20);
+      .limit(50);
   }
 
   async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
@@ -2995,9 +3010,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined> {
+  async updateDwFollowup(id: string, userId: string, fields: Partial<Pick<DwFollowup, "status" | "snoozedUntil" | "acceptedAt" | "answeredAt" | "dismissedAt">>): Promise<DwFollowup | undefined> {
     const [updated] = await db.update(dwFollowups)
-      .set({ status })
+      .set(fields)
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;

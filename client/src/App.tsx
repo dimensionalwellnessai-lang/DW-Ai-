@@ -90,6 +90,7 @@ import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
+import ActionCenterPage from "@/pages/action-center";
 
 function isReturningUser(): boolean {
   try {
@@ -229,6 +230,7 @@ function Router() {
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
+      {isRouteEnabled("/action-center") && <Route path="/action-center" component={ActionCenterPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}

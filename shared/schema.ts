@@ -2485,7 +2485,11 @@ export const dwFollowups = pgTable("dw_followups", {
   prompt: text("prompt").notNull(),
   relatedInsightId: varchar("related_insight_id").references(() => dwInsights.id),
   sourceConversationId: varchar("source_conversation_id"),
-  status: text("status").default("pending"),    // "pending" | "answered" | "dismissed"
+  status: text("status").default("pending"),    // "pending" | "accepted" | "snoozed" | "answered" | "dismissed"
+  snoozedUntil: timestamp("snoozed_until"),
+  acceptedAt: timestamp("accepted_at"),
+  answeredAt: timestamp("answered_at"),
+  dismissedAt: timestamp("dismissed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

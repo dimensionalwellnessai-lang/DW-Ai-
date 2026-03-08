@@ -4,17 +4,17 @@
  */
 
 import { useLocation } from "wouter";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ListChecks } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
 import type { HomeSummary } from "../types";
 
 interface FollowUpCardProps {
-  summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent" | "dwFollowUp">;
+  summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent" | "activeFollowUp">;
 }
 
 function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
-  if (summary.dwFollowUp) {
-    return summary.dwFollowUp.prompt;
+  if (summary.activeFollowUp) {
+    return summary.activeFollowUp.prompt;
   }
   if (summary.latestInsight) {
     return `I want to follow up on something — "${summary.latestInsight.title}". What would you suggest I do next?`;
@@ -31,13 +31,17 @@ function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
 export function FollowUpCard({ summary }: FollowUpCardProps) {
   const [, navigate] = useLocation();
   const prefill = buildFollowUpPrefill(summary);
-  const hasAiFollowUp = Boolean(summary.dwFollowUp);
+  const hasAiFollowUp = Boolean(summary.activeFollowUp);
 
   function handleOpenChat() {
     const params = new URLSearchParams();
     params.set("prefill", prefill);
-    params.set("src", "home_card");
+    params.set("src", "home_followup_chat");
     navigate(`/talk?${params.toString()}`);
+  }
+
+  function handleActionCenter() {
+    navigate("/action-center");
   }
 
   return (
@@ -52,8 +56,8 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
       </div>
 
       {hasAiFollowUp ? (
-        <p className="text-sm text-foreground/80 leading-relaxed">
-          {summary.dwFollowUp?.prompt}
+        <p className="text-sm text-foreground/80 leading-relaxed line-clamp-3">
+          {summary.activeFollowUp?.prompt}
         </p>
       ) : (
         <p className="text-sm text-foreground/80 leading-relaxed">
@@ -61,13 +65,33 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handleOpenChat}
-        className="w-full text-center rounded-lg bg-primary/10 text-primary text-sm font-medium px-3 py-2 hover:bg-primary/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        {hasAiFollowUp ? "Explore this with DW →" : "Start a conversation →"}
-      </button>
+      {hasAiFollowUp ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleActionCenter}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium px-3 py-2 hover:bg-primary/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            Take action
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenChat}
+            className="flex-1 text-center rounded-lg bg-muted/50 text-foreground/70 text-sm font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Chat with DW
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={handleOpenChat}
+          className="w-full text-center rounded-lg bg-primary/10 text-primary text-sm font-medium px-3 py-2 hover:bg-primary/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Start a conversation →
+        </button>
+      )}
     </DWCardContainer>
   );
 }

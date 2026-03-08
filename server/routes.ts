@@ -7825,6 +7825,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.get("/api/dw/followups", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      // Default to "pending" (which also surfaces snoozed-expired); pass "all" to get everything
       const status = typeof req.query.status === "string" ? req.query.status : "pending";
       const followups = await storage.getDwFollowups(userId, status);
       res.json(followups);
@@ -7834,16 +7835,34 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
-  // PATCH /api/dw/followups/:id – update follow-up status (answered/dismissed)
+  // PATCH /api/dw/followups/:id – update follow-up status + snooze fields
   app.patch("/api/dw/followups/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { status } = req.body as { status?: string };
-      if (!status || !["pending", "answered", "dismissed"].includes(status)) {
-        return res.status(400).json({ error: "status must be pending, answered, or dismissed" });
+      const { status, snoozedUntil } = req.body as { status?: string; snoozedUntil?: string };
+      const validStatuses = ["pending", "accepted", "snoozed", "answered", "dismissed"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ error: `status must be one of: ${validStatuses.join(", ")}` });
       }
-      const updated = await storage.updateDwFollowupStatus(id, userId, status);
+
+      const now = new Date();
+      const fields: Parameters<typeof storage.updateDwFollowup>[2] = { status };
+
+      if (status === "snoozed") {
+        if (!snoozedUntil) return res.status(400).json({ error: "snoozedUntil is required when status is snoozed" });
+        const snoozeDate = new Date(snoozedUntil);
+        if (isNaN(snoozeDate.getTime())) return res.status(400).json({ error: "snoozedUntil must be a valid ISO date" });
+        fields.snoozedUntil = snoozeDate;
+      } else if (status === "accepted") {
+        fields.acceptedAt = now;
+      } else if (status === "answered") {
+        fields.answeredAt = now;
+      } else if (status === "dismissed") {
+        fields.dismissedAt = now;
+      }
+
+      const updated = await storage.updateDwFollowup(id, userId, fields);
       if (!updated) return res.status(404).json({ error: "Follow-up not found" });
       res.json(updated);
     } catch (error) {

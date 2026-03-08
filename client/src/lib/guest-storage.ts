@@ -2675,7 +2675,11 @@ export interface GuestDwFollowup {
   prompt: string;
   relatedInsightId?: string;
   sourceConversationId?: string;
-  status: string;
+  status: "pending" | "accepted" | "snoozed" | "answered" | "dismissed";
+  snoozedUntil?: number;  // epoch ms
+  acceptedAt?: number;
+  answeredAt?: number;
+  dismissedAt?: number;
   createdAt: number;
 }
 
@@ -2747,7 +2751,16 @@ export function getLatestGuestDwJournalEntry(): GuestDwJournalEntry | null {
 
 export function getGuestDwFollowups(status?: string): GuestDwFollowup[] {
   const all = safeReadJson<GuestDwFollowup[]>(DW_GUEST_FOLLOWUPS_KEY, []);
-  return status ? all.filter((f) => f.status === status) : all;
+  if (!status || status === "all") return all;
+  if (status === "pending") {
+    const now = Date.now();
+    return all.filter((f) => {
+      if (f.status === "pending") return true;
+      if (f.status === "snoozed" && f.snoozedUntil && f.snoozedUntil <= now) return true;
+      return false;
+    });
+  }
+  return all.filter((f) => f.status === status);
 }
 
 export function saveGuestDwFollowup(followup: Omit<GuestDwFollowup, "id" | "createdAt">): GuestDwFollowup {
@@ -2762,9 +2775,17 @@ export function saveGuestDwFollowup(followup: Omit<GuestDwFollowup, "id" | "crea
   return newFollowup;
 }
 
-export function updateGuestDwFollowupStatus(id: string, status: string): void {
+export function updateGuestDwFollowupStatus(id: string, status: GuestDwFollowup["status"], extra?: Partial<Pick<GuestDwFollowup, "snoozedUntil" | "acceptedAt" | "answeredAt" | "dismissedAt">>): void {
   const all = safeReadJson<GuestDwFollowup[]>(DW_GUEST_FOLLOWUPS_KEY, []);
-  const updated = all.map((f) => (f.id === id ? { ...f, status } : f));
+  const now = Date.now();
+  const updated = all.map((f) => {
+    if (f.id !== id) return f;
+    const patch: Partial<GuestDwFollowup> = { status, ...extra };
+    if (status === "accepted" && !patch.acceptedAt) patch.acceptedAt = now;
+    if (status === "answered" && !patch.answeredAt) patch.answeredAt = now;
+    if (status === "dismissed" && !patch.dismissedAt) patch.dismissedAt = now;
+    return { ...f, ...patch };
+  });
   safeWriteJson(DW_GUEST_FOLLOWUPS_KEY, updated);
 }
 
