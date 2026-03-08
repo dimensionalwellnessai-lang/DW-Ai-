@@ -226,6 +226,17 @@ import {
   conversationInsights,
   type ConversationInsight,
   type InsertConversationInsight,
+  dwInsights,
+  type DwInsight,
+  type InsertDwInsight,
+  dwJournalEntries,
+  type DwJournalEntry,
+  type InsertDwJournalEntry,
+  dwFollowups,
+  type DwFollowup,
+  type InsertDwFollowup,
+  dwConversationProcessingLog,
+  type DwConversationProcessingLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -609,6 +620,22 @@ export interface IStorage {
   updateConversationInsight(id: string, userId: string, data: Partial<ConversationInsight>): Promise<ConversationInsight | undefined>;
   deleteConversationInsight(id: string, userId: string): Promise<void>;
   bulkUpsertConversationInsights(insights: InsertConversationInsight[]): Promise<void>;
+
+  // DW Intelligence
+  getDwInsights(userId: string, limit?: number): Promise<DwInsight[]>;
+  getLatestDwInsight(userId: string): Promise<DwInsight | undefined>;
+  createDwInsight(insight: InsertDwInsight): Promise<DwInsight>;
+
+  getDwJournalEntries(userId: string, limit?: number): Promise<DwJournalEntry[]>;
+  getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined>;
+  createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry>;
+
+  getDwFollowups(userId: string, status?: string, limit?: number): Promise<DwFollowup[]>;
+  createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
+  updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+
+  getDwConversationProcessingLog(userId: string, conversationId: string): Promise<DwConversationProcessingLog | undefined>;
+  upsertDwConversationProcessingLog(userId: string, conversationId: string, lastProcessedIndex: number): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -2898,6 +2925,102 @@ export class DatabaseStorage implements IStorage {
           pinnedAt: sql`excluded.pinned_at`,
           hidden: sql`excluded.hidden`,
           updatedAt: new Date(),
+        },
+      });
+  }
+
+  // ── DW Intelligence ───────────────────────────────────────────────────────
+
+  async getDwInsights(userId: string, limit = 20): Promise<DwInsight[]> {
+    return db.select()
+      .from(dwInsights)
+      .where(eq(dwInsights.userId, userId))
+      .orderBy(desc(dwInsights.createdAt))
+      .limit(limit);
+  }
+
+  async getLatestDwInsight(userId: string): Promise<DwInsight | undefined> {
+    const [row] = await db.select()
+      .from(dwInsights)
+      .where(eq(dwInsights.userId, userId))
+      .orderBy(desc(dwInsights.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async createDwInsight(insight: InsertDwInsight): Promise<DwInsight> {
+    const [created] = await db.insert(dwInsights)
+      .values({ ...insight, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async getDwJournalEntries(userId: string, limit = 20): Promise<DwJournalEntry[]> {
+    return db.select()
+      .from(dwJournalEntries)
+      .where(eq(dwJournalEntries.userId, userId))
+      .orderBy(desc(dwJournalEntries.createdAt))
+      .limit(limit);
+  }
+
+  async getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined> {
+    const [row] = await db.select()
+      .from(dwJournalEntries)
+      .where(eq(dwJournalEntries.userId, userId))
+      .orderBy(desc(dwJournalEntries.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry> {
+    const [created] = await db.insert(dwJournalEntries)
+      .values({ ...entry, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async getDwFollowups(userId: string, status?: string, limit = 20): Promise<DwFollowup[]> {
+    const conditions = status
+      ? and(eq(dwFollowups.userId, userId), eq(dwFollowups.status, status))
+      : eq(dwFollowups.userId, userId);
+    return db.select()
+      .from(dwFollowups)
+      .where(conditions)
+      .orderBy(desc(dwFollowups.createdAt))
+      .limit(limit);
+  }
+
+  async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
+    const [created] = await db.insert(dwFollowups).values(followup).returning();
+    return created;
+  }
+
+  async updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined> {
+    const [updated] = await db.update(dwFollowups)
+      .set({ status })
+      .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async getDwConversationProcessingLog(userId: string, conversationId: string): Promise<DwConversationProcessingLog | undefined> {
+    const [row] = await db.select()
+      .from(dwConversationProcessingLog)
+      .where(and(
+        eq(dwConversationProcessingLog.userId, userId),
+        eq(dwConversationProcessingLog.conversationId, conversationId),
+      ));
+    return row;
+  }
+
+  async upsertDwConversationProcessingLog(userId: string, conversationId: string, lastProcessedIndex: number): Promise<void> {
+    await db.insert(dwConversationProcessingLog)
+      .values({ userId, conversationId, lastProcessedIndex })
+      .onConflictDoUpdate({
+        target: [dwConversationProcessingLog.userId, dwConversationProcessingLog.conversationId],
+        set: {
+          lastProcessedIndex,
+          processedAt: new Date(),
         },
       });
   }

@@ -15,6 +15,7 @@ export interface FeatureFlags {
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
+  JOURNAL_AUTOGEN: boolean;         // ⏸️ Auto-generate insight + journal + follow-up from chat exchanges
 }
 
 /**
@@ -70,6 +71,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
+  JOURNAL_AUTOGEN: resolveConversationInsightsFlag(), // piggybacks on same localStorage/URL flag
 };
 
 /**

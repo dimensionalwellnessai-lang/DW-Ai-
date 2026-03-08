@@ -12,9 +12,10 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
+import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn } from "@/lib/queryClient";
-import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight } from "./types";
+import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestDwInsight, LatestDwJournal, DwFollowUpPrompt } from "./types";
 import type { Habit, Goal } from "@shared/schema";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -87,6 +88,9 @@ export function useHomeSummary(): HomeSummary {
   // Insights (works for both auth + guest)
   const { insights } = useInsights();
 
+  // DW Intelligence (insight + journal + follow-up, works for both auth + guest)
+  const { latestDwInsight: dwInsight, latestDwJournal: dwJournal, pendingFollowups } = useDwIntelligence();
+
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const allEvents: Array<Record<string, unknown>> = useMemo(() => {
@@ -137,6 +141,38 @@ export function useHomeSummary(): HomeSummary {
     };
   }, [insights]);
 
+  const latestDwInsight: LatestDwInsight | null = useMemo(() => {
+    if (!dwInsight) return null;
+    return {
+      id: dwInsight.id,
+      title: dwInsight.title,
+      summary: dwInsight.summary,
+      tags: dwInsight.tags ?? [],
+      theme: dwInsight.theme,
+    };
+  }, [dwInsight]);
+
+  const latestDwJournal: LatestDwJournal | null = useMemo(() => {
+    if (!dwJournal) return null;
+    return {
+      id: dwJournal.id,
+      title: dwJournal.title,
+      story: dwJournal.story,
+      tags: dwJournal.tags ?? [],
+    };
+  }, [dwJournal]);
+
+  const dwFollowUp: DwFollowUpPrompt | null = useMemo(() => {
+    if (!pendingFollowups || pendingFollowups.length === 0) return null;
+    // Use the most recent pending follow-up
+    const sorted = [...pendingFollowups].sort((a, b) => {
+      const aTime = typeof a.createdAt === "number" ? a.createdAt : new Date(a.createdAt).getTime();
+      const bTime = typeof b.createdAt === "number" ? b.createdAt : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    });
+    return { id: sorted[0].id, prompt: sorted[0].prompt };
+  }, [pendingFollowups]);
+
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
   return {
@@ -146,6 +182,9 @@ export function useHomeSummary(): HomeSummary {
     activeGoals,
     activeHabits,
     latestInsight,
+    latestDwInsight,
+    latestDwJournal,
+    dwFollowUp,
     todayLabel: buildTodayLabel(),
   };
 }

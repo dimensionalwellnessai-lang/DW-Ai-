@@ -3127,3 +3127,173 @@ Respond with valid JSON only:
     throw new Error("Failed to generate cook session recipe. Please try again.");
   }
 }
+
+// ── DW Conversation Intelligence Pipeline ───────────────────────────────────
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ConversationIntelligenceResult {
+  insight: {
+    title: string;
+    summary: string;
+    quotes: string[];
+    tags: string[];
+    theme: string;
+    switchTag: string;
+  };
+  journal: {
+    title: string;
+    story: string;
+    quotes: string[];
+    tags: string[];
+  };
+  followUp: {
+    prompt: string;
+  };
+}
+
+/**
+ * Runs the 6-step DW Conversation Intelligence pipeline:
+ * 1) Summarise the conversation
+ * 2) Extract 3–7 meaningful quotes
+ * 3) Extract themes & tags
+ * 4) Generate insight title + one-line insight
+ * 5) Generate a follow-up question
+ * 6) Generate a short narrative journal story
+ *
+ * Returns structured output with source references.
+ * Fails loudly so callers can catch and swallow.
+ */
+export async function generateConversationIntelligence(
+  messages: ConversationMessage[],
+): Promise<ConversationIntelligenceResult> {
+  // Build a readable transcript for the AI
+  const transcript = messages
+    .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content}`)
+    .join("\n\n");
+
+  const systemPrompt = `You are DW's intelligence layer. Your job is to read a conversation between a user and DW (their wellness assistant) and extract structured records for their personal history. Be thoughtful, empathetic, and accurate. Never invent content that wasn't in the conversation.`;
+
+  // Step 1+2+3: Summarise + quotes + tags in one prompt (reduce API calls)
+  const extractionResponse = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Here is a conversation transcript:
+
+---
+${transcript}
+---
+
+Please extract the following in valid JSON (no markdown fences):
+{
+  "summary": "2-3 sentence summary of what was discussed and any meaningful moment",
+  "quotes": ["up to 7 direct quotes from the user (verbatim) that show genuine insight or emotion"],
+  "tags": ["3-6 short topical tags, lowercase, e.g. 'self-worth', 'career', 'energy'"],
+  "theme": "primary wellness dimension (body/mind/time/purpose/money/relationships/environment/identity)",
+  "switchTag": "one optional 'flip' keyword (e.g. 'pause', 'name', 'choose') or empty string"
+}`,
+      },
+    ],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 800,
+  });
+
+  const extraction = JSON.parse(
+    extractionResponse.choices[0]?.message?.content ?? "{}",
+  ) as {
+    summary: string;
+    quotes: string[];
+    tags: string[];
+    theme: string;
+    switchTag: string;
+  };
+
+  // Step 4+5: Insight title + one-line insight + follow-up question
+  const insightResponse = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Based on this conversation summary and quotes:
+
+Summary: ${extraction.summary}
+Quotes: ${(extraction.quotes ?? []).slice(0, 5).join(" | ")}
+Tags: ${(extraction.tags ?? []).join(", ")}
+
+Generate in valid JSON (no markdown fences):
+{
+  "insightTitle": "Short evocative title (max 8 words) for the core insight",
+  "insightLine": "One sentence that captures the key realisation or shift from this conversation",
+  "followUpQuestion": "One open-ended question to deepen this insight in the next conversation"
+}`,
+      },
+    ],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 400,
+  });
+
+  const insightData = JSON.parse(
+    insightResponse.choices[0]?.message?.content ?? "{}",
+  ) as {
+    insightTitle: string;
+    insightLine: string;
+    followUpQuestion: string;
+  };
+
+  // Step 6: Journal narrative story
+  const journalResponse = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: `Write a short first-person journal entry (150–250 words) that captures this conversation as if the user wrote it after reflecting. Use the summary and quotes below. Write in a warm, personal, present-tense narrative style. Do not mention "DW" or "the app" — write as if the user is describing their own thoughts and feelings.
+
+Summary: ${extraction.summary}
+Key quotes: ${(extraction.quotes ?? []).slice(0, 4).join(" | ")}
+
+Respond in valid JSON (no markdown fences):
+{
+  "journalTitle": "Short evocative journal entry title (max 7 words)",
+  "journalStory": "The full narrative journal entry text"
+}`,
+      },
+    ],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 600,
+  });
+
+  const journalData = JSON.parse(
+    journalResponse.choices[0]?.message?.content ?? "{}",
+  ) as {
+    journalTitle: string;
+    journalStory: string;
+  };
+
+  return {
+    insight: {
+      title: insightData.insightTitle ?? "Reflection",
+      summary: insightData.insightLine ?? extraction.summary ?? "",
+      quotes: Array.isArray(extraction.quotes) ? extraction.quotes.slice(0, 7) : [],
+      tags: Array.isArray(extraction.tags) ? extraction.tags : [],
+      theme: extraction.theme ?? "",
+      switchTag: extraction.switchTag ?? "",
+    },
+    journal: {
+      title: journalData.journalTitle ?? "My Reflection",
+      story: journalData.journalStory ?? "",
+      quotes: Array.isArray(extraction.quotes) ? extraction.quotes.slice(0, 5) : [],
+      tags: Array.isArray(extraction.tags) ? extraction.tags : [],
+    },
+    followUp: {
+      prompt: insightData.followUpQuestion ?? "",
+    },
+  };
+}

@@ -11,6 +11,7 @@ import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { MessageActions } from "@/components/message-actions";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -503,6 +504,9 @@ export function AIWorkspace() {
   });
   const user = authData?.user;
   const isUserAuthenticated = !!user;
+
+  // DW Intelligence (auto-generate insight + journal + follow-up after chat)
+  const { processConversation: triggerDwProcessing } = useDwIntelligence();
 
   // Database conversations for authenticated users
   const { data: dbConversations = [], refetch: refetchDbConversations } = useQuery<Conversation[]>({
@@ -1024,6 +1028,32 @@ export function AIWorkspace() {
                     }
                   } catch {
                     // Insight capture is non-critical – swallow any error
+                  }
+                }
+                // Auto-generate DW Intelligence records (insight + journal + follow-up)
+                // Gated on JOURNAL_AUTOGEN flag; fail-safe and idempotent.
+                // Only runs for authenticated users (AI pipeline requires auth).
+                if (isFeatureEnabled("JOURNAL_AUTOGEN") && conversationId && isUserAuthenticated) {
+                  try {
+                    const convMessages = currentMessages.map((m) => ({
+                      role: m.role as "user" | "assistant",
+                      content: typeof m.content === "string" ? m.content : "",
+                    }));
+                    // Add the message we just sent + the streamed response
+                    const fullMessages = [
+                      ...convMessages,
+                      { role: "user" as const, content: message },
+                      { role: "assistant" as const, content: streamedResponse },
+                    ];
+                    triggerDwProcessing({
+                      conversationId,
+                      messages: fullMessages,
+                      startIndex: 0,
+                    }).catch(() => {
+                      // Non-critical – swallow
+                    });
+                  } catch {
+                    // Intelligence generation is non-critical – swallow any error
                   }
                 }
                 // Final update with complete response

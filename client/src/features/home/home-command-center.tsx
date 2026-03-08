@@ -13,10 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeSummary } from "./useHomeSummary";
 import { TodayCard } from "./components/TodayCard";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
+import { DwInsightCard } from "./components/DwInsightCard";
+import { DwJournalCard } from "./components/DwJournalCard";
 import { PlanInMotionCard } from "./components/PlanInMotionCard";
 import { HealthSnapshotCard } from "./components/HealthSnapshotCard";
 import { MomentumCard } from "./components/MomentumCard";
 import { FollowUpCard } from "./components/FollowUpCard";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 function CardSkeleton() {
   return (
@@ -32,6 +35,7 @@ function CardSkeleton() {
 
 export default function HomeCommandCenter() {
   const summary = useHomeSummary();
+  const dwIntelligenceOn = isFeatureEnabled("JOURNAL_AUTOGEN");
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -63,7 +67,12 @@ export default function HomeCommandCenter() {
           ) : (
             <>
               <TodayCard summary={summary} />
-              <InsightSnapshotCard summary={summary} />
+              {dwIntelligenceOn ? (
+                <DwInsightCard summary={summary} />
+              ) : (
+                <InsightSnapshotCard summary={summary} />
+              )}
+              {dwIntelligenceOn && <DwJournalCard summary={summary} />}
               <PlanInMotionCard summary={summary} />
               <HealthSnapshotCard summary={summary} />
               <MomentumCard summary={summary} />

@@ -2150,6 +2150,106 @@ export const insertConversationInsightSchema = createInsertSchema(conversationIn
   updatedAt: true,
 });
 
+// ── DW Intelligence: AI-generated insights, journal entries, follow-ups ──────
+
+/** AI-generated insight records extracted from conversation content. */
+export const dwInsights = pgTable("dw_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  quotes: jsonb("quotes").$type<string[]>().default([]),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  theme: text("theme"),
+  switchTag: text("switch_tag"),
+  sourceConversationId: varchar("source_conversation_id"),
+  sourceMessageRange: jsonb("source_message_range").$type<{ startIndex: number; endIndex: number }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const dwInsightsRelations = relations(dwInsights, ({ one }) => ({
+  user: one(users, {
+    fields: [dwInsights.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDwInsightSchema = createInsertSchema(dwInsights).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+/** AI-generated narrative journal entries extracted from conversation content. */
+export const dwJournalEntries = pgTable("dw_journal_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  story: text("story").notNull(),
+  quotes: jsonb("quotes").$type<string[]>().default([]),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  sourceConversationId: varchar("source_conversation_id"),
+  sourceMessageRange: jsonb("source_message_range").$type<{ startIndex: number; endIndex: number }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const dwJournalEntriesRelations = relations(dwJournalEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [dwJournalEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDwJournalEntrySchema = createInsertSchema(dwJournalEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+/** AI-generated follow-up prompts linked to insights. */
+export const dwFollowups = pgTable("dw_followups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  prompt: text("prompt").notNull(),
+  relatedInsightId: varchar("related_insight_id"),
+  sourceConversationId: varchar("source_conversation_id"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dwFollowupsRelations = relations(dwFollowups, ({ one }) => ({
+  user: one(users, {
+    fields: [dwFollowups.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDwFollowupSchema = createInsertSchema(dwFollowups).omit({
+  id: true,
+  createdAt: true,
+});
+
+/**
+ * Processing log for idempotency – records the last message index processed
+ * per (userId, conversationId) so repeated calls don't generate duplicates.
+ */
+export const dwConversationProcessingLog = pgTable("dw_conversation_processing_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  conversationId: varchar("conversation_id").notNull(),
+  lastProcessedIndex: integer("last_processed_index").notNull(),
+  processedAt: timestamp("processed_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("dw_conv_processing_log_user_conv_idx").on(t.userId, t.conversationId),
+]);
+
+export const insertDwConversationProcessingLogSchema = createInsertSchema(dwConversationProcessingLog).omit({
+  id: true,
+  processedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
@@ -2314,3 +2414,11 @@ export type AiSuggestion = typeof aiSuggestions.$inferSelect;
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 export type ConversationInsight = typeof conversationInsights.$inferSelect;
 export type InsertConversationInsight = z.infer<typeof insertConversationInsightSchema>;
+export type DwInsight = typeof dwInsights.$inferSelect;
+export type InsertDwInsight = z.infer<typeof insertDwInsightSchema>;
+export type DwJournalEntry = typeof dwJournalEntries.$inferSelect;
+export type InsertDwJournalEntry = z.infer<typeof insertDwJournalEntrySchema>;
+export type DwFollowup = typeof dwFollowups.$inferSelect;
+export type InsertDwFollowup = z.infer<typeof insertDwFollowupSchema>;
+export type DwConversationProcessingLog = typeof dwConversationProcessingLog.$inferSelect;
+export type InsertDwConversationProcessingLog = z.infer<typeof insertDwConversationProcessingLogSchema>;

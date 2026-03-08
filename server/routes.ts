@@ -14,7 +14,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, generateConversationIntelligence, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -68,6 +68,9 @@ import {
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
   insertConversationInsightSchema,
+  insertDwInsightSchema,
+  insertDwJournalEntrySchema,
+  insertDwFollowupSchema,
   type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
@@ -7650,7 +7653,186 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
-  // Support report endpoint (accessible to both guests and authenticated users)
+  // ── DW Intelligence: Insight + Journal + Follow-up auto-generation ────────
+
+  // Min conversation signal thresholds for triggering the pipeline
+  const DW_MIN_MESSAGES = 4; // at least 2 exchanges (4 messages)
+  const DW_MIN_TOTAL_CHARS = 200; // enough content to extract from
+
+  const processConversationSchema = z.object({
+    conversationId: z.string().min(1),
+    messages: z.array(z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string(),
+    })).min(1),
+    startIndex: z.number().int().min(0).optional().default(0),
+  });
+
+  // Rate limit – max 10 generation requests per minute per user
+  const dwProcessLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.session?.userId ?? req.ip ?? "unknown",
+    message: { error: "Too many processing requests. Please try again later." },
+  });
+
+  app.post("/api/dw/processConversation", requireAuth, dwProcessLimiter, async (req, res) => {
+    const userId = req.session.userId!;
+    try {
+      const { conversationId, messages, startIndex } = processConversationSchema.parse(req.body);
+
+      // Idempotency check – have we already processed up to this message index?
+      const endIndex = messages.length - 1;
+      const log = await storage.getDwConversationProcessingLog(userId, conversationId);
+      if (log && log.lastProcessedIndex >= endIndex) {
+        return res.json({ ok: true, skipped: true, reason: "already_processed" });
+      }
+
+      // Signal gate – require enough content
+      if (messages.length < DW_MIN_MESSAGES) {
+        return res.json({ ok: true, skipped: true, reason: "insufficient_messages" });
+      }
+      const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+      if (totalChars < DW_MIN_TOTAL_CHARS) {
+        return res.json({ ok: true, skipped: true, reason: "insufficient_content" });
+      }
+
+      // Run the AI pipeline (failures here must not break the caller)
+      const result = await generateConversationIntelligence(messages);
+
+      const sourceRange = { startIndex: startIndex ?? 0, endIndex };
+
+      // Persist insight
+      const insight = await storage.createDwInsight(
+        insertDwInsightSchema.parse({
+          userId,
+          title: result.insight.title,
+          summary: result.insight.summary,
+          quotes: result.insight.quotes,
+          tags: result.insight.tags,
+          theme: result.insight.theme || null,
+          switchTag: result.insight.switchTag || null,
+          sourceConversationId: conversationId,
+          sourceMessageRange: sourceRange,
+        }),
+      );
+
+      // Persist journal entry
+      const journalEntry = await storage.createDwJournalEntry(
+        insertDwJournalEntrySchema.parse({
+          userId,
+          title: result.journal.title,
+          story: result.journal.story,
+          quotes: result.journal.quotes,
+          tags: result.journal.tags,
+          sourceConversationId: conversationId,
+          sourceMessageRange: sourceRange,
+        }),
+      );
+
+      // Persist follow-up
+      const followup = result.followUp.prompt
+        ? await storage.createDwFollowup(
+            insertDwFollowupSchema.parse({
+              userId,
+              prompt: result.followUp.prompt,
+              relatedInsightId: insight.id,
+              sourceConversationId: conversationId,
+              status: "pending",
+            }),
+          )
+        : null;
+
+      // Mark this conversation segment as processed
+      await storage.upsertDwConversationProcessingLog(userId, conversationId, endIndex);
+
+      res.status(201).json({ ok: true, insight, journalEntry, followup });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("processConversation error:", error);
+      res.status(500).json({ error: "Failed to process conversation" });
+    }
+  });
+
+  app.get("/api/dw/latestInsight", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const insight = await storage.getLatestDwInsight(userId);
+      res.json(insight ?? null);
+    } catch (error) {
+      console.error("latestInsight error:", error);
+      res.status(500).json({ error: "Failed to get latest insight" });
+    }
+  });
+
+  app.get("/api/dw/insights", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "20"), 10) || 20, 100));
+      const insights = await storage.getDwInsights(userId, limit);
+      res.json(insights);
+    } catch (error) {
+      console.error("dw insights error:", error);
+      res.status(500).json({ error: "Failed to get insights" });
+    }
+  });
+
+  app.get("/api/dw/latestJournal", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const entry = await storage.getLatestDwJournalEntry(userId);
+      res.json(entry ?? null);
+    } catch (error) {
+      console.error("latestJournal error:", error);
+      res.status(500).json({ error: "Failed to get latest journal entry" });
+    }
+  });
+
+  app.get("/api/dw/journal", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "20"), 10) || 20, 100));
+      const entries = await storage.getDwJournalEntries(userId, limit);
+      res.json(entries);
+    } catch (error) {
+      console.error("dw journal error:", error);
+      res.status(500).json({ error: "Failed to get journal entries" });
+    }
+  });
+
+  app.get("/api/dw/followups", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const status = typeof req.query.status === "string" ? req.query.status : "pending";
+      const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "10"), 10) || 10, 50));
+      const followups = await storage.getDwFollowups(userId, status, limit);
+      res.json(followups);
+    } catch (error) {
+      console.error("dw followups error:", error);
+      res.status(500).json({ error: "Failed to get follow-ups" });
+    }
+  });
+
+  app.patch("/api/dw/followups/:id/status", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId!;
+      const { status } = z.object({ status: z.string().min(1) }).parse(req.body);
+      const updated = await storage.updateDwFollowupStatus(id, userId, status);
+      if (!updated) return res.status(404).json({ error: "Follow-up not found" });
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Update followup status error:", error);
+      res.status(500).json({ error: "Failed to update follow-up status" });
+    }
+  });
   const supportReportLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10,

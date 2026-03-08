@@ -1,7 +1,9 @@
 /**
  * Insights Dashboard - PR #3: Replaces old Life Dashboard
- * Shows analytics across all 8 life dimensions with goals, streaks, and weekly summaries
+ * Shows analytics across all 8 life dimensions with goals, streaks, and weekly summaries.
+ * Also shows AI-generated DW Insights (gated on JOURNAL_AUTOGEN flag).
  */
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +18,16 @@ import {
   Target,
   Calendar,
   CheckCircle2,
+  Brain,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { LIFE_DIMENSIONS, getDimensionById } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { useDwIntelligence, type DwInsightRecord } from "@/hooks/use-dw-intelligence";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DimensionAssessment {
   dimension: string;
@@ -51,6 +59,8 @@ interface Streak {
 
 export default function InsightsDashboard() {
   useTrackFeature("insights");
+  const dwIntelligenceOn = isFeatureEnabled("JOURNAL_AUTOGEN");
+  const { allInsights: dwInsights, isLoading: dwLoading } = useDwIntelligence();
 
   // Fetch dimension assessments
   const { data: assessments = [] } = useQuery<DimensionAssessment[]>({
@@ -182,12 +192,19 @@ export default function InsightsDashboard() {
         </div>
 
         {/* Tabs for detailed views */}
-        <Tabs defaultValue="goals" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue={dwIntelligenceOn ? "dw-insights" : "goals"} className="w-full">
+          <TabsList className={`grid w-full ${dwIntelligenceOn ? "grid-cols-4" : "grid-cols-3"}`}>
+            {dwIntelligenceOn && <TabsTrigger value="dw-insights">DW Insights</TabsTrigger>}
             <TabsTrigger value="goals">Goals</TabsTrigger>
             <TabsTrigger value="streaks">Streaks</TabsTrigger>
-            <TabsTrigger value="weekly">Weekly Summary</TabsTrigger>
+            <TabsTrigger value="weekly">Weekly</TabsTrigger>
           </TabsList>
+
+          {dwIntelligenceOn && (
+            <TabsContent value="dw-insights" className="space-y-4">
+              <DwInsightsList insights={dwInsights} isLoading={dwLoading} />
+            </TabsContent>
+          )}
 
           <TabsContent value="goals" className="space-y-4">
             <Card>
@@ -318,6 +335,111 @@ export default function InsightsDashboard() {
         </Tabs>
       </div>
       </div>
+    </div>
+  );
+}
+
+// ── DW Insights list component ───────────────────────────────────────────────
+
+function DwInsightCard({ insight }: { insight: DwInsightRecord }) {
+  const [expanded, setExpanded] = useState(false);
+  const date = typeof insight.createdAt === "number"
+    ? new Date(insight.createdAt)
+    : new Date(insight.createdAt);
+
+  return (
+    <Card className="border border-border/60">
+      <CardContent className="pt-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="p-1.5 rounded-lg bg-violet-500/10 flex-shrink-0">
+              <Brain className="h-4 w-4 text-violet-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight line-clamp-2">{insight.title}</p>
+              {insight.theme && (
+                <p className="text-[10px] text-violet-500/80 uppercase tracking-wide mt-0.5">{insight.theme}</p>
+              )}
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground flex-shrink-0 mt-0.5">
+            {format(date, "MMM d")}
+          </p>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">{insight.summary}</p>
+
+        {insight.tags && insight.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {insight.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {insight.quotes && insight.quotes.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {expanded ? "Hide quotes" : `${insight.quotes.length} quote${insight.quotes.length !== 1 ? "s" : ""}`}
+            </button>
+            {expanded && (
+              <div className="space-y-1.5 border-l-2 border-violet-500/30 pl-3">
+                {insight.quotes.map((q, i) => (
+                  <p key={i} className="text-xs text-muted-foreground italic">"{q}"</p>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DwInsightsList({ insights, isLoading }: { insights: DwInsightRecord[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-xl border border-border/60 bg-card p-4 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (insights.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground font-medium">No DW insights yet</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Chat with DW — insights will be generated automatically after meaningful exchanges.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {insights.map((insight) => (
+        <DwInsightCard key={insight.id} insight={insight} />
+      ))}
     </div>
   );
 }

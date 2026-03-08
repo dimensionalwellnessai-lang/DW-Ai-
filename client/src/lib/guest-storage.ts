@@ -2637,3 +2637,151 @@ export function getActiveCookSession(): CookSessionHistoryEntry | null {
   const entries = getCookSessionHistory();
   return entries.find(e => e.status === "in-progress" || e.status === "paused") ?? null;
 }
+
+// ── DW Intelligence: Guest-side localStorage storage ─────────────────────────
+
+const DW_GUEST_INSIGHTS_KEY = "dw_guest_insights";
+const DW_GUEST_JOURNAL_KEY = "dw_guest_journal";
+const DW_GUEST_FOLLOWUPS_KEY = "dw_guest_followups";
+const DW_GUEST_CONV_PROCESSING_KEY = "dw_guest_conv_processing";
+const DW_GUEST_MAX_RECORDS = 50;
+
+export interface GuestDwInsight {
+  id: string;
+  title: string;
+  summary: string;
+  quotes: string[];
+  tags: string[];
+  theme: string;
+  switchTag: string;
+  sourceConversationId?: string;
+  sourceMessageRange?: { startIndex: number; endIndex: number };
+  createdAt: number;
+}
+
+export interface GuestDwJournalEntry {
+  id: string;
+  title: string;
+  story: string;
+  quotes: string[];
+  tags: string[];
+  sourceConversationId?: string;
+  sourceMessageRange?: { startIndex: number; endIndex: number };
+  createdAt: number;
+}
+
+export interface GuestDwFollowup {
+  id: string;
+  prompt: string;
+  relatedInsightId?: string;
+  sourceConversationId?: string;
+  status: string;
+  createdAt: number;
+}
+
+function safeReadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeWriteJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage quota or unavailable – fail silently
+  }
+}
+
+// ── Insights ─────────────────────────────────────────────────────────────────
+
+export function getGuestDwInsights(): GuestDwInsight[] {
+  return safeReadJson<GuestDwInsight[]>(DW_GUEST_INSIGHTS_KEY, []);
+}
+
+export function saveGuestDwInsight(insight: Omit<GuestDwInsight, "id" | "createdAt">): GuestDwInsight {
+  const all = getGuestDwInsights();
+  const newInsight: GuestDwInsight = {
+    ...insight,
+    id: `dw_insight_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: Date.now(),
+  };
+  const updated = [newInsight, ...all].slice(0, DW_GUEST_MAX_RECORDS);
+  safeWriteJson(DW_GUEST_INSIGHTS_KEY, updated);
+  return newInsight;
+}
+
+export function getLatestGuestDwInsight(): GuestDwInsight | null {
+  const all = getGuestDwInsights();
+  return all.length > 0 ? all[0] : null;
+}
+
+// ── Journal entries ───────────────────────────────────────────────────────────
+
+export function getGuestDwJournalEntries(): GuestDwJournalEntry[] {
+  return safeReadJson<GuestDwJournalEntry[]>(DW_GUEST_JOURNAL_KEY, []);
+}
+
+export function saveGuestDwJournalEntry(entry: Omit<GuestDwJournalEntry, "id" | "createdAt">): GuestDwJournalEntry {
+  const all = getGuestDwJournalEntries();
+  const newEntry: GuestDwJournalEntry = {
+    ...entry,
+    id: `dw_journal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: Date.now(),
+  };
+  const updated = [newEntry, ...all].slice(0, DW_GUEST_MAX_RECORDS);
+  safeWriteJson(DW_GUEST_JOURNAL_KEY, updated);
+  return newEntry;
+}
+
+export function getLatestGuestDwJournalEntry(): GuestDwJournalEntry | null {
+  const all = getGuestDwJournalEntries();
+  return all.length > 0 ? all[0] : null;
+}
+
+// ── Follow-ups ────────────────────────────────────────────────────────────────
+
+export function getGuestDwFollowups(status?: string): GuestDwFollowup[] {
+  const all = safeReadJson<GuestDwFollowup[]>(DW_GUEST_FOLLOWUPS_KEY, []);
+  return status ? all.filter((f) => f.status === status) : all;
+}
+
+export function saveGuestDwFollowup(followup: Omit<GuestDwFollowup, "id" | "createdAt">): GuestDwFollowup {
+  const all = safeReadJson<GuestDwFollowup[]>(DW_GUEST_FOLLOWUPS_KEY, []);
+  const newFollowup: GuestDwFollowup = {
+    ...followup,
+    id: `dw_followup_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: Date.now(),
+  };
+  const updated = [newFollowup, ...all].slice(0, DW_GUEST_MAX_RECORDS);
+  safeWriteJson(DW_GUEST_FOLLOWUPS_KEY, updated);
+  return newFollowup;
+}
+
+export function updateGuestDwFollowupStatus(id: string, status: string): void {
+  const all = safeReadJson<GuestDwFollowup[]>(DW_GUEST_FOLLOWUPS_KEY, []);
+  const updated = all.map((f) => (f.id === id ? { ...f, status } : f));
+  safeWriteJson(DW_GUEST_FOLLOWUPS_KEY, updated);
+}
+
+// ── Conversation processing log (idempotency for guests) ─────────────────────
+
+type GuestConvProcessingLog = Record<string, number>; // conversationId → lastProcessedIndex
+
+export function getGuestConvProcessingLog(): GuestConvProcessingLog {
+  return safeReadJson<GuestConvProcessingLog>(DW_GUEST_CONV_PROCESSING_KEY, {});
+}
+
+export function getGuestConvLastProcessedIndex(conversationId: string): number {
+  return getGuestConvProcessingLog()[conversationId] ?? -1;
+}
+
+export function setGuestConvLastProcessedIndex(conversationId: string, index: number): void {
+  const log = getGuestConvProcessingLog();
+  log[conversationId] = index;
+  safeWriteJson(DW_GUEST_CONV_PROCESSING_KEY, log);
+}
