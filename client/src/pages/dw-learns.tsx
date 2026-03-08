@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,27 +52,23 @@ function formatUpdatedAt(val: string | number | null): string {
 }
 
 export function DwLearnsPage() {
-  const { profile, isLoading, isEnabled, updateProfile, isUpdating, resetProfile, isResetting } =
+  const { profile, isLoading, updateProfile, isUpdating, resetProfile, isResetting } =
     useLearningProfile();
   const { toast } = useToast();
 
-  // Local editable state
-  const [reminderTime, setReminderTime] = useState<string>(
-    profile?.preferredTimes?.reminder ?? ""
-  );
-  const [reminderSensitivity, setReminderSensitivity] = useState<string>(
-    profile?.sensitivity?.reminders ?? "medium"
-  );
-  const [learningOn, setLearningOn] = useState<boolean>(profile?.learningEnabled !== false);
+  // Local editable state – initialised with empty defaults; synced via useEffect when profile loads
+  const [reminderTime, setReminderTime] = useState<string>("");
+  const [reminderSensitivity, setReminderSensitivity] = useState<string>("medium");
+  const [learningOn, setLearningOn] = useState<boolean>(true);
 
-  // Sync state when profile loads
-  const profileReminder = profile?.preferredTimes?.reminder ?? "";
-  const profileSensitivity = profile?.sensitivity?.reminders ?? "medium";
-  const profileLearning = profile?.learningEnabled !== false;
-
-  if (!isLoading && reminderTime === "" && profileReminder !== "") {
-    setReminderTime(profileReminder);
-  }
+  // Sync local state from profile once it's loaded
+  useEffect(() => {
+    if (!isLoading && profile) {
+      setReminderTime(profile.preferredTimes?.reminder ?? "");
+      setReminderSensitivity(profile.sensitivity?.reminders ?? "medium");
+      setLearningOn(profile.learningEnabled !== false);
+    }
+  }, [isLoading, profile]);
 
   async function handleSave() {
     try {

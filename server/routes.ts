@@ -7947,7 +7947,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
 
     if (negativeSignals.length >= 2) {
       momentumStatus = "red";
-      // Use learning profile to personalise the suggestedFocus
+      // Use learning profile to personalize the suggestedFocus
       const topActionType = learningProfile?.preferredActionTypes?.[0];
       suggestedFocus = topActionType
         ? `One small ${topActionType} action today can restart your momentum`
@@ -8521,10 +8521,12 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
           }
         }
       } else if (event === "reminder_snooze") {
-        // Snoozed reminders → lower reminder sensitivity or adjust time
+        // Snoozed reminders → lower reminder sensitivity or adjust time.
+        // NOTE: _snoozeCount and _dismissCount are internal tracking keys stored
+        // in the sensitivity JSON blob (prefixed with _ to distinguish them from
+        // user-facing keys like "reminders"). They are not shown in the UI.
         const current = await storage.getLearningProfile(userId);
         const sens = { ...(current?.sensitivity ?? {}) };
-        // Count snoozes in preferred times
         const snoozeCount = (parseInt(String(sens._snoozeCount ?? "0"), 10) || 0) + 1;
         sens._snoozeCount = String(snoozeCount);
         if (snoozeCount >= 3) {

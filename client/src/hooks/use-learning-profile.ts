@@ -175,8 +175,9 @@ export function useLearningProfile() {
     try {
       await apiRequest("POST", "/api/learning-profile/auto-update", { event, payload });
       qc.invalidateQueries({ queryKey: ["/api/learning-profile"] });
-    } catch {
-      // Non-critical; ignore silently
+    } catch (err) {
+      // Non-critical operation; log for debugging but don't surface to user
+      console.debug("[useLearningProfile] auto-update failed:", err);
     }
   }
 
