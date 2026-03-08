@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { getQueryFn, apiRequest } from "@/lib/queryClient";
+import { getQueryFn, apiRequest, STALE_TIME } from "@/lib/queryClient";
 import {
   getGuestLearningProfile,
   updateGuestLearningProfile,
@@ -84,7 +84,7 @@ export function useLearningProfile() {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwLearnsEnabled,
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 min
+    staleTime: STALE_TIME.MEDIUM, // 5 min
   });
 
   // Guest: fetch from localStorage
