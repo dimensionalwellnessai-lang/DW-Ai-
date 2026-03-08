@@ -2828,7 +2828,40 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
-      const habit = await storage.updateHabit(req.params.id, req.body);
+
+      // Strip sensitive/system-managed fields from the update payload
+      const { userId, id, createdAt, updatedAt, ...updateData } = req.body ?? {};
+
+      // Optionally validate title/description if they are being updated
+      if (typeof updateData.title !== "undefined") {
+        if (
+          typeof updateData.title !== "string" ||
+          updateData.title.trim().length === 0
+        ) {
+          return res.status(400).json({ error: "Habit title must be a non-empty string" });
+        }
+        if (updateData.title.length > 200) {
+          return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
+        }
+        updateData.title = updateData.title.trim();
+      }
+
+      if (typeof updateData.description !== "undefined") {
+        if (
+          updateData.description !== null &&
+          typeof updateData.description !== "string"
+        ) {
+          return res.status(400).json({ error: "Habit description must be a string or null" });
+        }
+        if (
+          typeof updateData.description === "string" &&
+          updateData.description.length > 1000
+        ) {
+          return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+        }
+      }
+
+      const habit = await storage.updateHabit(req.params.id, updateData);
       res.json(habit);
     } catch (error) {
       res.status(500).json({ error: "Failed to update habit" });
