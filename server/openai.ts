@@ -3218,7 +3218,7 @@ Rules:
 CONVERSATION SUMMARY: ${analytics.summary}
 KEY INSIGHT: ${analytics.insightLine}
 THEME: ${analytics.theme}
-QUOTES TO WEAVE IN: ${JSON.parse(JSON.stringify(analytics.quotes)).join(" | ")}
+QUOTES TO WEAVE IN: ${analytics.quotes.join(" | ")}
 
 Write a first-person narrative journal entry (150–250 words) that:
 - Captures the emotional tone and key realizations from the conversation

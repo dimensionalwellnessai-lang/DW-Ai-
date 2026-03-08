@@ -69,7 +69,8 @@ import {
   insertAiSuggestionSchema,
   insertConversationInsightSchema,
   type ScheduleBlock,
-} from "@shared/schema";import { z } from "zod";
+} from "@shared/schema";
+import { z } from "zod";
 
 const SALT_ROUNDS = 10;
 
@@ -7661,7 +7662,8 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   });
 
   // POST /api/dw/processConversation – run the AI pipeline on a conversation
-  app.post("/api/dw/processConversation", requireAuth, dwProcessLimiter, async (req, res) => {    try {
+  app.post("/api/dw/processConversation", requireAuth, dwProcessLimiter, async (req, res) => {
+    try {
       const userId = req.session.userId!;
       const { messages, conversationId } = req.body as {
         messages?: { role: "user" | "assistant"; content: string }[];
