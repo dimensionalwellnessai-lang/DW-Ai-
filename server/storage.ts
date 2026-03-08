@@ -235,6 +235,9 @@ import {
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
+  elevationChecks,
+  type ElevationCheck,
+  type InsertElevationCheck,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -630,6 +633,9 @@ export interface IStorage {
   getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
   updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+  // Elevation Engine
+  getElevationCheckByDate(userId: string, date: string): Promise<ElevationCheck | undefined>;
+  upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck>;
 }
 
 export interface AdminAnalytics {
@@ -3001,6 +3007,32 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;
+  }
+
+  // ── Elevation Engine ────────────────────────────────────────────────────────
+
+  async getElevationCheckByDate(userId: string, date: string): Promise<ElevationCheck | undefined> {
+    const [row] = await db.select()
+      .from(elevationChecks)
+      .where(and(eq(elevationChecks.userId, userId), eq(elevationChecks.checkedDate, date)))
+      .limit(1);
+    return row;
+  }
+
+  async upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck> {
+    const [row] = await db.insert(elevationChecks)
+      .values({ ...data, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [elevationChecks.userId, elevationChecks.checkedDate],
+        set: {
+          momentumStatus: data.momentumStatus,
+          reasons: data.reasons,
+          suggestedFocus: data.suggestedFocus ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
   }
 }
 
