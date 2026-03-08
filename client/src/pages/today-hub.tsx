@@ -404,14 +404,7 @@ export default function TodayHubPage() {
 
                 <div className="pt-2 border-t">
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    {[
-                      "Body & energy",
-                      "Emotions & mental state",
-                      "Relationships & social life",
-                      "Environment & routines",
-                      "Work, money & responsibilities",
-                      "Meaning & direction",
-                    ].map((area) => (
+                    {COPY.lifeSystem.areas.map((area) => (
                       <div key={area} className="flex items-center gap-2">
                         <Circle className="h-2 w-2 text-primary flex-shrink-0" />
                         <span>{area}</span>
