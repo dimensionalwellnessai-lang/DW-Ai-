@@ -12,9 +12,11 @@ import appleSignin from "apple-signin-auth";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
+import { db } from "./db";
+import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -71,6 +73,9 @@ import {
   insertDwInsightSchema,
   insertDwJournalEntrySchema,
   insertDwFollowupSchema,
+  type Habit,
+  type Goal,
+  type MoodLog,
   type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
@@ -7825,6 +7830,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.get("/api/dw/followups", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      // Default to "pending" (which also surfaces snoozed-expired); pass "all" to get everything
       const status = typeof req.query.status === "string" ? req.query.status : "pending";
       const followups = await storage.getDwFollowups(userId, status);
       res.json(followups);
@@ -7834,16 +7840,34 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
-  // PATCH /api/dw/followups/:id – update follow-up status (answered/dismissed)
+  // PATCH /api/dw/followups/:id – update follow-up status + snooze fields
   app.patch("/api/dw/followups/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { status } = req.body as { status?: string };
-      if (!status || !["pending", "answered", "dismissed"].includes(status)) {
-        return res.status(400).json({ error: "status must be pending, answered, or dismissed" });
+      const { status, snoozedUntil } = req.body as { status?: string; snoozedUntil?: string };
+      const validStatuses = ["pending", "accepted", "snoozed", "answered", "dismissed"];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ error: `status must be one of: ${validStatuses.join(", ")}` });
       }
-      const updated = await storage.updateDwFollowupStatus(id, userId, status);
+
+      const now = new Date();
+      const fields: Parameters<typeof storage.updateDwFollowup>[2] = { status };
+
+      if (status === "snoozed") {
+        if (!snoozedUntil) return res.status(400).json({ error: "snoozedUntil is required when status is snoozed" });
+        const snoozeDate = new Date(snoozedUntil);
+        if (isNaN(snoozeDate.getTime())) return res.status(400).json({ error: "snoozedUntil must be a valid ISO date" });
+        fields.snoozedUntil = snoozeDate;
+      } else if (status === "accepted") {
+        fields.acceptedAt = now;
+      } else if (status === "answered") {
+        fields.answeredAt = now;
+      } else if (status === "dismissed") {
+        fields.dismissedAt = now;
+      }
+
+      const updated = await storage.updateDwFollowup(id, userId, fields);
       if (!updated) return res.status(404).json({ error: "Follow-up not found" });
       res.json(updated);
     } catch (error) {
@@ -7852,61 +7876,158 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
-  // ── Daily Check-ins (PR #6) ───────────────────────────────────────────────
+  // ── Elevation Engine (PR #3) ──────────────────────────────────────────────
 
-  const dailyCheckinSchema = z.object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
-    moodScore: z.number().int().min(1).max(5),
-    constraintType: z.string().min(1).max(100),
-    constraintNote: z.string().max(500).optional(),
-  });
+  /**
+   * Compute momentum status from a user's existing data.
+   * Uses only real data: habits (streak), goals (progress), mood logs (last 7 days).
+   * Returns: { momentumStatus, reasons, suggestedFocus }
+   *
+   * @param recentMoods - Mood logs within the last 7 days (pre-filtered by DB query)
+   * @param hasPriorMoodLogs - Whether any mood logs exist before the 7-day window
+   */
+  function computeMomentumStatus(
+    habits: Habit[],
+    goals: Goal[],
+    recentMoods: MoodLog[],
+    hasPriorMoodLogs: boolean,
+  ): { momentumStatus: "green" | "yellow" | "red"; reasons: string[]; suggestedFocus?: string } {
+    const negativeSignals: string[] = [];
 
-  // GET /api/daily-checkins/today
-  app.get("/api/daily-checkins/today", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const today = new Date().toISOString().slice(0, 10);
-      const checkin = await storage.getTodayCheckin(userId, today);
-      res.json(checkin ?? null);
-    } catch (error) {
-      console.error("Daily checkin today error:", error);
-      res.status(500).json({ error: "Failed to fetch today's check-in" });
+    const activeHabits = habits.filter((h) => h.isActive !== false);
+    const activeGoals = goals.filter((g) => g.isActive !== false);
+
+    // Signal 1: Nothing is being tracked
+    if (activeHabits.length === 0 && activeGoals.length === 0) {
+      return {
+        momentumStatus: "red",
+        reasons: ["No habits or goals are active yet"],
+        suggestedFocus: "Start with one habit or goal to get things in motion",
+      };
     }
-  });
 
-  // POST /api/daily-checkins – upsert today's check-in
-  app.post("/api/daily-checkins", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const parsed = dailyCheckinSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid check-in data", details: parsed.error.flatten() });
+    // Signal 2: Habits set up but no streak
+    if (activeHabits.length > 0) {
+      const maxStreak = activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
+      if (maxStreak === 0) {
+        negativeSignals.push("Habits are set up but consistency has stalled");
       }
-      const { date, moodScore, constraintType, constraintNote } = parsed.data;
-      const checkin = await storage.upsertDailyCheckin({
-        userId,
-        date,
-        moodScore,
-        constraintType,
-        constraintNote: constraintNote ?? null,
+    }
+
+    // Signal 3: Goals with no progress
+    if (activeGoals.length > 0) {
+      const allStuck = activeGoals.every((g) => {
+        return typeof g.progress !== "number" || g.progress === 0;
       });
-      res.json(checkin);
+      if (allStuck) {
+        negativeSignals.push("Goals are active but haven't moved yet");
+      }
+    }
+
+    // Signal 4: No mood check-ins in last 7 days (only flagged if they've logged before)
+    if (recentMoods.length === 0 && hasPriorMoodLogs) {
+      negativeSignals.push("No energy check-ins in the last 7 days");
+    }
+
+    // Signal 5: Low average mood recently
+    if (recentMoods.length > 0) {
+      const avgMood = recentMoods.reduce((sum, m) => sum + m.moodLevel, 0) / recentMoods.length;
+      if (avgMood <= 3) {
+        negativeSignals.push("Energy has been lower than usual recently");
+      }
+    }
+
+    // Classify: limit reasons to max 2
+    const reasons = negativeSignals.slice(0, 2);
+    let momentumStatus: "green" | "yellow" | "red";
+    let suggestedFocus: string | undefined;
+
+    if (negativeSignals.length >= 2) {
+      momentumStatus = "red";
+      suggestedFocus = "One small action today can restart your momentum";
+    } else if (negativeSignals.length === 1) {
+      momentumStatus = "yellow";
+      suggestedFocus = "You're close — one consistent action can shift things";
+    } else {
+      momentumStatus = "green";
+      suggestedFocus = "Keep building on what's working";
+    }
+
+    return { momentumStatus, reasons, suggestedFocus };
+  }
+
+  function todayDateString(): string {
+    return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  }
+
+  // GET /api/elevation/check – return today's cached check (or null if not yet run)
+  app.get("/api/elevation/check", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = todayDateString();
+      const existing = await storage.getElevationCheckByDate(userId, today);
+      if (existing) {
+        return res.json(existing);
+      }
+      res.json(null);
     } catch (error) {
-      console.error("Daily checkin upsert error:", error);
-      res.status(500).json({ error: "Failed to save check-in" });
+      console.error("Elevation check GET error:", error);
+      res.status(500).json({ error: "Failed to get elevation check" });
     }
   });
 
-  // GET /api/daily-checkins/recent?days=14
-  app.get("/api/daily-checkins/recent", requireAuth, async (req, res) => {
+  const elevationCheckBodySchema = z.object({
+    force: z.boolean().optional(),
+  });
+
+  // POST /api/elevation/check – run (or re-run) today's elevation check
+  // Body: { force?: boolean } — force=true bypasses the daily idempotency guard
+  app.post("/api/elevation/check", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const days = Math.min(Number(req.query.days) || 14, 90);
-      const checkins = await storage.getRecentCheckins(userId, days);
-      res.json(checkins);
+      const today = todayDateString();
+
+      const parsed = elevationCheckBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+      const force = parsed.data.force === true;
+
+      // Idempotency: skip if already checked today (unless force=true)
+      if (!force) {
+        const existing = await storage.getElevationCheckByDate(userId, today);
+        if (existing) {
+          return res.json({ ...existing, skipped: true });
+        }
+      }
+
+      // Gather only what we need: habits/goals (all active) + mood logs for the last 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [habits, goals, moodData] = await Promise.all([
+        storage.getHabits(userId),
+        storage.getGoals(userId),
+        storage.getRecentMoodLogs(userId, sevenDaysAgo),
+      ]);
+
+      const { momentumStatus, reasons, suggestedFocus } = computeMomentumStatus(
+        habits,
+        goals,
+        moodData.logs,
+        moodData.hasPriorLogs,
+      );
+
+      const check = await storage.upsertElevationCheck({
+        userId,
+        checkedDate: today,
+        momentumStatus,
+        reasons,
+        suggestedFocus: suggestedFocus ?? null,
+      });
+
+      res.json(check);
     } catch (error) {
-      console.error("Daily checkins recent error:", error);
-      res.status(500).json({ error: "Failed to fetch recent check-ins" });
+      console.error("Elevation check POST error:", error);
+      res.status(500).json({ error: "Failed to run elevation check" });
     }
   });
 
@@ -7991,6 +8112,210 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
       console.error("Support report error:", error);
       res.status(500).json({ error: "Failed to submit support report" });
+    }
+  });
+
+  // ========================================
+  // PR #5: ELEVATION PLAN BUILDER
+  // ========================================
+
+  const elevationPlanLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many elevation plan requests. Please try again later." },
+  });
+
+  const elevationPlanDraftSchema = z.object({
+    conversationId: z.string().max(200).optional(),
+    reasons: z.string().max(2000).optional(),
+    recentInsights: z.string().max(2000).optional(),
+    userPreferences: z.string().max(1000).optional(),
+    focusDimension: z.string().max(100).optional(),
+  });
+
+  const elevationPlanUpdateSchema = z.object({
+    title: z.string().min(1).max(200).optional(),
+    goal: z.string().max(500).optional(),
+    status: z.enum(["draft", "active", "archived"]).optional(),
+  });
+
+  const elevationPlanActionUpdateSchema = z.object({
+    isCompleted: z.boolean().optional(),
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(1000).optional(),
+  });
+
+  // POST /api/elevation-plans/preview – guest preview (no auth, returns structure only)
+  app.post("/api/elevation-plans/preview", elevationPlanLimiter, async (req, res) => {
+    try {
+      const parsed = elevationPlanDraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const { reasons, recentInsights, userPreferences, focusDimension } = parsed.data;
+      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences, focusDimension });
+      if (!structure) return res.status(500).json({ error: "Failed to generate elevation plan" });
+      res.json(structure);
+    } catch (error) {
+      console.error("Elevation plan preview error:", error);
+      res.status(500).json({ error: "Failed to generate elevation plan preview" });
+    }
+  });
+
+  // POST /api/elevation-plans/draft – create or reuse existing draft for current conversation/date
+  app.post("/api/elevation-plans/draft", requireAuth, elevationPlanLimiter, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanDraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const { conversationId, reasons, recentInsights, userPreferences, focusDimension } = parsed.data;
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Idempotency: reuse existing draft for the same day / conversation
+      const existing = await storage.getDraftElevationPlanForDay(userId, today, conversationId);
+      if (existing) {
+        const days = await storage.getElevationPlanDays(existing.id);
+        const daysWithActions = await Promise.all(
+          days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+        );
+        return res.json({ plan: existing, days: daysWithActions });
+      }
+
+      // Generate via AI
+      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences, focusDimension });
+      if (!structure) {
+        return res.status(500).json({ error: "Failed to generate elevation plan" });
+      }
+
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 6);
+
+      // Wrap all inserts in a DB transaction to avoid partial drafts
+      const { plan, daysWithActions } = await db.transaction(async (tx) => {
+        const [plan] = await tx.insert(elevationPlans)
+          .values({
+            userId,
+            title: structure.title,
+            goal: structure.goal,
+            focusDimension: structure.focusDimension,
+            status: "draft",
+            startDate: today,
+            endDate: endDate.toISOString().slice(0, 10),
+            sourceConversationId: conversationId,
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        const daysWithActions = [];
+        for (const dayData of structure.days.slice(0, 7)) {
+          const [day] = await tx.insert(elevationPlanDays)
+            .values({
+              planId: plan.id,
+              dayIndex: dayData.dayIndex,
+              theme: dayData.theme,
+              intention: dayData.intention,
+            })
+            .returning();
+
+          const actions = [];
+          for (const a of (dayData.actions ?? []).slice(0, 4)) {
+            const [action] = await tx.insert(elevationPlanActions)
+              .values({
+                planDayId: day.id,
+                actionType: a.actionType,
+                title: a.title,
+                description: a.description,
+                timeOfDay: a.timeOfDay,
+                durationMinutes: a.durationMinutes,
+                isCompleted: false,
+                updatedAt: new Date(),
+              })
+              .returning();
+            actions.push(action);
+          }
+          daysWithActions.push({ ...day, actions });
+        }
+
+        return { plan, daysWithActions };
+      });
+
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan draft error:", error);
+      res.status(500).json({ error: "Failed to create elevation plan draft" });
+    }
+  });
+
+  // GET /api/elevation-plans/active – get the active elevation plan
+  app.get("/api/elevation-plans/active", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plan = await storage.getActiveElevationPlan(userId);
+      if (!plan) return res.json(null);
+      const days = await storage.getElevationPlanDays(plan.id);
+      const daysWithActions = await Promise.all(
+        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan active error:", error);
+      res.status(500).json({ error: "Failed to get active elevation plan" });
+    }
+  });
+
+  // GET /api/elevation-plans/:id – get a specific elevation plan
+  app.get("/api/elevation-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plan = await storage.getElevationPlan(req.params.id, userId);
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+      const days = await storage.getElevationPlanDays(plan.id);
+      const daysWithActions = await Promise.all(
+        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan get error:", error);
+      res.status(500).json({ error: "Failed to get elevation plan" });
+    }
+  });
+
+  // PATCH /api/elevation-plans/:id – update plan title/goal/status
+  app.patch("/api/elevation-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
+      if (!updated) return res.status(404).json({ error: "Plan not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Elevation plan update error:", error);
+      res.status(500).json({ error: "Failed to update elevation plan" });
+    }
+  });
+
+  // PATCH /api/elevation-plan-actions/:id – toggle complete, update text
+  app.patch("/api/elevation-plan-actions/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanActionUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const updated = await storage.updateElevationPlanAction(req.params.id, userId, parsed.data);
+      if (!updated) return res.status(404).json({ error: "Action not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Elevation plan action update error:", error);
+      res.status(500).json({ error: "Failed to update elevation plan action" });
     }
   });
 

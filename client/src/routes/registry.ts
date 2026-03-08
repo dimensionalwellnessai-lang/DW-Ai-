@@ -413,6 +413,19 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "action-center",
+    path: "/action-center",
+    label: "Action Center",
+    navLabel: "Action Center",
+    icon: "list-checks",
+    type: "page",
+    description: "Manage DW follow-up prompts — accept, snooze, dismiss, or mark answered",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 15,
+    enabled: true,
+  },
+  {
     id: "journal",
     path: "/journal",
     label: "Journal",
@@ -492,6 +505,22 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     actions: [
       { id: "create-draft", label: "Create draft schedule", handler: "createDraftSchedule" },
       { id: "cancel", label: "Cancel", to: "/" },
+    ],
+  },
+  {
+    id: "elevation-plan",
+    path: "/elevation-plan",
+    label: "Elevation Plan",
+    icon: "trending-up",
+    type: "page",
+    description: "7-day elevation plan builder – draft, review, and activate",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 57,
+    enabled: true,
+    linkedType: "plan",
+    actions: [
+      { id: "view-plan", label: "View elevation plan", to: "/elevation-plan", icon: "trending-up" },
     ],
   },
   {

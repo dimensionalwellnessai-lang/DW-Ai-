@@ -52,6 +52,7 @@ import AccountDeletePage from "@/pages/account-delete";
 
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
+import ElevationPlanPage from "@/pages/elevation-plan";
 import ScheduleReviewPage from "@/pages/schedule-review";
 import ImportPage from "@/pages/import";
 import ExportPage from "@/pages/export";
@@ -90,6 +91,7 @@ import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
+import ActionCenterPage from "@/pages/action-center";
 
 function isReturningUser(): boolean {
   try {
@@ -229,12 +231,14 @@ function Router() {
       {isRouteEnabled("/feedback") && <Route path="/feedback" component={FeedbackPage} />}
       {isRouteEnabled("/weekly-checkin") && <Route path="/weekly-checkin" component={WeeklyCheckinPage} />}
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
+      {isRouteEnabled("/action-center") && <Route path="/action-center" component={ActionCenterPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
+      {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}

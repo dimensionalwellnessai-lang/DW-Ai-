@@ -16,7 +16,7 @@ export interface FeatureFlags {
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
-  DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
+  ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
 }
 
 /**
@@ -89,14 +89,14 @@ function resolveDwInsightJournalFlag(): boolean {
 }
 
 /**
- * Resolves the initial value for the DAILY_CHECKIN feature flag.
+ * Resolves the initial value for the ELEVATION_ENGINE feature flag.
  * Default is OFF; enable locally via:
- *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
- *   ?dc=1 query param                                          — one-time, per URL
+ *   localStorage.setItem('dw_elevation_engine', 'true')  — persists across sessions
+ *   ?ee=1 query param                                     — one-time, per URL
  */
-function resolveDailyCheckinFlag(): boolean {
+function resolveElevationEngineFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_daily_checkin_enabled") === "true") {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_engine") === "true") {
       return true;
     }
   } catch {
@@ -105,7 +105,7 @@ function resolveDailyCheckinFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("dc") === "1";
+      return new URLSearchParams(location.search).get("ee") === "1";
     }
   } catch {
     // URL parsing failed – fail safely
@@ -125,7 +125,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
-  DAILY_CHECKIN: resolveDailyCheckinFlag(),
+  ELEVATION_ENGINE: resolveElevationEngineFlag(),
 };
 
 /**

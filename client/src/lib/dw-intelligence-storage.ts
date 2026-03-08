@@ -36,7 +36,11 @@ export interface GuestDwFollowup {
   prompt: string;
   relatedInsightId?: string;
   sourceConversationId?: string;
-  status: "pending" | "answered" | "dismissed";
+  status: "pending" | "accepted" | "snoozed" | "answered" | "dismissed";
+  snoozedUntil?: string;  // ISO date string
+  acceptedAt?: string;
+  answeredAt?: string;
+  dismissedAt?: string;
   createdAt: string;
 }
 
@@ -119,7 +123,15 @@ export function saveGuestDwJournalEntry(entry: Omit<GuestDwJournalEntry, "id" | 
 
 export function getGuestDwFollowups(status?: string): GuestDwFollowup[] {
   const items = readJson<GuestDwFollowup>(DW_FOLLOWUPS_KEY);
-  if (!status) return items;
+  if (!status || status === "all") return items;
+  if (status === "pending") {
+    const now = new Date();
+    return items.filter((f) => {
+      if (f.status === "pending") return true;
+      if (f.status === "snoozed" && f.snoozedUntil && new Date(f.snoozedUntil) <= now) return true;
+      return false;
+    });
+  }
   return items.filter((f) => f.status === status);
 }
 
@@ -134,9 +146,17 @@ export function saveGuestDwFollowup(followup: Omit<GuestDwFollowup, "id" | "crea
   return newItem;
 }
 
-export function updateGuestDwFollowupStatus(id: string, status: GuestDwFollowup["status"]): void {
+export function updateGuestDwFollowupStatus(id: string, status: GuestDwFollowup["status"], extra?: Partial<Pick<GuestDwFollowup, "snoozedUntil" | "acceptedAt" | "answeredAt" | "dismissedAt">>): void {
   const items = readJson<GuestDwFollowup>(DW_FOLLOWUPS_KEY);
-  const updated = items.map((f) => (f.id === id ? { ...f, status } : f));
+  const now = new Date().toISOString();
+  const updated = items.map((f) => {
+    if (f.id !== id) return f;
+    const patch: Partial<GuestDwFollowup> = { status, ...extra };
+    if (status === "accepted" && !patch.acceptedAt) patch.acceptedAt = now;
+    if (status === "answered" && !patch.answeredAt) patch.answeredAt = now;
+    if (status === "dismissed" && !patch.dismissedAt) patch.dismissedAt = now;
+    return { ...f, ...patch };
+  });
   writeJson(DW_FOLLOWUPS_KEY, updated);
 }
 
