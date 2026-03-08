@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import {
   EVENTS,
   trackEvent,
   isAnalyticsOptedOut,
   setAnalyticsOptOut,
+  flushEventsToServer,
   trackNewDayOpen,
   markActivated,
   isActivated,
@@ -250,5 +251,59 @@ describe("nudge helpers", () => {
   it("wasNudgeShownToday returns true after markNudgeShownToday", () => {
     markNudgeShownToday();
     expect(wasNudgeShownToday()).toBe(true);
+  });
+});
+
+// ─── flushEventsToServer ──────────────────────────────────────────────────────
+
+describe("flushEventsToServer", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("POSTs queued events to /api/analytics/events", () => {
+    trackEvent(EVENTS.QUICK_SETUP_STARTED);
+    flushEventsToServer();
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/analytics/events");
+    expect(options.method).toBe("POST");
+    const body = JSON.parse(options.body as string) as { events: StoredEvent[] };
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0].name).toBe(EVENTS.QUICK_SETUP_STARTED);
+  });
+
+  it("clears the window queue after flushing", () => {
+    trackEvent(EVENTS.QUICK_SETUP_STARTED);
+    expect(window.__dwEvents).toHaveLength(1);
+    flushEventsToServer();
+    expect(window.__dwEvents).toHaveLength(0);
+  });
+
+  it("does nothing when queue is empty", () => {
+    window.__dwEvents = [];
+    flushEventsToServer();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when analytics is opted out", () => {
+    setAnalyticsOptOut(true);
+    // Manually push a raw event to bypass trackEvent's opt-out guard
+    window.__dwEvents = window.__dwEvents ?? [];
+    window.__dwEvents.push({
+      name: EVENTS.QUICK_SETUP_STARTED,
+      ts: Date.now(),
+      sessionId: "test",
+      env: "dev",
+    });
+    flushEventsToServer();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

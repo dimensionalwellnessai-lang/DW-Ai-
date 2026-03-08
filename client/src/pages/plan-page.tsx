@@ -25,6 +25,7 @@ import { getSwitchData, type SwitchId } from "@/lib/switch-storage";
 import { getUserSignals, deriveRecommendedSwitch, deriveMode } from "@/lib/user-signals";
 import { PLAN_LIBRARY, type PlanTemplate, type TimeBand } from "@/config/plan-library";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -104,6 +105,10 @@ export default function PlanPage() {
     );
     setPlan(updated);
     saveWeeklyPlan(updated);
+    const toggled = updated.find(item => item.id === id);
+    if (toggled?.completed) {
+      trackEvent(EVENTS.PLAN_COMPLETED, { planItemId: id, switchId: toggled.switchId });
+    }
   };
 
   const handleRemoveItem = (id: string) => {
@@ -277,7 +282,10 @@ export default function PlanPage() {
                                   <Button
                                     size="sm"
                                     className="h-7 text-xs bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
-                                    onClick={() => navigate(`/switch/${id}`)}
+                                    onClick={() => {
+                                      trackEvent(EVENTS.PLAN_ACTIVATED, { planItemId: item.id, switchId: id });
+                                      navigate(`/switch/${id}`);
+                                    }}
                                     data-testid={`button-start-${item.id}`}
                                   >
                                     <Play className="h-3 w-3 mr-1" />

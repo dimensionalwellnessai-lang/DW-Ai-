@@ -8788,6 +8788,76 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+// Known analytics event names — must mirror client EVENTS constants.
+// Hoisted to module scope so a new Set is not created on every request.
+const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
+  "quick_setup_started", "quick_setup_completed", "starter_object_created",
+  "dw_first_message_shown", "starter_spotlight_clicked", "starter_spotlight_dismissed",
+  "app_opened_new_day", "completed_first_action",
+  "followup_created", "followup_accepted", "followup_snoozed", "followup_dismissed",
+  "plan_visited", "plan_activated", "plan_completed",
+  "checkin_completed", "checkin_submitted",
+  "reminder_set", "reminder_interacted",
+]);
+
+  // ===== ANALYTICS EVENTS ENDPOINT =====
+
+  // POST /api/analytics/events
+  // Accepts a batch of client-side analytics events and logs them server-side.
+  // No authentication required; events must not include PII.
+  // Rate-limited to prevent abuse.
+  const analyticsLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many analytics requests" },
+  });
+
+  app.post("/api/analytics/events", analyticsLimiter, (req: Request, res: Response) => {
+    try {
+      const { events } = req.body as { events?: unknown };
+      if (!Array.isArray(events)) {
+        return res.status(400).json({ error: "events must be an array" });
+      }
+
+      // Truncate a string field to a safe length (prevents log injection)
+      const truncate = (v: unknown, max = 64): string | undefined =>
+        typeof v === "string" ? v.slice(0, max) : undefined;
+
+      let logged = 0;
+      for (const event of events.slice(0, 100)) {
+        if (!event || typeof event !== "object") continue;
+        const e = event as Record<string, unknown>;
+        const name = truncate(e.name, 64);
+        if (!name || !ANALYTICS_KNOWN_EVENT_NAMES.has(name)) continue;
+
+        // Sanitize payload: keep only scalar/non-PII fields, cap string lengths
+        const rawPayload = e.payload && typeof e.payload === "object" ? e.payload as Record<string, unknown> : {};
+        const safePayload: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(rawPayload)) {
+          if (typeof v === "number" || typeof v === "boolean") {
+            safePayload[k] = v;
+          } else if (typeof v === "string") {
+            safePayload[k] = v.slice(0, 128);
+          }
+        }
+
+        const ts = typeof e.ts === "number" ? e.ts : undefined;
+        const env = e.env === "dev" || e.env === "prod" ? e.env : undefined;
+        const sessionId = truncate(e.sessionId, 36);
+
+        console.log("[analytics]", JSON.stringify({ name, payload: safePayload, ts, env, sessionId }));
+        logged++;
+      }
+
+      return res.json({ received: logged });
+    } catch (err) {
+      console.error("POST /api/analytics/events error:", err);
+      return res.status(500).json({ error: "Failed to process analytics events" });
+    }
+  });
+
   return httpServer;
 }
 
