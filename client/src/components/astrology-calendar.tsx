@@ -148,14 +148,14 @@ export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
               Celestial Calendar
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={previousMonth}>
-                <ChevronLeft className="h-4 w-4" />
+              <Button variant="ghost" size="icon" onClick={previousMonth} aria-label="Previous month">
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </Button>
-              <span className="font-semibold min-w-[150px] text-center">
+              <span className="font-semibold min-w-[150px] text-center" aria-live="polite">
                 {format(currentMonth, "MMMM yyyy")}
               </span>
-              <Button variant="ghost" size="icon" onClick={nextMonth}>
-                <ChevronRight className="h-4 w-4" />
+              <Button variant="ghost" size="icon" onClick={nextMonth} aria-label="Next month">
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>

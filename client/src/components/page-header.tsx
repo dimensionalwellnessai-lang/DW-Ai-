@@ -126,8 +126,9 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
               size="icon" 
               onClick={handleBack}
               data-testid="button-back"
+              aria-label="Go back"
             >
-              <ArrowLeft className="h-6 w-6 text-foreground" />
+              <ArrowLeft className="h-6 w-6 text-foreground" aria-hidden="true" />
             </Button>
           )}
           <Button 
@@ -135,8 +136,9 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             size="icon" 
             onClick={handleMenuToggle}
             data-testid="button-menu"
+            aria-label="Open menu"
           >
-            <Menu className="h-6 w-6 text-foreground" />
+            <Menu className="h-6 w-6 text-foreground" aria-hidden="true" />
           </Button>
         </div>
         <h1 className="font-display text-xl font-medium flex-1 text-foreground" data-testid="text-page-title">

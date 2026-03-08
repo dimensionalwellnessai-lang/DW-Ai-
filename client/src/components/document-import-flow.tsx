@@ -530,8 +530,9 @@ export function DocumentImportFlow({
                             variant="ghost"
                             onClick={() => handleRemoveFile(index)}
                             data-testid={`button-remove-file-${index}`}
+                            aria-label={`Remove file ${index + 1}`}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         )}
                       </div>

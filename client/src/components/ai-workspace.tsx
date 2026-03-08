@@ -2313,7 +2313,6 @@ export function AIWorkspace() {
                 type="file"
                 multiple
                 className="hidden"
-                aria-label="Attach files"
                 onChange={(e) => {
                   const files = e.target.files;
                   if (files && files.length > 0) {

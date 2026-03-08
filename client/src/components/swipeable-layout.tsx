@@ -48,6 +48,8 @@ export function SwipeableLayout() {
         if (e.key === "ArrowRight") emblaApi?.scrollNext();
         else if (e.key === "ArrowLeft") emblaApi?.scrollPrev();
       }}
+      tabIndex={0}
+      aria-label="Swipeable views — use arrow keys to navigate"
     >
       <div
         ref={emblaRef}

@@ -293,8 +293,9 @@ Can you tell me more about this?`);
               variant="ghost"
               className="h-6 w-6 opacity-40 hover:opacity-100 transition-opacity shrink-0"
               data-testid={`button-message-actions-${messageIndex}`}
+              aria-label="Message actions"
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
+              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
         ) : (
