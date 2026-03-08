@@ -8631,6 +8631,63 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ── Analytics event ingestion (PR10) ─────────────────────────────────────
+  // Accepts batched client events for console review. No auth required so
+  // guest-mode users can also have events logged. Events are validated against
+  // an allowlist; unknown names are silently dropped.
+  const ANALYTICS_EVENT_ALLOWLIST = new Set([
+    "quick_setup_started",
+    "quick_setup_completed",
+    "starter_object_created",
+    "dw_first_message_shown",
+    "starter_spotlight_clicked",
+    "starter_spotlight_dismissed",
+    "app_opened_new_day",
+    "completed_first_action",
+    "follow_up_accepted",
+    "follow_up_snoozed",
+    "follow_up_dismissed",
+    "plan_activated",
+    "plan_completed",
+    "checkin_submitted",
+    "reminder_interacted",
+  ]);
+
+  const analyticsIngestLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many analytics requests. Please try again later." },
+  });
+
+  app.post("/api/analytics/events", analyticsIngestLimiter, async (req, res) => {
+    try {
+      const { events } = req.body as { events?: unknown[] };
+      if (!Array.isArray(events)) {
+        return res.status(400).json({ error: "events must be an array" });
+      }
+      // Cap batch size to prevent abuse
+      const batch = events.slice(0, 100);
+      for (const raw of batch) {
+        if (
+          typeof raw !== "object" ||
+          raw === null ||
+          typeof (raw as Record<string, unknown>).name !== "string"
+        ) {
+          continue;
+        }
+        const event = raw as Record<string, unknown>;
+        if (!ANALYTICS_EVENT_ALLOWLIST.has(event.name as string)) continue;
+        console.log("[analytics]", event.name, JSON.stringify(event));
+      }
+      res.json({ received: batch.length });
+    } catch (err) {
+      console.error("POST /api/analytics/events error:", err);
+      res.status(500).json({ error: "Failed to process analytics events" });
+    }
+  });
+
   return httpServer;
 }
 

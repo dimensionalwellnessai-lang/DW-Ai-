@@ -8,7 +8,7 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
-import { markPlanVisit } from "@/lib/analytics";
+import { markPlanVisit, trackEvent, EVENTS } from "@/lib/analytics";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getCalendarEvents, getSavedRoutines, type CalendarEvent, type SavedRoutine } from "@/lib/guest-storage";
 import type { LifeSystem } from "@shared/schema";
@@ -110,6 +110,7 @@ export default function PlansPage() {
     );
     setLocalPlans(updated);
     saveLocalPlans(updated);
+    trackEvent(EVENTS.PLAN_ACTIVATED, { planId: id });
   };
   
   const handleArchivePlan = (id: string) => {

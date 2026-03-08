@@ -25,6 +25,7 @@ import { getSwitchData, type SwitchId } from "@/lib/switch-storage";
 import { getUserSignals, deriveRecommendedSwitch, deriveMode } from "@/lib/user-signals";
 import { PLAN_LIBRARY, type PlanTemplate, type TimeBand } from "@/config/plan-library";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -99,11 +100,16 @@ export default function PlanPage() {
   };
 
   const handleToggleComplete = (id: string) => {
+    const wasAllComplete = plan.length > 0 && plan.every(item => item.completed);
     const updated = plan.map(item => 
       item.id === id ? { ...item, completed: !item.completed } : item
     );
     setPlan(updated);
     saveWeeklyPlan(updated);
+    // Track plan completion when the last item is marked done
+    if (!wasAllComplete && updated.length > 0 && updated.every(item => item.completed)) {
+      trackEvent(EVENTS.PLAN_COMPLETED, { planId: PLAN_STORAGE_KEY, totalItems: updated.length });
+    }
   };
 
   const handleRemoveItem = (id: string) => {

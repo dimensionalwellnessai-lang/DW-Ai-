@@ -21,6 +21,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
+import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import {
   User,
   Bell,
@@ -85,6 +86,13 @@ export function SettingsPage() {
     }
     setBrowserNotifEnabled(checked);
     try { localStorage.setItem(BROWSER_NOTIF_ENABLED_KEY, String(checked)); } catch { /* blocked */ }
+  };
+
+  // Analytics opt-out preference
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(isAnalyticsEnabled);
+  const handleAnalyticsToggle = (checked: boolean) => {
+    setAnalyticsEnabled(checked);
+    setAnalyticsEnabledState(checked);
   };
   
   const handleReplayMenuTour = () => {
@@ -546,6 +554,22 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Your data is stored securely. You can delete your account and all associated data at any time.
             </p>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="analytics-toggle" className="flex flex-col gap-0.5">
+                <span>Usage analytics</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {analyticsEnabled
+                    ? "Helps improve the app (no personal data)"
+                    : "Analytics are off"}
+                </span>
+              </Label>
+              <Switch
+                id="analytics-toggle"
+                checked={analyticsEnabled}
+                onCheckedChange={handleAnalyticsToggle}
+                data-testid="switch-analytics"
+              />
+            </div>
             <Link href="/privacy-terms">
               <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-privacy-terms">
                 <div className="flex items-center gap-3">

@@ -8,6 +8,14 @@ export const EVENTS = {
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
   APP_OPENED_NEW_DAY: "app_opened_new_day",
   COMPLETED_FIRST_ACTION: "completed_first_action",
+  // Mature-flow events (PR10)
+  FOLLOW_UP_ACCEPTED: "follow_up_accepted",
+  FOLLOW_UP_SNOOZED: "follow_up_snoozed",
+  FOLLOW_UP_DISMISSED: "follow_up_dismissed",
+  PLAN_ACTIVATED: "plan_activated",
+  PLAN_COMPLETED: "plan_completed",
+  CHECKIN_SUBMITTED: "checkin_submitted",
+  REMINDER_INTERACTED: "reminder_interacted",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -52,6 +60,43 @@ type CompletedFirstActionPayload = {
   tsLocal: string;
 };
 
+// Mature-flow payload types (PR10)
+type FollowUpAcceptedPayload = {
+  followUpId: string;
+  source: "action_center";
+};
+
+type FollowUpSnoozedPayload = {
+  followUpId: string;
+  snoozeLabel: string;
+  snoozeUntil: string;
+};
+
+type FollowUpDismissedPayload = {
+  followUpId: string;
+};
+
+type PlanActivatedPayload = {
+  planId: string;
+};
+
+type PlanCompletedPayload = {
+  planId: string;
+  totalItems: number;
+};
+
+type CheckinSubmittedPayload = {
+  moodScore: number;
+  constraintType: string;
+};
+
+type ReminderInteractedPayload = {
+  reminderId: string;
+  reminderType: string;
+  action: "dismissed" | "snoozed";
+  snoozeLabel?: string;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -62,6 +107,13 @@ type EventPayloadMap = {
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
   [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
   [EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload;
+  [EVENTS.FOLLOW_UP_ACCEPTED]: FollowUpAcceptedPayload;
+  [EVENTS.FOLLOW_UP_SNOOZED]: FollowUpSnoozedPayload;
+  [EVENTS.FOLLOW_UP_DISMISSED]: FollowUpDismissedPayload;
+  [EVENTS.PLAN_ACTIVATED]: PlanActivatedPayload;
+  [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
+  [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
+  [EVENTS.REMINDER_INTERACTED]: ReminderInteractedPayload;
 };
 
 // Session metadata (in-memory only)
@@ -88,12 +140,70 @@ declare global {
   }
 }
 
-// Type-safe trackEvent with payload enforcement
+// ── Opt-out / opt-in ──────────────────────────────────────────────────────────
+
+const ANALYTICS_ENABLED_KEY = "dw_analytics_enabled";
+
+/** Returns true when the user has NOT opted out (default: enabled). */
+export function isAnalyticsEnabled(): boolean {
+  try {
+    return localStorage.getItem(ANALYTICS_ENABLED_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+/** Persist the user's analytics preference. Clears in-memory queue on opt-out. */
+export function setAnalyticsEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(ANALYTICS_ENABLED_KEY, enabled ? "true" : "false");
+    if (!enabled) {
+      window.__dwEvents = [];
+    }
+  } catch {
+    // Never throw
+  }
+}
+
+// ── Event flush ───────────────────────────────────────────────────────────────
+
+function flushEvents(): void {
+  try {
+    const events = window.__dwEvents;
+    if (!events || events.length === 0) return;
+    // Move all pending events out before the async send so duplicates cannot occur
+    const batch = events.splice(0, events.length);
+    void fetch("/api/analytics/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: batch }),
+      keepalive: true,
+    }).catch(() => {
+      // Fire-and-forget; re-queue on network failure is intentionally not done
+    });
+  } catch {
+    // Never throw from analytics flush
+  }
+}
+
+// Flush whenever the page is hidden (tab switch / close)
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushEvents();
+    }
+  });
+}
+
+
 export function trackEvent<K extends AnalyticsEventName>(
   name: K,
   ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
 ): void {
   try {
+    // Respect opt-out
+    if (!isAnalyticsEnabled()) return;
+
     const payload = (args[0] as unknown) ?? undefined;
 
     const event: StoredEvent = {

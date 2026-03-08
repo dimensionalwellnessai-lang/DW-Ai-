@@ -13,6 +13,7 @@ import { DWCardContainer } from "./DWCardContainer";
 import { useDailyCheckin } from "@/hooks/use-daily-checkin";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -123,6 +124,7 @@ export function DailyCheckinCard() {
     await submitCheckin({ date: today, moodScore, constraintType, constraintNote });
     // Fire-and-forget: update learning profile from this check-in
     void sendLearningEvent("checkin", { constraintType, moodScore });
+    trackEvent(EVENTS.CHECKIN_SUBMITTED, { moodScore, constraintType });
     setEditMode(false);
   }
 

@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Clock, BellOff, X, Bell } from "lucide-react";
 import { useReminders, type ReminderRecord } from "@/hooks/use-reminders";
 import { cn } from "@/lib/utils";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 const SNOOZE_OPTIONS = [
   { label: "30 min", getUntil: () => new Date(Date.now() + 30 * 60 * 1000) },
@@ -49,8 +50,8 @@ function typeLabel(type: string): string {
 
 interface ReminderCardProps {
   reminder: ReminderRecord;
-  onDismiss: (id: string) => void;
-  onSnooze: (id: string, until: Date) => void;
+  onDismiss: (id: string, type: string) => void;
+  onSnooze: (id: string, until: Date, label: string, type: string) => void;
   isLoading: boolean;
 }
 
@@ -90,7 +91,7 @@ function ReminderCard({ reminder, onDismiss, onSnooze, isLoading }: ReminderCard
           type="button"
           aria-label="Dismiss reminder"
           disabled={isLoading}
-          onClick={() => onDismiss(reminder.id)}
+          onClick={() => onDismiss(reminder.id, reminder.type)}
           className="shrink-0 rounded-lg p-1 text-muted-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
         >
           <X className="h-3.5 w-3.5" />
@@ -116,7 +117,7 @@ function ReminderCard({ reminder, onDismiss, onSnooze, isLoading }: ReminderCard
                 type="button"
                 disabled={isLoading}
                 onClick={() => {
-                  onSnooze(reminder.id, opt.getUntil());
+                  onSnooze(reminder.id, opt.getUntil(), opt.label, reminder.type);
                   setShowSnooze(false);
                 }}
                 className="rounded-xl border border-border/60 bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
@@ -145,6 +146,25 @@ export function RemindersPanel({ className }: RemindersPanelProps) {
     (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
   );
 
+  const handleDismiss = (id: string, type: string) => {
+    trackEvent(EVENTS.REMINDER_INTERACTED, {
+      reminderId: id,
+      reminderType: type,
+      action: "dismissed",
+    });
+    dismissReminder(id);
+  };
+
+  const handleSnooze = (id: string, until: Date, label: string, type: string) => {
+    trackEvent(EVENTS.REMINDER_INTERACTED, {
+      reminderId: id,
+      reminderType: type,
+      action: "snoozed",
+      snoozeLabel: label,
+    });
+    snoozeReminder(id, until);
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       {active.length === 0 ? (
@@ -156,8 +176,8 @@ export function RemindersPanel({ className }: RemindersPanelProps) {
           <ReminderCard
             key={r.id}
             reminder={r}
-            onDismiss={dismissReminder}
-            onSnooze={snoozeReminder}
+            onDismiss={handleDismiss}
+            onSnooze={handleSnooze}
             isLoading={isMutating}
           />
         ))

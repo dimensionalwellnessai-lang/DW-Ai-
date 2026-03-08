@@ -27,6 +27,7 @@ import {
   type GuestDwFollowup,
 } from "@/lib/dw-intelligence-storage";
 import { useReminders } from "@/hooks/use-reminders";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ function formatSnoozedUntil(dateStr: string): string {
 interface FollowupCardProps {
   followup: FollowupRecord;
   onAccept: (id: string, prompt: string) => void;
-  onSnooze: (id: string, until: Date) => void;
+  onSnooze: (id: string, until: Date, label: string) => void;
   onDismiss: (id: string) => void;
   onMarkAnswered: (id: string) => void;
   isLoading: boolean;
@@ -200,7 +201,7 @@ function FollowupItem({ followup, onAccept, onSnooze, onDismiss, onMarkAnswered,
                   type="button"
                   disabled={isLoading}
                   onClick={() => {
-                    onSnooze(followup.id, opt.getUntil());
+                    onSnooze(followup.id, opt.getUntil(), opt.label);
                     setShowSnooze(false);
                   }}
                   className="rounded-lg border border-border/60 bg-background text-sm font-medium px-3 py-1.5 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
@@ -308,6 +309,7 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "accepted");
           setGuestRefreshKey((k) => k + 1);
         }
+        trackEvent(EVENTS.FOLLOW_UP_ACCEPTED, { followUpId: id, source: "action_center" });
         const params = new URLSearchParams();
         params.set("prefill", prompt);
         params.set("src", "followup_accept");
@@ -320,7 +322,7 @@ export default function ActionCenterPage() {
   );
 
   const handleSnooze = useCallback(
-    async (id: string, until: Date) => {
+    async (id: string, until: Date, label: string) => {
       setMutating(id);
       try {
         if (isLoggedIn) {
@@ -330,6 +332,11 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "snoozed", { snoozedUntil: until.toISOString() });
           setGuestRefreshKey((k) => k + 1);
         }
+        trackEvent(EVENTS.FOLLOW_UP_SNOOZED, {
+          followUpId: id,
+          snoozeLabel: label,
+          snoozeUntil: until.toISOString(),
+        });
         // Create/replace a reminder so the snooze fires at the right time
         if (remindersEnabled) {
           try {
@@ -366,6 +373,7 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "dismissed");
           setGuestRefreshKey((k) => k + 1);
         }
+        trackEvent(EVENTS.FOLLOW_UP_DISMISSED, { followUpId: id });
         // Cancel any pending reminders for this follow-up
         if (remindersEnabled) {
           try {
