@@ -391,6 +391,13 @@ function saveConsent(c: CosmicConsent) {
   }
 }
 
+/** Format an ISO date string (YYYY-MM-DD) as a human-readable short date */
+function formatEventDate(isoDate: string): string {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 // Types matching the /api/cosmic/* response shapes
@@ -537,7 +544,7 @@ function CalendarTab() {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(evt.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  {formatEventDate(evt.date)}
                 </p>
                 <p className="text-xs">{evt.description}</p>
                 <p className="text-xs text-primary italic">✦ {evt.prompt}</p>

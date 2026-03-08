@@ -46,6 +46,15 @@ export const SIGN_MODALITIES: Record<ZodiacSign, "cardinal" | "fixed" | "mutable
 // Sidereal offset (Lahiri ayanamsha approximation for year 2000)
 const SIDEREAL_OFFSET = 23.856; // degrees
 
+// Synodic month length in days
+const SYNODIC_MONTH_DAYS = 29.53;
+
+// Approximate number of days per season
+const SEASON_LENGTH_DAYS = 91;
+
+// Moon phase boundary angles (degrees of Sun–Moon elongation)
+const MOON_PHASE_BOUNDARIES = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5] as const;
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PlanetPosition {
@@ -489,13 +498,13 @@ export function moonPhaseInfo(date: Date = new Date()): {
 
   let name: string;
   let emoji: string;
-  if (angle < 22.5 || angle >= 337.5) { name = "New Moon"; emoji = "🌑"; }
-  else if (angle < 67.5)  { name = "Waxing Crescent"; emoji = "🌒"; }
-  else if (angle < 112.5) { name = "First Quarter";   emoji = "🌓"; }
-  else if (angle < 157.5) { name = "Waxing Gibbous";  emoji = "🌔"; }
-  else if (angle < 202.5) { name = "Full Moon";        emoji = "🌕"; }
-  else if (angle < 247.5) { name = "Waning Gibbous";  emoji = "🌖"; }
-  else if (angle < 292.5) { name = "Last Quarter";    emoji = "🌗"; }
+  if (angle < MOON_PHASE_BOUNDARIES[0] || angle >= MOON_PHASE_BOUNDARIES[7]) { name = "New Moon"; emoji = "🌑"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[1])  { name = "Waxing Crescent"; emoji = "🌒"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[2]) { name = "First Quarter";   emoji = "🌓"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[3]) { name = "Waxing Gibbous";  emoji = "🌔"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[4]) { name = "Full Moon";        emoji = "🌕"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[5]) { name = "Waning Gibbous";  emoji = "🌖"; }
+  else if (angle < MOON_PHASE_BOUNDARIES[6]) { name = "Last Quarter";    emoji = "🌗"; }
   else                    { name = "Waning Crescent";  emoji = "🌘"; }
 
   return { name, emoji, illumination: Math.round(illum * 100) / 100, angle };
@@ -554,7 +563,7 @@ function findLunationEvents(jdStart: number, jdEnd: number): CalendarEvent[] {
 
   for (const target of targets) {
     // Step through every ~3 days and look for sign crossing
-    for (let jd = jdStart; jd < jdEnd; jd += 29.53 / 4) {
+    for (let jd = jdStart; jd < jdEnd; jd += SYNODIC_MONTH_DAYS / 4) {
       const sun0  = sunLongitude(jd);
       const moon0 = moonLongitude(jd);
       let elongation0 = normDeg(moon0 - sun0);
@@ -562,7 +571,7 @@ function findLunationEvents(jdStart: number, jdEnd: number): CalendarEvent[] {
       let diff0 = normDeg(elongation0 - target.angle);
       if (diff0 > 180) diff0 -= 360; // signed
       let diff1: number;
-      const jdPlus = jd + 29.53 / 4;
+      const jdPlus = jd + SYNODIC_MONTH_DAYS / 4;
       {
         const s = sunLongitude(jdPlus);
         const m = moonLongitude(jdPlus);
@@ -697,11 +706,11 @@ function findSeasonEvents(jdStart: number, jdEnd: number): CalendarEvent[] {
   const events: CalendarEvent[] = [];
 
   for (const season of SEASONS) {
-    for (let jd = jdStart; jd < jdEnd; jd += 91) {
+    for (let jd = jdStart; jd < jdEnd; jd += SEASON_LENGTH_DAYS) {
       const sun0 = sunLongitude(jd);
       let diff0 = normDeg(sun0 - season.lon);
       if (diff0 > 180) diff0 -= 360;
-      const jdPlus = jd + 91;
+      const jdPlus = jd + SEASON_LENGTH_DAYS;
       const sun1 = sunLongitude(jdPlus);
       let diff1 = normDeg(sun1 - season.lon);
       if (diff1 > 180) diff1 -= 360;
@@ -781,7 +790,7 @@ export function computeCalendarEvents(
 
 // ─── Today snapshot ────────────────────────────────────────────────────────────
 
-const ENERGY_WORDS: [string, ...string[]] = [
+const ENERGY_WORDS: string[] = [
   "Grounded", "Expansive", "Reflective", "Dynamic", "Intuitive",
   "Transformative", "Harmonious", "Intense", "Clarifying", "Nurturing",
   "Visionary", "Decisive", "Receptive", "Renewing",

@@ -8653,7 +8653,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         computeNatalChart(
           stored.birthDate,
           stored.birthTime,
-          // Geocode fallback: NYC; real apps should store lat/lng on the birth_charts record
+          // lat/lng not yet stored on birth_charts (pending schema migration);
+          // using NYC as fallback — the /api/astrology/chart POST accepts and
+          // stores coordinates for a future enhancement.
           (stored as Record<string, unknown>).latitude as number ?? 40.7128,
           (stored as Record<string, unknown>).longitude as number ?? -74.0060,
           (stored.zodiacSystem as "tropical" | "sidereal") ?? "tropical",
