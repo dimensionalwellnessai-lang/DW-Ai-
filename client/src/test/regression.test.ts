@@ -103,7 +103,7 @@ describe("getMomentumMessage regression", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("buildFollowUpPrefill regression – priority ordering", () => {
-  const insight = { id: "i1", title: "Sleep quality", summary: "…", category: "health" };
+  const insight = { id: "i1", title: "Sleep quality", summary: "...", category: "health" };
   const goal = { id: "g1", title: "Run a 5K" };
   const event = { id: "e1", title: "Doctor visit", startTime: null, isAllDay: false };
   const followUp = { id: "fu1", prompt: "Did you rest enough?" };

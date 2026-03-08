@@ -35,9 +35,8 @@ const SALT_ROUNDS = 10;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function todayDateString(): string {
+  return new Date().toISOString().split("T")[0];
 }
 
 function daysAgo(n: number): Date {
