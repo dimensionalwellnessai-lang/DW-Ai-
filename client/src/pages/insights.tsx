@@ -423,7 +423,7 @@ export default function InsightsDashboard() {
 
 // ── DW Insights list component ───────────────────────────────────────────────
 
-function DwInsightCard({ insight }: { insight: DwInsightRecord }) {
+function DwInsightCard({ insight }: { insight: DwInsightItem }) {
   const [expanded, setExpanded] = useState(false);
   const date = typeof insight.createdAt === "number"
     ? new Date(insight.createdAt)
@@ -488,7 +488,7 @@ function DwInsightCard({ insight }: { insight: DwInsightRecord }) {
   );
 }
 
-function DwInsightsList({ insights, isLoading }: { insights: DwInsightRecord[]; isLoading: boolean }) {
+function DwInsightsList({ insights, isLoading }: { insights: DwInsightItem[]; isLoading: boolean }) {
   if (isLoading) {
     return (
       <div className="space-y-3">
