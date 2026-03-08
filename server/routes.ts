@@ -7852,6 +7852,64 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ── Daily Check-ins (PR #6) ───────────────────────────────────────────────
+
+  const dailyCheckinSchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
+    moodScore: z.number().int().min(1).max(5),
+    constraintType: z.string().min(1).max(100),
+    constraintNote: z.string().max(500).optional(),
+  });
+
+  // GET /api/daily-checkins/today
+  app.get("/api/daily-checkins/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = new Date().toISOString().slice(0, 10);
+      const checkin = await storage.getTodayCheckin(userId, today);
+      res.json(checkin ?? null);
+    } catch (error) {
+      console.error("Daily checkin today error:", error);
+      res.status(500).json({ error: "Failed to fetch today's check-in" });
+    }
+  });
+
+  // POST /api/daily-checkins – upsert today's check-in
+  app.post("/api/daily-checkins", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = dailyCheckinSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid check-in data", details: parsed.error.flatten() });
+      }
+      const { date, moodScore, constraintType, constraintNote } = parsed.data;
+      const checkin = await storage.upsertDailyCheckin({
+        userId,
+        date,
+        moodScore,
+        constraintType,
+        constraintNote: constraintNote ?? null,
+      });
+      res.json(checkin);
+    } catch (error) {
+      console.error("Daily checkin upsert error:", error);
+      res.status(500).json({ error: "Failed to save check-in" });
+    }
+  });
+
+  // GET /api/daily-checkins/recent?days=14
+  app.get("/api/daily-checkins/recent", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const days = Math.min(Number(req.query.days) || 14, 90);
+      const checkins = await storage.getRecentCheckins(userId, days);
+      res.json(checkins);
+    } catch (error) {
+      console.error("Daily checkins recent error:", error);
+      res.status(500).json({ error: "Failed to fetch recent check-ins" });
+    }
+  });
+
   // Support report endpoint (accessible to both guests and authenticated users)
   const supportReportLimiter = rateLimit({
     windowMs: 60 * 1000,

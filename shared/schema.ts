@@ -2511,3 +2511,35 @@ export type DwJournalEntry = typeof dwJournalEntries.$inferSelect;
 export type InsertDwJournalEntry = z.infer<typeof insertDwJournalEntrySchema>;
 export type DwFollowup = typeof dwFollowups.$inferSelect;
 export type InsertDwFollowup = z.infer<typeof insertDwFollowupSchema>;
+
+// ========================================
+// PR #6: DAILY CHECK-IN
+// ========================================
+
+// Daily Check-ins – lightweight 2-signal daily capture
+export const dailyCheckins = pgTable("daily_checkins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  date: text("date").notNull(), // YYYY-MM-DD
+  moodScore: integer("mood_score").notNull(), // 1–5
+  constraintType: text("constraint_type").notNull(), // picklist value
+  constraintNote: text("constraint_note"), // optional free text
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  userDateUnique: uniqueIndex("daily_checkins_user_date_idx").on(t.userId, t.date),
+}));
+
+export const dailyCheckinsRelations = relations(dailyCheckins, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyCheckins.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDailyCheckinSchema = createInsertSchema(dailyCheckins).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type DailyCheckin = typeof dailyCheckins.$inferSelect;
+export type InsertDailyCheckin = z.infer<typeof insertDailyCheckinSchema>;

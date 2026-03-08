@@ -235,6 +235,9 @@ import {
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
+  dailyCheckins,
+  type DailyCheckin,
+  type InsertDailyCheckin,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -630,6 +633,11 @@ export interface IStorage {
   getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
   updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+
+  // Daily Check-ins (PR #6)
+  getTodayCheckin(userId: string, date: string): Promise<DailyCheckin | undefined>;
+  upsertDailyCheckin(data: InsertDailyCheckin): Promise<DailyCheckin>;
+  getRecentCheckins(userId: string, days: number): Promise<DailyCheckin[]>;
 }
 
 export interface AdminAnalytics {
@@ -3001,6 +3009,43 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;
+  }
+
+  // ── Daily Check-ins (PR #6) ────────────────────────────────────────────────
+
+  async getTodayCheckin(userId: string, date: string): Promise<DailyCheckin | undefined> {
+    const [row] = await db.select()
+      .from(dailyCheckins)
+      .where(and(eq(dailyCheckins.userId, userId), eq(dailyCheckins.date, date)))
+      .limit(1);
+    return row;
+  }
+
+  async upsertDailyCheckin(data: InsertDailyCheckin): Promise<DailyCheckin> {
+    const [result] = await db
+      .insert(dailyCheckins)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [dailyCheckins.userId, dailyCheckins.date],
+        set: {
+          moodScore: data.moodScore,
+          constraintType: data.constraintType,
+          constraintNote: data.constraintNote ?? null,
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getRecentCheckins(userId: string, days: number): Promise<DailyCheckin[]> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return db.select()
+      .from(dailyCheckins)
+      .where(and(eq(dailyCheckins.userId, userId), gte(dailyCheckins.date, cutoffStr)))
+      .orderBy(desc(dailyCheckins.date))
+      .limit(days);
   }
 }
 
