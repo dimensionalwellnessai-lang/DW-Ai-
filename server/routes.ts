@@ -3338,9 +3338,15 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Task not found" });
       }
-      const updated = await storage.updateTask(req.params.id, req.body);
+      // Only allow updates to permitted task fields; disallow changing ownership.
+      const updateTaskSchema = insertTaskSchema.omit({ userId: true }).partial();
+      const updateData = updateTaskSchema.parse(req.body);
+      const updated = await storage.updateTask(req.params.id, updateData);
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update task" });
     }
   });
