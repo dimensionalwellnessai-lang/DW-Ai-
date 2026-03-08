@@ -68,6 +68,9 @@ import {
   insertAiFeatureUsageSchema,
   insertAiSuggestionSchema,
   insertConversationInsightSchema,
+  insertDwInsightSchema,
+  insertDwJournalEntrySchema,
+  insertDwFollowupSchema,
   type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
@@ -336,6 +339,18 @@ function extractCategoryData(userMessage: string, aiResponse: string, context?: 
   
   return results;
 }
+
+// ── DW Intelligence: pipeline thresholds ─────────────────────────────────────
+/** Minimum number of messages in a conversation to trigger the DW pipeline. */
+const DW_MIN_MESSAGES = 4; // at least 2 user+assistant exchanges
+/** Minimum total character count across all messages to trigger the pipeline. */
+const DW_MIN_TOTAL_CHARS = 200;
+/** Maximum messages allowed in a single /api/dw/processConversation request. */
+const DW_MAX_CONVERSATION_MESSAGES = 100;
+/** Maximum characters per individual message. */
+const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
+/** Maximum total characters across all messages in a single request. */
+const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
 export async function registerRoutes(
   httpServer: Server,

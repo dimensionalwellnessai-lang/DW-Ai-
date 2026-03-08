@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeSummary } from "./useHomeSummary";
 import { TodayCard } from "./components/TodayCard";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
+import { DwInsightCard } from "./components/DwInsightCard";
+import { DwJournalCard } from "./components/DwJournalCard";
 import { PlanInMotionCard } from "./components/PlanInMotionCard";
 import { HealthSnapshotCard } from "./components/HealthSnapshotCard";
 import { MomentumCard } from "./components/MomentumCard";

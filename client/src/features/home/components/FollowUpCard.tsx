@@ -1,6 +1,6 @@
 /**
- * FollowUpCard – an open-ended CTA inviting the user to check in with DW.
- * Always shown; the prefill adapts based on available data.
+ * FollowUpCard – shows the AI-generated follow-up prompt when available,
+ * or falls back to a generic CTA inviting the user to check in with DW.
  */
 
 import { useLocation } from "wouter";
@@ -9,10 +9,13 @@ import { DWCardContainer } from "./DWCardContainer";
 import type { HomeSummary } from "../types";
 
 interface FollowUpCardProps {
-  summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent">;
+  summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent" | "dwFollowUp">;
 }
 
 function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
+  if (summary.dwFollowUp) {
+    return summary.dwFollowUp.prompt;
+  }
   if (summary.latestInsight) {
     return `I want to follow up on something — "${summary.latestInsight.title}". What would you suggest I do next?`;
   }
@@ -28,6 +31,7 @@ function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
 export function FollowUpCard({ summary }: FollowUpCardProps) {
   const [, navigate] = useLocation();
   const prefill = buildFollowUpPrefill(summary);
+  const hasAiFollowUp = Boolean(summary.dwFollowUp);
 
   function handleOpenChat() {
     const params = new URLSearchParams();
@@ -42,19 +46,27 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
         <div className="p-1.5 rounded-lg bg-pink-500/10">
           <MessageCircle className="h-4 w-4 text-pink-500" />
         </div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">DW check-in</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {hasAiFollowUp ? "DW Follow-up" : "DW check-in"}
+        </p>
       </div>
 
-      <p className="text-sm text-foreground/80 leading-relaxed">
-        Ready when you are. No agenda, no pressure — just a space to think out loud.
-      </p>
+      {hasAiFollowUp ? (
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          {summary.dwFollowUp?.prompt}
+        </p>
+      ) : (
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          Ready when you are. No agenda, no pressure — just a space to think out loud.
+        </p>
+      )}
 
       <button
         type="button"
         onClick={handleOpenChat}
         className="w-full text-center rounded-lg bg-primary/10 text-primary text-sm font-medium px-3 py-2 hover:bg-primary/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        Start a conversation →
+        {hasAiFollowUp ? "Explore this with DW →" : "Start a conversation →"}
       </button>
     </DWCardContainer>
   );

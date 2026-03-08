@@ -60,7 +60,7 @@ export interface HomeSummary {
   /** Active habits from /api/habits */
   activeHabits: ActiveHabit[];
 
-  /** Most-recent DW-generated insight */
+  /** Most-recent DW-generated insight (legacy conversation insight cards) */
   latestInsight: LatestInsight | null;
 
   /** Most-recent DW AI-generated journal entry (null if none or flag off) */

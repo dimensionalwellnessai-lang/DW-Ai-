@@ -29,6 +29,8 @@ import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { useDwIntelligence, type DwJournalRecord } from "@/hooks/use-dw-intelligence";
 import { 
   detectJournalCategory, 
   generateJournalTitle, 
@@ -127,6 +129,10 @@ export default function JournalPage() {
   const [momentumLogs, setMomentumLogs] = useState<OnboardingLog[]>([]);
   const [pendingHighlightId, setPendingHighlightId] = useState<string | null>(null);
   const highlightProcessedRef = useRef(false);
+
+  // DW Intelligence AI-generated journal entries
+  const dwIntelligenceOn = isFeatureEnabled("JOURNAL_AUTOGEN");
+  const { allJournalEntries: dwJournalEntries, isLoading: dwLoading } = useDwIntelligence();
 
   useEffect(() => {
     setEntries(getStoredEntries());
@@ -460,6 +466,11 @@ export default function JournalPage() {
             </Card>
           )}
 
+          {/* DW Intelligence – AI-generated journal entries */}
+          {dwIntelligenceOn && (
+            <DwJournalSection entries={dwJournalEntries} isLoading={dwLoading} />
+          )}
+
           <div className="space-y-3">
             {filteredEntries.map(entry => {
               const isHighlighted = highlightedId === entry.id;
@@ -692,6 +703,83 @@ export default function JournalPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── DW Intelligence Journal Section ──────────────────────────────────────────
+
+function DwJournalSection({ entries, isLoading }: { entries: DwJournalRecord[]; isLoading: boolean }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  if (!isLoading && entries.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <Brain className="w-4 h-4 text-violet-500" />
+        DW-Generated Reflections
+      </h2>
+
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Generating your reflections…</p>
+          </CardContent>
+        </Card>
+      ) : (
+        entries.map((entry) => {
+          const isExpanded = expandedId === entry.id;
+          const date = typeof entry.createdAt === "number"
+            ? new Date(entry.createdAt)
+            : new Date(entry.createdAt);
+          return (
+            <Card
+              key={entry.id}
+              className="border border-violet-500/20 hover:border-violet-500/40 transition-colors"
+            >
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Brain className="h-3.5 w-3.5 text-violet-500 flex-shrink-0 mt-0.5" />
+                    <h4 className="text-sm font-medium leading-tight line-clamp-2">{entry.title}</h4>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                    {format(date, "MMM d")}
+                  </span>
+                </div>
+
+                <p className={`text-xs text-muted-foreground leading-relaxed italic ${isExpanded ? "" : "line-clamp-3"}`}>
+                  {entry.story}
+                </p>
+
+                {entry.story.length > 200 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                    className="text-[11px] text-violet-500 hover:text-violet-600 transition-colors"
+                  >
+                    {isExpanded ? "Show less" : "Read more"}
+                  </button>
+                )}
+
+                {entry.tags && entry.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {entry.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }

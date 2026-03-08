@@ -506,6 +506,9 @@ export function AIWorkspace() {
   const user = authData?.user;
   const isUserAuthenticated = !!user;
 
+  // DW Intelligence (auto-generate insight + journal + follow-up after chat)
+  const { processConversation: triggerDwProcessing } = useDwIntelligence();
+
   // Database conversations for authenticated users
   const { data: dbConversations = [], refetch: refetchDbConversations } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],

@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
+import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn } from "@/lib/queryClient";
 import { isFeatureEnabled } from "@/config/featureFlags";
