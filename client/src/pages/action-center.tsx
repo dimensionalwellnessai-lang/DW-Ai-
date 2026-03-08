@@ -147,8 +147,8 @@ function FollowupItem({ followup, onAccept, onSnooze, onDismiss, onMarkAnswered,
       {/* Prompt text */}
       <p className="text-sm text-foreground/90 leading-relaxed">{followup.prompt}</p>
 
-      {/* Actions – only for actionable items */}
-      {actionable && !completed && (
+      {/* Actions – for actionable (pending/snooze-expired) and actively-snoozed items */}
+      {((actionable && !completed) || snoozedActive) && (
         <div className="space-y-2">
           <div className="flex gap-2">
             <button
@@ -163,7 +163,7 @@ function FollowupItem({ followup, onAccept, onSnooze, onDismiss, onMarkAnswered,
               type="button"
               disabled={isLoading}
               onClick={() => onMarkAnswered(followup.id)}
-              title="Mark as answered"
+              aria-label="Mark as answered"
               className="rounded-lg bg-green-500/10 text-green-700 dark:text-green-400 text-sm font-medium px-3 py-1.5 hover:bg-green-500/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 disabled:opacity-50"
             >
               <CheckCheck className="h-4 w-4" />

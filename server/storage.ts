@@ -3007,7 +3007,7 @@ export class DatabaseStorage implements IStorage {
 
   async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
     const userCondition = eq(dwFollowups.userId, userId);
-    let statusCondition;
+    let statusCondition: ReturnType<typeof eq> | ReturnType<typeof or> | undefined;
     if (status && status !== "all") {
       if (status === "pending") {
         // Return pending + snoozed-expired items as actionable
@@ -3024,11 +3024,13 @@ export class DatabaseStorage implements IStorage {
     const whereClause = statusCondition
       ? and(userCondition, statusCondition)
       : userCondition;
-    return db.select()
+    // No limit when fetching all statuses so the Completed bucket is complete
+    const limit = status === "all" ? undefined : 50;
+    const query = db.select()
       .from(dwFollowups)
       .where(whereClause)
-      .orderBy(desc(dwFollowups.createdAt))
-      .limit(50);
+      .orderBy(desc(dwFollowups.createdAt));
+    return limit !== undefined ? query.limit(limit) : query;
   }
 
   async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
