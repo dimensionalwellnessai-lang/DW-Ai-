@@ -21,7 +21,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
-import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
+import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
 import {
   User,
   Bell,
@@ -79,10 +79,10 @@ export function SettingsPage() {
   const [browserNotifEnabled, setBrowserNotifEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem(BROWSER_NOTIF_ENABLED_KEY) !== "false"; } catch { return true; }
   });
-  // Analytics opt-out preference
-  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(isAnalyticsEnabled);
+  // Analytics opt-out preference — "enabled" = not opted-out
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(() => !isAnalyticsOptedOut());
   const handleAnalyticsToggle = (checked: boolean) => {
-    setAnalyticsEnabled(checked);
+    setAnalyticsOptOut(!checked); // checked=true → opt-out=false (tracking ON)
     setAnalyticsEnabledState(checked);
   };
   const handleBrowserNotifToggle = async (checked: boolean) => {
