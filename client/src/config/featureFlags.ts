@@ -16,6 +16,7 @@ export interface FeatureFlags {
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
+  ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
 }
 
 /**
@@ -87,6 +88,32 @@ function resolveDwInsightJournalFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the ELEVATION_ENGINE feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_elevation_engine', 'true')  — persists across sessions
+ *   ?ee=1 query param                                     — one-time, per URL
+ */
+function resolveElevationEngineFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_engine") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ee") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -98,6 +125,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
+  ELEVATION_ENGINE: resolveElevationEngineFlag(),
 };
 
 /**
