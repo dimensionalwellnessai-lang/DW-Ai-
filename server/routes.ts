@@ -74,6 +74,7 @@ import {
   insertDwJournalEntrySchema,
   insertDwFollowupSchema,
   insertReminderSchema,
+  updateUserLearningProfileSchema,
   type Habit,
   type Goal,
   type MoodLog,
@@ -7892,6 +7893,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     goals: Goal[],
     recentMoods: MoodLog[],
     hasPriorMoodLogs: boolean,
+    learningProfile?: { preferredActionTypes?: string[]; frictionPoints?: string[]; wins?: string[] },
   ): { momentumStatus: "green" | "yellow" | "red"; reasons: string[]; suggestedFocus?: string } {
     const negativeSignals: string[] = [];
 
@@ -7945,13 +7947,23 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
 
     if (negativeSignals.length >= 2) {
       momentumStatus = "red";
-      suggestedFocus = "One small action today can restart your momentum";
+      // Use learning profile to personalise the suggestedFocus
+      const topActionType = learningProfile?.preferredActionTypes?.[0];
+      suggestedFocus = topActionType
+        ? `One small ${topActionType} action today can restart your momentum`
+        : "One small action today can restart your momentum";
     } else if (negativeSignals.length === 1) {
       momentumStatus = "yellow";
-      suggestedFocus = "You're close — one consistent action can shift things";
+      const knownFriction = learningProfile?.frictionPoints?.[0];
+      suggestedFocus = knownFriction
+        ? `You're close — even with ${knownFriction} challenges, one consistent action can shift things`
+        : "You're close — one consistent action can shift things";
     } else {
       momentumStatus = "green";
-      suggestedFocus = "Keep building on what's working";
+      const recentWin = learningProfile?.wins?.[0];
+      suggestedFocus = recentWin
+        ? `Keep building on what worked (like "${recentWin}")`
+        : "Keep building on what's working";
     }
 
     return { momentumStatus, reasons, suggestedFocus };
@@ -8004,10 +8016,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
 
       // Gather only what we need: habits/goals (all active) + mood logs for the last 7 days
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const [habits, goals, moodData] = await Promise.all([
+      const [habits, goals, moodData, learningProfile] = await Promise.all([
         storage.getHabits(userId),
         storage.getGoals(userId),
         storage.getRecentMoodLogs(userId, sevenDaysAgo),
+        storage.getLearningProfile(userId),
       ]);
 
       const { momentumStatus, reasons, suggestedFocus } = computeMomentumStatus(
@@ -8015,6 +8028,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         goals,
         moodData.logs,
         moodData.hasPriorLogs,
+        learningProfile ?? undefined,
       );
 
       const check = await storage.upsertElevationCheck({
@@ -8187,8 +8201,34 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         return res.json({ plan: existing, days: daysWithActions });
       }
 
+      // Enrich with learning profile context (PR #8)
+      const learningProfile = await storage.getLearningProfile(userId);
+      let enrichedUserPreferences = userPreferences ?? "";
+      if (learningProfile && learningProfile.learningEnabled !== false) {
+        const parts: string[] = [];
+        if (learningProfile.preferredActionTypes && learningProfile.preferredActionTypes.length > 0) {
+          parts.push(`Preferred action types: ${learningProfile.preferredActionTypes.join(", ")}`);
+        }
+        if (learningProfile.preferredTimes && Object.keys(learningProfile.preferredTimes).length > 0) {
+          const times = Object.entries(learningProfile.preferredTimes)
+            .filter(([k]) => !k.startsWith("_"))
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(", ");
+          if (times) parts.push(`Preferred times: ${times}`);
+        }
+        if (learningProfile.frictionPoints && learningProfile.frictionPoints.length > 0) {
+          parts.push(`Known friction points: ${learningProfile.frictionPoints.join(", ")}`);
+        }
+        if (learningProfile.avoid && learningProfile.avoid.length > 0) {
+          parts.push(`Avoid: ${learningProfile.avoid.join(", ")}`);
+        }
+        if (parts.length > 0) {
+          enrichedUserPreferences = [enrichedUserPreferences, parts.join(". ")].filter(Boolean).join("\n");
+        }
+      }
+
       // Generate via AI
-      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences, focusDimension });
+      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences: enrichedUserPreferences || undefined, focusDimension });
       if (!structure) {
         return res.status(500).json({ error: "Failed to generate elevation plan" });
       }
@@ -8392,6 +8432,172 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (err) {
       console.error("POST /api/reminders/cancel-by-source error:", err);
       res.status(500).json({ error: "Failed to cancel reminders" });
+    }
+  });
+
+  // ── Learning Profile (PR #8: DW Learns) ───────────────────────────────────
+
+  // GET /api/learning-profile – get profile for the authenticated user
+  app.get("/api/learning-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getLearningProfile(userId);
+      if (!profile) {
+        // Return sensible empty defaults so the client always gets a valid shape
+        return res.json({
+          preferredTimes: {},
+          preferredActionTypes: [],
+          sensitivity: {},
+          frictionPoints: [],
+          wins: [],
+          avoid: [],
+          lastFeedbackAt: null,
+          learningEnabled: true,
+          updatedAt: null,
+        });
+      }
+      res.json(profile);
+    } catch (err) {
+      console.error("GET /api/learning-profile error:", err);
+      res.status(500).json({ error: "Failed to fetch learning profile" });
+    }
+  });
+
+  // PATCH /api/learning-profile – manual user edits
+  app.patch("/api/learning-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = updateUserLearningProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() });
+      }
+      const profile = await storage.upsertLearningProfile(userId, { ...parsed.data, lastFeedbackAt: new Date() });
+      res.json(profile);
+    } catch (err) {
+      console.error("PATCH /api/learning-profile error:", err);
+      res.status(500).json({ error: "Failed to update learning profile" });
+    }
+  });
+
+  // POST /api/learning-profile/reset – reset all learned data
+  app.post("/api/learning-profile/reset", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.resetLearningProfile(userId);
+      res.json(profile);
+    } catch (err) {
+      console.error("POST /api/learning-profile/reset error:", err);
+      res.status(500).json({ error: "Failed to reset learning profile" });
+    }
+  });
+
+  // POST /api/learning-profile/auto-update – internal endpoint for event-driven updates
+  // Called from: daily check-in completion, reminder snooze/dismiss, plan action completion
+  app.post("/api/learning-profile/auto-update", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getLearningProfile(userId);
+      // Stop auto-updates if user has disabled learning
+      if (profile && profile.learningEnabled === false) {
+        return res.json({ skipped: true });
+      }
+
+      const { event, payload } = req.body as {
+        event: "checkin" | "reminder_snooze" | "reminder_dismiss" | "plan_action_complete" | "followup_accept" | "followup_dismiss";
+        payload: Record<string, unknown>;
+      };
+
+      const patch: Record<string, unknown> = {};
+
+      if (event === "checkin") {
+        // Learn from constraint types and mood trends
+        const constraintType = payload.constraintType as string | undefined;
+        if (constraintType && constraintType !== "none") {
+          const current = await storage.getLearningProfile(userId);
+          const fp = [...(current?.frictionPoints ?? [])];
+          if (!fp.includes(constraintType)) {
+            fp.unshift(constraintType);
+            patch.frictionPoints = fp.slice(0, 5); // keep top 5
+          }
+        }
+      } else if (event === "reminder_snooze") {
+        // Snoozed reminders → lower reminder sensitivity or adjust time
+        const current = await storage.getLearningProfile(userId);
+        const sens = { ...(current?.sensitivity ?? {}) };
+        // Count snoozes in preferred times
+        const snoozeCount = (parseInt(String(sens._snoozeCount ?? "0"), 10) || 0) + 1;
+        sens._snoozeCount = String(snoozeCount);
+        if (snoozeCount >= 3) {
+          sens.reminders = "low";
+        }
+        patch.sensitivity = sens;
+        // Also learn preferred time from when they actually engaged
+        const scheduledHour = payload.scheduledHour as number | undefined;
+        if (typeof scheduledHour === "number") {
+          const times = { ...(current?.preferredTimes ?? {}) };
+          // Suggest one hour later as preferred
+          const preferredHour = (scheduledHour + 1) % 24;
+          times.reminder = `${String(preferredHour).padStart(2, "0")}:00`;
+          patch.preferredTimes = times;
+        }
+      } else if (event === "reminder_dismiss") {
+        const current = await storage.getLearningProfile(userId);
+        const sens = { ...(current?.sensitivity ?? {}) };
+        const dismissCount = (parseInt(String(sens._dismissCount ?? "0"), 10) || 0) + 1;
+        sens._dismissCount = String(dismissCount);
+        if (dismissCount >= 5) {
+          sens.reminders = "low";
+        }
+        patch.sensitivity = sens;
+      } else if (event === "plan_action_complete") {
+        // Learn from which action types get completed
+        const actionType = payload.actionType as string | undefined;
+        if (actionType) {
+          const current = await storage.getLearningProfile(userId);
+          const pat = [...(current?.preferredActionTypes ?? [])];
+          if (!pat.includes(actionType)) {
+            pat.unshift(actionType);
+          } else {
+            // Bubble to top
+            const idx = pat.indexOf(actionType);
+            pat.splice(idx, 1);
+            pat.unshift(actionType);
+          }
+          patch.preferredActionTypes = pat.slice(0, 6);
+          const wins = [...(current?.wins ?? [])];
+          const winLabel = payload.title as string | undefined;
+          if (winLabel && !wins.includes(winLabel)) {
+            wins.unshift(winLabel);
+            patch.wins = wins.slice(0, 10);
+          }
+        }
+      } else if (event === "followup_accept") {
+        const actionType = payload.actionType as string | undefined;
+        if (actionType) {
+          const current = await storage.getLearningProfile(userId);
+          const pat = [...(current?.preferredActionTypes ?? [])];
+          if (!pat.includes(actionType)) pat.push(actionType);
+          patch.preferredActionTypes = pat.slice(0, 6);
+        }
+      } else if (event === "followup_dismiss") {
+        const actionType = payload.actionType as string | undefined;
+        if (actionType) {
+          const current = await storage.getLearningProfile(userId);
+          const avoid = [...(current?.avoid ?? [])];
+          if (!avoid.includes(actionType)) avoid.push(actionType);
+          patch.avoid = avoid.slice(0, 10);
+        }
+      }
+
+      if (Object.keys(patch).length === 0) {
+        return res.json({ skipped: true });
+      }
+
+      const updated = await storage.upsertLearningProfile(userId, patch as Parameters<typeof storage.upsertLearningProfile>[1]);
+      res.json(updated);
+    } catch (err) {
+      console.error("POST /api/learning-profile/auto-update error:", err);
+      res.status(500).json({ error: "Failed to auto-update learning profile" });
     }
   });
 

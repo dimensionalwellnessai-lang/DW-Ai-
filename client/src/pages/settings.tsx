@@ -18,6 +18,7 @@ import { PremiumFeaturesDialog } from "@/components/premium-features-dialog";
 import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
 import {
@@ -38,6 +39,7 @@ import {
   Sparkles,
   TestTube,
   Flag,
+  Brain,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -63,6 +65,8 @@ export function SettingsPage() {
 
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
+  const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
+  const { profile: learningProfile, isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -482,6 +486,51 @@ export function SettingsPage() {
             </Link>
           </CardContent>
         </Card>
+
+        {/* ── DW Learns (PR #8) ──────────────────────────────────────────────── */}
+        {dwLearnsEnabled && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Brain className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base">DW Learns</CardTitle>
+                  <CardDescription>
+                    Quiet personalization — DW adapts to your patterns to offer more relevant guidance
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="dw-learns-toggle" className="flex flex-col gap-0.5">
+                  <span>Personalization</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {learningEnabled
+                      ? "DW is learning from your activity"
+                      : "Personalization is off"}
+                  </span>
+                </Label>
+                <Switch
+                  id="dw-learns-toggle"
+                  checked={learningEnabled}
+                  onCheckedChange={(checked) =>
+                    updateLearningProfile({ learningEnabled: checked })
+                  }
+                />
+              </div>
+              <Link href="/dw-learns">
+                <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-dw-learns">
+                  <div className="flex items-center gap-3">
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">View what DW learned</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

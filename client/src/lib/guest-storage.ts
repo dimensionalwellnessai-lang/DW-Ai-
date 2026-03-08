@@ -2857,3 +2857,53 @@ export function getRecentGuestCheckins(days: number): GuestDailyCheckin[] {
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   return all.filter((c) => c.date >= cutoffStr).sort((a, b) => b.date.localeCompare(a.date));
 }
+
+// ── Learning Profile: Guest-side localStorage storage (PR #8) ────────────────
+
+const GUEST_LEARNING_PROFILE_KEY = "dw_guest_learning_profile";
+
+export interface GuestLearningProfile {
+  updatedAt: number; // epoch ms
+  preferredTimes: Record<string, string>;
+  preferredActionTypes: string[];
+  sensitivity: Record<string, string>;
+  frictionPoints: string[];
+  wins: string[];
+  avoid: string[];
+  lastFeedbackAt: number | null;
+  learningEnabled: boolean;
+}
+
+const DEFAULT_GUEST_LEARNING_PROFILE: GuestLearningProfile = {
+  updatedAt: Date.now(),
+  preferredTimes: {},
+  preferredActionTypes: [],
+  sensitivity: {},
+  frictionPoints: [],
+  wins: [],
+  avoid: [],
+  lastFeedbackAt: null,
+  learningEnabled: true,
+};
+
+export function getGuestLearningProfile(): GuestLearningProfile {
+  return safeReadJson<GuestLearningProfile>(
+    GUEST_LEARNING_PROFILE_KEY,
+    { ...DEFAULT_GUEST_LEARNING_PROFILE }
+  );
+}
+
+export function updateGuestLearningProfile(
+  patch: Partial<Omit<GuestLearningProfile, "updatedAt">>
+): GuestLearningProfile {
+  const current = getGuestLearningProfile();
+  const updated: GuestLearningProfile = { ...current, ...patch, updatedAt: Date.now() };
+  safeWriteJson(GUEST_LEARNING_PROFILE_KEY, updated);
+  return updated;
+}
+
+export function resetGuestLearningProfile(): GuestLearningProfile {
+  const fresh: GuestLearningProfile = { ...DEFAULT_GUEST_LEARNING_PROFILE, updatedAt: Date.now() };
+  safeWriteJson(GUEST_LEARNING_PROFILE_KEY, fresh);
+  return fresh;
+}

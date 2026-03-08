@@ -2692,3 +2692,48 @@ export const insertReminderSchema = createInsertSchema(reminders).omit({
 
 export type Reminder = typeof reminders.$inferSelect;
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
+
+// ========================================
+// PR #8: USER LEARNING PROFILE (DW Learns)
+// ========================================
+
+export const userLearningProfile = pgTable("user_learning_profile", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  /** e.g. { workout: "morning", reflection: "evening", reminder: "18:00" } */
+  preferredTimes: jsonb("preferred_times").$type<Record<string, string>>().default({}),
+  /** e.g. ["movement", "reflection"] */
+  preferredActionTypes: jsonb("preferred_action_types").$type<string[]>().default([]),
+  /** e.g. { reminders: "low" | "medium" | "high" } */
+  sensitivity: jsonb("sensitivity").$type<Record<string, string>>().default({}),
+  /** e.g. ["time", "motivation", "sleep"] */
+  frictionPoints: jsonb("friction_points").$type<string[]>().default([]),
+  /** what worked recently */
+  wins: jsonb("wins").$type<string[]>().default([]),
+  /** what user dislikes / wants to avoid */
+  avoid: jsonb("avoid").$type<string[]>().default([]),
+  lastFeedbackAt: timestamp("last_feedback_at"),
+  /** whether auto-learning is enabled for this user */
+  learningEnabled: boolean("learning_enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userLearningProfileRelations = relations(userLearningProfile, ({ one }) => ({
+  user: one(users, {
+    fields: [userLearningProfile.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertUserLearningProfileSchema = createInsertSchema(userLearningProfile).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateUserLearningProfileSchema = insertUserLearningProfileSchema.partial().omit({ userId: true });
+
+export type UserLearningProfile = typeof userLearningProfile.$inferSelect;
+export type InsertUserLearningProfile = z.infer<typeof insertUserLearningProfileSchema>;
+export type UpdateUserLearningProfile = z.infer<typeof updateUserLearningProfileSchema>;

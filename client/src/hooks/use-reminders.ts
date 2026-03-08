@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import type { ReminderType, GuestReminder } from "@/lib/reminder-storage";
 import {
   getGuestReminders,
@@ -59,6 +60,7 @@ export function useReminders() {
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const queryClient = useQueryClient();
+  const { sendLearningEvent } = useLearningProfile();
 
   // Guest refresh key – force re-read of localStorage after mutations
   const [guestKey, setGuestKey] = useState(0);
@@ -144,12 +146,15 @@ export function useReminders() {
         updateGuestReminder(id, { status: "dismissed" });
         bumpGuest();
       }
+      // Fire-and-forget: update learning profile
+      void sendLearningEvent("reminder_dismiss", {});
     },
-    [isLoggedIn, updateAuth, bumpGuest]
+    [isLoggedIn, updateAuth, bumpGuest, sendLearningEvent]
   );
 
   const snoozeReminder = useCallback(
     async (id: string, until: Date) => {
+      const scheduledHour = until.getHours();
       if (isLoggedIn) {
         await updateAuth.mutateAsync({
           id,
@@ -162,8 +167,10 @@ export function useReminders() {
         });
         bumpGuest();
       }
+      // Fire-and-forget: update learning profile from snooze behavior
+      void sendLearningEvent("reminder_snooze", { scheduledHour });
     },
-    [isLoggedIn, updateAuth, bumpGuest]
+    [isLoggedIn, updateAuth, bumpGuest, sendLearningEvent]
   );
 
   const markSent = useCallback(

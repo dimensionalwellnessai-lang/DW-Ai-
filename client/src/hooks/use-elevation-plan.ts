@@ -9,6 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import {
   getGuestActivePlan,
   getGuestElevationPlans,
@@ -72,6 +73,7 @@ export function useElevationPlan() {
   const isLoggedIn = Boolean(user);
   const queryClient = useQueryClient();
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
+  const { sendLearningEvent } = useLearningProfile();
 
   // ─── Fetch active plan ─────────────────────────────────────────────────────
 
@@ -223,9 +225,16 @@ export function useElevationPlan() {
       updateGuestElevationPlanAction(id, { isCompleted });
       return { id, isCompleted } as ElevationPlanActionItem;
     },
-    onSuccess: (_data, { planId }) => {
+    onSuccess: (data, { planId, isCompleted }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
       if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+      // Fire-and-forget: update learning profile when an action is marked complete
+      if (isCompleted && data?.actionType) {
+        void sendLearningEvent("plan_action_complete", {
+          actionType: data.actionType,
+          title: data.title,
+        });
+      }
     },
   });
 
