@@ -132,31 +132,34 @@ export function useDwIntelligence(): DwIntelligence {
   });
 
   // Auth: pending followups
-  const { data: followupsDb = [], isLoading: followupsLoading } = useQuery<DwFollowupRecord[]>({
+  const { data: followupsDbRaw, isLoading: followupsLoading } = useQuery<DwFollowupRecord[] | null>({
     queryKey: ["/api/dw/followups"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && featureOn,
     retry: false,
     staleTime: 60_000,
   });
+  const followupsDb = followupsDbRaw ?? [];
 
   // Auth: all insights
-  const { data: allInsightsDb = [], isLoading: allInsightsLoading } = useQuery<DwInsightRecord[]>({
+  const { data: allInsightsDbRaw, isLoading: allInsightsLoading } = useQuery<DwInsightRecord[] | null>({
     queryKey: ["/api/dw/insights"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && featureOn,
     retry: false,
     staleTime: 60_000,
   });
+  const allInsightsDb = allInsightsDbRaw ?? [];
 
   // Auth: all journal entries
-  const { data: allJournalDb = [], isLoading: allJournalLoading } = useQuery<DwJournalRecord[]>({
+  const { data: allJournalDbRaw, isLoading: allJournalLoading } = useQuery<DwJournalRecord[] | null>({
     queryKey: ["/api/dw/journal"],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && featureOn,
     retry: false,
     staleTime: 60_000,
   });
+  const allJournalDb = allJournalDbRaw ?? [];
 
   const processConversation = useCallback(
     async (payload: {

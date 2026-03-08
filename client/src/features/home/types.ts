@@ -76,7 +76,7 @@ export interface HomeSummary {
   /** Most-recent DW Intelligence AI-generated journal entry */
   latestDwJournal: LatestDwJournal | null;
 
-  /** Oldest pending DW Intelligence follow-up prompt */
+  /** Most-recent pending DW Intelligence follow-up prompt */
   dwFollowUp: DwFollowUpPrompt | null;
 
   /** Today's date as a friendly string */

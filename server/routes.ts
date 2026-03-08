@@ -345,6 +345,12 @@ function extractCategoryData(userMessage: string, aiResponse: string, context?: 
 const DW_MIN_MESSAGES = 4; // at least 2 user+assistant exchanges
 /** Minimum total character count across all messages to trigger the pipeline. */
 const DW_MIN_TOTAL_CHARS = 200;
+/** Maximum messages allowed in a single /api/dw/processConversation request. */
+const DW_MAX_CONVERSATION_MESSAGES = 100;
+/** Maximum characters per individual message. */
+const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
+/** Maximum total characters across all messages in a single request. */
+const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
 export async function registerRoutes(
   httpServer: Server,
@@ -7665,9 +7671,18 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     conversationId: z.string().min(1),
     messages: z.array(z.object({
       role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    })).min(1),
+      content: z.string().min(1).max(DW_MAX_MESSAGE_CONTENT_LENGTH),
+    })).min(1).max(DW_MAX_CONVERSATION_MESSAGES),
     startIndex: z.number().int().min(0).optional().default(0),
+  }).superRefine((data, ctx) => {
+    const totalLength = data.messages.reduce((sum, m) => sum + m.content.length, 0);
+    if (totalLength > DW_MAX_TOTAL_CONTENT_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Total conversation content exceeds ${DW_MAX_TOTAL_CONTENT_LENGTH} characters.`,
+        path: ["messages"],
+      });
+    }
   });
 
   // Rate limit – max 10 generation requests per minute per user
@@ -7680,15 +7695,23 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     message: { error: "Too many processing requests. Please try again later." },
   });
 
+  // NOTE: The JOURNAL_AUTOGEN feature flag is enforced client-side only.
+  // This endpoint is protected by requireAuth + rate-limiting (10 req/min per user).
+  // The client must not call this endpoint unless the flag is enabled; if called
+  // without the flag it still runs correctly, which is acceptable – the idempotency
+  // guard and signal-threshold checks prevent wasteful AI calls.
   app.post("/api/dw/processConversation", requireAuth, dwProcessLimiter, async (req, res) => {
     const userId = req.session.userId!;
     try {
       const { conversationId, messages, startIndex } = processConversationSchema.parse(req.body);
 
+      // Compute the absolute end index so idempotency checks are stable
+      // even when callers send partial windows (startIndex > 0).
+      const absoluteEndIndex = startIndex + messages.length - 1;
+
       // Idempotency check – have we already processed up to this message index?
-      const endIndex = messages.length - 1;
       const log = await storage.getDwConversationProcessingLog(userId, conversationId);
-      if (log && log.lastProcessedIndex >= endIndex) {
+      if (log && log.lastProcessedIndex >= absoluteEndIndex) {
         return res.json({ ok: true, skipped: true, reason: "already_processed" });
       }
 
@@ -7704,7 +7727,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       // Run the AI pipeline (failures here must not break the caller)
       const result = await generateConversationIntelligence(messages);
 
-      const sourceRange = { startIndex: startIndex ?? 0, endIndex };
+      const sourceRange = { startIndex: startIndex ?? 0, endIndex: absoluteEndIndex };
 
       // Persist insight
       const insight = await storage.createDwInsight(
@@ -7748,7 +7771,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         : null;
 
       // Mark this conversation segment as processed
-      await storage.upsertDwConversationProcessingLog(userId, conversationId, endIndex);
+      await storage.upsertDwConversationProcessingLog(userId, conversationId, absoluteEndIndex);
 
       res.status(201).json({ ok: true, insight, journalEntry, followup });
     } catch (error) {
@@ -7823,7 +7846,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { status } = z.object({ status: z.string().min(1) }).parse(req.body);
+      const { status } = z.object({
+        status: z.enum(["pending", "done", "dismissed"]),
+      }).parse(req.body);
       const updated = await storage.updateDwFollowupStatus(id, userId, status);
       if (!updated) return res.status(404).json({ error: "Follow-up not found" });
       res.json(updated);

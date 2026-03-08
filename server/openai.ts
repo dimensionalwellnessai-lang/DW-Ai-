@@ -3156,13 +3156,10 @@ export interface ConversationIntelligenceResult {
 }
 
 /**
- * Runs the 6-step DW Conversation Intelligence pipeline:
- * 1) Summarise the conversation
- * 2) Extract 3–7 meaningful quotes
- * 3) Extract themes & tags
- * 4) Generate insight title + one-line insight
- * 5) Generate a follow-up question
- * 6) Generate a short narrative journal story
+ * Runs the DW Conversation Intelligence pipeline (3 batched OpenAI calls):
+ * 1) Summarise the conversation + extract 3–7 quotes + extract themes & tags
+ * 2) Generate insight title + one-line insight + follow-up question
+ * 3) Generate a short narrative journal story
  *
  * Returns structured output with source references.
  * Fails loudly so callers can catch and swallow.
