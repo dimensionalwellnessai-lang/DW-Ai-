@@ -27,22 +27,15 @@ export interface LatestInsight {
   category: string;
 }
 
-export interface LatestDwInsight {
-  id: string;
-  title: string;
-  summary: string;
-  tags: string[];
-  theme?: string | null;
-}
-
-export interface LatestDwJournal {
+export interface LatestJournalEntry {
   id: string;
   title: string;
   story: string;
   tags: string[];
+  createdAt: string | Date;
 }
 
-export interface DwFollowUpPrompt {
+export interface ActiveFollowUp {
   id: string;
   prompt: string;
 }
@@ -70,14 +63,11 @@ export interface HomeSummary {
   /** Most-recent DW-generated insight (legacy conversation insight cards) */
   latestInsight: LatestInsight | null;
 
-  /** Most-recent DW Intelligence AI-generated insight (new pipeline) */
-  latestDwInsight: LatestDwInsight | null;
+  /** Most-recent DW AI-generated journal entry (null if none or flag off) */
+  latestJournalEntry: LatestJournalEntry | null;
 
-  /** Most-recent DW Intelligence AI-generated journal entry */
-  latestDwJournal: LatestDwJournal | null;
-
-  /** Most-recent pending DW Intelligence follow-up prompt */
-  dwFollowUp: DwFollowUpPrompt | null;
+  /** First pending DW follow-up question (null if none or flag off) */
+  activeFollowUp: ActiveFollowUp | null;
 
   /** Today's date as a friendly string */
   todayLabel: string;

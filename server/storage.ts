@@ -235,8 +235,6 @@ import {
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
-  dwConversationProcessingLog,
-  type DwConversationProcessingLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -621,21 +619,17 @@ export interface IStorage {
   deleteConversationInsight(id: string, userId: string): Promise<void>;
   bulkUpsertConversationInsights(insights: InsertConversationInsight[]): Promise<void>;
 
-  // DW Intelligence
+  // DW Insight + Journal Intelligence System
   getDwInsights(userId: string, limit?: number): Promise<DwInsight[]>;
   getLatestDwInsight(userId: string): Promise<DwInsight | undefined>;
+  getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined>;
   createDwInsight(insight: InsertDwInsight): Promise<DwInsight>;
-
   getDwJournalEntries(userId: string, limit?: number): Promise<DwJournalEntry[]>;
   getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined>;
   createDwJournalEntry(entry: InsertDwJournalEntry): Promise<DwJournalEntry>;
-
-  getDwFollowups(userId: string, status?: string, limit?: number): Promise<DwFollowup[]>;
+  getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
   updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
-
-  getDwConversationProcessingLog(userId: string, conversationId: string): Promise<DwConversationProcessingLog | undefined>;
-  upsertDwConversationProcessingLog(userId: string, conversationId: string, lastProcessedIndex: number): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -2929,9 +2923,8 @@ export class DatabaseStorage implements IStorage {
       });
   }
 
-  // ── DW Intelligence ───────────────────────────────────────────────────────
-
-  async getDwInsights(userId: string, limit = 20): Promise<DwInsight[]> {
+  // DW Insight + Journal Intelligence System
+  async getDwInsights(userId: string, limit = 50): Promise<DwInsight[]> {
     return db.select()
       .from(dwInsights)
       .where(eq(dwInsights.userId, userId))
@@ -2948,6 +2941,14 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  async getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined> {
+    const [row] = await db.select()
+      .from(dwInsights)
+      .where(and(eq(dwInsights.userId, userId), eq(dwInsights.sourceConversationId, conversationId)))
+      .limit(1);
+    return row;
+  }
+
   async createDwInsight(insight: InsertDwInsight): Promise<DwInsight> {
     const [created] = await db.insert(dwInsights)
       .values({ ...insight, updatedAt: new Date() })
@@ -2955,7 +2956,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getDwJournalEntries(userId: string, limit = 20): Promise<DwJournalEntry[]> {
+  async getDwJournalEntries(userId: string, limit = 50): Promise<DwJournalEntry[]> {
     return db.select()
       .from(dwJournalEntries)
       .where(eq(dwJournalEntries.userId, userId))
@@ -2979,15 +2980,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getDwFollowups(userId: string, status?: string, limit = 20): Promise<DwFollowup[]> {
-    const conditions = status
-      ? and(eq(dwFollowups.userId, userId), eq(dwFollowups.status, status))
-      : eq(dwFollowups.userId, userId);
+  async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
+    const conditions = [eq(dwFollowups.userId, userId)];
+    if (status) conditions.push(eq(dwFollowups.status, status));
     return db.select()
       .from(dwFollowups)
-      .where(conditions)
+      .where(and(...conditions))
       .orderBy(desc(dwFollowups.createdAt))
-      .limit(limit);
+      .limit(20);
   }
 
   async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
@@ -3001,28 +3001,6 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;
-  }
-
-  async getDwConversationProcessingLog(userId: string, conversationId: string): Promise<DwConversationProcessingLog | undefined> {
-    const [row] = await db.select()
-      .from(dwConversationProcessingLog)
-      .where(and(
-        eq(dwConversationProcessingLog.userId, userId),
-        eq(dwConversationProcessingLog.conversationId, conversationId),
-      ));
-    return row;
-  }
-
-  async upsertDwConversationProcessingLog(userId: string, conversationId: string, lastProcessedIndex: number): Promise<void> {
-    await db.insert(dwConversationProcessingLog)
-      .values({ userId, conversationId, lastProcessedIndex })
-      .onConflictDoUpdate({
-        target: [dwConversationProcessingLog.userId, dwConversationProcessingLog.conversationId],
-        set: {
-          lastProcessedIndex,
-          processedAt: new Date(),
-        },
-      });
   }
 }
 

@@ -2418,11 +2418,96 @@ export type AiSuggestion = typeof aiSuggestions.$inferSelect;
 export type InsertAiSuggestion = z.infer<typeof insertAiSuggestionSchema>;
 export type ConversationInsight = typeof conversationInsights.$inferSelect;
 export type InsertConversationInsight = z.infer<typeof insertConversationInsightSchema>;
+
+// ========================================
+// PR #2: DW INSIGHT + JOURNAL INTELLIGENCE SYSTEM
+// ========================================
+
+// DW Insights – AI-generated structured insight records from conversations
+export const dwInsights = pgTable("dw_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  insightLine: text("insight_line"),           // punchy 1-line insight statement
+  quotes: jsonb("quotes"),                      // string[] – 3–7 direct quotes from conversation
+  theme: text("theme"),                         // primary theme string
+  tags: jsonb("tags"),                          // string[] – theme tags
+  switchTag: text("switch_tag"),               // optional wellness dimension tag
+  sourceConversationId: varchar("source_conversation_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const dwInsightsRelations = relations(dwInsights, ({ one }) => ({
+  user: one(users, {
+    fields: [dwInsights.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDwInsightSchema = createInsertSchema(dwInsights).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// DW Journal Entries – AI-generated narrative journal stories from conversations
+export const dwJournalEntries = pgTable("dw_journal_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  story: text("story").notNull(),               // narrative journal entry
+  quotes: jsonb("quotes"),                      // string[] – quotes included in story
+  tags: jsonb("tags"),                          // string[] – theme tags
+  sourceConversationId: varchar("source_conversation_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const dwJournalEntriesRelations = relations(dwJournalEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [dwJournalEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDwJournalEntrySchema = createInsertSchema(dwJournalEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// DW Follow-ups – AI-generated follow-up questions/prompts from conversations
+export const dwFollowups = pgTable("dw_followups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  prompt: text("prompt").notNull(),
+  relatedInsightId: varchar("related_insight_id").references(() => dwInsights.id),
+  sourceConversationId: varchar("source_conversation_id"),
+  status: text("status").default("pending"),    // "pending" | "answered" | "dismissed"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const dwFollowupsRelations = relations(dwFollowups, ({ one }) => ({
+  user: one(users, {
+    fields: [dwFollowups.userId],
+    references: [users.id],
+  }),
+  relatedInsight: one(dwInsights, {
+    fields: [dwFollowups.relatedInsightId],
+    references: [dwInsights.id],
+  }),
+}));
+
+export const insertDwFollowupSchema = createInsertSchema(dwFollowups).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type DwInsight = typeof dwInsights.$inferSelect;
 export type InsertDwInsight = z.infer<typeof insertDwInsightSchema>;
 export type DwJournalEntry = typeof dwJournalEntries.$inferSelect;
 export type InsertDwJournalEntry = z.infer<typeof insertDwJournalEntrySchema>;
 export type DwFollowup = typeof dwFollowups.$inferSelect;
 export type InsertDwFollowup = z.infer<typeof insertDwFollowupSchema>;
-export type DwConversationProcessingLog = typeof dwConversationProcessingLog.$inferSelect;
-export type InsertDwConversationProcessingLog = z.infer<typeof insertDwConversationProcessingLogSchema>;

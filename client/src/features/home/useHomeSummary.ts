@@ -15,7 +15,8 @@ import { useInsights } from "@/hooks/use-insights";
 import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn } from "@/lib/queryClient";
-import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestDwInsight, LatestDwJournal, DwFollowUpPrompt } from "./types";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp } from "./types";
 import type { Habit, Goal } from "@shared/schema";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ export function useHomeSummary(): HomeSummary {
   // Auth user info — uses returnNull on 401 so guests don't cause an error state.
   const { user, isLoading: authLoading } = useAuth();
   const isLoggedIn = Boolean(user);
+  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
 
   // Calendar events – auth users use the API; guests fall back to localStorage.
   const { data: dbEvents = [], isLoading: eventsLoading } = useQuery<Array<Record<string, unknown>>>({
@@ -88,8 +90,20 @@ export function useHomeSummary(): HomeSummary {
   // Insights (works for both auth + guest)
   const { insights } = useInsights();
 
-  // DW Intelligence (insight + journal + follow-up, works for both auth + guest)
-  const { latestDwInsight: dwInsight, latestDwJournal: dwJournal, pendingFollowups } = useDwIntelligence();
+  // DW Insight + Journal Intelligence System (flag-gated, auth only)
+  const { data: latestDwJournal } = useQuery<Record<string, unknown> | null>({
+    queryKey: ["/api/dw/latestJournal"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
+  });
+
+  const { data: dwFollowups = [] } = useQuery<Array<Record<string, unknown>>>({
+    queryKey: ["/api/dw/followups"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
+  });
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -141,37 +155,25 @@ export function useHomeSummary(): HomeSummary {
     };
   }, [insights]);
 
-  const latestDwInsight: LatestDwInsight | null = useMemo(() => {
-    if (!dwInsight) return null;
+  const latestJournalEntry: LatestJournalEntry | null = useMemo(() => {
+    if (!dwInsightJournalEnabled || !latestDwJournal) return null;
     return {
-      id: dwInsight.id,
-      title: dwInsight.title,
-      summary: dwInsight.summary,
-      tags: dwInsight.tags ?? [],
-      theme: dwInsight.theme,
+      id: String(latestDwJournal.id ?? ""),
+      title: String(latestDwJournal.title ?? ""),
+      story: String(latestDwJournal.story ?? ""),
+      tags: Array.isArray(latestDwJournal.tags) ? (latestDwJournal.tags as string[]) : [],
+      createdAt: String(latestDwJournal.createdAt ?? new Date().toISOString()),
     };
-  }, [dwInsight]);
+  }, [dwInsightJournalEnabled, latestDwJournal]);
 
-  const latestDwJournal: LatestDwJournal | null = useMemo(() => {
-    if (!dwJournal) return null;
+  const activeFollowUp: ActiveFollowUp | null = useMemo(() => {
+    if (!dwInsightJournalEnabled || !Array.isArray(dwFollowups) || dwFollowups.length === 0) return null;
+    const first = dwFollowups[0];
     return {
-      id: dwJournal.id,
-      title: dwJournal.title,
-      story: dwJournal.story,
-      tags: dwJournal.tags ?? [],
+      id: String(first.id ?? ""),
+      prompt: String(first.prompt ?? ""),
     };
-  }, [dwJournal]);
-
-  const dwFollowUp: DwFollowUpPrompt | null = useMemo(() => {
-    if (!pendingFollowups || pendingFollowups.length === 0) return null;
-    // Use the most recent pending follow-up
-    const sorted = [...pendingFollowups].sort((a, b) => {
-      const aTime = typeof a.createdAt === "number" ? a.createdAt : new Date(a.createdAt).getTime();
-      const bTime = typeof b.createdAt === "number" ? b.createdAt : new Date(b.createdAt).getTime();
-      return bTime - aTime;
-    });
-    return { id: sorted[0].id, prompt: sorted[0].prompt };
-  }, [pendingFollowups]);
+  }, [dwInsightJournalEnabled, dwFollowups]);
 
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
@@ -182,9 +184,9 @@ export function useHomeSummary(): HomeSummary {
     activeGoals,
     activeHabits,
     latestInsight,
-    latestDwInsight,
-    latestDwJournal,
-    dwFollowUp,
+    latestJournalEntry,
+    activeFollowUp,
     todayLabel: buildTodayLabel(),
   };
 }
+

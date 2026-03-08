@@ -15,7 +15,7 @@ export interface FeatureFlags {
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
-  JOURNAL_AUTOGEN: boolean;         // ⏸️ Auto-generate insight + journal + follow-up from chat exchanges
+  DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
 }
 
 /**
@@ -61,6 +61,32 @@ function resolveConversationInsightsFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the DW_INSIGHT_JOURNAL feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_insight_journal_enabled', 'true')  — persists across sessions
+ *   ?dij=1 query param                                           — one-time, per URL
+ */
+function resolveDwInsightJournalFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_insight_journal_enabled") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("dij") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -71,7 +97,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
-  JOURNAL_AUTOGEN: resolveConversationInsightsFlag(), // piggybacks on same localStorage/URL flag
+  DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
 };
 
 /**

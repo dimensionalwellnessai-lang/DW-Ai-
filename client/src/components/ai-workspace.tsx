@@ -177,6 +177,7 @@ export function AIWorkspace() {
   const [location, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
+  const { processConversation: processDwConversation } = useDwIntelligence();
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
   
@@ -1030,31 +1031,20 @@ export function AIWorkspace() {
                     // Insight capture is non-critical – swallow any error
                   }
                 }
-                // Auto-generate DW Intelligence records (insight + journal + follow-up)
-                // Gated on JOURNAL_AUTOGEN flag; fail-safe and idempotent.
-                // Only runs for authenticated users (AI pipeline requires auth).
-                if (isFeatureEnabled("JOURNAL_AUTOGEN") && conversationId && isUserAuthenticated) {
-                  try {
-                    const convMessages = currentMessages.map((m) => ({
-                      role: m.role as "user" | "assistant",
-                      content: typeof m.content === "string" ? m.content : "",
-                    }));
-                    // Add the message we just sent + the streamed response
-                    const fullMessages = [
-                      ...convMessages,
-                      { role: "user" as const, content: message },
-                      { role: "assistant" as const, content: streamedResponse },
-                    ];
-                    triggerDwProcessing({
-                      conversationId,
-                      messages: fullMessages,
-                      startIndex: 0,
-                    }).catch(() => {
-                      // Non-critical – swallow
-                    });
-                  } catch {
-                    // Intelligence generation is non-critical – swallow any error
-                  }
+                // DW Intelligence: process full conversation into insight + journal + follow-up
+                // Gate behind the same high-signal check used for CONVERSATION_INSIGHTS to
+                // avoid triggering on trivial exchanges. Non-blocking, fails silently.
+                if (shouldCaptureInsight({ userText: message, assistantText: streamedResponse })) {
+                  // currentMessages already includes userMsg (see construction above);
+                  // append only the assistant response to avoid duplicating the user turn.
+                  const allMsgs = [
+                    ...currentMessages,
+                    { role: "assistant" as const, content: streamedResponse },
+                  ];
+                  processDwConversation({
+                    messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
+                    conversationId: conversationId ?? undefined,
+                  }).catch(() => { /* non-critical */ });
                 }
                 // Final update with complete response
                 // Only update if this conversation is still active
