@@ -334,6 +334,7 @@ function AppContent() {
 
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-to-main">Skip to main content</a>
       {demoActive && <DemoModeBanner onExit={handleExitDemo} />}
       <Toaster />
       <TutorialOverlay />
@@ -346,13 +347,13 @@ function AppContent() {
         onComplete={completeTour}
         onSkip={skipTour}
       />
-      <div className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
+      <main id="main-content" className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
             <Router />
           </InitialRouteHandler>
         </FirstRunGuard>
-      </div>
+      </main>
       {showBottomNav && <BottomNav />}
     </div>
   );

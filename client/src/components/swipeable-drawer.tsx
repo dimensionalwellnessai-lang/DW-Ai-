@@ -37,8 +37,20 @@ export function SwipeableDrawer({
       setTranslateX(0);
       directionLocked.current = null;
       isTracking.current = false;
+      // Move focus into the drawer when it opens
+      setTimeout(() => drawerRef.current?.focus(), 50);
     }
   }, [open]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -109,9 +121,14 @@ export function SwipeableDrawer({
       onClick={onClose}
       data-testid="swipeable-drawer-overlay"
       data-elevated={elevated ? "true" : "false"}
+      aria-hidden="true"
     >
       <div 
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title || "Menu"}
+        tabIndex={-1}
         className={`absolute left-0 top-0 bottom-0 ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 flex flex-col ${
           directionLocked.current === "horizontal" ? "" : "transition-transform duration-200"
         }`}
@@ -133,8 +150,9 @@ export function SwipeableDrawer({
             size="icon" 
             onClick={onClose}
             data-testid="button-close-drawer"
+            aria-label="Close menu"
           >
-            <X className="h-5 w-5 text-foreground" />
+            <X className="h-5 w-5 text-foreground" aria-hidden="true" />
           </Button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>

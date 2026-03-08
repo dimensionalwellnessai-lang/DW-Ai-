@@ -273,8 +273,10 @@ export default function TodayHubPage() {
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
             className="shrink-0 -ml-2"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" aria-hidden="true" />
           </Button>
           <div className="flex-1">
             <p className="text-sm text-muted-foreground">
@@ -723,11 +725,11 @@ export default function TodayHubPage() {
                 {lifeDashboard && (
                   <Link key={lifeDashboard.path} href={lifeDashboard.path || "/"}>
                     <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${lifeDashboard.id}`}
                     >
-                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm text-foreground">{lifeDashboard.name}</span>
                     </button>
                   </Link>
@@ -735,27 +737,27 @@ export default function TodayHubPage() {
                 
                 {calendarFeatures.length > 0 && (
                   <details className="group">
-                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid="menu-calendar-dropdown">
+                      <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm flex-1 text-foreground">Calendar</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-4">
                       <Link href="/today">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
+                          <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Today</span>
                         </button>
                       </Link>
                       <Link href="/calendar">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
+                          <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Month</span>
                         </button>
                       </Link>
                       <Link href="/routines">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
-                          <History className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
+                          <History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Routines</span>
                         </button>
                       </Link>
@@ -768,11 +770,11 @@ export default function TodayHubPage() {
                   return (
                     <Link key={feature.path} href={feature.path || "/"}>
                       <button
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         onClick={() => setMenuOpen(false)}
                         data-testid={`menu-item-${feature.id}`}
                       >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         <span className="text-sm text-foreground">{feature.name}</span>
                       </button>
                     </Link>
@@ -783,10 +785,10 @@ export default function TodayHubPage() {
           })()}
           
           <details className="group">
-            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
-              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm flex-1 text-foreground">More</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
             <div className="mt-1 space-y-1 ml-2">
               {moreFeatures.map((feature) => {
@@ -794,11 +796,11 @@ export default function TodayHubPage() {
                 return (
                   <Link key={feature.path} href={feature.path || "/"}>
                     <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${feature.id}`}
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm text-foreground">{feature.name}</span>
                     </button>
                   </Link>
@@ -809,7 +811,7 @@ export default function TodayHubPage() {
         </nav>
         <div className="pt-4 space-y-2">
           <button
-            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             onClick={() => {
               const menuWasOpen = menuOpen;
               setMenuOpen(false);
@@ -817,7 +819,7 @@ export default function TodayHubPage() {
             }}
             data-testid="button-start-tutorial"
           >
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <GraduationCap className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm text-foreground">App Tour</span>
           </button>
           {authUser ? (
