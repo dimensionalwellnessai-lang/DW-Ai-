@@ -7870,7 +7870,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     const negativeSignals: string[] = [];
 
     const activeHabits = habits.filter((h) => h.isActive !== false);
-    const activeGoals = goals.filter((g) => (g as Record<string, unknown>).isActive !== false);
+    const activeGoals = goals.filter((g) => g.isActive !== false);
 
     // Signal 1: Nothing is being tracked
     if (activeHabits.length === 0 && activeGoals.length === 0) {
@@ -7892,8 +7892,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     // Signal 3: Goals with no progress
     if (activeGoals.length > 0) {
       const allStuck = activeGoals.every((g) => {
-        const progress = (g as Record<string, unknown>).progress;
-        return typeof progress !== "number" || progress === 0;
+        return typeof g.progress !== "number" || g.progress === 0;
       });
       if (allStuck) {
         negativeSignals.push("Goals are active but haven't moved yet");

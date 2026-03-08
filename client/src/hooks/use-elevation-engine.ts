@@ -78,25 +78,27 @@ export function useElevationEngine(): UseElevationEngineResult {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(QUERY_KEY, data);
+      // Mark that we've completed a check so the daily effect won't re-run
+      hasRunDailyCheck.current = true;
     },
     onError: (error) => {
-      // Non-critical: log and continue
+      // Non-critical: log and continue; also mark done so we don't retry in a loop
       console.warn("Elevation engine check error (non-fatal):", error);
+      hasRunDailyCheck.current = true;
     },
   });
 
   // ── Daily check on mount: run once per calendar day ──────────────────────
   useEffect(() => {
     if (!enabled || !isLoggedIn || hasRunDailyCheck.current) return;
-    // If we already have a cached result from today, skip
-    if (cachedCheck !== undefined) {
-      // cachedCheck is null (no check yet today) or the result
+    // cachedCheck is undefined while loading, null when no check exists today, or the result
+    if (cachedCheck === undefined) return; // still loading – wait
+    if (cachedCheck === null) {
+      // No check today → run it now; flag is set in onSuccess/onError
+      runCheck({ force: false });
+    } else {
+      // Already have today's result – nothing to do
       hasRunDailyCheck.current = true;
-      if (cachedCheck === null) {
-        // No check today → run it now
-        runCheck({ force: false });
-      }
-      // If cachedCheck is a result, we're already done
     }
   }, [enabled, isLoggedIn, cachedCheck, runCheck]);
 

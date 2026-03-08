@@ -10,6 +10,7 @@
 import { useLocation } from "wouter";
 import { Target, ChevronRight, TrendingUp } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
+import { buildElevationPlanPrefill } from "../elevationUtils";
 import type { HomeSummary } from "../types";
 
 interface PlanInMotionCardProps {
@@ -28,18 +29,10 @@ export function PlanInMotionCard({ summary }: PlanInMotionCardProps) {
     activeGoals.length === 0 &&
     (elevationStatus === "yellow" || elevationStatus === "red");
 
-  function buildElevationPrefill(): string {
-    const reasons = momentumData?.reasons ?? [];
-    const reasonPart =
-      reasons.length > 0
-        ? `I'm noticing: ${reasons.join("; ")}. `
-        : "";
-    return `You mentioned you want momentum. Based on the last few days, ${reasonPart}Want me to propose a simple 7-day elevation plan?`;
-  }
-
   function handleElevationCTA() {
+    const reasons = momentumData?.reasons ?? [];
     const params = new URLSearchParams();
-    params.set("prefill", buildElevationPrefill());
+    params.set("prefill", buildElevationPlanPrefill(reasons));
     params.set("src", "elevation_prompt");
     navigate(`/talk?${params.toString()}`);
   }

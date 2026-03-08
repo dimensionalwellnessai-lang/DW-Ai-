@@ -3021,7 +3021,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck> {
     const [row] = await db.insert(elevationChecks)
-      .values({ ...data, updatedAt: new Date() })
+      .values(data)
       .onConflictDoUpdate({
         target: [elevationChecks.userId, elevationChecks.checkedDate],
         set: {

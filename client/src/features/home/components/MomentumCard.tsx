@@ -12,6 +12,7 @@
 import { useLocation } from "wouter";
 import { Zap, ChevronRight, RefreshCw } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
+import { buildElevationPlanPrefill } from "../elevationUtils";
 import type { HomeSummary, MomentumStatus } from "../types";
 
 interface MomentumCardProps {
@@ -76,7 +77,7 @@ export function MomentumCard({ summary }: MomentumCardProps) {
     const config = status ? STATUS_CONFIG[status] : null;
 
     const chatPrefill = status && (status === "yellow" || status === "red") && reasons.length > 0
-      ? `You mentioned you want momentum. Based on the last few days, I'm noticing: ${reasons.join("; ")}. Want me to propose a simple 7-day elevation plan?`
+      ? buildElevationPlanPrefill(reasons)
       : "I want to talk about my momentum and what's driving (or blocking) my progress";
 
     return (
