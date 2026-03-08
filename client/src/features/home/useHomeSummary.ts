@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
 import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
+import { useElevationEngine } from "@/hooks/use-elevation-engine";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn } from "@/lib/queryClient";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -89,6 +90,9 @@ export function useHomeSummary(): HomeSummary {
 
   // Insights (works for both auth + guest)
   const { insights } = useInsights();
+
+  // Elevation Engine (flag-gated, auth only)
+  const elevation = useElevationEngine();
 
   // DW Insight + Journal Intelligence System (flag-gated, auth only)
   const { data: latestDwJournal } = useQuery<Record<string, unknown> | null>({
@@ -187,6 +191,15 @@ export function useHomeSummary(): HomeSummary {
     latestJournalEntry,
     activeFollowUp,
     todayLabel: buildTodayLabel(),
+    momentumData: elevation.enabled && isLoggedIn
+      ? {
+          status: elevation.status,
+          reasons: elevation.reasons,
+          suggestedFocus: elevation.suggestedFocus,
+          isLoading: elevation.isLoading,
+          checkNow: elevation.checkNow,
+        }
+      : null,
   };
 }
 

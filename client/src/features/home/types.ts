@@ -1,5 +1,9 @@
 /** Shared types for the DW Home Command Center feature. */
 
+import type { MomentumStatus, ElevationCheckResult } from "@/hooks/use-elevation-engine";
+
+export type { MomentumStatus, ElevationCheckResult };
+
 export interface NextCalendarEvent {
   id: string;
   title: string;
@@ -71,4 +75,13 @@ export interface HomeSummary {
 
   /** Today's date as a friendly string */
   todayLabel: string;
+
+  /** Elevation Engine: momentum status + reasons (null if flag off or not yet computed) */
+  momentumData: {
+    status: MomentumStatus | null;
+    reasons: string[];
+    suggestedFocus: string | null;
+    isLoading: boolean;
+    checkNow: () => void;
+  } | null;
 }
