@@ -622,6 +622,7 @@ export interface IStorage {
   // DW Insight + Journal Intelligence System
   getDwInsights(userId: string, limit?: number): Promise<DwInsight[]>;
   getLatestDwInsight(userId: string): Promise<DwInsight | undefined>;
+  getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined>;
   createDwInsight(insight: InsertDwInsight): Promise<DwInsight>;
   getDwJournalEntries(userId: string, limit?: number): Promise<DwJournalEntry[]>;
   getLatestDwJournalEntry(userId: string): Promise<DwJournalEntry | undefined>;
@@ -2936,6 +2937,14 @@ export class DatabaseStorage implements IStorage {
       .from(dwInsights)
       .where(eq(dwInsights.userId, userId))
       .orderBy(desc(dwInsights.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async getDwInsightByConversation(userId: string, conversationId: string): Promise<DwInsight | undefined> {
+    const [row] = await db.select()
+      .from(dwInsights)
+      .where(and(eq(dwInsights.userId, userId), eq(dwInsights.sourceConversationId, conversationId)))
       .limit(1);
     return row;
   }

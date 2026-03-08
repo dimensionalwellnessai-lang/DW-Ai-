@@ -94,12 +94,13 @@ export default function InsightsDashboard() {
   });
 
   // DW Intelligence Insights (flag-gated, auth only)
-  const { data: dwInsights = [] } = useQuery<DwInsightItem[]>({
+  const { data: dwInsightsData } = useQuery<DwInsightItem[] | null>({
     queryKey: ['/api/dw/insights'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwInsightJournalEnabled,
     retry: false,
   });
+  const dwInsights = dwInsightsData ?? [];
 
   // Calculate overall balance
   const getLatestAssessmentByDimension = () => {

@@ -101,12 +101,14 @@ export default function JournalPage() {
   const isLoggedIn = Boolean(user);
 
   // DW AI Journal Entries (flag-gated, auth only)
-  const { data: dwAiJournalEntries = [] } = useQuery<DwAiJournalEntry[]>({
+  const { data: dwAiJournalData } = useQuery<DwAiJournalEntry[] | null>({
     queryKey: ['/api/dw/journalEntries'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwInsightJournalEnabled,
     retry: false,
   });
+  const dwAiJournalEntries = dwAiJournalData ?? [];
+  const [activeJournalTab, setActiveJournalTab] = useState<"my-entries" | "dw-journal">("my-entries");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -286,30 +288,15 @@ export default function JournalPage() {
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
           {dwInsightJournalEnabled && (
-            <Tabs defaultValue="my-entries" className="w-full">
+            <Tabs
+              value={activeJournalTab}
+              onValueChange={(v) => setActiveJournalTab(v as "my-entries" | "dw-journal")}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="my-entries">My Entries</TabsTrigger>
                 <TabsTrigger value="dw-journal">DW Journal</TabsTrigger>
               </TabsList>
-              <TabsContent value="my-entries" className="space-y-4 mt-4">
-                {/* Manual journal entries */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search entries..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                      data-testid="input-journal-search"
-                    />
-                  </div>
-                  <Button onClick={handleNewEntry} data-testid="button-new-entry">
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Entry
-                  </Button>
-                </div>
-              </TabsContent>
               <TabsContent value="dw-journal" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
@@ -364,7 +351,10 @@ export default function JournalPage() {
               </TabsContent>
             </Tabs>
           )}
-          {!dwInsightJournalEnabled && (
+
+          {/* Manual journal UI — always shown when flag is off; shown only on "My Entries" tab when on */}
+          {(!dwInsightJournalEnabled || activeJournalTab === "my-entries") && (
+            <>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -381,7 +371,6 @@ export default function JournalPage() {
               New Entry
             </Button>
           </div>
-          )}
 
           <div className="flex gap-2 flex-wrap">
             <Badge
@@ -543,6 +532,8 @@ export default function JournalPage() {
             <div className="text-center py-8 text-muted-foreground">
               <p>No entries match your search</p>
             </div>
+          )}
+            </>
           )}
         </div>
       </ScrollArea>

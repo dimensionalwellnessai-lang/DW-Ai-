@@ -2379,7 +2379,7 @@ export const dwFollowups = pgTable("dw_followups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   prompt: text("prompt").notNull(),
-  relatedInsightId: varchar("related_insight_id"),
+  relatedInsightId: varchar("related_insight_id").references(() => dwInsights.id),
   sourceConversationId: varchar("source_conversation_id"),
   status: text("status").default("pending"),    // "pending" | "answered" | "dismissed"
   createdAt: timestamp("created_at").defaultNow(),
@@ -2389,6 +2389,10 @@ export const dwFollowupsRelations = relations(dwFollowups, ({ one }) => ({
   user: one(users, {
     fields: [dwFollowups.userId],
     references: [users.id],
+  }),
+  relatedInsight: one(dwInsights, {
+    fields: [dwFollowups.relatedInsightId],
+    references: [dwInsights.id],
   }),
 }));
 

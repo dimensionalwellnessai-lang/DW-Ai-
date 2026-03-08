@@ -7661,17 +7661,32 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     message: { error: "Too many processing requests. Please try again later." },
   });
 
+  // Zod schema shared by both DW process endpoints
+  const dwMessageSchema = z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(8000),
+  });
+  const dwProcessSchema = z.object({
+    messages: z.array(dwMessageSchema).min(1).max(200),
+    conversationId: z.string().max(200).optional(),
+  });
+
   // POST /api/dw/processConversation – run the AI pipeline on a conversation
   app.post("/api/dw/processConversation", requireAuth, dwProcessLimiter, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { messages, conversationId } = req.body as {
-        messages?: { role: "user" | "assistant"; content: string }[];
-        conversationId?: string;
-      };
+      const parsed = dwProcessSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const { messages, conversationId } = parsed.data;
 
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return res.status(400).json({ error: "messages array is required" });
+      // Idempotency: skip if this conversation was already processed for this user
+      if (conversationId) {
+        const existing = await storage.getDwInsightByConversation(userId, conversationId);
+        if (existing) {
+          return res.status(200).json({ skipped: true, reason: "already_processed", insightId: existing.id });
+        }
       }
 
       const result = await processConversationIntoInsights(messages);
@@ -7723,13 +7738,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   // Guests should store the returned data in localStorage on the client.
   app.post("/api/dw/processConversation/preview", dwProcessLimiter, async (req, res) => {
     try {
-      const { messages } = req.body as {
-        messages?: { role: "user" | "assistant"; content: string }[];
-      };
-
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return res.status(400).json({ error: "messages array is required" });
+      const parsed = dwProcessSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
       }
+      const { messages } = parsed.data;
 
       const result = await processConversationIntoInsights(messages);
       if (!result) {

@@ -3149,6 +3149,8 @@ export interface DwInsightPipelineResult {
   followupPrompt: string;
 }
 
+const MAX_CONVERSATION_CHARS_FOR_INSIGHTS = 8000;
+
 /**
  * Processes a conversation into structured insight + journal + follow-up records.
  * Uses a two-call pipeline:
@@ -3160,9 +3162,31 @@ export async function processConversationIntoInsights(
 ): Promise<DwInsightPipelineResult | null> {
   if (!messages || messages.length === 0) return null;
 
-  const conversationText = messages
+  const fullConversationText = messages
     .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content}`)
     .join("\n\n");
+
+  // Truncate to a deterministic, bounded context window to avoid exceeding model limits.
+  let conversationText =
+    fullConversationText.length <= MAX_CONVERSATION_CHARS_FOR_INSIGHTS
+      ? fullConversationText
+      : fullConversationText.slice(-MAX_CONVERSATION_CHARS_FOR_INSIGHTS);
+
+  // Try to align the start of the truncated text to the beginning of a turn label.
+  if (conversationText.length < fullConversationText.length) {
+    const firstUserIdx = conversationText.indexOf("User:");
+    const firstDwIdx = conversationText.indexOf("DW:");
+    const firstLabelIdx =
+      firstUserIdx === -1
+        ? firstDwIdx
+        : firstDwIdx === -1
+        ? firstUserIdx
+        : Math.min(firstUserIdx, firstDwIdx);
+
+    if (firstLabelIdx > 0) {
+      conversationText = conversationText.slice(firstLabelIdx);
+    }
+  }
 
   if (conversationText.trim().length < 100) return null;
 

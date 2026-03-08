@@ -1029,11 +1029,13 @@ export function AIWorkspace() {
                   }
                 }
                 // DW Intelligence: process full conversation into insight + journal + follow-up
-                // Non-blocking: runs in background, fails silently
-                {
+                // Gate behind the same high-signal check used for CONVERSATION_INSIGHTS to
+                // avoid triggering on trivial exchanges. Non-blocking, fails silently.
+                if (shouldCaptureInsight({ userText: message, assistantText: streamedResponse })) {
+                  // currentMessages already includes userMsg (see construction above);
+                  // append only the assistant response to avoid duplicating the user turn.
                   const allMsgs = [
                     ...currentMessages,
-                    { role: "user" as const, content: message },
                     { role: "assistant" as const, content: streamedResponse },
                   ];
                   processDwConversation({
