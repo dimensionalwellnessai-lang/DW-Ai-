@@ -2020,8 +2020,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string" || message.length > 4000) {
-        return res.status(400).json({ error: "Message is required and must be at most 4000 characters" });
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > 4000) {
+        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
       }
 
       let userId = req.session.userId;
@@ -2219,8 +2222,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string" || message.length > 4000) {
-        return res.status(400).json({ error: "Message is required and must be at most 4000 characters" });
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > 4000) {
+        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
       }
 
       let userId = req.session.userId;
