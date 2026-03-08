@@ -145,14 +145,17 @@ describe("DailyCheckinCard – no check-in yet", () => {
     expect(screen.getByPlaceholderText(/briefly describe/i)).toBeTruthy();
   });
 
-  it("shows 'Saving…' label while submitting", () => {
+  it("shows 'Saving…' label while submitting (step 2)", () => {
     setupHook({ isSubmitting: true });
     render(<DailyCheckinCard />);
-    // Advance past step 1 by rendering with a pre-selected mood isn't possible
-    // without internal state, so we verify the button renders in non-submitting scenario
-    // and that the hook provides the isSubmitting value.  The 'Saving…' text
-    // appears on step 2 while isSubmitting is true.  We test it via the isSubmitting prop.
-    expect(screen.queryByText(/saving/i)).toBeNull(); // still on step 1, button not shown
+    // Advance to step 2 by selecting a mood
+    fireEvent.click(screen.getByLabelText(/4 – good/i));
+    // Verify we reached step 2 before checking the saving state
+    expect(screen.getByText(/biggest constraint today/i)).toBeTruthy();
+    // On step 2 with isSubmitting=true the button shows "Saving…" and is disabled
+    const savingButton = screen.getByRole("button", { name: /saving/i });
+    expect(savingButton).toBeTruthy();
+    expect((savingButton as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

@@ -14,7 +14,8 @@
  *   - Seeds habits (with streaks), goals (with progress), a daily check-in,
  *     a DW follow-up, and a mood log so all home cards render with data
  *   - Logs each step with ✅ / ❌ so CI can parse pass/fail
- *   - Exits with code 1 on any error so CI jobs fail visibly
+ *   - Exits with code 1 on any critical error; non-critical seeding failures
+ *     (habit logs, mood logs) are logged but do not stop the script
  *
  * Test Credentials:
  *   Email:    test@dimensionalwellness.test
@@ -23,15 +24,6 @@
 
 import bcrypt from "bcrypt";
 import { storage } from "../server/storage";
-import { db } from "../server/db";
-import {
-  users,
-  goals,
-  habits,
-  habitLogs,
-  moodLogs,
-} from "@shared/schema";
-import { eq } from "drizzle-orm";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -67,11 +59,8 @@ async function seedTestData(): Promise<void> {
     const existing = await storage.getUserByEmail(TEST_EMAIL);
     if (existing) {
       console.log("   Found existing test user — removing…");
-      await db.delete(habitLogs).where(eq(habitLogs.userId, existing.id)).catch(() => null);
-      await db.delete(moodLogs).where(eq(moodLogs.userId, existing.id)).catch(() => null);
-      await db.delete(habits).where(eq(habits.userId, existing.id)).catch(() => null);
-      await db.delete(goals).where(eq(goals.userId, existing.id)).catch(() => null);
-      await db.delete(users).where(eq(users.id, existing.id));
+      // storage.deleteUser handles all child-table cleanup in dependency order
+      await storage.deleteUser(existing.id);
     }
     log("Reset existing test user", true);
   } catch (err) {
@@ -80,7 +69,7 @@ async function seedTestData(): Promise<void> {
   }
 
   // ── 2. Create test user ────────────────────────────────────────────────────
-  let userId: number;
+  let userId: string;
   try {
     const hashed = await bcrypt.hash(TEST_PASSWORD, SALT_ROUNDS);
     const user = await storage.createUser({
@@ -99,7 +88,7 @@ async function seedTestData(): Promise<void> {
   }
 
   // ── 3. Seed habits with streaks (MomentumCard data) ───────────────────────
-  let habitIds: number[] = [];
+  let habitIds: string[] = [];
   try {
     const habitData = [
       { title: "Morning meditation", frequency: "daily" as const, streak: 7 },
@@ -119,10 +108,9 @@ async function seedTestData(): Promise<void> {
       });
       habitIds.push(habit.id);
 
-      // Log completions for streak days
+      // Log completions for streak days – habit_logs has no userId column
       for (let i = 0; i < h.streak; i++) {
         await storage.createHabitLog({
-          userId,
           habitId: habit.id,
           completedAt: daysAgo(i),
         }).catch(() => null); // non-critical
@@ -148,9 +136,10 @@ async function seedTestData(): Promise<void> {
         userId,
         title: g.title,
         description: `Test goal: ${g.title}`,
-        status: "active",
+        isActive: true,
         progress: g.progress,
-        targetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        wellnessDimension: "overall",
+        dataSource: "manual",
       });
     }
     log("Seed goals with progress", true, `${goalsData.length} goals`);
@@ -170,9 +159,10 @@ async function seedTestData(): Promise<void> {
   try {
     await storage.createMoodLog({
       userId,
-      mood: "good",
-      note: "Feeling energised after my walk",
-      dimensions: { energy: 4, focus: 3, stress: 2 },
+      energyLevel: 4,
+      moodLevel: 4,
+      clarityLevel: 3,
+      notes: "Feeling energised after my walk",
     });
     log("Seed mood log", true);
   } catch (err) {

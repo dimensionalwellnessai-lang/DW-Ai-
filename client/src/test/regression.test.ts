@@ -253,60 +253,59 @@ describe("Regression: interaction engine intent detection", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. FollowUpCard – buildFollowUpPrefill branches
-//    (Tested via card component, re-verified here as pure logic)
+// 5. FollowUpCard – buildFollowUpPrefill branches (real production helper)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Regression: FollowUpCard prefill branches (pure logic)", () => {
-  // We re-verify the branching logic independent of component rendering
+import { buildFollowUpPrefill } from "../features/home/components/FollowUpCard";
 
-  function buildFollowUpPrefill(summary: {
-    activeFollowUp?: { id: string; prompt: string } | null;
-    latestInsight?: { id: string; title: string; summary: string; category: string } | null;
-    activeGoals?: Array<{ id: string; title: string }>;
-    nextEvent?: { id: string; title: string; startTime: Date | null; isAllDay: boolean } | null;
-  }): string {
-    if (summary.activeFollowUp) return summary.activeFollowUp.prompt;
-    if (summary.latestInsight)
-      return `I want to follow up on something — "${summary.latestInsight.title}". What would you suggest I do next?`;
-    if (summary.activeGoals && summary.activeGoals.length > 0)
-      return `I want to check in on my goal: "${summary.activeGoals[0].title}". How am I doing and what's my next step?`;
-    if (summary.nextEvent)
-      return `I have "${summary.nextEvent.title}" coming up. Help me prepare or set intentions for it.`;
-    return "I want to check in with you today. Where should I focus my energy?";
-  }
-
+describe("Regression: FollowUpCard prefill branches (production helper)", () => {
   it("activeFollowUp takes priority over everything else", () => {
     const result = buildFollowUpPrefill({
       activeFollowUp: { id: "fu1", prompt: "Custom prompt" },
       latestInsight: { id: "i1", title: "Ignored", summary: "", category: "planning" },
+      activeGoals: [],
+      nextEvent: null,
     });
     expect(result).toBe("Custom prompt");
   });
 
   it("falls back to latestInsight when no follow-up", () => {
     const result = buildFollowUpPrefill({
+      activeFollowUp: null,
       latestInsight: { id: "i1", title: "Morning habits", summary: ".", category: "planning" },
+      activeGoals: [],
+      nextEvent: null,
     });
     expect(result).toContain("Morning habits");
   });
 
   it("falls back to first activeGoal when no follow-up or insight", () => {
     const result = buildFollowUpPrefill({
+      activeFollowUp: null,
+      latestInsight: null,
       activeGoals: [{ id: "g1", title: "Run a 5K" }],
+      nextEvent: null,
     });
     expect(result).toContain("Run a 5K");
   });
 
   it("falls back to nextEvent when no follow-up, insight, or goals", () => {
     const result = buildFollowUpPrefill({
+      activeFollowUp: null,
+      latestInsight: null,
+      activeGoals: [],
       nextEvent: { id: "ev1", title: "Doctor appointment", startTime: null, isAllDay: false },
     });
     expect(result).toContain("Doctor appointment");
   });
 
   it("returns generic fallback when nothing is available", () => {
-    const result = buildFollowUpPrefill({});
+    const result = buildFollowUpPrefill({
+      activeFollowUp: null,
+      latestInsight: null,
+      activeGoals: [],
+      nextEvent: null,
+    });
     expect(result).toContain("Where should I focus my energy");
   });
 });
@@ -339,34 +338,12 @@ describe("Regression: buildElevationPlanPrefill", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. MomentumCard – getMomentumMessage (re-tested as pure logic)
+// 7. MomentumCard – getMomentumMessage (real production helper)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Regression: getMomentumMessage logic (via MomentumCard internals)", () => {
-  // Re-implementing the pure helper to test independently
-  function getMomentumMessage(
-    totalHabits: number,
-    topStreak: number,
-    totalGoals: number,
-  ): string {
-    if (totalHabits === 0 && totalGoals === 0) {
-      return "Every journey starts with one step. What will yours be today?";
-    }
-    if (topStreak >= 7) {
-      return `${topStreak}-day streak — consistency is your superpower. Keep it going.`;
-    }
-    if (topStreak > 0) {
-      return `You're on a ${topStreak}-day streak. One more day builds the habit.`;
-    }
-    if (totalHabits > 0 && totalGoals > 0) {
-      return `${totalHabits} habit${totalHabits !== 1 ? "s" : ""} and ${totalGoals} goal${totalGoals !== 1 ? "s" : ""} in motion. Small actions compound.`;
-    }
-    if (totalGoals > 0) {
-      return `You have ${totalGoals} active goal${totalGoals > 1 ? "s" : ""} in motion. Small actions add up.`;
-    }
-    return `${totalHabits} active habit${totalHabits !== 1 ? "s" : ""}. Stay consistent — it compounds over time.`;
-  }
+import { getMomentumMessage } from "../features/home/components/MomentumCard";
 
+describe("Regression: getMomentumMessage (production helper)", () => {
   it("empty state message with no habits or goals", () => {
     expect(getMomentumMessage(0, 0, 0)).toContain("Every journey");
   });
