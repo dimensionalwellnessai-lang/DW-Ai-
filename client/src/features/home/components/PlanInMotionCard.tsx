@@ -1,21 +1,41 @@
 /**
  * PlanInMotionCard – shows active goals.
- * Empty state: prompt to create a goal or chat with DW to define one.
+ *
+ * When ELEVATION_ENGINE is ON and status is yellow/red with no active goals:
+ * shows a "Want a 7-day elevation plan?" CTA that opens /talk with a prefill.
+ *
+ * Empty state (flag off): prompt to create a goal or chat with DW to define one.
  */
 
 import { useLocation } from "wouter";
-import { Target, ChevronRight } from "lucide-react";
+import { Target, ChevronRight, TrendingUp } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
+import { buildElevationPlanPrefill } from "../elevationUtils";
 import type { HomeSummary } from "../types";
 
 interface PlanInMotionCardProps {
-  summary: Pick<HomeSummary, "activeGoals">;
+  summary: Pick<HomeSummary, "activeGoals" | "momentumData">;
 }
 
 export function PlanInMotionCard({ summary }: PlanInMotionCardProps) {
   const [, navigate] = useLocation();
-  const { activeGoals } = summary;
+  const { activeGoals, momentumData } = summary;
   const displayGoals = activeGoals.slice(0, 3);
+
+  // Elevation Engine: show a 7-day plan CTA when yellow/red and no active goals
+  const elevationStatus = momentumData?.status ?? null;
+  const showElevationCTA =
+    momentumData !== null &&
+    activeGoals.length === 0 &&
+    (elevationStatus === "yellow" || elevationStatus === "red");
+
+  function handleElevationCTA() {
+    const reasons = momentumData?.reasons ?? [];
+    const params = new URLSearchParams();
+    params.set("prefill", buildElevationPlanPrefill(reasons));
+    params.set("src", "elevation_prompt");
+    navigate(`/talk?${params.toString()}`);
+  }
 
   return (
     <DWCardContainer chatPrefill="Help me define or refine a goal I'm working toward">
@@ -72,6 +92,23 @@ export function PlanInMotionCard({ summary }: PlanInMotionCardProps) {
               +{activeGoals.length - 3} more goals
             </button>
           )}
+        </div>
+      ) : showElevationCTA ? (
+        /* Elevation Plan CTA – shown when yellow/red and no active goals */
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            No active goals right now.
+          </p>
+          <button
+            type="button"
+            onClick={handleElevationCTA}
+            className="w-full flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2.5 hover:bg-amber-500/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 text-left"
+          >
+            <TrendingUp className="h-4 w-4 text-amber-500 flex-shrink-0" aria-hidden="true" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              Want a 7-day elevation plan?
+            </span>
+          </button>
         </div>
       ) : (
         <button

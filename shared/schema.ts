@@ -2511,3 +2511,41 @@ export type DwJournalEntry = typeof dwJournalEntries.$inferSelect;
 export type InsertDwJournalEntry = z.infer<typeof insertDwJournalEntrySchema>;
 export type DwFollowup = typeof dwFollowups.$inferSelect;
 export type InsertDwFollowup = z.infer<typeof insertDwFollowupSchema>;
+
+// ========================================
+// PR #3: ELEVATION ENGINE
+// ========================================
+
+// Elevation Checks – daily momentum/stagnation check results per user
+export const elevationChecks = pgTable("elevation_checks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  /** YYYY-MM-DD — one row per user per calendar day */
+  checkedDate: varchar("checked_date", { length: 10 }).notNull(),
+  /** green | yellow | red */
+  momentumStatus: text("momentum_status").notNull(),
+  /** Up to 2 human-readable reason strings explaining the status */
+  reasons: jsonb("reasons").$type<string[]>().default([]),
+  /** Optional one-line focus suggestion */
+  suggestedFocus: text("suggested_focus"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("elevation_checks_user_date_idx").on(t.userId, t.checkedDate),
+]);
+
+export const elevationChecksRelations = relations(elevationChecks, ({ one }) => ({
+  user: one(users, {
+    fields: [elevationChecks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertElevationCheckSchema = createInsertSchema(elevationChecks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ElevationCheck = typeof elevationChecks.$inferSelect;
+export type InsertElevationCheck = z.infer<typeof insertElevationCheckSchema>;

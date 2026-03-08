@@ -71,6 +71,9 @@ import {
   insertDwInsightSchema,
   insertDwJournalEntrySchema,
   insertDwFollowupSchema,
+  type Habit,
+  type Goal,
+  type MoodLog,
   type ScheduleBlock,
 } from "@shared/schema";
 import { z } from "zod";
@@ -7849,6 +7852,161 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("DW update followup error:", error);
       res.status(500).json({ error: "Failed to update follow-up" });
+    }
+  });
+
+  // ── Elevation Engine (PR #3) ──────────────────────────────────────────────
+
+  /**
+   * Compute momentum status from a user's existing data.
+   * Uses only real data: habits (streak), goals (progress), mood logs (last 7 days).
+   * Returns: { momentumStatus, reasons, suggestedFocus }
+   *
+   * @param recentMoods - Mood logs within the last 7 days (pre-filtered by DB query)
+   * @param hasPriorMoodLogs - Whether any mood logs exist before the 7-day window
+   */
+  function computeMomentumStatus(
+    habits: Habit[],
+    goals: Goal[],
+    recentMoods: MoodLog[],
+    hasPriorMoodLogs: boolean,
+  ): { momentumStatus: "green" | "yellow" | "red"; reasons: string[]; suggestedFocus?: string } {
+    const negativeSignals: string[] = [];
+
+    const activeHabits = habits.filter((h) => h.isActive !== false);
+    const activeGoals = goals.filter((g) => g.isActive !== false);
+
+    // Signal 1: Nothing is being tracked
+    if (activeHabits.length === 0 && activeGoals.length === 0) {
+      return {
+        momentumStatus: "red",
+        reasons: ["No habits or goals are active yet"],
+        suggestedFocus: "Start with one habit or goal to get things in motion",
+      };
+    }
+
+    // Signal 2: Habits set up but no streak
+    if (activeHabits.length > 0) {
+      const maxStreak = activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
+      if (maxStreak === 0) {
+        negativeSignals.push("Habits are set up but consistency has stalled");
+      }
+    }
+
+    // Signal 3: Goals with no progress
+    if (activeGoals.length > 0) {
+      const allStuck = activeGoals.every((g) => {
+        return typeof g.progress !== "number" || g.progress === 0;
+      });
+      if (allStuck) {
+        negativeSignals.push("Goals are active but haven't moved yet");
+      }
+    }
+
+    // Signal 4: No mood check-ins in last 7 days (only flagged if they've logged before)
+    if (recentMoods.length === 0 && hasPriorMoodLogs) {
+      negativeSignals.push("No energy check-ins in the last 7 days");
+    }
+
+    // Signal 5: Low average mood recently
+    if (recentMoods.length > 0) {
+      const avgMood = recentMoods.reduce((sum, m) => sum + m.moodLevel, 0) / recentMoods.length;
+      if (avgMood <= 3) {
+        negativeSignals.push("Energy has been lower than usual recently");
+      }
+    }
+
+    // Classify: limit reasons to max 2
+    const reasons = negativeSignals.slice(0, 2);
+    let momentumStatus: "green" | "yellow" | "red";
+    let suggestedFocus: string | undefined;
+
+    if (negativeSignals.length >= 2) {
+      momentumStatus = "red";
+      suggestedFocus = "One small action today can restart your momentum";
+    } else if (negativeSignals.length === 1) {
+      momentumStatus = "yellow";
+      suggestedFocus = "You're close — one consistent action can shift things";
+    } else {
+      momentumStatus = "green";
+      suggestedFocus = "Keep building on what's working";
+    }
+
+    return { momentumStatus, reasons, suggestedFocus };
+  }
+
+  function todayDateString(): string {
+    return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  }
+
+  // GET /api/elevation/check – return today's cached check (or null if not yet run)
+  app.get("/api/elevation/check", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = todayDateString();
+      const existing = await storage.getElevationCheckByDate(userId, today);
+      if (existing) {
+        return res.json(existing);
+      }
+      res.json(null);
+    } catch (error) {
+      console.error("Elevation check GET error:", error);
+      res.status(500).json({ error: "Failed to get elevation check" });
+    }
+  });
+
+  const elevationCheckBodySchema = z.object({
+    force: z.boolean().optional(),
+  });
+
+  // POST /api/elevation/check – run (or re-run) today's elevation check
+  // Body: { force?: boolean } — force=true bypasses the daily idempotency guard
+  app.post("/api/elevation/check", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = todayDateString();
+
+      const parsed = elevationCheckBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+      const force = parsed.data.force === true;
+
+      // Idempotency: skip if already checked today (unless force=true)
+      if (!force) {
+        const existing = await storage.getElevationCheckByDate(userId, today);
+        if (existing) {
+          return res.json({ ...existing, skipped: true });
+        }
+      }
+
+      // Gather only what we need: habits/goals (all active) + mood logs for the last 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [habits, goals, moodData] = await Promise.all([
+        storage.getHabits(userId),
+        storage.getGoals(userId),
+        storage.getRecentMoodLogs(userId, sevenDaysAgo),
+      ]);
+
+      const { momentumStatus, reasons, suggestedFocus } = computeMomentumStatus(
+        habits,
+        goals,
+        moodData.logs,
+        moodData.hasPriorLogs,
+      );
+
+      const check = await storage.upsertElevationCheck({
+        userId,
+        checkedDate: today,
+        momentumStatus,
+        reasons,
+        suggestedFocus: suggestedFocus ?? null,
+      });
+
+      res.json(check);
+    } catch (error) {
+      console.error("Elevation check POST error:", error);
+      res.status(500).json({ error: "Failed to run elevation check" });
     }
   });
 

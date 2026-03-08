@@ -235,6 +235,9 @@ import {
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
+  elevationChecks,
+  type ElevationCheck,
+  type InsertElevationCheck,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -271,6 +274,7 @@ export interface IStorage {
   createHabitLog(log: InsertHabitLog): Promise<HabitLog>;
 
   getMoodLogs(userId: string): Promise<MoodLog[]>;
+  getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
   getTodaysMoodLog(userId: string): Promise<MoodLog | undefined>;
   createMoodLog(log: InsertMoodLog): Promise<MoodLog>;
 
@@ -630,6 +634,9 @@ export interface IStorage {
   getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
   updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+  // Elevation Engine
+  getElevationCheckByDate(userId: string, date: string): Promise<ElevationCheck | undefined>;
+  upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck>;
 }
 
 export interface AdminAnalytics {
@@ -951,6 +958,24 @@ export class DatabaseStorage implements IStorage {
 
   async getMoodLogs(userId: string): Promise<MoodLog[]> {
     return db.select().from(moodLogs).where(eq(moodLogs.userId, userId)).orderBy(desc(moodLogs.createdAt));
+  }
+
+  async getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }> {
+    // Fetch only logs within the window
+    const logs = await db
+      .select()
+      .from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), gte(moodLogs.createdAt, sinceDate)))
+      .orderBy(desc(moodLogs.createdAt));
+
+    // Cheap existence check: does this user have any logs older than the window?
+    const [priorRow] = await db
+      .select({ id: moodLogs.id })
+      .from(moodLogs)
+      .where(and(eq(moodLogs.userId, userId), lte(moodLogs.createdAt, sinceDate)))
+      .limit(1);
+
+    return { logs, hasPriorLogs: Boolean(priorRow) };
   }
 
   async getTodaysMoodLog(userId: string): Promise<MoodLog | undefined> {
@@ -3001,6 +3026,32 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;
+  }
+
+  // ── Elevation Engine ────────────────────────────────────────────────────────
+
+  async getElevationCheckByDate(userId: string, date: string): Promise<ElevationCheck | undefined> {
+    const [row] = await db.select()
+      .from(elevationChecks)
+      .where(and(eq(elevationChecks.userId, userId), eq(elevationChecks.checkedDate, date)))
+      .limit(1);
+    return row;
+  }
+
+  async upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck> {
+    const [row] = await db.insert(elevationChecks)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [elevationChecks.userId, elevationChecks.checkedDate],
+        set: {
+          momentumStatus: data.momentumStatus,
+          reasons: data.reasons,
+          suggestedFocus: data.suggestedFocus ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
   }
 }
 
