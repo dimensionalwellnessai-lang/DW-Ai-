@@ -195,15 +195,21 @@ export function TalkItOutPage() {
     if (genericPrefillApplied.current) return;
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    // URLSearchParams.get() already returns a decoded string; no further
+    // decoding needed (double-decoding would break inputs like "100%").
     const prefillText = params.get("prefill");
     if (!prefillText) return;
 
     // Apply only if input is currently empty (do not overwrite user's own typing).
-    setInput((current) => {
-      if (current.trim() !== "") return current;
+    // Checking `input` synchronously avoids side effects inside the state updater
+    // which can behave unexpectedly under React 18 StrictMode double-invocation.
+    if (input.trim() !== "") {
       genericPrefillApplied.current = true;
-      return decodeURIComponent(prefillText);
-    });
+      return;
+    }
+
+    genericPrefillApplied.current = true;
+    setInput(prefillText);
 
     // Auto-focus the input so the user can start typing immediately.
     setTimeout(() => {
@@ -222,6 +228,9 @@ export function TalkItOutPage() {
       // URL parsing failed – fail silently
     }
   }, []); // intentionally empty deps – run once on mount, guarded by ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // NOTE: `input` is intentionally NOT in deps. We read it synchronously at
+  // mount time only; adding it would cause infinite re-runs.
 
   // Jump-to-moment: handle ?jumpToMessageIndex on first render
   useEffect(() => {

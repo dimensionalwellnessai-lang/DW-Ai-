@@ -1,11 +1,13 @@
 /**
- * HealthSnapshotCard – shows active habits with today's completion status.
+ * HealthSnapshotCard – shows active habits with streak info.
  * Empty state: prompt to build a habit or chat with DW.
+ *
+ * NOTE: /api/habits returns plain Habit rows without per-day completion data.
+ * Completion counts are therefore not shown here; only habit names and streaks.
  */
 
 import { useLocation } from "wouter";
-import { Activity, ChevronRight, CheckCircle2, Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Activity, ChevronRight } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
 import type { HomeSummary } from "../types";
 
@@ -17,7 +19,6 @@ export function HealthSnapshotCard({ summary }: HealthSnapshotCardProps) {
   const [, navigate] = useLocation();
   const { activeHabits } = summary;
   const displayHabits = activeHabits.slice(0, 4);
-  const completedCount = activeHabits.filter((h) => h.completedToday).length;
 
   return (
     <DWCardContainer chatPrefill="Let's talk about building healthy habits that fit my lifestyle">
@@ -28,11 +29,11 @@ export function HealthSnapshotCard({ summary }: HealthSnapshotCardProps) {
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Habits today
+              Active habits
             </p>
             {activeHabits.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {completedCount} / {activeHabits.length} done
+                {activeHabits.length} habit{activeHabits.length !== 1 ? "s" : ""} in rotation
               </p>
             )}
           </div>
@@ -56,12 +57,7 @@ export function HealthSnapshotCard({ summary }: HealthSnapshotCardProps) {
               onClick={() => navigate("/habits")}
               className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              {habit.completedToday ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <Circle className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-              )}
-              <span className={cn("text-sm line-clamp-1 flex-1 text-left", habit.completedToday && "line-through text-muted-foreground")}>
+              <span className="text-sm line-clamp-1 flex-1 text-left">
                 {habit.title}
               </span>
               {typeof habit.streak === "number" && habit.streak > 0 && (
@@ -69,6 +65,15 @@ export function HealthSnapshotCard({ summary }: HealthSnapshotCardProps) {
               )}
             </button>
           ))}
+          {activeHabits.length > 4 && (
+            <button
+              type="button"
+              onClick={() => navigate("/habits")}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+            >
+              +{activeHabits.length - 4} more
+            </button>
+          )}
         </div>
       ) : (
         <button

@@ -10,9 +10,12 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
 import { getCalendarEvents } from "@/lib/guest-storage";
+import { getQueryFn } from "@/lib/queryClient";
 import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight } from "./types";
+import type { Habit, Goal } from "@shared/schema";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -24,16 +27,16 @@ function buildTodayLabel(): string {
   });
 }
 
-function findNextEvent(events: any[]): NextCalendarEvent | null {
+function findNextEvent(events: Array<Record<string, unknown>>): NextCalendarEvent | null {
   if (!Array.isArray(events) || events.length === 0) return null;
 
   const now = Date.now();
 
-  // Local guest events (from localStorage) don't have startTime; skip them for
-  // "next event" because they have no time to sort/compare with.
-  const timedEvents = events.filter((e: any) => e.startTime);
+  // Only consider events that have a startTime so we can sort and compare them
+  // to find the next upcoming timed event.
+  const timedEvents = events.filter((e) => e.startTime);
   const upcoming = timedEvents
-    .map((e: any) => ({ e, t: new Date(e.startTime).getTime() }))
+    .map((e) => ({ e, t: new Date(e.startTime as string).getTime() }))
     .filter(({ t }) => t >= now)
     .sort((a, b) => a.t - b.t);
 
@@ -43,7 +46,7 @@ function findNextEvent(events: any[]): NextCalendarEvent | null {
   return {
     id: String(e.id ?? e.localId ?? ""),
     title: String(e.title ?? "Untitled event"),
-    startTime: new Date(e.startTime),
+    startTime: new Date(e.startTime as string),
     isAllDay: Boolean(e.isAllDay),
   };
 }
@@ -51,32 +54,32 @@ function findNextEvent(events: any[]): NextCalendarEvent | null {
 // ─── hook ─────────────────────────────────────────────────────────────────────
 
 export function useHomeSummary(): HomeSummary {
-  // Auth user info
-  const { data: authData, isLoading: authLoading } = useQuery<{ user: any } | null>({
-    queryKey: ["/api/auth/me"],
-    retry: false,
-  });
-  const user = authData?.user ?? null;
+  // Auth user info — uses returnNull on 401 so guests don't cause an error state.
+  const { user, isLoading: authLoading } = useAuth();
   const isLoggedIn = Boolean(user);
 
   // Calendar events – auth users use the API; guests fall back to localStorage.
-  const { data: dbEvents = [], isLoading: eventsLoading } = useQuery<any[]>({
+  const { data: dbEvents = [], isLoading: eventsLoading } = useQuery<Array<Record<string, unknown>>>({
     queryKey: ["/api/calendar"],
-    // Disable network fetch for guests; we'll merge with local below.
+    queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn,
     retry: false,
   });
 
   // Goals
-  const { data: goals = [], isLoading: goalsLoading } = useQuery<any[]>({
+  const { data: goals = [], isLoading: goalsLoading } = useQuery<Goal[]>({
     queryKey: ["/api/goals"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn,
     retry: false,
   });
 
-  // Habits
-  const { data: habits = [], isLoading: habitsLoading } = useQuery<any[]>({
+  // Habits – NOTE: /api/habits returns plain Habit rows (no completedToday field).
+  // Completion is recorded separately via POST /api/habits/:id/log; we intentionally
+  // do NOT map a completedToday field to avoid always-false values in the UI.
+  const { data: habits = [], isLoading: habitsLoading } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn,
     retry: false,
   });
@@ -86,11 +89,12 @@ export function useHomeSummary(): HomeSummary {
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
-  const allEvents: any[] = useMemo(() => {
+  const allEvents: Array<Record<string, unknown>> = useMemo(() => {
     if (isLoggedIn) return dbEvents;
     // Guest: use localStorage calendar events
     try {
-      return getCalendarEvents();
+      // Cast to the generic record shape used by findNextEvent
+      return getCalendarEvents() as Array<Record<string, unknown>>;
     } catch {
       return [];
     }
@@ -99,22 +103,23 @@ export function useHomeSummary(): HomeSummary {
   const nextEvent = useMemo(() => findNextEvent(allEvents), [allEvents]);
 
   const activeGoals: ActiveGoal[] = useMemo(() => {
-    return (goals as any[])
-      .filter((g: any) => g.isActive !== false)
-      .map((g: any) => ({
+    return goals
+      .filter((g) => g.isActive !== false)
+      .map((g) => ({
         id: String(g.id ?? ""),
         title: String(g.title ?? ""),
-        progress: typeof g.progress === "number" ? g.progress : undefined,
+        progress: typeof (g as Record<string, unknown>).progress === "number"
+          ? (g as Record<string, unknown>).progress as number
+          : undefined,
       }));
   }, [goals]);
 
   const activeHabits: ActiveHabit[] = useMemo(() => {
-    return (habits as any[])
-      .filter((h: any) => h.isActive !== false)
-      .map((h: any) => ({
+    return habits
+      .filter((h) => h.isActive !== false)
+      .map((h) => ({
         id: String(h.id ?? ""),
         title: String(h.title ?? ""),
-        completedToday: Boolean(h.completedToday),
         streak: typeof h.streak === "number" ? h.streak : undefined,
       }));
   }, [habits]);
@@ -136,7 +141,7 @@ export function useHomeSummary(): HomeSummary {
 
   return {
     isLoading,
-    userName: user?.name ?? user?.email ?? null,
+    userName: user?.firstName ?? user?.systemName ?? user?.email ?? null,
     nextEvent,
     activeGoals,
     activeHabits,

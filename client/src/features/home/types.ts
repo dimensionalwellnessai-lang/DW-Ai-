@@ -16,7 +16,7 @@ export interface ActiveGoal {
 export interface ActiveHabit {
   id: string;
   title: string;
-  completedToday?: boolean;
+  /** streak is a real field on the Habit DB row; completedToday is NOT — omitted intentionally. */
   streak?: number;
 }
 

@@ -1,6 +1,7 @@
 /**
  * MomentumCard – a quick motivational nudge based on today's real data.
- * Shows habit completion ratio and a contextual message.
+ * Shows habit count and streak data; does NOT use completedToday (unavailable
+ * from /api/habits — see useHomeSummary for details).
  * Empty state: a gentle prompt to take one action.
  */
 
@@ -14,35 +15,38 @@ interface MomentumCardProps {
 }
 
 function getMomentumMessage(
-  completedHabits: number,
   totalHabits: number,
+  topStreak: number,
   totalGoals: number
 ): string {
   if (totalHabits === 0 && totalGoals === 0) {
     return "Every journey starts with one step. What will yours be today?";
   }
-  if (totalHabits > 0 && completedHabits === totalHabits) {
-    return "All habits done — you're building real momentum today.";
+  if (topStreak >= 7) {
+    return `${topStreak}-day streak — consistency is your superpower. Keep it going.`;
   }
-  if (totalHabits > 0 && completedHabits > 0) {
-    return `${completedHabits} of ${totalHabits} habits done — keep going!`;
+  if (topStreak > 0) {
+    return `You're on a ${topStreak}-day streak. One more day builds the habit.`;
+  }
+  if (totalHabits > 0 && totalGoals > 0) {
+    return `${totalHabits} habit${totalHabits !== 1 ? "s" : ""} and ${totalGoals} goal${totalGoals !== 1 ? "s" : ""} in motion. Small actions compound.`;
   }
   if (totalGoals > 0) {
     return `You have ${totalGoals} active goal${totalGoals > 1 ? "s" : ""} in motion. Small actions add up.`;
   }
-  return "Your day is open. What one thing would move the needle?";
+  return `${totalHabits} active habit${totalHabits !== 1 ? "s" : ""}. Stay consistent — it compounds over time.`;
 }
 
 export function MomentumCard({ summary }: MomentumCardProps) {
   const [, navigate] = useLocation();
   const { activeHabits, activeGoals } = summary;
 
-  const completedToday = activeHabits.filter((h) => h.completedToday).length;
   const totalHabits = activeHabits.length;
   const totalGoals = activeGoals.length;
+  const topStreak = activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
   const hasData = totalHabits > 0 || totalGoals > 0;
 
-  const message = getMomentumMessage(completedToday, totalHabits, totalGoals);
+  const message = getMomentumMessage(totalHabits, topStreak, totalGoals);
 
   return (
     <DWCardContainer chatPrefill="I want to talk about my momentum and what's driving (or blocking) my progress">
