@@ -2553,3 +2553,101 @@ export const insertElevationCheckSchema = createInsertSchema(elevationChecks).om
 
 export type ElevationCheck = typeof elevationChecks.$inferSelect;
 export type InsertElevationCheck = z.infer<typeof insertElevationCheckSchema>;
+
+// ========================================
+// PR #5: ELEVATION PLAN BUILDER (7-day)
+// ========================================
+
+// Elevation Plans – 7-day plans generated with explicit user consent
+export const elevationPlans = pgTable("elevation_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  goal: text("goal"),
+  focusDimension: text("focus_dimension"),
+  status: text("status").notNull().default("draft"),  // "draft" | "active" | "archived"
+  startDate: text("start_date").notNull(),             // YYYY-MM-DD
+  endDate: text("end_date").notNull(),                 // YYYY-MM-DD
+  sourceConversationId: varchar("source_conversation_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("elevation_plans_user_status_start_source_idx").on(
+    t.userId,
+    t.status,
+    t.startDate,
+    t.sourceConversationId,
+  ),
+]);
+
+export const elevationPlansRelations = relations(elevationPlans, ({ one, many }) => ({
+  user: one(users, {
+    fields: [elevationPlans.userId],
+    references: [users.id],
+  }),
+  days: many(elevationPlanDays),
+}));
+
+export const insertElevationPlanSchema = createInsertSchema(elevationPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Elevation Plan Days – one row per day (1–7) in the plan
+export const elevationPlanDays = pgTable("elevation_plan_days", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planId: varchar("plan_id").notNull().references(() => elevationPlans.id),
+  dayIndex: integer("day_index").notNull(),  // 1..7
+  theme: text("theme").notNull(),
+  intention: text("intention").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const elevationPlanDaysRelations = relations(elevationPlanDays, ({ one, many }) => ({
+  plan: one(elevationPlans, {
+    fields: [elevationPlanDays.planId],
+    references: [elevationPlans.id],
+  }),
+  actions: many(elevationPlanActions),
+}));
+
+export const insertElevationPlanDaySchema = createInsertSchema(elevationPlanDays).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Elevation Plan Actions – 2–4 actions per day
+export const elevationPlanActions = pgTable("elevation_plan_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planDayId: varchar("plan_day_id").notNull().references(() => elevationPlanDays.id),
+  actionType: text("action_type").notNull(),  // "habit" | "workout" | "nutrition" | "reflection" | "schedule"
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  timeOfDay: text("time_of_day"),
+  durationMinutes: integer("duration_minutes"),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  linkedEntity: jsonb("linked_entity"),        // optional reference to calendar event, routine, task
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const elevationPlanActionsRelations = relations(elevationPlanActions, ({ one }) => ({
+  day: one(elevationPlanDays, {
+    fields: [elevationPlanActions.planDayId],
+    references: [elevationPlanDays.id],
+  }),
+}));
+
+export const insertElevationPlanActionSchema = createInsertSchema(elevationPlanActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ElevationPlan = typeof elevationPlans.$inferSelect;
+export type InsertElevationPlan = z.infer<typeof insertElevationPlanSchema>;
+export type ElevationPlanDay = typeof elevationPlanDays.$inferSelect;
+export type InsertElevationPlanDay = z.infer<typeof insertElevationPlanDaySchema>;
+export type ElevationPlanAction = typeof elevationPlanActions.$inferSelect;
+export type InsertElevationPlanAction = z.infer<typeof insertElevationPlanActionSchema>;

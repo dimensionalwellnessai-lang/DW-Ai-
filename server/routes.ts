@@ -12,9 +12,11 @@ import appleSignin from "apple-signin-auth";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { pool } from "./db";
+import { db } from "./db";
+import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -8110,6 +8112,210 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
       console.error("Support report error:", error);
       res.status(500).json({ error: "Failed to submit support report" });
+    }
+  });
+
+  // ========================================
+  // PR #5: ELEVATION PLAN BUILDER
+  // ========================================
+
+  const elevationPlanLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many elevation plan requests. Please try again later." },
+  });
+
+  const elevationPlanDraftSchema = z.object({
+    conversationId: z.string().max(200).optional(),
+    reasons: z.string().max(2000).optional(),
+    recentInsights: z.string().max(2000).optional(),
+    userPreferences: z.string().max(1000).optional(),
+    focusDimension: z.string().max(100).optional(),
+  });
+
+  const elevationPlanUpdateSchema = z.object({
+    title: z.string().min(1).max(200).optional(),
+    goal: z.string().max(500).optional(),
+    status: z.enum(["draft", "active", "archived"]).optional(),
+  });
+
+  const elevationPlanActionUpdateSchema = z.object({
+    isCompleted: z.boolean().optional(),
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(1000).optional(),
+  });
+
+  // POST /api/elevation-plans/preview – guest preview (no auth, returns structure only)
+  app.post("/api/elevation-plans/preview", elevationPlanLimiter, async (req, res) => {
+    try {
+      const parsed = elevationPlanDraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const { reasons, recentInsights, userPreferences, focusDimension } = parsed.data;
+      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences, focusDimension });
+      if (!structure) return res.status(500).json({ error: "Failed to generate elevation plan" });
+      res.json(structure);
+    } catch (error) {
+      console.error("Elevation plan preview error:", error);
+      res.status(500).json({ error: "Failed to generate elevation plan preview" });
+    }
+  });
+
+  // POST /api/elevation-plans/draft – create or reuse existing draft for current conversation/date
+  app.post("/api/elevation-plans/draft", requireAuth, elevationPlanLimiter, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanDraftSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const { conversationId, reasons, recentInsights, userPreferences, focusDimension } = parsed.data;
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Idempotency: reuse existing draft for the same day / conversation
+      const existing = await storage.getDraftElevationPlanForDay(userId, today, conversationId);
+      if (existing) {
+        const days = await storage.getElevationPlanDays(existing.id);
+        const daysWithActions = await Promise.all(
+          days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+        );
+        return res.json({ plan: existing, days: daysWithActions });
+      }
+
+      // Generate via AI
+      const structure = await generateElevationPlanStructure({ reasons, recentInsights, userPreferences, focusDimension });
+      if (!structure) {
+        return res.status(500).json({ error: "Failed to generate elevation plan" });
+      }
+
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 6);
+
+      // Wrap all inserts in a DB transaction to avoid partial drafts
+      const { plan, daysWithActions } = await db.transaction(async (tx) => {
+        const [plan] = await tx.insert(elevationPlans)
+          .values({
+            userId,
+            title: structure.title,
+            goal: structure.goal,
+            focusDimension: structure.focusDimension,
+            status: "draft",
+            startDate: today,
+            endDate: endDate.toISOString().slice(0, 10),
+            sourceConversationId: conversationId,
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        const daysWithActions = [];
+        for (const dayData of structure.days.slice(0, 7)) {
+          const [day] = await tx.insert(elevationPlanDays)
+            .values({
+              planId: plan.id,
+              dayIndex: dayData.dayIndex,
+              theme: dayData.theme,
+              intention: dayData.intention,
+            })
+            .returning();
+
+          const actions = [];
+          for (const a of (dayData.actions ?? []).slice(0, 4)) {
+            const [action] = await tx.insert(elevationPlanActions)
+              .values({
+                planDayId: day.id,
+                actionType: a.actionType,
+                title: a.title,
+                description: a.description,
+                timeOfDay: a.timeOfDay,
+                durationMinutes: a.durationMinutes,
+                isCompleted: false,
+                updatedAt: new Date(),
+              })
+              .returning();
+            actions.push(action);
+          }
+          daysWithActions.push({ ...day, actions });
+        }
+
+        return { plan, daysWithActions };
+      });
+
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan draft error:", error);
+      res.status(500).json({ error: "Failed to create elevation plan draft" });
+    }
+  });
+
+  // GET /api/elevation-plans/active – get the active elevation plan
+  app.get("/api/elevation-plans/active", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plan = await storage.getActiveElevationPlan(userId);
+      if (!plan) return res.json(null);
+      const days = await storage.getElevationPlanDays(plan.id);
+      const daysWithActions = await Promise.all(
+        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan active error:", error);
+      res.status(500).json({ error: "Failed to get active elevation plan" });
+    }
+  });
+
+  // GET /api/elevation-plans/:id – get a specific elevation plan
+  app.get("/api/elevation-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plan = await storage.getElevationPlan(req.params.id, userId);
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+      const days = await storage.getElevationPlanDays(plan.id);
+      const daysWithActions = await Promise.all(
+        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+      res.json({ plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Elevation plan get error:", error);
+      res.status(500).json({ error: "Failed to get elevation plan" });
+    }
+  });
+
+  // PATCH /api/elevation-plans/:id – update plan title/goal/status
+  app.patch("/api/elevation-plans/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
+      if (!updated) return res.status(404).json({ error: "Plan not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Elevation plan update error:", error);
+      res.status(500).json({ error: "Failed to update elevation plan" });
+    }
+  });
+
+  // PATCH /api/elevation-plan-actions/:id – toggle complete, update text
+  app.patch("/api/elevation-plan-actions/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = elevationPlanActionUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const updated = await storage.updateElevationPlanAction(req.params.id, userId, parsed.data);
+      if (!updated) return res.status(404).json({ error: "Action not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Elevation plan action update error:", error);
+      res.status(500).json({ error: "Failed to update elevation plan action" });
     }
   });
 
