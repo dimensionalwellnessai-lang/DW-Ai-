@@ -5,8 +5,10 @@
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +30,7 @@ import { useTrackFeature } from "@/hooks/use-ai-learning";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
+import { COPY } from "@/copy/en";
 
 interface DimensionAssessment {
   dimension: string;
@@ -71,6 +74,7 @@ interface DwInsightItem {
 
 export default function InsightsDashboard() {
   useTrackFeature("insights");
+  const [, navigate] = useLocation();
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
@@ -298,9 +302,10 @@ export default function InsightsDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {activeGoals.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No active goals yet. Create your first goal to get started!
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">{COPY.insights.goalsEmpty}</p>
+                    <button onClick={() => navigate("/plans")} className="text-xs text-primary mt-2 hover:underline">{COPY.insights.goalsEmptyCTA} →</button>
+                  </div>
                 ) : (
                   activeGoals.map(goal => {
                     const dimension = goal.wellnessDimension ? getDimensionById(goal.wellnessDimension) : null;

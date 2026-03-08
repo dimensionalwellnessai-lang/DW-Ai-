@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { CheckSquare, Plus, Circle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { COPY } from "@/copy/en";
 
 export default function HabitsPage() {
   const { toast } = useToast();
@@ -34,7 +35,7 @@ export default function HabitsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
       setShowForm(false);
       setHabitTitle("");
-      toast({ title: "Habit created successfully!" });
+      toast({ title: COPY.habits.toast });
     },
   });
 
@@ -84,9 +85,6 @@ export default function HabitsPage() {
       />
       <div className="flex-1 overflow-auto">
         <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        <p className="text-muted-foreground text-center">
-          Build consistency one day at a time
-        </p>
 
         {/* Create Form */}
         {showForm && (
@@ -125,10 +123,13 @@ export default function HabitsPage() {
             {habits.length === 0 && !showForm && (
               <div className="text-center py-8">
                 <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-foreground font-medium">No habits yet</p>
+                <p className="text-foreground font-medium">{COPY.habits.emptyTitle}</p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Create your first habit to start building consistency
+                  {COPY.habits.emptyBody}
                 </p>
+                <Button size="sm" className="mt-4" onClick={() => setShowForm(true)}>
+                  {COPY.habits.emptyCTA}
+                </Button>
               </div>
             )}
 

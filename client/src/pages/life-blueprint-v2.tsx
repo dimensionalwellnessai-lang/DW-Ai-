@@ -27,6 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { LIFE_DIMENSIONS, ASSESSMENT_QUESTIONS, getDimensionById, type LifeDimension } from "@/lib/life-dimensions";
 import { motion } from "framer-motion";
+import { COPY } from "@/copy/en";
 
 type ViewMode = "overview" | "dimension-detail" | "assessment";
 
@@ -514,7 +515,7 @@ export default function LifeBlueprintV2() {
             ) : (
               <div className="text-center py-8 space-y-4">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">You haven't assessed this dimension yet.</p>
+                <p className="text-muted-foreground">{COPY.lifeBlueprint.assessmentEmpty}</p>
                 <Button onClick={() => startAssessment(dimension.id)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Take Assessment
@@ -554,7 +555,7 @@ export default function LifeBlueprintV2() {
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-4">
-                No goals linked to this dimension yet.
+                {COPY.lifeBlueprint.goalsEmpty}
               </p>
             )}
           </CardContent>
@@ -940,7 +941,7 @@ export default function LifeBlueprintV2() {
                 ) : (
                   <div className="text-center py-8 space-y-4">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <p className="text-muted-foreground">You haven't set up your Reset Protocol yet.</p>
+                    <p className="text-muted-foreground">{COPY.lifeBlueprint.resetEmpty}</p>
                     <Button onClick={() => setEditingResetProtocol(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Create Reset Protocol

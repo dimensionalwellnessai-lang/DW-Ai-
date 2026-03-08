@@ -64,6 +64,7 @@ import {
 import { cn } from "@/lib/utils";
 import { type SwitchId } from "@/lib/switch-storage";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
+import { COPY } from "@/copy/en";
 
 const MOOD_OPTIONS: { word: MoodWord; icon: typeof Smile; color: string }[] = [
   { word: "calm", icon: Cloud, color: "text-blue-400" },
@@ -232,7 +233,7 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
       <CardContent className="space-y-6">
         {moodCheckins.length === 0 ? (
           <p className="text-center text-muted-foreground">
-            No mood check-ins yet today. Start by logging how you feel.
+            {COPY.moodTracker.emptyToday}
           </p>
         ) : (
           <>

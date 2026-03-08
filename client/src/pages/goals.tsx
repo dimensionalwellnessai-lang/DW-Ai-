@@ -3,6 +3,7 @@ import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { COPY } from "@/copy/en";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -41,7 +42,7 @@ export default function GoalsPage() {
       setShowForm(false);
       setGoalTitle("");
       setGoalDescription("");
-      toast({ title: "Goal created successfully!" });
+      toast({ title: COPY.goals.toast });
     },
   });
 
@@ -60,10 +61,7 @@ export default function GoalsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
       setHabitDialogOpen(false);
       setSelectedGoal(null);
-      toast({ 
-        title: "Habit created!", 
-        description: "Your new habit has been created to support your goal." 
-      });
+      toast({ title: COPY.goals.toastHabit });
     },
   });
 
@@ -90,9 +88,6 @@ export default function GoalsPage() {
       />
       <div className="flex-1 overflow-auto">
         <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        <p className="text-muted-foreground text-center">
-          Track your progress toward what matters most
-        </p>
 
         {/* Create Form */}
         {showForm && (
@@ -138,10 +133,13 @@ export default function GoalsPage() {
             <Card>
               <CardContent className="text-center py-12">
                 <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-foreground font-medium">No goals yet</p>
+                <p className="text-foreground font-medium">{COPY.goals.emptyTitle}</p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Create your first goal to start tracking progress
+                  {COPY.goals.emptyBody}
                 </p>
+                <Button size="sm" className="mt-4" onClick={() => setShowForm(true)}>
+                  {COPY.goals.emptyCTA}
+                </Button>
               </CardContent>
             </Card>
           )}

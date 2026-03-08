@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProactiveCard, ProactiveCardProps } from "@/components/proactive-card";
 import { UnifiedSearch } from "@/components/unified-search";
+import { COPY } from "@/copy/en";
 import {
   Zap,
   Heart,
@@ -172,8 +173,9 @@ export default function TodayHubPage() {
     if (hour >= 5 && hour < 12 && !moodData) {
       cards.push({
         type: "morning-briefing",
-        title: "Start your day with intention",
-        message: "A quick check-in helps me personalize your day. How are you feeling right now?",
+        title: COPY.proactiveCards.morningTitle,
+        message: COPY.proactiveCards.morningMessage,
+        why: COPY.proactiveCards.morningWhy,
         actionLabel: "Check in",
         onAction: () => navigate("/weekly-checkin"),
         priority: "high",
@@ -183,8 +185,9 @@ export default function TodayHubPage() {
     if (energyLevel !== null && energyLevel <= 4) {
       cards.push({
         type: "energy-suggestion",
-        title: "Your energy is running low",
-        message: "Based on your check-in, a short walk or 5-minute stretch might help restore some energy.",
+        title: COPY.proactiveCards.energyTitle,
+        message: COPY.proactiveCards.energyMessage,
+        why: COPY.proactiveCards.energyWhy,
         actionLabel: "See options",
         onAction: () => navigate("/recovery"),
       });
@@ -193,8 +196,9 @@ export default function TodayHubPage() {
     if (hour >= 18 && hour < 22) {
       cards.push({
         type: "wind-down",
-        title: "Time to wind down",
-        message: "Evening is approaching. Would you like to review today and prepare for tomorrow?",
+        title: COPY.proactiveCards.windDownTitle,
+        message: COPY.proactiveCards.windDownMessage,
+        why: COPY.proactiveCards.windDownWhy,
         actionLabel: "Wind down",
         onAction: () => navigate("/"),
       });
@@ -203,8 +207,9 @@ export default function TodayHubPage() {
     if (activeGoals.length > 0 && todaysBlocks.length === 0 && todaysEvents.length === 0) {
       cards.push({
         type: "goal-reminder",
-        title: "Nothing scheduled today",
-        message: `You have ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}. Want me to suggest some actions?`,
+        title: COPY.proactiveCards.goalTitle,
+        message: COPY.proactiveCards.goalMessage,
+        why: COPY.proactiveCards.goalWhy,
         actionLabel: "Get suggestions",
         onAction: () => navigate("/"),
       });
@@ -396,55 +401,13 @@ export default function TodayHubPage() {
                   </div>
                   <h3 className="font-semibold text-foreground">Your Life System</h3>
                 </div>
-                
-                <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                  <p>
-                    A life system is the way all parts of your life support — or drain — each other.
-                  </p>
-                  <p>
-                    Wellness is part of it, but not the whole thing.
-                  </p>
-                  <p>
-                    Your energy, schedule, relationships, environment, money, habits, and purpose all interact.
-                  </p>
-                  <p>
-                    DW helps you organize those pieces so your life works with you, not against you.
-                  </p>
+
+                <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+                  <p>All parts of your life — energy, habits, relationships, money, purpose — affect each other.</p>
+                  <p>DW helps you see those connections, not just track tasks.</p>
                 </div>
 
-                <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Life dimensions help regulate your system. Your life system is how everything connects.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Body & energy</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Emotions & mental state</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Relationships & social life</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Environment & routines</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Work, money & responsibilities</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Meaning & direction</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-1">
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -455,7 +418,7 @@ export default function TodayHubPage() {
                     }}
                     data-testid="button-start-where-i-am"
                   >
-                    Help me start where I am
+                    Start where I am
                   </Button>
                   <Button 
                     size="sm" 
@@ -466,7 +429,7 @@ export default function TodayHubPage() {
                     }}
                     data-testid="button-show-connections"
                   >
-                    Show me how this connects
+                    Show me more
                   </Button>
                 </div>
               </CardContent>
