@@ -75,6 +75,8 @@ import {
   insertDwFollowupSchema,
   insertReminderSchema,
   updateUserLearningProfileSchema,
+  insertWeeklyPlanReviewSchema,
+  updateWeeklyPlanReviewSchema,
   type Habit,
   type Goal,
   type MoodLog,
@@ -8358,6 +8360,135 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Elevation plan action update error:", error);
       res.status(500).json({ error: "Failed to update elevation plan action" });
+    }
+  });
+
+  // GET /api/elevation-plans – list all elevation plans for the user (history)
+  app.get("/api/elevation-plans", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plans = await storage.getElevationPlans(userId);
+      res.json(plans);
+    } catch (error) {
+      console.error("Elevation plans list error:", error);
+      res.status(500).json({ error: "Failed to list elevation plans" });
+    }
+  });
+
+  // ── Weekly Plan Reviews API (PR #15) ──────────────────────────────────────
+
+  // GET /api/weekly-review/:planId – get the review for a specific plan
+  app.get("/api/weekly-review/:planId", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { planId } = req.params;
+
+      // Verify the plan belongs to this user
+      const plan = await storage.getElevationPlan(planId, userId);
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+
+      // Get or auto-populate the review from plan completion data
+      let review = await storage.getWeeklyPlanReview(planId, userId);
+      if (!review) {
+        // Auto-generate recap from plan completion stats
+        const days = await storage.getElevationPlanDays(planId);
+        const wins: string[] = [];
+        const frictionPoints: string[] = [];
+        let totalActions = 0;
+        let completedActions = 0;
+
+        for (const day of days) {
+          const actions = await storage.getElevationPlanActions(day.id);
+          for (const action of actions) {
+            totalActions++;
+            if (action.isCompleted) {
+              completedActions++;
+              wins.push(action.title);
+            } else {
+              frictionPoints.push(action.title);
+            }
+          }
+        }
+
+        const completionRate = totalActions > 0
+          ? Math.round((completedActions / totalActions) * 100)
+          : 0;
+
+        review = await storage.createWeeklyPlanReview({
+          userId,
+          planId,
+          wins: wins.slice(0, 10),
+          frictionPoints: frictionPoints.slice(0, 10),
+          completionRate,
+          status: "draft",
+        });
+      }
+
+      // Also return the plan for context
+      const days = await storage.getElevationPlanDays(planId);
+      const daysWithActions = await Promise.all(
+        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+
+      res.json({ review, plan, days: daysWithActions });
+    } catch (error) {
+      console.error("Weekly review get error:", error);
+      res.status(500).json({ error: "Failed to get weekly review" });
+    }
+  });
+
+  // POST /api/weekly-review/:planId – submit/update the weekly review
+  app.post("/api/weekly-review/:planId", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { planId } = req.params;
+
+      // Verify the plan belongs to this user
+      const plan = await storage.getElevationPlan(planId, userId);
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+
+      const parsed = updateWeeklyPlanReviewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+
+      const existing = await storage.getWeeklyPlanReview(planId, userId);
+      let review: import("@shared/schema").WeeklyPlanReview;
+      if (existing) {
+        const updated = await storage.updateWeeklyPlanReview(planId, userId, parsed.data);
+        if (!updated) return res.status(404).json({ error: "Review not found" });
+        review = updated;
+      } else {
+        review = await storage.createWeeklyPlanReview({
+          userId,
+          planId,
+          ...parsed.data,
+        });
+      }
+
+      // When submitted, archive the plan and update learning profile with wins/friction
+      if (parsed.data.status === "submitted") {
+        await storage.updateElevationPlan(planId, userId, { status: "archived" });
+
+        // Update learning profile with wins and friction from the review
+        const wins = review.wins ?? [];
+        const frictionPoints = review.frictionPoints ?? [];
+        const currentProfile = await storage.getLearningProfile(userId);
+        const existingWins = (currentProfile?.wins ?? []) as string[];
+        const existingFriction = (currentProfile?.frictionPoints ?? []) as string[];
+        const mergedWins = [...new Set([...wins, ...existingWins])].slice(0, 20);
+        const mergedFriction = [...new Set([...frictionPoints, ...existingFriction])].slice(0, 10);
+        await storage.upsertLearningProfile(userId, {
+          wins: mergedWins,
+          frictionPoints: mergedFriction,
+          lastFeedbackAt: new Date(),
+        });
+      }
+
+      res.json(review);
+    } catch (error) {
+      console.error("Weekly review submit error:", error);
+      res.status(500).json({ error: "Failed to submit weekly review" });
     }
   });
 

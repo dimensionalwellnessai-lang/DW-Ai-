@@ -17,8 +17,10 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
+  ELEVATION_PLAN: boolean;          // ⏸️ 7-day Elevation Plan builder (PR #5)
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
+  WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
 }
 
 /**
@@ -142,6 +144,58 @@ function resolveDailyCheckinFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the ELEVATION_PLAN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_elevation_plan', 'true')  — persists across sessions
+ *   ?ep=1 query param                                   — one-time, per URL
+ */
+function resolveElevationPlanFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ep") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the initial value for the WEEKLY_REVIEW feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_weekly_review', 'true')  — persists across sessions
+ *   ?wr=1 query param                                  — one-time, per URL
+ */
+function resolveWeeklyReviewFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("wr") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -154,8 +208,10 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
+  ELEVATION_PLAN: resolveElevationPlanFlag(),
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   DW_LEARNS: true,
+  WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
 };
 
 /**
