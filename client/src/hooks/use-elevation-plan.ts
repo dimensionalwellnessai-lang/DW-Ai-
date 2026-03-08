@@ -209,9 +209,9 @@ export function useElevationPlan() {
   const toggleActionMutation = useMutation<
     ElevationPlanActionItem,
     Error,
-    { id: string; isCompleted: boolean; planId?: string }
+    { id: string; isCompleted: boolean; planId?: string; actionType?: string; title?: string }
   >({
-    mutationFn: async ({ id, isCompleted }) => {
+    mutationFn: async ({ id, isCompleted, actionType, title }) => {
       if (isLoggedIn) {
         const res = await fetch(`/api/elevation-plan-actions/${id}`, {
           method: "PATCH",
@@ -223,7 +223,8 @@ export function useElevationPlan() {
         return res.json() as Promise<ElevationPlanActionItem>;
       }
       updateGuestElevationPlanAction(id, { isCompleted });
-      return { id, isCompleted } as ElevationPlanActionItem;
+      // For guests, build a minimal record using the variables passed in
+      return { id, isCompleted, actionType: actionType ?? "", title: title ?? "" } as ElevationPlanActionItem;
     },
     onSuccess: (data, { planId, isCompleted }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });

@@ -2875,7 +2875,7 @@ export interface GuestLearningProfile {
 }
 
 const DEFAULT_GUEST_LEARNING_PROFILE: GuestLearningProfile = {
-  updatedAt: Date.now(),
+  updatedAt: 0,
   preferredTimes: {},
   preferredActionTypes: [],
   sensitivity: {},

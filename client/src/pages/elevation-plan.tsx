@@ -244,7 +244,17 @@ export default function ElevationPlanPage() {
 
   const handleToggle = async (id: string, completed: boolean) => {
     try {
-      await toggleAction({ id, isCompleted: completed, planId: planData?.plan?.id });
+      // Find the action in planData to pass actionType/title for guest learning
+      const action = planData?.days
+        ?.flatMap((d) => d.actions)
+        ?.find((a) => a.id === id);
+      await toggleAction({
+        id,
+        isCompleted: completed,
+        planId: planData?.plan?.id,
+        actionType: action?.actionType,
+        title: action?.title,
+      });
       // For guests, refresh local state
       if (!isLoggedIn && planData?.plan) {
         setLocalDraft(asElevationPlanFull(getGuestElevationPlanFull(planData.plan.id)));

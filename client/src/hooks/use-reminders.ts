@@ -154,7 +154,8 @@ export function useReminders() {
 
   const snoozeReminder = useCallback(
     async (id: string, until: Date) => {
-      const scheduledHour = until.getHours();
+      // `until` is the time the user snoozed TO — use directly as the preferred reminder time
+      const snoozedToHour = until.getHours();
       if (isLoggedIn) {
         await updateAuth.mutateAsync({
           id,
@@ -168,7 +169,7 @@ export function useReminders() {
         bumpGuest();
       }
       // Fire-and-forget: update learning profile from snooze behavior
-      void sendLearningEvent("reminder_snooze", { scheduledHour });
+      void sendLearningEvent("reminder_snooze", { snoozedToHour });
     },
     [isLoggedIn, updateAuth, bumpGuest, sendLearningEvent]
   );

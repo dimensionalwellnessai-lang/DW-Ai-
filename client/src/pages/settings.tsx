@@ -66,7 +66,7 @@ export function SettingsPage() {
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
-  const { profile: learningProfile, isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
+  const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });

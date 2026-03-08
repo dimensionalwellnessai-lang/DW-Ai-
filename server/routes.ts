@@ -8028,7 +8028,8 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         goals,
         moodData.logs,
         moodData.hasPriorLogs,
-        learningProfile ?? undefined,
+        // Only pass learning profile when personalization is enabled
+        (learningProfile?.learningEnabled !== false) ? (learningProfile ?? undefined) : undefined,
       );
 
       const check = await storage.upsertElevationCheck({
@@ -8502,10 +8503,39 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         return res.json({ skipped: true });
       }
 
-      const { event, payload } = req.body as {
-        event: "checkin" | "reminder_snooze" | "reminder_dismiss" | "plan_action_complete" | "followup_accept" | "followup_dismiss";
-        payload: Record<string, unknown>;
-      };
+      const autoUpdateSchema = z.discriminatedUnion("event", [
+        z.object({
+          event: z.literal("checkin"),
+          payload: z.object({ constraintType: z.string().optional(), moodScore: z.number().optional() }).passthrough(),
+        }),
+        z.object({
+          event: z.literal("reminder_snooze"),
+          payload: z.object({ snoozedToHour: z.number().optional() }).passthrough(),
+        }),
+        z.object({
+          event: z.literal("reminder_dismiss"),
+          payload: z.object({}).passthrough(),
+        }),
+        z.object({
+          event: z.literal("plan_action_complete"),
+          payload: z.object({ actionType: z.string().optional(), title: z.string().optional() }).passthrough(),
+        }),
+        z.object({
+          event: z.literal("followup_accept"),
+          payload: z.object({ actionType: z.string().optional() }).passthrough(),
+        }),
+        z.object({
+          event: z.literal("followup_dismiss"),
+          payload: z.object({ actionType: z.string().optional() }).passthrough(),
+        }),
+      ]);
+
+      const parsed = autoUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request body for learning profile auto-update" });
+      }
+
+      const { event, payload } = parsed.data;
 
       const patch: Record<string, unknown> = {};
 
@@ -8533,13 +8563,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
           sens.reminders = "low";
         }
         patch.sensitivity = sens;
-        // Also learn preferred time from when they actually engaged
-        const scheduledHour = payload.scheduledHour as number | undefined;
-        if (typeof scheduledHour === "number") {
+        // Learn preferred time from where the user snoozed TO (that's their actual preferred time)
+        const snoozedToHour = payload.snoozedToHour;
+        if (typeof snoozedToHour === "number") {
           const times = { ...(current?.preferredTimes ?? {}) };
-          // Suggest one hour later as preferred
-          const preferredHour = (scheduledHour + 1) % 24;
-          times.reminder = `${String(preferredHour).padStart(2, "0")}:00`;
+          times.reminder = `${String(snoozedToHour).padStart(2, "0")}:00`;
           patch.preferredTimes = times;
         }
       } else if (event === "reminder_dismiss") {

@@ -144,23 +144,23 @@ export function useLearningProfile() {
   ): Promise<void> {
     if (!dwLearnsEnabled) return;
     if (!isLoggedIn) {
-      // Guest: apply locally
+      // Guest: check learningEnabled before applying
+      const current = getGuestLearningProfile();
+      if (!current.learningEnabled) return;
+
       if (event === "plan_action_complete" && payload.actionType) {
-        const current = getGuestLearningProfile();
-        if (!current.learningEnabled) return;
         const pat = [...current.preferredActionTypes];
         const at = payload.actionType as string;
-        if (!pat.includes(at)) pat.unshift(at);
-        else {
-          const idx = pat.indexOf(at);
-          pat.splice(idx, 1);
-          pat.unshift(at);
-        }
-        updateGuestLearningProfile({ preferredActionTypes: pat.slice(0, 6) });
+        const idx = pat.indexOf(at);
+        if (idx !== -1) pat.splice(idx, 1);
+        pat.unshift(at);
+        const winLabel = payload.title as string | undefined;
+        const wins = [...current.wins];
+        if (winLabel && !wins.includes(winLabel)) wins.unshift(winLabel);
+        updateGuestLearningProfile({ preferredActionTypes: pat.slice(0, 6), wins: wins.slice(0, 10) });
         qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
+
       } else if (event === "checkin" && payload.constraintType && payload.constraintType !== "none") {
-        const current = getGuestLearningProfile();
-        if (!current.learningEnabled) return;
         const fp = [...current.frictionPoints];
         const ct = payload.constraintType as string;
         if (!fp.includes(ct)) {
@@ -168,6 +168,44 @@ export function useLearningProfile() {
           updateGuestLearningProfile({ frictionPoints: fp.slice(0, 5) });
           qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
         }
+
+      } else if (event === "reminder_snooze") {
+        const sens = { ...current.sensitivity };
+        const snoozeCount = (parseInt(String(sens._snoozeCount ?? "0"), 10) || 0) + 1;
+        sens._snoozeCount = String(snoozeCount);
+        if (snoozeCount >= 3) sens.reminders = "low";
+        const patch: Partial<Omit<GuestLearningProfile, "updatedAt">> = { sensitivity: sens };
+        const snoozedToHour = payload.snoozedToHour;
+        if (typeof snoozedToHour === "number") {
+          patch.preferredTimes = {
+            ...current.preferredTimes,
+            reminder: `${String(snoozedToHour).padStart(2, "0")}:00`,
+          };
+        }
+        updateGuestLearningProfile(patch);
+        qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
+
+      } else if (event === "reminder_dismiss") {
+        const sens = { ...current.sensitivity };
+        const dismissCount = (parseInt(String(sens._dismissCount ?? "0"), 10) || 0) + 1;
+        sens._dismissCount = String(dismissCount);
+        if (dismissCount >= 5) sens.reminders = "low";
+        updateGuestLearningProfile({ sensitivity: sens });
+        qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
+
+      } else if (event === "followup_accept" && payload.actionType) {
+        const pat = [...current.preferredActionTypes];
+        const at = payload.actionType as string;
+        if (!pat.includes(at)) pat.push(at);
+        updateGuestLearningProfile({ preferredActionTypes: pat.slice(0, 6) });
+        qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
+
+      } else if (event === "followup_dismiss" && payload.actionType) {
+        const avoid = [...current.avoid];
+        const at = payload.actionType as string;
+        if (!avoid.includes(at)) avoid.push(at);
+        updateGuestLearningProfile({ avoid: avoid.slice(0, 10) });
+        qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
       }
       return;
     }
@@ -183,20 +221,22 @@ export function useLearningProfile() {
 
   if (isLoggedIn) {
     const profile = authQuery.data ?? null;
+    // Selectors only use the profile when personalization is actually enabled
+    const effectiveProfile = (dwLearnsEnabled && profile?.learningEnabled !== false) ? profile : null;
     return {
       profile,
       isLoading: authLoading || authQuery.isLoading,
-      isEnabled: dwLearnsEnabled && (profile?.learningEnabled !== false),
+      isEnabled: effectiveProfile !== null,
       updateProfile: authPatchMutation.mutateAsync,
       isUpdating: authPatchMutation.isPending,
       resetProfile: authResetMutation.mutateAsync,
       isResetting: authResetMutation.isPending,
       sendLearningEvent,
-      // Selectors
-      recommendedReminderTime: getRecommendedReminderTime(profile),
-      recommendedActionTypes: getRecommendedActionTypes(profile),
-      recommendedFocusDimension: getRecommendedFocusDimension(profile),
-      personalizationReasons: getPersonalizationReasons(profile),
+      // Selectors – null when learning is disabled so callers fall back to their defaults
+      recommendedReminderTime: getRecommendedReminderTime(effectiveProfile),
+      recommendedActionTypes: getRecommendedActionTypes(effectiveProfile),
+      recommendedFocusDimension: getRecommendedFocusDimension(effectiveProfile),
+      personalizationReasons: getPersonalizationReasons(effectiveProfile),
     };
   }
 
@@ -208,11 +248,13 @@ export function useLearningProfile() {
         updatedAt: guestProfile.updatedAt,
       }
     : null;
+  // Selectors only use the profile when personalization is actually enabled
+  const effectiveGuestProfile = (dwLearnsEnabled && guestProfile?.learningEnabled !== false) ? profileShape : null;
 
   return {
     profile: profileShape,
     isLoading: authLoading || guestQuery.isLoading,
-    isEnabled: dwLearnsEnabled && (guestProfile?.learningEnabled !== false),
+    isEnabled: effectiveGuestProfile !== null,
     updateProfile: async (patch: LearningProfilePatch) => {
       await guestPatchMutation.mutateAsync(patch);
     },
@@ -222,10 +264,10 @@ export function useLearningProfile() {
     },
     isResetting: guestResetMutation.isPending,
     sendLearningEvent,
-    // Selectors
-    recommendedReminderTime: getRecommendedReminderTime(profileShape),
-    recommendedActionTypes: getRecommendedActionTypes(profileShape),
-    recommendedFocusDimension: getRecommendedFocusDimension(profileShape),
-    personalizationReasons: getPersonalizationReasons(profileShape),
+    // Selectors – null when learning is disabled so callers fall back to their defaults
+    recommendedReminderTime: getRecommendedReminderTime(effectiveGuestProfile),
+    recommendedActionTypes: getRecommendedActionTypes(effectiveGuestProfile),
+    recommendedFocusDimension: getRecommendedFocusDimension(effectiveGuestProfile),
+    personalizationReasons: getPersonalizationReasons(effectiveGuestProfile),
   };
 }

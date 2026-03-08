@@ -3267,20 +3267,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertLearningProfile(userId: string, data: UpdateUserLearningProfile): Promise<UserLearningProfile> {
-    const existing = await this.getLearningProfile(userId);
-    if (existing) {
-      const [updated] = await db
-        .update(userLearningProfile)
-        .set({ ...data, updatedAt: new Date() })
-        .where(eq(userLearningProfile.userId, userId))
-        .returning();
-      return updated;
-    }
-    const [created] = await db
+    const [upserted] = await db
       .insert(userLearningProfile)
       .values({ userId, ...data, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: userLearningProfile.userId,
+        set: { ...data, updatedAt: new Date() },
+      })
       .returning();
-    return created;
+    return upserted;
   }
 
   async resetLearningProfile(userId: string): Promise<UserLearningProfile> {
