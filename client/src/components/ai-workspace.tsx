@@ -11,6 +11,7 @@ import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { MessageActions } from "@/components/message-actions";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -176,6 +177,7 @@ export function AIWorkspace() {
   const [location, setLocation] = useLocation();
   useTutorialStart("chat", 1500);
   const { state: tutorialState, hasSeenNavigationTutorial, startNavigationTutorial, requiresMenuOpen } = useTutorial();
+  const { processConversation: processDwConversation } = useDwIntelligence();
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
   
@@ -1025,6 +1027,19 @@ export function AIWorkspace() {
                   } catch {
                     // Insight capture is non-critical – swallow any error
                   }
+                }
+                // DW Intelligence: process full conversation into insight + journal + follow-up
+                // Non-blocking: runs in background, fails silently
+                {
+                  const allMsgs = [
+                    ...currentMessages,
+                    { role: "user" as const, content: message },
+                    { role: "assistant" as const, content: streamedResponse },
+                  ];
+                  processDwConversation({
+                    messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
+                    conversationId: conversationId ?? undefined,
+                  }).catch(() => { /* non-critical */ });
                 }
                 // Final update with complete response
                 // Only update if this conversation is still active

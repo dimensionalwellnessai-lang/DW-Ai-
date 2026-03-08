@@ -16,10 +16,16 @@ import {
   Target,
   Calendar,
   CheckCircle2,
+  Sparkles,
+  BookOpen,
+  Tag,
 } from "lucide-react";
 import { LIFE_DIMENSIONS, getDimensionById } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { useAuth } from "@/hooks/use-auth";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface DimensionAssessment {
   dimension: string;
@@ -49,8 +55,23 @@ interface Streak {
   longestStreak: number;
 }
 
+interface DwInsightItem {
+  id: string;
+  title: string;
+  summary: string;
+  insightLine?: string;
+  quotes?: string[];
+  theme?: string;
+  tags?: string[];
+  switchTag?: string;
+  createdAt: string;
+}
+
 export default function InsightsDashboard() {
   useTrackFeature("insights");
+  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
+  const { user } = useAuth();
+  const isLoggedIn = Boolean(user);
 
   // Fetch dimension assessments
   const { data: assessments = [] } = useQuery<DimensionAssessment[]>({
@@ -70,6 +91,14 @@ export default function InsightsDashboard() {
   // Fetch streaks
   const { data: streaks = [] } = useQuery<Streak[]>({
     queryKey: ['/api/streaks'],
+  });
+
+  // DW Intelligence Insights (flag-gated, auth only)
+  const { data: dwInsights = [] } = useQuery<DwInsightItem[]>({
+    queryKey: ['/api/dw/insights'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
   });
 
   // Calculate overall balance
@@ -182,12 +211,79 @@ export default function InsightsDashboard() {
         </div>
 
         {/* Tabs for detailed views */}
-        <Tabs defaultValue="goals" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue={dwInsightJournalEnabled ? "dw-insights" : "goals"} className="w-full">
+          <TabsList className={`grid w-full ${dwInsightJournalEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
+            {dwInsightJournalEnabled && (
+              <TabsTrigger value="dw-insights">DW Insights</TabsTrigger>
+            )}
             <TabsTrigger value="goals">Goals</TabsTrigger>
             <TabsTrigger value="streaks">Streaks</TabsTrigger>
             <TabsTrigger value="weekly">Weekly Summary</TabsTrigger>
           </TabsList>
+
+          {/* DW Intelligence Insights Feed */}
+          {dwInsightJournalEnabled && (
+            <TabsContent value="dw-insights" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    DW Insight Feed
+                  </CardTitle>
+                  <CardDescription>
+                    AI-generated insights captured from your conversations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!isLoggedIn ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      Sign in to see your DW insights
+                    </p>
+                  ) : dwInsights.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No DW insights yet — have a conversation and use <strong>Process Conversation</strong> to generate your first insight
+                    </p>
+                  ) : (
+                    dwInsights.map((insight) => (
+                      <div key={insight.id} className="border rounded-lg p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium text-sm leading-snug">{insight.title}</p>
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            {format(new Date(insight.createdAt), "MMM d")}
+                          </span>
+                        </div>
+                        {insight.insightLine && (
+                          <p className="text-xs font-medium text-primary italic">
+                            "{insight.insightLine}"
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">{insight.summary}</p>
+                        {Array.isArray(insight.quotes) && insight.quotes.length > 0 && (
+                          <div className="space-y-1">
+                            {insight.quotes.slice(0, 2).map((q, i) => (
+                              <p key={i} className="text-xs border-l-2 border-primary/30 pl-2 text-muted-foreground italic">
+                                "{q}"
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                        {Array.isArray(insight.tags) && insight.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {insight.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-[10px] py-0">
+                                <Tag className="h-2.5 w-2.5 mr-1" />
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="goals" className="space-y-4">
             <Card>

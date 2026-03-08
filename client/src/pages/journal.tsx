@@ -8,6 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 import { 
   BookOpen, 
   Plus, 
@@ -20,7 +22,8 @@ import {
   Sparkles,
   ChevronRight,
   Wind,
-  Wand2
+  Wand2,
+  Tag,
 } from "lucide-react";
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
@@ -34,6 +37,9 @@ import {
   getCategoryPrompts,
   type JournalCategory 
 } from "@/lib/journal-ai";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { useAuth } from "@/hooks/use-auth";
+import { getQueryFn } from "@/lib/queryClient";
 
 const JOURNAL_STORAGE_KEY = "dw_journal_entries";
 
@@ -46,6 +52,15 @@ interface JournalEntry {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+interface DwAiJournalEntry {
+  id: string;
+  title: string;
+  story: string;
+  quotes?: string[];
+  tags?: string[];
+  createdAt: string;
 }
 
 const MOOD_OPTIONS = [
@@ -81,6 +96,17 @@ function saveEntries(entries: JournalEntry[]): void {
 
 export default function JournalPage() {
   useTutorialStart("journal", 1000);
+  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
+  const { user } = useAuth();
+  const isLoggedIn = Boolean(user);
+
+  // DW AI Journal Entries (flag-gated, auth only)
+  const { data: dwAiJournalEntries = [] } = useQuery<DwAiJournalEntry[]>({
+    queryKey: ['/api/dw/journalEntries'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn && dwInsightJournalEnabled,
+    retry: false,
+  });
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -259,6 +285,86 @@ export default function JournalPage() {
       
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+          {dwInsightJournalEnabled && (
+            <Tabs defaultValue="my-entries" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="my-entries">My Entries</TabsTrigger>
+                <TabsTrigger value="dw-journal">DW Journal</TabsTrigger>
+              </TabsList>
+              <TabsContent value="my-entries" className="space-y-4 mt-4">
+                {/* Manual journal entries */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search entries..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                      data-testid="input-journal-search"
+                    />
+                  </div>
+                  <Button onClick={handleNewEntry} data-testid="button-new-entry">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Entry
+                  </Button>
+                </div>
+              </TabsContent>
+              <TabsContent value="dw-journal" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      DW Journal Entries
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!isLoggedIn ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        Sign in to see your DW journal entries
+                      </p>
+                    ) : dwAiJournalEntries.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        No DW journal entries yet — have a conversation with DW to generate your first reflective journal entry
+                      </p>
+                    ) : (
+                      dwAiJournalEntries.map((entry) => (
+                        <div key={entry.id} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-medium text-sm leading-snug">{entry.title}</p>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {format(new Date(entry.createdAt), "MMM d, yyyy")}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground leading-relaxed">{entry.story}</p>
+                          {Array.isArray(entry.quotes) && entry.quotes.length > 0 && (
+                            <div className="space-y-1">
+                              {entry.quotes.map((q, i) => (
+                                <p key={i} className="text-xs border-l-2 border-primary/30 pl-2 text-muted-foreground italic">
+                                  "{q}"
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {Array.isArray(entry.tags) && entry.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {entry.tags.map((tag) => (
+                                <Badge key={tag} variant="secondary" className="text-[10px] py-0">
+                                  <Tag className="h-2.5 w-2.5 mr-1" />
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+          {!dwInsightJournalEnabled && (
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -275,6 +381,7 @@ export default function JournalPage() {
               New Entry
             </Button>
           </div>
+          )}
 
           <div className="flex gap-2 flex-wrap">
             <Badge

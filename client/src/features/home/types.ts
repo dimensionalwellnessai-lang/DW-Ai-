@@ -27,6 +27,19 @@ export interface LatestInsight {
   category: string;
 }
 
+export interface LatestJournalEntry {
+  id: string;
+  title: string;
+  story: string;
+  tags: string[];
+  createdAt: string | Date;
+}
+
+export interface ActiveFollowUp {
+  id: string;
+  prompt: string;
+}
+
 /**
  * Aggregated summary consumed by Home Command Center cards.
  * Fields are null/undefined when data is unavailable (empty state).
@@ -49,6 +62,12 @@ export interface HomeSummary {
 
   /** Most-recent DW-generated insight */
   latestInsight: LatestInsight | null;
+
+  /** Most-recent DW AI-generated journal entry (null if none or flag off) */
+  latestJournalEntry: LatestJournalEntry | null;
+
+  /** First pending DW follow-up question (null if none or flag off) */
+  activeFollowUp: ActiveFollowUp | null;
 
   /** Today's date as a friendly string */
   todayLabel: string;
