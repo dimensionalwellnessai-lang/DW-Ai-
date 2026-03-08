@@ -6,7 +6,6 @@
  * - Guest users: data lives in localStorage via elevation-plan-storage helpers.
  */
 
-import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -20,7 +19,6 @@ import {
   saveGuestElevationPlanAction,
   updateGuestElevationPlan,
   updateGuestElevationPlanAction,
-  type GuestElevationPlanFull,
 } from "@/lib/elevation-plan-storage";
 import { generateElevationPlanClientSide } from "@/lib/elevation-plan-client";
 
@@ -198,8 +196,9 @@ export function useElevationPlan() {
       const updated = getGuestElevationPlans().find((p) => p.id === id) ?? { id, title: title ?? "", status: status ?? "draft", startDate: "", endDate: "", createdAt: "" };
       return updated as unknown as ElevationPlanItem;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
     },
   });
 
@@ -224,8 +223,9 @@ export function useElevationPlan() {
       updateGuestElevationPlanAction(id, { isCompleted });
       return { id, isCompleted } as ElevationPlanActionItem;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { planId }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
     },
   });
 
@@ -234,7 +234,7 @@ export function useElevationPlan() {
   const updateActionMutation = useMutation<
     ElevationPlanActionItem,
     Error,
-    { id: string; title?: string; description?: string }
+    { id: string; title?: string; description?: string; planId?: string }
   >({
     mutationFn: async ({ id, title, description }) => {
       if (isLoggedIn) {
@@ -250,8 +250,9 @@ export function useElevationPlan() {
       updateGuestElevationPlanAction(id, { title, description });
       return { id, title, description } as ElevationPlanActionItem;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { planId }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
     },
   });
 

@@ -1,13 +1,13 @@
 /**
  * elevation-plan-client.ts
  *
- * Client-side helper that calls the server's draft endpoint to generate a
- * 7-day elevation plan structure. Used indirectly by the useElevationPlan hook
- * for guest users via the /api/elevation-plans/draft endpoint which returns
- * the generated structure without persisting to DB.
+ * Client-side helper that calls the server's preview endpoint to generate a
+ * 7-day elevation plan structure for guest users. This uses the
+ * /api/elevation-plans/preview endpoint, which returns the generated
+ * structure without persisting it to the database.
  *
- * For guest users we call a lightweight preview endpoint that returns the AI
- * structure without user authentication.
+ * The authenticated /api/elevation-plans/draft endpoint is used elsewhere to
+ * create and persist elevation plan drafts for signed-in users.
  */
 
 export interface ElevationPlanActionStructure {

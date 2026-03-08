@@ -156,6 +156,10 @@ export function updateGuestElevationPlanAction(
 
 // ─── Full plan with days + actions ────────────────────────────────────────────
 
+/**
+ * GuestElevationPlanFull is structurally compatible with the hook's
+ * ElevationPlanFull type and can be used wherever that type is expected.
+ */
 export interface GuestElevationPlanFull {
   plan: GuestElevationPlan;
   days: (GuestElevationPlanDay & { actions: GuestElevationPlanAction[] })[];

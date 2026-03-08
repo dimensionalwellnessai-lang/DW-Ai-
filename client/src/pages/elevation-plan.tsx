@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,13 +21,17 @@ import {
   Calendar,
   BookOpen,
   PlayCircle,
-  ChevronRight,
   Loader2,
 } from "lucide-react";
 import { useElevationPlan, type ElevationPlanActionItem, type ElevationPlanDayItem, type ElevationPlanFull } from "@/hooks/use-elevation-plan";
 import { getGuestElevationPlanFull, getGuestDraftPlanForDay } from "@/lib/elevation-plan-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+
+// Helper: cast GuestElevationPlanFull (structurally compatible) to ElevationPlanFull
+function asElevationPlanFull(v: ReturnType<typeof getGuestElevationPlanFull>): ElevationPlanFull | null {
+  return v as ElevationPlanFull | null;
+}
 
 const ACTION_TYPE_ICONS: Record<string, typeof Zap> = {
   habit: Zap,
@@ -185,7 +188,6 @@ function DayTab({
 }
 
 export default function ElevationPlanPage() {
-  const [, navigate] = useLocation();
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
@@ -201,12 +203,12 @@ export default function ElevationPlanPage() {
   const planIdParam = searchParams.get("id");
 
   // Determine which plan to show
-  const [localDraft, setLocalDraft] = useState<ReturnType<typeof getGuestElevationPlanFull> | null>(
-    planIdParam && !isLoggedIn ? getGuestElevationPlanFull(planIdParam) : null
+  const [localDraft, setLocalDraft] = useState<ElevationPlanFull | null>(
+    planIdParam && !isLoggedIn ? asElevationPlanFull(getGuestElevationPlanFull(planIdParam)) : null
   );
 
   // Auth plan from API
-  const { data: remotePlan, isLoading: isLoadingRemote } = useQuery<{ plan: any; days: any[] } | null>({
+  const { data: remotePlan, isLoading: isLoadingRemote } = useQuery<ElevationPlanFull | null>({
     queryKey: [planIdParam ? `/api/elevation-plans/${planIdParam}` : "/api/elevation-plans/active"],
     enabled: isLoggedIn && enabled,
     queryFn: async () => {
@@ -215,12 +217,14 @@ export default function ElevationPlanPage() {
         : "/api/elevation-plans/active";
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) return null;
-      return res.json();
+      return res.json() as Promise<ElevationPlanFull | null>;
     },
   });
 
-  const planData: { plan: any; days: any[] } | null =
-    isLoggedIn ? (remotePlan ?? activePlan) : (localDraft ?? (guestDraftMeta ? getGuestElevationPlanFull(guestDraftMeta.id) : null));
+  const planData: ElevationPlanFull | null =
+    isLoggedIn
+      ? (remotePlan ?? activePlan)
+      : (localDraft ?? (guestDraftMeta ? asElevationPlanFull(getGuestElevationPlanFull(guestDraftMeta.id)) : null));
 
   const isLoading = isLoadingActive || isLoadingRemote;
   const [activeDay, setActiveDay] = useState("1");
@@ -229,6 +233,10 @@ export default function ElevationPlanPage() {
     if (!planData?.plan) return;
     try {
       await updatePlan({ id: planData.plan.id, status: "active" });
+      // For guests, refresh local state to reflect the new active status
+      if (!isLoggedIn) {
+        setLocalDraft(asElevationPlanFull(getGuestElevationPlanFull(planData.plan.id)));
+      }
     } catch (err) {
       console.error("Failed to activate plan:", err);
     }
@@ -239,8 +247,7 @@ export default function ElevationPlanPage() {
       await toggleAction({ id, isCompleted: completed, planId: planData?.plan?.id });
       // For guests, refresh local state
       if (!isLoggedIn && planData?.plan) {
-        const fresh = getGuestElevationPlanFull(planData.plan.id);
-        setLocalDraft(fresh);
+        setLocalDraft(asElevationPlanFull(getGuestElevationPlanFull(planData.plan.id)));
       }
     } catch (err) {
       console.error("Failed to toggle action:", err);
@@ -249,10 +256,9 @@ export default function ElevationPlanPage() {
 
   const handleUpdateAction = async (id: string, title: string, description: string) => {
     try {
-      await updateAction({ id, title, description });
+      await updateAction({ id, title, description, planId: planData?.plan?.id });
       if (!isLoggedIn && planData?.plan) {
-        const fresh = getGuestElevationPlanFull(planData.plan.id);
-        setLocalDraft(fresh);
+        setLocalDraft(asElevationPlanFull(getGuestElevationPlanFull(planData.plan.id)));
       }
     } catch (err) {
       console.error("Failed to update action:", err);
@@ -303,7 +309,7 @@ export default function ElevationPlanPage() {
             onClick={async () => {
               try {
                 const result = await generateDraft({});
-                if (!isLoggedIn) setLocalDraft(result as any);
+                if (!isLoggedIn) setLocalDraft(result as ElevationPlanFull);
               } catch {}
             }}
           >
