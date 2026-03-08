@@ -1776,11 +1776,11 @@ export async function registerRoutes(
       const { message, conversationHistory, context } = req.body;
 
       // Validate message length to prevent oversized payloads
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Message is required" });
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required and cannot be empty" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2020,11 +2020,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Message is required" });
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required and cannot be empty" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2222,11 +2222,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Message is required" });
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required and cannot be empty" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2745,21 +2745,24 @@ export async function registerRoutes(
 
   app.post("/api/goals", requireAuth, async (req, res) => {
     try {
-      const { title, description, ...rest } = req.body;
+      const { title, description, userId: _userId, id: _id, createdAt: _createdAt, ...rest } = req.body;
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Goal title is required" });
       }
-      if (title.length > 200) {
+      if (title.trim().length > 200) {
         return res.status(400).json({ error: "Goal title is too long (max 200 characters)" });
       }
-      if (description && typeof description === "string" && description.length > 1000) {
+      if (description !== undefined && description !== null && typeof description !== "string") {
+        return res.status(400).json({ error: "Goal description must be a string or null" });
+      }
+      if (typeof description === "string" && description.length > 1000) {
         return res.status(400).json({ error: "Goal description is too long (max 1000 characters)" });
       }
       const goal = await storage.createGoal({
-        userId: req.session.userId!,
+        ...rest,
         title: title.trim(),
         description,
-        ...rest,
+        userId: req.session.userId!,
       });
       res.json(goal);
     } catch (error) {
@@ -2773,7 +2776,9 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Goal not found" });
       }
-      const goal = await storage.updateGoal(req.params.id, req.body);
+      // Strip server-managed fields so the client cannot change ownership/timestamps
+      const { userId: _userId, id: _id, createdAt: _createdAt, ...updateData } = req.body ?? {};
+      const goal = await storage.updateGoal(req.params.id, updateData);
       res.json(goal);
     } catch (error) {
       res.status(500).json({ error: "Failed to update goal" });
@@ -2800,21 +2805,24 @@ export async function registerRoutes(
 
   app.post("/api/habits", requireAuth, async (req, res) => {
     try {
-      const { title, description, ...rest } = req.body;
+      const { title, description, userId: _userId, id: _id, createdAt: _createdAt, ...rest } = req.body;
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Habit title is required" });
       }
-      if (title.length > 200) {
+      if (title.trim().length > 200) {
         return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
       }
-      if (description && typeof description === "string" && description.length > 1000) {
+      if (description !== undefined && description !== null && typeof description !== "string") {
+        return res.status(400).json({ error: "Habit description must be a string or null" });
+      }
+      if (typeof description === "string" && description.length > 1000) {
         return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
       }
       const habit = await storage.createHabit({
-        userId: req.session.userId!,
+        ...rest,
         title: title.trim(),
         description,
-        ...rest,
+        userId: req.session.userId!,
       });
       res.json(habit);
     } catch (error) {
@@ -2830,7 +2838,7 @@ export async function registerRoutes(
       }
 
       // Strip sensitive/system-managed fields from the update payload
-      const { userId, id, createdAt, updatedAt, ...updateData } = req.body ?? {};
+      const { userId: _userId, id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...updateData } = req.body ?? {};
 
       // Optionally validate title/description if they are being updated
       if (typeof updateData.title !== "undefined") {
@@ -2840,7 +2848,7 @@ export async function registerRoutes(
         ) {
           return res.status(400).json({ error: "Habit title must be a non-empty string" });
         }
-        if (updateData.title.length > 200) {
+        if (updateData.title.trim().length > 200) {
           return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
         }
         updateData.title = updateData.title.trim();
@@ -2940,7 +2948,9 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Schedule block not found" });
       }
-      const block = await storage.updateScheduleBlock(req.params.id, req.body);
+      // Only allow updates to permitted schedule fields; strip server-managed fields
+      const { userId: _userId, id: _id, ...updateData } = req.body ?? {};
+      const block = await storage.updateScheduleBlock(req.params.id, updateData);
       res.json(block);
     } catch (error) {
       res.status(500).json({ error: "Failed to update schedule block" });
