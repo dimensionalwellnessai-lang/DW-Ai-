@@ -8,14 +8,11 @@ export const EVENTS = {
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
   APP_OPENED_NEW_DAY: "app_opened_new_day",
   COMPLETED_FIRST_ACTION: "completed_first_action",
-  // Mature-flow events
-  FOLLOWUP_ACCEPTED: "followup_accepted",
-  FOLLOWUP_SNOOZED: "followup_snoozed",
-  FOLLOWUP_DISMISSED: "followup_dismissed",
-  PLAN_ACTIVATED: "plan_activated",
-  PLAN_COMPLETED: "plan_completed",
-  CHECKIN_SUBMITTED: "checkin_submitted",
-  REMINDER_INTERACTED: "reminder_interacted",
+  // Follow-up / engagement events
+  FOLLOWUP_CREATED: "followup_created",
+  PLAN_VISITED: "plan_visited",
+  CHECKIN_COMPLETED: "checkin_completed",
+  REMINDER_SET: "reminder_set",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -60,38 +57,23 @@ type CompletedFirstActionPayload = {
   tsLocal: string;
 };
 
-// Mature-flow payload types (no PII)
-type FollowupAcceptedPayload = {
-  followupId: string;
+type FollowupCreatedPayload = {
+  source: "chat" | "insight" | "checkin" | "unknown";
+  dimension: string | null;
 };
 
-type FollowupSnoozedPayload = {
-  followupId: string;
-  snoozeDurationHours: number;
+type PlanVisitedPayload = {
+  planType: "elevation" | "meal" | "workout" | "universal" | "unknown";
 };
 
-type FollowupDismissedPayload = {
-  followupId: string;
+type CheckinCompletedPayload = {
+  dimension: string | null;
+  responseCount: number;
 };
 
-type PlanActivatedPayload = {
-  planItemId: string;
-  switchId: string;
-};
-
-type PlanCompletedPayload = {
-  planItemId: string;
-  switchId: string;
-};
-
-type CheckinSubmittedPayload = {
-  moodScore: number;
-  constraintType: string;
-};
-
-type ReminderInteractedPayload = {
-  action: "dismissed" | "snoozed";
-  reminderType: string;
+type ReminderSetPayload = {
+  reminderType: "habit" | "checkin" | "plan" | "custom";
+  hasTime: boolean;
 };
 
 // Map event names to their payload types
@@ -104,13 +86,10 @@ type EventPayloadMap = {
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
   [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
   [EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload;
-  [EVENTS.FOLLOWUP_ACCEPTED]: FollowupAcceptedPayload;
-  [EVENTS.FOLLOWUP_SNOOZED]: FollowupSnoozedPayload;
-  [EVENTS.FOLLOWUP_DISMISSED]: FollowupDismissedPayload;
-  [EVENTS.PLAN_ACTIVATED]: PlanActivatedPayload;
-  [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
-  [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
-  [EVENTS.REMINDER_INTERACTED]: ReminderInteractedPayload;
+  [EVENTS.FOLLOWUP_CREATED]: FollowupCreatedPayload;
+  [EVENTS.PLAN_VISITED]: PlanVisitedPayload;
+  [EVENTS.CHECKIN_COMPLETED]: CheckinCompletedPayload;
+  [EVENTS.REMINDER_SET]: ReminderSetPayload;
 };
 
 // Session metadata (in-memory only)
@@ -121,6 +100,38 @@ const sessionId =
     ? globalThis.crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
 const env = import.meta.env.DEV ? "dev" : "prod";
+
+// Analytics opt-out key
+const OPT_OUT_KEY = "dw:analyticsOptOut";
+
+/**
+ * Check whether the user has opted out of analytics.
+ */
+export function isAnalyticsOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPT_OUT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set the user's analytics opt-out preference.
+ * When opted out, trackEvent() is a no-op and no events are stored.
+ */
+export function setAnalyticsOptOut(optOut: boolean): void {
+  try {
+    if (optOut) {
+      localStorage.setItem(OPT_OUT_KEY, "true");
+      // Clear any previously queued events from the window queue
+      window.__dwEvents = [];
+    } else {
+      localStorage.removeItem(OPT_OUT_KEY);
+    }
+  } catch {
+    // Never throw
+  }
+}
 
 // Event structure stored in window
 export type StoredEvent = {
@@ -205,8 +216,8 @@ export function trackEvent<K extends AnalyticsEventName>(
   ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
 ): void {
   try {
-    // Respect the user's opt-out preference
-    if (!isAnalyticsEnabled()) return;
+    // Respect user opt-out
+    if (isAnalyticsOptedOut()) return;
 
     const payload = (args[0] as unknown) ?? undefined;
 
