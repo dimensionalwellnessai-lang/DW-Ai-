@@ -495,6 +495,22 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     ],
   },
   {
+    id: "elevation-plan",
+    path: "/elevation-plan",
+    label: "Elevation Plan",
+    icon: "trending-up",
+    type: "page",
+    description: "7-day elevation plan builder – draft, review, and activate",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 57,
+    enabled: true,
+    linkedType: "plan",
+    actions: [
+      { id: "view-plan", label: "View elevation plan", to: "/elevation-plan", icon: "trending-up" },
+    ],
+  },
+  {
     id: "expand-my-week",
     path: "/expand-my-week",
     label: "Expand My Week",

@@ -16,6 +16,7 @@ export interface FeatureFlags {
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
+  ELEVATION_PLAN: boolean;          // ✅ Elevation Plan Builder 7-day (PR #5)
 }
 
 /**
@@ -98,6 +99,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
+  ELEVATION_PLAN: true,
 };
 
 /**

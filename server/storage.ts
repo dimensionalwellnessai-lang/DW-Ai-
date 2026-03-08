@@ -235,6 +235,15 @@ import {
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
+  elevationPlans,
+  type ElevationPlan,
+  type InsertElevationPlan,
+  elevationPlanDays,
+  type ElevationPlanDay,
+  type InsertElevationPlanDay,
+  elevationPlanActions,
+  type ElevationPlanAction,
+  type InsertElevationPlanAction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
@@ -630,6 +639,19 @@ export interface IStorage {
   getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]>;
   createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup>;
   updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined>;
+
+  // Elevation Plan Builder
+  getElevationPlans(userId: string): Promise<ElevationPlan[]>;
+  getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined>;
+  getActiveElevationPlan(userId: string): Promise<ElevationPlan | undefined>;
+  getDraftElevationPlanForDay(userId: string, date: string, conversationId?: string): Promise<ElevationPlan | undefined>;
+  createElevationPlan(plan: InsertElevationPlan): Promise<ElevationPlan>;
+  updateElevationPlan(id: string, userId: string, data: Partial<ElevationPlan>): Promise<ElevationPlan | undefined>;
+  getElevationPlanDays(planId: string): Promise<ElevationPlanDay[]>;
+  createElevationPlanDay(day: InsertElevationPlanDay): Promise<ElevationPlanDay>;
+  getElevationPlanActions(planDayId: string): Promise<ElevationPlanAction[]>;
+  createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction>;
+  updateElevationPlanAction(id: string, data: Partial<ElevationPlanAction>): Promise<ElevationPlanAction | undefined>;
 }
 
 export interface AdminAnalytics {
@@ -2999,6 +3021,89 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(dwFollowups)
       .set({ status })
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  // ─── Elevation Plan Builder ───────────────────────────────────────────────
+
+  async getElevationPlans(userId: string): Promise<ElevationPlan[]> {
+    return db.select().from(elevationPlans)
+      .where(eq(elevationPlans.userId, userId))
+      .orderBy(desc(elevationPlans.createdAt));
+  }
+
+  async getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined> {
+    const [row] = await db.select().from(elevationPlans)
+      .where(and(eq(elevationPlans.id, id), eq(elevationPlans.userId, userId)));
+    return row;
+  }
+
+  async getActiveElevationPlan(userId: string): Promise<ElevationPlan | undefined> {
+    const [row] = await db.select().from(elevationPlans)
+      .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "active")))
+      .orderBy(desc(elevationPlans.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async getDraftElevationPlanForDay(userId: string, date: string, conversationId?: string): Promise<ElevationPlan | undefined> {
+    const conditions = [
+      eq(elevationPlans.userId, userId),
+      eq(elevationPlans.status, "draft"),
+      eq(elevationPlans.startDate, date),
+    ];
+    if (conversationId) conditions.push(eq(elevationPlans.sourceConversationId, conversationId));
+    const [row] = await db.select().from(elevationPlans)
+      .where(and(...conditions))
+      .orderBy(desc(elevationPlans.createdAt))
+      .limit(1);
+    return row;
+  }
+
+  async createElevationPlan(plan: InsertElevationPlan): Promise<ElevationPlan> {
+    const [created] = await db.insert(elevationPlans)
+      .values({ ...plan, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async updateElevationPlan(id: string, userId: string, data: Partial<ElevationPlan>): Promise<ElevationPlan | undefined> {
+    const [updated] = await db.update(elevationPlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(elevationPlans.id, id), eq(elevationPlans.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async getElevationPlanDays(planId: string): Promise<ElevationPlanDay[]> {
+    return db.select().from(elevationPlanDays)
+      .where(eq(elevationPlanDays.planId, planId))
+      .orderBy(elevationPlanDays.dayIndex);
+  }
+
+  async createElevationPlanDay(day: InsertElevationPlanDay): Promise<ElevationPlanDay> {
+    const [created] = await db.insert(elevationPlanDays).values(day).returning();
+    return created;
+  }
+
+  async getElevationPlanActions(planDayId: string): Promise<ElevationPlanAction[]> {
+    return db.select().from(elevationPlanActions)
+      .where(eq(elevationPlanActions.planDayId, planDayId))
+      .orderBy(elevationPlanActions.createdAt);
+  }
+
+  async createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction> {
+    const [created] = await db.insert(elevationPlanActions)
+      .values({ ...action, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async updateElevationPlanAction(id: string, data: Partial<ElevationPlanAction>): Promise<ElevationPlanAction | undefined> {
+    const [updated] = await db.update(elevationPlanActions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(elevationPlanActions.id, id))
       .returning();
     return updated;
   }
