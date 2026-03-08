@@ -22,7 +22,7 @@ export interface GuestReminder {
   updatedAt: string;
 }
 
-const REMINDERS_KEY = "dw_reminders";
+const REMINDERS_KEY = "dw_reminders_data";
 
 function generateId(): string {
   return `gr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;

@@ -46,13 +46,21 @@ export function scheduleReminderTimer(reminder: {
     return;
   }
 
-  // Max safe setTimeout is ~24.8 days; for farther-future reminders we
-  // re-schedule when the app reopens (via rescheduleAll).
+  // Max safe setTimeout is ~24.8 days. For far-future reminders, schedule a
+  // chunked timeout that re-checks whether the reminder is actually due before
+  // firing, and re-schedules itself if not.
   const MAX_TIMEOUT = 2_147_483_647; // ~24.8 days
-  const timer = setTimeout(
-    () => fireReminder(reminder),
-    Math.min(delay, MAX_TIMEOUT)
-  );
+  const effectiveDelay = Math.min(delay, MAX_TIMEOUT);
+  const timer = setTimeout(() => {
+    const remaining = new Date(reminder.scheduledAt).getTime() - Date.now();
+    if (remaining <= 0) {
+      // Due now (or overdue) – fire
+      fireReminder(reminder);
+    } else {
+      // Still in the future (chunked re-schedule)
+      scheduleReminderTimer(reminder);
+    }
+  }, effectiveDelay);
   timers.set(reminder.id, timer);
 }
 
@@ -120,6 +128,13 @@ function fireBrowserNotification(reminder: {
 }): void {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
+
+  // Respect the app-level preference (user can disable without revoking browser permission)
+  try {
+    if (localStorage.getItem("dw_browser_notif_enabled") === "false") return;
+  } catch {
+    // Blocked storage – proceed
+  }
 
   // Prefer Service Worker notification for reliability; fall back to plain Notification
   if ("serviceWorker" in navigator) {

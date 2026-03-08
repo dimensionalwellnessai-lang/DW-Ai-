@@ -19,6 +19,7 @@ import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { RemindersPanel } from "@/components/reminders-panel";
+import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
 import {
   User,
   Bell,
@@ -44,7 +45,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const MENU_TUTORIAL_KEY = "dw:menuTutorialDone";
 const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
-const CHECKIN_REMINDER_TIME_KEY = "dw_checkin_reminder_time";
+/** App-level preference key: user can disable browser notifications without revoking permission */
+const BROWSER_NOTIF_ENABLED_KEY = "dw_browser_notif_enabled";
 
 export function SettingsPage() {
   useTutorialStart("settings", 1000);
@@ -67,6 +69,18 @@ export function SettingsPage() {
   const handleCheckinTimeChange = (val: string) => {
     setCheckinReminderTime(val);
     try { localStorage.setItem(CHECKIN_REMINDER_TIME_KEY, val); } catch { /* blocked */ }
+  };
+  // App-level browser notification preference (separate from OS/browser permission)
+  const [browserNotifEnabled, setBrowserNotifEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem(BROWSER_NOTIF_ENABLED_KEY) !== "false"; } catch { return true; }
+  });
+  const handleBrowserNotifToggle = async (checked: boolean) => {
+    if (checked && permission !== "granted") {
+      const granted = await requestPermission();
+      if (!granted) return; // permission denied by browser – don't update pref
+    }
+    setBrowserNotifEnabled(checked);
+    try { localStorage.setItem(BROWSER_NOTIF_ENABLED_KEY, String(checked)); } catch { /* blocked */ }
   };
   
   const handleReplayMenuTour = () => {
@@ -297,20 +311,16 @@ export function SettingsPage() {
                       Browser notifications
                     </Label>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Get notified even when DW is in the background
+                      Get notified while DW is open in this browser
                       {!isSupported && " (not supported in this browser)"}
                     </p>
                   </div>
                   {isSupported ? (
                     <Switch
                       id="browser-notif-toggle"
-                      checked={permission === "granted"}
+                      checked={browserNotifEnabled && permission === "granted"}
                       disabled={permission === "denied"}
-                      onCheckedChange={async (checked) => {
-                        if (checked && permission !== "granted") {
-                          await requestPermission();
-                        }
-                      }}
+                      onCheckedChange={handleBrowserNotifToggle}
                       data-testid="switch-browser-notifications"
                     />
                   ) : (
@@ -323,7 +333,7 @@ export function SettingsPage() {
                     Permission denied — enable notifications in your browser settings to use this feature.
                   </div>
                 )}
-                {permission === "granted" && (
+                {permission === "granted" && browserNotifEnabled && (
                   <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                     <BellRing className="h-3.5 w-3.5 shrink-0" />
                     Browser notifications active. Only fires while the app is open.

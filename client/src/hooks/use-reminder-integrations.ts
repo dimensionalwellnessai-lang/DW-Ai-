@@ -4,7 +4,7 @@
  * Wires the REMINDERS feature (PR #7) into the existing check-in and
  * elevation-plan flows.
  *
- * Mount this once (e.g., in App.tsx or ReminderBanner) when REMINDERS flag is ON.
+ * Mount this once (e.g., in ReminderBanner) with the enabled flag.
  * It handles:
  *   1. Daily check-in reminder – fires if no check-in by the user's configured time.
  *   2. Elevation plan daily reminder – fires at the user's configured morning time.
@@ -12,6 +12,7 @@
 
 import { useEffect, useRef } from "react";
 import { useReminders } from "@/hooks/use-reminders";
+import { useAuth } from "@/hooks/use-auth";
 import type { CreateReminderInput } from "@/hooks/use-reminders";
 
 const CHECKIN_REMINDER_TIME_KEY = "dw_checkin_reminder_time";
@@ -24,45 +25,95 @@ function todayIso(): string {
 }
 
 /** Build a Date for HH:MM today (or tomorrow if time has passed today). */
-function buildTimeToday(hhmm: string, allowPast = false): Date {
+function buildTimeToday(hhmm: string): Date {
   const [hours, minutes] = hhmm.split(":").map(Number);
   const d = new Date();
   d.setHours(hours, minutes, 0, 0);
-  if (!allowPast && d <= new Date()) {
+  if (d <= new Date()) {
     // Already passed – schedule for tomorrow
     d.setDate(d.getDate() + 1);
   }
   return d;
 }
 
-/** Read whether today's check-in already happened (guest storage key). */
-function hasCheckinToday(): boolean {
+/**
+ * Read whether today's check-in already happened.
+ * - Guests: check dw_guest_data.moodCheckins in localStorage.
+ * - Auth users: use a synchronous XHR call to /api/mood/today as fallback
+ *   (acceptable here since this runs once on mount, not on every render).
+ */
+function hasCheckinToday(isLoggedIn: boolean): boolean {
   const today = todayIso();
+
+  // 1) Guest mode: localStorage-based check
   try {
     const raw = localStorage.getItem("dw_guest_data");
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    const checkins: Array<{ date: string }> = data?.moodCheckins ?? [];
-    return checkins.some((c) => c.date === today);
+    if (raw) {
+      const data = JSON.parse(raw);
+      const checkins: Array<{ date: string }> = data?.moodCheckins ?? [];
+      if (checkins.some((c) => c.date === today)) return true;
+    }
   } catch {
-    return false;
+    // Ignore localStorage/JSON errors
   }
+
+  // 2) Auth users: quick server check
+  if (isLoggedIn) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/mood/today", false); // synchronous – only on mount
+      xhr.withCredentials = true;
+      xhr.send(null);
+      if (xhr.status === 200) return true;
+    } catch {
+      // Network or browser security error – treat as "not checked in"
+    }
+  }
+
+  return false;
 }
 
-/** Read whether there's an active elevation plan (guests: elevation-storage). */
-function hasActiveElevationPlan(): boolean {
+/**
+ * Read whether there's an active elevation plan.
+ * - Guests: check localStorage.
+ * - Auth users: check /api/elevation-plans/active synchronously on mount.
+ */
+function hasActiveElevationPlan(isLoggedIn: boolean): boolean {
+  // Guest path
   try {
     const raw = localStorage.getItem("dw_elevation_plans");
-    if (!raw) return false;
-    const plans: Array<{ status: string }> = JSON.parse(raw);
-    return plans.some((p) => p.status === "active");
+    if (raw) {
+      const plans: Array<{ status: string }> = JSON.parse(raw);
+      if (plans.some((p) => p.status === "active")) return true;
+    }
   } catch {
-    return false;
+    // ignore
   }
+
+  // Auth path
+  if (isLoggedIn) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", "/api/elevation-plans/active", false); // synchronous – only on mount
+      xhr.withCredentials = true;
+      xhr.send(null);
+      if (xhr.status === 200) {
+        const body = JSON.parse(xhr.responseText);
+        return Boolean(body?.plan?.id);
+      }
+    } catch {
+      // Network or parse error – assume no plan
+    }
+  }
+
+  return false;
 }
 
-export function useReminderIntegrations() {
+export function useReminderIntegrations(enabled: boolean) {
+  const { user } = useAuth();
+  const isLoggedIn = Boolean(user);
   const { createReminder } = useReminders();
+
   // Capture the latest createReminder in a ref so the effect only runs once
   // per day (on mount) while still using the up-to-date function reference.
   const createReminderRef = useRef(createReminder);
@@ -71,6 +122,8 @@ export function useReminderIntegrations() {
   });
 
   useEffect(() => {
+    if (!enabled) return;
+
     // Convenience alias pointing at the stable ref
     const create = (input: CreateReminderInput) => createReminderRef.current(input);
     const today = todayIso();
@@ -80,7 +133,7 @@ export function useReminderIntegrations() {
       try { return localStorage.getItem(LAST_CHECKIN_REMINDER_DATE_KEY) ?? ""; } catch { return ""; }
     })();
 
-    if (lastCheckinReminderDate !== today && !hasCheckinToday()) {
+    if (lastCheckinReminderDate !== today && !hasCheckinToday(isLoggedIn)) {
       const timeStr = (() => {
         try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
       })();
@@ -106,7 +159,7 @@ export function useReminderIntegrations() {
       try { return localStorage.getItem(LAST_PLAN_REMINDER_DATE_KEY) ?? ""; } catch { return ""; }
     })();
 
-    if (lastPlanReminderDate !== today && hasActiveElevationPlan()) {
+    if (lastPlanReminderDate !== today && hasActiveElevationPlan(isLoggedIn)) {
       const planTimeStr = (() => {
         try { return localStorage.getItem(PLAN_REMINDER_TIME_KEY) ?? "09:00"; } catch { return "09:00"; }
       })();
@@ -125,8 +178,8 @@ export function useReminderIntegrations() {
     }
     // Run once per day (on mount only)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
 }
 
-/** Exported constant so Settings can read/write the same key. */
+/** Exported constants so Settings can read/write the same keys. */
 export { CHECKIN_REMINDER_TIME_KEY, PLAN_REMINDER_TIME_KEY };

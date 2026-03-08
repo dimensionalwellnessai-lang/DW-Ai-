@@ -332,16 +332,21 @@ export default function ActionCenterPage() {
         }
         // Create/replace a reminder so the snooze fires at the right time
         if (remindersEnabled) {
-          // Cancel any existing reminder for this follow-up first
-          await cancelBySource("followup", id);
-          await createReminder({
-            type: "followup",
-            title: "Follow-up reminder",
-            body: "You snoozed a follow-up — ready to revisit it now?",
-            scheduledAt: until,
-            sourceEntityType: "followup",
-            sourceEntityId: id,
-          });
+          try {
+            // Cancel any existing reminder for this follow-up first
+            await cancelBySource("followup", id);
+            await createReminder({
+              type: "followup",
+              title: "Follow-up reminder",
+              body: "You snoozed a follow-up — ready to revisit it now?",
+              scheduledAt: until,
+              sourceEntityType: "followup",
+              sourceEntityId: id,
+            });
+          } catch (reminderError) {
+            // Don't let reminder failures break the core snooze flow
+            console.error("Failed to create follow-up snooze reminder", reminderError);
+          }
         }
       } finally {
         setMutating(null);
@@ -363,7 +368,11 @@ export default function ActionCenterPage() {
         }
         // Cancel any pending reminders for this follow-up
         if (remindersEnabled) {
-          await cancelBySource("followup", id);
+          try {
+            await cancelBySource("followup", id);
+          } catch (reminderError) {
+            console.error("Failed to cancel follow-up reminder on dismiss", reminderError);
+          }
         }
       } finally {
         setMutating(null);
@@ -385,7 +394,11 @@ export default function ActionCenterPage() {
         }
         // Cancel any pending reminders for this follow-up
         if (remindersEnabled) {
-          await cancelBySource("followup", id);
+          try {
+            await cancelBySource("followup", id);
+          } catch (reminderError) {
+            console.error("Failed to cancel follow-up reminder on mark-answered", reminderError);
+          }
         }
       } finally {
         setMutating(null);

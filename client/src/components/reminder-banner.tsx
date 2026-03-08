@@ -34,8 +34,8 @@ export function ReminderBanner() {
   const [showSnooze, setShowSnooze] = useState(false);
   const handledRef = useRef<Set<string>>(new Set());
 
-  // Wire check-in + elevation plan integrations
-  useReminderIntegrations();
+  // Wire check-in + elevation plan integrations (gated by flag internally)
+  useReminderIntegrations(enabled);
 
   // Keep scheduler in sync with the current reminders list
   useEffect(() => {
@@ -46,22 +46,24 @@ export function ReminderBanner() {
   // Register callback when a reminder fires
   useEffect(() => {
     if (!enabled) return;
-    const unregister = onReminderDue((r) => {
+    const unregister = onReminderDue(async (r) => {
       if (handledRef.current.has(r.id)) return;
       handledRef.current.add(r.id);
       // Find the full record; skip if not found (may have been dismissed/cancelled)
       const full = reminders.find((rem) => rem.id === r.id);
       if (!full) return;
+      // Mark as sent immediately so re-loads don't re-fire the same banner
+      await markSent(r.id);
       setActiveReminder(full);
     });
     return unregister;
-  }, [enabled, reminders]);
+  }, [enabled, reminders, markSent]);
 
   if (!enabled || !activeReminder) return null;
 
   const handleDismiss = async () => {
+    // Use `dismissed` status for user-initiated dismissal
     await dismissReminder(activeReminder.id);
-    await markSent(activeReminder.id);
     setActiveReminder(null);
     setShowSnooze(false);
   };
