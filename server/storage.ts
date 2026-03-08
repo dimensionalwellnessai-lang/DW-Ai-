@@ -240,7 +240,7 @@ import {
   type InsertElevationCheck,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -3006,13 +3006,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
-    const conditions = [eq(dwFollowups.userId, userId)];
-    if (status) conditions.push(eq(dwFollowups.status, status));
-    return db.select()
+    const userCondition = eq(dwFollowups.userId, userId);
+    let statusCondition: ReturnType<typeof eq> | ReturnType<typeof or> | undefined;
+    if (status && status !== "all") {
+      if (status === "pending") {
+        // Return pending + snoozed-expired items as actionable
+        const pendingCond = eq(dwFollowups.status, "pending");
+        const snoozedExpiredCond = and(
+          eq(dwFollowups.status, "snoozed"),
+          lte(dwFollowups.snoozedUntil, new Date())
+        );
+        statusCondition = or(pendingCond, snoozedExpiredCond);
+      } else {
+        statusCondition = eq(dwFollowups.status, status);
+      }
+    }
+    const whereClause = statusCondition
+      ? and(userCondition, statusCondition)
+      : userCondition;
+    // No limit when fetching all statuses so the Completed bucket is complete
+    const limit = status === "all" ? undefined : 50;
+    const query = db.select()
       .from(dwFollowups)
-      .where(and(...conditions))
-      .orderBy(desc(dwFollowups.createdAt))
-      .limit(20);
+      .where(whereClause)
+      .orderBy(desc(dwFollowups.createdAt));
+    return limit !== undefined ? query.limit(limit) : query;
   }
 
   async createDwFollowup(followup: InsertDwFollowup): Promise<DwFollowup> {
@@ -3020,9 +3038,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateDwFollowupStatus(id: string, userId: string, status: string): Promise<DwFollowup | undefined> {
+  async updateDwFollowup(id: string, userId: string, fields: Partial<Pick<DwFollowup, "status" | "snoozedUntil" | "acceptedAt" | "answeredAt" | "dismissedAt">>): Promise<DwFollowup | undefined> {
     const [updated] = await db.update(dwFollowups)
-      .set({ status })
+      .set(fields)
       .where(and(eq(dwFollowups.id, id), eq(dwFollowups.userId, userId)))
       .returning();
     return updated;
