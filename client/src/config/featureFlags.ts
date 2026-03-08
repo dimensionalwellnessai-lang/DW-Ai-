@@ -17,7 +17,7 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
-  REMINDERS: boolean;               // ⏸️ Local notifications / reminders layer (PR #7)
+  DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
 }
 
 /**
@@ -116,14 +116,14 @@ function resolveElevationEngineFlag(): boolean {
 }
 
 /**
- * Resolves the initial value for the REMINDERS feature flag.
+ * Resolves the initial value for the DAILY_CHECKIN feature flag.
  * Default is OFF; enable locally via:
- *   localStorage.setItem('dw_reminders', 'true')  — persists across sessions
- *   ?rem=1 query param                              — one-time, per URL
+ *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
+ *   ?dc=1 query param                                          — one-time, per URL
  */
-function resolveRemindersFlag(): boolean {
+function resolveDailyCheckinFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reminders") === "true") {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_daily_checkin_enabled") === "true") {
       return true;
     }
   } catch {
@@ -132,7 +132,7 @@ function resolveRemindersFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("rem") === "1";
+      return new URLSearchParams(location.search).get("dc") === "1";
     }
   } catch {
     // URL parsing failed – fail safely
@@ -153,7 +153,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
-  REMINDERS: resolveRemindersFlag(),
+  DAILY_CHECKIN: resolveDailyCheckinFlag(),
 };
 
 /**

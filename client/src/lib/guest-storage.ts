@@ -2806,3 +2806,54 @@ export function setGuestConvLastProcessedIndex(conversationId: string, index: nu
   log[conversationId] = index;
   safeWriteJson(DW_GUEST_CONV_PROCESSING_KEY, log);
 }
+
+// ── Daily Check-ins: Guest-side localStorage storage (PR #6) ─────────────────
+
+const GUEST_DAILY_CHECKINS_KEY = "dw_guest_daily_checkins";
+
+export interface GuestDailyCheckin {
+  id: string;
+  date: string; // YYYY-MM-DD
+  moodScore: number; // 1–5
+  constraintType: string;
+  constraintNote: string | null;
+  createdAt: number; // epoch ms
+}
+
+export function getGuestDailyCheckins(): GuestDailyCheckin[] {
+  return safeReadJson<GuestDailyCheckin[]>(GUEST_DAILY_CHECKINS_KEY, []);
+}
+
+export function getTodayGuestCheckin(date: string): GuestDailyCheckin | null {
+  const all = getGuestDailyCheckins();
+  return all.find((c) => c.date === date) ?? null;
+}
+
+export function upsertGuestDailyCheckin(
+  data: Omit<GuestDailyCheckin, "id" | "createdAt">
+): GuestDailyCheckin {
+  const all = getGuestDailyCheckins();
+  const existing = all.find((c) => c.date === data.date);
+  if (existing) {
+    const updated: GuestDailyCheckin = { ...existing, ...data };
+    const list = all.map((c) => (c.date === data.date ? updated : c));
+    safeWriteJson(GUEST_DAILY_CHECKINS_KEY, list);
+    return updated;
+  }
+  const newCheckin: GuestDailyCheckin = {
+    ...data,
+    id: `dw_checkin_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    createdAt: Date.now(),
+  };
+  safeWriteJson(GUEST_DAILY_CHECKINS_KEY, [newCheckin, ...all]);
+  return newCheckin;
+}
+
+export function getRecentGuestCheckins(days: number): GuestDailyCheckin[] {
+  const cappedDays = Math.min(days, 90);
+  const all = getGuestDailyCheckins();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - cappedDays);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return all.filter((c) => c.date >= cutoffStr).sort((a, b) => b.date.localeCompare(a.date));
+}

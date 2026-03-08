@@ -20,6 +20,7 @@ import { HealthSnapshotCard } from "./components/HealthSnapshotCard";
 import { MomentumCard } from "./components/MomentumCard";
 import { FollowUpCard } from "./components/FollowUpCard";
 import { DWJournalCard } from "./components/DWJournalCard";
+import { DailyCheckinCard } from "./components/DailyCheckinCard";
 import { isFeatureEnabled } from "@/config/featureFlags";
 
 function CardSkeleton() {
@@ -37,6 +38,7 @@ function CardSkeleton() {
 export default function HomeCommandCenter() {
   const summary = useHomeSummary();
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
+  const dailyCheckinEnabled = isFeatureEnabled("DAILY_CHECKIN");
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -68,6 +70,7 @@ export default function HomeCommandCenter() {
           ) : (
             <>
               <TodayCard summary={summary} />
+              {dailyCheckinEnabled && <DailyCheckinCard />}
               <InsightSnapshotCard summary={summary} />
               {dwInsightJournalEnabled && (
                 <DWJournalCard summary={summary} />

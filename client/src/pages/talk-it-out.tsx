@@ -2,17 +2,20 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { shouldCaptureInsight, buildInsight, type InsightSource } from "@/core/conversationInsights";
 import { useInsights } from "@/hooks/use-insights";
+import { useDailyCheckin } from "@/hooks/use-daily-checkin";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
+import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
 import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Heart } from "lucide-react";
+import { Send, Loader2, Heart, ClipboardCheck, X } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -100,11 +103,18 @@ export function TalkItOutPage() {
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
+  const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Staged insight payload: populated inside setMessages updater (where prev.length is
   // accurate), then flushed in a useEffect so the save runs after React commits the update.
   const pendingInsightRef = useRef<{ userText: string; assistantText: string; source: InsightSource } | null>(null);
+
+  // Daily check-in state (feature-gated)
+  const dailyCheckinEnabled = isFeatureEnabled("DAILY_CHECKIN");
+  const { todayCheckin, isLoading: checkinLoading, submitCheckin, isSubmitting: checkinSubmitting, today } = useDailyCheckin();
+  const showCheckinBanner = dailyCheckinEnabled && !checkinLoading && !todayCheckin && !checkinBannerDismissed;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -469,6 +479,33 @@ export function TalkItOutPage() {
 
       <div className="border-t bg-background/95 backdrop-blur-sm">
         <div className="max-w-2xl mx-auto p-4">
+          {/* Daily check-in banner (shown only when check-in is missing) */}
+          {showCheckinBanner && (
+            <div className="flex items-center justify-between gap-2 mb-3 px-3 py-2 rounded-xl bg-green-500/8 border border-green-500/20 text-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-green-600 shrink-0" />
+                <span className="text-foreground/80">Quick check-in for today?</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-green-500/30 text-green-700 hover:bg-green-500/10"
+                  onClick={() => setCheckinModalOpen(true)}
+                >
+                  Start
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setCheckinBannerDismissed(true)}
+                  aria-label="Dismiss check-in prompt"
+                  className="p-1 rounded hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 items-end">
             <Textarea
               ref={inputRef}
@@ -518,6 +555,148 @@ export function TalkItOutPage() {
         onResume={handleCrisisResume}
         userMessage={pendingCrisisMessage}
       />
+
+      {/* Daily check-in modal */}
+      {dailyCheckinEnabled && (
+        <CheckinModal
+          open={checkinModalOpen}
+          onClose={() => setCheckinModalOpen(false)}
+          onSubmit={async (moodScore, constraintType, constraintNote) => {
+            await submitCheckin({ date: today, moodScore, constraintType, constraintNote });
+            setCheckinModalOpen(false);
+          }}
+          isSubmitting={checkinSubmitting}
+        />
+      )}
     </div>
+  );
+}
+
+// ── CheckinModal ──────────────────────────────────────────────────────────────
+
+interface CheckinModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (moodScore: number, constraintType: string, constraintNote?: string) => Promise<void>;
+  isSubmitting: boolean;
+}
+
+function CheckinModal({ open, onClose, onSubmit, isSubmitting }: CheckinModalProps) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [moodScore, setMoodScore] = useState<number | null>(null);
+  const [constraintType, setConstraintType] = useState("");
+  const [constraintNote, setConstraintNote] = useState("");
+
+  function reset() {
+    setStep(1);
+    setMoodScore(null);
+    setConstraintType("");
+    setConstraintNote("");
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
+
+  async function handleSubmit() {
+    if (!moodScore || !constraintType) return;
+    await onSubmit(moodScore, constraintType, constraintNote || undefined);
+    reset();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <ClipboardCheck className="h-4 w-4 text-green-500" />
+            Daily Check-in
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {step === 1 ? (
+            <>
+              <p className="text-sm text-muted-foreground">How's your energy today? (1 = very low, 5 = great)</p>
+              <div className="flex gap-2 justify-center">
+                {DAILY_CHECKIN_MOOD_OPTIONS.map(({ score, label }) => (
+                  <button
+                    key={score}
+                    type="button"
+                    onClick={() => { setMoodScore(score); setStep(2); }}
+                    className={`w-10 h-10 rounded-full text-sm font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      moodScore === score ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50 hover:bg-primary/5"
+                    }`}
+                    aria-label={label}
+                  >
+                    {score}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Energy:</span>
+                <span className="text-sm font-semibold">{moodScore}/5</span>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-xs text-primary hover:underline focus:outline-none"
+                >
+                  change
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground">Biggest constraint today?</p>
+              <div className="flex flex-wrap gap-1.5">
+                {DAILY_CHECKIN_CONSTRAINT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setConstraintType(opt)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      constraintType === opt
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 hover:border-primary/50 hover:bg-primary/5"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {constraintType === "Other" && (
+                <input
+                  type="text"
+                  value={constraintNote}
+                  onChange={(e) => setConstraintNote(e.target.value)}
+                  placeholder="Briefly describe…"
+                  maxLength={200}
+                  className="w-full text-sm rounded-lg border border-border/60 bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              )}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                >
+                  Skip
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!constraintType || isSubmitting}
+                  onClick={handleSubmit}
+                  className="flex-1"
+                >
+                  {isSubmitting ? "Saving…" : "Save check-in"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
