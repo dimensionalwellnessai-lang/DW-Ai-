@@ -87,20 +87,25 @@ const body = insertGoalSchema.parse(req.body); // throws 400 on invalid input
 
 **Rule:** All new user-facing features must ship behind a feature flag initially.
 
-- Feature flags are defined in `client/src/config/` as a plain object (not an external service yet).
-- Flags follow the naming pattern: `FEATURE_<DOMAIN>_<NAME>` (e.g., `FEATURE_GOALS_AI_SUGGESTIONS`).
-- Flag evaluation happens in a hook, never inline in JSX:
+- Feature flags are defined in `client/src/config/featureFlags.ts` as `FEATURE_FLAGS` (uppercase const, typed via the `FeatureFlags` interface).
+- Flags follow the naming pattern: `<DOMAIN>_<NAME>` in UPPER_SNAKE_CASE (e.g., `GOALS_AI_SUGGESTIONS`). No `FEATURE_` prefix.
+- Flag evaluation uses the shared `isFeatureEnabled()` helper — never ad-hoc inline boolean checks in JSX:
 
 ```ts
 // client/src/config/featureFlags.ts
-export const featureFlags = {
-  FEATURE_GOALS_AI_SUGGESTIONS: false,
-} as const;
+export const FEATURE_FLAGS: FeatureFlags = {
+  GOALS_AI_SUGGESTIONS: false,
+  // ... other flags
+};
 
-// custom hook
-export function useFeatureFlag(flag: keyof typeof featureFlags) {
-  return featureFlags[flag];
+export function isFeatureEnabled(feature: keyof FeatureFlags): boolean {
+  return FEATURE_FLAGS[feature] === true;
 }
+
+// usage in a component or hook
+import { isFeatureEnabled } from "@/config/featureFlags";
+
+const isGoalsAISuggestionsEnabled = isFeatureEnabled("GOALS_AI_SUGGESTIONS");
 ```
 
 - A PR that ships a disabled flag is acceptable; a PR that ships an untested enabled flag is not.
@@ -124,7 +129,7 @@ export function useFeatureFlag(flag: keyof typeof featureFlags) {
 
 ### Test file conventions
 
-- Test files live in `client/src/test/` (client) or `server/test/` (server).
+- Client test files live in `client/src/test/`. Server-side tests are not yet established; when added, they should live in `server/test/`.
 - Test files are named `<module>.test.ts`.
 - Use Vitest for client tests; import production helpers directly (do not duplicate logic).
 - Tests must pass `npm run check` (TypeScript) before merging.

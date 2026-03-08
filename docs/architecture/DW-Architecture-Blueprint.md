@@ -58,7 +58,7 @@
 **Rules:**
 - Every protected endpoint checks `req.session.userId` before proceeding.
 - All inputs are validated with a Zod schema before use.
-- Responses follow a consistent shape: `{ data, error, meta }`.
+- Responses use explicit, documented JSON shapes per endpoint; avoid introducing a new global `{ data, error, meta }` envelope unless the existing routes are refactored to match.
 - No raw SQL strings — always use Drizzle query builders.
 
 ---
@@ -119,13 +119,17 @@
 
 ## 3. Home Aggregator Service Principle
 
-The **Today Hub** (`/today`) acts as the home aggregator: it pulls lightweight summaries from each domain (goals, habits, calendar, mood, insights) through a single `/api/today-summary` endpoint. This endpoint:
+The **Today Hub** (`/today`) is the conceptual home aggregator for DW: it is responsible for surfacing lightweight summaries from each domain (goals, habits, calendar, mood, insights) in one place.
+
+**Current state:** `today-hub` currently fans out to multiple domain-specific endpoints on initial load (e.g., `/api/auth/me`, `/api/mood/today`, `/api/calendar`, `/api/schedule`, `/api/routines`, `/api/goals`) using parallel React Query calls. There is **no** `/api/today-summary` route implemented in `server/routes.ts` yet.
+
+**Target design:** introduce a consolidated `/api/today-summary` endpoint that:
 
 1. Queries each domain service in parallel.
 2. Merges results into a unified summary object.
-3. Returns one response — the UI never fans out to multiple endpoints on initial load.
+3. Returns a single response so the UI does not need to fan out on initial load.
 
-This keeps the home screen fast and prevents waterfall fetches.
+Moving toward this aggregator pattern is intended to keep the home screen fast, simplify client data-fetching logic, and prevent waterfall fetches.
 
 ---
 
