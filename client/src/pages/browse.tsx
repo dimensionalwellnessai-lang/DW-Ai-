@@ -58,6 +58,7 @@ import type { WellnessContent, UserProfile, SavedContent } from "@shared/schema"
 import { ExploreFeedCard } from "@/components/explore-feed-card";
 import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
 import type { ExploreFeedContentType } from "@/components/explore-feed-card";
+import { COPY } from "@/copy/en";
 
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
@@ -932,10 +933,10 @@ ${contentList}`,
             </div>
             {forYouContent.length === 0 && (
               <div className="text-center py-12">
-                <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                <h3 className="font-medium mb-2">AI-Curated Just for You</h3>
+                <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="font-medium mb-1">{COPY.emptyStates.forYou.title}</p>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Your personalized content feed will appear here based on your wellness goals, energy levels, and preferences.
+                  {COPY.emptyStates.forYou.body}
                 </p>
               </div>
             )}
@@ -1251,8 +1252,8 @@ ${contentList}`,
                   </Button>
                 </>
               ) : (
-                <p className="text-muted-foreground">
-                  No content found in this category yet.
+                <p className="text-sm text-muted-foreground">
+                  {COPY.emptyStates.browse.body}
                 </p>
               )}
             </div>
@@ -1401,8 +1402,8 @@ ${contentList}`,
               )
             ).length === 0 && (
             <div className="text-center py-12">
-              <Video className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground">No video content found.</p>
+              <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">{COPY.emptyStates.browse.title}</p>
             </div>
           )}
         </main>
@@ -1541,8 +1542,8 @@ ${contentList}`,
               )
             ).length === 0 && (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground">No articles found.</p>
+              <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">{COPY.emptyStates.browse.title}</p>
             </div>
           )}
         </main>
@@ -1582,10 +1583,10 @@ ${contentList}`,
             </div>
           ) : (
             <div className="text-center py-12">
-              <Bookmark className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <h3 className="font-medium mb-2">Your Saved Content</h3>
+              <Bookmark className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="font-medium mb-1">{COPY.emptyStates.saved.title}</p>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Content you save for later will appear here. Start exploring to build your collection!
+                {COPY.emptyStates.saved.body}
               </p>
             </div>
           )}

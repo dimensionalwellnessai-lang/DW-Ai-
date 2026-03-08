@@ -501,6 +501,15 @@ export async function registerRoutes(
     message: { error: "Too many auth requests. Please try again later." },
   });
 
+  // Rate limiter for chat endpoints (30 requests / 60 seconds per IP).
+  const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many chat requests. Please slow down and try again shortly." },
+  });
+
   if (googleClientId && googleClientSecret) {
     passport.use(
       new GoogleStrategy(
@@ -1768,9 +1777,18 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context } = req.body;
+
+      // Validate message content
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2004,9 +2022,17 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat/smart", async (req, res) => {
+  app.post("/api/chat/smart", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2198,9 +2224,17 @@ export async function registerRoutes(
   });
 
   // Streaming chat endpoint for improved performance
-  app.post("/api/chat/stream", async (req, res) => {
+  app.post("/api/chat/stream", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2717,9 +2751,29 @@ export async function registerRoutes(
 
   app.post("/api/goals", requireAuth, async (req, res) => {
     try {
+      const { title, description, ...rest } = req.body;
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Goal title is required" });
+      }
+      const trimmedTitle = title.trim();
+      if (trimmedTitle.length > 200) {
+        return res.status(400).json({ error: "Goal title is too long (max 200 characters)" });
+      }
+      if (description !== undefined && description !== null) {
+        if (typeof description !== "string") {
+          return res.status(400).json({ error: "Goal description must be a string or null" });
+        }
+        if (description.length > 1000) {
+          return res.status(400).json({ error: "Goal description is too long (max 1000 characters)" });
+        }
+      }
+      // Strip client-supplied server-owned fields before inserting
+      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const goal = await storage.createGoal({
+        ...safeRest,
         userId: req.session.userId!,
-        ...req.body,
+        title: trimmedTitle,
+        description,
       });
       res.json(goal);
     } catch (error) {
@@ -2729,20 +2783,29 @@ export async function registerRoutes(
 
   app.patch("/api/goals/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const goal = await storage.getGoal(req.params.id);
-      if (!goal || goal.userId !== userId) {
+      const existing = await storage.getGoal(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Goal not found" });
       }
-      const updated = await storage.updateGoal(req.params.id, req.body);
-      res.json(updated);
+      // Only allow updates to permitted goal fields; disallow changing ownership.
+      const updateGoalSchema = insertGoalSchema.omit({ userId: true }).partial();
+      const updateData = updateGoalSchema.parse(req.body);
+      const goal = await storage.updateGoal(req.params.id, updateData);
+      res.json(goal);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update goal" });
     }
   });
 
   app.delete("/api/goals/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getGoal(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
       await storage.deleteGoal(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -2757,9 +2820,29 @@ export async function registerRoutes(
 
   app.post("/api/habits", requireAuth, async (req, res) => {
     try {
+      const { title, description, ...rest } = req.body;
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Habit title is required" });
+      }
+      const trimmedTitle = title.trim();
+      if (trimmedTitle.length > 200) {
+        return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
+      }
+      if (description !== undefined && description !== null) {
+        if (typeof description !== "string") {
+          return res.status(400).json({ error: "Habit description must be a string or null" });
+        }
+        if (description.length > 1000) {
+          return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+        }
+      }
+      // Strip client-supplied server-owned fields before inserting
+      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const habit = await storage.createHabit({
+        ...safeRest,
         userId: req.session.userId!,
-        ...req.body,
+        title: trimmedTitle,
+        description,
       });
       res.json(habit);
     } catch (error) {
@@ -2769,13 +2852,45 @@ export async function registerRoutes(
 
   app.patch("/api/habits/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const habit = await storage.getHabit(req.params.id);
-      if (!habit || habit.userId !== userId) {
+      const existing = await storage.getHabit(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
-      const updated = await storage.updateHabit(req.params.id, req.body);
-      res.json(updated);
+
+      // Strip sensitive/system-managed fields from the update payload
+      const { userId, id, createdAt, updatedAt, ...updateData } = req.body ?? {};
+
+      // Optionally validate title/description if they are being updated
+      if (typeof updateData.title !== "undefined") {
+        if (
+          typeof updateData.title !== "string" ||
+          updateData.title.trim().length === 0
+        ) {
+          return res.status(400).json({ error: "Habit title must be a non-empty string" });
+        }
+        if (updateData.title.length > 200) {
+          return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
+        }
+        updateData.title = updateData.title.trim();
+      }
+
+      if (typeof updateData.description !== "undefined") {
+        if (
+          updateData.description !== null &&
+          typeof updateData.description !== "string"
+        ) {
+          return res.status(400).json({ error: "Habit description must be a string or null" });
+        }
+        if (
+          typeof updateData.description === "string" &&
+          updateData.description.length > 1000
+        ) {
+          return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+        }
+      }
+
+      const habit = await storage.updateHabit(req.params.id, updateData);
+      res.json(habit);
     } catch (error) {
       res.status(500).json({ error: "Failed to update habit" });
     }
@@ -2783,6 +2898,10 @@ export async function registerRoutes(
 
   app.delete("/api/habits/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getHabit(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
       await storage.deleteHabit(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -2845,20 +2964,29 @@ export async function registerRoutes(
 
   app.patch("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
       const existing = await storage.getScheduleBlock(req.params.id);
-      if (!existing || existing.userId !== userId) {
+      if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Schedule block not found" });
       }
-      const block = await storage.updateScheduleBlock(req.params.id, req.body);
+      // Only allow updates to permitted schedule block fields; disallow changing ownership.
+      const updateScheduleSchema = insertScheduleBlockSchema.omit({ userId: true }).partial();
+      const updateData = updateScheduleSchema.parse(req.body);
+      const block = await storage.updateScheduleBlock(req.params.id, updateData);
       res.json(block);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update schedule block" });
     }
   });
 
   app.delete("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getScheduleBlock(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Schedule block not found" });
+      }
       await storage.deleteScheduleBlock(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -3263,20 +3391,29 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      const task = await storage.getTask(req.params.id);
-      if (!task || task.userId !== userId) {
+      const existing = await storage.getTask(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Task not found" });
       }
-      const updated = await storage.updateTask(req.params.id, req.body);
+      // Only allow updates to permitted task fields; disallow changing ownership.
+      const updateTaskSchema = insertTaskSchema.omit({ userId: true }).partial();
+      const updateData = updateTaskSchema.parse(req.body);
+      const updated = await storage.updateTask(req.params.id, updateData);
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update task" });
     }
   });
 
   app.delete("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getTask(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Task not found" });
+      }
       await storage.deleteTask(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -8707,6 +8844,76 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (err) {
       console.error("POST /api/learning-profile/auto-update error:", err);
       res.status(500).json({ error: "Failed to auto-update learning profile" });
+    }
+  });
+
+// Known analytics event names — must mirror client EVENTS constants.
+// Hoisted to module scope so a new Set is not created on every request.
+const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
+  "quick_setup_started", "quick_setup_completed", "starter_object_created",
+  "dw_first_message_shown", "starter_spotlight_clicked", "starter_spotlight_dismissed",
+  "app_opened_new_day", "completed_first_action",
+  "followup_created", "followup_accepted", "followup_snoozed", "followup_dismissed",
+  "plan_visited", "plan_activated", "plan_completed",
+  "checkin_completed", "checkin_submitted",
+  "reminder_set", "reminder_interacted",
+]);
+
+  // ===== ANALYTICS EVENTS ENDPOINT =====
+
+  // POST /api/analytics/events
+  // Accepts a batch of client-side analytics events and logs them server-side.
+  // No authentication required; events must not include PII.
+  // Rate-limited to prevent abuse.
+  const analyticsLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many analytics requests" },
+  });
+
+  app.post("/api/analytics/events", analyticsLimiter, (req: Request, res: Response) => {
+    try {
+      const { events } = req.body as { events?: unknown };
+      if (!Array.isArray(events)) {
+        return res.status(400).json({ error: "events must be an array" });
+      }
+
+      // Truncate a string field to a safe length (prevents log injection)
+      const truncate = (v: unknown, max = 64): string | undefined =>
+        typeof v === "string" ? v.slice(0, max) : undefined;
+
+      let logged = 0;
+      for (const event of events.slice(0, 100)) {
+        if (!event || typeof event !== "object") continue;
+        const e = event as Record<string, unknown>;
+        const name = truncate(e.name, 64);
+        if (!name || !ANALYTICS_KNOWN_EVENT_NAMES.has(name)) continue;
+
+        // Sanitize payload: keep only scalar/non-PII fields, cap string lengths
+        const rawPayload = e.payload && typeof e.payload === "object" ? e.payload as Record<string, unknown> : {};
+        const safePayload: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(rawPayload)) {
+          if (typeof v === "number" || typeof v === "boolean") {
+            safePayload[k] = v;
+          } else if (typeof v === "string") {
+            safePayload[k] = v.slice(0, 128);
+          }
+        }
+
+        const ts = typeof e.ts === "number" ? e.ts : undefined;
+        const env = e.env === "dev" || e.env === "prod" ? e.env : undefined;
+        const sessionId = truncate(e.sessionId, 36);
+
+        console.log("[analytics]", JSON.stringify({ name, payload: safePayload, ts, env, sessionId }));
+        logged++;
+      }
+
+      return res.json({ received: logged });
+    } catch (err) {
+      console.error("POST /api/analytics/events error:", err);
+      return res.status(500).json({ error: "Failed to process analytics events" });
     }
   });
 
