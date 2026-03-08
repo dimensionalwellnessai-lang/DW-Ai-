@@ -66,7 +66,8 @@ export function useDailyCheckin() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/daily-checkins/today"] });
-      qc.invalidateQueries({ queryKey: ["/api/daily-checkins/recent"] });
+      // Invalidate all recent-checkin queries (key prefix match)
+      qc.invalidateQueries({ queryKey: ["/api/daily-checkins/recent"], exact: false });
     },
   });
 
@@ -110,8 +111,8 @@ export function useRecentCheckins(days = 14) {
   const { user, isLoading: authLoading } = useAuth();
   const isLoggedIn = Boolean(user);
 
-  const authQuery = useQuery<DailyCheckinData[]>({
-    queryKey: ["/api/daily-checkins/recent", days],
+  const authQuery = useQuery<DailyCheckinData[] | null>({
+    queryKey: [`/api/daily-checkins/recent?days=${days}`],
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn,
     retry: false,
@@ -126,6 +127,5 @@ export function useRecentCheckins(days = 14) {
 
   if (isLoggedIn) {
     return { checkins: authQuery.data ?? [], isLoading: authQuery.isLoading };
-  }
-  return { checkins: guestQuery.data ?? [], isLoading: guestQuery.isLoading };
+  }  return { checkins: guestQuery.data ?? [], isLoading: guestQuery.isLoading };
 }

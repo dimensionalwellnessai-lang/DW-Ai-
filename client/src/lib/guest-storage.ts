@@ -2850,9 +2850,10 @@ export function upsertGuestDailyCheckin(
 }
 
 export function getRecentGuestCheckins(days: number): GuestDailyCheckin[] {
+  const cappedDays = Math.min(days, 90);
   const all = getGuestDailyCheckins();
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
+  cutoff.setDate(cutoff.getDate() - cappedDays);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   return all.filter((c) => c.date >= cutoffStr).sort((a, b) => b.date.localeCompare(a.date));
 }

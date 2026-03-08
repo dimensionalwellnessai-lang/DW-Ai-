@@ -17,6 +17,7 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
+  DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
 }
 
 /**
@@ -114,6 +115,32 @@ function resolveElevationEngineFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the DAILY_CHECKIN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
+ *   ?dc=1 query param                                          — one-time, per URL
+ */
+function resolveDailyCheckinFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_daily_checkin_enabled") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("dc") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -126,6 +153,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
+  DAILY_CHECKIN: resolveDailyCheckinFlag(),
 };
 
 /**
