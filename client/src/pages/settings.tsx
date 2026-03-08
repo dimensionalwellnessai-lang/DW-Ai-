@@ -19,8 +19,10 @@ import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
+import { useCoachMode, COACHING_MODES, COACHING_MODE_LABELS, COACHING_MODE_DESCRIPTIONS, type CoachingMode } from "@/hooks/use-coach-mode";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
+import { cn } from "@/lib/utils";
 import {
   User,
   Bell,
@@ -40,6 +42,7 @@ import {
   TestTube,
   Flag,
   Brain,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -66,7 +69,9 @@ export function SettingsPage() {
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
+  const coachModesEnabled = isFeatureEnabled("COACH_MODES");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
+  const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -528,6 +533,50 @@ export function SettingsPage() {
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Coach Mode / Tone Settings (PR #16) ────────────────────────────── */}
+        {coachModesEnabled && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base">Coach Mode</CardTitle>
+                  <CardDescription>
+                    Choose how DW communicates with you — affects tone, prompts, and guidance style
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-2" data-testid="coach-mode-selector">
+                {COACHING_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={isCoachModeUpdating}
+                    onClick={() => setCoachMode(mode)}
+                    data-testid={`coach-mode-${mode}`}
+                    className={cn(
+                      "flex flex-col gap-0.5 rounded-md border px-4 py-3 text-left transition-colors",
+                      coachMode === mode
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border hover:border-primary/40 hover:bg-muted/40"
+                    )}
+                  >
+                    <span className="text-sm font-medium">{COACHING_MODE_LABELS[mode as CoachingMode]}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {COACHING_MODE_DESCRIPTIONS[mode as CoachingMode]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Default is Gentle. You can change this at any time.
+              </p>
             </CardContent>
           </Card>
         )}

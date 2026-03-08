@@ -19,6 +19,7 @@ export interface FeatureFlags {
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
+  COACH_MODES: boolean;             // ✅ Coach mode / tone settings (PR #16)
 }
 
 /**
@@ -156,6 +157,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   DW_LEARNS: true,
+  COACH_MODES: true,
 };
 
 /**

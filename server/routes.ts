@@ -75,10 +75,12 @@ import {
   insertDwFollowupSchema,
   insertReminderSchema,
   updateUserLearningProfileSchema,
+  coachingModeEnum,
   type Habit,
   type Goal,
   type MoodLog,
   type ScheduleBlock,
+  type CoachingMode,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -1862,6 +1864,7 @@ export async function registerRoutes(
         },
         wellnessFocus: userProfile?.goals || [],
         peakMotivationTime: systemPrefs?.preferredWakeTime || undefined,
+        coachMode: (user?.coachingMode ?? "gentle") as CoachingMode,
       };
       
       const rawResponse = await generateChatResponse(
@@ -8628,6 +8631,37 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (err) {
       console.error("POST /api/learning-profile/auto-update error:", err);
       res.status(500).json({ error: "Failed to auto-update learning profile" });
+    }
+  });
+
+  // ── Coach Mode / Tone Settings (PR #16) ──────────────────────────────────
+
+  // GET /api/coach-mode – return current coaching mode for the authenticated user
+  app.get("/api/coach-mode", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      res.json({ coachingMode: user?.coachingMode ?? "gentle" });
+    } catch (err) {
+      console.error("GET /api/coach-mode error:", err);
+      res.status(500).json({ error: "Failed to get coaching mode" });
+    }
+  });
+
+  // PATCH /api/coach-mode – update coaching mode for the authenticated user
+  app.patch("/api/coach-mode", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const schema = z.object({ coachingMode: z.enum(coachingModeEnum) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "coachingMode must be 'gentle', 'direct', or 'structured'" });
+      }
+      const updated = await storage.updateUser(userId, { coachingMode: parsed.data.coachingMode });
+      res.json({ coachingMode: updated?.coachingMode ?? parsed.data.coachingMode });
+    } catch (err) {
+      console.error("PATCH /api/coach-mode error:", err);
+      res.status(500).json({ error: "Failed to update coaching mode" });
     }
   });
 
