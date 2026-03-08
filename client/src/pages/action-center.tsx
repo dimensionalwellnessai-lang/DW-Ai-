@@ -26,6 +26,7 @@ import {
   updateGuestDwFollowupStatus,
   type GuestDwFollowup,
 } from "@/lib/dw-intelligence-storage";
+import { useReminders } from "@/hooks/use-reminders";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -223,9 +224,13 @@ export default function ActionCenterPage() {
   const isLoggedIn = Boolean(user);
   const queryClient = useQueryClient();
   const featureEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
+  const remindersEnabled = isFeatureEnabled("REMINDERS");
   const [showCompleted, setShowCompleted] = useState(false);
   // Used to force re-read from localStorage after guest mutations
   const [guestRefreshKey, setGuestRefreshKey] = useState(0);
+
+  // Reminders integration
+  const { createReminder, cancelBySource } = useReminders();
 
   // ── Fetch all followups ──────────────────────────────────────────────────
 
@@ -325,11 +330,29 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "snoozed", { snoozedUntil: until.toISOString() });
           setGuestRefreshKey((k) => k + 1);
         }
+        // Create/replace a reminder so the snooze fires at the right time
+        if (remindersEnabled) {
+          try {
+            // Cancel any existing reminder for this follow-up first
+            await cancelBySource("followup", id);
+            await createReminder({
+              type: "followup",
+              title: "Follow-up reminder",
+              body: "You snoozed a follow-up — ready to revisit it now?",
+              scheduledAt: until,
+              sourceEntityType: "followup",
+              sourceEntityId: id,
+            });
+          } catch (reminderError) {
+            // Don't let reminder failures break the core snooze flow
+            console.error("Failed to create follow-up snooze reminder", reminderError);
+          }
+        }
       } finally {
         setMutating(null);
       }
     },
-    [isLoggedIn, invalidate]
+    [isLoggedIn, invalidate, remindersEnabled, cancelBySource, createReminder]
   );
 
   const handleDismiss = useCallback(
@@ -343,11 +366,19 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "dismissed");
           setGuestRefreshKey((k) => k + 1);
         }
+        // Cancel any pending reminders for this follow-up
+        if (remindersEnabled) {
+          try {
+            await cancelBySource("followup", id);
+          } catch (reminderError) {
+            console.error("Failed to cancel follow-up reminder on dismiss", reminderError);
+          }
+        }
       } finally {
         setMutating(null);
       }
     },
-    [isLoggedIn, invalidate]
+    [isLoggedIn, invalidate, remindersEnabled, cancelBySource]
   );
 
   const handleMarkAnswered = useCallback(
@@ -361,11 +392,19 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "answered");
           setGuestRefreshKey((k) => k + 1);
         }
+        // Cancel any pending reminders for this follow-up
+        if (remindersEnabled) {
+          try {
+            await cancelBySource("followup", id);
+          } catch (reminderError) {
+            console.error("Failed to cancel follow-up reminder on mark-answered", reminderError);
+          }
+        }
       } finally {
         setMutating(null);
       }
     },
-    [isLoggedIn, invalidate]
+    [isLoggedIn, invalidate, remindersEnabled, cancelBySource]
   );
 
   // ── Render ───────────────────────────────────────────────────────────────
