@@ -8631,6 +8631,129 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ─── Cosmic Hub API (/api/cosmic/*) ──────────────────────────────────────────
+  const {
+    computeNatalChart,
+    computeCalendarEvents,
+    computeTodaySnapshot,
+    moonPhaseInfo,
+    withCache,
+  } = await import("./ephemeris/index");
+
+  // GET /api/cosmic/chart — return (and optionally recalculate) the stored natal chart
+  app.get("/api/cosmic/chart", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const stored = await storage.getBirthChart(userId);
+      if (!stored) {
+        return res.status(404).json({ error: "No birth chart found. Save birth data first." });
+      }
+      const cacheKey = `cosmic:chart:${userId}:${stored.houseSystem}:${stored.zodiacSystem}`;
+      const chart = withCache(cacheKey, 15 * 60 * 1000, () =>
+        computeNatalChart(
+          stored.birthDate,
+          stored.birthTime,
+          // Geocode fallback: NYC; real apps should store lat/lng on the birth_charts record
+          (stored as Record<string, unknown>).latitude as number ?? 40.7128,
+          (stored as Record<string, unknown>).longitude as number ?? -74.0060,
+          (stored.zodiacSystem as "tropical" | "sidereal") ?? "tropical",
+          (stored.houseSystem as "whole-sign" | "placidus") ?? "placidus"
+        )
+      );
+      res.json(chart);
+    } catch (error) {
+      console.error("GET /api/cosmic/chart error:", error);
+      res.status(500).json({ error: "Failed to compute natal chart" });
+    }
+  });
+
+  // GET /api/cosmic/calendar?start=YYYY-MM-DD&end=YYYY-MM-DD
+  app.get("/api/cosmic/calendar", async (req, res) => {
+    try {
+      const today = new Date();
+      const defaultStart = today.toISOString().slice(0, 10);
+      const defaultEnd   = new Date(today.getFullYear(), today.getMonth() + 2, 0).toISOString().slice(0, 10);
+      const start = typeof req.query.start === "string" ? req.query.start : defaultStart;
+      const end   = typeof req.query.end   === "string" ? req.query.end   : defaultEnd;
+
+      // Basic date validation
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+        return res.status(400).json({ error: "start and end must be YYYY-MM-DD" });
+      }
+      if (start > end) {
+        return res.status(400).json({ error: "start must be before or equal to end" });
+      }
+      // Limit range to 6 months to prevent abuse
+      const startMs = new Date(start).getTime();
+      const endMs   = new Date(end).getTime();
+      if (endMs - startMs > 184 * 24 * 60 * 60 * 1000) {
+        return res.status(400).json({ error: "Date range cannot exceed 6 months" });
+      }
+
+      const cacheKey = `cosmic:calendar:${start}:${end}`;
+      const events = withCache(cacheKey, 60 * 60 * 1000, () => computeCalendarEvents(start, end));
+      res.json({ start, end, events });
+    } catch (error) {
+      console.error("GET /api/cosmic/calendar error:", error);
+      res.status(500).json({ error: "Failed to compute calendar events" });
+    }
+  });
+
+  // GET /api/cosmic/today
+  app.get("/api/cosmic/today", async (req, res) => {
+    try {
+      const zodiac = req.query.zodiac === "sidereal" ? "sidereal" : "tropical";
+      const cacheKey = `cosmic:today:${new Date().toISOString().slice(0, 10)}:${zodiac}`;
+      const snapshot = withCache(cacheKey, 30 * 60 * 1000, () => computeTodaySnapshot(zodiac));
+      res.json(snapshot);
+    } catch (error) {
+      console.error("GET /api/cosmic/today error:", error);
+      res.status(500).json({ error: "Failed to compute today snapshot" });
+    }
+  });
+
+  // PATCH /api/cosmic/house-system — update house system preference stored in birth chart
+  app.patch("/api/cosmic/house-system", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { houseSystem } = req.body as { houseSystem?: unknown };
+      if (houseSystem !== "whole-sign" && houseSystem !== "placidus") {
+        return res.status(400).json({ error: "houseSystem must be 'whole-sign' or 'placidus'" });
+      }
+      const existing = await storage.getBirthChart(userId);
+      if (!existing) {
+        return res.status(404).json({ error: "No birth chart found" });
+      }
+      const updated = await storage.updateBirthChart(userId, { houseSystem } as Parameters<typeof storage.updateBirthChart>[1]);
+      res.json({ houseSystem: updated?.houseSystem ?? houseSystem });
+    } catch (error) {
+      console.error("PATCH /api/cosmic/house-system error:", error);
+      res.status(500).json({ error: "Failed to update house system" });
+    }
+  });
+
+  // POST /api/cosmic/interpret — AI interpretation of a natal chart placement or transit
+  app.post("/api/cosmic/interpret", requireAuth, async (req, res) => {
+    try {
+      const { placement, context } = req.body as { placement?: unknown; context?: unknown };
+      if (!placement || typeof placement !== "string") {
+        return res.status(400).json({ error: "placement (string) is required" });
+      }
+      if (typeof context !== "undefined" && typeof context !== "string") {
+        return res.status(400).json({ error: "context must be a string if provided" });
+      }
+      const { generateCosmicInterpretation } = await import("./openai");
+      const interpretation = await generateCosmicInterpretation(
+        placement as string,
+        typeof context === "string" ? context : undefined
+      );
+      res.json({ placement, interpretation });
+    } catch (error) {
+      console.error("POST /api/cosmic/interpret error:", error);
+      res.status(500).json({ error: "Failed to generate interpretation" });
+    }
+  });
+
   return httpServer;
 }
 
