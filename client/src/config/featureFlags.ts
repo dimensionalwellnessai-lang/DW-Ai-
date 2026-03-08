@@ -17,6 +17,7 @@ export interface FeatureFlags {
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
+  REMINDERS: boolean;               // ⏸️ Local notifications / reminders layer (PR #7)
 }
 
 /**
@@ -114,6 +115,32 @@ function resolveElevationEngineFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the REMINDERS feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_reminders', 'true')  — persists across sessions
+ *   ?rem=1 query param                              — one-time, per URL
+ */
+function resolveRemindersFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reminders") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("rem") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -126,6 +153,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
+  REMINDERS: resolveRemindersFlag(),
 };
 
 /**

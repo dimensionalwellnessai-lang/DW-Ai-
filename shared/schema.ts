@@ -2553,3 +2553,44 @@ export const insertElevationCheckSchema = createInsertSchema(elevationChecks).om
 
 export type ElevationCheck = typeof elevationChecks.$inferSelect;
 export type InsertElevationCheck = z.infer<typeof insertElevationCheckSchema>;
+
+// ========================================
+// PR #7: REMINDERS
+// ========================================
+
+export const reminderTypeEnum = ["followup", "plan_action", "daily_checkin", "custom"] as const;
+export type ReminderType = typeof reminderTypeEnum[number];
+
+export const reminderStatusEnum = ["scheduled", "sent", "dismissed", "cancelled"] as const;
+export type ReminderStatus = typeof reminderStatusEnum[number];
+
+export const reminders = pgTable("reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  type: text("type").notNull().$type<ReminderType>(),
+  title: text("title").notNull(),
+  body: text("body"),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  status: text("status").notNull().default("scheduled").$type<ReminderStatus>(),
+  /** Optional reference to a source entity (followup, plan, etc.) */
+  sourceEntityType: text("source_entity_type"),
+  sourceEntityId: varchar("source_entity_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  user: one(users, {
+    fields: [reminders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertReminderSchema = createInsertSchema(reminders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Reminder = typeof reminders.$inferSelect;
+export type InsertReminder = z.infer<typeof insertReminderSchema>;

@@ -238,6 +238,9 @@ import {
   elevationChecks,
   type ElevationCheck,
   type InsertElevationCheck,
+  reminders,
+  type Reminder,
+  type InsertReminder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
@@ -637,6 +640,12 @@ export interface IStorage {
   // Elevation Engine
   getElevationCheckByDate(userId: string, date: string): Promise<ElevationCheck | undefined>;
   upsertElevationCheck(data: InsertElevationCheck): Promise<ElevationCheck>;
+  // Reminders
+  getReminders(userId: string, status?: string): Promise<Reminder[]>;
+  getDueReminders(userId: string, before: Date): Promise<Reminder[]>;
+  createReminder(reminder: InsertReminder): Promise<Reminder>;
+  updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "scheduledAt" | "title" | "body">>): Promise<Reminder | undefined>;
+  cancelRemindersBySource(userId: string, sourceEntityType: string, sourceEntityId: string): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -3070,6 +3079,52 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return row;
+  }
+
+  // ── Reminders ────────────────────────────────────────────────────────────────
+
+  async getReminders(userId: string, status?: string): Promise<Reminder[]> {
+    const userCond = eq(reminders.userId, userId);
+    const whereClause = status && status !== "all"
+      ? and(userCond, eq(reminders.status, status))
+      : userCond;
+    return db.select().from(reminders).where(whereClause).orderBy(desc(reminders.scheduledAt));
+  }
+
+  async getDueReminders(userId: string, before: Date): Promise<Reminder[]> {
+    return db.select().from(reminders).where(
+      and(
+        eq(reminders.userId, userId),
+        eq(reminders.status, "scheduled"),
+        lte(reminders.scheduledAt, before),
+      )
+    ).orderBy(reminders.scheduledAt);
+  }
+
+  async createReminder(reminder: InsertReminder): Promise<Reminder> {
+    const [created] = await db.insert(reminders).values(reminder).returning();
+    return created;
+  }
+
+  async updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "scheduledAt" | "title" | "body">>): Promise<Reminder | undefined> {
+    const [updated] = await db.update(reminders)
+      .set({ ...fields, updatedAt: new Date() })
+      .where(and(eq(reminders.id, id), eq(reminders.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async cancelRemindersBySource(userId: string, sourceEntityType: string, sourceEntityId: string): Promise<void> {
+    await db.update(reminders)
+      .set({ status: "cancelled", updatedAt: new Date() })
+      .where(
+        and(
+          eq(reminders.userId, userId),
+          eq(reminders.sourceEntityType, sourceEntityType),
+          eq(reminders.sourceEntityId, sourceEntityId),
+          eq(reminders.status, "scheduled"),
+        )
+      );
   }
 }
 
