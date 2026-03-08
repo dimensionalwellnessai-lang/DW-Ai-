@@ -1775,12 +1775,12 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context } = req.body;
 
-      // Validate message length to prevent oversized payloads
-      if (!message || typeof message !== "string") {
+      // Validate message content
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2020,11 +2020,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string") {
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2222,11 +2222,11 @@ export async function registerRoutes(
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
 
-      if (!message || typeof message !== "string") {
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
       }
-      if (message.length > 4000) {
-        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       let userId = req.session.userId;
@@ -2749,17 +2749,25 @@ export async function registerRoutes(
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Goal title is required" });
       }
-      if (title.length > 200) {
+      const trimmedTitle = title.trim();
+      if (trimmedTitle.length > 200) {
         return res.status(400).json({ error: "Goal title is too long (max 200 characters)" });
       }
-      if (description && typeof description === "string" && description.length > 1000) {
-        return res.status(400).json({ error: "Goal description is too long (max 1000 characters)" });
+      if (description !== undefined && description !== null) {
+        if (typeof description !== "string") {
+          return res.status(400).json({ error: "Goal description must be a string or null" });
+        }
+        if (description.length > 1000) {
+          return res.status(400).json({ error: "Goal description is too long (max 1000 characters)" });
+        }
       }
+      // Strip client-supplied server-owned fields before inserting
+      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const goal = await storage.createGoal({
+        ...safeRest,
         userId: req.session.userId!,
-        title: title.trim(),
+        title: trimmedTitle,
         description,
-        ...rest,
       });
       res.json(goal);
     } catch (error) {
@@ -2773,9 +2781,15 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Goal not found" });
       }
-      const goal = await storage.updateGoal(req.params.id, req.body);
+      // Only allow updates to permitted goal fields; disallow changing ownership.
+      const updateGoalSchema = insertGoalSchema.omit({ userId: true }).partial();
+      const updateData = updateGoalSchema.parse(req.body);
+      const goal = await storage.updateGoal(req.params.id, updateData);
       res.json(goal);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update goal" });
     }
   });
@@ -2804,17 +2818,25 @@ export async function registerRoutes(
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Habit title is required" });
       }
-      if (title.length > 200) {
+      const trimmedTitle = title.trim();
+      if (trimmedTitle.length > 200) {
         return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
       }
-      if (description && typeof description === "string" && description.length > 1000) {
-        return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+      if (description !== undefined && description !== null) {
+        if (typeof description !== "string") {
+          return res.status(400).json({ error: "Habit description must be a string or null" });
+        }
+        if (description.length > 1000) {
+          return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+        }
       }
+      // Strip client-supplied server-owned fields before inserting
+      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const habit = await storage.createHabit({
+        ...safeRest,
         userId: req.session.userId!,
-        title: title.trim(),
+        title: trimmedTitle,
         description,
-        ...rest,
       });
       res.json(habit);
     } catch (error) {
@@ -2940,9 +2962,15 @@ export async function registerRoutes(
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Schedule block not found" });
       }
-      const block = await storage.updateScheduleBlock(req.params.id, req.body);
+      // Only allow updates to permitted schedule block fields; disallow changing ownership.
+      const updateScheduleSchema = insertScheduleBlockSchema.omit({ userId: true }).partial();
+      const updateData = updateScheduleSchema.parse(req.body);
+      const block = await storage.updateScheduleBlock(req.params.id, updateData);
       res.json(block);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Failed to update schedule block" });
     }
   });
