@@ -2000,7 +2000,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2053,6 +2053,12 @@ export async function registerRoutes(
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
         energyContext: energyContext || null,
+        cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
+          ? {
+              useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
+              useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
+            }
+          : undefined,
       };
       
       const result = await detectIntentAndRespond(
@@ -2194,7 +2200,7 @@ export async function registerRoutes(
   // Streaming chat endpoint for improved performance
   app.post("/api/chat/stream", async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2254,6 +2260,12 @@ export async function registerRoutes(
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
         energyContext: energyContext || null,
+        cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
+          ? {
+              useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
+              useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
+            }
+          : undefined,
       };
       
       // Use detectIntentAndRespond to get the AI response with streaming support

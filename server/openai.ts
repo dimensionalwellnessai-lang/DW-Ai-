@@ -79,6 +79,10 @@ interface UserLifeContext {
     sentiment: string;
     relatedDimension?: string;
   }[];
+  cosmicConsent?: {
+    useAstrologyInGuidance: boolean;
+    useNumerologyInGuidance: boolean;
+  };
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -148,6 +152,36 @@ TONE ADJUSTMENTS:
 Example: "How's your headspace today? Want something focused or more open-ended?"`;
   }
 }
+
+/**
+ * Returns a system-prompt snippet describing whether the user has opted in to
+ * cosmic (astrology / numerology) references in DW guidance.
+ *
+ * Practical guidance is ALWAYS primary; cosmic context is offered as an optional,
+ * user-consented lens for reflection — never as a replacement.
+ */
+function getCosmicConsentGuidance(consent: { useAstrologyInGuidance: boolean; useNumerologyInGuidance: boolean }): string {
+  const { useAstrologyInGuidance, useNumerologyInGuidance } = consent;
+
+  if (!useAstrologyInGuidance && !useNumerologyInGuidance) {
+    return `COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance.`;
+  }
+
+  const enabled: string[] = [];
+  if (useAstrologyInGuidance) enabled.push("astrology (birth chart, planetary placements)");
+  if (useNumerologyInGuidance) enabled.push("numerology (Life Path, Personal Year, etc.)");
+
+  return `COSMIC LENSES: The user has opted in to cosmic guidance layers: ${enabled.join(" and ")}.
+RULES FOR COSMIC REFERENCES:
+• Practical, grounded guidance is ALWAYS the primary recommendation.
+• Cosmic insights are OPTIONAL context layers — mention them only when they add genuine relevance.
+• Frame as reflection prompts, not directives: "Your chart suggests…" or "Numerologically, this is…" rather than "You must…"
+• Always pair a cosmic reference with a concrete, actionable suggestion.
+• Never predict or promise outcomes based on cosmic data.
+• If the topic is unrelated to self-reflection (e.g. coding, travel), skip cosmic references entirely.
+• ALWAYS preserve user agency: "You might find it interesting that…", "If this resonates…"`;
+}
+
 
 export async function generateChatResponse(
   userMessage: string,
@@ -334,6 +368,7 @@ ${userContext?.energyContext?.currentEnergy ? getEnergyToneGuidance(userContext.
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
 ${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext.bodyGoal}` : ""}
 ${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 *** WELLNESS CONSCIOUSNESS (apply to all responses) ***
 
@@ -2010,6 +2045,7 @@ Think of yourself as a high-end personal concierge who:
 ${userContext?.energyContext ? getEnergyToneGuidance(userContext.energyContext.currentEnergy || "medium") : ""}
 ${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.energyContext.currentMood}` : ""}
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 USER CONTEXT:
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}

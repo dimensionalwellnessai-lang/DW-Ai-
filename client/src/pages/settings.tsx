@@ -19,6 +19,7 @@ import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
+import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
 import {
@@ -40,6 +41,8 @@ import {
   TestTube,
   Flag,
   Brain,
+  Star,
+  BookHeart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -67,6 +70,7 @@ export function SettingsPage() {
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
+  const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -201,6 +205,56 @@ export function SettingsPage() {
                 Edit Values &amp; Rules
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+
+        {/* ── Cosmic Guidance Consent ───────────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Star className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Cosmic Guidance</CardTitle>
+                <CardDescription>
+                  Optional cosmic lenses — astrology and numerology — for self-reflection. Practical guidance is always primary.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                <span>Astrology insights</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Include your birth chart in personalized DW guidance
+                </span>
+              </Label>
+              <Switch
+                id="cosmic-astrology-toggle"
+                checked={cosmicConsent.useAstrologyInGuidance}
+                onCheckedChange={v => updateCosmicConsent("useAstrologyInGuidance", v)}
+                aria-label="Use astrology in guidance"
+                data-testid="switch-cosmic-astrology"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="cosmic-numerology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                <span>Numerology insights</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Include your numbers in personalized DW guidance
+                </span>
+              </Label>
+              <Switch
+                id="cosmic-numerology-toggle"
+                checked={cosmicConsent.useNumerologyInGuidance}
+                onCheckedChange={v => updateCosmicConsent("useNumerologyInGuidance", v)}
+                aria-label="Use numerology in guidance"
+                data-testid="switch-cosmic-numerology"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              When enabled, DW may reference your chart or numbers where relevant — always alongside practical guidance, never as a replacement.
+            </p>
           </CardContent>
         </Card>
 
