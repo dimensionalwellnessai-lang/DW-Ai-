@@ -298,6 +298,7 @@ export interface IStorage {
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
 
   getScheduleBlocks(userId: string): Promise<ScheduleBlock[]>;
+  getScheduleBlock(id: string): Promise<ScheduleBlock | undefined>;
   createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, data: Partial<ScheduleBlock>): Promise<ScheduleBlock | undefined>;
   deleteScheduleBlock(id: string): Promise<void>;
@@ -1046,6 +1047,11 @@ export class DatabaseStorage implements IStorage {
 
   async getScheduleBlocks(userId: string): Promise<ScheduleBlock[]> {
     return db.select().from(scheduleBlocks).where(eq(scheduleBlocks.userId, userId));
+  }
+
+  async getScheduleBlock(id: string): Promise<ScheduleBlock | undefined> {
+    const [block] = await db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, id));
+    return block || undefined;
   }
 
   async createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock> {

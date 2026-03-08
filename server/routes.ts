@@ -495,6 +495,15 @@ export async function registerRoutes(
     message: { error: "Too many auth requests. Please try again later." },
   });
 
+  // Rate limiter for chat endpoints (30 requests / 60 seconds per IP).
+  const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many chat requests. Please slow down and try again shortly." },
+  });
+
   if (googleClientId && googleClientSecret) {
     passport.use(
       new GoogleStrategy(
@@ -1762,9 +1771,18 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context } = req.body;
+
+      // Validate message length to prevent oversized payloads
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      if (message.length > 4000) {
+        return res.status(400).json({ error: "Message is too long (max 4000 characters)" });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -1998,9 +2016,14 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat/smart", async (req, res) => {
+  app.post("/api/chat/smart", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+
+      if (!message || typeof message !== "string" || message.length > 4000) {
+        return res.status(400).json({ error: "Message is required and must be at most 4000 characters" });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2192,9 +2215,14 @@ export async function registerRoutes(
   });
 
   // Streaming chat endpoint for improved performance
-  app.post("/api/chat/stream", async (req, res) => {
+  app.post("/api/chat/stream", chatLimiter, async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+
+      if (!message || typeof message !== "string" || message.length > 4000) {
+        return res.status(400).json({ error: "Message is required and must be at most 4000 characters" });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2711,9 +2739,21 @@ export async function registerRoutes(
 
   app.post("/api/goals", requireAuth, async (req, res) => {
     try {
+      const { title, description, ...rest } = req.body;
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Goal title is required" });
+      }
+      if (title.length > 200) {
+        return res.status(400).json({ error: "Goal title is too long (max 200 characters)" });
+      }
+      if (description && typeof description === "string" && description.length > 1000) {
+        return res.status(400).json({ error: "Goal description is too long (max 1000 characters)" });
+      }
       const goal = await storage.createGoal({
         userId: req.session.userId!,
-        ...req.body,
+        title: title.trim(),
+        description,
+        ...rest,
       });
       res.json(goal);
     } catch (error) {
@@ -2723,6 +2763,10 @@ export async function registerRoutes(
 
   app.patch("/api/goals/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getGoal(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
       const goal = await storage.updateGoal(req.params.id, req.body);
       res.json(goal);
     } catch (error) {
@@ -2732,6 +2776,10 @@ export async function registerRoutes(
 
   app.delete("/api/goals/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getGoal(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
       await storage.deleteGoal(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -2746,9 +2794,21 @@ export async function registerRoutes(
 
   app.post("/api/habits", requireAuth, async (req, res) => {
     try {
+      const { title, description, ...rest } = req.body;
+      if (!title || typeof title !== "string" || title.trim().length === 0) {
+        return res.status(400).json({ error: "Habit title is required" });
+      }
+      if (title.length > 200) {
+        return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
+      }
+      if (description && typeof description === "string" && description.length > 1000) {
+        return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
+      }
       const habit = await storage.createHabit({
         userId: req.session.userId!,
-        ...req.body,
+        title: title.trim(),
+        description,
+        ...rest,
       });
       res.json(habit);
     } catch (error) {
@@ -2758,6 +2818,10 @@ export async function registerRoutes(
 
   app.patch("/api/habits/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getHabit(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
       const habit = await storage.updateHabit(req.params.id, req.body);
       res.json(habit);
     } catch (error) {
@@ -2767,6 +2831,10 @@ export async function registerRoutes(
 
   app.delete("/api/habits/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getHabit(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
       await storage.deleteHabit(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -2829,6 +2897,10 @@ export async function registerRoutes(
 
   app.patch("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getScheduleBlock(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Schedule block not found" });
+      }
       const block = await storage.updateScheduleBlock(req.params.id, req.body);
       res.json(block);
     } catch (error) {
@@ -2838,6 +2910,10 @@ export async function registerRoutes(
 
   app.delete("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getScheduleBlock(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Schedule block not found" });
+      }
       await storage.deleteScheduleBlock(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -3219,6 +3295,10 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getTask(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Task not found" });
+      }
       const updated = await storage.updateTask(req.params.id, req.body);
       res.json(updated);
     } catch (error) {
@@ -3228,6 +3308,10 @@ export async function registerRoutes(
 
   app.delete("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
+      const existing = await storage.getTask(req.params.id);
+      if (!existing || existing.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Task not found" });
+      }
       await storage.deleteTask(req.params.id);
       res.json({ success: true });
     } catch (error) {
