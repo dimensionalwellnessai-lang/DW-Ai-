@@ -9,6 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import {
   getGuestActivePlan,
   getGuestElevationPlans,
@@ -72,6 +73,7 @@ export function useElevationPlan() {
   const isLoggedIn = Boolean(user);
   const queryClient = useQueryClient();
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
+  const { sendLearningEvent } = useLearningProfile();
 
   // ─── Fetch active plan ─────────────────────────────────────────────────────
 
@@ -207,9 +209,9 @@ export function useElevationPlan() {
   const toggleActionMutation = useMutation<
     ElevationPlanActionItem,
     Error,
-    { id: string; isCompleted: boolean; planId?: string }
+    { id: string; isCompleted: boolean; planId?: string; actionType?: string; title?: string }
   >({
-    mutationFn: async ({ id, isCompleted }) => {
+    mutationFn: async ({ id, isCompleted, actionType, title }) => {
       if (isLoggedIn) {
         const res = await fetch(`/api/elevation-plan-actions/${id}`, {
           method: "PATCH",
@@ -221,11 +223,19 @@ export function useElevationPlan() {
         return res.json() as Promise<ElevationPlanActionItem>;
       }
       updateGuestElevationPlanAction(id, { isCompleted });
-      return { id, isCompleted } as ElevationPlanActionItem;
+      // For guests, build a minimal record using the variables passed in
+      return { id, isCompleted, actionType: actionType ?? "", title: title ?? "" } as ElevationPlanActionItem;
     },
-    onSuccess: (_data, { planId }) => {
+    onSuccess: (data, { planId, isCompleted }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
       if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+      // Fire-and-forget: update learning profile when an action is marked complete
+      if (isCompleted && data?.actionType) {
+        void sendLearningEvent("plan_action_complete", {
+          actionType: data.actionType,
+          title: data.title,
+        });
+      }
     },
   });
 

@@ -776,6 +776,16 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "dw-learns",
+    path: "/dw-learns",
+    label: "What DW Learned",
+    icon: "brain",
+    type: "page",
+    description: "View, edit, and reset DW's learned preferences for you",
+    showInMenu: false,
+    enabled: true,
+  },
+  {
     id: "app-tour",
     path: "/app-tour",
     label: "App Tour",

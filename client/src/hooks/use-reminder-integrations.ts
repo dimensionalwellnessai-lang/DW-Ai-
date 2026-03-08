@@ -13,6 +13,7 @@
 import { useEffect, useRef } from "react";
 import { useReminders } from "@/hooks/use-reminders";
 import { useAuth } from "@/hooks/use-auth";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import type { CreateReminderInput } from "@/hooks/use-reminders";
 
 const CHECKIN_REMINDER_TIME_KEY = "dw_checkin_reminder_time";
@@ -106,6 +107,7 @@ export function useReminderIntegrations(enabled: boolean) {
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const { createReminder } = useReminders();
+  const { recommendedReminderTime } = useLearningProfile();
 
   // Capture the latest createReminder in a ref so the effect only runs once
   // per day (on mount) while still using the up-to-date function reference.
@@ -127,8 +129,15 @@ export function useReminderIntegrations(enabled: boolean) {
     })();
 
     if (lastCheckinReminderDate !== today) {
+      // Use learning profile preferred reminder time if available, else stored setting, else default
       const timeStr = (() => {
-        try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
+        try {
+          return (
+            recommendedReminderTime ??
+            localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ??
+            "18:00"
+          );
+        } catch { return "18:00"; }
       })();
       const scheduledAt = buildTimeToday(timeStr);
 

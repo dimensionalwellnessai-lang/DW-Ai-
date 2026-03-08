@@ -250,6 +250,10 @@ import {
   reminders,
   type Reminder,
   type InsertReminder,
+  userLearningProfile,
+  type UserLearningProfile,
+  type InsertUserLearningProfile,
+  type UpdateUserLearningProfile,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
@@ -668,6 +672,11 @@ export interface IStorage {
   createReminder(reminder: InsertReminder): Promise<Reminder>;
   updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "scheduledAt" | "title" | "body">>): Promise<Reminder | undefined>;
   cancelRemindersBySource(userId: string, sourceEntityType: string, sourceEntityId: string): Promise<void>;
+
+  // Learning profile (PR #8)
+  getLearningProfile(userId: string): Promise<UserLearningProfile | undefined>;
+  upsertLearningProfile(userId: string, data: UpdateUserLearningProfile): Promise<UserLearningProfile>;
+  resetLearningProfile(userId: string): Promise<UserLearningProfile>;
 }
 
 export interface AdminAnalytics {
@@ -3244,6 +3253,62 @@ export class DatabaseStorage implements IStorage {
           eq(reminders.status, "scheduled"),
         )
       );
+  }
+
+  // ── Learning Profile (PR #8) ──────────────────────────────────────────────
+
+  async getLearningProfile(userId: string): Promise<UserLearningProfile | undefined> {
+    const [row] = await db
+      .select()
+      .from(userLearningProfile)
+      .where(eq(userLearningProfile.userId, userId))
+      .limit(1);
+    return row;
+  }
+
+  async upsertLearningProfile(userId: string, data: UpdateUserLearningProfile): Promise<UserLearningProfile> {
+    const [upserted] = await db
+      .insert(userLearningProfile)
+      .values({ userId, ...data, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: userLearningProfile.userId,
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+    return upserted;
+  }
+
+  async resetLearningProfile(userId: string): Promise<UserLearningProfile> {
+    const [upserted] = await db
+      .insert(userLearningProfile)
+      .values({
+        userId,
+        preferredTimes: {},
+        preferredActionTypes: [],
+        sensitivity: {},
+        frictionPoints: [],
+        wins: [],
+        avoid: [],
+        lastFeedbackAt: null,
+        learningEnabled: true,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userLearningProfile.userId,
+        set: {
+          preferredTimes: {},
+          preferredActionTypes: [],
+          sensitivity: {},
+          frictionPoints: [],
+          wins: [],
+          avoid: [],
+          lastFeedbackAt: null,
+          learningEnabled: true,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return upserted;
   }
 }
 

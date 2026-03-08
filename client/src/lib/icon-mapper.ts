@@ -49,6 +49,7 @@ import {
   Lock,
   Briefcase,
   Star,
+  Brain,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -105,6 +106,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   lock: Lock,
   briefcase: Briefcase,
   star: Star,
+  brain: Brain,
 };
 
 /**

@@ -11,6 +11,7 @@ import { CheckCircle, Edit2, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DWCardContainer } from "./DWCardContainer";
 import { useDailyCheckin } from "@/hooks/use-daily-checkin";
+import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -113,12 +114,15 @@ function CheckinForm({ onSubmit, isSubmitting }: CheckinFormProps) {
 
 export function DailyCheckinCard() {
   const { todayCheckin, isLoading, submitCheckin, isSubmitting, today } = useDailyCheckin();
+  const { sendLearningEvent } = useLearningProfile();
   const [editMode, setEditMode] = useState(false);
 
   if (isLoading) return null;
 
   async function handleSubmit(moodScore: number, constraintType: string, constraintNote?: string) {
     await submitCheckin({ date: today, moodScore, constraintType, constraintNote });
+    // Fire-and-forget: update learning profile from this check-in
+    void sendLearningEvent("checkin", { constraintType, moodScore });
     setEditMode(false);
   }
 
