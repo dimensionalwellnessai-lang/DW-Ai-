@@ -98,10 +98,12 @@ const INJECTION_PATTERNS: RegExp[] = [
   /\bact\s+as\s+(?:a|an|the)\s+/gi,
   /\bpretend\s+(?:you\s+are|to\s+be)\s+/gi,
   /\brespond\s+as\s+(?:if\s+you\s+(?:are|were)\s+)?(?:a|an|the)\s+/gi,
-  // Chat-markup role tags (used to inject fake system/user turns)
-  /\bsystem\s*:/gi,
-  /\buser\s*:/gi,
-  /\bassistant\s*:/gi,
+  // Chat-markup role tags (used to inject fake system/user turns).
+  // Anchored to start-of-line (with optional leading whitespace) to avoid false
+  // positives on legitimate text like "Talk to the system: I need help".
+  /^\s*system\s*:/gim,
+  /^\s*user\s*:/gim,
+  /^\s*assistant\s*:/gim,
   // Special token boundary attacks (e.g. <|im_start|>, <|endoftext|>)
   /<\|[^|]{1,100}\|>/g,
   // Double-bracket injection patterns [[instruction]]
