@@ -10,6 +10,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import appleSignin from "apple-signin-auth";
 import rateLimit from "express-rate-limit";
+import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
@@ -404,6 +405,11 @@ export async function registerRoutes(
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user, done) => done(null, user as Express.User));
   app.use(passport.initialize());
+
+  // ─── PATCH guardrails ─────────────────────────────────────────────────────
+  // Apply rate limiting, payload-size guard, and prompt-injection sanitisation
+  // to every PATCH /api/* request, before any route handler executes.
+  app.patch("/api/*", patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody);
 
   // ─── OAuth helpers ─────────────────────────────────────────────────────────
   // The base URL used for OAuth redirect URIs.  Falls back to the Replit URL
@@ -2723,8 +2729,13 @@ export async function registerRoutes(
 
   app.patch("/api/goals/:id", requireAuth, async (req, res) => {
     try {
-      const goal = await storage.updateGoal(req.params.id, req.body);
-      res.json(goal);
+      const userId = req.session.userId!;
+      const goal = await storage.getGoal(req.params.id);
+      if (!goal || goal.userId !== userId) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      const updated = await storage.updateGoal(req.params.id, req.body);
+      res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update goal" });
     }
@@ -2758,8 +2769,13 @@ export async function registerRoutes(
 
   app.patch("/api/habits/:id", requireAuth, async (req, res) => {
     try {
-      const habit = await storage.updateHabit(req.params.id, req.body);
-      res.json(habit);
+      const userId = req.session.userId!;
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit || habit.userId !== userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
+      const updated = await storage.updateHabit(req.params.id, req.body);
+      res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update habit" });
     }
@@ -2829,6 +2845,11 @@ export async function registerRoutes(
 
   app.patch("/api/schedule/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getScheduleBlock(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Schedule block not found" });
+      }
       const block = await storage.updateScheduleBlock(req.params.id, req.body);
       res.json(block);
     } catch (error) {
@@ -3063,6 +3084,15 @@ export async function registerRoutes(
 
   app.patch("/api/blueprint/actions/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const action = await storage.getStabilizingAction(req.params.id);
+      if (!action) {
+        return res.status(404).json({ error: "Action not found" });
+      }
+      const blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint || action.blueprintId !== blueprint.id) {
+        return res.status(404).json({ error: "Action not found" });
+      }
       const updated = await storage.updateStabilizingAction(req.params.id, req.body);
       res.json(updated);
     } catch (error) {
@@ -3139,6 +3169,15 @@ export async function registerRoutes(
 
   app.patch("/api/blueprint/reflections/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const reflection = await storage.getRecoveryReflection(req.params.id);
+      if (!reflection) {
+        return res.status(404).json({ error: "Reflection not found" });
+      }
+      const blueprint = await storage.getWellnessBlueprint(userId);
+      if (!blueprint || reflection.blueprintId !== blueprint.id) {
+        return res.status(404).json({ error: "Reflection not found" });
+      }
       const updated = await storage.updateRecoveryReflection(req.params.id, req.body);
       res.json(updated);
     } catch (error) {
@@ -3179,6 +3218,11 @@ export async function registerRoutes(
 
   app.patch("/api/routines/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const routine = await storage.getRoutine(req.params.id);
+      if (!routine || routine.userId !== userId) {
+        return res.status(404).json({ error: "Routine not found" });
+      }
       const updated = await storage.updateRoutine(req.params.id, req.body);
       res.json(updated);
     } catch (error) {
@@ -3219,6 +3263,11 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const task = await storage.getTask(req.params.id);
+      if (!task || task.userId !== userId) {
+        return res.status(404).json({ error: "Task not found" });
+      }
       const updated = await storage.updateTask(req.params.id, req.body);
       res.json(updated);
     } catch (error) {
@@ -3997,6 +4046,11 @@ Return as JSON array with format:
 
   app.patch("/api/system-modules/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getSystemModule(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "System module not found" });
+      }
       const updated = await storage.updateSystemModule(req.params.id, req.body);
       if (!updated) {
         return res.status(404).json({ error: "System module not found" });
@@ -4046,6 +4100,11 @@ Return as JSON array with format:
 
   app.patch("/api/schedule-events/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getScheduleEvent(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Schedule event not found" });
+      }
       const updated = await storage.updateScheduleEvent(req.params.id, req.body);
       if (!updated) {
         return res.status(404).json({ error: "Schedule event not found" });
@@ -6621,6 +6680,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/dimension-blueprints/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.session.userId!;
+      const existing = await storage.getDimensionBlueprint(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Dimension blueprint not found" });
+      }
       const blueprint = await storage.updateDimensionBlueprint(id, req.body);
       if (!blueprint) {
         return res.status(404).json({ error: "Dimension blueprint not found" });
@@ -6664,6 +6728,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/reset-protocol/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.session.userId!;
+      const existing = await storage.getResetProtocolById(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Reset protocol not found" });
+      }
       const protocol = await storage.updateResetProtocol(id, req.body);
       if (!protocol) {
         return res.status(404).json({ error: "Reset protocol not found" });
@@ -6829,6 +6898,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/universal-plans/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.session.userId!;
+      const existing = await storage.getUniversalPlan(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Universal plan not found" });
+      }
       const plan = await storage.updateUniversalPlan(id, req.body);
       if (!plan) {
         return res.status(404).json({ error: "Universal plan not found" });
@@ -6975,6 +7049,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/streaks/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = req.session.userId!;
+      const existing = await storage.getStreak(id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Streak not found" });
+      }
       const streak = await storage.updateStreak(id, req.body);
       
       if (!streak) {
