@@ -53,7 +53,7 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
 
       {hasAiFollowUp ? (
         <p className="text-sm text-foreground/80 leading-relaxed">
-          {summary.dwFollowUp!.prompt}
+          {summary.dwFollowUp?.prompt}
         </p>
       ) : (
         <p className="text-sm text-foreground/80 leading-relaxed">

@@ -177,9 +177,8 @@ export function useDwIntelligence(): DwIntelligence {
           // Generation failure must not break chat
         }
       }
-      // Guest mode: server-side AI generation requires auth.
-      // Guest intelligence records are stored locally when the user is authenticated.
-      // No action needed for guests in this pipeline.
+      // Guest mode: AI generation requires authentication.
+      // Guest users can sign in to have intelligence records generated and persisted.
     },
     [featureOn, isLoggedIn, qc],
   );

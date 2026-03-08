@@ -3193,7 +3193,7 @@ ${transcript}
 Please extract the following in valid JSON (no markdown fences):
 {
   "summary": "2-3 sentence summary of what was discussed and any meaningful moment",
-  "quotes": ["up to 7 direct quotes from the user (verbatim) that show genuine insight or emotion"],
+  "quotes": ["3-7 direct quotes from the user (verbatim) that show genuine insight or emotion"],
   "tags": ["3-6 short topical tags, lowercase, e.g. 'self-worth', 'career', 'energy'"],
   "theme": "primary wellness dimension (body/mind/time/purpose/money/relationships/environment/identity)",
   "switchTag": "one optional 'flip' keyword (e.g. 'pause', 'name', 'choose') or empty string"

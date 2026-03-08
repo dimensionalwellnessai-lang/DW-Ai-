@@ -340,6 +340,12 @@ function extractCategoryData(userMessage: string, aiResponse: string, context?: 
   return results;
 }
 
+// ── DW Intelligence: pipeline thresholds ─────────────────────────────────────
+/** Minimum number of messages in a conversation to trigger the DW pipeline. */
+const DW_MIN_MESSAGES = 4; // at least 2 user+assistant exchanges
+/** Minimum total character count across all messages to trigger the pipeline. */
+const DW_MIN_TOTAL_CHARS = 200;
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -7654,10 +7660,6 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   });
 
   // ── DW Intelligence: Insight + Journal + Follow-up auto-generation ────────
-
-  // Min conversation signal thresholds for triggering the pipeline
-  const DW_MIN_MESSAGES = 4; // at least 2 exchanges (4 messages)
-  const DW_MIN_TOTAL_CHARS = 200; // enough content to extract from
 
   const processConversationSchema = z.object({
     conversationId: z.string().min(1),
