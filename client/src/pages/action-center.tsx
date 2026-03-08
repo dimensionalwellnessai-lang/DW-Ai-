@@ -13,7 +13,7 @@
  * Route: /action-center
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, CheckCheck, BellOff, ChevronDown, ChevronUp, Clock, X } from "lucide-react";
@@ -242,23 +242,26 @@ export default function ActionCenterPage() {
   });
 
   // Guest: read from localStorage (re-reads when guestRefreshKey changes)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const guestFollowups: FollowupRecord[] = !isLoggedIn
-    ? getGuestDwFollowups("all").map((f: GuestDwFollowup) => ({
-        id: f.id,
-        prompt: f.prompt,
-        status: f.status,
-        snoozedUntil: f.snoozedUntil ?? null,
-        acceptedAt: f.acceptedAt ?? null,
-        answeredAt: f.answeredAt ?? null,
-        dismissedAt: f.dismissedAt ?? null,
-        relatedInsightId: f.relatedInsightId ?? null,
-        sourceConversationId: f.sourceConversationId ?? null,
-        createdAt: f.createdAt,
-      }))
-    : [];
-  // Suppress lint warning – guestRefreshKey intentionally triggers re-read
-  void guestRefreshKey;
+  const guestFollowups: FollowupRecord[] = useMemo(
+    () =>
+      !isLoggedIn
+        ? getGuestDwFollowups("all").map((f: GuestDwFollowup) => ({
+            id: f.id,
+            prompt: f.prompt,
+            status: f.status,
+            snoozedUntil: f.snoozedUntil ?? null,
+            acceptedAt: f.acceptedAt ?? null,
+            answeredAt: f.answeredAt ?? null,
+            dismissedAt: f.dismissedAt ?? null,
+            relatedInsightId: f.relatedInsightId ?? null,
+            sourceConversationId: f.sourceConversationId ?? null,
+            createdAt: f.createdAt,
+          }))
+        : [],
+    // guestRefreshKey triggers re-read from localStorage after each mutation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isLoggedIn, guestRefreshKey]
+  );
 
   const rawFollowups: FollowupRecord[] = isLoggedIn ? allAuthFollowups : guestFollowups;
   const isLoading = isLoggedIn ? allAuthLoading : false;
@@ -284,10 +287,10 @@ export default function ActionCenterPage() {
     return res.json();
   }
 
-  function invalidate() {
+  const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/dw/followups/all"] });
     queryClient.invalidateQueries({ queryKey: ["/api/dw/followups"] });
-  }
+  }, [queryClient]);
 
   const handleAccept = useCallback(
     async (id: string, prompt: string) => {
@@ -308,7 +311,7 @@ export default function ActionCenterPage() {
         setMutating(null);
       }
     },
-    [isLoggedIn, navigate]
+    [isLoggedIn, navigate, invalidate]
   );
 
   const handleSnooze = useCallback(
@@ -326,7 +329,7 @@ export default function ActionCenterPage() {
         setMutating(null);
       }
     },
-    [isLoggedIn]
+    [isLoggedIn, invalidate]
   );
 
   const handleDismiss = useCallback(
@@ -344,7 +347,7 @@ export default function ActionCenterPage() {
         setMutating(null);
       }
     },
-    [isLoggedIn]
+    [isLoggedIn, invalidate]
   );
 
   const handleMarkAnswered = useCallback(
@@ -362,7 +365,7 @@ export default function ActionCenterPage() {
         setMutating(null);
       }
     },
-    [isLoggedIn]
+    [isLoggedIn, invalidate]
   );
 
   // ── Render ───────────────────────────────────────────────────────────────

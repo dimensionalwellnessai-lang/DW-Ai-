@@ -2981,26 +2981,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDwFollowups(userId: string, status?: string): Promise<DwFollowup[]> {
-    const conditions = [eq(dwFollowups.userId, userId)];
+    const userCondition = eq(dwFollowups.userId, userId);
+    let statusCondition;
     if (status && status !== "all") {
       if (status === "pending") {
         // Return pending + snoozed-expired items as actionable
-        conditions.push(
-          or(
-            eq(dwFollowups.status, "pending"),
-            and(
-              eq(dwFollowups.status, "snoozed"),
-              lte(dwFollowups.snoozedUntil, new Date())
-            )
-          )!
+        const pendingCond = eq(dwFollowups.status, "pending");
+        const snoozedExpiredCond = and(
+          eq(dwFollowups.status, "snoozed"),
+          lte(dwFollowups.snoozedUntil, new Date())
         );
+        statusCondition = or(pendingCond, snoozedExpiredCond);
       } else {
-        conditions.push(eq(dwFollowups.status, status));
+        statusCondition = eq(dwFollowups.status, status);
       }
     }
+    const whereClause = statusCondition
+      ? and(userCondition, statusCondition)
+      : userCondition;
     return db.select()
       .from(dwFollowups)
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(desc(dwFollowups.createdAt))
       .limit(50);
   }
