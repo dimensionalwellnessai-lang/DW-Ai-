@@ -24,11 +24,15 @@ import {
   BatteryLow,
   BatteryMedium,
   BatteryFull,
+  TrendingUp,
+  FileText,
 } from "lucide-react";
 import { getSwitchData, type SwitchId, type SwitchStatus } from "@/lib/switch-storage";
 import { getUserSignals, updateEnergyLevel, updateTimeBand, deriveRecommendedSwitch, deriveMode, type EnergyLevel } from "@/lib/user-signals";
 import { PLAN_LIBRARY, type TimeBand } from "@/config/plan-library";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
+import { useElevationPlan } from "@/hooks/use-elevation-plan";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -65,6 +69,8 @@ export default function DWHomePage() {
   const [, navigate] = useLocation();
   const [signals, setSignals] = useState(getUserSignals);
   const [switchData, setSwitchData] = useState(getSwitchData);
+  const elevationPlanEnabled = isFeatureEnabled("ELEVATION_PLAN");
+  const { activePlan } = useElevationPlan();
   
   const checkIsFirstTime = () => {
     const intakeComplete = localStorage.getItem("dw_intake_complete");
@@ -344,6 +350,114 @@ export default function DWHomePage() {
                 );
               })}
             </div>
+          </motion.div>
+        )}
+
+        {/* Plan in Motion card */}
+        {elevationPlanEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            {activePlan ? (
+              (() => {
+                const { plan, days } = activePlan;
+                // Find current day (1-based offset from start)
+                const startMs = new Date(plan.startDate).getTime();
+                const todayMs = new Date(new Date().toISOString().slice(0, 10)).getTime();
+                const dayOffset = Math.floor((todayMs - startMs) / 86400000) + 1;
+                const planComplete = dayOffset > 7;
+
+                if (planComplete) {
+                  return (
+                    <Card className="card-modern border-purple-500/20 bg-purple-500/5">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <TrendingUp className="h-4 w-4 text-purple-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">Plan Complete 🎉</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{plan.title}</p>
+                          </div>
+                        </div>
+                        <Link href="/elevation-plan">
+                          <Button variant="outline" size="sm" className="w-full mt-3 text-xs">
+                            View completed plan
+                            <ChevronRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
+                const currentDay = days.find((d) => d.dayIndex === dayOffset) ?? days[0];
+                const nextAction = currentDay?.actions.find((a) => !a.isCompleted) ?? currentDay?.actions[0];
+
+                return (
+                  <Card className="card-modern border-green-500/20 bg-green-500/5">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base text-foreground flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-green-400" />
+                          Plan in Motion
+                        </CardTitle>
+                        <Badge variant="outline" className="text-xs border-green-500/40 text-green-400">
+                          Day {dayOffset} of 7
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {currentDay && (
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{currentDay.theme}</p>
+                          <p className="text-xs text-muted-foreground italic mt-0.5">{currentDay.intention}</p>
+                        </div>
+                      )}
+                      {nextAction && (
+                        <div className="bg-muted/30 rounded-lg p-2.5">
+                          <p className="text-xs text-muted-foreground mb-0.5">Next action</p>
+                          <p className="text-sm font-medium text-foreground">{nextAction.title}</p>
+                        </div>
+                      )}
+                      <Link href="/elevation-plan">
+                        <Button variant="outline" size="sm" className="w-full text-xs">
+                          View full plan
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })()
+            ) : (
+              <Card className="card-modern border-yellow-500/20 bg-yellow-500/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="h-4 w-4 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">No active plan</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Ready to build your 7-day elevation plan?
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/elevation-plan">
+                    <Button
+                      size="sm"
+                      className="w-full mt-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1.5" />
+                      Build Elevation Plan
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
           </motion.div>
         )}
 

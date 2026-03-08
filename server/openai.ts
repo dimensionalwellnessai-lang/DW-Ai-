@@ -3299,3 +3299,98 @@ Return ONLY valid JSON:
     return null;
   }
 }
+
+// ========================================
+// PR #5: ELEVATION PLAN BUILDER
+// ========================================
+
+export interface ElevationPlanDayStructure {
+  dayIndex: number;
+  theme: string;
+  intention: string;
+  actions: Array<{
+    actionType: string;
+    title: string;
+    description: string;
+    timeOfDay?: string;
+    durationMinutes?: number;
+  }>;
+}
+
+export interface ElevationPlanStructure {
+  title: string;
+  goal: string;
+  focusDimension: string;
+  days: ElevationPlanDayStructure[];
+}
+
+/**
+ * Generate a 7-day elevation plan structure via AI.
+ * Called after explicit user consent in the chat.
+ */
+export async function generateElevationPlanStructure(context: {
+  reasons?: string;
+  recentInsights?: string;
+  userPreferences?: string;
+  focusDimension?: string;
+}): Promise<ElevationPlanStructure | null> {
+  try {
+    const systemPrompt = `You are a dimensional wellness coach helping a user build a 7-day elevation plan.
+Generate a structured, achievable plan that gently lifts the user across their key wellness dimensions.
+Each day should have a distinct theme, a grounding intention, and 2–4 practical actions.
+Actions should be realistic (10–60 min each), varied in type, and build momentum across the week.
+Return ONLY valid JSON matching the specified schema.`;
+
+    const userContent = `Create a personalized 7-day elevation plan.
+
+${context.reasons ? `User context / reasons for wanting this plan:\n${context.reasons}\n` : ""}
+${context.recentInsights ? `Recent insights about the user:\n${context.recentInsights}\n` : ""}
+${context.userPreferences ? `User preferences:\n${context.userPreferences}\n` : ""}
+${context.focusDimension ? `Primary focus dimension: ${context.focusDimension}\n` : ""}
+
+Return JSON with this exact structure:
+{
+  "title": "short motivating plan title (5-10 words)",
+  "goal": "the overarching goal of this plan (1-2 sentences)",
+  "focusDimension": "primary wellness dimension (e.g., body, mind, relationships)",
+  "days": [
+    {
+      "dayIndex": 1,
+      "theme": "day theme (2-5 words)",
+      "intention": "short grounding intention for the day (1 sentence)",
+      "actions": [
+        {
+          "actionType": "habit|workout|nutrition|reflection|schedule",
+          "title": "action title",
+          "description": "what to do and why (1-3 sentences)",
+          "timeOfDay": "morning|afternoon|evening|anytime",
+          "durationMinutes": 20
+        }
+      ]
+    }
+  ]
+}
+Generate all 7 days with 2-4 actions each.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 3000,
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as ElevationPlanStructure;
+    // Basic validation
+    if (!parsed.title || !Array.isArray(parsed.days) || parsed.days.length < 7) return null;
+    return parsed;
+  } catch (error) {
+    console.error("Failed to generate elevation plan structure:", error);
+    return null;
+  }
+}
