@@ -257,6 +257,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
+import { createHash } from "crypto";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -298,6 +299,7 @@ export interface IStorage {
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
 
   getScheduleBlocks(userId: string): Promise<ScheduleBlock[]>;
+  getScheduleBlock(id: string): Promise<ScheduleBlock | undefined>;
   createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, data: Partial<ScheduleBlock>): Promise<ScheduleBlock | undefined>;
   deleteScheduleBlock(id: string): Promise<void>;
@@ -319,6 +321,7 @@ export interface IStorage {
   updateStressSignals(id: string, data: Partial<StressSignals>): Promise<StressSignals | undefined>;
 
   getStabilizingActions(blueprintId: string): Promise<StabilizingAction[]>;
+  getStabilizingAction(id: string): Promise<StabilizingAction | undefined>;
   createStabilizingAction(action: InsertStabilizingAction): Promise<StabilizingAction>;
   updateStabilizingAction(id: string, data: Partial<StabilizingAction>): Promise<StabilizingAction | undefined>;
   deleteStabilizingAction(id: string): Promise<void>;
@@ -328,6 +331,7 @@ export interface IStorage {
   updateSupportPreferences(id: string, data: Partial<SupportPreferences>): Promise<SupportPreferences | undefined>;
 
   getRecoveryReflections(blueprintId: string): Promise<RecoveryReflection[]>;
+  getRecoveryReflection(id: string): Promise<RecoveryReflection | undefined>;
   createRecoveryReflection(reflection: InsertRecoveryReflection): Promise<RecoveryReflection>;
   updateRecoveryReflection(id: string, data: Partial<RecoveryReflection>): Promise<RecoveryReflection | undefined>;
   deleteRecoveryReflection(id: string): Promise<void>;
@@ -396,6 +400,7 @@ export interface IStorage {
 
   getScheduleEvents(userId: string): Promise<DailyScheduleEvent[]>;
   getScheduleEventsByDay(userId: string, dayOfWeek: number): Promise<DailyScheduleEvent[]>;
+  getScheduleEvent(id: string): Promise<DailyScheduleEvent | undefined>;
   createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent>;
   updateScheduleEvent(id: string, data: Partial<DailyScheduleEvent>): Promise<DailyScheduleEvent | undefined>;
   deleteScheduleEvent(id: string): Promise<void>;
@@ -552,6 +557,7 @@ export interface IStorage {
 
   // Reset Protocol
   getResetProtocol(userId: string): Promise<ResetProtocol | undefined>;
+  getResetProtocolById(id: string): Promise<ResetProtocol | undefined>;
   createResetProtocol(protocol: InsertResetProtocol): Promise<ResetProtocol>;
   updateResetProtocol(id: string, data: Partial<ResetProtocol>): Promise<ResetProtocol | undefined>;
 
@@ -1049,6 +1055,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(scheduleBlocks).where(eq(scheduleBlocks.userId, userId));
   }
 
+  async getScheduleBlock(id: string): Promise<ScheduleBlock | undefined> {
+    const [block] = await db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, id));
+    return block || undefined;
+  }
+
   async createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock> {
     const [created] = await db.insert(scheduleBlocks).values(block).returning();
     return created;
@@ -1139,6 +1150,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(stabilizingActions.blueprintId, blueprintId));
   }
 
+  async getStabilizingAction(id: string): Promise<StabilizingAction | undefined> {
+    const [action] = await db.select().from(stabilizingActions).where(eq(stabilizingActions.id, id));
+    return action || undefined;
+  }
+
   async createStabilizingAction(action: InsertStabilizingAction): Promise<StabilizingAction> {
     const [created] = await db.insert(stabilizingActions).values(action).returning();
     return created;
@@ -1175,6 +1191,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(recoveryReflections)
       .where(eq(recoveryReflections.blueprintId, blueprintId))
       .orderBy(desc(recoveryReflections.createdAt));
+  }
+
+  async getRecoveryReflection(id: string): Promise<RecoveryReflection | undefined> {
+    const [reflection] = await db.select().from(recoveryReflections).where(eq(recoveryReflections.id, id));
+    return reflection || undefined;
   }
 
   async createRecoveryReflection(reflection: InsertRecoveryReflection): Promise<RecoveryReflection> {
@@ -1488,6 +1509,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(dailyScheduleEvents.scheduledTime);
   }
 
+  async getScheduleEvent(id: string): Promise<DailyScheduleEvent | undefined> {
+    const [event] = await db.select().from(dailyScheduleEvents).where(eq(dailyScheduleEvents.id, id));
+    return event || undefined;
+  }
+
   async createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent> {
     const [created] = await db.insert(dailyScheduleEvents).values(event).returning();
     return created;
@@ -1529,9 +1555,10 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+  async getPasswordResetToken(rawToken: string): Promise<PasswordResetToken | undefined> {
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
     const [result] = await db.select().from(passwordResetTokens)
-      .where(eq(passwordResetTokens.token, token));
+      .where(eq(passwordResetTokens.tokenHash, tokenHash));
     return result || undefined;
   }
 
@@ -2518,6 +2545,11 @@ export class DatabaseStorage implements IStorage {
   // Reset Protocol
   async getResetProtocol(userId: string): Promise<ResetProtocol | undefined> {
     const [protocol] = await db.select().from(resetProtocol).where(eq(resetProtocol.userId, userId));
+    return protocol || undefined;
+  }
+
+  async getResetProtocolById(id: string): Promise<ResetProtocol | undefined> {
+    const [protocol] = await db.select().from(resetProtocol).where(eq(resetProtocol.id, id));
     return protocol || undefined;
   }
 
