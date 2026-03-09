@@ -28,6 +28,7 @@ export interface FeatureFlags {
    * "View History" link on the plan page, and the allPlans query in useElevationPlan.
    */
   MULTI_PLAN: boolean;
+  SHARE_EXPORT: boolean;           // ⏸️ Share/export elevation plans + weekly summaries (PR #18)
 }
 
 /**
@@ -126,6 +127,58 @@ function resolveElevationEngineFlag(): boolean {
 }
 
 /**
+ * Resolves the initial value for the ELEVATION_PLAN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_elevation_plan', 'true')  — persists across sessions
+ *   ?ep=1 query param                                   — one-time, per URL
+ */
+function resolveElevationPlanFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ep") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the initial value for the SHARE_EXPORT feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_share_export', 'true')  — persists across sessions
+ *   ?se=1 query param                                 — one-time, per URL
+ */
+function resolveShareExportFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_share_export") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("se") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
  * Resolves the initial value for the DAILY_CHECKIN feature flag.
  * Default is OFF; enable locally via:
  *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
@@ -169,32 +222,6 @@ function resolveJournalAutogenFlag(): boolean {
   try {
     if (typeof location !== "undefined") {
       return new URLSearchParams(location.search).get("ja") === "1";
-    }
-  } catch {
-    // URL parsing failed – fail safely
-  }
-
-  return false;
-}
-
-/**
- * Resolves the initial value for the ELEVATION_PLAN feature flag.
- * Default is OFF; enable locally via:
- *   localStorage.setItem('dw_elevation_plan', 'true')  — persists across sessions
- *   ?ep=1 query param                                   — one-time, per URL
- */
-function resolveElevationPlanFlag(): boolean {
-  try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "true") {
-      return true;
-    }
-  } catch {
-    // Blocked storage or restricted environment – ignore and fall back to query param
-  }
-
-  try {
-    if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("ep") === "1";
     }
   } catch {
     // URL parsing failed – fail safely
@@ -299,6 +326,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   DW_LEARNS: true,
   WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
   MULTI_PLAN: resolveMultiPlanFlag(),
+  SHARE_EXPORT: resolveShareExportFlag(),
 };
 
 /**
