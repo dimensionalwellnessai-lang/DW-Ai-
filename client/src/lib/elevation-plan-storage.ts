@@ -184,3 +184,24 @@ export function clearGuestElevationPlanData(): void {
     // Blocked storage
   }
 }
+
+// ─── Plan stats (PR #17) ──────────────────────────────────────────────────────
+
+export interface GuestElevationPlanWithStats extends GuestElevationPlan {
+  totalActions: number;
+  completedActions: number;
+}
+
+export function getGuestElevationPlansWithStats(): GuestElevationPlanWithStats[] {
+  return getGuestElevationPlans().map((plan) => {
+    const days = getGuestElevationPlanDays(plan.id);
+    let totalActions = 0;
+    let completedActions = 0;
+    for (const day of days) {
+      const actions = getGuestElevationPlanActions(day.id);
+      totalActions += actions.length;
+      completedActions += actions.filter((a) => a.isCompleted).length;
+    }
+    return { ...plan, totalActions, completedActions };
+  });
+}

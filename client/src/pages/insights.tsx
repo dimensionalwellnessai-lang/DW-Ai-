@@ -238,7 +238,7 @@ export default function InsightsDashboard() {
                     DW Insight Feed
                   </CardTitle>
                   <CardDescription>
-                    AI-generated insights captured from your conversations
+                    {COPY.whySeeingThis.insights}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -247,9 +247,12 @@ export default function InsightsDashboard() {
                       Sign in to see your DW insights
                     </p>
                   ) : dwInsights.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No DW insights yet — have a conversation and use <strong>Process Conversation</strong> to generate your first insight
-                    </p>
+                    <div className="text-center py-8">
+                      <p className="text-foreground font-medium">{COPY.emptyStates.insights.title}</p>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        {COPY.emptyStates.insights.body}
+                      </p>
+                    </div>
                   ) : (
                     dwInsights.map((insight) => (
                       <div key={insight.id} className="border rounded-lg p-4 space-y-2">
@@ -299,12 +302,15 @@ export default function InsightsDashboard() {
                   <Target className="h-5 w-5" />
                   Active Goals
                 </CardTitle>
+                <CardDescription>{COPY.whySeeingThis.goals}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {activeGoals.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">{COPY.insights.goalsEmpty}</p>
-                    <button onClick={() => navigate("/plans")} className="text-xs text-primary mt-2 hover:underline">{COPY.insights.goalsEmptyCTA} →</button>
+                    <p className="text-foreground font-medium">{COPY.emptyStates.goals.title}</p>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {COPY.emptyStates.goals.body}
+                    </p>
                   </div>
                 ) : (
                   activeGoals.map(goal => {
@@ -345,12 +351,16 @@ export default function InsightsDashboard() {
                   <Flame className="h-5 w-5 text-orange-500" />
                   Current Streaks
                 </CardTitle>
+                <CardDescription>{COPY.whySeeingThis.streaks}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {topStreaks.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No streaks yet. Complete habits consistently to build streaks!
-                  </p>
+                  <div className="text-center py-8">
+                    <p className="text-foreground font-medium">{COPY.emptyStates.streaks.title}</p>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {COPY.emptyStates.streaks.body}
+                    </p>
+                  </div>
                 ) : (
                   topStreaks.map(streak => (
                     <div key={streak.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -428,7 +438,7 @@ export default function InsightsDashboard() {
 
 // ── DW Insights list component ───────────────────────────────────────────────
 
-function DwInsightCard({ insight }: { insight: DwInsightRecord }) {
+function DwInsightCard({ insight }: { insight: DwInsightItem }) {
   const [expanded, setExpanded] = useState(false);
   const date = typeof insight.createdAt === "number"
     ? new Date(insight.createdAt)
@@ -493,7 +503,7 @@ function DwInsightCard({ insight }: { insight: DwInsightRecord }) {
   );
 }
 
-function DwInsightsList({ insights, isLoading }: { insights: DwInsightRecord[]; isLoading: boolean }) {
+function DwInsightsList({ insights, isLoading }: { insights: DwInsightItem[]; isLoading: boolean }) {
   if (isLoading) {
     return (
       <div className="space-y-3">

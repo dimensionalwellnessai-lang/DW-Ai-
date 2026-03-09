@@ -45,6 +45,7 @@ import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial, useTutorialStart } from "@/contexts/tutorial-context";
 import { useAuth } from "@/hooks/use-auth";
+import { COPY } from "@/copy/en";
 
 // Lazy load heavy components for better performance
 const WellnessSummary = lazy(() => import("@/components/wellness-summary").then(m => ({ default: m.WellnessSummary })));
@@ -173,9 +174,8 @@ export default function TodayHubPage() {
     if (hour >= 5 && hour < 12 && !moodData) {
       cards.push({
         type: "morning-briefing",
-        title: COPY.proactiveCards.morningTitle,
-        message: COPY.proactiveCards.morningMessage,
-        why: COPY.proactiveCards.morningWhy,
+        title: "Start your day with intention",
+        message: "A quick check-in helps personalize your day.",
         actionLabel: "Check in",
         onAction: () => navigate("/weekly-checkin"),
         priority: "high",
@@ -185,9 +185,8 @@ export default function TodayHubPage() {
     if (energyLevel !== null && energyLevel <= 4) {
       cards.push({
         type: "energy-suggestion",
-        title: COPY.proactiveCards.energyTitle,
-        message: COPY.proactiveCards.energyMessage,
-        why: COPY.proactiveCards.energyWhy,
+        title: "Your energy is running low",
+        message: "A short walk or 5-minute stretch can help restore energy.",
         actionLabel: "See options",
         onAction: () => navigate("/recovery"),
       });
@@ -196,9 +195,8 @@ export default function TodayHubPage() {
     if (hour >= 18 && hour < 22) {
       cards.push({
         type: "wind-down",
-        title: COPY.proactiveCards.windDownTitle,
-        message: COPY.proactiveCards.windDownMessage,
-        why: COPY.proactiveCards.windDownWhy,
+        title: "Time to wind down",
+        message: "Review today and set yourself up for tomorrow.",
         actionLabel: "Wind down",
         onAction: () => navigate("/"),
       });
@@ -207,9 +205,8 @@ export default function TodayHubPage() {
     if (activeGoals.length > 0 && todaysBlocks.length === 0 && todaysEvents.length === 0) {
       cards.push({
         type: "goal-reminder",
-        title: COPY.proactiveCards.goalTitle,
-        message: COPY.proactiveCards.goalMessage,
-        why: COPY.proactiveCards.goalWhy,
+        title: "Nothing on your schedule",
+        message: `You have ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}. Want some suggestions?`,
         actionLabel: "Get suggestions",
         onAction: () => navigate("/"),
       });
@@ -278,8 +275,10 @@ export default function TodayHubPage() {
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
             className="shrink-0 -ml-2"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" aria-hidden="true" />
           </Button>
           <div className="flex-1">
             <p className="text-sm text-muted-foreground">
@@ -401,10 +400,20 @@ export default function TodayHubPage() {
                   </div>
                   <h3 className="font-semibold text-foreground">Your Life System</h3>
                 </div>
+                
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  All parts of your life — energy, schedule, relationships, environment, money, and purpose — interact. DW helps you see those connections and work with them.
+                </p>
 
-                <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-                  <p>All parts of your life — energy, habits, relationships, money, purpose — affect each other.</p>
-                  <p>DW helps you see those connections, not just track tasks.</p>
+                <div className="pt-2 border-t">
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    {COPY.lifeSystem.areas.map((area) => (
+                      <div key={area} className="flex items-center gap-2">
+                        <Circle className="h-2 w-2 text-primary flex-shrink-0" />
+                        <span>{area}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex gap-2 pt-1">
@@ -429,7 +438,7 @@ export default function TodayHubPage() {
                     }}
                     data-testid="button-show-connections"
                   >
-                    Show me more
+                    Show me how it connects
                   </Button>
                 </div>
               </CardContent>
@@ -525,7 +534,8 @@ export default function TodayHubPage() {
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">
                 <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground mb-3">Nothing scheduled for today</p>
+                <p className="text-sm font-medium text-foreground mb-1">{COPY.emptyStates.schedule.title}</p>
+                <p className="text-xs text-muted-foreground mb-3">{COPY.emptyStates.schedule.body}</p>
                 <Link href="/chat">
                   <Button variant="outline" size="sm" data-testid="button-ask-dw">
                     <Sparkles className="h-3 w-3 mr-2" />
@@ -611,7 +621,7 @@ export default function TodayHubPage() {
                 <span className="text-sm font-medium text-foreground">Morning</span>
               </div>
               {morningRoutines.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No routine set</p>
+                <p className="text-xs text-muted-foreground">Not set up yet</p>
               ) : (
                 <div className="space-y-1.5">
                   {morningRoutines.slice(0, 2).map((routine) => (
@@ -655,7 +665,7 @@ export default function TodayHubPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm text-foreground">Talk to DW</h3>
                   <p className="text-xs text-muted-foreground">
-                    Process thoughts, plan your day, or just chat
+                    Process thoughts, plan your day, or just check in.
                   </p>
                 </div>
                 <Link href="/chat">
@@ -686,11 +696,11 @@ export default function TodayHubPage() {
                 {lifeDashboard && (
                   <Link key={lifeDashboard.path} href={lifeDashboard.path || "/"}>
                     <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${lifeDashboard.id}`}
                     >
-                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                      <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm text-foreground">{lifeDashboard.name}</span>
                     </button>
                   </Link>
@@ -698,27 +708,27 @@ export default function TodayHubPage() {
                 
                 {calendarFeatures.length > 0 && (
                   <details className="group">
-                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid="menu-calendar-dropdown">
+                      <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm flex-1 text-foreground">Calendar</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-4">
                       <Link href="/today">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
+                          <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Today</span>
                         </button>
                       </Link>
                       <Link href="/calendar">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
+                          <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Month</span>
                         </button>
                       </Link>
                       <Link href="/routines">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
-                          <History className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
+                          <History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Routines</span>
                         </button>
                       </Link>
@@ -731,11 +741,11 @@ export default function TodayHubPage() {
                   return (
                     <Link key={feature.path} href={feature.path || "/"}>
                       <button
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         onClick={() => setMenuOpen(false)}
                         data-testid={`menu-item-${feature.id}`}
                       >
-                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                         <span className="text-sm text-foreground">{feature.name}</span>
                       </button>
                     </Link>
@@ -746,10 +756,10 @@ export default function TodayHubPage() {
           })()}
           
           <details className="group">
-            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none">
-              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm flex-1 text-foreground">More</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
             <div className="mt-1 space-y-1 ml-2">
               {moreFeatures.map((feature) => {
@@ -757,11 +767,11 @@ export default function TodayHubPage() {
                 return (
                   <Link key={feature.path} href={feature.path || "/"}>
                     <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${feature.id}`}
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm text-foreground">{feature.name}</span>
                     </button>
                   </Link>
@@ -772,7 +782,7 @@ export default function TodayHubPage() {
         </nav>
         <div className="pt-4 space-y-2">
           <button
-            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             onClick={() => {
               const menuWasOpen = menuOpen;
               setMenuOpen(false);
@@ -780,7 +790,7 @@ export default function TodayHubPage() {
             }}
             data-testid="button-start-tutorial"
           >
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            <GraduationCap className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm text-foreground">App Tour</span>
           </button>
           {authUser ? (

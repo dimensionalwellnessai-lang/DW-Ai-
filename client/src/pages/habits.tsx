@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { CheckSquare, Plus, Circle, CheckCircle2 } from "lucide-react";
@@ -35,7 +34,7 @@ export default function HabitsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
       setShowForm(false);
       setHabitTitle("");
-      toast({ title: COPY.habits.toast });
+      toast({ title: COPY.toasts.saved });
     },
   });
 
@@ -85,16 +84,19 @@ export default function HabitsPage() {
       />
       <div className="flex-1 overflow-auto">
         <div className="container max-w-4xl mx-auto p-4 space-y-6">
+        <p className="text-muted-foreground text-center text-sm">
+          {COPY.whySeeingThis.habits}
+        </p>
 
         {/* Create Form */}
         {showForm && (
           <Card>
             <CardHeader>
-              <CardTitle>Create New Habit</CardTitle>
+              <CardTitle>New Habit</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Habit Name</label>
+                <label className="text-sm font-medium text-foreground">Habit name</label>
                 <Input
                   value={habitTitle}
                   onChange={(e) => setHabitTitle(e.target.value)}
@@ -104,10 +106,10 @@ export default function HabitsPage() {
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleCreateHabit} disabled={!habitTitle.trim()}>
-                  Create Habit
+                  Save
                 </Button>
                 <Button variant="outline" onClick={() => setShowForm(false)}>
-                  Cancel
+                  {COPY.actions.cancel}
                 </Button>
               </div>
             </CardContent>
@@ -122,13 +124,18 @@ export default function HabitsPage() {
           <CardContent className="space-y-3">
             {habits.length === 0 && !showForm && (
               <div className="text-center py-8">
-                <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-foreground font-medium">{COPY.habits.emptyTitle}</p>
+                <CheckSquare className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-foreground font-medium">{COPY.emptyStates.habits.title}</p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  {COPY.habits.emptyBody}
+                  {COPY.emptyStates.habits.body}
                 </p>
-                <Button size="sm" className="mt-4" onClick={() => setShowForm(true)}>
-                  {COPY.habits.emptyCTA}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setShowForm(true)}
+                >
+                  {COPY.emptyStates.habits.cta}
                 </Button>
               </div>
             )}
@@ -145,12 +152,14 @@ export default function HabitsPage() {
                 >
                   <button
                     onClick={() => handleToggleHabit(habit.id, completedToday)}
-                    className="shrink-0"
+                    className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+                    aria-label={completedToday ? `Mark ${habit.name} as incomplete` : `Mark ${habit.name} as complete`}
+                    aria-pressed={Boolean(completedToday)}
                   >
                     {completedToday ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-500" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
                     ) : (
-                      <Circle className="h-6 w-6 text-muted-foreground" />
+                      <Circle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                     )}
                   </button>
                   <div className="flex-1">

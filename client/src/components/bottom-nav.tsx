@@ -35,7 +35,7 @@ export function BottomNav() {
         paddingBottom: 'var(--bottom-nav-padding, 32px)'
       }}
       data-testid="nav-bottom"
-      role="navigation"
+      aria-label="Main navigation"
     >
       <div className="flex items-center justify-around h-14 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
@@ -66,7 +66,7 @@ export function BottomNav() {
                 <item.icon className={cn(
                   "h-5 w-5 transition-transform duration-200",
                   isActive && "scale-110"
-                )} />
+                )} aria-hidden="true" />
               </div>
               <span className={cn(
                 "text-[10px] font-medium mt-0.5 transition-all",

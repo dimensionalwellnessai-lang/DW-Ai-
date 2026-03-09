@@ -390,8 +390,9 @@ export function ImportDialog({ open, onClose, onImportComplete }: ImportDialogPr
                           className="h-6 w-6"
                           onClick={() => handleRemoveFile(index)}
                           data-testid={`button-remove-file-${index}`}
+                          aria-label={`Remove ${pf.title}`}
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3 h-3" aria-hidden="true" />
                         </Button>
                       </div>
                     ))}

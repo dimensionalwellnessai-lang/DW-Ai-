@@ -7,6 +7,9 @@ import { relations } from "drizzle-orm";
 export const userRoleEnum = ["user", "admin"] as const;
 export type UserRole = typeof userRoleEnum[number];
 
+export const coachingModeEnum = ["gentle", "direct", "structured"] as const;
+export type CoachingMode = typeof coachingModeEnum[number];
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -20,6 +23,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
+  coachingMode: text("coaching_mode").default("gentle").$type<CoachingMode>(),
 }, (t) => [
   // Ensure each OAuth identity maps to exactly one user, and make lookups fast
   uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),
@@ -1373,7 +1377,7 @@ export const insertImportedDocumentItemSchema = createInsertSchema(importedDocum
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  token: varchar("token").notNull().unique(),
+  tokenHash: varchar("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1796,6 +1800,9 @@ export const wellnessPreferences = pgTable("wellness_preferences", {
   astrologyEnabled: boolean("astrology_enabled").default(false),
   tarotEnabled: boolean("tarot_enabled").default(false),
   energyWorkEnabled: boolean("energy_work_enabled").default(false),
+  // Cosmic consent: whether to include astrology/numerology data in DW AI guidance
+  useAstrologyInGuidance: boolean("use_astrology_in_guidance").default(false),
+  useNumerologyInGuidance: boolean("use_numerology_in_guidance").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2150,90 +2157,7 @@ export const insertConversationInsightSchema = createInsertSchema(conversationIn
   updatedAt: true,
 });
 
-// ── DW Intelligence: AI-generated insights, journal entries, follow-ups ──────
-
-/** AI-generated insight records extracted from conversation content. */
-export const dwInsights = pgTable("dw_insights", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  title: text("title").notNull(),
-  summary: text("summary").notNull(),
-  quotes: jsonb("quotes").$type<string[]>().default([]),
-  tags: jsonb("tags").$type<string[]>().default([]),
-  theme: text("theme"),
-  switchTag: text("switch_tag"),
-  sourceConversationId: varchar("source_conversation_id"),
-  sourceMessageRange: jsonb("source_message_range").$type<{ startIndex: number; endIndex: number }>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const dwInsightsRelations = relations(dwInsights, ({ one }) => ({
-  user: one(users, {
-    fields: [dwInsights.userId],
-    references: [users.id],
-  }),
-}));
-
-export const insertDwInsightSchema = createInsertSchema(dwInsights).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-/** AI-generated narrative journal entries extracted from conversation content. */
-export const dwJournalEntries = pgTable("dw_journal_entries", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  title: text("title").notNull(),
-  story: text("story").notNull(),
-  quotes: jsonb("quotes").$type<string[]>().default([]),
-  tags: jsonb("tags").$type<string[]>().default([]),
-  sourceConversationId: varchar("source_conversation_id"),
-  sourceMessageRange: jsonb("source_message_range").$type<{ startIndex: number; endIndex: number }>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const dwJournalEntriesRelations = relations(dwJournalEntries, ({ one }) => ({
-  user: one(users, {
-    fields: [dwJournalEntries.userId],
-    references: [users.id],
-  }),
-}));
-
-export const insertDwJournalEntrySchema = createInsertSchema(dwJournalEntries).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-/** AI-generated follow-up prompts linked to insights. */
-export const dwFollowups = pgTable("dw_followups", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  prompt: text("prompt").notNull(),
-  relatedInsightId: varchar("related_insight_id").references(() => dwInsights.id),
-  sourceConversationId: varchar("source_conversation_id"),
-  status: text("status").default("pending"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const dwFollowupsRelations = relations(dwFollowups, ({ one }) => ({
-  user: one(users, {
-    fields: [dwFollowups.userId],
-    references: [users.id],
-  }),
-  relatedInsight: one(dwInsights, {
-    fields: [dwFollowups.relatedInsightId],
-    references: [dwInsights.id],
-  }),
-}));
-
-export const insertDwFollowupSchema = createInsertSchema(dwFollowups).omit({
-  id: true,
-  createdAt: true,
-});
+// dwInsights, dwJournalEntries, dwFollowups – see "DW INSIGHT + JOURNAL INTELLIGENCE SYSTEM" section below for canonical definitions.
 
 /**
  * Processing log for idempotency – records the last message index processed
@@ -2737,3 +2661,55 @@ export const updateUserLearningProfileSchema = insertUserLearningProfileSchema.p
 export type UserLearningProfile = typeof userLearningProfile.$inferSelect;
 export type InsertUserLearningProfile = z.infer<typeof insertUserLearningProfileSchema>;
 export type UpdateUserLearningProfile = z.infer<typeof updateUserLearningProfileSchema>;
+
+// ========================================
+// PR #15: WEEKLY PLAN REVIEWS
+// ========================================
+
+export const weeklyPlanReviews = pgTable("weekly_plan_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  planId: varchar("plan_id").notNull().references(() => elevationPlans.id),
+  /** Titles of completed actions (auto-populated from plan) */
+  wins: jsonb("wins").$type<string[]>().default([]),
+  /** Titles of incomplete actions / user-reported friction */
+  frictionPoints: jsonb("friction_points").$type<string[]>().default([]),
+  /** 0–100 completion rate computed from plan actions */
+  completionRate: integer("completion_rate"),
+  /** Free-text: what worked well */
+  feedbackWorked: text("feedback_worked"),
+  /** Free-text: what to improve */
+  feedbackImprove: text("feedback_improve"),
+  /** "draft" while user is filling in; "submitted" once they confirm */
+  status: text("status").notNull().default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("weekly_plan_reviews_user_plan_idx").on(t.userId, t.planId),
+]);
+
+export const weeklyPlanReviewsRelations = relations(weeklyPlanReviews, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyPlanReviews.userId],
+    references: [users.id],
+  }),
+  plan: one(elevationPlans, {
+    fields: [weeklyPlanReviews.planId],
+    references: [elevationPlans.id],
+  }),
+}));
+
+export const insertWeeklyPlanReviewSchema = createInsertSchema(weeklyPlanReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateWeeklyPlanReviewSchema = insertWeeklyPlanReviewSchema.partial().omit({
+  userId: true,
+  planId: true,
+});
+
+export type WeeklyPlanReview = typeof weeklyPlanReviews.$inferSelect;
+export type InsertWeeklyPlanReview = z.infer<typeof insertWeeklyPlanReviewSchema>;
+export type UpdateWeeklyPlanReview = z.infer<typeof updateWeeklyPlanReviewSchema>;
