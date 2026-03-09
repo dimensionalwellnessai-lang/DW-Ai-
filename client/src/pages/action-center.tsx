@@ -28,6 +28,7 @@ import {
 } from "@/lib/dw-intelligence-storage";
 import { useReminders } from "@/hooks/use-reminders";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { COPY } from "@/copy/en";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

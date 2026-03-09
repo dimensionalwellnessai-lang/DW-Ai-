@@ -94,24 +94,6 @@ export const COPY = {
     exploreCategory: (category: string) => `Explore ${category}.`,
   },
 
-  goals: {
-    emptyTitle: "No goals yet.",
-    emptyBody: "Pick one thing to work toward — I'll help you track it.",
-    emptyCTA: "Add a goal",
-    createTitle: "New Goal",
-    toast: "Goal added.",
-    toastHabit: "Habit added.",
-  },
-
-  habits: {
-    emptyTitle: "No habits yet.",
-    emptyBody: "One small habit, repeated. That's the whole system.",
-    emptyCTA: "Add a habit",
-    createTitle: "New Habit",
-    toast: "Habit added.",
-    toastToggle: "Updated.",
-  },
-
   tracking: {
     habitsEmpty: "No habits set up yet.",
     habitsEmptyCTA: "Set up habits",
@@ -126,11 +108,6 @@ export const COPY = {
     pendingEmpty: "You're all caught up.",
     pendingEmptyCTA: "Talk to DW",
     why: "From your last conversation.",
-  },
-
-  insights: {
-    goalsEmpty: "No active goals yet.",
-    goalsEmptyCTA: "Add a goal",
   },
 
   lifeBlueprint: {

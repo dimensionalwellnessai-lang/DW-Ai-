@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ProactiveCard, ProactiveCardProps } from "@/components/proactive-card";
 import { UnifiedSearch } from "@/components/unified-search";
-import { COPY } from "@/copy/en";
 import {
   Zap,
   Heart,
@@ -174,8 +173,9 @@ export default function TodayHubPage() {
     if (hour >= 5 && hour < 12 && !moodData) {
       cards.push({
         type: "morning-briefing",
-        title: "Start your day with intention",
-        message: "A quick check-in helps personalize your day.",
+        title: COPY.proactiveCards.morningTitle,
+        message: COPY.proactiveCards.morningMessage,
+        why: COPY.proactiveCards.morningWhy,
         actionLabel: "Check in",
         onAction: () => navigate("/weekly-checkin"),
         priority: "high",
@@ -185,8 +185,9 @@ export default function TodayHubPage() {
     if (energyLevel !== null && energyLevel <= 4) {
       cards.push({
         type: "energy-suggestion",
-        title: "Your energy is running low",
-        message: "A short walk or 5-minute stretch can help restore energy.",
+        title: COPY.proactiveCards.energyTitle,
+        message: COPY.proactiveCards.energyMessage,
+        why: COPY.proactiveCards.energyWhy,
         actionLabel: "See options",
         onAction: () => navigate("/recovery"),
       });
@@ -195,8 +196,9 @@ export default function TodayHubPage() {
     if (hour >= 18 && hour < 22) {
       cards.push({
         type: "wind-down",
-        title: "Time to wind down",
-        message: "Review today and set yourself up for tomorrow.",
+        title: COPY.proactiveCards.windDownTitle,
+        message: COPY.proactiveCards.windDownMessage,
+        why: COPY.proactiveCards.windDownWhy,
         actionLabel: "Wind down",
         onAction: () => navigate("/"),
       });
@@ -205,8 +207,9 @@ export default function TodayHubPage() {
     if (activeGoals.length > 0 && todaysBlocks.length === 0 && todaysEvents.length === 0) {
       cards.push({
         type: "goal-reminder",
-        title: "Nothing on your schedule",
-        message: `You have ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}. Want some suggestions?`,
+        title: COPY.proactiveCards.goalTitle,
+        message: COPY.proactiveCards.goalMessage,
+        why: COPY.proactiveCards.goalWhy,
         actionLabel: "Get suggestions",
         onAction: () => navigate("/"),
       });

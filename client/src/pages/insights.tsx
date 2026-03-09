@@ -5,10 +5,8 @@
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -74,7 +72,6 @@ interface DwInsightItem {
 
 export default function InsightsDashboard() {
   useTrackFeature("insights");
-  const [, navigate] = useLocation();
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
