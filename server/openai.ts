@@ -3435,3 +3435,37 @@ Generate all 7 days with 2-4 actions each.`;
     return null;
   }
 }
+
+
+/**
+ * Generate a concise, experiential interpretation of an astrological placement or transit
+ * for use by the Cosmic Hub AI endpoints.  Math/calculation is intentionally excluded.
+ */
+export async function generateCosmicInterpretation(
+  placement: string,
+  context?: string
+): Promise<string> {
+  try {
+    const systemPrompt = `You are a compassionate astrology guide for the Dimensional Wellness AI app.
+Your role is to translate astrological placements and transits into lived, experiential wisdom — 
+not fortune-telling. Speak in second person, in 2–4 sentences. Be warm, grounded, and non-prescriptive.
+Do not make specific predictions. Focus on energy, invitation, and inner orientation.`;
+
+    const userContent = context
+      ? `Placement: ${placement}\nUser context: ${context}`
+      : `Placement: ${placement}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      max_completion_tokens: 200,
+    });
+    return completion.choices[0]?.message?.content?.trim() ?? "";
+  } catch (error) {
+    console.error("Failed to generate cosmic interpretation:", error);
+    return "";
+  }
+}
