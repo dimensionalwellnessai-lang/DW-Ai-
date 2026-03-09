@@ -26,6 +26,47 @@ import { ReminderBanner } from "@/components/reminder-banner";
 // bundle. The Suspense boundary in AppContent shows a lightweight fallback
 // while each page chunk is fetched the first time.
 
+const LoginPage = lazy(() =>
+  import("@/components/auth/login-page").then((m) => ({ default: m.LoginPage })),
+);
+const TalkItOutPage = lazy(() =>
+  import("@/pages/talk-it-out").then((m) => ({ default: m.TalkItOutPage })),
+);
+const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
+const AccountDeletePage = lazy(() => import("@/pages/account-delete"));
+const WelcomePage = lazy(() => import("@/pages/welcome"));
+const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
+const SubscriptionPage = lazy(() => import("@/pages/subscription"));
+const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
+const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
+const CalendarPlansPage = lazy(() =>
+  import("@/pages/calendar-plans").then((m) => ({ default: m.CalendarPlansPage })),
+);
+const DailySchedulePage = lazy(() => import("@/pages/daily-schedule"));
+const WeekSchedulePage = lazy(() => import("@/pages/week-schedule"));
+const WorkoutPage = lazy(() => import("@/pages/workout"));
+const RecoveryPage = lazy(() =>
+  import("@/pages/recovery").then((m) => ({ default: m.RecoveryPage })),
+);
+const SpiritualPage = lazy(() => import("@/pages/spiritual"));
+const AstrologyPage = lazy(() => import("@/pages/astrology"));
+const BrowsePage = lazy(() => import("@/pages/browse"));
+const ChallengesPage = lazy(() =>
+  import("@/pages/challenges").then((m) => ({ default: m.ChallengesPage })),
+);
+const RoutinesPage = lazy(() => import("@/pages/routines"));
+const MealPrepPage = lazy(() => import("@/pages/meal-prep"));
+const ShoppingListPage = lazy(() => import("@/pages/shopping-list"));
+const CookSessionPage = lazy(() => import("@/pages/cook-session"));
+const FinancesPage = lazy(() => import("@/pages/finances"));
+const FeedbackPage = lazy(() => import("@/pages/feedback"));
+const WeeklyCheckinPage = lazy(() => import("@/pages/weekly-checkin"));
+const JournalPage = lazy(() => import("@/pages/journal"));
+const SettingsPage = lazy(() =>
+  import("@/pages/settings").then((m) => ({ default: m.SettingsPage })),
+);
+const AppTourPage = lazy(() => import("@/pages/app-tour"));
+import { TasksPage } from "@/pages/tasks";
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
