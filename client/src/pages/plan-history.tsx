@@ -8,7 +8,7 @@
  * - Link to view/edit any plan in full
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,16 +202,43 @@ function ComparePanel({
 }) {
   const [a, b] = plans;
   const [detailA, detailB] = planDetails;
+  const titleId = "compare-dialog-title";
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the close button when the dialog opens
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto"
+    >
       <div className="p-4 max-w-2xl mx-auto pb-24">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-foreground flex items-center gap-2">
+          <h2 id={titleId} className="font-semibold text-foreground flex items-center gap-2">
             <GitCompare className="h-4 w-4 text-purple-400" aria-hidden />
             Plan Comparison
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close comparison">
+          <Button
+            ref={closeButtonRef}
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            aria-label="Close comparison"
+          >
             <X className="h-4 w-4" aria-hidden />
           </Button>
         </div>

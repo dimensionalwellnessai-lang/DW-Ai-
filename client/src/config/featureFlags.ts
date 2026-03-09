@@ -22,6 +22,12 @@ export interface FeatureFlags {
   REMINDERS: boolean;               // ⏸️ Reminder scheduling and banner (PR #7)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
   WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
+  /**
+   * Multi-plan support + plan history (PR #17).
+   * Requires ELEVATION_PLAN to be useful — enables /plan-history route, the
+   * "View History" link on the plan page, and the allPlans query in useElevationPlan.
+   */
+  MULTI_PLAN: boolean;
 }
 
 /**
@@ -249,6 +255,32 @@ function resolveRemindersFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the MULTI_PLAN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_multi_plan', 'true')  — persists across sessions
+ *   ?mp=1 query param                               — one-time, per URL
+ */
+function resolveMultiPlanFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_multi_plan") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("mp") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -266,6 +298,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   REMINDERS: resolveRemindersFlag(),
   DW_LEARNS: true,
   WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
+  MULTI_PLAN: resolveMultiPlanFlag(),
 };
 
 /**
