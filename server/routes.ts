@@ -1864,7 +1864,9 @@ export async function registerRoutes(
         },
         wellnessFocus: userProfile?.goals || [],
         peakMotivationTime: systemPrefs?.preferredWakeTime || undefined,
-        coachMode: (user?.coachingMode ?? "gentle") as CoachingMode,
+        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
+          ? (user!.coachingMode as CoachingMode)
+          : "gentle",
       };
       
       const rawResponse = await generateChatResponse(
@@ -2056,6 +2058,9 @@ export async function registerRoutes(
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
         energyContext: energyContext || null,
+        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
+          ? (user!.coachingMode as CoachingMode)
+          : "gentle",
       };
       
       const result = await detectIntentAndRespond(
@@ -2257,6 +2262,9 @@ export async function registerRoutes(
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
         energyContext: energyContext || null,
+        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
+          ? (user!.coachingMode as CoachingMode)
+          : "gentle",
       };
       
       // Use detectIntentAndRespond to get the AI response with streaming support

@@ -552,11 +552,18 @@ export function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 gap-2" data-testid="coach-mode-selector">
+              <div
+                role="radiogroup"
+                aria-label="Coach Mode"
+                className="grid grid-cols-1 gap-2"
+                data-testid="coach-mode-selector"
+              >
                 {COACHING_MODES.map((mode) => (
                   <button
                     key={mode}
                     type="button"
+                    role="radio"
+                    aria-checked={coachMode === mode}
                     disabled={isCoachModeUpdating}
                     onClick={() => setCoachMode(mode)}
                     data-testid={`coach-mode-${mode}`}

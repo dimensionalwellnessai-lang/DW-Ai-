@@ -56,7 +56,7 @@ export function useCoachMode() {
   const queryClient = useQueryClient();
 
   // Auth path — fetch from server
-  const { data: serverData } = useQuery<{ coachingMode: CoachingMode }>({
+  const { data: serverData } = useQuery<{ coachingMode: CoachingMode } | null>({
     queryKey: QUERY_KEY,
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isAuthenticated,
@@ -64,7 +64,10 @@ export function useCoachMode() {
   });
 
   const coachMode: CoachingMode = isAuthenticated
-    ? (serverData?.coachingMode ?? "gentle")
+    ? ((serverData?.coachingMode &&
+        (COACHING_MODES as readonly string[]).includes(serverData.coachingMode)
+          ? serverData.coachingMode
+          : "gentle") as CoachingMode)
     : getGuestCoachMode();
 
   // Auth mutation
