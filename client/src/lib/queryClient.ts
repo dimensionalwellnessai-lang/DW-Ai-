@@ -48,11 +48,18 @@ export const getQueryFn: <T>(options: {
 export const STALE_TIME = {
   /** Data that should never re-fetch automatically (e.g. static config). */
   FOREVER: Infinity,
-  /** User profile and auth data – refresh every 30 s on focus. */
+  /**
+   * Auth/identity data TTL (30 s).
+   *
+   * This is only a staleness threshold — it does NOT enable focus-based
+   * refetches. The global `refetchOnWindowFocus` default is `false`.
+   * Queries that need focus refetch must opt in explicitly, e.g.:
+   *   `refetchOnWindowFocus: true`  (as `useAuth` does).
+   */
   AUTH: 30 * 1000,
-  /** Plans, follow-ups, and learning profile – refresh every 5 min. */
+  /** Plans, follow-ups, and learning profile TTL (5 min). */
   MEDIUM: 5 * 60 * 1000,
-  /** Frequently changing data (calendar, habits, goals) – 1 min. */
+  /** Frequently changing data TTL (1 min). */
   SHORT: 60 * 1000,
 } as const;
 
