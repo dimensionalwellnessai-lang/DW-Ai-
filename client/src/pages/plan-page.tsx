@@ -106,9 +106,9 @@ export default function PlanPage() {
     );
     setPlan(updated);
     saveWeeklyPlan(updated);
-    // Track plan completion when the last item is marked done
-    if (!wasAllComplete && updated.length > 0 && updated.every(item => item.completed)) {
-      trackEvent(EVENTS.PLAN_COMPLETED, { planId: PLAN_STORAGE_KEY, totalItems: updated.length });
+    const toggled = updated.find(item => item.id === id);
+    if (toggled?.completed) {
+      trackEvent(EVENTS.PLAN_COMPLETED, { planItemId: id, switchId: toggled.switchId });
     }
   };
 
@@ -283,7 +283,10 @@ export default function PlanPage() {
                                   <Button
                                     size="sm"
                                     className="h-7 text-xs bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
-                                    onClick={() => navigate(`/switch/${id}`)}
+                                    onClick={() => {
+                                      trackEvent(EVENTS.PLAN_ACTIVATED, { planItemId: item.id, switchId: id });
+                                      navigate(`/switch/${id}`);
+                                    }}
                                     data-testid={`button-start-${item.id}`}
                                   >
                                     <Play className="h-3 w-3 mr-1" />

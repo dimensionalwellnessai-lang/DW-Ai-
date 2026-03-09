@@ -69,7 +69,7 @@ export function HealthSnapshotCard({ summary }: HealthSnapshotCardProps) {
             <button
               type="button"
               onClick={() => navigate("/habits")}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
             >
               +{activeHabits.length - 4} more
             </button>

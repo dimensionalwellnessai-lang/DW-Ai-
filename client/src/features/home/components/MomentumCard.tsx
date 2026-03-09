@@ -19,7 +19,7 @@ interface MomentumCardProps {
   summary: Pick<HomeSummary, "activeHabits" | "activeGoals" | "momentumData">;
 }
 
-function getMomentumMessage(
+export function getMomentumMessage(
   totalHabits: number,
   topStreak: number,
   totalGoals: number

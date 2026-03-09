@@ -720,11 +720,11 @@ export function WorkoutSessionEngine({
           )}
           {currentIdx < totalSteps - 1 ? (
             <>
-              <Button variant="outline" size="icon" onClick={handleSkip} title="Skip">
-                <SkipForward className="h-4 w-4" />
+              <Button variant="outline" size="icon" onClick={handleSkip} aria-label="Skip step">
+                <SkipForward className="h-4 w-4" aria-hidden="true" />
               </Button>
-              <Button size="icon" onClick={handleNext} title="Next step">
-                <ChevronRight className="h-4 w-4" />
+              <Button size="icon" onClick={handleNext} aria-label="Next step">
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </>
           ) : (

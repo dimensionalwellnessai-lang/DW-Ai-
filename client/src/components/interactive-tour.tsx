@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,83 +13,15 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// ─── Shared tour state via context ───────────────────────────────────────────
-
-interface InteractiveTourContextValue {
-  isOpen: boolean;
-  hasCompletedTour: boolean;
-  startTour: () => void;
-  startTourIfPending: () => void;
-  completeTour: () => void;
-  skipTour: () => void;
-  resetTour: () => void;
-}
-
-const InteractiveTourContext = createContext<InteractiveTourContextValue | null>(null);
-
-export function InteractiveTourProvider({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasCompletedTour, setHasCompletedTour] = useState(() => {
-    try {
-      return localStorage.getItem("dw:tour_completed") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  const startTour = () => setIsOpen(true);
-
-  // Start the tour if a pending start request was stored in localStorage.
-  // Wrapped in try/catch because localStorage can throw (storage disabled/quota).
-  const startTourIfPending = () => {
-    try {
-      if (localStorage.getItem("dw:tour_pending_start") === "true") {
-        localStorage.removeItem("dw:tour_pending_start");
-        startTour();
-      }
-    } catch {
-      // Storage unavailable — nothing to do
-    }
-  };
-
-  const completeTour = () => {
-    setIsOpen(false);
-    setHasCompletedTour(true);
-    try {
-      localStorage.setItem("dw:tour_completed", "true");
-    } catch {
-      // Storage unavailable — state is still updated in memory
-    }
-  };
-
-  const skipTour = () => setIsOpen(false);
-
-  const resetTour = () => {
-    setHasCompletedTour(false);
-    try {
-      localStorage.removeItem("dw:tour_completed");
-    } catch {
-      // Storage unavailable
-    }
-  };
-
-  return (
-    <InteractiveTourContext.Provider
-      value={{ isOpen, hasCompletedTour, startTour, startTourIfPending, completeTour, skipTour, resetTour }}
-    >
-      {children}
-    </InteractiveTourContext.Provider>
-  );
-}
-
-// Hook — must be used inside InteractiveTourProvider
-export function useInteractiveTour(): InteractiveTourContextValue {
-  const ctx = useContext(InteractiveTourContext);
-  if (!ctx) {
-    throw new Error("useInteractiveTour must be used inside InteractiveTourProvider");
-  }
-  return ctx;
-}
+// ─── Re-export context, provider, and hook from the lightweight context module ─
+// This preserves backward-compatibility for pages that import from this file,
+// while allowing App.tsx to import only the lightweight module.
+export {
+  InteractiveTourContext,
+  InteractiveTourProvider,
+  useInteractiveTour,
+  type InteractiveTourContextValue,
+} from "@/components/interactive-tour-context";
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

@@ -8,10 +8,15 @@ export const EVENTS = {
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
   APP_OPENED_NEW_DAY: "app_opened_new_day",
   COMPLETED_FIRST_ACTION: "completed_first_action",
-  // Mature-flow events (PR10)
-  FOLLOW_UP_ACCEPTED: "follow_up_accepted",
-  FOLLOW_UP_SNOOZED: "follow_up_snoozed",
-  FOLLOW_UP_DISMISSED: "follow_up_dismissed",
+  // Follow-up / engagement events
+  FOLLOWUP_CREATED: "followup_created",
+  PLAN_VISITED: "plan_visited",
+  CHECKIN_COMPLETED: "checkin_completed",
+  REMINDER_SET: "reminder_set",
+  // Mature-flow action events
+  FOLLOWUP_ACCEPTED: "followup_accepted",
+  FOLLOWUP_SNOOZED: "followup_snoozed",
+  FOLLOWUP_DISMISSED: "followup_dismissed",
   PLAN_ACTIVATED: "plan_activated",
   PLAN_COMPLETED: "plan_completed",
   CHECKIN_SUBMITTED: "checkin_submitted",
@@ -60,29 +65,47 @@ type CompletedFirstActionPayload = {
   tsLocal: string;
 };
 
-// Mature-flow payload types (PR10)
-type FollowUpAcceptedPayload = {
-  followUpId: string;
-  source: "action_center";
+type FollowupCreatedPayload = {
+  source: "chat" | "insight" | "checkin" | "unknown";
+  dimension: string | null;
 };
 
-type FollowUpSnoozedPayload = {
-  followUpId: string;
-  snoozeLabel: string;
-  snoozeUntil: string;
+type PlanVisitedPayload = {
+  planType: "elevation" | "meal" | "workout" | "universal" | "unknown";
 };
 
-type FollowUpDismissedPayload = {
-  followUpId: string;
+type CheckinCompletedPayload = {
+  dimension: string | null;
+  responseCount: number;
+};
+
+type ReminderSetPayload = {
+  reminderType: "habit" | "checkin" | "plan" | "custom";
+  hasTime: boolean;
+};
+
+// Mature-flow action payload types (no PII)
+type FollowupAcceptedPayload = {
+  followupId: string;
+};
+
+type FollowupSnoozedPayload = {
+  followupId: string;
+  snoozeDurationHours: number;
+};
+
+type FollowupDismissedPayload = {
+  followupId: string;
 };
 
 type PlanActivatedPayload = {
-  planId: string;
+  planItemId: string;
+  switchId: string;
 };
 
 type PlanCompletedPayload = {
-  planId: string;
-  totalItems: number;
+  planItemId: string;
+  switchId: string;
 };
 
 type CheckinSubmittedPayload = {
@@ -91,10 +114,8 @@ type CheckinSubmittedPayload = {
 };
 
 type ReminderInteractedPayload = {
-  reminderId: string;
-  reminderType: string;
   action: "dismissed" | "snoozed";
-  snoozeLabel?: string;
+  reminderType: string;
 };
 
 // Map event names to their payload types
@@ -107,9 +128,13 @@ type EventPayloadMap = {
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
   [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
   [EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload;
-  [EVENTS.FOLLOW_UP_ACCEPTED]: FollowUpAcceptedPayload;
-  [EVENTS.FOLLOW_UP_SNOOZED]: FollowUpSnoozedPayload;
-  [EVENTS.FOLLOW_UP_DISMISSED]: FollowUpDismissedPayload;
+  [EVENTS.FOLLOWUP_CREATED]: FollowupCreatedPayload;
+  [EVENTS.PLAN_VISITED]: PlanVisitedPayload;
+  [EVENTS.CHECKIN_COMPLETED]: CheckinCompletedPayload;
+  [EVENTS.REMINDER_SET]: ReminderSetPayload;
+  [EVENTS.FOLLOWUP_ACCEPTED]: FollowupAcceptedPayload;
+  [EVENTS.FOLLOWUP_SNOOZED]: FollowupSnoozedPayload;
+  [EVENTS.FOLLOWUP_DISMISSED]: FollowupDismissedPayload;
   [EVENTS.PLAN_ACTIVATED]: PlanActivatedPayload;
   [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
   [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
@@ -124,6 +149,38 @@ const sessionId =
     ? globalThis.crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
 const env = import.meta.env.DEV ? "dev" : "prod";
+
+// Analytics opt-out key
+const OPT_OUT_KEY = "dw:analyticsOptOut";
+
+/**
+ * Check whether the user has opted out of analytics.
+ */
+export function isAnalyticsOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPT_OUT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set the user's analytics opt-out preference.
+ * When opted out, trackEvent() is a no-op and no events are stored.
+ */
+export function setAnalyticsOptOut(optOut: boolean): void {
+  try {
+    if (optOut) {
+      localStorage.setItem(OPT_OUT_KEY, "true");
+      // Clear any previously queued events from the window queue
+      window.__dwEvents = [];
+    } else {
+      localStorage.removeItem(OPT_OUT_KEY);
+    }
+  } catch {
+    // Never throw
+  }
+}
 
 // Event structure stored in window
 export type StoredEvent = {
@@ -140,69 +197,54 @@ declare global {
   }
 }
 
-// ── Opt-out / opt-in ──────────────────────────────────────────────────────────
+// ─── Server forwarding ────────────────────────────────────────────────────────
 
-const ANALYTICS_ENABLED_KEY = "dw_analytics_enabled";
-
-/** Returns true when the user has NOT opted out (default: enabled). */
-export function isAnalyticsEnabled(): boolean {
+/**
+ * Sends queued events to the server analytics endpoint (fire-and-forget).
+ * - Respects the user's opt-out preference.
+ * - Clears the queue optimistically before sending to prevent duplicate uploads.
+ * - Called automatically on page hide/unload via the visibilitychange listener below.
+ */
+export function flushEventsToServer(): void {
   try {
-    return localStorage.getItem(ANALYTICS_ENABLED_KEY) !== "false";
-  } catch {
-    return true;
-  }
-}
-
-/** Persist the user's analytics preference. Clears in-memory queue on opt-out. */
-export function setAnalyticsEnabled(enabled: boolean): void {
-  try {
-    localStorage.setItem(ANALYTICS_ENABLED_KEY, enabled ? "true" : "false");
-    if (!enabled) {
-      window.__dwEvents = [];
-    }
-  } catch {
-    // Never throw
-  }
-}
-
-// ── Event flush ───────────────────────────────────────────────────────────────
-
-function flushEvents(): void {
-  try {
-    const events = window.__dwEvents;
-    if (!events || events.length === 0) return;
-    // Move all pending events out before the async send so duplicates cannot occur
-    const batch = events.splice(0, events.length);
-    void fetch("/api/analytics/events", {
+    if (isAnalyticsOptedOut()) return;
+    const pending = window.__dwEvents;
+    if (!pending || pending.length === 0) return;
+    // Clear the queue BEFORE copying — any new events tracked while the
+    // async fetch is in flight will land in the fresh queue, not the batch.
+    window.__dwEvents = [];
+    const batch = [...pending];
+    // Best-effort POST — do not await, never throw
+    fetch("/api/analytics/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ events: batch }),
       keepalive: true,
     }).catch(() => {
-      // Fire-and-forget; re-queue on network failure is intentionally not done
+      // Silently ignore network errors
     });
   } catch {
-    // Never throw from analytics flush
+    // Never throw from analytics
   }
 }
 
-// Flush whenever the page is hidden (tab switch / close)
+// Auto-flush events when the page is hidden (tab switch, close, navigate away)
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
-      flushEvents();
+      flushEventsToServer();
     }
   });
 }
 
-
+// Type-safe trackEvent with payload enforcement
 export function trackEvent<K extends AnalyticsEventName>(
   name: K,
   ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
 ): void {
   try {
-    // Respect opt-out
-    if (!isAnalyticsEnabled()) return;
+    // Respect user opt-out
+    if (isAnalyticsOptedOut()) return;
 
     const payload = (args[0] as unknown) ?? undefined;
 

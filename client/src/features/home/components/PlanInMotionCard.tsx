@@ -87,7 +87,7 @@ export function PlanInMotionCard({ summary }: PlanInMotionCardProps) {
             <button
               type="button"
               onClick={() => navigate("/goals")}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+              className="text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
             >
               +{activeGoals.length - 3} more goals
             </button>

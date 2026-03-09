@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Moon,
   Sun,
@@ -20,8 +22,23 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  ArrowRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import {
+  calcLifePath,
+  calcExpression,
+  calcSoulUrge,
+  calcPersonalYear,
+  calcPersonalMonth,
+  calcPersonalDay,
+  LIFE_PATH_MEANINGS,
+  EXPRESSION_MEANINGS,
+  SOUL_URGE_MEANINGS,
+  PERSONAL_YEAR_MEANINGS,
+  PERSONAL_MONTH_MEANINGS,
+  PERSONAL_DAY_MEANINGS,
+} from "@/lib/numerology";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
 // Reuse the same key as /astrology so both pages share one birth chart record
@@ -170,82 +187,6 @@ function calculatePlacements(
   ];
 }
 
-// ─── Numerology helpers ────────────────────────────────────────────────────────
-const PYTHAGOREAN: Record<string, number> = {
-  A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,I:9,
-  J:1,K:2,L:3,M:4,N:5,O:6,P:7,Q:8,R:9,
-  S:1,T:2,U:3,V:4,W:5,X:6,Y:7,Z:8,
-};
-
-const MASTER_NUMBERS = new Set([11, 22, 33]);
-
-function reduceNumber(n: number): number {
-  while (n > 9 && !MASTER_NUMBERS.has(n)) {
-    n = String(n).split("").reduce((s, d) => s + Number(d), 0);
-  }
-  return n;
-}
-
-function calcLifePath(birthDate: string): number {
-  const digits = birthDate.replace(/-/g, "").split("").map(Number);
-  return reduceNumber(digits.reduce((s, d) => s + d, 0));
-}
-
-function calcExpression(name: string): number {
-  const total = name
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .split("")
-    .reduce((s, c) => s + (PYTHAGOREAN[c] ?? 0), 0);
-  return reduceNumber(total);
-}
-
-function calcSoulUrge(name: string): number {
-  const vowels = "AEIOU";
-  const total = name
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .split("")
-    .filter(c => vowels.includes(c))
-    .reduce((s, c) => s + (PYTHAGOREAN[c] ?? 0), 0);
-  return reduceNumber(total || 1);
-}
-
-function calcPersonalYear(birthDate: string): number {
-  const date = new Date(birthDate);
-  const currentYear = new Date().getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return reduceNumber(month + day + currentYear);
-}
-
-const LIFE_PATH_MEANINGS: Record<number, { title: string; desc: string }> = {
-  1: { title: "The Leader", desc: "Independent, pioneering, original. You're here to lead and innovate." },
-  2: { title: "The Diplomat", desc: "Cooperative, sensitive, intuitive. You thrive in partnership and bring balance." },
-  3: { title: "The Creator", desc: "Expressive, joyful, imaginative. You're here to inspire through creativity." },
-  4: { title: "The Builder", desc: "Practical, disciplined, dependable. You create lasting foundations." },
-  5: { title: "The Explorer", desc: "Adventurous, versatile, freedom-loving. You're here to experience life fully." },
-  6: { title: "The Nurturer", desc: "Responsible, caring, harmonious. You're here to serve and support." },
-  7: { title: "The Seeker", desc: "Analytical, spiritual, introspective. You're here to seek deeper truth." },
-  8: { title: "The Powerhouse", desc: "Ambitious, authoritative, material. You're here to master the material world." },
-  9: { title: "The Humanitarian", desc: "Compassionate, wise, idealistic. You're here to serve humanity." },
-  11: { title: "The Intuitive", desc: "Highly sensitive, visionary, illuminating. A master number — you inspire others." },
-  22: { title: "The Master Builder", desc: "Practical visionary, capable of creating large-scale change. A master number." },
-  33: { title: "The Master Teacher", desc: "Compassionate guide, devoted to uplifting others. A master number." },
-};
-
-const PERSONAL_YEAR_MEANINGS: Record<number, string> = {
-  1: "New beginnings. Plant seeds for the next 9-year cycle.",
-  2: "Cooperation and patience. Nurture what you planted.",
-  3: "Expression and joy. Let creativity flow freely.",
-  4: "Hard work and foundation-building. Focus and discipline.",
-  5: "Change and freedom. Embrace unexpected opportunities.",
-  6: "Responsibility and love. Family and community focus.",
-  7: "Reflection and inner growth. A time for solitude and study.",
-  8: "Harvest and achievement. Material and career gains.",
-  9: "Completion and release. Let go to prepare for renewal.",
-};
-
 // ─── Moon phase helper ─────────────────────────────────────────────────────────
 const MOON_PHASES = [
   "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
@@ -387,72 +328,170 @@ function saveConsent(c: CosmicConsent) {
   }
 }
 
+/** Format an ISO date string (YYYY-MM-DD) as a human-readable short date */
+function formatEventDate(isoDate: string): string {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+// Types matching the /api/cosmic/* response shapes
+interface CosmicCalendarEvent {
+  date: string;
+  type: string;
+  label: string;
+  description: string;
+  planet?: string;
+  sign?: string;
+  prompt: string;
+}
+
+interface CosmicTodaySnapshot {
+  date: string;
+  moonPhase: string;
+  moonPhaseEmoji: string;
+  moonSign: string;
+  sunSign: string;
+  energyWord: string;
+  events: CosmicCalendarEvent[];
+}
+
+function eventBadgeVariant(type: string): "secondary" | "destructive" | "outline" {
+  if (type === "new_moon" || type === "full_moon" || type === "first_quarter" || type === "last_quarter") return "secondary";
+  if (type === "retrograde_start") return "destructive";
+  return "outline";
+}
+
+function eventBadgeLabel(type: string): string {
+  const MAP: Record<string, string> = {
+    new_moon: "moon", full_moon: "moon", first_quarter: "moon", last_quarter: "moon",
+    retrograde_start: "retrograde", retrograde_end: "direct",
+    ingress: "ingress", major_aspect: "aspect", season: "season",
+  };
+  return MAP[type] ?? type;
+}
 
 function CalendarTab() {
   const [view, setView] = useState<"day" | "week" | "month">("week");
-  const events = getUpcomingEvents(30);
-  const moonPhase = getCurrentMoonPhase();
 
+  // Use local date parts to avoid UTC day-shift (same pattern as parseLocalDate)
   const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  // Last day of next month (local)
+  const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const monthEnd = `${monthEndDate.getFullYear()}-${pad(monthEndDate.getMonth() + 1)}-${pad(monthEndDate.getDate())}`;
+
+  const { data: todayData, isLoading: todayLoading } = useQuery<CosmicTodaySnapshot>({
+    queryKey: ["/api/cosmic/today"],
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: calData, isLoading: calLoading, isError: calError, refetch } = useQuery<{ events: CosmicCalendarEvent[] }>({
+    queryKey: ["/api/cosmic/calendar", todayStr, monthEnd],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/cosmic/calendar?start=${todayStr}&end=${monthEnd}`);
+      return res.json();
+    },
+    staleTime: 60 * 60 * 1000,
+    retry: 2,
+  });
+
+  const allEvents = calData?.events ?? [];
+
   const filtered = (() => {
     if (view === "day") {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      return events.filter(e => e.date <= tomorrow);
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+      return allEvents.filter(e => e.date <= tomorrowStr);
     }
     if (view === "week") {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(now.getDate() + 7);
-      return events.filter(e => e.date <= weekEnd);
+      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+      const weekEndStr = `${weekEnd.getFullYear()}-${pad(weekEnd.getMonth() + 1)}-${pad(weekEnd.getDate())}`;
+      return allEvents.filter(e => e.date <= weekEndStr);
     }
-    return events;
+    return allEvents;
   })();
+
+  const isLoading = todayLoading || calLoading;
 
   return (
     <div className="space-y-4">
-      {/* Current moon phase */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="p-4 flex items-start gap-3">
-          <span className="text-2xl" aria-hidden="true">{MOON_PHASE_EMOJI[moonPhase]}</span>
-          <div>
-            <p className="font-semibold text-sm">{moonPhase}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[moonPhase]}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Today snapshot card */}
+      {todayLoading ? (
+        <Skeleton className="h-20 w-full rounded-xl" />
+      ) : todayData ? (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <span className="text-2xl" aria-hidden="true">{todayData.moonPhaseEmoji}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{todayData.moonPhase} in {todayData.moonSign}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[todayData.moonPhase] ?? ""}</p>
+              <p className="text-xs text-primary mt-1">✦ Today's energy: <span className="font-medium">{todayData.energyWord}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <span className="text-2xl" aria-hidden="true">{MOON_PHASE_EMOJI[getCurrentMoonPhase()]}</span>
+            <div>
+              <p className="font-semibold text-sm">{getCurrentMoonPhase()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[getCurrentMoonPhase()]}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* View toggle */}
-      <div className="flex gap-1" role="group" aria-label="Calendar view">
-        {(["day", "week", "month"] as const).map(v => (
-          <Button
-            key={v}
-            variant={view === v ? "default" : "outline"}
-            size="sm"
-            onClick={() => setView(v)}
-            className="capitalize"
-            aria-pressed={view === v}
-          >
-            {v}
-          </Button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 flex-1" role="group" aria-label="Calendar view">
+          {(["day", "week", "month"] as const).map(v => (
+            <Button
+              key={v}
+              variant={view === v ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView(v)}
+              className="capitalize"
+              aria-pressed={view === v}
+            >
+              {v}
+            </Button>
+          ))}
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => void refetch()} aria-label="Refresh calendar events">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(n => <Skeleton key={n} className="h-24 w-full rounded-xl" />)}
+        </div>
+      ) : calError ? (
+        <div className="text-center py-6 space-y-2">
+          <p className="text-sm text-muted-foreground">Could not load celestial events.</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Try again
+          </Button>
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No major events in this window.</p>
       ) : (
         <div className="space-y-3" role="list" aria-label="Planetary events">
-          {filtered.map((evt, i) => (
-            <Card key={`${evt.date.toISOString()}-${evt.label}-${evt.type}`} role="listitem">
+          {filtered.map((evt) => (
+            <Card key={`${evt.date}-${evt.type}-${evt.planet ?? ""}-${evt.label}`} role="listitem">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-sm">{evt.label}</p>
-                  <Badge variant={evt.type === "moon" ? "secondary" : evt.type === "retrograde" ? "destructive" : "outline"} className="text-xs">
-                    {evt.type}
+                  <Badge variant={eventBadgeVariant(evt.type)} className="text-xs capitalize">
+                    {eventBadgeLabel(evt.type)}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {evt.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  {formatEventDate(evt.date)}
                 </p>
                 <p className="text-xs">{evt.description}</p>
                 <p className="text-xs text-primary italic">✦ {evt.prompt}</p>
@@ -467,7 +506,15 @@ function CalendarTab() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | null; numerologyData: NumerologyData | null }) {
+function InsightsTab({
+  birthData,
+  numerologyData,
+  onViewNumerologyProfile,
+}: {
+  birthData: BirthData | null;
+  numerologyData: NumerologyData | null;
+  onViewNumerologyProfile?: () => void;
+}) {
   const moonPhase = getCurrentMoonPhase();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -483,6 +530,8 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
 
   const lifePath = numerologyData?.birthDate ? calcLifePath(numerologyData.birthDate) : null;
   const personalYear = numerologyData?.birthDate ? calcPersonalYear(numerologyData.birthDate) : null;
+  const personalMonth = numerologyData?.birthDate ? calcPersonalMonth(numerologyData.birthDate) : null;
+  const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
 
   return (
     <div className="space-y-4">
@@ -528,7 +577,7 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
       )}
 
       {/* Numerology insight */}
-      {lifePath !== null && personalYear !== null ? (
+      {lifePath !== null && personalYear !== null && personalMonth !== null && personalDay !== null ? (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -537,20 +586,43 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Life Path {lifePath}</span>
-              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Personal Year {personalYear}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Year {personalYear}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Month {personalMonth}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Day {personalDay}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{PERSONAL_YEAR_MEANINGS[personalYear] ?? ""}</p>
+            <p className="text-xs text-muted-foreground">{PERSONAL_DAY_MEANINGS[personalDay] ?? ""}</p>
+            <p className="text-xs text-muted-foreground">{PERSONAL_MONTH_MEANINGS[personalMonth] ?? ""}</p>
             <p className="text-xs text-primary italic">
               ✦ {LIFE_PATH_MEANINGS[lifePath]?.desc ?? "Your numbers shape your journey."}
             </p>
+            {onViewNumerologyProfile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onViewNumerologyProfile}
+                className="mt-1 h-7 text-xs px-2 gap-1"
+              >
+                View full numerology profile <ArrowRight className="h-3 w-3" />
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <Card className="border-dashed">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Add your name and birth date in the Numerology Profile tab for number-based insights.</p>
+          <CardContent className="p-4 text-center space-y-2">
+            <p className="text-xs text-muted-foreground">Add your birth date (and name if you'd like deeper insights) to see your number-based guidance.</p>
+            {onViewNumerologyProfile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onViewNumerologyProfile}
+                className="h-7 text-xs px-2 gap-1"
+              >
+                Set up Numerology Profile <ArrowRight className="h-3 w-3" />
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -571,6 +643,7 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AstrologyProfileTab() {
+  const queryClient = useQueryClient();
   const [birthData, setBirthData] = useState<BirthData | null>(loadBirthData);
   const [editing, setEditing] = useState(!birthData);
 
@@ -581,6 +654,29 @@ function AstrologyProfileTab() {
   const [houseSystem, setHouseSystem] = useState<HouseSystem>(birthData?.houseSystem ?? "whole-sign");
   const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthData?.zodiacSystem ?? "tropical");
   const [expandedPlanet, setExpandedPlanet] = useState<string | null>(null);
+
+  // Persist house system to server for authenticated users
+  const houseSystemMutation = useMutation({
+    mutationFn: async (hs: HouseSystem) => {
+      const res = await apiRequest("PATCH", "/api/cosmic/house-system", { houseSystem: hs });
+      if (!res.ok) throw new Error("Failed to update house system");
+      return res.json() as Promise<{ houseSystem: string }>;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/chart"] });
+    },
+  });
+
+  const handleHouseSystemToggle = (hs: HouseSystem) => {
+    setHouseSystem(hs);
+    // Also persist to server if birth data is already saved
+    if (birthData) {
+      const updated = { ...birthData, houseSystem: hs };
+      saveBirthData(updated);
+      setBirthData(updated);
+      houseSystemMutation.mutate(hs);
+    }
+  };
 
   const handleSave = () => {
     if (!birthDate) return;
@@ -683,7 +779,7 @@ function AstrologyProfileTab() {
               </div>
               <p className="text-xs text-muted-foreground flex items-start gap-1">
                 <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                Whole Sign is traditional and easy to understand. Placidus is the modern Western default. House-based placement differences will be reflected in a future update.
+                Whole Sign is traditional and easy to understand. Placidus is the modern Western default.
               </p>
             </div>
 
@@ -728,7 +824,18 @@ function AstrologyProfileTab() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground pt-1">
-            {birthData.zodiacSystem === "tropical" ? "Western/Tropical" : "Vedic/Sidereal"} · {birthData.houseSystem === "whole-sign" ? "Whole Sign" : "Placidus"} houses
+            {birthData.zodiacSystem === "tropical" ? "Western/Tropical" : "Vedic/Sidereal"} ·{" "}
+            <span className="inline-flex items-center gap-1">
+              {birthData.houseSystem === "whole-sign" ? "Whole Sign" : "Placidus"} houses
+              <button
+                type="button"
+                onClick={() => handleHouseSystemToggle(birthData.houseSystem === "whole-sign" ? "placidus" : "whole-sign")}
+                className="ml-1 text-primary underline underline-offset-2 text-xs hover:no-underline focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                aria-label="Toggle house system"
+              >
+                Switch to {birthData.houseSystem === "whole-sign" ? "Placidus" : "Whole Sign"}
+              </button>
+            </span>
             {birthData.birthTime ? "" : " · Birth time not set (some placements are approximate)"}
           </p>
         </CardHeader>
@@ -892,7 +999,7 @@ function NatalChartWheel({ placements }: { placements: PlanetPlacement[] }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NumerologyProfileTab() {
+function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void }) {
   const [numData, setNumData] = useState<NumerologyData | null>(loadNumerologyData);
   const [editing, setEditing] = useState(!numData);
   const [fullName, setFullName] = useState(numData?.fullName ?? "");
@@ -953,25 +1060,49 @@ function NumerologyProfileTab() {
 
   const lifePath = calcLifePath(numData.birthDate);
   const personalYear = calcPersonalYear(numData.birthDate);
-  const expression = numData.fullName ? calcExpression(numData.fullName) : null;
-  const soulUrge = numData.fullName ? calcSoulUrge(numData.fullName) : null;
+  const personalMonth = calcPersonalMonth(numData.birthDate);
+  const personalDay = calcPersonalDay(numData.birthDate);
+  const cleanedFullName = numData.fullName
+    ? numData.fullName.replace(/[^A-Za-z]/g, "").trim()
+    : "";
+  const hasValidName = cleanedFullName.length > 0;
+  const expression = hasValidName ? calcExpression(numData.fullName) : null;
+  const soulUrge = hasValidName ? calcSoulUrge(numData.fullName) : null;
   const lpData = LIFE_PATH_MEANINGS[lifePath];
+  const exprData = expression !== null ? EXPRESSION_MEANINGS[expression] : null;
+  const soulData = soulUrge !== null ? SOUL_URGE_MEANINGS[soulUrge] : null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Your Numbers</h3>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="button-edit-numerology">
-          <Settings2 className="w-4 h-4 mr-1" />
-          Edit
-        </Button>
+        <div className="flex items-center gap-1">
+          {onViewInsights && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onViewInsights}
+              className="h-7 text-xs px-2 gap-1"
+              aria-label="View numerology in Insights tab"
+            >
+              Insights <ArrowRight className="h-3 w-3" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="button-edit-numerology">
+            <Settings2 className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+        </div>
       </div>
 
       {/* Life Path */}
       <Card>
         <CardContent className="p-4 space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-lg">
+            <div
+              className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-lg shrink-0"
+              aria-label={`Life Path number ${lifePath}`}
+            >
               {lifePath}
             </div>
             <div>
@@ -986,11 +1117,16 @@ function NumerologyProfileTab() {
       {expression !== null && (
         <Card>
           <CardContent className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold text-lg w-8">{expression}</span>
+            <div className="flex items-center gap-3">
+              <span
+                className="text-primary font-bold text-lg w-8 shrink-0"
+                aria-label={`Expression number ${expression}`}
+              >
+                {expression}
+              </span>
               <div>
-                <p className="text-sm font-medium">Expression Number</p>
-                <p className="text-xs text-muted-foreground">Your natural talents and abilities as revealed by your full name.</p>
+                <p className="text-sm font-medium">Expression · {exprData?.title ?? ""}</p>
+                <p className="text-xs text-muted-foreground">{exprData?.desc ?? "Your natural talents and abilities as revealed by your full name."}</p>
               </div>
             </div>
           </CardContent>
@@ -1001,36 +1137,106 @@ function NumerologyProfileTab() {
       {soulUrge !== null && (
         <Card>
           <CardContent className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold text-lg w-8">{soulUrge}</span>
+            <div className="flex items-center gap-3">
+              <span
+                className="text-primary font-bold text-lg w-8 shrink-0"
+                aria-label={`Soul Urge number ${soulUrge}`}
+              >
+                {soulUrge}
+              </span>
               <div>
-                <p className="text-sm font-medium">Soul Urge</p>
-                <p className="text-xs text-muted-foreground">Your heart's deepest desires — what motivates you at your core.</p>
+                <p className="text-sm font-medium">Soul Urge · {soulData?.title ?? ""}</p>
+                <p className="text-xs text-muted-foreground">{soulData?.desc ?? "Your heart's deepest desires — what motivates you at your core."}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Personal Year */}
+      {/* Cycle numbers: Personal Year / Month / Day */}
       <Card>
-        <CardContent className="p-4 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-primary font-bold text-lg w-8">{personalYear}</span>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-400" />
+            Active Cycles
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Year ${personalYear}`}
+            >
+              {personalYear}
+            </span>
             <div>
               <p className="text-sm font-medium">Personal Year {personalYear}</p>
               <p className="text-xs text-muted-foreground">{PERSONAL_YEAR_MEANINGS[personalYear] ?? ""}</p>
             </div>
           </div>
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Month ${personalMonth}`}
+            >
+              {personalMonth}
+            </span>
+            <div>
+              <p className="text-sm font-medium">Personal Month {personalMonth}</p>
+              <p className="text-xs text-muted-foreground">{PERSONAL_MONTH_MEANINGS[personalMonth] ?? ""}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Day ${personalDay}`}
+            >
+              {personalDay}
+            </span>
+            <div>
+              <p className="text-sm font-medium">Personal Day {personalDay}</p>
+              <p className="text-xs text-muted-foreground">{PERSONAL_DAY_MEANINGS[personalDay] ?? ""}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Cycles info */}
-      <Card className="bg-muted/40">
-        <CardContent className="p-4 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">About Numerology Cycles</p>
-          <p className="text-xs text-muted-foreground">
-            Numerology maps your life using 9-year cycles (Personal Years 1–9). Each year has a unique theme — from new beginnings (1) to completion (9). Your Life Path is a constant, while Personal Year changes annually.
+      {/* 9-year cycle wheel */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Hash className="h-4 w-4" />
+            9-Year Cycle
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="grid grid-cols-9 gap-1"
+            role="list"
+            aria-label="9-year numerology cycle"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(yr => {
+              const isCurrent = yr === personalYear;
+              return (
+                <div
+                  key={yr}
+                  role="listitem"
+                  aria-current={isCurrent ? "true" : undefined}
+                  title={PERSONAL_YEAR_MEANINGS[yr] ?? ""}
+                  className={[
+                    "flex flex-col items-center justify-center rounded p-1.5 text-xs font-semibold transition-colors",
+                    isCurrent
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                  ].join(" ")}
+                >
+                  {yr}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            You are in a Personal Year <strong>{personalYear}</strong> cycle. Each year carries its own energy theme — from new beginnings (1) through completion and release (9).
           </p>
         </CardContent>
       </Card>
@@ -1040,12 +1246,58 @@ function NumerologyProfileTab() {
 
 // ─── Consent section ───────────────────────────────────────────────────────────
 function ConsentSection() {
+  const { data: authData } = useAuth();
+  const isAuthenticated = !!authData?.user;
+  const queryClient = useQueryClient();
+
+  // For authenticated users, fetch consent from the server
+  const { data: serverConsent } = useQuery<CosmicConsent>({
+    queryKey: ["/api/cosmic/consent"],
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch("/api/cosmic/consent", { credentials: "include" });
+      if (!res.ok) return loadConsent();
+      return res.json() as Promise<CosmicConsent>;
+    },
+  });
+
+  // Local state seeded from server (auth) or localStorage (guest)
   const [consent, setConsent] = useState<CosmicConsent>(loadConsent);
+
+  // Sync local state and localStorage when server data loads
+  useEffect(() => {
+    if (serverConsent) {
+      setConsent(serverConsent);
+      // Keep localStorage aligned with server as offline/guest fallback
+      saveConsent(serverConsent);
+    }
+  }, [serverConsent]);
+
+  const serverMutation = useMutation({
+    mutationFn: async (next: CosmicConsent) => {
+      const res = await fetch("/api/cosmic/consent", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error("Failed to save consent");
+      return res.json() as Promise<CosmicConsent>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cosmic/consent"] });
+    },
+  });
 
   const update = (key: keyof CosmicConsent, val: boolean) => {
     const next = { ...consent, [key]: val };
     setConsent(next);
+    // Always keep localStorage in sync as guest/offline fallback
     saveConsent(next);
+    if (isAuthenticated) {
+      serverMutation.mutate(next);
+    }
   };
 
   return (
@@ -1148,7 +1400,11 @@ export default function CosmicHubPage() {
             </TabsContent>
 
             <TabsContent value="insights" className="mt-4">
-              <InsightsTab birthData={birthData} numerologyData={numerologyData} />
+              <InsightsTab
+                birthData={birthData}
+                numerologyData={numerologyData}
+                onViewNumerologyProfile={() => setActiveTab("numerology")}
+              />
             </TabsContent>
 
             <TabsContent value="astrology" className="mt-4 space-y-4">
@@ -1157,7 +1413,7 @@ export default function CosmicHubPage() {
             </TabsContent>
 
             <TabsContent value="numerology" className="mt-4 space-y-4">
-              <NumerologyProfileTab />
+              <NumerologyProfileTab onViewInsights={() => setActiveTab("insights")} />
               <ConsentSection />
             </TabsContent>
           </Tabs>

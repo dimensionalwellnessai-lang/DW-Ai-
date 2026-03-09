@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import { getQueryFn } from "@/lib/queryClient";
+import { getQueryFn, STALE_TIME } from "@/lib/queryClient";
 
 export type MomentumStatus = "green" | "yellow" | "red";
 
@@ -55,7 +55,7 @@ export function useElevationEngine(): UseElevationEngineResult {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: enabled && isLoggedIn,
     retry: false,
-    staleTime: 5 * 60 * 1000, // treat as fresh for 5 minutes
+    staleTime: STALE_TIME.MEDIUM, // treat as fresh for 5 minutes
   });
 
   // ── POST to run/re-run a check ────────────────────────────────────────────

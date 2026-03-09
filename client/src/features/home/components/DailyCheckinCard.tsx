@@ -122,6 +122,7 @@ export function DailyCheckinCard() {
 
   async function handleSubmit(moodScore: number, constraintType: string, constraintNote?: string) {
     await submitCheckin({ date: today, moodScore, constraintType, constraintNote });
+    trackEvent(EVENTS.CHECKIN_SUBMITTED, { moodScore, constraintType });
     // Fire-and-forget: update learning profile from this check-in
     void sendLearningEvent("checkin", { constraintType, moodScore });
     trackEvent(EVENTS.CHECKIN_SUBMITTED, { moodScore, constraintType });

@@ -309,7 +309,7 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "accepted");
           setGuestRefreshKey((k) => k + 1);
         }
-        trackEvent(EVENTS.FOLLOW_UP_ACCEPTED, { followUpId: id, source: "action_center" });
+        trackEvent(EVENTS.FOLLOWUP_ACCEPTED, { followupId: id });
         const params = new URLSearchParams();
         params.set("prefill", prompt);
         params.set("src", "followup_accept");
@@ -332,11 +332,8 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "snoozed", { snoozedUntil: until.toISOString() });
           setGuestRefreshKey((k) => k + 1);
         }
-        trackEvent(EVENTS.FOLLOW_UP_SNOOZED, {
-          followUpId: id,
-          snoozeLabel: label,
-          snoozeUntil: until.toISOString(),
-        });
+        const snoozeDurationHours = Math.round((until.getTime() - Date.now()) / (1000 * 60 * 60));
+        trackEvent(EVENTS.FOLLOWUP_SNOOZED, { followupId: id, snoozeDurationHours });
         // Create/replace a reminder so the snooze fires at the right time
         if (remindersEnabled) {
           try {
@@ -373,7 +370,7 @@ export default function ActionCenterPage() {
           updateGuestDwFollowupStatus(id, "dismissed");
           setGuestRefreshKey((k) => k + 1);
         }
-        trackEvent(EVENTS.FOLLOW_UP_DISMISSED, { followUpId: id });
+        trackEvent(EVENTS.FOLLOWUP_DISMISSED, { followupId: id });
         // Cancel any pending reminders for this follow-up
         if (remindersEnabled) {
           try {

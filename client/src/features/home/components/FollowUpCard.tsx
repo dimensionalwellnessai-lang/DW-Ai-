@@ -12,7 +12,7 @@ interface FollowUpCardProps {
   summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent" | "activeFollowUp">;
 }
 
-function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
+export function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
   if (summary.activeFollowUp) {
     return summary.activeFollowUp.prompt;
   }

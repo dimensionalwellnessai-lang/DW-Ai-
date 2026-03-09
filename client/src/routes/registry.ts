@@ -521,7 +521,21 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     linkedType: "plan",
     actions: [
       { id: "view-plan", label: "View elevation plan", to: "/elevation-plan", icon: "trending-up" },
+      { id: "view-history", label: "Plan history", to: "/plan-history", icon: "history" },
     ],
+  },
+  {
+    id: "weekly-review",
+    path: "/weekly-review",
+    label: "Weekly Review",
+    icon: "clipboard-list",
+    type: "page",
+    description: "Review last week's elevation plan – wins, friction, and next-week proposal",
+    showInMenu: false,
+    menuSection: "more",
+    menuOrder: 58,
+    enabled: true,
+    linkedType: "plan",
   },
   {
     id: "expand-my-week",
