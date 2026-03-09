@@ -67,7 +67,13 @@ export interface ElevationPlanFull {
   days: ElevationPlanDayItem[];
 }
 
+export interface ElevationPlanWithStats extends ElevationPlanItem {
+  totalActions: number;
+  completedActions: number;
+}
+
 const ACTIVE_PLAN_KEY = "/api/elevation-plans/active";
+const ALL_PLANS_KEY = "/api/elevation-plans";
 
 export function useElevationPlan() {
   const { user } = useAuth();

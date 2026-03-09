@@ -667,6 +667,8 @@ export interface IStorage {
 
   // Elevation Plan Builder (PR #5)
   getElevationPlans(userId: string): Promise<ElevationPlan[]>;
+  getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
+  getElevationPlansWithStats(userId: string): Promise<(ElevationPlan & { totalActions: number; completedActions: number })[]>;
   getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined>;
   getActiveElevationPlan(userId: string): Promise<ElevationPlan | undefined>;
   getDraftElevationPlanForDay(userId: string, date: string, conversationId?: string): Promise<ElevationPlan | undefined>;
@@ -3168,6 +3170,40 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(elevationPlans)
       .where(eq(elevationPlans.userId, userId))
       .orderBy(desc(elevationPlans.createdAt));
+  }
+
+  async getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]> {
+    return db.select().from(elevationPlans)
+      .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
+      .orderBy(desc(elevationPlans.createdAt));
+  }
+
+  // PR #17: returns all plans for a user with completion stats in a single aggregate query.
+  // Uses Drizzle's typed select() so that column names are camelCased by the ORM (no raw snake_case leakage).
+  async getElevationPlansWithStats(userId: string): Promise<(ElevationPlan & { totalActions: number; completedActions: number })[]> {
+    const rows = await db
+      .select({
+        id: elevationPlans.id,
+        userId: elevationPlans.userId,
+        title: elevationPlans.title,
+        goal: elevationPlans.goal,
+        focusDimension: elevationPlans.focusDimension,
+        status: elevationPlans.status,
+        startDate: elevationPlans.startDate,
+        endDate: elevationPlans.endDate,
+        sourceConversationId: elevationPlans.sourceConversationId,
+        createdAt: elevationPlans.createdAt,
+        updatedAt: elevationPlans.updatedAt,
+        totalActions: sql<number>`coalesce(count(${elevationPlanActions.id}), 0)::int`,
+        completedActions: sql<number>`coalesce(count(${elevationPlanActions.id}) filter (where ${elevationPlanActions.isCompleted} = true), 0)::int`,
+      })
+      .from(elevationPlans)
+      .leftJoin(elevationPlanDays, eq(elevationPlanDays.planId, elevationPlans.id))
+      .leftJoin(elevationPlanActions, eq(elevationPlanActions.planDayId, elevationPlanDays.id))
+      .where(eq(elevationPlans.userId, userId))
+      .groupBy(elevationPlans.id)
+      .orderBy(desc(elevationPlans.createdAt));
+    return rows;
   }
 
   async getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined> {

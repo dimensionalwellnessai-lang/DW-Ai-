@@ -8626,6 +8626,19 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // GET /api/elevation-plans – list all plans for the user with completion stats (PR #17)
+  app.get("/api/elevation-plans", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      // Use a single aggregate query to avoid N+1 (PR #17)
+      const plansWithStats = await storage.getElevationPlansWithStats(userId);
+      res.json(plansWithStats);
+    } catch (error) {
+      console.error("Elevation plans list error:", error);
+      res.status(500).json({ error: "Failed to list elevation plans" });
+    }
+  });
+
   // GET /api/elevation-plans/:id – get a specific elevation plan
   app.get("/api/elevation-plans/:id", requireAuth, async (req, res) => {
     try {
@@ -8650,6 +8663,16 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const parsed = elevationPlanUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      // PR #17: when activating a plan, first verify the target plan exists/belongs to user
+      // so we don't accidentally archive the current active plan for a non-existent target.
+      if (parsed.data.status === "active") {
+        const targetPlan = await storage.getElevationPlan(req.params.id, userId);
+        if (!targetPlan) return res.status(404).json({ error: "Plan not found" });
+        const currentActive = await storage.getActiveElevationPlan(userId);
+        if (currentActive && currentActive.id !== req.params.id) {
+          await storage.updateElevationPlan(currentActive.id, userId, { status: "archived" });
+        }
       }
       const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Plan not found" });
@@ -8690,18 +8713,6 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Elevation plan action update error:", error);
       res.status(500).json({ error: "Failed to update elevation plan action" });
-    }
-  });
-
-  // GET /api/elevation-plans – list all elevation plans for the user (history)
-  app.get("/api/elevation-plans", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const plans = await storage.getElevationPlans(userId);
-      res.json(plans);
-    } catch (error) {
-      console.error("Elevation plans list error:", error);
-      res.status(500).json({ error: "Failed to list elevation plans" });
     }
   });
 

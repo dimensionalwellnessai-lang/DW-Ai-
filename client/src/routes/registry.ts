@@ -521,6 +521,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     linkedType: "plan",
     actions: [
       { id: "view-plan", label: "View elevation plan", to: "/elevation-plan", icon: "trending-up" },
+      { id: "view-history", label: "Plan history", to: "/plan-history", icon: "history" },
     ],
   },
   {
