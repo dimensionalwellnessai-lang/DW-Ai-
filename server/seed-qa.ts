@@ -11,40 +11,19 @@
  * Usage:
  *   npm run seed:qa
  *
- * Scenarios seeded:
+ * Scenarios covered:
  *   - MomentumCard:     2 habits (one with a 7-day streak, one with a 3-day streak)
  *   - PlanInMotionCard: 2 active goals with progress values
- *   - FollowUpCard:     1 pending DW follow-up question
- *   - DailyCheckinCard: today's check-in pre-populated (authed state)
+ *   - FollowUpCard:     trigger a DW conversation via the app UI to generate a follow-up (not seeded by this script)
+ *   - DailyCheckinCard: submit today's check-in via the app UI after login (not seeded by this script)
  */
 
 import bcrypt from "bcrypt";
 import { storage } from "./storage";
-import { db } from "./db";
-import {
-  users,
-  goals,
-  habits,
-  habitLogs,
-} from "@shared/schema";
-import { eq } from "drizzle-orm";
 
 const QA_EMAIL = "qa@dimensionalwellness.app";
 const QA_PASSWORD = "QaWellness2026!";
 const SALT_ROUNDS = 10;
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function todayDateString(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(8, 0, 0, 0);
-  return d;
-}
 
 // ── Main seed function ─────────────────────────────────────────────────────────
 
@@ -56,10 +35,7 @@ async function seedQaAccount() {
     console.log("1️⃣  Removing existing QA account (if present)…");
     const existing = await storage.getUserByEmail(QA_EMAIL);
     if (existing) {
-      await db.delete(habitLogs).where(eq(habitLogs.userId, existing.id));
-      await db.delete(habits).where(eq(habits.userId, existing.id));
-      await db.delete(goals).where(eq(goals.userId, existing.id));
-      await db.delete(users).where(eq(users.id, existing.id));
+      await storage.deleteUser(existing.id);
       console.log("   ✅ Existing QA account removed\n");
     } else {
       console.log("   No existing QA account found\n");
@@ -126,15 +102,11 @@ async function seedQaAccount() {
     for (let i = 0; i < 7; i++) {
       await storage.createHabitLog({
         habitId: habit7.id,
-        userId: user.id,
-        completedAt: daysAgo(i),
       });
     }
     for (let i = 0; i < 3; i++) {
       await storage.createHabitLog({
         habitId: habit3.id,
-        userId: user.id,
-        completedAt: daysAgo(i),
       });
     }
     console.log("   ✅ Created 2 habits with streak logs\n");
