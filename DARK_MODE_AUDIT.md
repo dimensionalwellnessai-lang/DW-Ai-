@@ -246,7 +246,7 @@ This document provides a comprehensive audit of all screens, components, dialogs
 |-----------|------|------------------|-------|
 | Wellness Summary | `wellness-summary.tsx` | ✅ Verified | Metrics overview |
 | Life Dimensions Analytics | `life-dimensions-analytics.tsx` | ✅ Verified | Uses HSL colors |
-| Astrology Calendar | `astrology-calendar.tsx` | ✅ Verified | Calendar view |
+| Cosmic Calendar | `cosmic-calendar.tsx` | ✅ Verified | Calendar view |
 | Placement Interpretation | `placement-interpretation.tsx` | ✅ Verified | Astrology details |
 
 #### Interactive Elements

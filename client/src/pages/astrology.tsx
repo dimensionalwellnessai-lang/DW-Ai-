@@ -30,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AstrologyCalendar } from "@/components/astrology-calendar";
+import { CosmicCalendar } from "@/components/cosmic-calendar";
 
 interface AstrologyNote {
   id: string;
@@ -852,7 +852,7 @@ ${voiceRules}`;
               </TabsTrigger>
               <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar" data-tour="calendar">
                 <Calendar className="mr-1 h-4 w-4" />
-                Moon Cycles
+                Cosmic Calendar
               </TabsTrigger>
               <TabsTrigger value="journal" className="flex-1" data-testid="tab-journal">
                 <MessageSquareText className="mr-1 h-4 w-4" />
@@ -1244,7 +1244,7 @@ ${voiceRules}`;
             </TabsContent>
             
             <TabsContent value="calendar" className="mt-6 space-y-6">
-              <AstrologyCalendar birthChart={birthChart ? {
+              <CosmicCalendar birthChart={birthChart ? {
                 sunSign: birthChart.sunSign,
                 moonSign: birthChart.moonSign,
                 risingSign: birthChart.risingSign,
