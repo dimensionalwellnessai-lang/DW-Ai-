@@ -117,8 +117,9 @@ export function ProactiveCard({
           className="absolute top-2 right-2 h-6 w-6 opacity-60 hover:opacity-100"
           onClick={onDismiss}
           data-testid="button-dismiss-card"
+          aria-label="Dismiss card"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3 w-3" aria-hidden="true" />
         </Button>
       )}
       

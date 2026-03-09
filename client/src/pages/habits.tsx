@@ -152,12 +152,14 @@ export default function HabitsPage() {
                 >
                   <button
                     onClick={() => handleToggleHabit(habit.id, completedToday)}
-                    className="shrink-0"
+                    className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+                    aria-label={completedToday ? `Mark ${habit.name} as incomplete` : `Mark ${habit.name} as complete`}
+                    aria-pressed={Boolean(completedToday)}
                   >
                     {completedToday ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-500" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
                     ) : (
-                      <Circle className="h-6 w-6 text-muted-foreground" />
+                      <Circle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                     )}
                   </button>
                   <div className="flex-1">

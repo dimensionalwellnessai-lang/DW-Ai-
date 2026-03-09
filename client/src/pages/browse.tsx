@@ -1686,19 +1686,19 @@ ${contentList}`,
                           </div>
                           <div className="flex items-center gap-4 mt-3">
                             <button 
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                               onClick={handleComingSoon}
                               data-testid={`button-like-${post.id}`}
                             >
-                              <ThumbsUp className="h-3.5 w-3.5" />
+                              <ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />
                               Like
                             </button>
                             <button 
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                               onClick={handleComingSoon}
                               data-testid={`button-comment-${post.id}`}
                             >
-                              <MessageCircle className="h-3.5 w-3.5" />
+                              <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
                               Comment
                             </button>
                           </div>
