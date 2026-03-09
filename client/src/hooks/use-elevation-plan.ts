@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
+import { STALE_TIME } from "@/lib/queryClient";
 import {
   getGuestActivePlan,
   getGuestElevationPlans,
@@ -102,7 +103,7 @@ export function useElevationPlan() {
       if (!guestPlan) return null;
       return getGuestElevationPlanFull(guestPlan.id) as ElevationPlanFull | null;
     },
-    staleTime: 30_000,
+    staleTime: STALE_TIME.MEDIUM,
   });
 
   // ─── Generate / get draft plan ─────────────────────────────────────────────
