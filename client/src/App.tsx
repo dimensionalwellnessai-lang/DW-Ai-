@@ -18,6 +18,7 @@ import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
 import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
+import { InteractiveTour } from "@/components/interactive-tour";
 import { ReminderBanner } from "@/components/reminder-banner";
 
 // ── Lazy-loaded page components ───────────────────────────────────────────────
@@ -70,6 +71,7 @@ import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
 import ActionCenterPage from "@/pages/action-center";
+import { AIWorkspace } from "@/components/ai-workspace";
 
 function isReturningUser(): boolean {
   try {
