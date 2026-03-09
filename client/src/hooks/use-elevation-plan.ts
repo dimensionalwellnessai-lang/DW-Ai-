@@ -34,6 +34,7 @@ export interface ElevationPlanActionItem {
   timeOfDay?: string | null;
   durationMinutes?: number | null;
   isCompleted: boolean;
+  linkedEntity?: { type: "calendar_event" | "task"; id: string } | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -272,80 +273,103 @@ export function useElevationPlan() {
     },
   });
 
-  // ─── Plan history (PR #17) ─────────────────────────────────────────────────
+  // ─── Add action to calendar ────────────────────────────────────────────────
 
-  const {
-    data: allPlansData,
-    isLoading: isLoadingAllPlans,
-    refetch: refetchAllPlans,
-  } = useQuery<ElevationPlanWithStats[]>({
-    queryKey: [ALL_PLANS_KEY],
-    enabled: isFeatureEnabled("MULTI_PLAN") && isLoggedIn,
-    queryFn: async () => {
-      const res = await fetch(ALL_PLANS_KEY, { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json() as Promise<ElevationPlanWithStats[]>;
-    },
-    staleTime: 60_000,
-  });
-
-  // Archive a plan (PR #17)
-  const archivePlanMutation = useMutation<
-    ElevationPlanItem,
+  const addToCalendarMutation = useMutation<
+    { action: ElevationPlanActionItem; calendarEvent: { id: string; title: string } },
     Error,
-    { id: string }
+    { actionId: string; planDayIndex: number; planStartDate: string; planTitle?: string; planId?: string }
   >({
-    mutationFn: async ({ id }) => {
-      if (isLoggedIn) {
-        const res = await fetch(`/api/elevation-plans/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ status: "archived" }),
-        });
-        if (!res.ok) throw new Error("Failed to archive plan");
-        return res.json() as Promise<ElevationPlanItem>;
+    mutationFn: async ({ actionId, planDayIndex, planStartDate, planTitle }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/add-to-calendar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ planDayIndex, planStartDate, planTitle }),
+      });
+      if (res.status === 409) {
+        const body = await res.json() as { error: string };
+        throw new Error(body.error ?? "Already linked to calendar");
       }
-      updateGuestElevationPlan(id, { status: "archived" });
-      return { id, status: "archived" } as ElevationPlanItem;
+      if (!res.ok) throw new Error("Failed to add to calendar");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; calendarEvent: { id: string; title: string } }>;
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (_data, { planId }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
     },
   });
 
-  // Reactivate an archived plan (PR #17)
-  const reactivatePlanMutation = useMutation<
-    ElevationPlanItem,
+  // ─── Remove action from calendar ──────────────────────────────────────────
+
+  const removeFromCalendarMutation = useMutation<
+    { action: ElevationPlanActionItem; success: boolean },
     Error,
-    { id: string }
+    { actionId: string; planId?: string }
   >({
-    mutationFn: async ({ id }) => {
-      if (isLoggedIn) {
-        const res = await fetch(`/api/elevation-plans/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ status: "active" }),
-        });
-        if (!res.ok) throw new Error("Failed to reactivate plan");
-        return res.json() as Promise<ElevationPlanItem>;
-      }
-      // Guest: archive any currently active plan first, then activate
-      const guestPlans = getGuestElevationPlans();
-      const currentActive = guestPlans.find((p) => p.status === "active");
-      if (currentActive && currentActive.id !== id) {
-        updateGuestElevationPlan(currentActive.id, { status: "archived" });
-      }
-      updateGuestElevationPlan(id, { status: "active" });
-      return { id, status: "active" } as ElevationPlanItem;
+    mutationFn: async ({ actionId }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/remove-from-calendar`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove from calendar");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; success: boolean }>;
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (_data, { planId }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
+  // ─── Add action to tasks ───────────────────────────────────────────────────
+
+  const addToTasksMutation = useMutation<
+    { action: ElevationPlanActionItem; task: { id: string; title: string } },
+    Error,
+    { actionId: string; planDayIndex: number; planStartDate: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId, planDayIndex, planStartDate }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/add-to-tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ planDayIndex, planStartDate }),
+      });
+      if (res.status === 409) {
+        const body = await res.json() as { error: string };
+        throw new Error(body.error ?? "Already linked to a task");
+      }
+      if (!res.ok) throw new Error("Failed to add to tasks");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; task: { id: string; title: string } }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
+  // ─── Remove action from tasks ─────────────────────────────────────────────
+
+  const removeFromTasksMutation = useMutation<
+    { action: ElevationPlanActionItem; success: boolean },
+    Error,
+    { actionId: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/remove-from-tasks`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove from tasks");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; success: boolean }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
     },
   });
 
@@ -361,13 +385,13 @@ export function useElevationPlan() {
     isUpdatingPlan: updatePlanMutation.isPending,
     toggleAction: toggleActionMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
-    // Plan history (PR #17)
-    allPlans: allPlansData ?? [],
-    isLoadingAllPlans,
-    refetchAllPlans,
-    archivePlan: archivePlanMutation.mutateAsync,
-    isArchiving: archivePlanMutation.isPending,
-    reactivatePlan: reactivatePlanMutation.mutateAsync,
-    isReactivating: reactivatePlanMutation.isPending,
+    addToCalendar: addToCalendarMutation.mutateAsync,
+    isAddingToCalendar: addToCalendarMutation.isPending,
+    removeFromCalendar: removeFromCalendarMutation.mutateAsync,
+    isRemovingFromCalendar: removeFromCalendarMutation.isPending,
+    addToTasks: addToTasksMutation.mutateAsync,
+    isAddingToTasks: addToTasksMutation.isPending,
+    removeFromTasks: removeFromTasksMutation.mutateAsync,
+    isRemovingFromTasks: removeFromTasksMutation.isPending,
   };
 }
