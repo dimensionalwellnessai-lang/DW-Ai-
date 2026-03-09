@@ -2835,9 +2835,8 @@ export async function registerRoutes(
         }
       }
       // Strip client-supplied server-owned fields before inserting
-      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const goal = await storage.createGoal({
-        ...safeRest,
+        ...rest,
         userId: req.session.userId!,
         title: trimmedTitle,
         description,
@@ -2904,9 +2903,8 @@ export async function registerRoutes(
         }
       }
       // Strip client-supplied server-owned fields before inserting
-      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const habit = await storage.createHabit({
-        ...safeRest,
+        ...rest,
         userId: req.session.userId!,
         title: trimmedTitle,
         description,
