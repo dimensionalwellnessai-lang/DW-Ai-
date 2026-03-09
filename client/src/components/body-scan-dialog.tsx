@@ -422,10 +422,11 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
                               />
                               <button
                                 onClick={() => removePhoto(photo.id)}
-                                className="absolute top-1 right-1 w-6 h-6 bg-background/80 rounded-full flex items-center justify-center"
+                                className="absolute top-1 right-1 w-6 h-6 bg-background/80 rounded-full flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                 data-testid={`button-remove-photo-${poseInfo.pose}`}
+                                aria-label={`Remove photo for ${poseInfo.label}`}
                               >
-                                <X className="w-3 h-3" />
+                                <X className="w-3 h-3" aria-hidden="true" />
                               </button>
                             </>
                           ) : (

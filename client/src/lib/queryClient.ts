@@ -41,6 +41,35 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+/**
+ * Shared staleTime constants for consistent cache TTLs across hooks.
+ * Using named constants avoids magic numbers and makes cache policy explicit.
+ */
+export const STALE_TIME = {
+  /** Data that should never re-fetch automatically (e.g. static config). */
+  FOREVER: Infinity,
+  /**
+   * Auth/identity data TTL (30 s).
+   *
+   * This is only a staleness threshold — it does NOT enable focus-based
+   * refetches. The global `refetchOnWindowFocus` default is `false`.
+   * Queries that need focus refetch must opt in explicitly, e.g.:
+   *   `refetchOnWindowFocus: true`  (as `useAuth` does).
+   */
+  AUTH: 30 * 1000,
+  /** Plans, follow-ups, and learning profile TTL (5 min). */
+  MEDIUM: 5 * 60 * 1000,
+  /** Frequently changing data TTL (1 min). */
+  SHORT: 60 * 1000,
+} as const;
+
+/**
+ * How long inactive query data is kept in memory before being garbage-collected.
+ * 10 minutes gives enough time for a user to navigate away and come back without
+ * triggering a refetch on every route change.
+ */
+const DEFAULT_GC_TIME = 10 * 60 * 1000;
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -48,6 +77,7 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
+      gcTime: DEFAULT_GC_TIME,
       retry: false,
     },
     mutations: {

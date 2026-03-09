@@ -1520,8 +1520,10 @@ export function AIWorkspace() {
               onClick={() => setMenuOpen(true)}
               data-testid="button-menu"
               className="text-foreground"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-6 w-6" aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
@@ -1529,8 +1531,9 @@ export function AIWorkspace() {
               onClick={() => setHistoryOpen(true)}
               data-testid="button-history"
               className="text-foreground"
+              aria-label="Open conversation history"
             >
-              <MessageSquare className="h-6 w-6" />
+              <MessageSquare className="h-6 w-6" aria-hidden="true" />
             </Button>
             <Button
               variant="ghost"
@@ -1538,8 +1541,9 @@ export function AIWorkspace() {
               onClick={handleNewConversation}
               data-testid="button-new-chat"
               className="text-foreground"
+              aria-label="Start new conversation"
             >
-              <Plus className="h-6 w-6" />
+              <Plus className="h-6 w-6" aria-hidden="true" />
             </Button>
           </div>
           
@@ -1554,8 +1558,9 @@ export function AIWorkspace() {
               onClick={() => setImportDialogOpen(true)}
               data-testid="button-import"
               className="text-foreground"
+              aria-label="Import document"
             >
-              <Upload className="h-6 w-6" />
+              <Upload className="h-6 w-6" aria-hidden="true" />
             </Button>
             <ThemeToggle />
           </div>
@@ -1595,42 +1600,42 @@ export function AIWorkspace() {
                 <div key="life-dashboard-group" className="space-y-1">
                   <Link href={feature.path || "/"}>
                     <button
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left`}
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${feature.id}`}
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm text-foreground">{feature.name}</span>
                     </button>
                   </Link>
                   <details className="group">
-                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-calendar-dropdown">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid="menu-calendar-dropdown">
+                      <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm flex-1 text-foreground">Calendar</span>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-2">
                       <Link href="/today">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
+                          <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Today</span>
                         </button>
                       </Link>
                       <Link href="/calendar">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-month">
+                          <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Month</span>
                         </button>
                       </Link>
                       <Link href="/calendar?view=week">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-week">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-week">
+                          <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Week</span>
                         </button>
                       </Link>
                       <Link href="/routines">
-                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
-                          <History className="h-4 w-4 text-muted-foreground" />
+                        <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-routines">
+                          <History className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Routines</span>
                         </button>
                       </Link>
@@ -1643,11 +1648,11 @@ export function AIWorkspace() {
             return (
               <Link key={feature.path} href={feature.path || "/"}>
                 <button
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left ${feature.indent ? "ml-6" : ""}`}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${feature.indent ? "ml-6" : ""}`}
                   onClick={() => setMenuOpen(false)}
                   data-testid={`menu-item-${feature.id}`}
                 >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   <span className="text-sm text-foreground">{feature.name}</span>
                 </button>
               </Link>
@@ -1659,10 +1664,10 @@ export function AIWorkspace() {
             onToggle={(e) => setMoreExpanded((e.target as HTMLDetailsElement).open)}
             data-testid="menu-more-details"
           >
-            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none" data-testid="menu-more-toggle">
-              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+            <summary className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left cursor-pointer list-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid="menu-more-toggle">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <span className="text-sm flex-1 text-foreground">More</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
             <div className="mt-1 space-y-1 ml-2">
               {moreFeatures.map((feature) => {
@@ -1670,11 +1675,11 @@ export function AIWorkspace() {
                 return (
                   <Link key={feature.path} href={feature.path || "/"}>
                     <button
-                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       onClick={() => setMenuOpen(false)}
                       data-testid={`menu-item-${feature.id}`}
                     >
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                       <span className="text-sm">{feature.name}</span>
                     </button>
                   </Link>
@@ -1685,7 +1690,7 @@ export function AIWorkspace() {
         </nav>
         <div className="pt-4 space-y-2">
           <button
-            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left"
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             onClick={() => {
               // Menu is already open when clicking this button inside the menu
               // Skip Step 1 ("Open Menu") and start at Step 2 (Life Dashboard)
@@ -1696,7 +1701,7 @@ export function AIWorkspace() {
             }}
             data-testid="button-start-tutorial"
           >
-            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+            <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm text-foreground">App Tour</span>
           </button>
           {user ? (
@@ -1806,10 +1811,10 @@ export function AIWorkspace() {
                     <button
                       key={action.id}
                       onClick={() => handleFirstTimeAction(action.action)}
-                      className="flex flex-col items-center gap-1 p-3 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow"
+                      className="flex flex-col items-center gap-1 p-3 rounded-xl border bg-card glass dark:border-white/10 hover-elevate text-center transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       data-testid={`button-action-${action.id}`}
                     >
-                      <Icon className="h-3 w-3 text-foreground/60" />
+                      <Icon className="h-3 w-3 text-foreground/60" aria-hidden="true" />
                       <span className="text-xs text-foreground/80">{action.text}</span>
                     </button>
                   );
@@ -1817,23 +1822,23 @@ export function AIWorkspace() {
               </div>
               <button
                 onClick={() => handleFirstTimeAction("lifesystem")}
-                className="w-full max-w-xs px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm"
+                className="w-full max-w-xs px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover-elevate active-elevate-2 flex items-center justify-center gap-2 glow-purple-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 data-testid="button-action-lifesystem"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                 Build my life system
               </button>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setHistoryOpen(true)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                   data-testid="button-view-history"
                 >
-                  <History className="h-3 w-3" />
+                  <History className="h-3 w-3" aria-hidden="true" />
                   History
                 </button>
                 <Link href="/daily-schedule">
-                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-today">
+                  <button className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded" data-testid="link-today">
                     Today's schedule
                   </button>
                 </Link>
@@ -1848,10 +1853,10 @@ export function AIWorkspace() {
               <div className="flex justify-end mb-1">
                 <button
                   onClick={() => setReadbackOpen(true)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 px-2 rounded-lg hover:bg-muted/50"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 px-2 rounded-lg hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   data-testid="button-readback"
                 >
-                  <BookOpen className="h-3 w-3" />
+                  <BookOpen className="h-3 w-3" aria-hidden="true" />
                   Read back
                 </button>
               </div>
@@ -1887,7 +1892,7 @@ export function AIWorkspace() {
                       </Button>
                       <button
                         onClick={handleNudgeDismiss}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                         data-testid="button-nudge-dismiss"
                       >
                         Not today
@@ -1929,7 +1934,7 @@ export function AIWorkspace() {
                       </Button>
                       <button
                         onClick={handleRecapDismiss}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                         data-testid="button-recap-dismiss"
                       >
                         Not now
@@ -1961,7 +1966,7 @@ export function AIWorkspace() {
                       </Button>
                       <button
                         onClick={handleNextStepDismiss}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                         data-testid="button-next-step-dismiss"
                       >
                         Skip
@@ -2297,8 +2302,9 @@ export function AIWorkspace() {
                     className="h-6 w-6 shrink-0"
                     onClick={() => setAttachedFiles([])}
                     data-testid="button-remove-attachment"
+                    aria-label="Remove attachment"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 )}
               </div>
@@ -2340,8 +2346,9 @@ export function AIWorkspace() {
                 disabled={isUploading}
                 className="shrink-0"
                 data-testid="button-attach"
+                aria-label="Attach file"
               >
-                <Paperclip className="w-4 h-4 text-foreground" />
+                <Paperclip className="w-4 h-4 text-foreground" aria-hidden="true" />
               </Button>
               <Textarea
                 ref={inputRef}
@@ -2351,6 +2358,7 @@ export function AIWorkspace() {
                 className="resize-none [min-height:36px] max-h-16 rounded-xl py-2 px-3 text-sm"
                 rows={1}
                 disabled={isTyping || isUploading || messageLimitReached}
+                aria-label="Message input"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -2365,8 +2373,9 @@ export function AIWorkspace() {
                 disabled={(!input.trim() && attachedFiles.length === 0) || isTyping || isUploading || messageLimitReached}
                 className="rounded-full shrink-0"
                 data-testid="button-send"
+                aria-label="Send message"
               >
-                {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-foreground" /> : <Send className="w-4 h-4 text-foreground" />}
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-foreground" aria-hidden="true" /> : <Send className="w-4 h-4 text-foreground" aria-hidden="true" />}
               </Button>
               <VoiceModeButton
                 onTranscript={(text) => {
@@ -2466,7 +2475,8 @@ export function AIWorkspace() {
               <button
                 key={n}
                 onClick={() => setReadbackCount(n)}
-                className={`px-2 py-0.5 rounded-full border transition-colors ${
+                aria-pressed={readbackCount === n}
+                className={`px-2 py-0.5 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   readbackCount === n
                     ? "border-primary bg-primary/10 text-primary font-medium"
                     : "border-border hover:bg-muted/50"
