@@ -165,9 +165,9 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to /home
+  // Setup complete, on welcome -> go to /command-center
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/home" />;
+    return <Redirect to="/command-center" />;
   }
   
   return <>{children}</>;
@@ -175,11 +175,16 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
 
 const LAST_ROUTE_KEY = "dw:lastRoute";
 
+// Routes that should never be restored as the startup destination
+const EXCLUDED_RESTORE_ROUTES = ["/cosmic", "/astrology"];
+
 function getLastRoute(): string | null {
   try {
     const v = localStorage.getItem(LAST_ROUTE_KEY);
     if (!v || v === "/") return null;
-    if (AUTH_ONBOARDING_PAGES.some((p) => v === p || v.startsWith(p + "/"))) return null;
+    const path = v.split(/[?#]/, 1)[0];
+    if (AUTH_ONBOARDING_PAGES.some((p) => path === p || path.startsWith(p + "/"))) return null;
+    if (EXCLUDED_RESTORE_ROUTES.some((p) => path === p || path.startsWith(p + "/"))) return null;
     return v;
   } catch {
     return null;
@@ -189,7 +194,7 @@ function getLastRoute(): string | null {
 function HomeRedirect() {
   if (!isOnboardingComplete()) return <Redirect to="/welcome" />;
   const last = getLastRoute();
-  return <Redirect to={last ?? "/home"} />;
+  return <Redirect to={last ?? "/command-center"} />;
 }
 
 function Router() {
