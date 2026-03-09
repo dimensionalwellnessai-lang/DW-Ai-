@@ -82,7 +82,7 @@ const SYSTEMS: SystemInfo[] = [
 const OPTIONAL_FEATURES: { name: string; key: keyof SystemPreferences; description: string; icon: typeof Brain }[] = [
   { name: "Meditation", key: "meditationEnabled", description: "Guided breathing and mindfulness practices", icon: Brain },
   { name: "Spiritual Practice", key: "spiritualEnabled", description: "Connection to beliefs and values", icon: Heart },
-  { name: "Astrology Notes", key: "astrologyEnabled", description: "Daily astrological insights", icon: Sparkles },
+  { name: "Cosmic Insights Notes", key: "astrologyEnabled", description: "Daily cosmic insights", icon: Sparkles },
   { name: "Journaling", key: "journalingEnabled", description: "Reflection prompts and free writing", icon: Leaf },
 ];
 

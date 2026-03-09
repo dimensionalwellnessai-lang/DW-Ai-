@@ -19,7 +19,7 @@ interface CommandResponse {
 const COSMIC_TAB_LABELS: Record<string, string> = {
   calendar: "Cosmic Calendar",
   insights: "Cosmic Insights",
-  astrology: "Astrology Profile",
+  astrology: "Cosmic Insights Profile",
   numerology: "Numerology Profile",
 };
 
@@ -188,9 +188,9 @@ export function FloatingAIWidget() {
                 variant="outline" 
                 size="sm" 
                 className="text-xs"
-                onClick={() => handleQuickAction("Show my astrology profile")}
+                onClick={() => handleQuickAction("Show my cosmic insights profile")}
               >
-                Astrology
+                Cosmic Insights
               </Button>
               <Button 
                 variant="outline" 

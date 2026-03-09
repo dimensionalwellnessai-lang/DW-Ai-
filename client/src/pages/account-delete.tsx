@@ -165,7 +165,7 @@ export default function AccountDeletePage() {
               <li>Workout plans and body scans</li>
               <li>Challenges and progress tracking</li>
               <li>Wearable device connections and data</li>
-              <li>Astrology charts and predictions</li>
+              <li>Cosmic Insights charts and predictions</li>
               <li>All uploaded documents and attachments</li>
               <li>System preferences and settings</li>
               <li>All other personal wellness data</li>

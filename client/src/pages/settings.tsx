@@ -227,7 +227,7 @@ export function SettingsPage() {
               <div>
                 <CardTitle className="text-base">Cosmic Guidance</CardTitle>
                 <CardDescription>
-                  Optional cosmic lenses — astrology and numerology — for self-reflection. Practical guidance is always primary.
+                  Optional cosmic lenses — cosmic insights and numerology — for self-reflection. Practical guidance is always primary.
                 </CardDescription>
               </div>
             </div>
@@ -235,7 +235,7 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
-                <span>Astrology insights</span>
+                <span>Cosmic insights</span>
                 <span className="text-xs text-muted-foreground font-normal">
                   Include your birth chart in personalized DW guidance
                 </span>
@@ -244,7 +244,7 @@ export function SettingsPage() {
                 id="cosmic-astrology-toggle"
                 checked={cosmicConsent.useAstrologyInGuidance}
                 onCheckedChange={v => updateCosmicConsent("useAstrologyInGuidance", v)}
-                aria-label="Use astrology in guidance"
+                aria-label="Use cosmic insights in guidance"
                 data-testid="switch-cosmic-astrology"
               />
             </div>

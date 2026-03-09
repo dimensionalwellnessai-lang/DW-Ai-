@@ -168,7 +168,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-primary shrink-0" />
-                <span>Get personalized astrology insights</span>
+                <span>Get personalized cosmic insights</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-primary shrink-0" />
@@ -259,7 +259,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                 Birth Chart Details
               </h3>
               <p className="text-sm text-muted-foreground">
-                Optional - for personalized astrology insights
+                Optional - for personalized cosmic insights
               </p>
             </div>
             <div className="space-y-4">
@@ -515,7 +515,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
               {(data.birthDate || data.birthTime || data.birthLocation) && (
                 <div className="flex items-start gap-2 text-sm">
                   <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>Personalized astrology insights and calendar</span>
+                  <span>Personalized cosmic insights and calendar</span>
                 </div>
               )}
             </div>

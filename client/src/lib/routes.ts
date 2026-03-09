@@ -23,7 +23,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/workout", name: "Workout", enabled: true },
   { path: "/recovery", name: "Recovery", enabled: true },
   { path: "/spiritual", name: "Meditation", enabled: true },
-  { path: "/astrology", name: "Astrology", enabled: true },
+  { path: "/cosmic-insights", name: "Cosmic Insights", enabled: true },
   { path: "/browse", name: "Browse", enabled: true },
   
   { path: "/talk", name: "Talk It Out", enabled: true },

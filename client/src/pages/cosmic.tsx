@@ -42,7 +42,7 @@ import {
 } from "@/lib/numerology";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
-// Reuse the same key as /astrology so both pages share one birth chart record
+// Reuse the same key as /cosmic-insights so both pages share one birth chart record
 const BIRTH_CHART_KEY = "dw_birth_chart";
 const NUMEROLOGY_KEY = "dw_cosmic_numerology";
 
@@ -537,7 +537,7 @@ function InsightsTab({
         </CardContent>
       </Card>
 
-      {/* Astrology insight (if birth data available) */}
+      {/* Cosmic insight (if birth data available) */}
       {sunSign ? (
         <Card>
           <CardHeader className="pb-2">
@@ -557,7 +557,7 @@ function InsightsTab({
       ) : (
         <Card className="border-dashed">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Add your birth details in the Astrology Profile tab for personalised insights.</p>
+            <p className="text-xs text-muted-foreground">Add your birth details in the Cosmic Insights Profile tab for personalised insights.</p>
           </CardContent>
         </Card>
       )}
@@ -1297,13 +1297,13 @@ function ConsentSection() {
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Astrology insights</p>
+            <p className="text-sm font-medium">Cosmic insights</p>
             <p className="text-xs text-muted-foreground">Include your chart in personalised DW guidance</p>
           </div>
           <Switch
             checked={consent.useAstrologyInGuidance}
             onCheckedChange={v => update("useAstrologyInGuidance", v)}
-            aria-label="Use astrology in guidance"
+            aria-label="Use cosmic insights in guidance"
           />
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -1373,7 +1373,7 @@ export default function CosmicHubPage() {
               </TabsTrigger>
               <TabsTrigger value="astrology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-astrology">
                 <Star className="h-4 w-4" />
-                <span className="text-[10px]">Astrology</span>
+                <span className="text-[10px]">Cosmic Insights</span>
               </TabsTrigger>
               <TabsTrigger value="numerology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-numerology">
                 <Hash className="h-4 w-4" />

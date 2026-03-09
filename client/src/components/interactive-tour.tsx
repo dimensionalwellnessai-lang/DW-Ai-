@@ -77,7 +77,7 @@ const TOUR_STEPS: TourStep[] = [
     id: "browse",
     title: "Browse Features",
     description:
-      "Explore all of DW's features: mood tracking, meal prep, workout planning, finances, astrology, and more. Use Browse to find and access any feature quickly.",
+      "Explore all of DW's features: mood tracking, meal prep, workout planning, finances, cosmic insights, and more. Use Browse to find and access any feature quickly.",
     icon: Star,
     targetSelector: "[data-tour='browse']",
     position: "top",

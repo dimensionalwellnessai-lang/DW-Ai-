@@ -110,7 +110,7 @@ export const FEATURE_MAP: Record<string, { name: string; route: string; icon?: s
   finances: { name: "Finances", route: "/finances", icon: "💰" },
   recovery: { name: "Recovery", route: "/recovery", icon: "🛀" },
   mood_tracker: { name: "Mood Tracker", route: "/mood-tracker", icon: "😊" },
-  astrology: { name: "Astrology", route: "/astrology", icon: "✨" },
+  astrology: { name: "Cosmic Insights", route: "/cosmic-insights", icon: "✨" },
   shopping_list: { name: "Shopping List", route: "/shopping-list", icon: "🛒" },
 };
 
