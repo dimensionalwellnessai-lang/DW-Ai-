@@ -59,8 +59,8 @@ describe("calcLifePath", () => {
     expect(result >= 1 && result <= 9 || MASTER_NUMBERS.has(result)).toBe(true);
   });
 
-  it("handles a date that yields a master number", () => {
-    // 1992-02-09 → 1+9+9+2+0+2+0+9 = 32 → 3+2 = 5
+  it("handles a date that reduces to a non-master single digit", () => {
+    // 1992-02-09 → 1+9+9+2+0+2+0+9 = 32 → 3+2 = 5 (non-master)
     expect(calcLifePath("1992-02-09")).toBe(5);
   });
 });

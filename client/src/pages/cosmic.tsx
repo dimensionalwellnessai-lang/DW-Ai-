@@ -512,7 +512,7 @@ function InsightsTab({
       ) : (
         <Card className="border-dashed">
           <CardContent className="p-4 text-center space-y-2">
-            <p className="text-xs text-muted-foreground">Add your name and birth date for number-based insights.</p>
+            <p className="text-xs text-muted-foreground">Add your birth date (and name if you'd like deeper insights) to see your number-based guidance.</p>
             {onViewNumerologyProfile && (
               <Button
                 variant="ghost"
@@ -927,8 +927,12 @@ function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void 
   const personalYear = calcPersonalYear(numData.birthDate);
   const personalMonth = calcPersonalMonth(numData.birthDate);
   const personalDay = calcPersonalDay(numData.birthDate);
-  const expression = numData.fullName ? calcExpression(numData.fullName) : null;
-  const soulUrge = numData.fullName ? calcSoulUrge(numData.fullName) : null;
+  const cleanedFullName = numData.fullName
+    ? numData.fullName.replace(/[^A-Za-z]/g, "").trim()
+    : "";
+  const hasValidName = cleanedFullName.length > 0;
+  const expression = hasValidName ? calcExpression(numData.fullName) : null;
+  const soulUrge = hasValidName ? calcSoulUrge(numData.fullName) : null;
   const lpData = LIFE_PATH_MEANINGS[lifePath];
   const exprData = expression !== null ? EXPRESSION_MEANINGS[expression] : null;
   const soulData = soulUrge !== null ? SOUL_URGE_MEANINGS[soulUrge] : null;

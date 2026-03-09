@@ -78,10 +78,10 @@ export function calcSoulUrge(name: string): number {
  * @param forYear    Calendar year to compute for; defaults to current year
  */
 export function calcPersonalYear(birthDate: string, forYear?: number): number {
-  const date = new Date(birthDate);
+  const [_birthYear, birthMonthStr, birthDayStr] = birthDate.split("-");
   const year = forYear ?? new Date().getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+  const month = Number(birthMonthStr);
+  const day = Number(birthDayStr);
   return reduceNumber(month + day + year);
 }
 
