@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,42 +17,19 @@ import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-ag
 import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
+import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
+import { ReminderBanner } from "@/components/reminder-banner";
 
-import { LoginPage } from "@/components/auth/login-page";
-import { InteractiveTour, InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour";
-import { AIWorkspace } from "@/components/ai-workspace";
-import { ChallengesPage } from "@/pages/challenges";
-import { TalkItOutPage } from "@/pages/talk-it-out";
-import { CalendarPlansPage } from "@/pages/calendar-plans";
-import BrowsePage from "@/pages/browse";
-import RoutinesPage from "@/pages/routines";
-import WorkoutPage from "@/pages/workout";
-import { RecoveryPage } from "@/pages/recovery";
-import MealPrepPage from "@/pages/meal-prep";
-import ShoppingListPage from "@/pages/shopping-list";
-import CookSessionPage from "@/pages/cook-session";
-import FinancesPage from "@/pages/finances";
-import SpiritualPage from "@/pages/spiritual";
-import LifeDashboardPage from "@/pages/life-dashboard";
-import { SettingsPage } from "@/pages/settings";
-import DailySchedulePage from "@/pages/daily-schedule";
-import WeekSchedulePage from "@/pages/week-schedule";
-import FeedbackPage from "@/pages/feedback";
-import AstrologyPage from "@/pages/astrology";
-import WelcomePage from "@/pages/welcome";
-import VoiceOnboardingPage from "@/pages/voice-onboarding";
-import SubscriptionPage from "@/pages/subscription";
-import EnhancedOnboardingPage from "@/pages/enhanced-onboarding";
-import ResetPasswordPage from "@/pages/reset-password";
-import AppTourPage from "@/pages/app-tour";
-import JournalPage from "@/pages/journal";
-import WeeklyCheckinPage from "@/pages/weekly-checkin";
-import { TasksPage } from "@/pages/tasks";
-import AccountDeletePage from "@/pages/account-delete";
+// ── Lazy-loaded page components ───────────────────────────────────────────────
+// All page-level components are loaded on demand to minimize the initial JS
+// bundle. The Suspense boundary in AppContent shows a lightweight fallback
+// while each page chunk is fetched the first time.
 
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
+import PlanHistoryPage from "@/pages/plan-history";
+import WeeklyReviewPage from "@/pages/weekly-review";
 import ScheduleReviewPage from "@/pages/schedule-review";
 import ImportPage from "@/pages/import";
 import ExportPage from "@/pages/export";
@@ -242,6 +219,8 @@ function Router() {
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
+      {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}
+      {isRouteEnabled("/weekly-review") && <Route path="/weekly-review" component={WeeklyReviewPage} />}
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}
@@ -268,6 +247,19 @@ function Router() {
 function InitialRouteHandler({ children }: { children: React.ReactNode }) {
   // App now always launches to DW chat at "/" - no special routing needed
   return <>{children}</>;
+}
+
+/** Minimal full-screen loading indicator shown while a lazy page chunk is downloading. */
+function PageLoadingFallback() {
+  return (
+    <div
+      className="flex items-center justify-center min-h-screen"
+      aria-label="Loading page"
+      role="status"
+    >
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 }
 
 /** Non-intrusive banner shown at the top of the app shell when Demo Mode is active. */
@@ -342,15 +334,19 @@ function AppContent() {
       <FloatingAIWidget />
       <DWAvatarOverlay />
       <ReminderBanner />
-      <InteractiveTour
-        open={isOpen}
-        onComplete={completeTour}
-        onSkip={skipTour}
-      />
-      <main id="main-content" className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
+      <Suspense fallback={null}>
+        <InteractiveTour
+          open={isOpen}
+          onComplete={completeTour}
+          onSkip={skipTour}
+        />
+      </Suspense>
+      <div className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
-            <Router />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Router />
+            </Suspense>
           </InitialRouteHandler>
         </FirstRunGuard>
       </main>

@@ -292,4 +292,59 @@ DW helps you see those connections, not just track tasks.`,
       work: "Work / School",
     } as Record<string, string>,
   },
+
+  emptyStates: {
+    habits: {
+      title: "Nothing here yet.",
+      body: "Small, consistent actions build momentum over time.",
+      cta: "Add your first habit",
+    },
+    goals: {
+      title: "Nothing here yet.",
+      body: "Defining what you want makes it easier to move toward it.",
+      cta: "Set your first goal",
+    },
+    schedule: {
+      title: "Nothing scheduled today.",
+      body: "Add an event or let DW suggest something.",
+    },
+    plans: {
+      active: "No active plans. Start a new one whenever you're ready.",
+      draft: "No drafts saved.",
+      archived: "Nothing archived.",
+    },
+    insights: {
+      title: "No insights yet.",
+      body: "Start a conversation with DW to generate your first insight.",
+    },
+    journal: {
+      title: "No entries yet.",
+      body: "Talk with DW to create your first journal entry.",
+    },
+    browse: {
+      title: "Nothing here yet.",
+      body: "Try adjusting your filters.",
+    },
+    saved: {
+      title: "Saved for later",
+      body: "Content you save will appear here. Explore to get started.",
+    },
+    forYou: {
+      title: "Personalized for you",
+      body: "Based on your current energy and recent activity.",
+    },
+    streaks: {
+      title: "No streaks yet.",
+      body: "Show up consistently to start building one.",
+    },
+  },
+
+  whySeeingThis: {
+    habits: "These habits align with what you're working on.",
+    goals: "Goals here reflect what you've told DW matters to you.",
+    insights: "Generated from your conversations with DW.",
+    recommendations: "Based on your current energy and recent activity.",
+    schedule: "Events and blocks you've added or DW has suggested.",
+    streaks: "Consistency across your habits and check-ins.",
+  },
 };

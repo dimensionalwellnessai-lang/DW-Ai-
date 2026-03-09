@@ -33,6 +33,7 @@ import { PLAN_LIBRARY, type TimeBand } from "@/config/plan-library";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { useElevationPlan } from "@/hooks/use-elevation-plan";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { isPlanReviewDue } from "@/hooks/use-weekly-review";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -70,6 +71,7 @@ export default function DWHomePage() {
   const [signals, setSignals] = useState(getUserSignals);
   const [switchData, setSwitchData] = useState(getSwitchData);
   const elevationPlanEnabled = isFeatureEnabled("ELEVATION_PLAN");
+  const weeklyReviewEnabled = isFeatureEnabled("WEEKLY_REVIEW");
   const { activePlan } = useElevationPlan();
   
   const checkIsFirstTime = () => {
@@ -370,24 +372,38 @@ export default function DWHomePage() {
                 const planComplete = dayOffset > 7;
 
                 if (planComplete) {
+                  const needsReview = weeklyReviewEnabled && isPlanReviewDue(plan.endDate);
                   return (
-                    <Card className="card-modern border-purple-500/20 bg-purple-500/5">
+                    <Card className={`card-modern ${needsReview ? "border-amber-500/25 bg-amber-500/5" : "border-purple-500/20 bg-purple-500/5"}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <TrendingUp className="h-4 w-4 text-purple-400" />
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${needsReview ? "bg-amber-500/20" : "bg-purple-500/20"}`}>
+                            <TrendingUp className={`h-4 w-4 ${needsReview ? "text-amber-400" : "text-purple-400"}`} />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">Plan Complete 🎉</p>
+                            <p className="text-sm font-medium text-foreground">
+                              {needsReview ? "Week complete – time to review! 🎉" : "Plan Complete 🎉"}
+                            </p>
                             <p className="text-xs text-muted-foreground mt-0.5">{plan.title}</p>
                           </div>
                         </div>
-                        <Link href="/elevation-plan">
-                          <Button variant="outline" size="sm" className="w-full mt-3 text-xs">
-                            View completed plan
+                        {needsReview ? (
+                          <Button
+                            size="sm"
+                            className="w-full mt-3 bg-amber-500/80 hover:bg-amber-500 text-white text-xs"
+                            onClick={() => navigate(`/weekly-review?id=${plan.id}`)}
+                          >
+                            Start weekly review
                             <ChevronRight className="h-3 w-3 ml-1" />
                           </Button>
-                        </Link>
+                        ) : (
+                          <Link href="/elevation-plan">
+                            <Button variant="outline" size="sm" className="w-full mt-3 text-xs">
+                              View completed plan
+                              <ChevronRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          </Link>
+                        )}
                       </CardContent>
                     </Card>
                   );

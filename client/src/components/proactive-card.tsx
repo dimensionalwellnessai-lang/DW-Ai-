@@ -15,6 +15,7 @@ import {
   UtensilsCrossed
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COPY } from "@/copy/en";
 
 export type ProactiveCardType = 
   | "morning-briefing"
@@ -134,7 +135,7 @@ export function ProactiveCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-3 w-3 text-primary" />
-              <span className="text-xs font-medium text-primary">DW suggests</span>
+              <span className="text-xs font-medium text-primary">{COPY.dw.suggestion}</span>
             </div>
             
             <h3 className="font-semibold text-sm mb-1">{title}</h3>

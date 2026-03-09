@@ -73,8 +73,8 @@ export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps)
     if (!open) return;
 
     const updateEvents = () => {
-      const ftsEvents = (window.__ftsEvents || []) as StoredEvent[];
-      setEvents([...ftsEvents].reverse());
+      const dwEvents = (window.__dwEvents || []) as StoredEvent[];
+      setEvents([...dwEvents].reverse());
     };
 
     updateEvents();
@@ -91,7 +91,7 @@ export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps)
   }
 
   const handleClear = () => {
-    window.__ftsEvents = [];
+    window.__dwEvents = [];
     setRefreshKey((k) => k + 1);
   };
 
