@@ -10,15 +10,16 @@ export interface FeatureFlags {
   NEW_ONBOARDING: boolean;          // ✅ Conversational onboarding flow
   ALL_FEATURES_VIEW: boolean;       // ✅ Searchable feature directory
   AI_PERSONALIZATION: boolean;      // ✅ "Most Used" learning
-  LIFE_BLUEPRINT: boolean;          // ⏸️ Wait for PR #3
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
   CONVERSATION_INSIGHTS: boolean;   // ⏸️ DW-generated insight cards from high-signal exchanges
   DW_INSIGHT_JOURNAL: boolean;      // ⏸️ DW Insight + Journal Intelligence System (PR #2)
+  JOURNAL_AUTOGEN: boolean;         // ⏸️ Auto-generate journal entries + insight cards (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
   ELEVATION_PLAN: boolean;          // ⏸️ 7-day Elevation Plan builder (PR #5)
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
+  REMINDERS: boolean;               // ⏸️ Reminder scheduling and banner (PR #7)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
   WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
 }
@@ -145,6 +146,32 @@ function resolveDailyCheckinFlag(): boolean {
 }
 
 /**
+ * Resolves the initial value for the JOURNAL_AUTOGEN feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_journal_autogen', 'true')  — persists across sessions
+ *   ?ja=1 query param                                    — one-time, per URL
+ */
+function resolveJournalAutogenFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_journal_autogen") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ja") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
  * Resolves the initial value for the ELEVATION_PLAN feature flag.
  * Default is OFF; enable locally via:
  *   localStorage.setItem('dw_elevation_plan', 'true')  — persists across sessions
@@ -179,6 +206,14 @@ function resolveElevationPlanFlag(): boolean {
 function resolveWeeklyReviewFlag(): boolean {
   try {
     if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "true") {
+ * Resolves the initial value for the REMINDERS feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_reminders_enabled', 'true')  — persists across sessions
+ *   ?rm=1 query param                                       — one-time, per URL
+ */
+function resolveRemindersFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reminders_enabled") === "true") {
       return true;
     }
   } catch {
@@ -188,6 +223,7 @@ function resolveWeeklyReviewFlag(): boolean {
   try {
     if (typeof location !== "undefined") {
       return new URLSearchParams(location.search).get("wr") === "1";
+      return new URLSearchParams(location.search).get("rm") === "1";
     }
   } catch {
     // URL parsing failed – fail safely
@@ -201,15 +237,16 @@ export const FEATURE_FLAGS: FeatureFlags = {
   NEW_ONBOARDING: true,
   ALL_FEATURES_VIEW: true,
   AI_PERSONALIZATION: true,
-  LIFE_BLUEPRINT: false,
   HOME_CONSOLIDATION: true,
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
   CONVERSATION_INSIGHTS: resolveConversationInsightsFlag(),
   DW_INSIGHT_JOURNAL: resolveDwInsightJournalFlag(),
+  JOURNAL_AUTOGEN: resolveJournalAutogenFlag(),
   ELEVATION_ENGINE: resolveElevationEngineFlag(),
   ELEVATION_PLAN: resolveElevationPlanFlag(),
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
+  REMINDERS: resolveRemindersFlag(),
   DW_LEARNS: true,
   WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
 };
