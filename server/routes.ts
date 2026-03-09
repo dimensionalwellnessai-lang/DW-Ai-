@@ -3392,14 +3392,27 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
       const existing = await storage.getTask(req.params.id);
-      if (!existing || existing.userId !== req.session.userId) {
+      if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Task not found" });
       }
       // Only allow updates to permitted task fields; disallow changing ownership.
       const updateTaskSchema = insertTaskSchema.omit({ userId: true }).partial();
       const updateData = updateTaskSchema.parse(req.body);
-      const updated = await storage.updateTask(req.params.id, updateData);
+      const updated = await storage.updateTaskForUser(req.params.id, userId, updateData);
+
+      // Bidirectional sync: propagate completion to a linked elevation plan action
+      if (updateData.isCompleted !== undefined && existing.blueprintActionId) {
+        try {
+          await storage.updateElevationPlanAction(existing.blueprintActionId, userId, {
+            isCompleted: updateData.isCompleted,
+          });
+        } catch {
+          // Non-fatal: linked plan action may have been deleted externally
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -8651,7 +8664,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         const linked = updated.linkedEntity as { type?: string; id?: string } | null;
         if (linked && linked.type === "task" && linked.id) {
           try {
-            await storage.updateTask(linked.id, {
+            await storage.updateTaskForUser(linked.id, userId, {
               isCompleted: parsed.data.isCompleted,
               status: parsed.data.isCompleted ? "done" : "todo",
             });
@@ -8770,6 +8783,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         isCompleted: false,
         dueDate,
         dimensionTags: [action.actionType],
+        blueprintActionId: action.id,  // back-reference for bidirectional completion sync
       });
 
       const updatedAction = await storage.updateElevationPlanAction(action.id, userId, {
