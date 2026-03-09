@@ -1373,7 +1373,7 @@ export const insertImportedDocumentItemSchema = createInsertSchema(importedDocum
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  token: varchar("token").notNull().unique(),
+  tokenHash: varchar("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -2150,7 +2150,7 @@ export const insertConversationInsightSchema = createInsertSchema(conversationIn
   updatedAt: true,
 });
 
-// dwInsights, dwJournalEntries, dwFollowups – canonical definitions in PR #2 section below
+// dwInsights, dwJournalEntries, dwFollowups – see "DW INSIGHT + JOURNAL INTELLIGENCE SYSTEM" section below for canonical definitions.
 
 /**
  * Processing log for idempotency – records the last message index processed

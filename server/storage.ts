@@ -257,6 +257,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
+import { createHash } from "crypto";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -1528,9 +1529,10 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+  async getPasswordResetToken(rawToken: string): Promise<PasswordResetToken | undefined> {
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
     const [result] = await db.select().from(passwordResetTokens)
-      .where(eq(passwordResetTokens.token, token));
+      .where(eq(passwordResetTokens.tokenHash, tokenHash));
     return result || undefined;
   }
 

@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+--> statement-breakpoint
 CREATE TABLE "accountability_stats" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" varchar NOT NULL,
@@ -694,11 +696,11 @@ CREATE TABLE "onboarding_profiles" (
 CREATE TABLE "password_reset_tokens" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" varchar NOT NULL,
-	"token" varchar NOT NULL,
+	"token_hash" varchar NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"used_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
-	CONSTRAINT "password_reset_tokens_token_unique" UNIQUE("token")
+	CONSTRAINT "password_reset_tokens_token_hash_unique" UNIQUE("token_hash")
 );
 --> statement-breakpoint
 CREATE TABLE "project_chats" (
