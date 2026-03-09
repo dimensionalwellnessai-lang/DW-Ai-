@@ -21,6 +21,7 @@ export interface FeatureFlags {
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   REMINDERS: boolean;               // ⏸️ Reminder scheduling and banner (PR #7)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
+  WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
 }
 
 /**
@@ -197,6 +198,32 @@ function resolveElevationPlanFlag(): boolean {
 }
 
 /**
+ * Resolves the initial value for the WEEKLY_REVIEW feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_weekly_review', 'true')  — persists across sessions
+ *   ?wr=1 query param                                  — one-time, per URL
+ */
+function resolveWeeklyReviewFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("wr") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
  * Resolves the initial value for the REMINDERS feature flag.
  * Default is OFF; enable locally via:
  *   localStorage.setItem('dw_reminders_enabled', 'true')  — persists across sessions
@@ -238,6 +265,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   REMINDERS: resolveRemindersFlag(),
   DW_LEARNS: true,
+  WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
 };
 
 /**

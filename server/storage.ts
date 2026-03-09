@@ -254,6 +254,10 @@ import {
   type UserLearningProfile,
   type InsertUserLearningProfile,
   type UpdateUserLearningProfile,
+  weeklyPlanReviews,
+  type WeeklyPlanReview,
+  type InsertWeeklyPlanReview,
+  type UpdateWeeklyPlanReview,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
@@ -685,6 +689,12 @@ export interface IStorage {
   getLearningProfile(userId: string): Promise<UserLearningProfile | undefined>;
   upsertLearningProfile(userId: string, data: UpdateUserLearningProfile): Promise<UserLearningProfile>;
   resetLearningProfile(userId: string): Promise<UserLearningProfile>;
+
+  // Weekly Plan Reviews (PR #15)
+  getWeeklyPlanReview(planId: string, userId: string): Promise<WeeklyPlanReview | undefined>;
+  createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview>;
+  updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined>;
+  getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
 }
 
 export interface AdminAnalytics {
@@ -3368,6 +3378,41 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return upserted;
+  }
+
+  // ─── Weekly Plan Reviews (PR #15) ─────────────────────────────────────────
+
+  async getWeeklyPlanReview(planId: string, userId: string): Promise<WeeklyPlanReview | undefined> {
+    const [row] = await db
+      .select()
+      .from(weeklyPlanReviews)
+      .where(and(eq(weeklyPlanReviews.planId, planId), eq(weeklyPlanReviews.userId, userId)));
+    return row;
+  }
+
+  async createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview> {
+    const [created] = await db
+      .insert(weeklyPlanReviews)
+      .values({ ...data, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined> {
+    const [updated] = await db
+      .update(weeklyPlanReviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(weeklyPlanReviews.planId, planId), eq(weeklyPlanReviews.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]> {
+    return db
+      .select()
+      .from(elevationPlans)
+      .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
+      .orderBy(desc(elevationPlans.createdAt));
   }
 }
 

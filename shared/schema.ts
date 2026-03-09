@@ -2654,3 +2654,55 @@ export const updateUserLearningProfileSchema = insertUserLearningProfileSchema.p
 export type UserLearningProfile = typeof userLearningProfile.$inferSelect;
 export type InsertUserLearningProfile = z.infer<typeof insertUserLearningProfileSchema>;
 export type UpdateUserLearningProfile = z.infer<typeof updateUserLearningProfileSchema>;
+
+// ========================================
+// PR #15: WEEKLY PLAN REVIEWS
+// ========================================
+
+export const weeklyPlanReviews = pgTable("weekly_plan_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  planId: varchar("plan_id").notNull().references(() => elevationPlans.id),
+  /** Titles of completed actions (auto-populated from plan) */
+  wins: jsonb("wins").$type<string[]>().default([]),
+  /** Titles of incomplete actions / user-reported friction */
+  frictionPoints: jsonb("friction_points").$type<string[]>().default([]),
+  /** 0–100 completion rate computed from plan actions */
+  completionRate: integer("completion_rate"),
+  /** Free-text: what worked well */
+  feedbackWorked: text("feedback_worked"),
+  /** Free-text: what to improve */
+  feedbackImprove: text("feedback_improve"),
+  /** "draft" while user is filling in; "submitted" once they confirm */
+  status: text("status").notNull().default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("weekly_plan_reviews_user_plan_idx").on(t.userId, t.planId),
+]);
+
+export const weeklyPlanReviewsRelations = relations(weeklyPlanReviews, ({ one }) => ({
+  user: one(users, {
+    fields: [weeklyPlanReviews.userId],
+    references: [users.id],
+  }),
+  plan: one(elevationPlans, {
+    fields: [weeklyPlanReviews.planId],
+    references: [elevationPlans.id],
+  }),
+}));
+
+export const insertWeeklyPlanReviewSchema = createInsertSchema(weeklyPlanReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateWeeklyPlanReviewSchema = insertWeeklyPlanReviewSchema.partial().omit({
+  userId: true,
+  planId: true,
+});
+
+export type WeeklyPlanReview = typeof weeklyPlanReviews.$inferSelect;
+export type InsertWeeklyPlanReview = z.infer<typeof insertWeeklyPlanReviewSchema>;
+export type UpdateWeeklyPlanReview = z.infer<typeof updateWeeklyPlanReviewSchema>;

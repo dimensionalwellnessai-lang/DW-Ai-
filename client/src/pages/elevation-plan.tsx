@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,19 +29,64 @@ import {
   BookOpen,
   PlayCircle,
   Loader2,
+  ClipboardList,
+  History,
+  TrendingUp,
   CheckSquare,
   Plus,
   Trash2,
 } from "lucide-react";
-import { useElevationPlan, type ElevationPlanActionItem, type ElevationPlanDayItem, type ElevationPlanFull } from "@/hooks/use-elevation-plan";
-import { getGuestElevationPlanFull, getGuestDraftPlanForDay } from "@/lib/elevation-plan-storage";
+import { useElevationPlan, type ElevationPlanActionItem, type ElevationPlanDayItem, type ElevationPlanFull, type ElevationPlanItem } from "@/hooks/use-elevation-plan";
+import { getGuestElevationPlanFull, getGuestDraftPlanForDay, getGuestElevationPlans } from "@/lib/elevation-plan-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { isPlanReviewDue } from "@/hooks/use-weekly-review";
 import { useToast } from "@/hooks/use-toast";
 
 // Helper: cast GuestElevationPlanFull (structurally compatible) to ElevationPlanFull
 function asElevationPlanFull(v: ReturnType<typeof getGuestElevationPlanFull>): ElevationPlanFull | null {
   return v as ElevationPlanFull | null;
+}
+
+// ── History card ──────────────────────────────────────────────────────────────
+
+function PlanHistoryCard({ plan, onReview }: { plan: ElevationPlanItem; onReview: (id: string) => void }) {
+  const isArchived = plan.status === "archived";
+  return (
+    <Card className="card-modern">
+      <CardContent className="p-3 flex items-start gap-3">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+          isArchived ? "bg-muted/50" : "bg-purple-500/20"
+        }`}>
+          <TrendingUp className={`h-3.5 w-3.5 ${isArchived ? "text-muted-foreground" : "text-purple-400"}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">{plan.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {plan.startDate} → {plan.endDate}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge
+            variant="outline"
+            className="text-xs"
+          >
+            {plan.status}
+          </Badge>
+          {isArchived && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs px-2"
+              onClick={() => onReview(plan.id)}
+            >
+              Review
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const ACTION_TYPE_ICONS: Record<string, typeof Zap> = {
@@ -291,9 +337,13 @@ function DayTab({
 }
 
 export default function ElevationPlanPage() {
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
+  const weeklyReviewEnabled = isFeatureEnabled("WEEKLY_REVIEW");
+  const { activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan, toggleAction, updateAction } =
+    useElevationPlan();
   const { toast } = useToast();
   const {
     activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan,
@@ -309,11 +359,15 @@ export default function ElevationPlanPage() {
   // We need a planId to load – either from activePlan or from URL param
   const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const planIdParam = searchParams.get("id");
+  const tabParam = searchParams.get("tab");
 
   // Determine which plan to show
   const [localDraft, setLocalDraft] = useState<ElevationPlanFull | null>(
     planIdParam && !isLoggedIn ? asElevationPlanFull(getGuestElevationPlanFull(planIdParam)) : null
   );
+
+  // Top-level tab: "plan" | "history"
+  const [mainTab, setMainTab] = useState<string>(tabParam === "history" ? "history" : "plan");
 
   // Auth plan from API
   const { data: remotePlan, isLoading: isLoadingRemote } = useQuery<ElevationPlanFull | null>({
@@ -329,6 +383,24 @@ export default function ElevationPlanPage() {
     },
   });
 
+  // Fetch plan history (auth users)
+  const { data: planHistory = [] } = useQuery<ElevationPlanItem[]>({
+    queryKey: ["/api/elevation-plans"],
+    enabled: isLoggedIn && enabled,
+    queryFn: async () => {
+      const res = await fetch("/api/elevation-plans", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<ElevationPlanItem[]>;
+    },
+  });
+
+  // Guest plan history from localStorage
+  const guestPlanHistory: ElevationPlanItem[] = !isLoggedIn
+    ? (getGuestElevationPlans() as unknown as ElevationPlanItem[])
+    : [];
+
+  const allPlans = isLoggedIn ? planHistory : guestPlanHistory;
+
   const planData: ElevationPlanFull | null =
     isLoggedIn
       ? (remotePlan ?? activePlan)
@@ -336,6 +408,9 @@ export default function ElevationPlanPage() {
 
   const isLoading = isLoadingActive || isLoadingRemote;
   const [activeDay, setActiveDay] = useState("1");
+
+  // Check if active plan needs a weekly review
+  const planNeedsReview = weeklyReviewEnabled && planData?.plan && planData.plan.status === "active" && isPlanReviewDue(planData.plan.endDate);
 
   const handleActivate = async () => {
     if (!planData?.plan) return;
@@ -472,42 +547,73 @@ export default function ElevationPlanPage() {
     return (
       <div className="bg-background">
         <PageHeader title="Elevation Plan" />
-        <div className="p-4 pb-24 max-w-lg mx-auto space-y-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-4 pt-8">
-            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
-              <Sparkles className="h-8 w-8 text-purple-400" />
-            </div>
-            <h2 className="text-xl font-bold text-foreground">Your Elevation Plan</h2>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              A personalized 7-day plan to lift your wellness across the dimensions that matter most. 
-              Generate one after talking with DW about what you'd like to elevate.
-            </p>
-          </motion.div>
-          <Button
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
-            disabled={isGenerating}
-            onClick={async () => {
-              try {
-                const result = await generateDraft({});
-                if (!isLoggedIn) setLocalDraft(result as ElevationPlanFull);
-              } catch {}
-            }}
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating your plan…
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate 7-Day Elevation Plan
-              </>
-            )}
-          </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            You can review and edit the plan before activating it.
-          </p>
+        <div className="p-4 pb-24 max-w-lg mx-auto space-y-4">
+          <Tabs value={mainTab} onValueChange={setMainTab}>
+            <TabsList className="grid grid-cols-2 h-9 w-full">
+              <TabsTrigger value="plan" className="text-xs flex items-center gap-1.5">
+                <TrendingUp className="h-3 w-3" />
+                Plan
+              </TabsTrigger>
+              <TabsTrigger value="history" className="text-xs flex items-center gap-1.5">
+                <History className="h-3 w-3" />
+                History
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="plan" className="mt-4 space-y-6">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-4 pt-8">
+                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-purple-400" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground">Your Elevation Plan</h2>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  A personalized 7-day plan to lift your wellness across the dimensions that matter most.
+                  Generate one after talking with DW about what you'd like to elevate.
+                </p>
+              </motion.div>
+              <Button
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
+                disabled={isGenerating}
+                onClick={async () => {
+                  try {
+                    const result = await generateDraft({});
+                    if (!isLoggedIn) setLocalDraft(result as ElevationPlanFull);
+                  } catch {}
+                }}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating your plan…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate 7-Day Elevation Plan
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                You can review and edit the plan before activating it.
+              </p>
+            </TabsContent>
+            <TabsContent value="history" className="mt-4 space-y-3">
+              {allPlans.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <History className="h-8 w-8 text-muted-foreground mx-auto" />
+                  <p className="text-sm text-muted-foreground">No plan history yet.</p>
+                  <p className="text-xs text-muted-foreground">Completed plans will appear here.</p>
+                </div>
+              ) : (
+                allPlans.map((p) => (
+                  <PlanHistoryCard
+                    key={p.id}
+                    plan={p}
+                    onReview={(id) => navigate(`/weekly-review?id=${id}`)}
+                  />
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     );
@@ -520,85 +626,148 @@ export default function ElevationPlanPage() {
     <div className="bg-background">
       <PageHeader title="Elevation Plan" />
       <div className="p-4 pb-24 max-w-lg mx-auto space-y-4">
-        {/* Plan header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="card-modern bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/20">
-            <CardContent className="p-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <h2 className="font-semibold text-foreground">{plan.title}</h2>
-                  {plan.goal && <p className="text-sm text-muted-foreground mt-0.5">{plan.goal}</p>}
-                </div>
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 ${
-                    plan.status === "active"
-                      ? "border-green-500/50 text-green-400 bg-green-500/10"
-                      : "border-yellow-500/50 text-yellow-400 bg-yellow-500/10"
-                  }`}
+
+        {/* Main tab: Plan / History */}
+        <Tabs value={mainTab} onValueChange={setMainTab}>
+          <TabsList className="grid grid-cols-2 h-9 w-full">
+            <TabsTrigger value="plan" className="text-xs flex items-center gap-1.5">
+              <TrendingUp className="h-3 w-3" />
+              Plan
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-xs flex items-center gap-1.5">
+              <History className="h-3 w-3" />
+              History
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Plan tab ─────────────────────────────────────────────────── */}
+          <TabsContent value="plan" className="mt-4 space-y-4">
+
+            {/* Weekly review banner */}
+            {planNeedsReview && (
+              <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="card-modern bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/25">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                      <ClipboardList className="h-3.5 w-3.5 text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">Your plan week is done!</p>
+                      <p className="text-xs text-muted-foreground">Take 2 min to review your week.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 bg-amber-500/80 hover:bg-amber-500 text-white text-xs h-7 px-3"
+                      onClick={() => navigate(`/weekly-review?id=${plan.id}`)}
+                    >
+                      Review
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Plan header */}
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="card-modern bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/20">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <h2 className="font-semibold text-foreground">{plan.title}</h2>
+                      {plan.goal && <p className="text-sm text-muted-foreground mt-0.5">{plan.goal}</p>}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`shrink-0 ${
+                        plan.status === "active"
+                          ? "border-green-500/50 text-green-400 bg-green-500/10"
+                          : "border-yellow-500/50 text-yellow-400 bg-yellow-500/10"
+                      }`}
+                    >
+                      {plan.status === "active" ? "Active" : "Draft"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {plan.focusDimension && (
+                      <span className="capitalize flex items-center gap-1">
+                        <Brain className="h-3 w-3" />
+                        {plan.focusDimension}
+                      </span>
+                    )}
+                    <span>
+                      {plan.startDate} → {plan.endDate}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Activate CTA for drafts */}
+            {isDraft && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+                <Button
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
+                  onClick={handleActivate}
                 >
-                  {plan.status === "active" ? "Active" : "Draft"}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {plan.focusDimension && (
-                  <span className="capitalize flex items-center gap-1">
-                    <Brain className="h-3 w-3" />
-                    {plan.focusDimension}
-                  </span>
-                )}
-                <span>
-                  {plan.startDate} → {plan.endDate}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Activate Plan
+                </Button>
+              </motion.div>
+            )}
 
-        {/* Activate CTA for drafts */}
-        {isDraft && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-            <Button
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
-              onClick={handleActivate}
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Activate Plan
-            </Button>
-          </motion.div>
-        )}
+            {/* 7-day tabs */}
+            {days && days.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <Tabs value={activeDay} onValueChange={setActiveDay}>
+                  <TabsList className="grid grid-cols-7 h-9 w-full">
+                    {days.map((day: ElevationPlanDayItem) => {
+                      const allDone = day.actions.length > 0 && day.actions.every((a) => a.isCompleted);
+                      return (
+                        <TabsTrigger key={day.dayIndex} value={String(day.dayIndex)} className="text-xs px-1">
+                          {allDone ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : `D${day.dayIndex}`}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                  {days.map((day: ElevationPlanDayItem) => (
+                    <TabsContent key={day.dayIndex} value={String(day.dayIndex)} className="mt-4">
+                      <DayTab
+                        day={day}
+                        onToggle={handleToggle}
+                        onUpdate={handleUpdateAction}
+                        onAddToCalendar={handleAddToCalendar}
+                        onRemoveFromCalendar={handleRemoveFromCalendar}
+                        onAddToTasks={handleAddToTasks}
+                        onRemoveFromTasks={handleRemoveFromTasks}
+                        isLoggedIn={isLoggedIn}
+                      />
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </motion.div>
+            )}
+          </TabsContent>
 
-        {/* 7-day tabs */}
-        {days && days.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <Tabs value={activeDay} onValueChange={setActiveDay}>
-              <TabsList className="grid grid-cols-7 h-9 w-full">
-                {days.map((day: ElevationPlanDayItem) => {
-                  const allDone = day.actions.length > 0 && day.actions.every((a) => a.isCompleted);
-                  return (
-                    <TabsTrigger key={day.dayIndex} value={String(day.dayIndex)} className="text-xs px-1">
-                      {allDone ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : `D${day.dayIndex}`}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-              {days.map((day: ElevationPlanDayItem) => (
-                <TabsContent key={day.dayIndex} value={String(day.dayIndex)} className="mt-4">
-                  <DayTab
-                    day={day}
-                    onToggle={handleToggle}
-                    onUpdate={handleUpdateAction}
-                    onAddToCalendar={handleAddToCalendar}
-                    onRemoveFromCalendar={handleRemoveFromCalendar}
-                    onAddToTasks={handleAddToTasks}
-                    onRemoveFromTasks={handleRemoveFromTasks}
-                    isLoggedIn={isLoggedIn}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
-          </motion.div>
-        )}
+          {/* ── History tab ──────────────────────────────────────────────── */}
+          <TabsContent value="history" className="mt-4 space-y-3">
+            {allPlans.length === 0 ? (
+              <div className="text-center py-10 space-y-2">
+                <History className="h-8 w-8 text-muted-foreground mx-auto" />
+                <p className="text-sm text-muted-foreground">No plan history yet.</p>
+                <p className="text-xs text-muted-foreground">Completed plans will appear here.</p>
+              </div>
+            ) : (
+              allPlans.map((p) => (
+                <PlanHistoryCard
+                  key={p.id}
+                  plan={p}
+                  onReview={(id) => navigate(`/weekly-review?id=${id}`)}
+                />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
+
       </div>
     </div>
   );
