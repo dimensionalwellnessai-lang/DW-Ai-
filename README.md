@@ -94,6 +94,85 @@ DW.ai helps users manage wellness across 8 life dimensions using an energy-based
 └── attached_assets/        # User uploads and generated images
 ```
 
+## Command Center Architecture
+
+The **Command Center** is the swipeable home experience of DW.ai. It consists of several layered files that developers can edit or extend:
+
+### Primary Layout File
+
+**[`client/src/components/swipeable-layout.tsx`](client/src/components/swipeable-layout.tsx)**
+
+This is the top-level layout shell for the swipeable home. It uses [Embla Carousel](https://www.embla-carousel.com/) to render a full-screen horizontal carousel of screens. The initial screens are registered in the `SCREENS` array near the top of the file:
+
+```tsx
+const SCREENS = [
+  { id: "chat",     label: "Chat",     component: AIWorkspace },
+  { id: "browse",   label: "Browse",   component: BrowsePage },
+  { id: "calendar", label: "Calendar", component: CalendarPlansPage },
+  { id: "routines", label: "Routines", component: RoutinesPage },
+];
+```
+
+To **add, remove, or reorder swipeable screens**, edit the `SCREENS` array in this file. Each entry requires an `id`, a `label` (used for the dot-navigation aria-label), and a `component`.
+
+The component also renders:
+- Left/right chevron hints when scrolling is available
+- A dot-navigation bar (bottom center) with keyboard and click navigation
+- Keyboard support (`ArrowLeft` / `ArrowRight`)
+
+### Home Command Center Page
+
+**[`client/src/features/home/home-command-center.tsx`](client/src/features/home/home-command-center.tsx)**
+
+The `HomeCommandCenter` component is the main home dashboard served at the `/command-center` route (registered in `client/src/App.tsx`). It renders a vertical scrollable feed of **wellness cards** using live data from `useHomeSummary()`.
+
+Cards are composed from individual files in:
+
+**[`client/src/features/home/components/`](client/src/features/home/components/)**
+
+| File | Card | Purpose |
+|------|------|---------|
+| `TodayCard.tsx` | Today | Today's schedule and energy snapshot |
+| `InsightSnapshotCard.tsx` | Insight Snapshot | AI-generated wellness insight |
+| `PlanInMotionCard.tsx` | Plan in Motion | Active goals and habit progress |
+| `HealthSnapshotCard.tsx` | Health Snapshot | Body/health dimension overview |
+| `MomentumCard.tsx` | Momentum | Streak and consistency data |
+| `FollowUpCard.tsx` | Follow-Up | Pending AI follow-up actions |
+| `DWJournalCard.tsx` | DW Journal | Insight journal (feature-flagged) |
+| `DailyCheckinCard.tsx` | Daily Check-in | Quick mood/energy check-in (feature-flagged) |
+
+To **add a new card**, create a component in the `components/` directory and import it into `home-command-center.tsx`.
+
+### Life Command Center Page (alternate view)
+
+**[`client/src/pages/life-command-center.tsx`](client/src/pages/life-command-center.tsx)**
+
+An alternate, dimension-focused Command Center implementation. It shows the 13 life dimensions in a scrollable dashboard with insights and pinnable AI cards. To switch to this view, update the `/command-center` route in `client/src/App.tsx` to import and render `LifeCommandCenter` instead of `HomeCommandCenter`.
+
+### Route Registration
+
+**[`client/src/routes/registry.ts`](client/src/routes/registry.ts)**
+
+All app routes — including the Command Center — are declared here as structured objects. The registry controls route paths, labels, menu visibility, and ordering. The Command Center entry:
+
+```ts
+{
+  id: "command-center",
+  path: "/command-center",
+  label: "Command Center",
+  navLabel: "Command Center",
+  icon: "zap",
+  type: "page",
+  description: "Life Command Center - your wellness dashboard",
+  showInMenu: true,
+  menuSection: "primary",
+  menuOrder: 0.5,
+  enabled: true,
+}
+```
+
+To change the Command Center route, label, or menu position, update this entry in `registry.ts`.
+
 ## Getting Started
 
 ### Prerequisites
