@@ -1131,9 +1131,13 @@ function ConsentSection() {
   // Local state seeded from server (auth) or localStorage (guest)
   const [consent, setConsent] = useState<CosmicConsent>(loadConsent);
 
-  // Sync local state when server data loads
+  // Sync local state and localStorage when server data loads
   useEffect(() => {
-    if (serverConsent) setConsent(serverConsent);
+    if (serverConsent) {
+      setConsent(serverConsent);
+      // Keep localStorage aligned with server as offline/guest fallback
+      saveConsent(serverConsent);
+    }
   }, [serverConsent]);
 
   const serverMutation = useMutation({

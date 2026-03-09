@@ -2236,11 +2236,15 @@ export async function registerRoutes(
   // ── DW Command endpoint ──────────────────────────────────────────────────────
   // Processes a short command/question from the floating widget.
   // Returns a text response plus an optional navigation action.
-  app.post("/api/chat/command", async (req, res) => {
+  app.post("/api/chat/command", chatLimiter, async (req, res) => {
     try {
       const { message } = req.body as { message?: string };
       if (!message || typeof message !== "string" || !message.trim()) {
         return res.status(400).json({ error: "message is required" });
+      }
+
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
       // Detect Cosmic navigation intent before calling the full AI
@@ -7578,6 +7582,10 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const update: Record<string, boolean> = {};
       if (typeof useAstrologyInGuidance === "boolean") update.useAstrologyInGuidance = useAstrologyInGuidance;
       if (typeof useNumerologyInGuidance === "boolean") update.useNumerologyInGuidance = useNumerologyInGuidance;
+
+      if (Object.keys(update).length === 0) {
+        return res.status(400).json({ error: "At least one of useAstrologyInGuidance or useNumerologyInGuidance must be provided" });
+      }
 
       let prefs = await storage.getWellnessPreferences(userId);
       if (prefs) {
