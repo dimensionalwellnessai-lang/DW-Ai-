@@ -108,7 +108,7 @@ function getCelestialDataForDate(date: Date): DayData {
   };
 }
 
-interface AstrologyCalendarProps {
+interface CosmicCalendarProps {
   birthChart?: {
     sunSign?: string;
     moonSign?: string;
@@ -116,7 +116,7 @@ interface AstrologyCalendarProps {
   };
 }
 
-export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
+export function CosmicCalendar({ birthChart }: CosmicCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -145,7 +145,7 @@ export function AstrologyCalendar({ birthChart }: AstrologyCalendarProps) {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Moon className="h-5 w-5 text-primary" />
-              Celestial Calendar
+              Cosmic Calendar
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={previousMonth} aria-label="Previous month">
