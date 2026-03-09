@@ -25,6 +25,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import {
   calcLifePath,
   calcExpression,

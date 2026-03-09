@@ -20,6 +20,7 @@ import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { useCoachMode, COACHING_MODES, COACHING_MODE_LABELS, COACHING_MODE_DESCRIPTIONS, type CoachingMode } from "@/hooks/use-coach-mode";
+import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
@@ -43,6 +44,8 @@ import {
   Flag,
   Brain,
   MessageSquare,
+  Star,
+  BookHeart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -72,6 +75,7 @@ export function SettingsPage() {
   const coachModesEnabled = isFeatureEnabled("COACH_MODES");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
   const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
+  const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
