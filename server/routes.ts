@@ -2818,7 +2818,7 @@ export async function registerRoutes(
 
   app.post("/api/goals", requireAuth, async (req, res) => {
     try {
-      const { title, description, ...rest } = req.body;
+      const { title, description, userId: _userId, id: _id, createdAt: _createdAt, ...rest } = req.body;
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Goal title is required" });
       }
@@ -2835,9 +2835,8 @@ export async function registerRoutes(
         }
       }
       // Strip client-supplied server-owned fields before inserting
-      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const goal = await storage.createGoal({
-        ...safeRest,
+        ...rest,
         userId: req.session.userId!,
         title: trimmedTitle,
         description,
@@ -2887,7 +2886,7 @@ export async function registerRoutes(
 
   app.post("/api/habits", requireAuth, async (req, res) => {
     try {
-      const { title, description, ...rest } = req.body;
+      const { title, description, userId: _userId, id: _id, createdAt: _createdAt, ...rest } = req.body;
       if (!title || typeof title !== "string" || title.trim().length === 0) {
         return res.status(400).json({ error: "Habit title is required" });
       }
@@ -2904,9 +2903,8 @@ export async function registerRoutes(
         }
       }
       // Strip client-supplied server-owned fields before inserting
-      const { userId: _u, id: _i, createdAt: _c, ...safeRest } = rest;
       const habit = await storage.createHabit({
-        ...safeRest,
+        ...rest,
         userId: req.session.userId!,
         title: trimmedTitle,
         description,
@@ -2925,7 +2923,7 @@ export async function registerRoutes(
       }
 
       // Strip sensitive/system-managed fields from the update payload
-      const { userId, id, createdAt, updatedAt, ...updateData } = req.body ?? {};
+      const { userId: _userId, id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...updateData } = req.body ?? {};
 
       // Optionally validate title/description if they are being updated
       if (typeof updateData.title !== "undefined") {
@@ -2935,7 +2933,7 @@ export async function registerRoutes(
         ) {
           return res.status(400).json({ error: "Habit title must be a non-empty string" });
         }
-        if (updateData.title.length > 200) {
+        if (updateData.title.trim().length > 200) {
           return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
         }
         updateData.title = updateData.title.trim();
