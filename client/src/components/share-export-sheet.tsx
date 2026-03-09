@@ -16,7 +16,7 @@
  *   />
  */
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -65,14 +65,26 @@ export function ShareExportSheet({
 }: ShareExportSheetProps) {
   const { toast } = useToast();
   const [actionState, setActionState] = useState<ActionState>("idle");
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending flash timer on unmount
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   const resolvedUrl = shareUrl
-    ? `${window.location.origin}${shareUrl.startsWith("/") ? shareUrl : `/${shareUrl}`}`
+    ? new URL(shareUrl, window.location.origin).toString()
     : window.location.href;
 
   const flashState = (s: ActionState) => {
+    if (flashTimerRef.current !== null) clearTimeout(flashTimerRef.current);
     setActionState(s);
-    setTimeout(() => setActionState("idle"), 2000);
+    flashTimerRef.current = setTimeout(() => {
+      setActionState("idle");
+      flashTimerRef.current = null;
+    }, 2000);
   };
 
   const handleCopyLink = async () => {
@@ -189,7 +201,7 @@ export function ShareExportSheet({
         </div>
 
         <p className="text-xs text-muted-foreground text-center mt-4">
-          Only you can see your personal data — sharing is always your choice.
+          Shared links and exports may include personal information. Share intentionally and only with people and places you trust.
         </p>
       </SheetContent>
     </Sheet>

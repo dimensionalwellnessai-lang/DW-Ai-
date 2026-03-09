@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShareExportSheet } from "@/components/share-export-sheet";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 interface CheckinState {
   trialStartAt: string | null;
@@ -168,6 +169,7 @@ function formatCheckinSummary(weekNumber: number, answers: Record<string, string
 export default function WeeklyCheckinPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const shareEnabled = isFeatureEnabled("SHARE_EXPORT");
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -357,14 +359,17 @@ export default function WeeklyCheckinPage() {
 
   if (!selectedWeek) {
     // Compute share text for the week being shared (if any)
+    const isShareLoading = shareWeek !== null && !isGuest && shareWeekData === undefined;
     const shareWeekAnswers = shareWeek
       ? (isGuest
           ? (getGuestWeekData(shareWeek)?.answers ?? {})
           : (shareWeekData?.answers ?? {}))
       : {};
     const shareTextContent = shareWeek
-      ? formatCheckinSummary(shareWeek, shareWeekAnswers)
-      : "";
+      ? (isShareLoading
+          ? undefined
+          : formatCheckinSummary(shareWeek, shareWeekAnswers))
+      : undefined;
 
     return (
       <div className="flex flex-col h-full bg-background">
@@ -412,7 +417,7 @@ export default function WeeklyCheckinPage() {
                       {isCompleted && (
                         <Badge variant="outline" className="text-xs text-green-600 dark:text-green-400">Submitted</Badge>
                       )}
-                      {isCompleted && (
+                      {isCompleted && shareEnabled && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -436,7 +441,7 @@ export default function WeeklyCheckinPage() {
           </div>
         </main>
 
-        {shareWeek !== null && (
+        {shareEnabled && shareWeek !== null && (
           <ShareExportSheet
             open={shareWeek !== null}
             onOpenChange={(open) => { if (!open) setShareWeek(null); }}
