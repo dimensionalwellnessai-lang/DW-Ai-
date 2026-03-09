@@ -48,9 +48,9 @@ export interface WeeklyReviewData {
 
 /** Returns whether a plan's end date has passed (review is due). */
 export function isPlanReviewDue(endDate: string): boolean {
-  const end = new Date(endDate);
-  // Make sure we compare date only (not time)
-  end.setHours(23, 59, 59, 999);
+  const [year, month, day] = endDate.split("-").map(Number);
+  // Construct local end-of-day for the given date to avoid UTC parsing issues
+  const end = new Date(year, month - 1, day, 23, 59, 59, 999);
   return new Date() > end;
 }
 

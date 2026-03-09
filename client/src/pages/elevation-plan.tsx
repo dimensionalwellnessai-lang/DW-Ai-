@@ -731,7 +731,16 @@ export default function ElevationPlanPage() {
                   </TabsList>
                   {days.map((day: ElevationPlanDayItem) => (
                     <TabsContent key={day.dayIndex} value={String(day.dayIndex)} className="mt-4">
-                      <DayTab day={day} onToggle={handleToggle} onUpdate={handleUpdateAction} />
+                      <DayTab
+                        day={day}
+                        onToggle={handleToggle}
+                        onUpdate={handleUpdateAction}
+                        onAddToCalendar={handleAddToCalendar}
+                        onRemoveFromCalendar={handleRemoveFromCalendar}
+                        onAddToTasks={handleAddToTasks}
+                        onRemoveFromTasks={handleRemoveFromTasks}
+                        isLoggedIn={isLoggedIn}
+                      />
                     </TabsContent>
                   ))}
                 </Tabs>
@@ -759,37 +768,6 @@ export default function ElevationPlanPage() {
           </TabsContent>
         </Tabs>
 
-        {/* 7-day tabs */}
-        {days && days.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <Tabs value={activeDay} onValueChange={setActiveDay}>
-              <TabsList className="grid grid-cols-7 h-9 w-full">
-                {days.map((day: ElevationPlanDayItem) => {
-                  const allDone = day.actions.length > 0 && day.actions.every((a) => a.isCompleted);
-                  return (
-                    <TabsTrigger key={day.dayIndex} value={String(day.dayIndex)} className="text-xs px-1">
-                      {allDone ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : `D${day.dayIndex}`}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
-              {days.map((day: ElevationPlanDayItem) => (
-                <TabsContent key={day.dayIndex} value={String(day.dayIndex)} className="mt-4">
-                  <DayTab
-                    day={day}
-                    onToggle={handleToggle}
-                    onUpdate={handleUpdateAction}
-                    onAddToCalendar={handleAddToCalendar}
-                    onRemoveFromCalendar={handleRemoveFromCalendar}
-                    onAddToTasks={handleAddToTasks}
-                    onRemoveFromTasks={handleRemoveFromTasks}
-                    isLoggedIn={isLoggedIn}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
-          </motion.div>
-        )}
       </div>
     </div>
   );

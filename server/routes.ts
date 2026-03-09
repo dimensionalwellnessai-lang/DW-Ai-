@@ -8707,19 +8707,23 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const plan = await storage.getElevationPlan(planId, userId);
       if (!plan) return res.status(404).json({ error: "Plan not found" });
 
+      // Fetch days+actions once – reused for both recap generation and response payload
+      const rawDays = await storage.getElevationPlanDays(planId);
+      const daysWithActions = await Promise.all(
+        rawDays.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+      );
+
       // Get or auto-populate the review from plan completion data
       let review = await storage.getWeeklyPlanReview(planId, userId);
       if (!review) {
-        // Auto-generate recap from plan completion stats
-        const days = await storage.getElevationPlanDays(planId);
+        // Auto-generate recap from plan completion stats (reuses already-fetched data)
         const wins: string[] = [];
         const frictionPoints: string[] = [];
         let totalActions = 0;
         let completedActions = 0;
 
-        for (const day of days) {
-          const actions = await storage.getElevationPlanActions(day.id);
-          for (const action of actions) {
+        for (const day of daysWithActions) {
+          for (const action of day.actions) {
             totalActions++;
             if (action.isCompleted) {
               completedActions++;
@@ -8744,12 +8748,6 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         });
       }
 
-      // Also return the plan for context
-      const days = await storage.getElevationPlanDays(planId);
-      const daysWithActions = await Promise.all(
-        days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
-      );
-
       res.json({ review, plan, days: daysWithActions });
     } catch (error) {
       console.error("Weekly review get error:", error);
@@ -8768,6 +8766,50 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!plan) return res.status(404).json({ error: "Plan not found" });
 
       const parsed = updateWeeklyPlanReviewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+
+      const existing = await storage.getWeeklyPlanReview(planId, userId);
+      let review: import("@shared/schema").WeeklyPlanReview;
+      if (existing) {
+        const updated = await storage.updateWeeklyPlanReview(planId, userId, parsed.data);
+        if (!updated) return res.status(404).json({ error: "Review not found" });
+        review = updated;
+      } else {
+        review = await storage.createWeeklyPlanReview({
+          userId,
+          planId,
+          ...parsed.data,
+        });
+      }
+
+      // When submitted, archive the plan and update learning profile with wins/friction
+      if (parsed.data.status === "submitted") {
+        await storage.updateElevationPlan(planId, userId, { status: "archived" });
+
+        // Update learning profile with wins and friction from the review
+        const wins = review.wins ?? [];
+        const frictionPoints = review.frictionPoints ?? [];
+        const currentProfile = await storage.getLearningProfile(userId);
+        const existingWins = (currentProfile?.wins ?? []) as string[];
+        const existingFriction = (currentProfile?.frictionPoints ?? []) as string[];
+        const mergedWins = [...new Set([...wins, ...existingWins])].slice(0, 20);
+        const mergedFriction = [...new Set([...frictionPoints, ...existingFriction])].slice(0, 10);
+        await storage.upsertLearningProfile(userId, {
+          wins: mergedWins,
+          frictionPoints: mergedFriction,
+          lastFeedbackAt: new Date(),
+        });
+      }
+
+      res.json(review);
+    } catch (error) {
+      console.error("Weekly review submit error:", error);
+      res.status(500).json({ error: "Failed to submit weekly review" });
+    }
+  });
+
   // POST /api/elevation-plan-actions/:id/add-to-calendar – create a calendar event from a plan action
   app.post("/api/elevation-plan-actions/:id/add-to-calendar", requireAuth, async (req, res) => {
     try {
@@ -8851,43 +8893,6 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         return res.status(400).json({ error: parsed.error.flatten() });
       }
 
-      const existing = await storage.getWeeklyPlanReview(planId, userId);
-      let review: import("@shared/schema").WeeklyPlanReview;
-      if (existing) {
-        const updated = await storage.updateWeeklyPlanReview(planId, userId, parsed.data);
-        if (!updated) return res.status(404).json({ error: "Review not found" });
-        review = updated;
-      } else {
-        review = await storage.createWeeklyPlanReview({
-          userId,
-          planId,
-          ...parsed.data,
-        });
-      }
-
-      // When submitted, archive the plan and update learning profile with wins/friction
-      if (parsed.data.status === "submitted") {
-        await storage.updateElevationPlan(planId, userId, { status: "archived" });
-
-        // Update learning profile with wins and friction from the review
-        const wins = review.wins ?? [];
-        const frictionPoints = review.frictionPoints ?? [];
-        const currentProfile = await storage.getLearningProfile(userId);
-        const existingWins = (currentProfile?.wins ?? []) as string[];
-        const existingFriction = (currentProfile?.frictionPoints ?? []) as string[];
-        const mergedWins = [...new Set([...wins, ...existingWins])].slice(0, 20);
-        const mergedFriction = [...new Set([...frictionPoints, ...existingFriction])].slice(0, 10);
-        await storage.upsertLearningProfile(userId, {
-          wins: mergedWins,
-          frictionPoints: mergedFriction,
-          lastFeedbackAt: new Date(),
-        });
-      }
-
-      res.json(review);
-    } catch (error) {
-      console.error("Weekly review submit error:", error);
-      res.status(500).json({ error: "Failed to submit weekly review" });
       const action = await storage.getElevationPlanActionForUser(req.params.id, userId);
       if (!action) return res.status(404).json({ error: "Action not found" });
 

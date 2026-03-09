@@ -206,6 +206,24 @@ function resolveElevationPlanFlag(): boolean {
 function resolveWeeklyReviewFlag(): boolean {
   try {
     if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("wr") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
  * Resolves the initial value for the REMINDERS feature flag.
  * Default is OFF; enable locally via:
  *   localStorage.setItem('dw_reminders_enabled', 'true')  — persists across sessions
@@ -222,7 +240,6 @@ function resolveRemindersFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("wr") === "1";
       return new URLSearchParams(location.search).get("rm") === "1";
     }
   } catch {
