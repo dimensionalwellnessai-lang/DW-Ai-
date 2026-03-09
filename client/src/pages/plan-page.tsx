@@ -100,6 +100,7 @@ export default function PlanPage() {
   };
 
   const handleToggleComplete = (id: string) => {
+    const wasAllComplete = plan.length > 0 && plan.every(item => item.completed);
     const updated = plan.map(item => 
       item.id === id ? { ...item, completed: !item.completed } : item
     );

@@ -114,8 +114,10 @@ type CheckinSubmittedPayload = {
 };
 
 type ReminderInteractedPayload = {
-  action: "dismissed" | "snoozed";
+  reminderId: string;
   reminderType: string;
+  action: "dismissed" | "snoozed";
+  snoozeLabel?: string;
 };
 
 // Map event names to their payload types
