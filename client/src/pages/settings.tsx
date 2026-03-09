@@ -19,8 +19,11 @@ import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
+import { useCoachMode, COACHING_MODES, COACHING_MODE_LABELS, COACHING_MODE_DESCRIPTIONS, type CoachingMode } from "@/hooks/use-coach-mode";
+import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
+import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
 import {
   User,
   Bell,
@@ -40,6 +43,9 @@ import {
   TestTube,
   Flag,
   Brain,
+  MessageSquare,
+  Star,
+  BookHeart,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -66,7 +72,10 @@ export function SettingsPage() {
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
+  const coachModesEnabled = isFeatureEnabled("COACH_MODES");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
+  const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
+  const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -78,6 +87,12 @@ export function SettingsPage() {
   const [browserNotifEnabled, setBrowserNotifEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem(BROWSER_NOTIF_ENABLED_KEY) !== "false"; } catch { return true; }
   });
+  // Analytics opt-out preference — "enabled" = not opted-out
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(() => !isAnalyticsOptedOut());
+  const handleAnalyticsToggle = (checked: boolean) => {
+    setAnalyticsOptOut(!checked); // checked=true → opt-out=false (tracking ON)
+    setAnalyticsEnabledState(checked);
+  };
   const handleBrowserNotifToggle = async (checked: boolean) => {
     if (checked && permission !== "granted") {
       const granted = await requestPermission();
@@ -201,6 +216,56 @@ export function SettingsPage() {
                 Edit Values &amp; Rules
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+
+        {/* ── Cosmic Guidance Consent ───────────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Star className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Cosmic Guidance</CardTitle>
+                <CardDescription>
+                  Optional cosmic lenses — astrology and numerology — for self-reflection. Practical guidance is always primary.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                <span>Astrology insights</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Include your birth chart in personalized DW guidance
+                </span>
+              </Label>
+              <Switch
+                id="cosmic-astrology-toggle"
+                checked={cosmicConsent.useAstrologyInGuidance}
+                onCheckedChange={v => updateCosmicConsent("useAstrologyInGuidance", v)}
+                aria-label="Use astrology in guidance"
+                data-testid="switch-cosmic-astrology"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="cosmic-numerology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                <span>Numerology insights</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Include your numbers in personalized DW guidance
+                </span>
+              </Label>
+              <Switch
+                id="cosmic-numerology-toggle"
+                checked={cosmicConsent.useNumerologyInGuidance}
+                onCheckedChange={v => updateCosmicConsent("useNumerologyInGuidance", v)}
+                aria-label="Use numerology in guidance"
+                data-testid="switch-cosmic-numerology"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              When enabled, DW may reference your chart or numbers where relevant — always alongside practical guidance, never as a replacement.
+            </p>
           </CardContent>
         </Card>
 
@@ -532,6 +597,57 @@ export function SettingsPage() {
           </Card>
         )}
 
+        {/* ── Coach Mode / Tone Settings (PR #16) ────────────────────────────── */}
+        {coachModesEnabled && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base">Coach Mode</CardTitle>
+                  <CardDescription>
+                    Choose how DW communicates with you — affects tone, prompts, and guidance style
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div
+                role="radiogroup"
+                aria-label="Coach Mode"
+                className="grid grid-cols-1 gap-2"
+                data-testid="coach-mode-selector"
+              >
+                {COACHING_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={coachMode === mode}
+                    disabled={isCoachModeUpdating}
+                    onClick={() => setCoachMode(mode)}
+                    data-testid={`coach-mode-${mode}`}
+                    className={cn(
+                      "flex flex-col gap-0.5 rounded-md border px-4 py-3 text-left transition-colors",
+                      coachMode === mode
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border hover:border-primary/40 hover:bg-muted/40"
+                    )}
+                  >
+                    <span className="text-sm font-medium">{COACHING_MODE_LABELS[mode as CoachingMode]}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {COACHING_MODE_DESCRIPTIONS[mode as CoachingMode]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Default is Gentle. You can change this at any time.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -546,6 +662,22 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Your data is stored securely. You can delete your account and all associated data at any time.
             </p>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="analytics-toggle" className="flex flex-col gap-0.5">
+                <span>Usage analytics</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {analyticsEnabled
+                    ? "Anonymous usage events are tracked to improve DW"
+                    : "Analytics tracking is off"}
+                </span>
+              </Label>
+              <Switch
+                id="analytics-toggle"
+                checked={analyticsEnabled}
+                onCheckedChange={handleAnalyticsToggle}
+                data-testid="switch-analytics-enabled"
+              />
+            </div>
             <Link href="/privacy-terms">
               <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-privacy-terms">
                 <div className="flex items-center gap-3">

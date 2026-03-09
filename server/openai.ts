@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { CoachingMode } from "@shared/schema";
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own API key.
 const openai = new OpenAI({
@@ -30,6 +31,7 @@ interface UserLifeContext {
   wellnessFocus?: string[];
   peakMotivationTime?: string;
   category?: string;
+  coachMode?: CoachingMode;
   categoryEntries?: {
     category: string;
     title: string;
@@ -79,6 +81,10 @@ interface UserLifeContext {
     sentiment: string;
     relatedDimension?: string;
   }[];
+  cosmicConsent?: {
+    useAstrologyInGuidance: boolean;
+    useNumerologyInGuidance: boolean;
+  };
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -146,6 +152,43 @@ TONE ADJUSTMENTS:
 - Offer gentle guidance without overwhelming
 - Check in if things are landing
 Example: "How's your headspace today? Want something focused or more open-ended?"`;
+  }
+}
+
+function getCoachModeToneGuidance(mode: CoachingMode): string {
+  switch (mode) {
+    case "gentle":
+      return `COACH MODE: GENTLE
+The user prefers a warm, nurturing communication style.
+TONE ADJUSTMENTS:
+- Lead with validation and empathy before any suggestions
+- Use soft, inviting language ("When you're ready", "No rush", "One small thing")
+- Avoid blunt or prescriptive phrasing
+- Allow space for emotions and processing
+- Ask gentle check-in questions before action
+- Prioritize comfort and safety over efficiency`;
+
+    case "direct":
+      return `COACH MODE: DIRECT
+The user prefers clear, no-fluff guidance.
+TONE ADJUSTMENTS:
+- Get to the point quickly without excessive preamble
+- Use confident, action-oriented language
+- Fewer questions — make a clear recommendation
+- Skip lengthy validations; a brief acknowledgment is fine
+- Lead with the answer, then explain if needed
+- Respect their time: short, sharp responses`;
+
+    default: // "structured"
+      return `COACH MODE: STRUCTURED
+The user prefers organized, step-by-step guidance.
+TONE ADJUSTMENTS:
+- Use numbered lists, clear headers, and logical flow
+- Break down actions into concrete, sequenced steps
+- Offer frameworks and decision trees where helpful
+- Summarize key points at the end of complex responses
+- Balance warmth with clarity and order
+- Give a clear outcome or next action for each suggestion`;
   }
 }
 
@@ -334,6 +377,8 @@ ${userContext?.energyContext?.currentEnergy ? getEnergyToneGuidance(userContext.
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
 ${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext.bodyGoal}` : ""}
 ${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
+${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 *** WELLNESS CONSCIOUSNESS (apply to all responses) ***
 
@@ -2010,6 +2055,8 @@ Think of yourself as a high-end personal concierge who:
 ${userContext?.energyContext ? getEnergyToneGuidance(userContext.energyContext.currentEnergy || "medium") : ""}
 ${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.energyContext.currentMood}` : ""}
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
+${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 USER CONTEXT:
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}
@@ -3392,5 +3439,39 @@ Generate all 7 days with 2-4 actions each.`;
   } catch (error) {
     console.error("Failed to generate elevation plan structure:", error);
     return null;
+  }
+}
+
+
+/**
+ * Generate a concise, experiential interpretation of an astrological placement or transit
+ * for use by the Cosmic Hub AI endpoints.  Math/calculation is intentionally excluded.
+ */
+export async function generateCosmicInterpretation(
+  placement: string,
+  context?: string
+): Promise<string> {
+  try {
+    const systemPrompt = `You are a compassionate astrology guide for the Dimensional Wellness AI app.
+Your role is to translate astrological placements and transits into lived, experiential wisdom — 
+not fortune-telling. Speak in second person, in 2–4 sentences. Be warm, grounded, and non-prescriptive.
+Do not make specific predictions. Focus on energy, invitation, and inner orientation.`;
+
+    const userContent = context
+      ? `Placement: ${placement}\nUser context: ${context}`
+      : `Placement: ${placement}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      max_completion_tokens: 200,
+    });
+    return completion.choices[0]?.message?.content?.trim() ?? "";
+  } catch (error) {
+    console.error("Failed to generate cosmic interpretation:", error);
+    return "";
   }
 }

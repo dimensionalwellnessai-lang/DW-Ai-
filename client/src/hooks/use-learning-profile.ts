@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { getQueryFn, apiRequest } from "@/lib/queryClient";
+import { getQueryFn, apiRequest, STALE_TIME } from "@/lib/queryClient";
 import {
   getGuestLearningProfile,
   updateGuestLearningProfile,
@@ -84,7 +84,7 @@ export function useLearningProfile() {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwLearnsEnabled,
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 min
+    staleTime: STALE_TIME.MEDIUM, // 5 min
   });
 
   // Guest: fetch from localStorage
@@ -205,6 +205,21 @@ export function useLearningProfile() {
         const at = payload.actionType as string;
         if (!avoid.includes(at)) avoid.push(at);
         updateGuestLearningProfile({ avoid: avoid.slice(0, 10) });
+        qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
+
+      } else if (event === "weekly_review_wins" && Array.isArray(payload.wins)) {
+        // Merge wins from weekly review into learning profile
+        const incomingWins = (payload.wins as string[]).filter(Boolean);
+        const incomingFriction = Array.isArray(payload.friction)
+          ? (payload.friction as string[]).filter(Boolean)
+          : [];
+        const mergedWins = [...new Set([...incomingWins, ...current.wins])].slice(0, 20);
+        const mergedFriction = [...new Set([...incomingFriction, ...current.frictionPoints])].slice(0, 10);
+        updateGuestLearningProfile({
+          wins: mergedWins,
+          frictionPoints: mergedFriction,
+          lastFeedbackAt: new Date().toISOString(),
+        });
         qc.invalidateQueries({ queryKey: ["guest_learning_profile"] });
       }
       return;

@@ -11,6 +11,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { useReminders, type ReminderRecord } from "@/hooks/use-reminders";
 import { useReminderIntegrations } from "@/hooks/use-reminder-integrations";
 import { onReminderDue, rescheduleAll } from "@/lib/reminder-scheduler";
+import { trackEvent, EVENTS } from "@/lib/analytics";
 
 // Snooze presets matching the problem statement
 const SNOOZE_OPTIONS = [
@@ -68,12 +69,14 @@ export function ReminderBanner() {
 
   const handleDismiss = async () => {
     // Use `dismissed` status for user-initiated dismissal
+    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "dismissed", reminderType: activeReminder.type });
     await dismissReminder(activeReminder.id);
     setActiveReminder(null);
     setShowSnooze(false);
   };
 
   const handleSnooze = async (until: Date) => {
+    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "snoozed", reminderType: activeReminder.type });
     await snoozeReminder(activeReminder.id, until);
     handledRef.current.delete(activeReminder.id);
     setActiveReminder(null);

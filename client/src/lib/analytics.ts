@@ -13,6 +13,14 @@ export const EVENTS = {
   PLAN_VISITED: "plan_visited",
   CHECKIN_COMPLETED: "checkin_completed",
   REMINDER_SET: "reminder_set",
+  // Mature-flow action events
+  FOLLOWUP_ACCEPTED: "followup_accepted",
+  FOLLOWUP_SNOOZED: "followup_snoozed",
+  FOLLOWUP_DISMISSED: "followup_dismissed",
+  PLAN_ACTIVATED: "plan_activated",
+  PLAN_COMPLETED: "plan_completed",
+  CHECKIN_SUBMITTED: "checkin_submitted",
+  REMINDER_INTERACTED: "reminder_interacted",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -76,6 +84,40 @@ type ReminderSetPayload = {
   hasTime: boolean;
 };
 
+// Mature-flow action payload types (no PII)
+type FollowupAcceptedPayload = {
+  followupId: string;
+};
+
+type FollowupSnoozedPayload = {
+  followupId: string;
+  snoozeDurationHours: number;
+};
+
+type FollowupDismissedPayload = {
+  followupId: string;
+};
+
+type PlanActivatedPayload = {
+  planItemId: string;
+  switchId: string;
+};
+
+type PlanCompletedPayload = {
+  planItemId: string;
+  switchId: string;
+};
+
+type CheckinSubmittedPayload = {
+  moodScore: number;
+  constraintType: string;
+};
+
+type ReminderInteractedPayload = {
+  action: "dismissed" | "snoozed";
+  reminderType: string;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -90,6 +132,13 @@ type EventPayloadMap = {
   [EVENTS.PLAN_VISITED]: PlanVisitedPayload;
   [EVENTS.CHECKIN_COMPLETED]: CheckinCompletedPayload;
   [EVENTS.REMINDER_SET]: ReminderSetPayload;
+  [EVENTS.FOLLOWUP_ACCEPTED]: FollowupAcceptedPayload;
+  [EVENTS.FOLLOWUP_SNOOZED]: FollowupSnoozedPayload;
+  [EVENTS.FOLLOWUP_DISMISSED]: FollowupDismissedPayload;
+  [EVENTS.PLAN_ACTIVATED]: PlanActivatedPayload;
+  [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
+  [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
+  [EVENTS.REMINDER_INTERACTED]: ReminderInteractedPayload;
 };
 
 // Session metadata (in-memory only)
@@ -146,6 +195,46 @@ declare global {
   interface Window {
     __dwEvents?: StoredEvent[];
   }
+}
+
+// ─── Server forwarding ────────────────────────────────────────────────────────
+
+/**
+ * Sends queued events to the server analytics endpoint (fire-and-forget).
+ * - Respects the user's opt-out preference.
+ * - Clears the queue optimistically before sending to prevent duplicate uploads.
+ * - Called automatically on page hide/unload via the visibilitychange listener below.
+ */
+export function flushEventsToServer(): void {
+  try {
+    if (isAnalyticsOptedOut()) return;
+    const pending = window.__dwEvents;
+    if (!pending || pending.length === 0) return;
+    // Clear the queue BEFORE copying — any new events tracked while the
+    // async fetch is in flight will land in the fresh queue, not the batch.
+    window.__dwEvents = [];
+    const batch = [...pending];
+    // Best-effort POST — do not await, never throw
+    fetch("/api/analytics/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: batch }),
+      keepalive: true,
+    }).catch(() => {
+      // Silently ignore network errors
+    });
+  } catch {
+    // Never throw from analytics
+  }
+}
+
+// Auto-flush events when the page is hidden (tab switch, close, navigate away)
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushEventsToServer();
+    }
+  });
 }
 
 // Type-safe trackEvent with payload enforcement

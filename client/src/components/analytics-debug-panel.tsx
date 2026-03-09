@@ -39,11 +39,13 @@ function EventCard({ event }: { event: StoredEvent }) {
               variant="ghost"
               className="h-6 w-6 shrink-0"
               onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? "Collapse event payload" : "Expand event payload"}
+              aria-expanded={expanded}
             >
               {expanded ? (
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
               ) : (
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
               )}
             </Button>
           )}
@@ -71,8 +73,8 @@ export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps)
     if (!open) return;
 
     const updateEvents = () => {
-      const ftsEvents = (window.__ftsEvents || []) as StoredEvent[];
-      setEvents([...ftsEvents].reverse());
+      const dwEvents = (window.__dwEvents || []) as StoredEvent[];
+      setEvents([...dwEvents].reverse());
     };
 
     updateEvents();
@@ -89,7 +91,7 @@ export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps)
   }
 
   const handleClear = () => {
-    window.__ftsEvents = [];
+    window.__dwEvents = [];
     setRefreshKey((k) => k + 1);
   };
 
@@ -105,8 +107,8 @@ export function AnalyticsDebugPanel({ open, onClose }: AnalyticsDebugPanelProps)
             <Trash2 className="h-3 w-3 mr-1" />
             Clear
           </Button>
-          <Button size="icon" variant="ghost" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close analytics panel">
+            <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>

@@ -201,12 +201,13 @@ export default function Welcome() {
                           <button
                             key={opt.id}
                             onClick={() => setVibe(opt.id)}
-                            className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                            className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                               vibe === opt.id
                                 ? "border-primary bg-primary/5"
                                 : "border-border hover:bg-muted/40"
                             }`}
                             data-testid={`vibe-${opt.id}`}
+                            aria-pressed={vibe === opt.id}
                           >
                             <Icon
                               className={`w-5 h-5 shrink-0 ${
@@ -309,12 +310,13 @@ export default function Welcome() {
                         <button
                           key={opt.id}
                           onClick={() => setIntent(opt.id)}
-                          className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                          className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                             intent === opt.id
                               ? "border-primary bg-primary/5"
                               : "border-border hover:bg-muted/40"
                           }`}
                           data-testid={`intent-${opt.id}`}
+                          aria-pressed={intent === opt.id}
                         >
                           <span className="text-xl">{opt.emoji}</span>
                           <span className="font-medium text-sm">{opt.label}</span>
