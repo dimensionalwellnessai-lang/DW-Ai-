@@ -26,6 +26,35 @@ import { ReminderBanner } from "@/components/reminder-banner";
 // bundle. The Suspense boundary in AppContent shows a lightweight fallback
 // while each page chunk is fetched the first time.
 
+import { LoginPage } from "@/components/auth/login-page";
+import { TalkItOutPage } from "@/pages/talk-it-out";
+import ResetPasswordPage from "@/pages/reset-password";
+import AccountDeletePage from "@/pages/account-delete";
+import WelcomePage from "@/pages/welcome";
+import VoiceOnboardingPage from "@/pages/voice-onboarding";
+import SubscriptionPage from "@/pages/subscription";
+import EnhancedOnboardingPage from "@/pages/enhanced-onboarding";
+import LifeDashboardPage from "@/pages/life-dashboard";
+import { CalendarPlansPage } from "@/pages/calendar-plans";
+import DailySchedulePage from "@/pages/daily-schedule";
+import WeekSchedulePage from "@/pages/week-schedule";
+import WorkoutPage from "@/pages/workout";
+import { RecoveryPage } from "@/pages/recovery";
+import SpiritualPage from "@/pages/spiritual";
+import AstrologyPage from "@/pages/astrology";
+import BrowsePage from "@/pages/browse";
+import { ChallengesPage } from "@/pages/challenges";
+import RoutinesPage from "@/pages/routines";
+import MealPrepPage from "@/pages/meal-prep";
+import ShoppingListPage from "@/pages/shopping-list";
+import CookSessionPage from "@/pages/cook-session";
+import FinancesPage from "@/pages/finances";
+import FeedbackPage from "@/pages/feedback";
+import WeeklyCheckinPage from "@/pages/weekly-checkin";
+import JournalPage from "@/pages/journal";
+import { SettingsPage } from "@/pages/settings";
+import AppTourPage from "@/pages/app-tour";
+import { TasksPage } from "@/pages/tasks";
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
