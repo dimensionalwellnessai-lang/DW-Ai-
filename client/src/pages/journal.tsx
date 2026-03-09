@@ -757,7 +757,8 @@ function DwJournalSection({ entries, isLoading }: { entries: DwJournalRecord[]; 
                   <button
                     type="button"
                     onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                    className="text-[11px] text-violet-500 hover:text-violet-600 transition-colors"
+                    className="text-[11px] text-violet-500 hover:text-violet-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
+                    aria-expanded={isExpanded}
                   >
                     {isExpanded ? "Show less" : "Read more"}
                   </button>
