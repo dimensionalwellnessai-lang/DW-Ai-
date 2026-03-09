@@ -81,8 +81,9 @@ export function MoodPicker({ onClose, compact = false }: MoodPickerProps) {
           className="absolute top-2 right-2"
           onClick={onClose}
           data-testid="button-close-mood-picker"
+          aria-label="Close mood picker"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </Button>
         
         <h2 className="text-xl font-semibold mb-2 text-center">How are you feeling?</h2>

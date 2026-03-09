@@ -19,8 +19,10 @@ import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
+import { useCoachMode, COACHING_MODES, COACHING_MODE_LABELS, COACHING_MODE_DESCRIPTIONS, type CoachingMode } from "@/hooks/use-coach-mode";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
+import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
 import {
   User,
   Bell,
@@ -40,6 +42,7 @@ import {
   TestTube,
   Flag,
   Brain,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -66,7 +69,9 @@ export function SettingsPage() {
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
+  const coachModesEnabled = isFeatureEnabled("COACH_MODES");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
+  const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -78,6 +83,12 @@ export function SettingsPage() {
   const [browserNotifEnabled, setBrowserNotifEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem(BROWSER_NOTIF_ENABLED_KEY) !== "false"; } catch { return true; }
   });
+  // Analytics opt-out preference — "enabled" = not opted-out
+  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(() => !isAnalyticsOptedOut());
+  const handleAnalyticsToggle = (checked: boolean) => {
+    setAnalyticsOptOut(!checked); // checked=true → opt-out=false (tracking ON)
+    setAnalyticsEnabledState(checked);
+  };
   const handleBrowserNotifToggle = async (checked: boolean) => {
     if (checked && permission !== "granted") {
       const granted = await requestPermission();
@@ -532,6 +543,57 @@ export function SettingsPage() {
           </Card>
         )}
 
+        {/* ── Coach Mode / Tone Settings (PR #16) ────────────────────────────── */}
+        {coachModesEnabled && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base">Coach Mode</CardTitle>
+                  <CardDescription>
+                    Choose how DW communicates with you — affects tone, prompts, and guidance style
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div
+                role="radiogroup"
+                aria-label="Coach Mode"
+                className="grid grid-cols-1 gap-2"
+                data-testid="coach-mode-selector"
+              >
+                {COACHING_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={coachMode === mode}
+                    disabled={isCoachModeUpdating}
+                    onClick={() => setCoachMode(mode)}
+                    data-testid={`coach-mode-${mode}`}
+                    className={cn(
+                      "flex flex-col gap-0.5 rounded-md border px-4 py-3 text-left transition-colors",
+                      coachMode === mode
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border hover:border-primary/40 hover:bg-muted/40"
+                    )}
+                  >
+                    <span className="text-sm font-medium">{COACHING_MODE_LABELS[mode as CoachingMode]}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {COACHING_MODE_DESCRIPTIONS[mode as CoachingMode]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Default is Gentle. You can change this at any time.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -546,6 +608,22 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Your data is stored securely. You can delete your account and all associated data at any time.
             </p>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="analytics-toggle" className="flex flex-col gap-0.5">
+                <span>Usage analytics</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {analyticsEnabled
+                    ? "Anonymous usage events are tracked to improve DW"
+                    : "Analytics tracking is off"}
+                </span>
+              </Label>
+              <Switch
+                id="analytics-toggle"
+                checked={analyticsEnabled}
+                onCheckedChange={handleAnalyticsToggle}
+                data-testid="switch-analytics-enabled"
+              />
+            </div>
             <Link href="/privacy-terms">
               <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-privacy-terms">
                 <div className="flex items-center gap-3">

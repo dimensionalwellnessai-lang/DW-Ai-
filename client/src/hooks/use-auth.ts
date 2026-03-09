@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { STALE_TIME } from "@/lib/queryClient";
 
 export interface AuthUser {
   id: string;
@@ -24,7 +25,7 @@ export function useAuth() {
   const { data, isLoading, error, refetch } = useQuery<AuthData | null>({
     queryKey: ["/api/auth/me"],
     retry: false,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.AUTH,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<AuthData | null> => {
       try {
