@@ -94,6 +94,44 @@ export const COPY = {
     exploreCategory: (category: string) => `Explore ${category}.`,
   },
 
+  tracking: {
+    habitsEmpty: "No habits set up yet.",
+    habitsEmptyCTA: "Set up habits",
+  },
+
+  moodTracker: {
+    emptyToday: "Nothing logged yet today.",
+  },
+
+  actionCenter: {
+    featureOff: "Start a conversation with DW to generate follow-ups.",
+    pendingEmpty: "You're all caught up.",
+    pendingEmptyCTA: "Talk to DW",
+    why: "From your last conversation.",
+  },
+
+  lifeBlueprint: {
+    dimensionEmpty: "Not defined yet.",
+    resetEmpty: "No reset protocol set up.",
+    assessmentEmpty: "Not assessed yet.",
+    goalsEmpty: "No goals for this dimension.",
+  },
+
+  proactiveCards: {
+    morningTitle: "Morning check-in",
+    morningMessage: "A quick read of where you're at shapes your whole day.",
+    morningWhy: "No check-in logged yet today.",
+    energyTitle: "Energy low",
+    energyMessage: "A short walk or 5-min reset can shift things.",
+    energyWhy: "Based on your check-in.",
+    windDownTitle: "Wind down",
+    windDownMessage: "Review today, set tomorrow's intention.",
+    windDownWhy: "It's evening — good time to close the loop.",
+    goalTitle: "Open goals, no plan",
+    goalMessage: "Want me to suggest one action to make progress?",
+    goalWhy: "You have active goals but nothing on the schedule.",
+  },
+
   challenges: {
     viewDetails: "See details",
     addToPlan: "Add to my plan",
@@ -134,6 +172,7 @@ export const COPY = {
     letsMakeItSimple: "Let's make it simple.",
     whyItMatters: "Why this matters:",
     suggestion: "DW suggestion:",
+    whyLabel: "Why:",
   },
 
   bodyScan: {

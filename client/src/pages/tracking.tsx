@@ -19,6 +19,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { COPY } from "@/copy/en";
 
 export default function TrackingDashboard() {
   const [, navigate] = useLocation();
@@ -225,8 +226,8 @@ export default function TrackingDashboard() {
             <ScrollArea className="h-[300px]">
               {habits.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No habits set up yet</p>
-                  <Button onClick={() => navigate('/routines')}>Create First Habit</Button>
+                  <p className="text-muted-foreground mb-4">{COPY.tracking.habitsEmpty}</p>
+                  <Button onClick={() => navigate('/routines')}>{COPY.tracking.habitsEmptyCTA}</Button>
                 </div>
               ) : (
                 <div className="space-y-3">

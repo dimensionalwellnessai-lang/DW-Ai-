@@ -28,6 +28,7 @@ import {
 } from "@/lib/dw-intelligence-storage";
 import { useReminders } from "@/hooks/use-reminders";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { COPY } from "@/copy/en";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -420,7 +421,7 @@ export default function ActionCenterPage() {
         <PageHeader title="Action Center" />
         <div className="flex-1 flex items-center justify-center p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            DW Intelligence is not enabled. Have a conversation with DW to generate follow-ups.
+            {COPY.actionCenter.featureOff}
           </p>
         </div>
       </div>
@@ -460,7 +461,7 @@ export default function ActionCenterPage() {
             ) : pending.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/60 p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No pending follow-ups right now.
+                  {COPY.actionCenter.pendingEmpty}
                 </p>
                 <Button
                   variant="ghost"
@@ -472,7 +473,7 @@ export default function ActionCenterPage() {
                     navigate(`/talk?${params.toString()}`);
                   }}
                 >
-                  Start a conversation with DW →
+                  {COPY.actionCenter.pendingEmptyCTA} →
                 </Button>
               </div>
             ) : (

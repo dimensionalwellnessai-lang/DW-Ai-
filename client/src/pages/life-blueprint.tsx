@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
+import { COPY } from "@/copy/en";
 
 const DIMENSIONS = [
   { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
@@ -270,7 +271,7 @@ export default function LifeBlueprintPage() {
                     <BlueprintView blueprint={currentBlueprint} />
                   ) : (
                     <div className="text-center py-8 space-y-4">
-                      <p className="text-muted-foreground">You haven't defined this dimension yet.</p>
+                      <p className="text-muted-foreground">{COPY.lifeBlueprint.dimensionEmpty}</p>
                       <Button onClick={() => setEditMode(selectedDimension)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create {currentDimension.label} Blueprint
@@ -316,7 +317,7 @@ export default function LifeBlueprintPage() {
                 ) : (
                   <div className="text-center py-8 space-y-4">
                     <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-                    <p className="text-muted-foreground">You haven't set up your Reset Protocol yet.</p>
+                    <p className="text-muted-foreground">{COPY.lifeBlueprint.resetEmpty}</p>
                     <Button onClick={() => setEditingResetProtocol(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Create Reset Protocol

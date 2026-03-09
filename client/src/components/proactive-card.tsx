@@ -31,6 +31,7 @@ export interface ProactiveCardProps {
   type: ProactiveCardType;
   title: string;
   message: string;
+  why?: string;
   actionLabel?: string;
   onAction?: () => void;
   onDismiss?: () => void;
@@ -89,6 +90,7 @@ export function ProactiveCard({
   type,
   title,
   message,
+  why,
   actionLabel,
   onAction,
   onDismiss,
@@ -140,6 +142,9 @@ export function ProactiveCard({
             
             <h3 className="font-semibold text-sm mb-1">{title}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
+            {why && (
+              <p className="text-xs text-muted-foreground/70 mt-1 italic">{COPY.dw.whyLabel} {why}</p>
+            )}
             
             {actionLabel && onAction && (
               <Button
