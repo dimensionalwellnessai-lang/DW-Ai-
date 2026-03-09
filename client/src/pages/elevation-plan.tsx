@@ -371,15 +371,13 @@ export default function ElevationPlanPage() {
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
   const weeklyReviewEnabled = isFeatureEnabled("WEEKLY_REVIEW");
   const shareEnabled = isFeatureEnabled("SHARE_EXPORT");
-  const { activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan, toggleAction, updateAction } =
-    useElevationPlan();
-  const { toast } = useToast();
   const {
     activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan,
     toggleAction, updateAction,
     addToCalendar, removeFromCalendar,
     addToTasks, removeFromTasks,
   } = useElevationPlan();
+  const { toast } = useToast();
 
   // Also check for any draft plan in localStorage (guest) or via query param
   const today = new Date().toISOString().slice(0, 10);

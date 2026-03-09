@@ -70,7 +70,6 @@ import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
 import ActionCenterPage from "@/pages/action-center";
-import { ReminderBanner } from "@/components/reminder-banner";
 
 function isReturningUser(): boolean {
   try {
