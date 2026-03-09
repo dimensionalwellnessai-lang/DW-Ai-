@@ -182,8 +182,9 @@ function getLastRoute(): string | null {
   try {
     const v = localStorage.getItem(LAST_ROUTE_KEY);
     if (!v || v === "/") return null;
-    if (AUTH_ONBOARDING_PAGES.some((p) => v === p || v.startsWith(p + "/"))) return null;
-    if (EXCLUDED_RESTORE_ROUTES.some((p) => v === p || v.startsWith(p + "/"))) return null;
+    const path = v.split(/[?#]/, 1)[0];
+    if (AUTH_ONBOARDING_PAGES.some((p) => path === p || path.startsWith(p + "/"))) return null;
+    if (EXCLUDED_RESTORE_ROUTES.some((p) => path === p || path.startsWith(p + "/"))) return null;
     return v;
   } catch {
     return null;
