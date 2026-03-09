@@ -66,7 +66,13 @@ export interface ElevationPlanFull {
   days: ElevationPlanDayItem[];
 }
 
+export interface ElevationPlanWithStats extends ElevationPlanItem {
+  totalActions: number;
+  completedActions: number;
+}
+
 const ACTIVE_PLAN_KEY = "/api/elevation-plans/active";
+const ALL_PLANS_KEY = "/api/elevation-plans";
 
 export function useElevationPlan() {
   const { user } = useAuth();
@@ -266,6 +272,83 @@ export function useElevationPlan() {
     },
   });
 
+  // ─── Plan history (PR #17) ─────────────────────────────────────────────────
+
+  const {
+    data: allPlansData,
+    isLoading: isLoadingAllPlans,
+    refetch: refetchAllPlans,
+  } = useQuery<ElevationPlanWithStats[]>({
+    queryKey: [ALL_PLANS_KEY],
+    enabled: isFeatureEnabled("MULTI_PLAN") && isLoggedIn,
+    queryFn: async () => {
+      const res = await fetch(ALL_PLANS_KEY, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<ElevationPlanWithStats[]>;
+    },
+    staleTime: 60_000,
+  });
+
+  // Archive a plan (PR #17)
+  const archivePlanMutation = useMutation<
+    ElevationPlanItem,
+    Error,
+    { id: string }
+  >({
+    mutationFn: async ({ id }) => {
+      if (isLoggedIn) {
+        const res = await fetch(`/api/elevation-plans/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: "archived" }),
+        });
+        if (!res.ok) throw new Error("Failed to archive plan");
+        return res.json() as Promise<ElevationPlanItem>;
+      }
+      updateGuestElevationPlan(id, { status: "archived" });
+      return { id, status: "archived" } as ElevationPlanItem;
+    },
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
+    },
+  });
+
+  // Reactivate an archived plan (PR #17)
+  const reactivatePlanMutation = useMutation<
+    ElevationPlanItem,
+    Error,
+    { id: string }
+  >({
+    mutationFn: async ({ id }) => {
+      if (isLoggedIn) {
+        const res = await fetch(`/api/elevation-plans/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: "active" }),
+        });
+        if (!res.ok) throw new Error("Failed to reactivate plan");
+        return res.json() as Promise<ElevationPlanItem>;
+      }
+      // Guest: archive any currently active plan first, then activate
+      const guestPlans = getGuestElevationPlans();
+      const currentActive = guestPlans.find((p) => p.status === "active");
+      if (currentActive && currentActive.id !== id) {
+        updateGuestElevationPlan(currentActive.id, { status: "archived" });
+      }
+      updateGuestElevationPlan(id, { status: "active" });
+      return { id, status: "active" } as ElevationPlanItem;
+    },
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
+    },
+  });
+
   return {
     enabled,
     activePlan: activePlanData ?? null,
@@ -278,5 +361,13 @@ export function useElevationPlan() {
     isUpdatingPlan: updatePlanMutation.isPending,
     toggleAction: toggleActionMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
+    // Plan history (PR #17)
+    allPlans: allPlansData ?? [],
+    isLoadingAllPlans,
+    refetchAllPlans,
+    archivePlan: archivePlanMutation.mutateAsync,
+    isArchiving: archivePlanMutation.isPending,
+    reactivatePlan: reactivatePlanMutation.mutateAsync,
+    isReactivating: reactivatePlanMutation.isPending,
   };
 }

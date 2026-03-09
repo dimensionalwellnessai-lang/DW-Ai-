@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
   BookOpen,
   PlayCircle,
   Loader2,
+  History,
 } from "lucide-react";
 import { useElevationPlan, type ElevationPlanActionItem, type ElevationPlanDayItem, type ElevationPlanFull } from "@/hooks/use-elevation-plan";
 import { getGuestElevationPlanFull, getGuestDraftPlanForDay } from "@/lib/elevation-plan-storage";
@@ -418,6 +420,18 @@ export default function ElevationPlanPage() {
                 </TabsContent>
               ))}
             </Tabs>
+          </motion.div>
+        )}
+
+        {/* Plan history link (PR #17) */}
+        {isFeatureEnabled("MULTI_PLAN") && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <Link href="/plan-history">
+              <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground gap-2 text-sm">
+                <History className="h-4 w-4" aria-hidden />
+                View all plans &amp; history
+              </Button>
+            </Link>
           </motion.div>
         )}
       </div>

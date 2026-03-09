@@ -53,6 +53,7 @@ import AccountDeletePage from "@/pages/account-delete";
 import PlansPage from "@/pages/plans";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
+import PlanHistoryPage from "@/pages/plan-history";
 import ScheduleReviewPage from "@/pages/schedule-review";
 import ImportPage from "@/pages/import";
 import ExportPage from "@/pages/export";
@@ -242,6 +243,7 @@ function Router() {
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
+      {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}

@@ -8310,6 +8310,32 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // GET /api/elevation-plans – list all plans for the user with completion stats (PR #17)
+  app.get("/api/elevation-plans", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const plans = await storage.getElevationPlans(userId);
+      // Attach completion stats (total actions / completed actions) to each plan
+      const plansWithStats = await Promise.all(
+        plans.map(async (plan) => {
+          const days = await storage.getElevationPlanDays(plan.id);
+          let totalActions = 0;
+          let completedActions = 0;
+          for (const day of days) {
+            const actions = await storage.getElevationPlanActions(day.id);
+            totalActions += actions.length;
+            completedActions += actions.filter((a) => a.isCompleted).length;
+          }
+          return { ...plan, totalActions, completedActions };
+        })
+      );
+      res.json(plansWithStats);
+    } catch (error) {
+      console.error("Elevation plans list error:", error);
+      res.status(500).json({ error: "Failed to list elevation plans" });
+    }
+  });
+
   // GET /api/elevation-plans/:id – get a specific elevation plan
   app.get("/api/elevation-plans/:id", requireAuth, async (req, res) => {
     try {
@@ -8334,6 +8360,13 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const parsed = elevationPlanUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      // PR #17: when activating a plan, auto-archive any currently active plan
+      if (parsed.data.status === "active") {
+        const currentActive = await storage.getActiveElevationPlan(userId);
+        if (currentActive && currentActive.id !== req.params.id) {
+          await storage.updateElevationPlan(currentActive.id, userId, { status: "archived" });
+        }
       }
       const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Plan not found" });
