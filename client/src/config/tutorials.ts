@@ -172,7 +172,7 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
   },
   astrology: {
     pageId: "astrology",
-    pageName: "Astrology",
+    pageName: "Cosmic Insights",
     welcomeMessage: "Explore the patterns in your chart. Notice what resonates.",
     steps: [
       {

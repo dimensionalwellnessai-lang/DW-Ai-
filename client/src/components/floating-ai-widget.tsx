@@ -190,7 +190,7 @@ export function FloatingAIWidget() {
                 className="text-xs"
                 onClick={() => handleQuickAction("Show my astrology profile")}
               >
-                Astrology
+                Cosmic Insights
               </Button>
               <Button 
                 variant="outline" 

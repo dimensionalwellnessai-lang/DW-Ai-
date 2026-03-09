@@ -618,8 +618,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
   {
     id: "astrology",
-    path: "/astrology",
-    label: "Astrology",
+    path: "/cosmic-insights",
+    label: "Cosmic Insights",
     icon: "sparkles",
     type: "page",
     description: "Cosmic insights",

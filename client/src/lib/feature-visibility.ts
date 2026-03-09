@@ -26,7 +26,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "journal", name: "📓 Journal", path: "/journal", visibility: "primary", description: "Daily reflections", enabled: true },
   
   // LIFE DIMENSIONS section
-  { id: "astrology", name: "✨ Astrology", path: "/astrology", visibility: "primary", description: "Personal patterns", enabled: true },
+  { id: "astrology", name: "✨ Cosmic Insights", path: "/cosmic-insights", visibility: "primary", description: "Personal patterns", enabled: true },
   { id: "finances", name: "💰 Finances", path: "/finances", visibility: "primary", description: "Budget", enabled: true },
   { id: "community", name: "👥 Community", path: "/community", visibility: "primary", description: "Connect", enabled: true },
   

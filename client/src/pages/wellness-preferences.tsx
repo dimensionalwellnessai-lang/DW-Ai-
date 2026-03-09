@@ -265,7 +265,7 @@ export default function WellnessPreferencesPage() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-base">Astrology</Label>
+                <Label className="text-base">Cosmic Insights</Label>
                 <p className="text-sm text-muted-foreground">
                   Daily horoscopes, birth chart, moon phases
                 </p>

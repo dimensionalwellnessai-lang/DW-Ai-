@@ -235,7 +235,7 @@ export function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
-                <span>Astrology insights</span>
+                <span>Cosmic insights</span>
                 <span className="text-xs text-muted-foreground font-normal">
                   Include your birth chart in personalized DW guidance
                 </span>

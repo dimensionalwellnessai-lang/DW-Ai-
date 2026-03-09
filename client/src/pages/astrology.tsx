@@ -823,7 +823,7 @@ ${voiceRules}`;
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader title="Cosmic Insight" />
+      <PageHeader title="Cosmic Insights" />
 
       <ScrollArea className="flex-1 overflow-auto">
         <main className="p-4 max-w-2xl mx-auto space-y-6 pb-8" data-tour="insights">
@@ -848,7 +848,7 @@ ${voiceRules}`;
             <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="charts" className="flex-1" data-testid="tab-charts">
                 <Star className="mr-1 h-4 w-4" />
-                Astrology
+                Cosmic Insights
               </TabsTrigger>
               <TabsTrigger value="calendar" className="flex-1" data-testid="tab-calendar" data-tour="calendar">
                 <Calendar className="mr-1 h-4 w-4" />
@@ -1312,7 +1312,7 @@ ${voiceRules}`;
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-violet-500" />
-                    Learn Astrology
+                    Learn Cosmic Insights
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">

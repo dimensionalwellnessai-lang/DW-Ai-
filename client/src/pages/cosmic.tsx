@@ -42,7 +42,7 @@ import {
 } from "@/lib/numerology";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
-// Reuse the same key as /astrology so both pages share one birth chart record
+// Reuse the same key as /cosmic-insights so both pages share one birth chart record
 const BIRTH_CHART_KEY = "dw_birth_chart";
 const NUMEROLOGY_KEY = "dw_cosmic_numerology";
 
@@ -1373,7 +1373,7 @@ export default function CosmicHubPage() {
               </TabsTrigger>
               <TabsTrigger value="astrology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-astrology">
                 <Star className="h-4 w-4" />
-                <span className="text-[10px]">Astrology</span>
+                <span className="text-[10px]">Cosmic Insights</span>
               </TabsTrigger>
               <TabsTrigger value="numerology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-numerology">
                 <Hash className="h-4 w-4" />
