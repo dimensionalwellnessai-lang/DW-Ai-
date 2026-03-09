@@ -537,7 +537,7 @@ function InsightsTab({
         </CardContent>
       </Card>
 
-      {/* Astrology insight (if birth data available) */}
+      {/* Cosmic insight (if birth data available) */}
       {sunSign ? (
         <Card>
           <CardHeader className="pb-2">
@@ -557,7 +557,7 @@ function InsightsTab({
       ) : (
         <Card className="border-dashed">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Add your birth details in the Astrology Profile tab for personalised insights.</p>
+            <p className="text-xs text-muted-foreground">Add your birth details in the Cosmic Insights Profile tab for personalised insights.</p>
           </CardContent>
         </Card>
       )}
@@ -1297,13 +1297,13 @@ function ConsentSection() {
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">Astrology insights</p>
+            <p className="text-sm font-medium">Cosmic insights</p>
             <p className="text-xs text-muted-foreground">Include your chart in personalised DW guidance</p>
           </div>
           <Switch
             checked={consent.useAstrologyInGuidance}
             onCheckedChange={v => update("useAstrologyInGuidance", v)}
-            aria-label="Use astrology in guidance"
+            aria-label="Use cosmic insights in guidance"
           />
         </div>
         <div className="flex items-center justify-between gap-3">

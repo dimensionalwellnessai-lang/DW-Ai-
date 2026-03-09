@@ -837,7 +837,7 @@ ${voiceRules}`;
                   <h3 className="font-semibold text-sm">Personalized Guidance for Your Wellness Journey</h3>
                   <p className="text-xs text-muted-foreground">
                     Explore patterns, insights, and personalized recommendations to support your growth. 
-                    Astrology and cosmic rhythms are offered as optional tools for deeper self-reflection.
+                    Cosmic Insights and cosmic rhythms are offered as optional tools for deeper self-reflection.
                   </p>
                 </div>
               </div>

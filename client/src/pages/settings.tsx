@@ -227,7 +227,7 @@ export function SettingsPage() {
               <div>
                 <CardTitle className="text-base">Cosmic Guidance</CardTitle>
                 <CardDescription>
-                  Optional cosmic lenses — astrology and numerology — for self-reflection. Practical guidance is always primary.
+                  Optional cosmic lenses — cosmic insights and numerology — for self-reflection. Practical guidance is always primary.
                 </CardDescription>
               </div>
             </div>
@@ -244,7 +244,7 @@ export function SettingsPage() {
                 id="cosmic-astrology-toggle"
                 checked={cosmicConsent.useAstrologyInGuidance}
                 onCheckedChange={v => updateCosmicConsent("useAstrologyInGuidance", v)}
-                aria-label="Use astrology in guidance"
+                aria-label="Use cosmic insights in guidance"
                 data-testid="switch-cosmic-astrology"
               />
             </div>

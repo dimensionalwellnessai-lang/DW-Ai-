@@ -241,6 +241,7 @@ function Router() {
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}
+      <Route path="/astrology"><Redirect to="/cosmic-insights" /></Route>
       <Route path="/cosmic" component={CosmicHubPage} />
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
       

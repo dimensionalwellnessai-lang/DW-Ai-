@@ -634,7 +634,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     label: "Cosmic Hub",
     icon: "star",
     type: "page",
-    description: "Calendar, insights, astrology profile and numerology — all in one place",
+    description: "Calendar, cosmic insights, numerology and more — all in one place",
     showInMenu: true,
     menuSection: "more",
     menuOrder: 84,

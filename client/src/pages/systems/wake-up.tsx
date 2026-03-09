@@ -75,7 +75,7 @@ const MORNING_ROUTINE_STEPS: RoutineStep[] = [
   {
     id: "astrology",
     title: "Daily Insight",
-    description: "Check your astrological guidance for today",
+    description: "Check your cosmic insights for today",
     duration: "2 min",
     icon: Sparkles,
     isOptional: true,
