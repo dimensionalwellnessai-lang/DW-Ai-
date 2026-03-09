@@ -20,7 +20,12 @@ export interface FeatureFlags {
   ELEVATION_PLAN: boolean;          // ⏸️ 7-day Elevation Plan builder (PR #5)
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
-  MULTI_PLAN: boolean;              // ⏸️ Multi-plan support + plan history (PR #17)
+  /**
+   * Multi-plan support + plan history (PR #17).
+   * Requires ELEVATION_PLAN to be useful — enables /plan-history route, the
+   * "View History" link on the plan page, and the allPlans query in useElevationPlan.
+   */
+  MULTI_PLAN: boolean;
 }
 
 /**

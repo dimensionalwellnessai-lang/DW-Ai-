@@ -8314,21 +8314,8 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.get("/api/elevation-plans", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const plans = await storage.getElevationPlans(userId);
-      // Attach completion stats (total actions / completed actions) to each plan
-      const plansWithStats = await Promise.all(
-        plans.map(async (plan) => {
-          const days = await storage.getElevationPlanDays(plan.id);
-          let totalActions = 0;
-          let completedActions = 0;
-          for (const day of days) {
-            const actions = await storage.getElevationPlanActions(day.id);
-            totalActions += actions.length;
-            completedActions += actions.filter((a) => a.isCompleted).length;
-          }
-          return { ...plan, totalActions, completedActions };
-        })
-      );
+      // Use a single aggregate query to avoid N+1 (PR #17)
+      const plansWithStats = await storage.getElevationPlansWithStats(userId);
       res.json(plansWithStats);
     } catch (error) {
       console.error("Elevation plans list error:", error);

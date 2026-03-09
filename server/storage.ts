@@ -657,6 +657,7 @@ export interface IStorage {
   // Elevation Plan Builder (PR #5)
   getElevationPlans(userId: string): Promise<ElevationPlan[]>;
   getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
+  getElevationPlansWithStats(userId: string): Promise<(ElevationPlan & { totalActions: number; completedActions: number })[]>;
   getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined>;
   getActiveElevationPlan(userId: string): Promise<ElevationPlan | undefined>;
   getDraftElevationPlanForDay(userId: string, date: string, conversationId?: string): Promise<ElevationPlan | undefined>;
@@ -3126,6 +3127,35 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(elevationPlans)
       .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
       .orderBy(desc(elevationPlans.createdAt));
+  }
+
+  // PR #17: returns all plans for a user with completion stats in a single aggregate query.
+  // Uses `db.execute` (raw pg query) so that we can compute COUNT aggregates across the
+  // elevation_plan_days → elevation_plan_actions join without N+1 round trips.
+  // Drizzle's node-postgres adapter returns `QueryResult.rows` on the result object.
+  async getElevationPlansWithStats(userId: string): Promise<(ElevationPlan & { totalActions: number; completedActions: number })[]> {
+    type Row = ElevationPlan & { total_actions: string; completed_actions: string };
+    const result = await db.execute<Row>(
+      sql`
+        select
+          ep.*,
+          coalesce(count(epa.id), 0)::int                                        as total_actions,
+          coalesce(count(epa.id) filter (where epa.is_completed = true), 0)::int as completed_actions
+        from elevation_plans ep
+        left join elevation_plan_days  epd on epd.plan_id    = ep.id
+        left join elevation_plan_actions epa on epa.plan_day_id = epd.id
+        where ep.user_id = ${userId}
+        group by ep.id
+        order by ep.created_at desc
+      `
+    );
+    // node-postgres QueryResult exposes rows on .rows
+    const rows: Row[] = result.rows;
+    return rows.map((r) => ({
+      ...r,
+      totalActions: Number(r.total_actions ?? 0),
+      completedActions: Number(r.completed_actions ?? 0),
+    }));
   }
 
   async getElevationPlan(id: string, userId: string): Promise<ElevationPlan | undefined> {
