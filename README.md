@@ -147,7 +147,7 @@ To **add a new card**, create a component in the `components/` directory and imp
 
 **[`client/src/pages/life-command-center.tsx`](client/src/pages/life-command-center.tsx)**
 
-An alternate, dimension-focused Command Center implementation. It shows the 13 life dimensions in a scrollable dashboard with insights and pinnable AI cards. To switch to this view, update the `/command-center` route in `client/src/App.tsx` to import and render `LifeCommandCenter` instead of `HomeCommandCenter`.
+An alternate, dimension-focused Command Center implementation. It shows the 8 life dimensions in a scrollable dashboard with insights and pinnable AI cards. To switch to this view, update the `/command-center` route in `client/src/App.tsx` to import and render `LifeCommandCenter` instead of `HomeCommandCenter`.
 
 ### Route Registration
 
