@@ -274,7 +274,7 @@ export default function TodayHubPage() {
             onClick={() => setMenuOpen(true)}
             data-testid="button-menu"
             className="shrink-0 -ml-2"
-            aria-label="Open menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
           >
             <Menu className="h-5 w-5" aria-hidden="true" />

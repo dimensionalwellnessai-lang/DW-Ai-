@@ -136,7 +136,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
             size="icon" 
             onClick={handleMenuToggle}
             data-testid="button-menu"
-            aria-label="Open menu"
+            aria-label={effectiveMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={effectiveMenuOpen}
           >
             <Menu className="h-6 w-6 text-foreground" aria-hidden="true" />
           </Button>

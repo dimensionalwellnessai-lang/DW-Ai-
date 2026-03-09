@@ -341,7 +341,7 @@ function AppContent() {
           onSkip={skipTour}
         />
       </Suspense>
-      <div className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
+      <main id="main-content" className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
             <Suspense fallback={<PageLoadingFallback />}>

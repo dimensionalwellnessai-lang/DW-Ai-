@@ -1518,7 +1518,7 @@ export function AIWorkspace() {
               onClick={() => setMenuOpen(true)}
               data-testid="button-menu"
               className="text-foreground"
-              aria-label="Open menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
             >
               <Menu className="h-6 w-6" aria-hidden="true" />

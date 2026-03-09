@@ -43,20 +43,19 @@ export function SwipeableLayout() {
 
   return (
     <div
-      className="h-dvh min-h-dvh w-full overflow-hidden relative"
+      className="h-dvh min-h-dvh w-full overflow-hidden relative focus-visible:outline-2 focus-visible:outline-primary"
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") emblaApi?.scrollNext();
         else if (e.key === "ArrowLeft") emblaApi?.scrollPrev();
       }}
       tabIndex={0}
+      role="region"
+      aria-roledescription="carousel"
       aria-label="Swipeable views — use arrow keys to navigate"
     >
       <div
         ref={emblaRef}
         className="h-full overflow-hidden"
-        role="region"
-        aria-label="Swipeable views"
-        aria-roledescription="carousel"
       >
         <div className="flex h-full">
           {SCREENS.map((screen, idx) => {
