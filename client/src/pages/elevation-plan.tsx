@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import {
   Sparkles,
@@ -22,11 +28,15 @@ import {
   BookOpen,
   PlayCircle,
   Loader2,
+  CheckSquare,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useElevationPlan, type ElevationPlanActionItem, type ElevationPlanDayItem, type ElevationPlanFull } from "@/hooks/use-elevation-plan";
 import { getGuestElevationPlanFull, getGuestDraftPlanForDay } from "@/lib/elevation-plan-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper: cast GuestElevationPlanFull (structurally compatible) to ElevationPlanFull
 function asElevationPlanFull(v: ReturnType<typeof getGuestElevationPlanFull>): ElevationPlanFull | null {
@@ -53,10 +63,20 @@ function ActionCard({
   action,
   onToggle,
   onUpdate,
+  onAddToCalendar,
+  onRemoveFromCalendar,
+  onAddToTasks,
+  onRemoveFromTasks,
+  isLoggedIn,
 }: {
   action: ElevationPlanActionItem;
   onToggle: (id: string, completed: boolean) => void;
   onUpdate: (id: string, title: string, description: string) => void;
+  onAddToCalendar?: (id: string) => void;
+  onRemoveFromCalendar?: (id: string) => void;
+  onAddToTasks?: (id: string) => void;
+  onRemoveFromTasks?: (id: string) => void;
+  isLoggedIn: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(action.title);
@@ -74,6 +94,10 @@ function ActionCard({
     setEditDesc(action.description);
     setEditing(false);
   };
+
+  const linked = action.linkedEntity;
+  const linkedToCalendar = linked?.type === "calendar_event";
+  const linkedToTask = linked?.type === "task";
 
   return (
     <Card className={`card-modern transition-opacity ${action.isCompleted ? "opacity-60" : ""}`}>
@@ -103,45 +127,104 @@ function ActionCard({
             </div>
           </div>
         ) : (
-          <div className="flex items-start gap-2">
-            <button
-              onClick={() => onToggle(action.id, !action.isCompleted)}
-              className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={action.isCompleted ? "Mark incomplete" : "Mark complete"}
-            >
-              {action.isCompleted ? (
-                <CheckCircle2 className="h-4 w-4 text-green-400" />
-              ) : (
-                <Circle className="h-4 w-4" />
-              )}
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground">{ACTION_TYPE_LABELS[action.actionType] ?? action.actionType}</span>
-                {action.timeOfDay && (
-                  <Badge variant="outline" className="text-xs h-4 px-1 border-border text-muted-foreground">
-                    {action.timeOfDay}
-                  </Badge>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <button
+                onClick={() => onToggle(action.id, !action.isCompleted)}
+                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={action.isCompleted ? "Mark incomplete" : "Mark complete"}
+              >
+                {action.isCompleted ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-400" />
+                ) : (
+                  <Circle className="h-4 w-4" />
                 )}
-                {action.durationMinutes && (
-                  <Badge variant="outline" className="text-xs h-4 px-1 border-border text-muted-foreground">
-                    {action.durationMinutes}m
-                  </Badge>
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground">{ACTION_TYPE_LABELS[action.actionType] ?? action.actionType}</span>
+                  {action.timeOfDay && (
+                    <Badge variant="outline" className="text-xs h-4 px-1 border-border text-muted-foreground">
+                      {action.timeOfDay}
+                    </Badge>
+                  )}
+                  {action.durationMinutes && (
+                    <Badge variant="outline" className="text-xs h-4 px-1 border-border text-muted-foreground">
+                      {action.durationMinutes}m
+                    </Badge>
+                  )}
+                </div>
+                <p className={`text-sm font-medium ${action.isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                  {action.title}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{action.description}</p>
+              </div>
+              <button
+                onClick={() => setEditing(true)}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Edit action"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Calendar / Task integration row */}
+            {isLoggedIn && (
+              <div className="flex items-center gap-1.5 pt-0.5 pl-6">
+                {linkedToCalendar ? (
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs h-5 px-1.5 border-blue-500/40 text-blue-400 bg-blue-500/10 flex items-center gap-1">
+                      <Calendar className="h-2.5 w-2.5" />
+                      In Calendar
+                    </Badge>
+                    <button
+                      onClick={() => onRemoveFromCalendar?.(action.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label="Remove from calendar"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : linkedToTask ? (
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs h-5 px-1.5 border-yellow-500/40 text-yellow-400 bg-yellow-500/10 flex items-center gap-1">
+                      <CheckSquare className="h-2.5 w-2.5" />
+                      In Tasks
+                    </Badge>
+                    <button
+                      onClick={() => onRemoveFromTasks?.(action.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label="Remove from tasks"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Add to calendar or tasks"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Add to…</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[160px]">
+                      <DropdownMenuItem onClick={() => onAddToCalendar?.(action.id)} className="gap-2 text-sm">
+                        <Calendar className="h-3.5 w-3.5" />
+                        Calendar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onAddToTasks?.(action.id)} className="gap-2 text-sm">
+                        <CheckSquare className="h-3.5 w-3.5" />
+                        Tasks
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
-              <p className={`text-sm font-medium ${action.isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                {action.title}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{action.description}</p>
-            </div>
-            <button
-              onClick={() => setEditing(true)}
-              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Edit action"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
+            )}
           </div>
         )}
       </CardContent>
@@ -153,10 +236,20 @@ function DayTab({
   day,
   onToggle,
   onUpdate,
+  onAddToCalendar,
+  onRemoveFromCalendar,
+  onAddToTasks,
+  onRemoveFromTasks,
+  isLoggedIn,
 }: {
   day: ElevationPlanDayItem;
   onToggle: (id: string, completed: boolean) => void;
   onUpdate: (id: string, title: string, description: string) => void;
+  onAddToCalendar: (id: string) => void;
+  onRemoveFromCalendar: (id: string) => void;
+  onAddToTasks: (id: string) => void;
+  onRemoveFromTasks: (id: string) => void;
+  isLoggedIn: boolean;
 }) {
   const completed = day.actions.filter((a) => a.isCompleted).length;
   const total = day.actions.length;
@@ -180,7 +273,17 @@ function DayTab({
       </div>
       <div className="space-y-2">
         {day.actions.map((action) => (
-          <ActionCard key={action.id} action={action} onToggle={onToggle} onUpdate={onUpdate} />
+          <ActionCard
+            key={action.id}
+            action={action}
+            onToggle={onToggle}
+            onUpdate={onUpdate}
+            onAddToCalendar={onAddToCalendar}
+            onRemoveFromCalendar={onRemoveFromCalendar}
+            onAddToTasks={onAddToTasks}
+            onRemoveFromTasks={onRemoveFromTasks}
+            isLoggedIn={isLoggedIn}
+          />
         ))}
       </div>
     </div>
@@ -191,8 +294,13 @@ export default function ElevationPlanPage() {
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const enabled = isFeatureEnabled("ELEVATION_PLAN");
-  const { activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan, toggleAction, updateAction } =
-    useElevationPlan();
+  const { toast } = useToast();
+  const {
+    activePlan, isLoadingActive, generateDraft, isGenerating, updatePlan,
+    toggleAction, updateAction,
+    addToCalendar, removeFromCalendar,
+    addToTasks, removeFromTasks,
+  } = useElevationPlan();
 
   // Also check for any draft plan in localStorage (guest) or via query param
   const today = new Date().toISOString().slice(0, 10);
@@ -272,6 +380,68 @@ export default function ElevationPlanPage() {
       }
     } catch (err) {
       console.error("Failed to update action:", err);
+    }
+  };
+
+  const getActionDay = (actionId: string) =>
+    planData?.days?.find((d) => d.actions.some((a) => a.id === actionId));
+
+  const handleAddToCalendar = async (id: string) => {
+    if (!planData?.plan) return;
+    const day = getActionDay(id);
+    if (!day) return;
+    try {
+      await addToCalendar({
+        actionId: id,
+        planDayIndex: day.dayIndex,
+        planStartDate: planData.plan.startDate,
+        planTitle: planData.plan.title,
+        planId: planData.plan.id,
+      });
+      toast({ title: "Added to Calendar", description: "This action has been added to your schedule." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not add to calendar";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveFromCalendar = async (id: string) => {
+    if (!planData?.plan) return;
+    try {
+      await removeFromCalendar({ actionId: id, planId: planData.plan.id });
+      toast({ title: "Removed from Calendar", description: "The calendar event has been deleted." });
+    } catch (err) {
+      console.error("Failed to remove from calendar:", err);
+      toast({ title: "Error", description: "Could not remove from calendar.", variant: "destructive" });
+    }
+  };
+
+  const handleAddToTasks = async (id: string) => {
+    if (!planData?.plan) return;
+    const day = getActionDay(id);
+    if (!day) return;
+    try {
+      await addToTasks({
+        actionId: id,
+        planDayIndex: day.dayIndex,
+        planStartDate: planData.plan.startDate,
+        planId: planData.plan.id,
+      });
+      toast({ title: "Added to Tasks", description: "This action has been added to your task list." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not add to tasks";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveFromTasks = async (id: string) => {
+    if (!planData?.plan) return;
+    try {
+      await removeFromTasks({ actionId: id, planId: planData.plan.id });
+      toast({ title: "Removed from Tasks", description: "The task has been deleted." });
+    } catch (err) {
+      console.error("Failed to remove from tasks:", err);
+      toast({ title: "Error", description: "Could not remove from tasks.", variant: "destructive" });
     }
   };
 
@@ -414,7 +584,16 @@ export default function ElevationPlanPage() {
               </TabsList>
               {days.map((day: ElevationPlanDayItem) => (
                 <TabsContent key={day.dayIndex} value={String(day.dayIndex)} className="mt-4">
-                  <DayTab day={day} onToggle={handleToggle} onUpdate={handleUpdateAction} />
+                  <DayTab
+                    day={day}
+                    onToggle={handleToggle}
+                    onUpdate={handleUpdateAction}
+                    onAddToCalendar={handleAddToCalendar}
+                    onRemoveFromCalendar={handleRemoveFromCalendar}
+                    onAddToTasks={handleAddToTasks}
+                    onRemoveFromTasks={handleRemoveFromTasks}
+                    isLoggedIn={isLoggedIn}
+                  />
                 </TabsContent>
               ))}
             </Tabs>
