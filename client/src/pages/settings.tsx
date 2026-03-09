@@ -97,13 +97,6 @@ export function SettingsPage() {
     setBrowserNotifEnabled(checked);
     try { localStorage.setItem(BROWSER_NOTIF_ENABLED_KEY, String(checked)); } catch { /* blocked */ }
   };
-
-  // Analytics opt-out preference
-  const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(isAnalyticsEnabled);
-  const handleAnalyticsToggle = (checked: boolean) => {
-    setAnalyticsEnabled(checked);
-    setAnalyticsEnabledState(checked);
-  };
   
   const handleReplayMenuTour = () => {
     localStorage.removeItem(MENU_TUTORIAL_KEY);

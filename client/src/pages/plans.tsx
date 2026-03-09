@@ -110,7 +110,7 @@ export default function PlansPage() {
     );
     setLocalPlans(updated);
     saveLocalPlans(updated);
-    trackEvent(EVENTS.PLAN_ACTIVATED, { planId: id });
+    trackEvent(EVENTS.PLAN_ACTIVATED, { planItemId: id, switchId: "local_plan" });
   };
   
   const handleArchivePlan = (id: string) => {

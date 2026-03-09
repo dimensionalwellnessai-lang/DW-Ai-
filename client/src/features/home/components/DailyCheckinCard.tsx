@@ -125,7 +125,6 @@ export function DailyCheckinCard() {
     trackEvent(EVENTS.CHECKIN_SUBMITTED, { moodScore, constraintType });
     // Fire-and-forget: update learning profile from this check-in
     void sendLearningEvent("checkin", { constraintType, moodScore });
-    trackEvent(EVENTS.CHECKIN_SUBMITTED, { moodScore, constraintType });
     setEditMode(false);
   }
 
