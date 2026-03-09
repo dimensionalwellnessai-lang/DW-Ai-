@@ -42,15 +42,31 @@ export function SwipeableLayout() {
   }, [emblaApi, onSelect]);
 
   return (
-    <div className="h-dvh min-h-dvh w-full overflow-hidden relative">
-      <div ref={emblaRef} className="h-full overflow-hidden">
+    <div
+      className="h-dvh min-h-dvh w-full overflow-hidden relative focus-visible:outline-2 focus-visible:outline-primary"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight") emblaApi?.scrollNext();
+        else if (e.key === "ArrowLeft") emblaApi?.scrollPrev();
+      }}
+      tabIndex={0}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Swipeable views — use arrow keys to navigate"
+    >
+      <div
+        ref={emblaRef}
+        className="h-full overflow-hidden"
+      >
         <div className="flex h-full">
-          {SCREENS.map((screen) => {
+          {SCREENS.map((screen, idx) => {
             const Component = screen.component;
             return (
               <div 
                 key={screen.id} 
                 className="flex-[0_0_100%] min-w-0 h-full overflow-hidden"
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${screen.label} (${idx + 1} of ${SCREENS.length})`}
               >
                 <Component />
               </div>
@@ -60,7 +76,7 @@ export function SwipeableLayout() {
       </div>
       
       {canScrollPrev && (
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 z-40 pointer-events-none" aria-hidden="true">
           <div className="flex items-center gap-1 text-muted-foreground/40">
             <ChevronLeft className="h-5 w-5 animate-pulse" />
           </div>
@@ -68,19 +84,26 @@ export function SwipeableLayout() {
       )}
       
       {canScrollNext && (
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 z-40 pointer-events-none" aria-hidden="true">
           <div className="flex items-center gap-1 text-muted-foreground/40">
             <ChevronRight className="h-5 w-5 animate-pulse" />
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-40 flex gap-1.5">
+      <div
+        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-40 flex gap-1.5"
+        role="tablist"
+        aria-label="View navigation"
+      >
         {SCREENS.map((screen, idx) => (
           <button
             key={screen.id}
+            role="tab"
+            aria-selected={selectedIndex === idx}
+            aria-label={screen.label}
             onClick={() => emblaApi?.scrollTo(idx)}
-            className={`w-1.5 h-1.5 rounded-full transition-all ${
+            className={`w-1.5 h-1.5 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
               selectedIndex === idx 
                 ? "bg-primary w-4" 
                 : "bg-muted-foreground/30"

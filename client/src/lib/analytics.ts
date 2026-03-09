@@ -8,6 +8,19 @@ export const EVENTS = {
   STARTER_SPOTLIGHT_DISMISSED: "starter_spotlight_dismissed",
   APP_OPENED_NEW_DAY: "app_opened_new_day",
   COMPLETED_FIRST_ACTION: "completed_first_action",
+  // Follow-up / engagement events
+  FOLLOWUP_CREATED: "followup_created",
+  PLAN_VISITED: "plan_visited",
+  CHECKIN_COMPLETED: "checkin_completed",
+  REMINDER_SET: "reminder_set",
+  // Mature-flow action events
+  FOLLOWUP_ACCEPTED: "followup_accepted",
+  FOLLOWUP_SNOOZED: "followup_snoozed",
+  FOLLOWUP_DISMISSED: "followup_dismissed",
+  PLAN_ACTIVATED: "plan_activated",
+  PLAN_COMPLETED: "plan_completed",
+  CHECKIN_SUBMITTED: "checkin_submitted",
+  REMINDER_INTERACTED: "reminder_interacted",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -52,6 +65,59 @@ type CompletedFirstActionPayload = {
   tsLocal: string;
 };
 
+type FollowupCreatedPayload = {
+  source: "chat" | "insight" | "checkin" | "unknown";
+  dimension: string | null;
+};
+
+type PlanVisitedPayload = {
+  planType: "elevation" | "meal" | "workout" | "universal" | "unknown";
+};
+
+type CheckinCompletedPayload = {
+  dimension: string | null;
+  responseCount: number;
+};
+
+type ReminderSetPayload = {
+  reminderType: "habit" | "checkin" | "plan" | "custom";
+  hasTime: boolean;
+};
+
+// Mature-flow action payload types (no PII)
+type FollowupAcceptedPayload = {
+  followupId: string;
+};
+
+type FollowupSnoozedPayload = {
+  followupId: string;
+  snoozeDurationHours: number;
+};
+
+type FollowupDismissedPayload = {
+  followupId: string;
+};
+
+type PlanActivatedPayload = {
+  planItemId: string;
+  switchId: string;
+};
+
+type PlanCompletedPayload = {
+  planItemId: string;
+  switchId: string;
+};
+
+type CheckinSubmittedPayload = {
+  moodScore: number;
+  constraintType: string;
+};
+
+type ReminderInteractedPayload = {
+  action: "dismissed" | "snoozed";
+  reminderType: string;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -62,6 +128,17 @@ type EventPayloadMap = {
   [EVENTS.STARTER_SPOTLIGHT_DISMISSED]: SpotlightDismissedPayload;
   [EVENTS.APP_OPENED_NEW_DAY]: AppOpenedNewDayPayload;
   [EVENTS.COMPLETED_FIRST_ACTION]: CompletedFirstActionPayload;
+  [EVENTS.FOLLOWUP_CREATED]: FollowupCreatedPayload;
+  [EVENTS.PLAN_VISITED]: PlanVisitedPayload;
+  [EVENTS.CHECKIN_COMPLETED]: CheckinCompletedPayload;
+  [EVENTS.REMINDER_SET]: ReminderSetPayload;
+  [EVENTS.FOLLOWUP_ACCEPTED]: FollowupAcceptedPayload;
+  [EVENTS.FOLLOWUP_SNOOZED]: FollowupSnoozedPayload;
+  [EVENTS.FOLLOWUP_DISMISSED]: FollowupDismissedPayload;
+  [EVENTS.PLAN_ACTIVATED]: PlanActivatedPayload;
+  [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
+  [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
+  [EVENTS.REMINDER_INTERACTED]: ReminderInteractedPayload;
 };
 
 // Session metadata (in-memory only)
@@ -72,6 +149,38 @@ const sessionId =
     ? globalThis.crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`;
 const env = import.meta.env.DEV ? "dev" : "prod";
+
+// Analytics opt-out key
+const OPT_OUT_KEY = "dw:analyticsOptOut";
+
+/**
+ * Check whether the user has opted out of analytics.
+ */
+export function isAnalyticsOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPT_OUT_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Set the user's analytics opt-out preference.
+ * When opted out, trackEvent() is a no-op and no events are stored.
+ */
+export function setAnalyticsOptOut(optOut: boolean): void {
+  try {
+    if (optOut) {
+      localStorage.setItem(OPT_OUT_KEY, "true");
+      // Clear any previously queued events from the window queue
+      window.__dwEvents = [];
+    } else {
+      localStorage.removeItem(OPT_OUT_KEY);
+    }
+  } catch {
+    // Never throw
+  }
+}
 
 // Event structure stored in window
 export type StoredEvent = {
@@ -88,12 +197,55 @@ declare global {
   }
 }
 
+// ─── Server forwarding ────────────────────────────────────────────────────────
+
+/**
+ * Sends queued events to the server analytics endpoint (fire-and-forget).
+ * - Respects the user's opt-out preference.
+ * - Clears the queue optimistically before sending to prevent duplicate uploads.
+ * - Called automatically on page hide/unload via the visibilitychange listener below.
+ */
+export function flushEventsToServer(): void {
+  try {
+    if (isAnalyticsOptedOut()) return;
+    const pending = window.__dwEvents;
+    if (!pending || pending.length === 0) return;
+    // Clear the queue BEFORE copying — any new events tracked while the
+    // async fetch is in flight will land in the fresh queue, not the batch.
+    window.__dwEvents = [];
+    const batch = [...pending];
+    // Best-effort POST — do not await, never throw
+    fetch("/api/analytics/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: batch }),
+      keepalive: true,
+    }).catch(() => {
+      // Silently ignore network errors
+    });
+  } catch {
+    // Never throw from analytics
+  }
+}
+
+// Auto-flush events when the page is hidden (tab switch, close, navigate away)
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushEventsToServer();
+    }
+  });
+}
+
 // Type-safe trackEvent with payload enforcement
 export function trackEvent<K extends AnalyticsEventName>(
   name: K,
   ...args: EventPayloadMap[K] extends undefined ? [] : [payload: EventPayloadMap[K]]
 ): void {
   try {
+    // Respect user opt-out
+    if (isAnalyticsOptedOut()) return;
+
     const payload = (args[0] as unknown) ?? undefined;
 
     const event: StoredEvent = {

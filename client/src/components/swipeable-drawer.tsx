@@ -1,10 +1,19 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const DIRECTION_LOCK_THRESHOLD = 20;
 const SWIPE_CLOSE_THRESHOLD = -80;
 const HORIZONTAL_BIAS = 1.5;
+
+/** Returns all focusable elements inside a container. */
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+}
 
 interface SwipeableDrawerProps {
   open: boolean;
@@ -37,8 +46,46 @@ export function SwipeableDrawer({
       setTranslateX(0);
       directionLocked.current = null;
       isTracking.current = false;
+      // Move focus into the drawer when it opens
+      setTimeout(() => drawerRef.current?.focus(), 50);
     }
   }, [open]);
+
+  // Escape key and focus trap
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      const focusable = getFocusableElements(drawerRef.current);
+      if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    },
+    [onClose]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleKeyDown]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -112,6 +159,10 @@ export function SwipeableDrawer({
     >
       <div 
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title || "Menu"}
+        tabIndex={-1}
         className={`absolute left-0 top-0 bottom-0 ${width} bg-background text-foreground glass-strong dark:border-r-white/10 border-r px-4 flex flex-col ${
           directionLocked.current === "horizontal" ? "" : "transition-transform duration-200"
         }`}
@@ -133,8 +184,9 @@ export function SwipeableDrawer({
             size="icon" 
             onClick={onClose}
             data-testid="button-close-drawer"
+            aria-label="Close menu"
           >
-            <X className="h-5 w-5 text-foreground" />
+            <X className="h-5 w-5 text-foreground" aria-hidden="true" />
           </Button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>

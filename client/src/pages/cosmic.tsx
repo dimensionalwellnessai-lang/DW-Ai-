@@ -21,9 +21,23 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  ArrowRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useAuth } from "@/hooks/use-auth";
+import {
+  calcLifePath,
+  calcExpression,
+  calcSoulUrge,
+  calcPersonalYear,
+  calcPersonalMonth,
+  calcPersonalDay,
+  LIFE_PATH_MEANINGS,
+  EXPRESSION_MEANINGS,
+  SOUL_URGE_MEANINGS,
+  PERSONAL_YEAR_MEANINGS,
+  PERSONAL_MONTH_MEANINGS,
+  PERSONAL_DAY_MEANINGS,
+} from "@/lib/numerology";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
 // Reuse the same key as /astrology so both pages share one birth chart record
@@ -171,82 +185,6 @@ function calculatePlacements(
     makeEntry("Pluto", plutoDeg),
   ];
 }
-
-// ─── Numerology helpers ────────────────────────────────────────────────────────
-const PYTHAGOREAN: Record<string, number> = {
-  A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,I:9,
-  J:1,K:2,L:3,M:4,N:5,O:6,P:7,Q:8,R:9,
-  S:1,T:2,U:3,V:4,W:5,X:6,Y:7,Z:8,
-};
-
-const MASTER_NUMBERS = new Set([11, 22, 33]);
-
-function reduceNumber(n: number): number {
-  while (n > 9 && !MASTER_NUMBERS.has(n)) {
-    n = String(n).split("").reduce((s, d) => s + Number(d), 0);
-  }
-  return n;
-}
-
-function calcLifePath(birthDate: string): number {
-  const digits = birthDate.replace(/-/g, "").split("").map(Number);
-  return reduceNumber(digits.reduce((s, d) => s + d, 0));
-}
-
-function calcExpression(name: string): number {
-  const total = name
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .split("")
-    .reduce((s, c) => s + (PYTHAGOREAN[c] ?? 0), 0);
-  return reduceNumber(total);
-}
-
-function calcSoulUrge(name: string): number {
-  const vowels = "AEIOU";
-  const total = name
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "")
-    .split("")
-    .filter(c => vowels.includes(c))
-    .reduce((s, c) => s + (PYTHAGOREAN[c] ?? 0), 0);
-  return reduceNumber(total || 1);
-}
-
-function calcPersonalYear(birthDate: string): number {
-  const date = new Date(birthDate);
-  const currentYear = new Date().getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return reduceNumber(month + day + currentYear);
-}
-
-const LIFE_PATH_MEANINGS: Record<number, { title: string; desc: string }> = {
-  1: { title: "The Leader", desc: "Independent, pioneering, original. You're here to lead and innovate." },
-  2: { title: "The Diplomat", desc: "Cooperative, sensitive, intuitive. You thrive in partnership and bring balance." },
-  3: { title: "The Creator", desc: "Expressive, joyful, imaginative. You're here to inspire through creativity." },
-  4: { title: "The Builder", desc: "Practical, disciplined, dependable. You create lasting foundations." },
-  5: { title: "The Explorer", desc: "Adventurous, versatile, freedom-loving. You're here to experience life fully." },
-  6: { title: "The Nurturer", desc: "Responsible, caring, harmonious. You're here to serve and support." },
-  7: { title: "The Seeker", desc: "Analytical, spiritual, introspective. You're here to seek deeper truth." },
-  8: { title: "The Powerhouse", desc: "Ambitious, authoritative, material. You're here to master the material world." },
-  9: { title: "The Humanitarian", desc: "Compassionate, wise, idealistic. You're here to serve humanity." },
-  11: { title: "The Intuitive", desc: "Highly sensitive, visionary, illuminating. A master number — you inspire others." },
-  22: { title: "The Master Builder", desc: "Practical visionary, capable of creating large-scale change. A master number." },
-  33: { title: "The Master Teacher", desc: "Compassionate guide, devoted to uplifting others. A master number." },
-};
-
-const PERSONAL_YEAR_MEANINGS: Record<number, string> = {
-  1: "New beginnings. Plant seeds for the next 9-year cycle.",
-  2: "Cooperation and patience. Nurture what you planted.",
-  3: "Expression and joy. Let creativity flow freely.",
-  4: "Hard work and foundation-building. Focus and discipline.",
-  5: "Change and freedom. Embrace unexpected opportunities.",
-  6: "Responsibility and love. Family and community focus.",
-  7: "Reflection and inner growth. A time for solitude and study.",
-  8: "Harvest and achievement. Material and career gains.",
-  9: "Completion and release. Let go to prepare for renewal.",
-};
 
 // ─── Moon phase helper ─────────────────────────────────────────────────────────
 const MOON_PHASES = [
@@ -469,7 +407,15 @@ function CalendarTab() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | null; numerologyData: NumerologyData | null }) {
+function InsightsTab({
+  birthData,
+  numerologyData,
+  onViewNumerologyProfile,
+}: {
+  birthData: BirthData | null;
+  numerologyData: NumerologyData | null;
+  onViewNumerologyProfile?: () => void;
+}) {
   const moonPhase = getCurrentMoonPhase();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -485,6 +431,8 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
 
   const lifePath = numerologyData?.birthDate ? calcLifePath(numerologyData.birthDate) : null;
   const personalYear = numerologyData?.birthDate ? calcPersonalYear(numerologyData.birthDate) : null;
+  const personalMonth = numerologyData?.birthDate ? calcPersonalMonth(numerologyData.birthDate) : null;
+  const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
 
   return (
     <div className="space-y-4">
@@ -530,7 +478,7 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
       )}
 
       {/* Numerology insight */}
-      {lifePath !== null && personalYear !== null ? (
+      {lifePath !== null && personalYear !== null && personalMonth !== null && personalDay !== null ? (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -539,20 +487,43 @@ function InsightsTab({ birthData, numerologyData }: { birthData: BirthData | nul
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Life Path {lifePath}</span>
-              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Personal Year {personalYear}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Year {personalYear}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Month {personalMonth}</span>
+              <span className="text-xs bg-primary/10 rounded px-2 py-0.5">Day {personalDay}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{PERSONAL_YEAR_MEANINGS[personalYear] ?? ""}</p>
+            <p className="text-xs text-muted-foreground">{PERSONAL_DAY_MEANINGS[personalDay] ?? ""}</p>
+            <p className="text-xs text-muted-foreground">{PERSONAL_MONTH_MEANINGS[personalMonth] ?? ""}</p>
             <p className="text-xs text-primary italic">
               ✦ {LIFE_PATH_MEANINGS[lifePath]?.desc ?? "Your numbers shape your journey."}
             </p>
+            {onViewNumerologyProfile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onViewNumerologyProfile}
+                className="mt-1 h-7 text-xs px-2 gap-1"
+              >
+                View full numerology profile <ArrowRight className="h-3 w-3" />
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <Card className="border-dashed">
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">Add your name and birth date in the Numerology Profile tab for number-based insights.</p>
+          <CardContent className="p-4 text-center space-y-2">
+            <p className="text-xs text-muted-foreground">Add your birth date (and name if you'd like deeper insights) to see your number-based guidance.</p>
+            {onViewNumerologyProfile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onViewNumerologyProfile}
+                className="h-7 text-xs px-2 gap-1"
+              >
+                Set up Numerology Profile <ArrowRight className="h-3 w-3" />
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -894,7 +865,7 @@ function NatalChartWheel({ placements }: { placements: PlanetPlacement[] }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NumerologyProfileTab() {
+function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void }) {
   const [numData, setNumData] = useState<NumerologyData | null>(loadNumerologyData);
   const [editing, setEditing] = useState(!numData);
   const [fullName, setFullName] = useState(numData?.fullName ?? "");
@@ -955,25 +926,49 @@ function NumerologyProfileTab() {
 
   const lifePath = calcLifePath(numData.birthDate);
   const personalYear = calcPersonalYear(numData.birthDate);
-  const expression = numData.fullName ? calcExpression(numData.fullName) : null;
-  const soulUrge = numData.fullName ? calcSoulUrge(numData.fullName) : null;
+  const personalMonth = calcPersonalMonth(numData.birthDate);
+  const personalDay = calcPersonalDay(numData.birthDate);
+  const cleanedFullName = numData.fullName
+    ? numData.fullName.replace(/[^A-Za-z]/g, "").trim()
+    : "";
+  const hasValidName = cleanedFullName.length > 0;
+  const expression = hasValidName ? calcExpression(numData.fullName) : null;
+  const soulUrge = hasValidName ? calcSoulUrge(numData.fullName) : null;
   const lpData = LIFE_PATH_MEANINGS[lifePath];
+  const exprData = expression !== null ? EXPRESSION_MEANINGS[expression] : null;
+  const soulData = soulUrge !== null ? SOUL_URGE_MEANINGS[soulUrge] : null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Your Numbers</h3>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="button-edit-numerology">
-          <Settings2 className="w-4 h-4 mr-1" />
-          Edit
-        </Button>
+        <div className="flex items-center gap-1">
+          {onViewInsights && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onViewInsights}
+              className="h-7 text-xs px-2 gap-1"
+              aria-label="View numerology in Insights tab"
+            >
+              Insights <ArrowRight className="h-3 w-3" />
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} data-testid="button-edit-numerology">
+            <Settings2 className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+        </div>
       </div>
 
       {/* Life Path */}
       <Card>
         <CardContent className="p-4 space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-lg">
+            <div
+              className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-lg shrink-0"
+              aria-label={`Life Path number ${lifePath}`}
+            >
               {lifePath}
             </div>
             <div>
@@ -988,11 +983,16 @@ function NumerologyProfileTab() {
       {expression !== null && (
         <Card>
           <CardContent className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold text-lg w-8">{expression}</span>
+            <div className="flex items-center gap-3">
+              <span
+                className="text-primary font-bold text-lg w-8 shrink-0"
+                aria-label={`Expression number ${expression}`}
+              >
+                {expression}
+              </span>
               <div>
-                <p className="text-sm font-medium">Expression Number</p>
-                <p className="text-xs text-muted-foreground">Your natural talents and abilities as revealed by your full name.</p>
+                <p className="text-sm font-medium">Expression · {exprData?.title ?? ""}</p>
+                <p className="text-xs text-muted-foreground">{exprData?.desc ?? "Your natural talents and abilities as revealed by your full name."}</p>
               </div>
             </div>
           </CardContent>
@@ -1003,36 +1003,106 @@ function NumerologyProfileTab() {
       {soulUrge !== null && (
         <Card>
           <CardContent className="p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-primary font-bold text-lg w-8">{soulUrge}</span>
+            <div className="flex items-center gap-3">
+              <span
+                className="text-primary font-bold text-lg w-8 shrink-0"
+                aria-label={`Soul Urge number ${soulUrge}`}
+              >
+                {soulUrge}
+              </span>
               <div>
-                <p className="text-sm font-medium">Soul Urge</p>
-                <p className="text-xs text-muted-foreground">Your heart's deepest desires — what motivates you at your core.</p>
+                <p className="text-sm font-medium">Soul Urge · {soulData?.title ?? ""}</p>
+                <p className="text-xs text-muted-foreground">{soulData?.desc ?? "Your heart's deepest desires — what motivates you at your core."}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Personal Year */}
+      {/* Cycle numbers: Personal Year / Month / Day */}
       <Card>
-        <CardContent className="p-4 space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-primary font-bold text-lg w-8">{personalYear}</span>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-400" />
+            Active Cycles
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Year ${personalYear}`}
+            >
+              {personalYear}
+            </span>
             <div>
               <p className="text-sm font-medium">Personal Year {personalYear}</p>
               <p className="text-xs text-muted-foreground">{PERSONAL_YEAR_MEANINGS[personalYear] ?? ""}</p>
             </div>
           </div>
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Month ${personalMonth}`}
+            >
+              {personalMonth}
+            </span>
+            <div>
+              <p className="text-sm font-medium">Personal Month {personalMonth}</p>
+              <p className="text-xs text-muted-foreground">{PERSONAL_MONTH_MEANINGS[personalMonth] ?? ""}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span
+              className="text-primary font-bold text-lg w-8 shrink-0"
+              aria-label={`Personal Day ${personalDay}`}
+            >
+              {personalDay}
+            </span>
+            <div>
+              <p className="text-sm font-medium">Personal Day {personalDay}</p>
+              <p className="text-xs text-muted-foreground">{PERSONAL_DAY_MEANINGS[personalDay] ?? ""}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Cycles info */}
-      <Card className="bg-muted/40">
-        <CardContent className="p-4 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">About Numerology Cycles</p>
-          <p className="text-xs text-muted-foreground">
-            Numerology maps your life using 9-year cycles (Personal Years 1–9). Each year has a unique theme — from new beginnings (1) to completion (9). Your Life Path is a constant, while Personal Year changes annually.
+      {/* 9-year cycle wheel */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Hash className="h-4 w-4" />
+            9-Year Cycle
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="grid grid-cols-9 gap-1"
+            role="list"
+            aria-label="9-year numerology cycle"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(yr => {
+              const isCurrent = yr === personalYear;
+              return (
+                <div
+                  key={yr}
+                  role="listitem"
+                  aria-current={isCurrent ? "true" : undefined}
+                  title={PERSONAL_YEAR_MEANINGS[yr] ?? ""}
+                  className={[
+                    "flex flex-col items-center justify-center rounded p-1.5 text-xs font-semibold transition-colors",
+                    isCurrent
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted",
+                  ].join(" ")}
+                >
+                  {yr}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            You are in a Personal Year <strong>{personalYear}</strong> cycle. Each year carries its own energy theme — from new beginnings (1) through completion and release (9).
           </p>
         </CardContent>
       </Card>
@@ -1192,7 +1262,11 @@ export default function CosmicHubPage() {
             </TabsContent>
 
             <TabsContent value="insights" className="mt-4">
-              <InsightsTab birthData={birthData} numerologyData={numerologyData} />
+              <InsightsTab
+                birthData={birthData}
+                numerologyData={numerologyData}
+                onViewNumerologyProfile={() => setActiveTab("numerology")}
+              />
             </TabsContent>
 
             <TabsContent value="astrology" className="mt-4 space-y-4">
@@ -1201,7 +1275,7 @@ export default function CosmicHubPage() {
             </TabsContent>
 
             <TabsContent value="numerology" className="mt-4 space-y-4">
-              <NumerologyProfileTab />
+              <NumerologyProfileTab onViewInsights={() => setActiveTab("insights")} />
               <ConsentSection />
             </TabsContent>
           </Tabs>

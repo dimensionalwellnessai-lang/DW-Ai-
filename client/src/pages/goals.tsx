@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { PageHeader } from "@/components/page-header";
 import { Target, Plus, CheckCircle2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { COPY } from "@/copy/en";
 
 export default function GoalsPage() {
   const { toast } = useToast();
@@ -41,7 +42,7 @@ export default function GoalsPage() {
       setShowForm(false);
       setGoalTitle("");
       setGoalDescription("");
-      toast({ title: "Goal created successfully!" });
+      toast({ title: COPY.toasts.saved });
     },
   });
 
@@ -60,10 +61,7 @@ export default function GoalsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
       setHabitDialogOpen(false);
       setSelectedGoal(null);
-      toast({ 
-        title: "Habit created!", 
-        description: "Your new habit has been created to support your goal." 
-      });
+      toast({ title: COPY.toasts.saved });
     },
   });
 
@@ -90,15 +88,15 @@ export default function GoalsPage() {
       />
       <div className="flex-1 overflow-auto">
         <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        <p className="text-muted-foreground text-center">
-          Track your progress toward what matters most
+        <p className="text-muted-foreground text-center text-sm">
+          {COPY.whySeeingThis.goals}
         </p>
 
         {/* Create Form */}
         {showForm && (
           <Card>
             <CardHeader>
-              <CardTitle>Create New Goal</CardTitle>
+              <CardTitle>New Goal</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -122,10 +120,10 @@ export default function GoalsPage() {
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleCreateGoal} disabled={!goalTitle.trim()}>
-                  Create Goal
+                  Save
                 </Button>
                 <Button variant="outline" onClick={() => setShowForm(false)}>
-                  Cancel
+                  {COPY.actions.cancel}
                 </Button>
               </div>
             </CardContent>
@@ -137,11 +135,19 @@ export default function GoalsPage() {
           {goals.length === 0 && !showForm && (
             <Card>
               <CardContent className="text-center py-12">
-                <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-foreground font-medium">No goals yet</p>
+                <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-foreground font-medium">{COPY.emptyStates.goals.title}</p>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Create your first goal to start tracking progress
+                  {COPY.emptyStates.goals.body}
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => setShowForm(true)}
+                >
+                  {COPY.emptyStates.goals.cta}
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -273,10 +279,10 @@ function CreateHabitDialog({ open, onOpenChange, goal, onCreateHabit }: CreateHa
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {COPY.actions.cancel}
             </Button>
             <Button onClick={handleCreate} disabled={!habitTitle.trim()}>
-              Create Habit
+              Save
             </Button>
           </div>
         </div>
