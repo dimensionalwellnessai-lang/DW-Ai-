@@ -81,6 +81,10 @@ interface UserLifeContext {
     sentiment: string;
     relatedDimension?: string;
   }[];
+  cosmicConsent?: {
+    useAstrologyInGuidance: boolean;
+    useNumerologyInGuidance: boolean;
+  };
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -374,6 +378,7 @@ ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContex
 ${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext.bodyGoal}` : ""}
 ${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
 ${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 *** WELLNESS CONSCIOUSNESS (apply to all responses) ***
 
@@ -2051,6 +2056,7 @@ ${userContext?.energyContext ? getEnergyToneGuidance(userContext.energyContext.c
 ${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.energyContext.currentMood}` : ""}
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
 ${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
+${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
 
 USER CONTEXT:
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}

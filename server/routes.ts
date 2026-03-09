@@ -2031,7 +2031,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", chatLimiter, async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
 
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
@@ -2092,6 +2092,12 @@ export async function registerRoutes(
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
         energyContext: energyContext || null,
+        cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
+          ? {
+              useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
+              useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
+            }
+          : undefined,
         coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
           ? (user!.coachingMode as CoachingMode)
           : "gentle",
@@ -2278,7 +2284,7 @@ export async function registerRoutes(
   // Streaming chat endpoint for improved performance
   app.post("/api/chat/stream", chatLimiter, async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
 
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
@@ -2349,6 +2355,12 @@ export async function registerRoutes(
         coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
           ? (user!.coachingMode as CoachingMode)
           : "gentle",
+        cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
+          ? {
+              useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
+              useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
+            }
+          : undefined,
       };
       
       // Use detectIntentAndRespond to get the AI response with streaming support

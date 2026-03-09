@@ -25,6 +25,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import {
   calcLifePath,
   calcExpression,
@@ -44,7 +45,6 @@ import {
 // Reuse the same key as /astrology so both pages share one birth chart record
 const BIRTH_CHART_KEY = "dw_birth_chart";
 const NUMEROLOGY_KEY = "dw_cosmic_numerology";
-const CONSENT_KEY = "dw_cosmic_consent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type HouseSystem = "whole-sign" | "placidus";
@@ -309,20 +309,6 @@ function loadNumerologyData(): NumerologyData | null {
 function saveNumerologyData(data: NumerologyData) {
   try {
     localStorage.setItem(NUMEROLOGY_KEY, JSON.stringify(data));
-  } catch {
-    // Storage may be unavailable
-  }
-}
-function loadConsent(): CosmicConsent {
-  try {
-    return JSON.parse(localStorage.getItem(CONSENT_KEY) ?? "null") ?? { useAstrologyInGuidance: false, useNumerologyInGuidance: false };
-  } catch {
-    return { useAstrologyInGuidance: false, useNumerologyInGuidance: false };
-  }
-}
-function saveConsent(c: CosmicConsent) {
-  try {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify(c));
   } catch {
     // Storage may be unavailable
   }

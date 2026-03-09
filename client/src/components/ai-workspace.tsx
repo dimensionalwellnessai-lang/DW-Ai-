@@ -54,6 +54,7 @@ import {
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { getEnergyContextForAPI } from "@/lib/energy-context";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
+import { getCosmicConsent } from "@/hooks/use-cosmic-consent";
 import { GettingToKnowYouDialog } from "@/components/getting-to-know-you";
 import { SoftOnboardingModal, type OnboardingMood } from "@/components/soft-onboarding-modal";
 import { ProfileSetupModal } from "@/components/profile-setup-modal";
@@ -978,6 +979,7 @@ export function AIWorkspace() {
           userProfile: userProfile || undefined,
           lifeSystemContext: lifeContext,
           energyContext,
+          cosmicConsent: getCosmicConsent(),
           documentIds: documentIds || [],
         }),
         signal: abortController.signal,
