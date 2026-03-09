@@ -277,9 +277,20 @@ export function mcLongitude(jd: number, lng: number): number {
 
 function signFromLongitude(lon: number): { sign: ZodiacSign; degree: number; minutes: number } {
   const norm = normDeg(lon);
-  const idx = Math.floor(norm / 30);
-  const deg = Math.floor(norm % 30);
-  const min = Math.round(((norm % 30) - deg) * 60);
+  let idx = Math.floor(norm / 30);
+  let deg = Math.floor(norm % 30);
+  let min = Math.round(((norm % 30) - deg) * 60);
+
+  // Normalize cases like 29°60′ -> 30°00′ and carry into the next sign if needed
+  if (min === 60) {
+    min = 0;
+    deg += 1;
+    if (deg === 30) {
+      deg = 0;
+      idx = (idx + 1) % ZODIAC_SIGNS.length;
+    }
+  }
+
   return { sign: ZODIAC_SIGNS[idx], degree: deg, minutes: min };
 }
 
@@ -764,13 +775,13 @@ export function computeCalendarEvents(
   // Seasons
   events.push(...findSeasonEvents(jdStart, jdEnd));
 
-  // Retrogrades (outer planets only — inner planets retrograde too fast for monthly view noise)
+  // Retrogrades (planets where retrograde motion is meaningful for the monthly calendar view)
   const RETROGRADE_PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
   for (const planet of RETROGRADE_PLANETS) {
     events.push(...findRetrogradeEvents(planet, jdStart, jdEnd));
   }
 
-  // Ingresses for slower planets (Mars+)
+  // Ingresses for core planets (Sun through Saturn)
   const INGRESS_PLANETS = ["Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
   for (const planet of INGRESS_PLANETS) {
     events.push(...findIngressEvents(planet, jdStart, jdEnd));
@@ -831,6 +842,30 @@ export function computeTodaySnapshot(
 interface CacheEntry<T> { value: T; expiresAt: number; }
 const _cache = new Map<string, CacheEntry<unknown>>();
 
+/** Maximum number of entries kept in the cache before expired entries are evicted */
+const CACHE_MAX_SIZE = 200;
+
+/** Sweep expired entries when the cache exceeds the max size */
+function sweepCache(): void {
+  if (_cache.size < CACHE_MAX_SIZE) return;
+  const now = Date.now();
+  for (const [key, entry] of _cache) {
+    if (entry.expiresAt <= now) {
+      _cache.delete(key);
+    }
+  }
+  // If still over limit after removing expired entries, evict oldest-inserted entries
+  if (_cache.size >= CACHE_MAX_SIZE) {
+    const toDelete = _cache.size - Math.floor(CACHE_MAX_SIZE * 0.75);
+    let deleted = 0;
+    for (const key of _cache.keys()) {
+      if (deleted >= toDelete) break;
+      _cache.delete(key);
+      deleted++;
+    }
+  }
+}
+
 export function withCache<T>(
   key: string,
   ttlMs: number,
@@ -839,6 +874,7 @@ export function withCache<T>(
   const now = Date.now();
   const entry = _cache.get(key) as CacheEntry<T> | undefined;
   if (entry && entry.expiresAt > now) return entry.value;
+  sweepCache();
   const value = compute();
   _cache.set(key, { value, expiresAt: now + ttlMs });
   return value;

@@ -376,37 +376,40 @@ function eventBadgeLabel(type: string): string {
 function CalendarTab() {
   const [view, setView] = useState<"day" | "week" | "month">("week");
 
+  // Use local date parts to avoid UTC day-shift (same pattern as parseLocalDate)
   const now = new Date();
-  const todayStr  = now.toISOString().slice(0, 10);
-  const monthEnd  = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  // Last day of next month (local)
+  const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const monthEnd = `${monthEndDate.getFullYear()}-${pad(monthEndDate.getMonth() + 1)}-${pad(monthEndDate.getDate())}`;
 
   const { data: todayData, isLoading: todayLoading } = useQuery<CosmicTodaySnapshot>({
     queryKey: ["/api/cosmic/today"],
     staleTime: 30 * 60 * 1000,
   });
 
-  const { data: calData, isLoading: calLoading, refetch } = useQuery<{ events: CosmicCalendarEvent[] }>({
+  const { data: calData, isLoading: calLoading, isError: calError, refetch } = useQuery<{ events: CosmicCalendarEvent[] }>({
     queryKey: ["/api/cosmic/calendar", todayStr, monthEnd],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/cosmic/calendar?start=${todayStr}&end=${monthEnd}`);
       return res.json();
     },
     staleTime: 60 * 60 * 1000,
+    retry: 2,
   });
 
   const allEvents = calData?.events ?? [];
 
   const filtered = (() => {
     if (view === "day") {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
       return allEvents.filter(e => e.date <= tomorrowStr);
     }
     if (view === "week") {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      const weekEndStr = weekEnd.toISOString().slice(0, 10);
+      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+      const weekEndStr = `${weekEnd.getFullYear()}-${pad(weekEnd.getMonth() + 1)}-${pad(weekEnd.getDate())}`;
       return allEvents.filter(e => e.date <= weekEndStr);
     }
     return allEvents;
@@ -466,6 +469,13 @@ function CalendarTab() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(n => <Skeleton key={n} className="h-24 w-full rounded-xl" />)}
+        </div>
+      ) : calError ? (
+        <div className="text-center py-6 space-y-2">
+          <p className="text-sm text-muted-foreground">Could not load celestial events.</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Try again
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No major events in this window.</p>
