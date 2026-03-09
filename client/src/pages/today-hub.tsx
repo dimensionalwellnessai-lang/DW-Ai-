@@ -44,6 +44,7 @@ import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
 import { APP_VERSION } from "@/lib/routes";
 import { useTutorial, useTutorialStart } from "@/contexts/tutorial-context";
 import { useAuth } from "@/hooks/use-auth";
+import { COPY } from "@/copy/en";
 
 // Lazy load heavy components for better performance
 const WellnessSummary = lazy(() => import("@/components/wellness-summary").then(m => ({ default: m.WellnessSummary })));
@@ -173,7 +174,7 @@ export default function TodayHubPage() {
       cards.push({
         type: "morning-briefing",
         title: "Start your day with intention",
-        message: "A quick check-in helps me personalize your day. How are you feeling right now?",
+        message: "A quick check-in helps personalize your day.",
         actionLabel: "Check in",
         onAction: () => navigate("/weekly-checkin"),
         priority: "high",
@@ -184,7 +185,7 @@ export default function TodayHubPage() {
       cards.push({
         type: "energy-suggestion",
         title: "Your energy is running low",
-        message: "Based on your check-in, a short walk or 5-minute stretch might help restore some energy.",
+        message: "A short walk or 5-minute stretch can help restore energy.",
         actionLabel: "See options",
         onAction: () => navigate("/recovery"),
       });
@@ -194,7 +195,7 @@ export default function TodayHubPage() {
       cards.push({
         type: "wind-down",
         title: "Time to wind down",
-        message: "Evening is approaching. Would you like to review today and prepare for tomorrow?",
+        message: "Review today and set yourself up for tomorrow.",
         actionLabel: "Wind down",
         onAction: () => navigate("/"),
       });
@@ -203,8 +204,8 @@ export default function TodayHubPage() {
     if (activeGoals.length > 0 && todaysBlocks.length === 0 && todaysEvents.length === 0) {
       cards.push({
         type: "goal-reminder",
-        title: "Nothing scheduled today",
-        message: `You have ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}. Want me to suggest some actions?`,
+        title: "Nothing on your schedule",
+        message: `You have ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}. Want some suggestions?`,
         actionLabel: "Get suggestions",
         onAction: () => navigate("/"),
       });
@@ -397,50 +398,18 @@ export default function TodayHubPage() {
                   <h3 className="font-semibold text-foreground">Your Life System</h3>
                 </div>
                 
-                <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                  <p>
-                    A life system is the way all parts of your life support — or drain — each other.
-                  </p>
-                  <p>
-                    Wellness is part of it, but not the whole thing.
-                  </p>
-                  <p>
-                    Your energy, schedule, relationships, environment, money, habits, and purpose all interact.
-                  </p>
-                  <p>
-                    DW helps you organize those pieces so your life works with you, not against you.
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  All parts of your life — energy, schedule, relationships, environment, money, and purpose — interact. DW helps you see those connections and work with them.
+                </p>
 
                 <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Life dimensions help regulate your system. Your life system is how everything connects.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Body & energy</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Emotions & mental state</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Relationships & social life</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Environment & routines</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Work, money & responsibilities</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Circle className="h-2 w-2 text-primary" />
-                      <span>Meaning & direction</span>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    {COPY.lifeSystem.areas.map((area) => (
+                      <div key={area} className="flex items-center gap-2">
+                        <Circle className="h-2 w-2 text-primary flex-shrink-0" />
+                        <span>{area}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -455,7 +424,7 @@ export default function TodayHubPage() {
                     }}
                     data-testid="button-start-where-i-am"
                   >
-                    Help me start where I am
+                    Start where I am
                   </Button>
                   <Button 
                     size="sm" 
@@ -466,7 +435,7 @@ export default function TodayHubPage() {
                     }}
                     data-testid="button-show-connections"
                   >
-                    Show me how this connects
+                    Show me how it connects
                   </Button>
                 </div>
               </CardContent>
@@ -562,7 +531,8 @@ export default function TodayHubPage() {
             <Card className="border-dashed">
               <CardContent className="py-8 text-center">
                 <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground mb-3">Nothing scheduled for today</p>
+                <p className="text-sm font-medium text-foreground mb-1">{COPY.emptyStates.schedule.title}</p>
+                <p className="text-xs text-muted-foreground mb-3">{COPY.emptyStates.schedule.body}</p>
                 <Link href="/chat">
                   <Button variant="outline" size="sm" data-testid="button-ask-dw">
                     <Sparkles className="h-3 w-3 mr-2" />
@@ -648,7 +618,7 @@ export default function TodayHubPage() {
                 <span className="text-sm font-medium text-foreground">Morning</span>
               </div>
               {morningRoutines.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No routine set</p>
+                <p className="text-xs text-muted-foreground">Not set up yet</p>
               ) : (
                 <div className="space-y-1.5">
                   {morningRoutines.slice(0, 2).map((routine) => (
@@ -692,7 +662,7 @@ export default function TodayHubPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm text-foreground">Talk to DW</h3>
                   <p className="text-xs text-muted-foreground">
-                    Process thoughts, plan your day, or just chat
+                    Process thoughts, plan your day, or just check in.
                   </p>
                 </div>
                 <Link href="/chat">

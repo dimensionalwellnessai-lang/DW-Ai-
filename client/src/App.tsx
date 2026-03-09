@@ -25,102 +25,52 @@ import { ReminderBanner } from "@/components/reminder-banner";
 // bundle. The Suspense boundary in AppContent shows a lightweight fallback
 // while each page chunk is fetched the first time.
 
-const LoginPage = lazy(() =>
-  import("@/components/auth/login-page").then((m) => ({ default: m.LoginPage }))
-);
-const InteractiveTour = lazy(() =>
-  import("@/components/interactive-tour").then((m) => ({ default: m.InteractiveTour }))
-);
-const AIWorkspace = lazy(() =>
-  import("@/components/ai-workspace").then((m) => ({ default: m.AIWorkspace }))
-);
-const ChallengesPage = lazy(() =>
-  import("@/pages/challenges").then((m) => ({ default: m.ChallengesPage }))
-);
-const TalkItOutPage = lazy(() =>
-  import("@/pages/talk-it-out").then((m) => ({ default: m.TalkItOutPage }))
-);
-const CalendarPlansPage = lazy(() =>
-  import("@/pages/calendar-plans").then((m) => ({ default: m.CalendarPlansPage }))
-);
-const BrowsePage = lazy(() => import("@/pages/browse"));
-const RoutinesPage = lazy(() => import("@/pages/routines"));
-const WorkoutPage = lazy(() => import("@/pages/workout"));
-const RecoveryPage = lazy(() =>
-  import("@/pages/recovery").then((m) => ({ default: m.RecoveryPage }))
-);
-const MealPrepPage = lazy(() => import("@/pages/meal-prep"));
-const ShoppingListPage = lazy(() => import("@/pages/shopping-list"));
-const CookSessionPage = lazy(() => import("@/pages/cook-session"));
-const FinancesPage = lazy(() => import("@/pages/finances"));
-const SpiritualPage = lazy(() => import("@/pages/spiritual"));
-const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
-const SettingsPage = lazy(() =>
-  import("@/pages/settings").then((m) => ({ default: m.SettingsPage }))
-);
-const DailySchedulePage = lazy(() => import("@/pages/daily-schedule"));
-const WeekSchedulePage = lazy(() => import("@/pages/week-schedule"));
-const FeedbackPage = lazy(() => import("@/pages/feedback"));
-const AstrologyPage = lazy(() => import("@/pages/astrology"));
-const WelcomePage = lazy(() => import("@/pages/welcome"));
-const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
-const SubscriptionPage = lazy(() => import("@/pages/subscription"));
-const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
-const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
-const AppTourPage = lazy(() => import("@/pages/app-tour"));
-const JournalPage = lazy(() => import("@/pages/journal"));
-const WeeklyCheckinPage = lazy(() => import("@/pages/weekly-checkin"));
-const TasksPage = lazy(() =>
-  import("@/pages/tasks").then((m) => ({ default: m.TasksPage }))
-);
-const AccountDeletePage = lazy(() => import("@/pages/account-delete"));
-const PlansPage = lazy(() => import("@/pages/plans"));
-const PlanBuilderPage = lazy(() => import("@/pages/plan-builder"));
-const ElevationPlanPage = lazy(() => import("@/pages/elevation-plan"));
-const ScheduleReviewPage = lazy(() => import("@/pages/schedule-review"));
-const ImportPage = lazy(() => import("@/pages/import"));
-const ExportPage = lazy(() => import("@/pages/export"));
-const CalendarMonthPage = lazy(() => import("@/pages/calendar-month"));
-const CalendarSchedulePage = lazy(() => import("@/pages/calendar-schedule"));
-const SystemsHubPage = lazy(() => import("@/pages/systems-hub"));
-const CommunityPage = lazy(() => import("@/pages/community"));
-const BlueprintPage = lazy(() =>
-  import("@/pages/blueprint").then((m) => ({ default: m.BlueprintPage }))
-);
-const TrainingSystemPage = lazy(() => import("@/pages/systems/training"));
-const WakeUpSystemPage = lazy(() => import("@/pages/systems/wake-up"));
-const WindDownSystemPage = lazy(() => import("@/pages/systems/wind-down"));
-const DevRoutesPage = lazy(() => import("@/pages/dev-routes"));
-const NotFound404Page = lazy(() => import("@/pages/not-found-404"));
-const TodayHubPage = lazy(() => import("@/pages/today-hub"));
-const PrivacyTermsPage = lazy(() => import("@/pages/privacy-terms"));
-const LifeSwitchboardPage = lazy(() => import("@/pages/life-switchboard"));
-const SwitchTrainingPage = lazy(() => import("@/pages/switch-training"));
-const SwitchboardIntakePage = lazy(() => import("@/pages/switchboard-intake"));
-const DWHomePage = lazy(() => import("@/pages/dw-home"));
-const PlanPage = lazy(() => import("@/pages/plan-page"));
-const MyProgressPage = lazy(() => import("@/pages/my-progress"));
-const AdminAnalyticsPage = lazy(() => import("@/pages/admin-analytics"));
-const MoodTrackerPage = lazy(() => import("@/pages/mood-tracker"));
-const HomeCommandCenter = lazy(() => import("@/features/home/home-command-center"));
-const LifeBlueprintPage = lazy(() => import("@/pages/life-blueprint"));
-const LifeBlueprintV2Page = lazy(() => import("@/pages/life-blueprint-v2"));
-const InsightsDashboard = lazy(() => import("@/pages/insights"));
-const WellnessPreferencesPage = lazy(() => import("@/pages/wellness-preferences"));
-const ValuesRulesProfilePage = lazy(() => import("@/pages/values-rules-profile"));
-const DwLearnsPage = lazy(() =>
-  import("@/pages/dw-learns").then((m) => ({ default: m.DwLearnsPage }))
-);
-const TrackingPage = lazy(() => import("@/pages/tracking"));
-const GoalsPage = lazy(() => import("@/pages/goals"));
-const HabitsPage = lazy(() => import("@/pages/habits"));
-const AccountabilityPage = lazy(() => import("@/pages/accountability"));
-const AccountabilitySettingsPage = lazy(() => import("@/pages/accountability-settings"));
-const SupportReportPage = lazy(() => import("@/pages/support-report"));
-const ExpandMyWeekPage = lazy(() => import("@/pages/expand-my-week"));
-const PaywallPage = lazy(() => import("@/pages/paywall"));
-const CosmicHubPage = lazy(() => import("@/pages/cosmic"));
-const ActionCenterPage = lazy(() => import("@/pages/action-center"));
+import PlansPage from "@/pages/plans";
+import PlanBuilderPage from "@/pages/plan-builder";
+import ElevationPlanPage from "@/pages/elevation-plan";
+import PlanHistoryPage from "@/pages/plan-history";
+import WeeklyReviewPage from "@/pages/weekly-review";
+import ScheduleReviewPage from "@/pages/schedule-review";
+import ImportPage from "@/pages/import";
+import ExportPage from "@/pages/export";
+import CalendarMonthPage from "@/pages/calendar-month";
+import CalendarSchedulePage from "@/pages/calendar-schedule";
+import SystemsHubPage from "@/pages/systems-hub";
+import CommunityPage from "@/pages/community";
+import { BlueprintPage } from "@/pages/blueprint";
+import TrainingSystemPage from "@/pages/systems/training";
+import WakeUpSystemPage from "@/pages/systems/wake-up";
+import WindDownSystemPage from "@/pages/systems/wind-down";
+import DevRoutesPage from "@/pages/dev-routes";
+import NotFound404Page from "@/pages/not-found-404";
+import TodayHubPage from "@/pages/today-hub";
+import PrivacyTermsPage from "@/pages/privacy-terms";
+import LifeSwitchboardPage from "@/pages/life-switchboard";
+import SwitchTrainingPage from "@/pages/switch-training";
+import SwitchboardIntakePage from "@/pages/switchboard-intake";
+import DWHomePage from "@/pages/dw-home";
+import PlanPage from "@/pages/plan-page";
+import MyProgressPage from "@/pages/my-progress";
+import AdminAnalyticsPage from "@/pages/admin-analytics";
+import MoodTrackerPage from "@/pages/mood-tracker";
+import HomeCommandCenter from "@/features/home/home-command-center";
+import LifeBlueprintPage from "@/pages/life-blueprint";
+import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
+import InsightsDashboard from "@/pages/insights";
+import WellnessPreferencesPage from "@/pages/wellness-preferences";
+import ValuesRulesProfilePage from "@/pages/values-rules-profile";
+import { DwLearnsPage } from "@/pages/dw-learns";
+import TrackingPage from "@/pages/tracking";
+import GoalsPage from "@/pages/goals";
+import HabitsPage from "@/pages/habits";
+import AccountabilityPage from "@/pages/accountability";
+import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import SupportReportPage from "@/pages/support-report";
+import ExpandMyWeekPage from "@/pages/expand-my-week";
+import PaywallPage from "@/pages/paywall";
+import CosmicHubPage from "@/pages/cosmic";
+import ActionCenterPage from "@/pages/action-center";
+import { ReminderBanner } from "@/components/reminder-banner";
 
 function isReturningUser(): boolean {
   try {
@@ -269,6 +219,8 @@ function Router() {
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
+      {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}
+      {isRouteEnabled("/weekly-review") && <Route path="/weekly-review" component={WeeklyReviewPage} />}
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}

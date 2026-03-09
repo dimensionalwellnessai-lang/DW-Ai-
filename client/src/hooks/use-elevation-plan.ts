@@ -35,6 +35,7 @@ export interface ElevationPlanActionItem {
   timeOfDay?: string | null;
   durationMinutes?: number | null;
   isCompleted: boolean;
+  linkedEntity?: { type: "calendar_event" | "task"; id: string } | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -67,7 +68,13 @@ export interface ElevationPlanFull {
   days: ElevationPlanDayItem[];
 }
 
+export interface ElevationPlanWithStats extends ElevationPlanItem {
+  totalActions: number;
+  completedActions: number;
+}
+
 const ACTIVE_PLAN_KEY = "/api/elevation-plans/active";
+const ALL_PLANS_KEY = "/api/elevation-plans";
 
 export function useElevationPlan() {
   const { user } = useAuth();
@@ -267,6 +274,106 @@ export function useElevationPlan() {
     },
   });
 
+  // ─── Add action to calendar ────────────────────────────────────────────────
+
+  const addToCalendarMutation = useMutation<
+    { action: ElevationPlanActionItem; calendarEvent: { id: string; title: string } },
+    Error,
+    { actionId: string; planDayIndex: number; planStartDate: string; planTitle?: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId, planDayIndex, planStartDate, planTitle }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/add-to-calendar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ planDayIndex, planStartDate, planTitle }),
+      });
+      if (res.status === 409) {
+        const body = await res.json() as { error: string };
+        throw new Error(body.error ?? "Already linked to calendar");
+      }
+      if (!res.ok) throw new Error("Failed to add to calendar");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; calendarEvent: { id: string; title: string } }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
+  // ─── Remove action from calendar ──────────────────────────────────────────
+
+  const removeFromCalendarMutation = useMutation<
+    { action: ElevationPlanActionItem; success: boolean },
+    Error,
+    { actionId: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/remove-from-calendar`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove from calendar");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; success: boolean }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
+  // ─── Add action to tasks ───────────────────────────────────────────────────
+
+  const addToTasksMutation = useMutation<
+    { action: ElevationPlanActionItem; task: { id: string; title: string } },
+    Error,
+    { actionId: string; planDayIndex: number; planStartDate: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId, planDayIndex, planStartDate }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/add-to-tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ planDayIndex, planStartDate }),
+      });
+      if (res.status === 409) {
+        const body = await res.json() as { error: string };
+        throw new Error(body.error ?? "Already linked to a task");
+      }
+      if (!res.ok) throw new Error("Failed to add to tasks");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; task: { id: string; title: string } }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
+  // ─── Remove action from tasks ─────────────────────────────────────────────
+
+  const removeFromTasksMutation = useMutation<
+    { action: ElevationPlanActionItem; success: boolean },
+    Error,
+    { actionId: string; planId?: string }
+  >({
+    mutationFn: async ({ actionId }) => {
+      const res = await fetch(`/api/elevation-plan-actions/${actionId}/remove-from-tasks`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove from tasks");
+      return res.json() as Promise<{ action: ElevationPlanActionItem; success: boolean }>;
+    },
+    onSuccess: (_data, { planId }) => {
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if (planId) queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${planId}`] });
+    },
+  });
+
   return {
     enabled,
     activePlan: activePlanData ?? null,
@@ -279,5 +386,13 @@ export function useElevationPlan() {
     isUpdatingPlan: updatePlanMutation.isPending,
     toggleAction: toggleActionMutation.mutateAsync,
     updateAction: updateActionMutation.mutateAsync,
+    addToCalendar: addToCalendarMutation.mutateAsync,
+    isAddingToCalendar: addToCalendarMutation.isPending,
+    removeFromCalendar: removeFromCalendarMutation.mutateAsync,
+    isRemovingFromCalendar: removeFromCalendarMutation.isPending,
+    addToTasks: addToTasksMutation.mutateAsync,
+    isAddingToTasks: addToTasksMutation.isPending,
+    removeFromTasks: removeFromTasksMutation.mutateAsync,
+    isRemovingFromTasks: removeFromTasksMutation.isPending,
   };
 }
