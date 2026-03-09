@@ -1246,12 +1246,58 @@ function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void 
 
 // ─── Consent section ───────────────────────────────────────────────────────────
 function ConsentSection() {
+  const { data: authData } = useAuth();
+  const isAuthenticated = !!authData?.user;
+  const queryClient = useQueryClient();
+
+  // For authenticated users, fetch consent from the server
+  const { data: serverConsent } = useQuery<CosmicConsent>({
+    queryKey: ["/api/cosmic/consent"],
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch("/api/cosmic/consent", { credentials: "include" });
+      if (!res.ok) return loadConsent();
+      return res.json() as Promise<CosmicConsent>;
+    },
+  });
+
+  // Local state seeded from server (auth) or localStorage (guest)
   const [consent, setConsent] = useState<CosmicConsent>(loadConsent);
+
+  // Sync local state and localStorage when server data loads
+  useEffect(() => {
+    if (serverConsent) {
+      setConsent(serverConsent);
+      // Keep localStorage aligned with server as offline/guest fallback
+      saveConsent(serverConsent);
+    }
+  }, [serverConsent]);
+
+  const serverMutation = useMutation({
+    mutationFn: async (next: CosmicConsent) => {
+      const res = await fetch("/api/cosmic/consent", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error("Failed to save consent");
+      return res.json() as Promise<CosmicConsent>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cosmic/consent"] });
+    },
+  });
 
   const update = (key: keyof CosmicConsent, val: boolean) => {
     const next = { ...consent, [key]: val };
     setConsent(next);
+    // Always keep localStorage in sync as guest/offline fallback
     saveConsent(next);
+    if (isAuthenticated) {
+      serverMutation.mutate(next);
+    }
   };
 
   return (
