@@ -254,9 +254,14 @@ import {
   type UserLearningProfile,
   type InsertUserLearningProfile,
   type UpdateUserLearningProfile,
+  weeklyPlanReviews,
+  type WeeklyPlanReview,
+  type InsertWeeklyPlanReview,
+  type UpdateWeeklyPlanReview,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
+import { createHash } from "crypto";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -298,6 +303,7 @@ export interface IStorage {
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
 
   getScheduleBlocks(userId: string): Promise<ScheduleBlock[]>;
+  getScheduleBlock(id: string): Promise<ScheduleBlock | undefined>;
   createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock>;
   updateScheduleBlock(id: string, data: Partial<ScheduleBlock>): Promise<ScheduleBlock | undefined>;
   deleteScheduleBlock(id: string): Promise<void>;
@@ -319,6 +325,7 @@ export interface IStorage {
   updateStressSignals(id: string, data: Partial<StressSignals>): Promise<StressSignals | undefined>;
 
   getStabilizingActions(blueprintId: string): Promise<StabilizingAction[]>;
+  getStabilizingAction(id: string): Promise<StabilizingAction | undefined>;
   createStabilizingAction(action: InsertStabilizingAction): Promise<StabilizingAction>;
   updateStabilizingAction(id: string, data: Partial<StabilizingAction>): Promise<StabilizingAction | undefined>;
   deleteStabilizingAction(id: string): Promise<void>;
@@ -328,6 +335,7 @@ export interface IStorage {
   updateSupportPreferences(id: string, data: Partial<SupportPreferences>): Promise<SupportPreferences | undefined>;
 
   getRecoveryReflections(blueprintId: string): Promise<RecoveryReflection[]>;
+  getRecoveryReflection(id: string): Promise<RecoveryReflection | undefined>;
   createRecoveryReflection(reflection: InsertRecoveryReflection): Promise<RecoveryReflection>;
   updateRecoveryReflection(id: string, data: Partial<RecoveryReflection>): Promise<RecoveryReflection | undefined>;
   deleteRecoveryReflection(id: string): Promise<void>;
@@ -345,6 +353,7 @@ export interface IStorage {
   getTask(id: string): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, data: Partial<Task>): Promise<Task | undefined>;
+  updateTaskForUser(id: string, userId: string, data: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<void>;
 
   getProjects(userId: string): Promise<Project[]>;
@@ -396,6 +405,7 @@ export interface IStorage {
 
   getScheduleEvents(userId: string): Promise<DailyScheduleEvent[]>;
   getScheduleEventsByDay(userId: string, dayOfWeek: number): Promise<DailyScheduleEvent[]>;
+  getScheduleEvent(id: string): Promise<DailyScheduleEvent | undefined>;
   createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent>;
   updateScheduleEvent(id: string, data: Partial<DailyScheduleEvent>): Promise<DailyScheduleEvent | undefined>;
   deleteScheduleEvent(id: string): Promise<void>;
@@ -552,6 +562,7 @@ export interface IStorage {
 
   // Reset Protocol
   getResetProtocol(userId: string): Promise<ResetProtocol | undefined>;
+  getResetProtocolById(id: string): Promise<ResetProtocol | undefined>;
   createResetProtocol(protocol: InsertResetProtocol): Promise<ResetProtocol>;
   updateResetProtocol(id: string, data: Partial<ResetProtocol>): Promise<ResetProtocol | undefined>;
 
@@ -664,6 +675,7 @@ export interface IStorage {
   getElevationPlanDays(planId: string): Promise<ElevationPlanDay[]>;
   createElevationPlanDay(day: InsertElevationPlanDay): Promise<ElevationPlanDay>;
   getElevationPlanActions(planDayId: string): Promise<ElevationPlanAction[]>;
+  getElevationPlanActionForUser(id: string, userId: string): Promise<ElevationPlanAction | undefined>;
   createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction>;
   updateElevationPlanAction(id: string, userId: string, data: Partial<ElevationPlanAction>): Promise<ElevationPlanAction | undefined>;
   // Reminders (PR #7)
@@ -677,6 +689,12 @@ export interface IStorage {
   getLearningProfile(userId: string): Promise<UserLearningProfile | undefined>;
   upsertLearningProfile(userId: string, data: UpdateUserLearningProfile): Promise<UserLearningProfile>;
   resetLearningProfile(userId: string): Promise<UserLearningProfile>;
+
+  // Weekly Plan Reviews (PR #15)
+  getWeeklyPlanReview(planId: string, userId: string): Promise<WeeklyPlanReview | undefined>;
+  createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview>;
+  updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined>;
+  getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
 }
 
 export interface AdminAnalytics {
@@ -1048,6 +1066,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(scheduleBlocks).where(eq(scheduleBlocks.userId, userId));
   }
 
+  async getScheduleBlock(id: string): Promise<ScheduleBlock | undefined> {
+    const [block] = await db.select().from(scheduleBlocks).where(eq(scheduleBlocks.id, id));
+    return block || undefined;
+  }
+
   async createScheduleBlock(block: InsertScheduleBlock): Promise<ScheduleBlock> {
     const [created] = await db.insert(scheduleBlocks).values(block).returning();
     return created;
@@ -1138,6 +1161,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(stabilizingActions.blueprintId, blueprintId));
   }
 
+  async getStabilizingAction(id: string): Promise<StabilizingAction | undefined> {
+    const [action] = await db.select().from(stabilizingActions).where(eq(stabilizingActions.id, id));
+    return action || undefined;
+  }
+
   async createStabilizingAction(action: InsertStabilizingAction): Promise<StabilizingAction> {
     const [created] = await db.insert(stabilizingActions).values(action).returning();
     return created;
@@ -1174,6 +1202,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(recoveryReflections)
       .where(eq(recoveryReflections.blueprintId, blueprintId))
       .orderBy(desc(recoveryReflections.createdAt));
+  }
+
+  async getRecoveryReflection(id: string): Promise<RecoveryReflection | undefined> {
+    const [reflection] = await db.select().from(recoveryReflections).where(eq(recoveryReflections.id, id));
+    return reflection || undefined;
   }
 
   async createRecoveryReflection(reflection: InsertRecoveryReflection): Promise<RecoveryReflection> {
@@ -1248,6 +1281,12 @@ export class DatabaseStorage implements IStorage {
   async updateTask(id: string, data: Partial<Task>): Promise<Task | undefined> {
     const [updated] = await db.update(tasks).set(data)
       .where(eq(tasks.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async updateTaskForUser(id: string, userId: string, data: Partial<Task>): Promise<Task | undefined> {
+    const [updated] = await db.update(tasks).set(data)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId))).returning();
     return updated || undefined;
   }
 
@@ -1487,6 +1526,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(dailyScheduleEvents.scheduledTime);
   }
 
+  async getScheduleEvent(id: string): Promise<DailyScheduleEvent | undefined> {
+    const [event] = await db.select().from(dailyScheduleEvents).where(eq(dailyScheduleEvents.id, id));
+    return event || undefined;
+  }
+
   async createScheduleEvent(event: InsertDailyScheduleEvent): Promise<DailyScheduleEvent> {
     const [created] = await db.insert(dailyScheduleEvents).values(event).returning();
     return created;
@@ -1528,9 +1572,10 @@ export class DatabaseStorage implements IStorage {
     return token;
   }
 
-  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+  async getPasswordResetToken(rawToken: string): Promise<PasswordResetToken | undefined> {
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
     const [result] = await db.select().from(passwordResetTokens)
-      .where(eq(passwordResetTokens.token, token));
+      .where(eq(passwordResetTokens.tokenHash, tokenHash));
     return result || undefined;
   }
 
@@ -2520,6 +2565,11 @@ export class DatabaseStorage implements IStorage {
     return protocol || undefined;
   }
 
+  async getResetProtocolById(id: string): Promise<ResetProtocol | undefined> {
+    const [protocol] = await db.select().from(resetProtocol).where(eq(resetProtocol.id, id));
+    return protocol || undefined;
+  }
+
   async createResetProtocol(protocol: InsertResetProtocol): Promise<ResetProtocol> {
     const [newProtocol] = await db.insert(resetProtocol).values(protocol).returning();
     return newProtocol;
@@ -3180,6 +3230,25 @@ export class DatabaseStorage implements IStorage {
       .orderBy(elevationPlanActions.createdAt);
   }
 
+  async getElevationPlanActionForUser(id: string, userId: string): Promise<ElevationPlanAction | undefined> {
+    const [row] = await db.select().from(elevationPlanActions)
+      .where(
+        and(
+          eq(elevationPlanActions.id, id),
+          sql`${elevationPlanActions.planDayId} in (
+            select ${elevationPlanDays.id}
+            from ${elevationPlanDays}
+            where ${elevationPlanDays.planId} in (
+              select ${elevationPlans.id}
+              from ${elevationPlans}
+              where ${elevationPlans.userId} = ${userId}
+            )
+          )`
+        )
+      );
+    return row;
+  }
+
   async createElevationPlanAction(action: InsertElevationPlanAction): Promise<ElevationPlanAction> {
     const [created] = await db.insert(elevationPlanActions)
       .values({ ...action, updatedAt: new Date() })
@@ -3309,6 +3378,41 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return upserted;
+  }
+
+  // ─── Weekly Plan Reviews (PR #15) ─────────────────────────────────────────
+
+  async getWeeklyPlanReview(planId: string, userId: string): Promise<WeeklyPlanReview | undefined> {
+    const [row] = await db
+      .select()
+      .from(weeklyPlanReviews)
+      .where(and(eq(weeklyPlanReviews.planId, planId), eq(weeklyPlanReviews.userId, userId)));
+    return row;
+  }
+
+  async createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview> {
+    const [created] = await db
+      .insert(weeklyPlanReviews)
+      .values({ ...data, updatedAt: new Date() })
+      .returning();
+    return created;
+  }
+
+  async updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined> {
+    const [updated] = await db
+      .update(weeklyPlanReviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(weeklyPlanReviews.planId, planId), eq(weeklyPlanReviews.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]> {
+    return db
+      .select()
+      .from(elevationPlans)
+      .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
+      .orderBy(desc(elevationPlans.createdAt));
   }
 }
 
