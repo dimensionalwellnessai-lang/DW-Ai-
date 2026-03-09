@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { CoachingMode } from "@shared/schema";
 
 // This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own API key.
 const openai = new OpenAI({
@@ -30,6 +31,7 @@ interface UserLifeContext {
   wellnessFocus?: string[];
   peakMotivationTime?: string;
   category?: string;
+  coachMode?: CoachingMode;
   categoryEntries?: {
     category: string;
     title: string;
@@ -146,6 +148,43 @@ TONE ADJUSTMENTS:
 - Offer gentle guidance without overwhelming
 - Check in if things are landing
 Example: "How's your headspace today? Want something focused or more open-ended?"`;
+  }
+}
+
+function getCoachModeToneGuidance(mode: CoachingMode): string {
+  switch (mode) {
+    case "gentle":
+      return `COACH MODE: GENTLE
+The user prefers a warm, nurturing communication style.
+TONE ADJUSTMENTS:
+- Lead with validation and empathy before any suggestions
+- Use soft, inviting language ("When you're ready", "No rush", "One small thing")
+- Avoid blunt or prescriptive phrasing
+- Allow space for emotions and processing
+- Ask gentle check-in questions before action
+- Prioritize comfort and safety over efficiency`;
+
+    case "direct":
+      return `COACH MODE: DIRECT
+The user prefers clear, no-fluff guidance.
+TONE ADJUSTMENTS:
+- Get to the point quickly without excessive preamble
+- Use confident, action-oriented language
+- Fewer questions — make a clear recommendation
+- Skip lengthy validations; a brief acknowledgment is fine
+- Lead with the answer, then explain if needed
+- Respect their time: short, sharp responses`;
+
+    default: // "structured"
+      return `COACH MODE: STRUCTURED
+The user prefers organized, step-by-step guidance.
+TONE ADJUSTMENTS:
+- Use numbered lists, clear headers, and logical flow
+- Break down actions into concrete, sequenced steps
+- Offer frameworks and decision trees where helpful
+- Summarize key points at the end of complex responses
+- Balance warmth with clarity and order
+- Give a clear outcome or next action for each suggestion`;
   }
 }
 
@@ -334,6 +373,7 @@ ${userContext?.energyContext?.currentEnergy ? getEnergyToneGuidance(userContext.
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
 ${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext.bodyGoal}` : ""}
 ${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
+${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
 
 *** WELLNESS CONSCIOUSNESS (apply to all responses) ***
 
@@ -2010,6 +2050,7 @@ Think of yourself as a high-end personal concierge who:
 ${userContext?.energyContext ? getEnergyToneGuidance(userContext.energyContext.currentEnergy || "medium") : ""}
 ${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.energyContext.currentMood}` : ""}
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
+${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
 
 USER CONTEXT:
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}

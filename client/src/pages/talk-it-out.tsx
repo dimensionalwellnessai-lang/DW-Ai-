@@ -18,9 +18,10 @@ import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart, ClipboardCheck, X } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ChatMessage {
   role: "assistant" | "user";
@@ -78,11 +79,8 @@ Start by simply being present and inviting them to share.`;
 export function TalkItOutPage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const { data: authData } = useQuery<{ user: any } | null>({
-    queryKey: ["/api/auth/me"],
-    retry: false,
-  });
-  const isLoggedIn = !!(authData?.user);
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(() => {

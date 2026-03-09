@@ -9,3 +9,7 @@ vite.config.ts.*
 .env
 .env.local
 .env.*.local
+
+# Test coverage output
+coverage/
+client/coverage/

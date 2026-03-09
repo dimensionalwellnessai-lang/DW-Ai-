@@ -15,7 +15,7 @@ import { useInsights } from "@/hooks/use-insights";
 import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { useElevationEngine } from "@/hooks/use-elevation-engine";
 import { getCalendarEvents } from "@/lib/guest-storage";
-import { getQueryFn } from "@/lib/queryClient";
+import { getQueryFn, STALE_TIME } from "@/lib/queryClient";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp } from "./types";
 import type { Habit, Goal } from "@shared/schema";
@@ -100,6 +100,7 @@ export function useHomeSummary(): HomeSummary {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwInsightJournalEnabled,
     retry: false,
+    staleTime: STALE_TIME.MEDIUM,
   });
 
   const { data: dwFollowups = [] } = useQuery<Array<Record<string, unknown>>>({
@@ -107,6 +108,7 @@ export function useHomeSummary(): HomeSummary {
     queryFn: getQueryFn({ on401: "returnNull" }),
     enabled: isLoggedIn && dwInsightJournalEnabled,
     retry: false,
+    staleTime: STALE_TIME.MEDIUM,
   });
 
   // ── Derived values ─────────────────────────────────────────────────────────
