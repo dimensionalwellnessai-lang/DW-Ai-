@@ -2239,6 +2239,48 @@ export async function registerRoutes(
     }
   });
 
+  // ── DW Command endpoint ──────────────────────────────────────────────────────
+  // Processes a short command/question from the floating widget.
+  // Returns a text response plus an optional navigation action.
+  app.post("/api/chat/command", chatLimiter, async (req, res) => {
+    try {
+      const { message } = req.body as { message?: string };
+      if (!message || typeof message !== "string" || !message.trim()) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
+        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
+      // Detect Cosmic navigation intent before calling the full AI
+      type CosmicTab = "calendar" | "insights" | "astrology" | "numerology";
+      const lower = message.toLowerCase();
+      let cosmicTab: CosmicTab | null = null;
+      if (/\b(calendar|schedule|event)\b/.test(lower) && /\bcosmic\b/.test(lower)) cosmicTab = "calendar";
+      else if (/\bastrology\b|\bchart\b|\bplanet\b|\bhoroscope\b|\bzodiac\b/.test(lower)) cosmicTab = "astrology";
+      else if (/\bnumerology\b|\blife path\b/.test(lower)) cosmicTab = "numerology";
+      else if (/\bcosmic\b/.test(lower)) cosmicTab = "insights";
+
+      const action: { type: "navigate"; path: string; tab?: string } | null = cosmicTab
+        ? { type: "navigate", path: `/cosmic?tab=${cosmicTab}`, tab: cosmicTab }
+        : null;
+
+      // Generate a brief AI response
+      const rawAI = await generateChatResponse(
+        message,
+        [],
+        undefined
+      );
+      const response = typeof rawAI === "string" ? rawAI : rawAI.content;
+
+      res.json({ response, action });
+    } catch (error) {
+      console.error("Command chat error:", error);
+      res.status(500).json({ error: "Failed to process command" });
+    }
+  });
+
   // Streaming chat endpoint for improved performance
   app.post("/api/chat/stream", chatLimiter, async (req, res) => {
     try {
@@ -7517,6 +7559,55 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     } catch (error) {
       console.error("Update wellness preferences error:", error);
       res.status(500).json({ error: "Failed to update preferences" });
+    }
+  });
+
+  // ── Cosmic Consent ──────────────────────────────────────────────────────────
+  // Returns useAstrologyInGuidance + useNumerologyInGuidance for authenticated user.
+  app.get("/api/cosmic/consent", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const prefs = await storage.getWellnessPreferences(userId);
+      res.json({
+        useAstrologyInGuidance: prefs?.useAstrologyInGuidance ?? false,
+        useNumerologyInGuidance: prefs?.useNumerologyInGuidance ?? false,
+      });
+    } catch (error) {
+      console.error("Get cosmic consent error:", error);
+      res.status(500).json({ error: "Failed to get cosmic consent" });
+    }
+  });
+
+  app.patch("/api/cosmic/consent", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { useAstrologyInGuidance, useNumerologyInGuidance } = req.body as {
+        useAstrologyInGuidance?: boolean;
+        useNumerologyInGuidance?: boolean;
+      };
+      const update: Record<string, boolean> = {};
+      if (typeof useAstrologyInGuidance === "boolean") update.useAstrologyInGuidance = useAstrologyInGuidance;
+      if (typeof useNumerologyInGuidance === "boolean") update.useNumerologyInGuidance = useNumerologyInGuidance;
+
+      if (Object.keys(update).length === 0) {
+        return res.status(400).json({ error: "At least one of useAstrologyInGuidance or useNumerologyInGuidance must be provided" });
+      }
+
+      let prefs = await storage.getWellnessPreferences(userId);
+      if (prefs) {
+        await storage.updateWellnessPreferences(prefs.id, userId, update);
+      } else {
+        prefs = await storage.createWellnessPreferences({ userId, ...update });
+      }
+
+      const updated = await storage.getWellnessPreferences(userId);
+      res.json({
+        useAstrologyInGuidance: updated?.useAstrologyInGuidance ?? false,
+        useNumerologyInGuidance: updated?.useNumerologyInGuidance ?? false,
+      });
+    } catch (error) {
+      console.error("Update cosmic consent error:", error);
+      res.status(500).json({ error: "Failed to update cosmic consent" });
     }
   });
 

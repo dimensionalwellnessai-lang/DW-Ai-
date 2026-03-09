@@ -1800,6 +1800,9 @@ export const wellnessPreferences = pgTable("wellness_preferences", {
   astrologyEnabled: boolean("astrology_enabled").default(false),
   tarotEnabled: boolean("tarot_enabled").default(false),
   energyWorkEnabled: boolean("energy_work_enabled").default(false),
+  // Cosmic consent: whether to include astrology/numerology data in DW AI guidance
+  useAstrologyInGuidance: boolean("use_astrology_in_guidance").default(false),
+  useNumerologyInGuidance: boolean("use_numerology_in_guidance").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

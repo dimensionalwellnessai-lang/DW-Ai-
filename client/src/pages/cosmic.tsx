@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Moon,
   Sun,
@@ -311,72 +313,170 @@ function saveNumerologyData(data: NumerologyData) {
   }
 }
 
+/** Format an ISO date string (YYYY-MM-DD) as a human-readable short date */
+function formatEventDate(isoDate: string): string {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+// Types matching the /api/cosmic/* response shapes
+interface CosmicCalendarEvent {
+  date: string;
+  type: string;
+  label: string;
+  description: string;
+  planet?: string;
+  sign?: string;
+  prompt: string;
+}
+
+interface CosmicTodaySnapshot {
+  date: string;
+  moonPhase: string;
+  moonPhaseEmoji: string;
+  moonSign: string;
+  sunSign: string;
+  energyWord: string;
+  events: CosmicCalendarEvent[];
+}
+
+function eventBadgeVariant(type: string): "secondary" | "destructive" | "outline" {
+  if (type === "new_moon" || type === "full_moon" || type === "first_quarter" || type === "last_quarter") return "secondary";
+  if (type === "retrograde_start") return "destructive";
+  return "outline";
+}
+
+function eventBadgeLabel(type: string): string {
+  const MAP: Record<string, string> = {
+    new_moon: "moon", full_moon: "moon", first_quarter: "moon", last_quarter: "moon",
+    retrograde_start: "retrograde", retrograde_end: "direct",
+    ingress: "ingress", major_aspect: "aspect", season: "season",
+  };
+  return MAP[type] ?? type;
+}
 
 function CalendarTab() {
   const [view, setView] = useState<"day" | "week" | "month">("week");
-  const events = getUpcomingEvents(30);
-  const moonPhase = getCurrentMoonPhase();
 
+  // Use local date parts to avoid UTC day-shift (same pattern as parseLocalDate)
   const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  // Last day of next month (local)
+  const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const monthEnd = `${monthEndDate.getFullYear()}-${pad(monthEndDate.getMonth() + 1)}-${pad(monthEndDate.getDate())}`;
+
+  const { data: todayData, isLoading: todayLoading } = useQuery<CosmicTodaySnapshot>({
+    queryKey: ["/api/cosmic/today"],
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: calData, isLoading: calLoading, isError: calError, refetch } = useQuery<{ events: CosmicCalendarEvent[] }>({
+    queryKey: ["/api/cosmic/calendar", todayStr, monthEnd],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/cosmic/calendar?start=${todayStr}&end=${monthEnd}`);
+      return res.json();
+    },
+    staleTime: 60 * 60 * 1000,
+    retry: 2,
+  });
+
+  const allEvents = calData?.events ?? [];
+
   const filtered = (() => {
     if (view === "day") {
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      return events.filter(e => e.date <= tomorrow);
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+      return allEvents.filter(e => e.date <= tomorrowStr);
     }
     if (view === "week") {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(now.getDate() + 7);
-      return events.filter(e => e.date <= weekEnd);
+      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+      const weekEndStr = `${weekEnd.getFullYear()}-${pad(weekEnd.getMonth() + 1)}-${pad(weekEnd.getDate())}`;
+      return allEvents.filter(e => e.date <= weekEndStr);
     }
-    return events;
+    return allEvents;
   })();
+
+  const isLoading = todayLoading || calLoading;
 
   return (
     <div className="space-y-4">
-      {/* Current moon phase */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="p-4 flex items-start gap-3">
-          <span className="text-2xl" aria-hidden="true">{MOON_PHASE_EMOJI[moonPhase]}</span>
-          <div>
-            <p className="font-semibold text-sm">{moonPhase}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[moonPhase]}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Today snapshot card */}
+      {todayLoading ? (
+        <Skeleton className="h-20 w-full rounded-xl" />
+      ) : todayData ? (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <span className="text-2xl" aria-hidden="true">{todayData.moonPhaseEmoji}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{todayData.moonPhase} in {todayData.moonSign}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[todayData.moonPhase] ?? ""}</p>
+              <p className="text-xs text-primary mt-1">✦ Today's energy: <span className="font-medium">{todayData.energyWord}</span></p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <span className="text-2xl" aria-hidden="true">{MOON_PHASE_EMOJI[getCurrentMoonPhase()]}</span>
+            <div>
+              <p className="font-semibold text-sm">{getCurrentMoonPhase()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[getCurrentMoonPhase()]}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* View toggle */}
-      <div className="flex gap-1" role="group" aria-label="Calendar view">
-        {(["day", "week", "month"] as const).map(v => (
-          <Button
-            key={v}
-            variant={view === v ? "default" : "outline"}
-            size="sm"
-            onClick={() => setView(v)}
-            className="capitalize"
-            aria-pressed={view === v}
-          >
-            {v}
-          </Button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 flex-1" role="group" aria-label="Calendar view">
+          {(["day", "week", "month"] as const).map(v => (
+            <Button
+              key={v}
+              variant={view === v ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView(v)}
+              className="capitalize"
+              aria-pressed={view === v}
+            >
+              {v}
+            </Button>
+          ))}
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => void refetch()} aria-label="Refresh calendar events">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(n => <Skeleton key={n} className="h-24 w-full rounded-xl" />)}
+        </div>
+      ) : calError ? (
+        <div className="text-center py-6 space-y-2">
+          <p className="text-sm text-muted-foreground">Could not load celestial events.</p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Try again
+          </Button>
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No major events in this window.</p>
       ) : (
         <div className="space-y-3" role="list" aria-label="Planetary events">
-          {filtered.map((evt, i) => (
-            <Card key={`${evt.date.toISOString()}-${evt.label}-${evt.type}`} role="listitem">
+          {filtered.map((evt) => (
+            <Card key={`${evt.date}-${evt.type}-${evt.planet ?? ""}-${evt.label}`} role="listitem">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-sm">{evt.label}</p>
-                  <Badge variant={evt.type === "moon" ? "secondary" : evt.type === "retrograde" ? "destructive" : "outline"} className="text-xs">
-                    {evt.type}
+                  <Badge variant={eventBadgeVariant(evt.type)} className="text-xs capitalize">
+                    {eventBadgeLabel(evt.type)}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {evt.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  {formatEventDate(evt.date)}
                 </p>
                 <p className="text-xs">{evt.description}</p>
                 <p className="text-xs text-primary italic">✦ {evt.prompt}</p>
@@ -528,6 +628,7 @@ function InsightsTab({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AstrologyProfileTab() {
+  const queryClient = useQueryClient();
   const [birthData, setBirthData] = useState<BirthData | null>(loadBirthData);
   const [editing, setEditing] = useState(!birthData);
 
@@ -538,6 +639,29 @@ function AstrologyProfileTab() {
   const [houseSystem, setHouseSystem] = useState<HouseSystem>(birthData?.houseSystem ?? "whole-sign");
   const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthData?.zodiacSystem ?? "tropical");
   const [expandedPlanet, setExpandedPlanet] = useState<string | null>(null);
+
+  // Persist house system to server for authenticated users
+  const houseSystemMutation = useMutation({
+    mutationFn: async (hs: HouseSystem) => {
+      const res = await apiRequest("PATCH", "/api/cosmic/house-system", { houseSystem: hs });
+      if (!res.ok) throw new Error("Failed to update house system");
+      return res.json() as Promise<{ houseSystem: string }>;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/chart"] });
+    },
+  });
+
+  const handleHouseSystemToggle = (hs: HouseSystem) => {
+    setHouseSystem(hs);
+    // Also persist to server if birth data is already saved
+    if (birthData) {
+      const updated = { ...birthData, houseSystem: hs };
+      saveBirthData(updated);
+      setBirthData(updated);
+      houseSystemMutation.mutate(hs);
+    }
+  };
 
   const handleSave = () => {
     if (!birthDate) return;
@@ -640,7 +764,7 @@ function AstrologyProfileTab() {
               </div>
               <p className="text-xs text-muted-foreground flex items-start gap-1">
                 <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                Whole Sign is traditional and easy to understand. Placidus is the modern Western default. House-based placement differences will be reflected in a future update.
+                Whole Sign is traditional and easy to understand. Placidus is the modern Western default.
               </p>
             </div>
 
@@ -685,7 +809,18 @@ function AstrologyProfileTab() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground pt-1">
-            {birthData.zodiacSystem === "tropical" ? "Western/Tropical" : "Vedic/Sidereal"} · {birthData.houseSystem === "whole-sign" ? "Whole Sign" : "Placidus"} houses
+            {birthData.zodiacSystem === "tropical" ? "Western/Tropical" : "Vedic/Sidereal"} ·{" "}
+            <span className="inline-flex items-center gap-1">
+              {birthData.houseSystem === "whole-sign" ? "Whole Sign" : "Placidus"} houses
+              <button
+                type="button"
+                onClick={() => handleHouseSystemToggle(birthData.houseSystem === "whole-sign" ? "placidus" : "whole-sign")}
+                className="ml-1 text-primary underline underline-offset-2 text-xs hover:no-underline focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                aria-label="Toggle house system"
+              >
+                Switch to {birthData.houseSystem === "whole-sign" ? "Placidus" : "Whole Sign"}
+              </button>
+            </span>
             {birthData.birthTime ? "" : " · Birth time not set (some placements are approximate)"}
           </p>
         </CardHeader>
@@ -1096,7 +1231,59 @@ function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void 
 
 // ─── Consent section ───────────────────────────────────────────────────────────
 function ConsentSection() {
-  const { consent, update } = useCosmicConsent();
+  const { data: authData } = useAuth();
+  const isAuthenticated = !!authData?.user;
+  const queryClient = useQueryClient();
+
+  // For authenticated users, fetch consent from the server
+  const { data: serverConsent } = useQuery<CosmicConsent>({
+    queryKey: ["/api/cosmic/consent"],
+    enabled: isAuthenticated,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch("/api/cosmic/consent", { credentials: "include" });
+      if (!res.ok) return loadConsent();
+      return res.json() as Promise<CosmicConsent>;
+    },
+  });
+
+  // Local state seeded from server (auth) or localStorage (guest)
+  const [consent, setConsent] = useState<CosmicConsent>(loadConsent);
+
+  // Sync local state and localStorage when server data loads
+  useEffect(() => {
+    if (serverConsent) {
+      setConsent(serverConsent);
+      // Keep localStorage aligned with server as offline/guest fallback
+      saveConsent(serverConsent);
+    }
+  }, [serverConsent]);
+
+  const serverMutation = useMutation({
+    mutationFn: async (next: CosmicConsent) => {
+      const res = await fetch("/api/cosmic/consent", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error("Failed to save consent");
+      return res.json() as Promise<CosmicConsent>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cosmic/consent"] });
+    },
+  });
+
+  const update = (key: keyof CosmicConsent, val: boolean) => {
+    const next = { ...consent, [key]: val };
+    setConsent(next);
+    // Always keep localStorage in sync as guest/offline fallback
+    saveConsent(next);
+    if (isAuthenticated) {
+      serverMutation.mutate(next);
+    }
+  };
 
   return (
     <Card className="mt-4">
