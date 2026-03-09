@@ -7,6 +7,9 @@ import { relations } from "drizzle-orm";
 export const userRoleEnum = ["user", "admin"] as const;
 export type UserRole = typeof userRoleEnum[number];
 
+export const coachingModeEnum = ["gentle", "direct", "structured"] as const;
+export type CoachingMode = typeof coachingModeEnum[number];
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -20,6 +23,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
+  coachingMode: text("coaching_mode").default("gentle").$type<CoachingMode>(),
 }, (t) => [
   // Ensure each OAuth identity maps to exactly one user, and make lookups fast
   uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),
