@@ -422,8 +422,13 @@ export async function registerRoutes(
   const oauthRedirectBase = (
     process.env.OAUTH_REDIRECT_BASE_URL ||
     process.env.APP_URL ||
-    "https://dimensional-wellness-ai--dareiltrader.replit.app"
+    process.env.APP_BASE_URL ||
+    (process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : "https://dimensional-wellness-ai--dareiltrader.replit.app")
   ).replace(/\/$/, "");
+
+  console.log("[oauth] Redirect base URL:", oauthRedirectBase);
 
   /** Find-or-create a user for an OAuth login, then set an Express session. */
   async function handleOAuthUser(
@@ -1512,12 +1517,15 @@ export async function registerRoutes(
         expiresAt,
       });
       
-      await sendPasswordResetEmail(email, token);
+      const emailSent = await sendPasswordResetEmail(email, token);
+      if (!emailSent) {
+        console.error("[auth] Password reset email failed to send for:", email);
+      }
       
       res.json({ success: true, message: "If an account exists with this email, a reset link has been sent." });
     } catch (error) {
       console.error("Forgot password error:", error);
-      res.status(500).json({ error: "Failed to process request" });
+      res.json({ success: true, message: "If an account exists with this email, a reset link has been sent." });
     }
   });
 

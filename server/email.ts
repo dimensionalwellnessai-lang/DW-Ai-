@@ -173,7 +173,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
   try {
     const { client, fromEmail } = await getResendClient();
     
-    const explicitAppUrl = process.env.APP_URL;
+    const explicitAppUrl = process.env.APP_URL || process.env.APP_BASE_URL;
     const replitDomain =
       process.env.REPLIT_DOMAINS && process.env.REPLIT_DOMAINS.length > 0
         ? process.env.REPLIT_DOMAINS.split(',')[0]
@@ -186,7 +186,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     let baseUrl: string;
 
     if (explicitAppUrl) {
-      baseUrl = explicitAppUrl;
+      baseUrl = explicitAppUrl.replace(/\/$/, '');
     } else if (replitDomain) {
       baseUrl = `https://${replitDomain}`;
     } else if (replitSlugDomain) {
@@ -201,7 +201,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
-    await client.emails.send({
+    const { data, error } = await client.emails.send({
       from: fromEmail || 'DW.ai <no-reply@resend.dev>',
       to: toEmail,
       subject: 'Reset Your DW.ai Password',
@@ -243,9 +243,16 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
       `,
     });
     
+    if (error) {
+      console.error('[email] Resend API error for password reset to:', toEmail, '-', error.message);
+      return false;
+    }
+    
+    console.log('[email] Password reset email sent successfully to:', toEmail);
     return true;
-  } catch (error) {
-    console.error('Failed to send password reset email:', error);
+  } catch (error: any) {
+    console.error('[email] Failed to send password reset email to:', toEmail, '- error:', error?.message || error);
+    if (error?.statusCode) console.error('[email] Resend status code:', error.statusCode);
     return false;
   }
 }
