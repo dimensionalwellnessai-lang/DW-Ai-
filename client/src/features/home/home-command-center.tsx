@@ -181,6 +181,26 @@ export default function HomeCommandCenter() {
         ? truncate(summary.latestJournalEntry.title, 30)
         : "Write or reflect",
     },
+    {
+      id: "cosmic",
+      label: "Cosmic",
+      icon: Moon,
+      color: "text-violet-400",
+      bgClass: "bg-violet-500/15",
+      path: "/cosmic-insights",
+      dwTopic: "What does the cosmos say today",
+      snippet: "Moon & transits",
+    },
+    {
+      id: "foryou",
+      label: "For You",
+      icon: Compass,
+      color: "text-sky-400",
+      bgClass: "bg-sky-500/15",
+      path: "/browse",
+      dwTopic: "Suggest something for me",
+      snippet: "Curated for you",
+    },
   ], [summary, topStreak, calRemaining, momentumSnippet]);
 
   const timeClass = getTimeOfDayClass();
@@ -219,12 +239,12 @@ export default function HomeCommandCenter() {
           </p>
         </div>
 
-        <div className="relative flex items-center justify-center w-full max-w-sm mx-auto" style={{ height: 320 }}>
-          <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: 260, height: 260 }} />
+        <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto" style={{ height: 340 }}>
+          <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: 280, height: 280 }} />
 
           <div className="relative z-10">
             <DWOrb
-              size={72}
+              size={68}
               state="idle"
               onTap={() => navigate("/talk")}
               label="Talk with DW"
@@ -233,7 +253,7 @@ export default function HomeCommandCenter() {
 
           {modules.map((mod, i) => {
             const angle = (i * 360) / modules.length - 90;
-            const radius = 130;
+            const radius = 140;
             const x = Math.cos((angle * Math.PI) / 180) * radius;
             const y = Math.sin((angle * Math.PI) / 180) * radius;
 
@@ -249,90 +269,10 @@ export default function HomeCommandCenter() {
           })}
         </div>
 
-        <div className="w-full max-w-sm px-6 pb-2 text-center">
+        <div className="w-full max-w-sm px-6 pb-4 text-center">
           <p className="text-sm text-foreground/70 italic font-body leading-relaxed" data-testid="text-affirmation">
             "{affirmation}"
           </p>
-        </div>
-
-        <div className="w-full max-w-lg pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-5 mb-2">
-            Cosmic Insights
-          </p>
-          <Carousel opts={{ align: "start", dragFree: true }} className="w-full px-4">
-            <CarouselContent className="-ml-2">
-              <CarouselItem className="pl-2 basis-3/4">
-                <button
-                  type="button"
-                  onClick={() => navigate("/cosmic-insights")}
-                  className="cc-card w-full text-left"
-                  data-testid="carousel-cosmic-moon"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Moon className="h-4 w-4 text-violet-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moon Phase</span>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Tap to view cosmic guidance</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Personalized to your chart</p>
-                </button>
-              </CarouselItem>
-              <CarouselItem className="pl-2 basis-3/4">
-                <button
-                  type="button"
-                  onClick={() => navigate("/cosmic-insights")}
-                  className="cc-card w-full text-left"
-                  data-testid="carousel-cosmic-transit"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="h-4 w-4 text-amber-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Today's Energy</span>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">See what the cosmos says</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Transits & alignments</p>
-                </button>
-              </CarouselItem>
-            </CarouselContent>
-          </Carousel>
-        </div>
-
-        <div className="w-full max-w-lg pb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-5 mb-2">
-            For You
-          </p>
-          <Carousel opts={{ align: "start", dragFree: true }} className="w-full px-4">
-            <CarouselContent className="-ml-2">
-              <CarouselItem className="pl-2 basis-3/4">
-                <button
-                  type="button"
-                  onClick={() => navigate("/browse")}
-                  className="cc-card w-full text-left"
-                  data-testid="carousel-foryou-wellness"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Compass className="h-4 w-4 text-teal-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Wellness</span>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Explore curated content</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Workouts, meditations & more</p>
-                </button>
-              </CarouselItem>
-              <CarouselItem className="pl-2 basis-3/4">
-                <button
-                  type="button"
-                  onClick={() => navigate("/browse")}
-                  className="cc-card w-full text-left"
-                  data-testid="carousel-foryou-community"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <MessageCircle className="h-4 w-4 text-blue-400" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Community</span>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Connect & grow</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Groups, challenges & support</p>
-                </button>
-              </CarouselItem>
-            </CarouselContent>
-          </Carousel>
         </div>
       </div>
 
@@ -385,6 +325,8 @@ function CardPreview({
         {module.id === "momentum" && <MomentumPreview summary={summary} />}
         {module.id === "followup" && <FollowUpPreview summary={summary} />}
         {module.id === "journal" && <JournalPreview summary={summary} />}
+        {module.id === "cosmic" && <CosmicPreview />}
+        {module.id === "foryou" && <ForYouPreview />}
       </div>
 
       <DrawerFooter className="flex-row gap-2">
@@ -608,6 +550,84 @@ function JournalPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
   );
 }
 
+function CosmicPreview() {
+  return (
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <Moon className="h-4 w-4 text-violet-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moon Phase</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">View today's lunar guidance</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Personalized to your chart</p>
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Transits</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">Today's cosmic energy</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Alignments & retrogrades</p>
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="h-4 w-4 text-indigo-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Numerology</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">Your personal day number</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Life path & cycles</p>
+          </div>
+        </CarouselItem>
+      </CarouselContent>
+    </Carousel>
+  );
+}
+
+function ForYouPreview() {
+  return (
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <Compass className="h-4 w-4 text-teal-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Wellness</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">Explore curated content</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Workouts, meditations & more</p>
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <MessageCircle className="h-4 w-4 text-blue-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Community</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">Connect & grow together</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Groups, challenges & support</p>
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="h-4 w-4 text-amber-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Resources</span>
+            </div>
+            <p className="text-sm font-medium text-foreground">Articles & guides</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Learn at your own pace</p>
+          </div>
+        </CarouselItem>
+      </CarouselContent>
+    </Carousel>
+  );
+}
+
 function OrbitIcon({
   module,
   x,
@@ -630,15 +650,15 @@ function OrbitIcon({
         transform: `translate(${x}px, ${y}px)`,
         left: "50%",
         top: "50%",
-        marginLeft: -28,
-        marginTop: -28,
-        width: 56,
+        marginLeft: -24,
+        marginTop: -24,
+        width: 48,
       }}
       aria-label={`${module.label}${module.snippet ? `: ${module.snippet}` : ""}`}
       data-testid={`orbit-icon-${module.id}`}
     >
-      <div className={`relative p-2.5 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
-        <Icon className={`h-5 w-5 ${module.color}`} />
+      <div className={`relative p-2 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
+        <Icon className={`h-[18px] w-[18px] ${module.color}`} />
         {module.badge && (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold leading-none">
             {module.badge}
