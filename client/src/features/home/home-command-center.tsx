@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DWOrb } from "@/components/dw-orb";
-import { SharedMenu } from "@/components/shared-menu";
+import { HamburgerMenu } from "@/components/hamburger-menu";
+import { AllFeaturesView } from "@/components/all-features-view";
+import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import {
   Drawer,
@@ -91,6 +93,7 @@ export default function HomeCommandCenter() {
   const [, navigate] = useLocation();
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
 
   const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
   const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
@@ -229,7 +232,8 @@ export default function HomeCommandCenter() {
         <div className="flex-1 flex items-center justify-center">
           <Skeleton className="h-24 w-24 rounded-full" />
         </div>
-        <SharedMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <HamburgerMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
       </div>
     );
   }
@@ -311,7 +315,8 @@ export default function HomeCommandCenter() {
         </DrawerContent>
       </Drawer>
 
-      <SharedMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <HamburgerMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
     </div>
   );
 }
