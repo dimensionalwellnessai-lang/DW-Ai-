@@ -348,7 +348,8 @@ export function HomeFocusSheet({ activeModule, summary, onModuleChange, onClose 
     setSnapState((s) => {
       if (s === "collapsed") return "half";
       if (s === "half") return "full";
-      return "half";
+      // From full, collapse the sheet while keeping the active module selected
+      return "collapsed";
     });
   }
 
@@ -368,11 +369,16 @@ export function HomeFocusSheet({ activeModule, summary, onModuleChange, onClose 
   return (
     <div
       className={cn(
-        "fixed bottom-0 inset-x-0 z-40 flex flex-col",
+        // z-50 ensures the sheet sits above the bottom nav (z-50 as well, but rendered earlier in DOM order)
+        // bottom offset: sheet rides on top of the bottom nav rather than behind it
+        "fixed inset-x-0 z-50 flex flex-col",
         "bg-card border-t border-border/60 rounded-t-2xl shadow-2xl",
         "transition-[height] duration-300 ease-in-out",
         isOpen ? SNAP_HEIGHTS[snapState] : SNAP_HEIGHTS["collapsed"],
       )}
+      style={{
+        bottom: "var(--bottom-nav-total-height, 0px)",
+      }}
       role="dialog"
       aria-modal="false"
       aria-label={activeModule ? `${activeMeta?.label} focus panel` : "Module focus panel"}
@@ -383,7 +389,7 @@ export function HomeFocusSheet({ activeModule, summary, onModuleChange, onClose 
           type="button"
           onClick={cycleSnap}
           className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1"
-          aria-label={snapState === "full" ? "Collapse panel" : "Expand panel"}
+          aria-label={snapState === "full" ? "Collapse panel" : snapState === "half" ? "Expand panel" : "Expand panel"}
         >
           <div className="w-8 h-1 rounded-full bg-muted-foreground/30 mx-auto" aria-hidden="true" />
           {snapState === "full"

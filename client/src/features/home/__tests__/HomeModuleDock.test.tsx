@@ -58,6 +58,9 @@ describe("HomeModuleDock – rendering", () => {
     expect(btn).toBeTruthy();
     // The visual badge text rendered inside aria-hidden span is "1234"
     expect(btn.textContent).toContain("1234");
+    // The aria-label should also use the truncated value, not the full "12345"
+    expect(btn.getAttribute("aria-label")).toContain("1234");
+    expect(btn.getAttribute("aria-label")).not.toContain("12345");
   });
 });
 

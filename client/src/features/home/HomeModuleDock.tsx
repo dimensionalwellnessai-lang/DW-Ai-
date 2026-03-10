@@ -54,7 +54,7 @@ export function HomeModuleDock({ badges = {}, activeModule, onSelect }: HomeModu
             key={mod.id}
             type="button"
             onClick={() => onSelect(mod.id)}
-            aria-label={`Open ${mod.label}${badge ? ` (${badge})` : ""}`}
+            aria-label={`Open ${mod.label}${badge ? ` (${badge.slice(0, 4)})` : ""}`}
             aria-pressed={isActive}
             className={cn(
               "flex flex-col items-center gap-1 px-2 py-1 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
