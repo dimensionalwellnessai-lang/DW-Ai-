@@ -50,6 +50,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const MENU_TUTORIAL_KEY = "dw:menuTutorialDone";
 const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
@@ -72,7 +73,7 @@ export function SettingsPage() {
   // Reminders settings
   const remindersEnabled = isFeatureEnabled("REMINDERS");
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
-  const coachModesEnabled = isFeatureEnabled("COACH_MODES");
+  const coachModesEnabled = isFeatureEnabled("DW_LEARNS");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
   const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
   const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();

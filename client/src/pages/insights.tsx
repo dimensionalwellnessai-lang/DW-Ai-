@@ -21,7 +21,11 @@ import {
   Sparkles,
   BookOpen,
   Tag,
+  Brain,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LIFE_DIMENSIONS, getDimensionById } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
