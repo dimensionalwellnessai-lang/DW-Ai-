@@ -364,6 +364,48 @@ const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
+/**
+ * Extracts a user-friendly error message and HTTP status from an AI service error.
+ * Returns { status, message } so callers can use them consistently.
+ */
+function classifyAiError(error: unknown): { status: number; message: string } {
+  const errAny = error as Record<string, unknown>;
+  const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
+  const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+  const errorCode =
+    typeof (errAny as { code?: unknown })?.code === "string"
+      ? ((errAny as { code?: unknown }).code as string)
+      : "";
+  const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
+  const causeCode =
+    cause && typeof cause.code === "string"
+      ? (cause.code as string)
+      : "";
+  const errorName =
+    typeof errAny?.name === "string"
+      ? (errAny.name as string)
+      : "";
+
+  if (httpStatus === 429) {
+    return { status: 429, message: "The AI service is currently rate limited. Please wait a moment and try again." };
+  }
+
+  const isTimeout =
+    errMsg.includes("timeout") ||
+    errMsg.includes("timed out") ||
+    httpStatus === 504 ||
+    errorCode === "ETIMEDOUT" ||
+    errorCode === "ESOCKETTIMEDOUT" ||
+    causeCode === "ETIMEDOUT" ||
+    causeCode === "ESOCKETTIMEDOUT" ||
+    errorName === "AbortError";
+  if (isTimeout) {
+    return { status: 504, message: "The AI service timed out. Please try again in a moment." };
+  }
+
+  return { status: 500, message: "Something went wrong while getting a response. Please try again." };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -2039,16 +2081,8 @@ export async function registerRoutes(
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Chat error:", error);
-      const errAny = error as Record<string, unknown>;
-      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
-      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
-      if (httpStatus === 429) {
-        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
-      }
-      if (errMsg.includes("timeout") || errMsg.includes("timed out") || httpStatus === 504) {
-        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
-      }
-      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
+      const { status, message } = classifyAiError(error);
+      res.status(status).json({ error: message });
     }
   });
 
@@ -2264,38 +2298,8 @@ export async function registerRoutes(
       res.json({ ...result, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Smart chat error:", error);
-      const errAny = error as Record<string, unknown>;
-      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
-      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
-      const errorCode =
-        typeof (errAny as { code?: unknown })?.code === "string"
-          ? ((errAny as { code?: unknown }).code as string)
-          : "";
-      const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
-      const causeCode =
-        cause && typeof cause.code === "string"
-          ? (cause.code as string)
-          : "";
-      const errorName =
-        typeof errAny?.name === "string"
-          ? (errAny.name as string)
-          : "";
-      const isTimeoutError =
-        errMsg.includes("timeout") ||
-        errMsg.includes("timed out") ||
-        httpStatus === 504 ||
-        errorCode === "ETIMEDOUT" ||
-        errorCode === "ESOCKETTIMEDOUT" ||
-        causeCode === "ETIMEDOUT" ||
-        causeCode === "ESOCKETTIMEDOUT" ||
-        errorName === "AbortError";
-      if (httpStatus === 429) {
-        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
-      }
-      if (isTimeoutError) {
-        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
-      }
-      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
+      const { status, message } = classifyAiError(error);
+      res.status(status).json({ error: message });
     }
   });
 
@@ -2574,20 +2578,8 @@ export async function registerRoutes(
       res.end();
     } catch (error) {
       console.error("Streaming chat error:", error);
-      const errAny = error as Record<string, unknown>;
-      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
-      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
-      let userMessage = "Something went wrong while getting a response. Please try again.";
-      if (httpStatus === 429) {
-        userMessage = "The AI service is currently rate limited. Please wait a moment and try again.";
-      } else if (
-        errMsg.includes("timeout") ||
-        errMsg.includes("timed out") ||
-        httpStatus === 504
-      ) {
-        userMessage = "The AI service timed out. Please try again in a moment.";
-      }
-      res.write(`data: ${JSON.stringify({ error: userMessage })}\n\n`);
+      const { message } = classifyAiError(error);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
       res.end();
     }
   });
