@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DWOrb } from "@/components/dw-orb";
@@ -189,6 +189,7 @@ export default function HomeCommandCenter() {
                 x={x}
                 y={y}
                 onTap={() => navigate(mod.path)}
+                onLongPress={() => navigate(`/talk?topic=${encodeURIComponent(mod.label)}`)}
               />
             );
           })}
@@ -226,19 +227,49 @@ function OrbitIcon({
   x,
   y,
   onTap,
+  onLongPress,
 }: {
   module: OrbitModule;
   x: number;
   y: number;
   onTap: () => void;
+  onLongPress: () => void;
 }) {
   const Icon = module.icon;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
+  const startPress = useCallback(() => {
+    didLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      didLongPress.current = true;
+      onLongPress();
+    }, 500);
+  }, [onLongPress]);
+
+  const endPress = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (!didLongPress.current) {
+      onTap();
+    }
+    didLongPress.current = false;
+  }, [onTap]);
 
   return (
     <button
       type="button"
-      onClick={onTap}
-      className="absolute flex flex-col items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-transform duration-200 active:scale-90"
+      onClick={handleClick}
+      onPointerDown={startPress}
+      onPointerUp={endPress}
+      onPointerLeave={endPress}
+      onContextMenu={(e) => e.preventDefault()}
+      className="absolute flex flex-col items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-transform duration-200 active:scale-95"
       style={{
         transform: `translate(${x}px, ${y}px)`,
         left: "50%",
@@ -246,7 +277,7 @@ function OrbitIcon({
         marginLeft: -28,
         marginTop: -28,
       }}
-      aria-label={module.label}
+      aria-label={`${module.label}. Long press to talk with DW.`}
       data-testid={`orbit-icon-${module.id}`}
     >
       <div className={`relative p-3 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
