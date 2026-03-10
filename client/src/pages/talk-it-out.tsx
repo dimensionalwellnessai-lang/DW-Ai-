@@ -16,6 +16,7 @@ import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/
 import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart, ClipboardCheck, X, RefreshCw } from "lucide-react";
+import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation } from "@tanstack/react-query";
@@ -434,6 +435,10 @@ export function TalkItOutPage() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
+          <div className="flex flex-col items-center gap-2 pb-2" data-testid="chat-orb-header">
+            <DWOrb size={56} state="chat" />
+            <p className="text-xs text-muted-foreground">You're talking with DW</p>
+          </div>
           {messages.map((message, index) => (
             <article
               key={index}
@@ -457,14 +462,10 @@ export function TalkItOutPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {index === 0 && (
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Heart className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="text-sm font-medium text-foreground">DW</p>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 mb-3">
+                    <DWOrb size={28} state="chat" />
+                    <p className="text-sm font-medium text-foreground">DW</p>
+                  </div>
                   <div className="prose prose-sm dark:prose-invert max-w-none">
                     <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
                   </div>

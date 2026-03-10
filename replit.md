@@ -51,9 +51,15 @@ Preferred communication style: Simple, everyday language.
 3. **Copy/Tone Layer**: Centralized UI copy following "Flip the Script" voice guidelines
 4. **Analytics**: Client-side event tracking with optional backend integration
 5. **Lazy Loading**: Components load on-demand with Suspense boundaries
+6. **DW Orb System**: Reusable `DWOrb` component (`client/src/components/dw-orb.tsx`) — cosmic/galactic sphere representing DW's presence. States: idle, suggestion, active, chat. Only DW uses the orb visual (no other UI element).
+7. **Command Center Cards**: Reusable `CommandCenterCard` component with two-zone layout (info left, DW Orb right). 7 cards: Today, Insight, Plan, Health, Momentum, DW Prompt, Journal.
+8. **Cosmic Background**: `cosmic-bg` CSS class provides subtle gradient background (navy/indigo/violet in dark mode).
 
 ### AI Integration
 - AI chat interface as primary interaction point
+- DW Orb appears on every Command Center card — tap orb to chat with DW about that card's context
+- Floating DW Orb in bottom-right corner on all pages (except chat/onboarding)
+- DW Orb appears in Talk It Out chat header and inline with DW messages
 - Context-aware wellness guidance
 - Proactive nudges based on user history and energy state
 - System prompts enforce calm, consent-based tone

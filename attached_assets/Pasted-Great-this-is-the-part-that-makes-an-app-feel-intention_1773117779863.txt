@@ -1,0 +1,211 @@
+Great — this is the part that makes an app feel intentional and premium instead of like random screens. Think of it as the DW Visual Design Language. These are the consistent rules the UI should follow everywhere.
+
+⸻
+
+DW Visual Design Language
+
+1. Spacing Grid (The Invisible Structure)
+
+All layout spacing should follow a simple 8-point grid. This keeps everything aligned and balanced.
+
+Common spacing units:
+	•	8px — small gaps (icons, text lines)
+	•	16px — standard padding inside cards
+	•	24px — spacing between elements inside sections
+	•	32px — major section separation
+
+Example card spacing:
+	•	16px padding inside card
+	•	16px gap between cards
+	•	24px between text column and DW orb
+
+This makes the interface feel clean and consistent.
+
+⸻
+
+2. Card Design System
+
+Cards are the main building blocks of the Command Center.
+
+Shape
+
+Rounded rectangles.
+
+Corner radius:
+16–20px
+
+Padding
+
+16px internal padding
+
+Shadow
+
+Soft elevation shadow.
+
+Example shadow concept:
+	•	blur ~20–30px
+	•	low opacity
+	•	very soft
+
+Cards should feel like they float slightly above the background.
+
+⸻
+
+3. Background Style
+
+Avoid flat backgrounds.
+
+Use a subtle cosmic gradient that supports the DW theme without distracting from the cards.
+
+Example direction:
+	•	deep navy / indigo base
+	•	slight violet or blue gradient shift
+	•	very soft noise or texture if needed
+
+Cards should appear slightly lighter or darker than the background so they stand out.
+
+⸻
+
+4. DW Orb Glow Rules
+
+The orb is the only glowing element in the interface.
+
+Glow radius:
+~20–40px soft halo
+
+Glow intensity should be subtle, not bright neon.
+
+Orb color should match the cosmic palette:
+	•	violet
+	•	blue
+	•	pink highlights
+
+This glow visually signals:
+
+“DW is the intelligence layer.”
+
+Nothing else in the UI should glow the same way.
+
+⸻
+
+5. Accent Color Rules
+
+Accent colors should be used sparingly.
+
+Allowed places:
+	•	small tags
+	•	progress indicators
+	•	active navigation icon
+	•	subtle highlights
+
+Avoid bright colors across the entire interface.
+
+Most of the UI should stay neutral so the DW orb and insights feel important.
+
+⸻
+
+6. Typography System
+
+Three levels of text hierarchy keep everything readable.
+
+Titles
+
+16–18px
+Semi-bold
+
+Used for card titles and section headers.
+
+Primary text
+
+14–16px
+Regular weight
+
+Used for main information like events or plan steps.
+
+Secondary text
+
+12–14px
+Lower opacity
+
+Used for supporting details.
+
+Avoid long paragraphs in cards.
+Cards should be quick to scan.
+
+⸻
+
+7. Animation Rhythm
+
+Motion should feel calm and purposeful.
+
+Recommended animation duration:
+200–300ms
+
+Examples:
+
+Card tap → subtle scale or highlight
+
+Orb tap → small expansion before chat opens
+
+Screen transitions → smooth slide
+
+Avoid fast or flashy animations.
+The interface should feel stable and thoughtful.
+
+⸻
+
+8. Interaction Feedback
+
+Every tap should have subtle feedback.
+
+Examples:
+	•	slight card lift
+	•	color shift
+	•	orb pulse
+
+Users should feel that the system acknowledges interaction immediately.
+
+⸻
+
+9. Visual Hierarchy
+
+Important elements should stand out through size and placement, not bright colors.
+
+Example hierarchy on Command Center:
+	1.	Today card
+	2.	Insight card
+	3.	Plan card
+	4.	Health snapshot
+	5.	Momentum
+	6.	Prompt
+	7.	Journal preview
+
+This ensures users immediately see the most important information.
+
+⸻
+
+10. Visual Simplicity Rule
+
+The screen should never feel busy.
+
+Limit the Command Center to about 6–7 cards visible in one scroll.
+
+Too many sections will dilute the sense of clarity.
+
+⸻
+
+The DW Aesthetic
+
+When everything follows these rules, the interface should feel:
+	•	calm
+	•	futuristic
+	•	intelligent
+	•	organized
+	•	slightly cosmic
+	•	focused on clarity
+
+Users should feel like they are interacting with a living system that quietly understands their life.
+
+⸻
+
+If you’d like, the next thing I can do is create a simple visual wireframe of the Command Center layout so you can clearly see how the cards, spacing, and DW orb will actually look on the screen.

@@ -1,0 +1,184 @@
+You actually did define most of it already, and it’s consistent with the design language you’ve been describing for DW. I wasn’t asking for new ideas — I just wanted to make sure the implementation details match what you already decided so Copilot/Agent builds the right thing.
+
+From what you’ve said across the specs and UI discussions, the DW orb design is essentially this:
+
+DW Orb (Cosmic Ball) — Final Design Rules
+
+Identity
+
+DW is represented by a cosmic orb / energy sphere, not a character or avatar.
+
+The orb symbolizes intelligence, presence, and awareness, not a personality.
+
+⸻
+
+Visual Design
+
+Shape
+
+Perfect sphere.
+
+Style
+
+Cosmic / galactic gradient.
+
+Colors
+
+Futuristic gradient tones similar to the rest of the DW interface.
+
+Typical palette direction:
+
+• deep indigo
+• violet
+• electric blue
+• subtle pink highlights
+• soft glow edges
+
+The orb should look like a contained galaxy or energy core.
+
+⸻
+
+Lighting
+
+The orb should have:
+
+• inner glow
+• soft halo glow around the sphere
+• subtle depth shading
+
+It should feel dimensional and alive, not flat.
+
+⸻
+
+Motion
+
+Movement should be minimal.
+
+Allowed animations:
+
+• slow energy swirl inside orb
+• soft pulse when DW has a suggestion
+• gentle glow shift when user interacts
+
+The motion should feel calm and intelligent, not flashy.
+
+⸻
+
+Interaction
+
+Tap
+
+Tap the orb to open DW conversation.
+
+Context
+
+When tapped from a card, the card context is passed to DW.
+
+Example:
+
+Today card → orb → DW chat opens about today.
+
+⸻
+
+Orb Placement
+
+The orb appears in these places:
+
+Command Center cards
+
+Right side of the card.
+
+Chat entry
+
+Center when launching DW.
+
+Prompt cards
+
+Integrated with the question prompt.
+
+Plans / insights
+
+Orb opens discussion about that topic.
+
+⸻
+
+Orb Size
+
+Recommended base size:
+
+40–48 px
+
+Large enough to notice
+Small enough not to dominate the UI
+
+⸻
+
+Orb Behavior States
+
+Idle
+
+Soft glow.
+
+Prompt Available
+
+Subtle pulse.
+
+Active Interaction
+
+Orb expands slightly.
+
+Chat Mode
+
+Orb transitions into chat interface header.
+
+⸻
+
+The UX Purpose
+
+The orb should make DW feel like:
+
+• an intelligent presence
+• calm guidance
+• something that is always available
+• not a chatbot character
+
+The experience should feel closer to interacting with a living system than messaging a bot.
+
+⸻
+
+One Important Implementation Detail
+
+The orb should be built as a reusable component.
+
+Example component:
+
+DWOrb.tsx
+
+Props example:
+
+size
+state
+context
+onTap
+
+States:
+
+idle
+suggestion
+active
+chat
+
+That way the same orb component can appear everywhere in the app.
+
+⸻
+
+One More Thing I Wanted to Confirm
+
+Earlier you mentioned the UI having orb-centered energy design across the app.
+
+So I want to confirm this part:
+
+Do you want only DW to be an orb,
+or do you want each life dimension (Body, Mind, Time, etc.) to also be represented by smaller orbs that change energy based on their status?
+
+Because if you do that, the interface becomes very visually unique and aligns with the whole Dimensional Wellness concept you’ve been building.

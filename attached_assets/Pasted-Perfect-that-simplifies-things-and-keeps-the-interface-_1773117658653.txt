@@ -1,0 +1,173 @@
+Perfect — that simplifies things and keeps the interface cleaner.
+
+So the final rule for the DW design system should be this:
+
+DW Orb Rule (Final)
+
+Only DW is represented by the cosmic orb.
+
+No other systems, switches, dimensions, or modules use orb visuals.
+
+This keeps the orb special and recognizable as DW’s presence across the app.
+
+⸻
+
+What Uses the Orb
+
+The DW Orb appears only when the user can interact with DW.
+
+Places it should appear:
+
+Command Center cards
+
+Each card includes the DW Orb on the right side.
+
+Purpose:
+Tap the orb to talk with DW about that card.
+
+Example:
+
+Today card → orb → talk about today
+Insight card → orb → discuss insight
+Plan card → orb → adjust plan
+
+⸻
+
+Chat entry point
+
+When entering DW chat directly, the orb appears at the top or center before the conversation begins.
+
+This reinforces that the user is entering DW’s space.
+
+⸻
+
+DW prompts
+
+When DW asks a reflection question, the orb appears next to the prompt.
+
+Example:
+
+DW Orb
+“What is taking the most energy from you today?”
+
+⸻
+
+Plan guidance
+
+When DW is helping with an elevation plan, the orb is visible in the plan interface.
+
+⸻
+
+What Does NOT Use the Orb
+
+These should not have orb visuals:
+
+• life dimensions
+• health stats
+• trackers
+• habits
+• insights
+• goals
+• analytics
+• switches
+
+Those stay as normal UI cards or modules.
+
+This prevents the interface from feeling visually repetitive.
+
+⸻
+
+Orb Interaction Rules
+
+Tap
+
+Opens DW conversation with context.
+
+Long press (optional future)
+
+Could open quick DW options.
+
+Example:
+
+Talk about this
+Explain this
+Adjust plan
+
+⸻
+
+Orb Animation Rules
+
+Keep animation subtle.
+
+Allowed behaviors:
+
+Idle
+Soft glow
+
+Suggestion available
+Slow pulse
+
+User interaction
+Small expansion
+
+Chat mode
+Orb transitions into chat header
+
+No fast or flashy animation.
+
+The feeling should be calm intelligence.
+
+⸻
+
+Orb Component
+
+Build a reusable component.
+
+Example name:
+
+DWOrb.tsx
+
+Props example:
+
+size
+state
+context
+onPress
+
+States:
+
+idle
+suggestion
+active
+chat
+
+
+⸻
+
+Why This Is Good Design
+
+Keeping the orb exclusive to DW makes it:
+
+• instantly recognizable
+• visually meaningful
+• emotionally associated with guidance
+
+If everything used orbs, the symbolism would disappear.
+
+Instead, the orb becomes the signature of DW.
+
+⸻
+
+Final UX Principle
+
+When a user sees the orb they should immediately know:
+
+“DW is here if I want guidance.”
+
+That makes DW feel like a living companion layer across the app, not just a chat tab.
+
+⸻
+
+If you want, I can also show you something very useful next:
+
+The exact visual layout of the Command Center (spacing, card sizes, orb placement, and hierarchy) so the screen feels premium instead of crowded.

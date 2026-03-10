@@ -1,0 +1,335 @@
+Great — let’s lock in the visual layout of the Command Center so when it’s implemented it feels premium, calm, and intentional, not crowded.
+
+I’ll describe it in a way that translates directly to UI implementation.
+
+⸻
+
+DW Command Center Visual Layout
+
+Overall Screen Structure
+
+Top Bar
+↓
+Scrollable Command Center Cards
+↓
+Bottom Navigation
+
+Everything between the top bar and bottom nav is one smooth vertical scroll.
+
+⸻
+
+Top Bar Layout
+
+Height: ~64–72px
+
+Left side:
+☰ Menu icon
+
+Center:
+Command Center
+
+Right side:
+Optional notification icon
+
+Spacing rule:
+
+• 16px padding left and right
+• Title centered visually
+
+Style should feel clean and futuristic.
+
+⸻
+
+Card Layout System
+
+All cards follow the same structure.
+
+Card padding:
+16px
+
+Corner radius:
+16–20px
+
+Card spacing:
+12–16px between cards
+
+Shadow:
+Soft elevation shadow
+
+Background:
+Slight contrast from page background.
+
+⸻
+
+Card Internal Layout
+
+Each card uses two zones:
+
+Left side → Information
+Right side → DW Orb
+
+Structure:
+
+Information Column (flex)
+Spacer
+DW Orb
+
+Example:
+
+[ Card ]
+
+Today
+9:00 AM — Work
+Next: 20-minute workout
+Calories: 1250 / 2100
+
+                 ◉
+
+The orb sits vertically centered on the right.
+
+⸻
+
+DW Orb Placement
+
+Orb size:
+
+40–48px
+
+Position:
+
+Right side of card
+Vertically centered
+
+Spacing from edge:
+
+16px
+
+Spacing from text column:
+
+24px
+
+This keeps the orb present but not dominant.
+
+⸻
+
+Card Hierarchy
+
+Not all cards should feel equal.
+
+The hierarchy should be:
+
+1️⃣ Today
+2️⃣ Insight
+3️⃣ Plan
+4️⃣ Health
+5️⃣ Momentum
+6️⃣ Prompt
+7️⃣ Journal
+
+The first three cards should feel most important visually.
+
+⸻
+
+Card Heights
+
+Approximate heights:
+
+Today Card
+~120–140px
+
+Insight Card
+~100–120px
+
+Plan Card
+~100–120px
+
+Health Card
+~90–110px
+
+Momentum Card
+~90–110px
+
+Prompt Card
+~90px
+
+Journal Card
+~100px
+
+Cards should not be tall.
+
+They should feel quick to scan.
+
+⸻
+
+Typography Hierarchy
+
+Title
+16–18px
+Semi-bold
+
+Primary line
+14–16px
+
+Secondary line
+12–14px
+Lower opacity
+
+Example:
+
+Title
+Today
+
+Primary
+9:00 AM — Work
+
+Secondary
+Next: 20-minute workout
+
+⸻
+
+Color Use
+
+Cards should be mostly neutral.
+
+Accent color should appear only in:
+
+• tags
+• progress indicators
+• the DW orb
+
+This keeps the interface calm.
+
+⸻
+
+Example Scroll Order
+
+User opens app.
+
+They see:
+
+Top Bar
+
+↓
+
+Today Card
+(what’s happening now)
+
+↓
+
+Insight Snapshot
+(something meaningful about them)
+
+↓
+
+Plan in Motion
+(current life strategy)
+
+↓
+
+Health Snapshot
+(quick body check)
+
+↓
+
+Momentum Check
+(progress signal)
+
+↓
+
+DW Prompt
+(question from DW)
+
+↓
+
+Journal Story
+(reflection preview)
+
+⸻
+
+Scroll Feel
+
+The screen should feel like:
+
+• breathing space
+• calm pacing
+• one idea per card
+• nothing cramped
+
+The user should be able to scan the whole screen in 3 seconds.
+
+⸻
+
+Interaction Pattern
+
+Tap card
+→ open full feature
+
+Tap DW Orb
+→ open DW chat with context
+
+Example contexts:
+
+Today
+Insight
+Plan
+Health
+Momentum
+Prompt
+Journal
+
+DW then starts the conversation based on that card.
+
+⸻
+
+Page Background
+
+Background should not be flat white.
+
+Better:
+
+Very soft gradient or dark cosmic tone depending on theme.
+
+Cards should float slightly above background.
+
+This matches your futuristic / dimensional theme.
+
+⸻
+
+Layout Philosophy
+
+The Command Center should feel like:
+
+• a mission control panel
+• calm but intelligent
+• strategic guidance
+• not a dashboard full of widgets
+
+It should feel like:
+
+DW is quietly organizing your life.
+
+⸻
+
+One Important Implementation Tip
+
+Make one reusable card layout component.
+
+Example:
+
+CommandCenterCard.tsx
+
+Props:
+
+title
+content
+icon(optional)
+dwContext
+onOpen
+
+Then each card becomes a variation of the same component, which keeps the UI consistent.
+
+⸻
+
+If you want, the next thing I can show you is something that will make your app feel extremely polished visually:
+
+The DW visual design language (spacing grid, glow rules, gradients, and animation rhythm) so the whole app looks like one unified system instead of random screens.
