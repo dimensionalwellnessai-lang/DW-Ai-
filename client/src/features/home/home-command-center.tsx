@@ -1,25 +1,25 @@
 /**
  * HomeCommandCenter – the DW Home screen.
  *
- * A calm, skimmable command center showing real data across 5–6 cards.
- * Each card shows real data when available, otherwise a logical empty state
- * with a contextual DW chat CTA.
+ * Minimal "command center" layout:
+ *  1) Header (PageHeader with greeting + user name)
+ *  2) Today Card — always expanded anchor
+ *  3) Module Icon Dock — Insight / Plan / Health / Momentum / Follow-up icons
+ *     with micro-metric badges. Tap → opens HomeFocusSheet.
+ *  4) HomeFocusSheet — bottom sheet with snap states (collapsed / half / full)
+ *     containing a swipeable carousel of module views.
  *
  * Route: /command-center
  */
 
+import { useState, useCallback } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeSummary } from "./useHomeSummary";
 import { TodayCard } from "./components/TodayCard";
-import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
-import { PlanInMotionCard } from "./components/PlanInMotionCard";
-import { HealthSnapshotCard } from "./components/HealthSnapshotCard";
-import { MomentumCard } from "./components/MomentumCard";
-import { FollowUpCard } from "./components/FollowUpCard";
-import { DWJournalCard } from "./components/DWJournalCard";
-import { DailyCheckinCard } from "./components/DailyCheckinCard";
-import { isFeatureEnabled } from "@/config/featureFlags";
+import { HomeModuleDock, type ModuleId } from "./HomeModuleDock";
+import { HomeFocusSheet } from "./HomeFocusSheet";
+import { MOCK_HOME_DATA } from "./homeData";
 
 function CardSkeleton() {
   return (
@@ -35,8 +35,47 @@ function CardSkeleton() {
 
 export default function HomeCommandCenter() {
   const summary = useHomeSummary();
-  const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
-  const dailyCheckinEnabled = isFeatureEnabled("DAILY_CHECKIN");
+
+  // Which module dock icon is currently active / sheet open for
+  const [activeModule, setActiveModule] = useState<ModuleId | null>(null);
+
+  // Greeting line
+  const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
+
+  const handleDockSelect = useCallback((id: ModuleId) => {
+    // Tapping the same icon again toggles closed
+    setActiveModule((prev) => (prev === id ? null : id));
+  }, []);
+
+  const handleModuleChange = useCallback((id: ModuleId) => {
+    setActiveModule(id);
+  }, []);
+
+  const handleSheetClose = useCallback(() => {
+    setActiveModule(null);
+  }, []);
+
+  // Compute micro-metric badges from real data (fall back to mock)
+  const mock = MOCK_HOME_DATA;
+  const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
+
+  const badges: Partial<Record<ModuleId, string>> = {
+    insight: summary.latestInsight
+      ? (summary.latestInsight.category.slice(0, 4) || "•")
+      : mock.insight.badge,
+    plan: summary.activeGoals[0]?.progress != null
+      ? `${summary.activeGoals[0].progress}%`
+      : mock.plan.badge,
+    health: topStreak > 0
+      ? `${topStreak}🔥`.slice(0, 4)
+      : mock.health.badge,
+    momentum: topStreak > 0
+      ? `${topStreak}d`
+      : mock.momentum.badge,
+    followup: summary.activeFollowUp
+      ? "1"
+      : mock.followUp.badge,
+  };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -46,41 +85,43 @@ export default function HomeCommandCenter() {
       />
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-24">
+        <div className="max-w-lg mx-auto px-4 py-4 space-y-4 pb-32">
           {/* Greeting */}
-          <div className="pb-1">
-            {summary.userName ? (
-              <p className="text-base font-semibold text-foreground">
-                {getGreeting()}, {summary.userName.split(" ")[0]}
-              </p>
-            ) : (
-              <p className="text-base font-semibold text-foreground">{getGreeting()}</p>
-            )}
+          <div className="pb-0.5">
+            <p className="text-base font-semibold text-foreground">
+              {getGreeting()}{firstName ? `, ${firstName}` : ""}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">{summary.todayLabel}</p>
           </div>
 
           {summary.isLoading ? (
             <>
               <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
+              <Skeleton className="h-20 rounded-2xl" />
             </>
           ) : (
             <>
+              {/* Today Card — always expanded */}
               <TodayCard summary={summary} />
-              {dailyCheckinEnabled && <DailyCheckinCard />}
-              <InsightSnapshotCard summary={summary} />
-              {dwInsightJournalEnabled && (
-                <DWJournalCard summary={summary} />
-              )}
-              <PlanInMotionCard summary={summary} />
-              <HealthSnapshotCard summary={summary} />
-              <MomentumCard summary={summary} />
-              <FollowUpCard summary={summary} />
+
+              {/* Module Icon Dock */}
+              <HomeModuleDock
+                badges={badges}
+                activeModule={activeModule}
+                onSelect={handleDockSelect}
+              />
             </>
           )}
         </div>
       </div>
+
+      {/* Bottom Sheet Focus Panel */}
+      <HomeFocusSheet
+        activeModule={activeModule}
+        summary={summary}
+        onModuleChange={handleModuleChange}
+        onClose={handleSheetClose}
+      />
     </div>
   );
 }
