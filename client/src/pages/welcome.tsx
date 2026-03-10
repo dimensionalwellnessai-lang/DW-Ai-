@@ -31,10 +31,9 @@ export default function Welcome() {
   const [intent, setIntent] = useState<FirstIntent | null>(null);
 
   const handleSkipAll = () => {
-    // Record skip without completedAt to keep "completed" and "skipped" states distinct
     saveProfileSetup({ skipped: true });
-    // For routing purposes, treat skipped as having passed onboarding
     localStorage.setItem("dw_onboarding_completed", "1");
+    localStorage.setItem("dw:tour_pending_start", "true");
     setLocation("/command-center");
   };
 
@@ -45,6 +44,7 @@ export default function Welcome() {
     if (name.trim()) localStorage.setItem("dw_user_name", name.trim());
     localStorage.setItem("dw_voice_vibe", vibe);
     localStorage.setItem("dw_first_intent", intent);
+    localStorage.setItem("dw:tour_pending_start", "true");
     setLocation("/command-center");
   };
 

@@ -83,6 +83,7 @@ import {
   type MoodLog,
   type ScheduleBlock,
   type CoachingMode,
+  coachingModeEnum,
 } from "@shared/schema";
 import { z } from "zod";
 
