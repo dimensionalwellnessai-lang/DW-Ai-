@@ -165,9 +165,9 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/welcome" />;
   }
   
-  // Setup complete, on welcome -> go to /command-center
+  // Setup complete, on welcome -> go to /home
   if (setupComplete && location === "/welcome") {
-    return <Redirect to="/command-center" />;
+    return <Redirect to="/home" />;
   }
   
   return <>{children}</>;
@@ -194,7 +194,7 @@ function getLastRoute(): string | null {
 function HomeRedirect() {
   if (!isOnboardingComplete()) return <Redirect to="/welcome" />;
   const last = getLastRoute();
-  return <Redirect to={last ?? "/command-center"} />;
+  return <Redirect to={last ?? "/home"} />;
 }
 
 function Router() {
