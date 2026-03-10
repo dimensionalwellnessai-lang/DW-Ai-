@@ -1,19 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { getExerciseWithMatchType, type ExerciseAnimationData } from "@/lib/exercise-animations";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Flag, AlertCircle, ExternalLink } from "lucide-react";
+import { X, Flag, AlertCircle, ExternalLink, Dumbbell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { findClosestMotion } from "@/lib/avatar-motion-library";
 import { ReportIssueModal } from "@/components/report-issue-modal";
-
-// Lazy-load the heavy Babylon.js viewer so it doesn't block initial render
-const AvatarViewer = lazy(() =>
-  import("@/components/avatar-viewer").then((m) => ({ default: m.AvatarViewer }))
-);
-
-const AVATAR_HEIGHT = 400;
 
 interface ExerciseAnimationProps {
   exerciseId: string;
@@ -25,13 +18,8 @@ interface ExerciseAnimationProps {
 
 export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true, requestedExercise }: ExerciseAnimationProps) {
   const result = getExerciseWithMatchType(exerciseId);
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [reportOpen, setReportOpen] = useState(false);
   const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    setIsPlaying(autoPlay);
-  }, [exerciseId, autoPlay]);
 
   if (!result) {
     return null;
@@ -117,46 +105,19 @@ export function ExerciseAnimation({ exerciseId, onClose, autoPlay = true, reques
           </div>
         )}
 
-        {/* 3D Avatar Viewer */}
-        <div className="mb-4 rounded-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center" style={{ minHeight: AVATAR_HEIGHT }}>
-          <Suspense
-            fallback={
-              <div
-                className="flex items-center justify-center"
-                style={{ height: AVATAR_HEIGHT, width: "100%" }}
-                role="status"
-                aria-live="polite"
-                aria-label="Loading exercise demo"
-              >
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
-            }
-          >
-            <AvatarViewer
-              motion={motion}
-              isPlaying={isPlaying}
-              width={320}
-              height={AVATAR_HEIGHT}
-            />
-          </Suspense>
+        {/* Exercise illustration */}
+        <div className="mb-4 rounded-lg overflow-hidden bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col items-center justify-center py-10 gap-3" data-testid="exercise-illustration">
+          <Dumbbell className="h-16 w-16 text-primary/60" />
+          <p className="text-sm text-muted-foreground text-center px-4">Watch a video demonstration for proper form</p>
         </div>
 
         {/* Controls row */}
-        <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center justify-center gap-2 mb-4">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsPlaying(!isPlaying)}
-          >
-            {isPlaying ? "Pause" : "Play"} Demo
-          </Button>
-
-          {/* YouTube fallback */}
-          <Button
-            variant="ghost"
-            size="sm"
             asChild
-            className="text-muted-foreground hover:text-foreground gap-1"
+            className="gap-1"
           >
             <a
               href={youtubeUrl}

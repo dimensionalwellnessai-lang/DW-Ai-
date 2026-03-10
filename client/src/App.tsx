@@ -12,7 +12,7 @@ import { TutorialOverlay } from "@/components/tutorial-overlay";
 import { SyncTray } from "@/components/sync-tray";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingAIWidget } from "@/components/floating-ai-widget";
-import { DWAvatarOverlay } from "@/components/dw-avatar-overlay";
+
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
@@ -380,7 +380,6 @@ function AppContent() {
       <TutorialOverlay />
       <SyncTray />
       <FloatingAIWidget />
-      <DWAvatarOverlay />
       <ReminderBanner />
       <Suspense fallback={null}>
         <InteractiveTour
