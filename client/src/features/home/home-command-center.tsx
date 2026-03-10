@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DWOrb } from "@/components/dw-orb";
+import { SharedMenu } from "@/components/shared-menu";
 import { useHomeSummary } from "./useHomeSummary";
 import {
   Drawer,
@@ -28,6 +29,7 @@ import {
   MessageCircle,
   BookOpen,
   ChevronRight,
+  Menu,
   Sparkles,
   Moon,
   Compass,
@@ -88,6 +90,7 @@ export default function HomeCommandCenter() {
   const summary = useHomeSummary();
   const [, navigate] = useLocation();
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
   const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
@@ -209,22 +212,41 @@ export default function HomeCommandCenter() {
   if (summary.isLoading) {
     return (
       <div className="flex flex-col h-full cosmic-bg">
-        <header className="flex items-center justify-center px-4 shrink-0" style={{ height: 56 }}>
-          <h1 className="text-base font-semibold text-foreground font-display" data-testid="text-command-center-title">
+        <header className="flex items-center px-4 shrink-0" style={{ height: 56 }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Open menu"
+            data-testid="btn-menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center text-base font-semibold text-foreground font-display pr-7" data-testid="text-command-center-title">
             Command Center
           </h1>
         </header>
         <div className="flex-1 flex items-center justify-center">
           <Skeleton className="h-24 w-24 rounded-full" />
         </div>
+        <SharedMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       </div>
     );
   }
 
   return (
     <div className={`flex flex-col h-full cc-time-bg ${timeClass}`}>
-      <header className="flex items-center justify-center px-4 shrink-0" style={{ height: 56 }}>
-        <h1 className="text-base font-semibold text-foreground font-display" data-testid="text-command-center-title">
+      <header className="flex items-center px-4 shrink-0" style={{ height: 56 }}>
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Open menu"
+          data-testid="btn-menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <h1 className="flex-1 text-center text-base font-semibold text-foreground font-display pr-7" data-testid="text-command-center-title">
           Command Center
         </h1>
       </header>
@@ -288,6 +310,8 @@ export default function HomeCommandCenter() {
           )}
         </DrawerContent>
       </Drawer>
+
+      <SharedMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
 }

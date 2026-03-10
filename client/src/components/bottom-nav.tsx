@@ -8,7 +8,6 @@ interface NavItem {
   label: string;
 }
 
-// Map paths to tour data attributes
 const tourDataMap: Record<string, string> = {
   "/command-center": "home",
   "/calendar": "calendar",
