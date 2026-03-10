@@ -479,6 +479,7 @@ export function TalkItOutPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (!failedMessage) return;
                   setIsTyping(true);
                   setFailedMessage(null);
                   chatMutation.mutate(failedMessage);

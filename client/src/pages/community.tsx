@@ -38,6 +38,7 @@ import {
   type CommunityProfile,
   type CommunityFocus,
   type AvailabilityLevel,
+  type CommunityOpportunity,
 } from "@/lib/guest-storage";
 
 const FOCUS_OPTIONS: { id: CommunityFocus; label: string; description: string }[] = [

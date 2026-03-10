@@ -27,13 +27,13 @@ describe("FEATURE_FLAGS shape", () => {
       "NEW_ONBOARDING",
       "ALL_FEATURES_VIEW",
       "AI_PERSONALIZATION",
-      "LIFE_BLUEPRINT",
       "HOME_CONSOLIDATION",
       "APP_TOUR",
       "INTERACTION_ENGINE",
       "CONVERSATION_INSIGHTS",
       "DW_INSIGHT_JOURNAL",
       "ELEVATION_ENGINE",
+      "ELEVATION_PLAN",
       "DAILY_CHECKIN",
       "DW_LEARNS",
     ];
@@ -53,8 +53,8 @@ describe("isFeatureEnabled", () => {
     expect(isFeatureEnabled("DW_LEARNS")).toBe(true);
   });
 
-  it("returns false for LIFE_BLUEPRINT which is off by default", () => {
-    expect(isFeatureEnabled("LIFE_BLUEPRINT")).toBe(false);
+  it("returns false for ELEVATION_PLAN which is off by default", () => {
+    expect(isFeatureEnabled("ELEVATION_PLAN")).toBe(false);
   });
 
   it("returns the same value as direct flag lookup", () => {
@@ -77,9 +77,9 @@ describe("getEnabledFeatures", () => {
     expect(enabled).toContain("DW_LEARNS");
   });
 
-  it("excludes LIFE_BLUEPRINT which is off by default", () => {
+  it("excludes ELEVATION_PLAN which is off by default", () => {
     const enabled = getEnabledFeatures();
-    expect(enabled).not.toContain("LIFE_BLUEPRINT");
+    expect(enabled).not.toContain("ELEVATION_PLAN");
   });
 
   it("every returned key is actually enabled in FEATURE_FLAGS", () => {
@@ -97,7 +97,7 @@ describe("areAllFeaturesEnabled", () => {
   });
 
   it("returns false if any flag is off", () => {
-    expect(areAllFeaturesEnabled("NEW_NAVIGATION", "LIFE_BLUEPRINT")).toBe(false);
+    expect(areAllFeaturesEnabled("NEW_NAVIGATION", "ELEVATION_PLAN")).toBe(false);
   });
 
   it("returns true for a single enabled flag", () => {
@@ -105,6 +105,6 @@ describe("areAllFeaturesEnabled", () => {
   });
 
   it("returns false for a single disabled flag", () => {
-    expect(areAllFeaturesEnabled("LIFE_BLUEPRINT")).toBe(false);
+    expect(areAllFeaturesEnabled("ELEVATION_PLAN")).toBe(false);
   });
 });

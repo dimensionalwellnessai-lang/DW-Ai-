@@ -9,14 +9,20 @@
  */
 
 import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import {
   saveGuestDwInsight,
   saveGuestDwJournalEntry,
   saveGuestDwFollowup,
+  getGuestDwJournalEntries,
+  type GuestDwJournalEntry,
 } from "@/lib/dw-intelligence-storage";
+
+// Exported type — mirrors GuestDwJournalEntry so journal.tsx can use it
+// for both guest (localStorage) and authenticated (API) entries.
+export type DwJournalRecord = GuestDwJournalEntry;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -39,6 +45,25 @@ export function useDwIntelligence() {
   const isLoggedIn = Boolean(user);
   const queryClient = useQueryClient();
   const enabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
+
+  // Read AI-generated journal entries:
+  // - Auth users: fetch from API (entries persisted to DB)
+  // - Guest users: read from localStorage
+  const { data: authJournalEntries, isLoading: authLoading } = useQuery<DwJournalRecord[]>({
+    queryKey: ["/api/dw/journalEntries"],
+    enabled: enabled && isLoggedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const guestEntries: DwJournalRecord[] = !isLoggedIn && enabled
+    ? getGuestDwJournalEntries()
+    : [];
+
+  const allJournalEntries: DwJournalRecord[] = isLoggedIn
+    ? (authJournalEntries ?? [])
+    : guestEntries;
+
+  const isLoading = isLoggedIn && authLoading;
 
   const processConversation = useCallback(
     async ({ messages, conversationId }: ProcessConversationOptions): Promise<void> => {
@@ -134,5 +159,5 @@ export function useDwIntelligence() {
     [enabled, isLoggedIn, queryClient]
   );
 
-  return { processConversation, enabled };
+  return { processConversation, enabled, allJournalEntries, isLoading };
 }

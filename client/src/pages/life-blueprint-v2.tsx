@@ -224,6 +224,7 @@ export default function LifeBlueprintV2() {
   const submitAssessment = () => {
     if (!assessmentDimension) return;
     
+    const questions = ASSESSMENT_QUESTIONS[assessmentDimension] || [];
     const scores = Object.values(assessmentAnswers);
     const expectedQuestions = questions.length;
     
