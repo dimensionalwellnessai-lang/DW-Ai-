@@ -60,17 +60,19 @@ export default function HomeCommandCenter() {
   const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
 
   const badges: Partial<Record<ModuleId, string>> = {
+    // Use category tag (up to 4 chars) as the insight badge; fall back to "•" if empty
     insight: summary.latestInsight
-      ? (summary.latestInsight.category.slice(0, 4) || "•")
+      ? (summary.latestInsight.category.slice(0, 4) || mock.insight.badge)
       : mock.insight.badge,
     plan: summary.activeGoals[0]?.progress != null
       ? `${summary.activeGoals[0].progress}%`
       : mock.plan.badge,
+    // Avoid slicing an emoji mid-character for large streaks; cap at 2 digits + emoji
     health: topStreak > 0
-      ? `${topStreak}🔥`.slice(0, 4)
+      ? (topStreak > 99 ? "99🔥" : `${topStreak}🔥`)
       : mock.health.badge,
     momentum: topStreak > 0
-      ? `${topStreak}d`
+      ? `${Math.min(topStreak, 99)}d`
       : mock.momentum.badge,
     followup: summary.activeFollowUp
       ? "1"

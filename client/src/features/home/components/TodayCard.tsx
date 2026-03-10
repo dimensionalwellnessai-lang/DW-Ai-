@@ -64,6 +64,8 @@ export function TodayCard({ summary }: TodayCardProps) {
           <p className="text-xs text-muted-foreground mt-0.5">{displayEvent.time}</p>
         </div>
 
+        {/* Priority and workout: derived from mock data in this PR.
+            TODO: source from HomeSummary once API fields are available. */}
         <div className="rounded-lg bg-muted/30 px-3 py-1.5">
           <p className="text-xs text-foreground/70 line-clamp-1">
             <span className="font-medium">Priority:</span> {mock.priority}

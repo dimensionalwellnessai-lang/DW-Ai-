@@ -295,6 +295,8 @@ export function HomeFocusSheet({ activeModule, summary, onModuleChange, onClose 
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
+    // startIndex sets the initial slide on mount only.
+    // Dynamic updates when activeModule changes are handled by the scrollTo useEffect below.
     startIndex: activeModule ? MODULE_INDEX[activeModule] : 0,
     watchDrag: true,
     align: "start",
@@ -315,6 +317,7 @@ export function HomeFocusSheet({ activeModule, summary, onModuleChange, onClose 
     if (!emblaApi || activeModule === null) return;
     const targetIndex = MODULE_INDEX[activeModule];
     if (emblaApi.selectedScrollSnap() !== targetIndex) {
+      // Pass `false` as the second argument to skip animation (instant snap on dock tap)
       emblaApi.scrollTo(targetIndex, false);
     }
   }, [emblaApi, activeModule]);
