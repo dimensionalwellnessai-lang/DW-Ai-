@@ -1738,6 +1738,13 @@ export async function registerRoutes(
       if (query.length > 300) {
         return res.status(400).json({ error: "query must be 300 characters or fewer" });
       }
+
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[cook-session] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
+
       const validModes = ["lightweight", "full"];
       const sessionMode = validModes.includes(mode) ? mode : "full";
 
@@ -1792,6 +1799,12 @@ export async function registerRoutes(
       }
       if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[chat] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
       let userId = req.session.userId;
@@ -2026,7 +2039,16 @@ export async function registerRoutes(
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Chat error:", error);
-      res.status(500).json({ error: "Failed to get response" });
+      const errAny = error as Record<string, unknown>;
+      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
+      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+      if (httpStatus === 429) {
+        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
+      }
+      if (errMsg.includes("timeout") || errMsg.includes("timed out") || httpStatus === 504) {
+        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
+      }
+      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
     }
   });
 
@@ -2331,6 +2353,12 @@ export async function registerRoutes(
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[chat/stream] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2546,13 +2574,31 @@ export async function registerRoutes(
       res.end();
     } catch (error) {
       console.error("Streaming chat error:", error);
-      res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);
+      const errAny = error as Record<string, unknown>;
+      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
+      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+      let userMessage = "Something went wrong while getting a response. Please try again.";
+      if (httpStatus === 429) {
+        userMessage = "The AI service is currently rate limited. Please wait a moment and try again.";
+      } else if (
+        errMsg.includes("timeout") ||
+        errMsg.includes("timed out") ||
+        httpStatus === 504
+      ) {
+        userMessage = "The AI service timed out. Please try again in a moment.";
+      }
+      res.write(`data: ${JSON.stringify({ error: userMessage })}\n\n`);
       res.end();
     }
   });
 
   app.post("/api/workout/generate", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[workout] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { preferences } = req.body;
       const plan = await generateWorkoutPlan(preferences || {});
       res.json(plan);
@@ -2564,6 +2610,11 @@ export async function registerRoutes(
 
   app.post("/api/meditation/suggest", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[meditation] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { preferences } = req.body;
       const suggestions = await generateMeditationSuggestions(preferences || {});
       res.json(suggestions);
@@ -2575,6 +2626,11 @@ export async function registerRoutes(
 
   app.post("/api/learn-mode/question", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[learn-mode] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { previousAnswers, focusArea } = req.body;
       const result = await generateLearnModeQuestion(previousAnswers || [], focusArea);
       res.json(result);
