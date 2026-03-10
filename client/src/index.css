@@ -184,7 +184,7 @@ summary::marker {
   --chart-3: 262 83% 58%;
   --chart-4: 173 58% 39%;
   --chart-5: 12 76% 61%;
-  --font-sans: 'DM Sans', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, 'DM Sans', sans-serif;
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Nunito', sans-serif;
   --font-serif: 'Crimson Pro', Georgia, serif;
@@ -757,4 +757,16 @@ summary::marker {
 
 @media (prefers-reduced-motion: reduce) {
   .orbit-ring { animation: none; }
+}
+/* ─── iOS Modal Surface ───────────────────────────────────────────────── */
+
+/* Glass card surface used by iOS-styled modal overlays */
+.ios-modal-surface {
+  background-color: hsl(var(--background) / 0.95);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+}
+
+.dark .ios-modal-surface {
+  background-color: hsl(var(--background) / 0.90);
 }
