@@ -39,7 +39,6 @@ import {
   getCategoryPrompts,
   type JournalCategory 
 } from "@/lib/journal-ai";
-import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
 
