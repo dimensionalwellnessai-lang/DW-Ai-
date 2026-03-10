@@ -217,6 +217,7 @@ function Router() {
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
+      <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home" component={DWHomePage} />
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />

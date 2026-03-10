@@ -707,3 +707,54 @@ summary::marker {
   border-color: hsl(var(--primary) / 0.2);
   box-shadow: 0 4px 28px -4px rgba(0, 0, 0, 0.3);
 }
+
+/* ─── Command Center Time-of-Day Background ──────────────────────────── */
+
+.cc-time-bg {
+  background: hsl(var(--background));
+}
+
+.cc-time--dawn {
+  background:
+    linear-gradient(165deg, hsl(30 60% 15% / 0.3) 0%, hsl(20 50% 20% / 0.2) 40%, hsl(350 40% 15% / 0.1) 100%),
+    hsl(var(--background));
+}
+
+.cc-time--morning {
+  background:
+    linear-gradient(165deg, hsl(200 50% 20% / 0.2) 0%, hsl(210 40% 18% / 0.15) 40%, hsl(230 35% 15% / 0.1) 100%),
+    hsl(var(--background));
+}
+
+.cc-time--afternoon {
+  background:
+    linear-gradient(165deg, hsl(190 45% 18% / 0.15) 0%, hsl(210 40% 16% / 0.1) 40%, hsl(230 30% 14% / 0.1) 100%),
+    hsl(var(--background));
+}
+
+.cc-time--evening {
+  background:
+    linear-gradient(165deg, hsl(25 55% 18% / 0.25) 0%, hsl(350 40% 16% / 0.2) 40%, hsl(270 35% 14% / 0.15) 100%),
+    hsl(var(--background));
+}
+
+.cc-time--night {
+  background:
+    linear-gradient(165deg, hsl(240 40% 10% / 0.3) 0%, hsl(220 35% 10% / 0.2) 40%, hsl(260 30% 10% / 0.15) 100%),
+    hsl(var(--background));
+}
+
+/* ─── Orbit Ring ──────────────────────────────────────────────────────── */
+
+.orbit-ring {
+  animation: orbitRingSpin 60s linear infinite;
+}
+
+@keyframes orbitRingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-ring { animation: none; }
+}

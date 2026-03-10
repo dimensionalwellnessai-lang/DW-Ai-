@@ -5,11 +5,20 @@
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   BarChart3,
   TrendingUp,
@@ -21,8 +30,9 @@ import {
   Sparkles,
   BookOpen,
   Tag,
+  MessageCircle,
 } from "lucide-react";
-import { LIFE_DIMENSIONS, getDimensionById } from "@/lib/life-dimensions";
+import { LIFE_DIMENSIONS, getDimensionById, ASSESSMENT_QUESTIONS, type LifeDimension } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -75,6 +85,8 @@ export default function InsightsDashboard() {
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
+  const [selectedDimension, setSelectedDimension] = useState<LifeDimension | null>(null);
+  const [, navigate] = useLocation();
 
   // Fetch dimension assessments
   const { data: assessments = [] } = useQuery<DimensionAssessment[]>({
@@ -198,10 +210,18 @@ export default function InsightsDashboard() {
             const percentage = Math.round(score * 20);
 
             return (
-              <Card key={dimension.id} className="relative overflow-hidden">
+              <Card
+                key={dimension.id}
+                className="relative cursor-pointer hover-elevate active-elevate-2"
+                data-testid={`card-dimension-${dimension.id}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedDimension(dimension)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedDimension(dimension); } }}
+              >
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center text-center gap-2">
-                    <div className={`p-3 rounded-lg ${dimension.bg}`}>
+                    <div className={`p-3 rounded-md ${dimension.bg}`}>
                       <Icon className={`h-6 w-6 ${dimension.color}`} />
                     </div>
                     <p className="font-medium text-sm">{dimension.label}</p>
@@ -213,6 +233,74 @@ export default function InsightsDashboard() {
             );
           })}
         </div>
+
+        {/* Dimension Detail Dialog */}
+        <Dialog open={!!selectedDimension} onOpenChange={(open) => { if (!open) setSelectedDimension(null); }}>
+          <DialogContent className="max-w-md">
+            {selectedDimension && (() => {
+              const dimAssessment = latestAssessments[selectedDimension.id];
+              const dimScore = dimAssessment ? dimAssessment.score : 0;
+              const dimPercentage = Math.round(dimScore * 20);
+              const DimIcon = selectedDimension.icon;
+              const questions = ASSESSMENT_QUESTIONS[selectedDimension.id] || [];
+
+              return (
+                <>
+                  <DialogHeader>
+                    <div className="flex items-center gap-3">
+                      <div className={`p-3 rounded-md ${selectedDimension.bg}`}>
+                        <DimIcon className={`h-6 w-6 ${selectedDimension.color}`} />
+                      </div>
+                      <div>
+                        <DialogTitle data-testid="text-dimension-title">{selectedDimension.label}</DialogTitle>
+                        <DialogDescription>{selectedDimension.description}</DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Current Score</span>
+                        <span className="text-2xl font-bold" data-testid="text-dimension-score">{dimPercentage}%</span>
+                      </div>
+                      <Progress value={dimPercentage} className="h-3" />
+                      {dimAssessment && (
+                        <p className="text-xs text-muted-foreground">
+                          Last assessed: {format(new Date(dimAssessment.assessedAt), "MMM d, yyyy")}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Assessment Questions</p>
+                      <ul className="space-y-2">
+                        {questions.map((q, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground/50" />
+                            <span>{q}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <Button
+                      className="w-full"
+                      data-testid={`button-talk-dimension-${selectedDimension.id}`}
+                      onClick={() => {
+                        setSelectedDimension(null);
+                        navigate(`/talk?topic=${encodeURIComponent(selectedDimension.label)}`);
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Talk with DW about {selectedDimension.label}
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
 
         {/* Tabs for detailed views */}
         <Tabs defaultValue={dwInsightJournalEnabled ? "dw-insights" : "goals"} className="w-full">

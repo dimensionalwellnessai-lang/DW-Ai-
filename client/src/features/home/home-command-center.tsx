@@ -1,9 +1,8 @@
-import { useCallback } from "react";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DWOrb } from "@/components/dw-orb";
 import { useHomeSummary } from "./useHomeSummary";
-import { CommandCenterCard } from "./components/CommandCenterCard";
-import { MOCK_HOME_DATA } from "./homeData";
 import {
   CalendarDays,
   Lightbulb,
@@ -12,220 +11,39 @@ import {
   TrendingUp,
   Sparkles,
   BookOpen,
+  type LucideIcon,
 } from "lucide-react";
 
-function CardSkeleton() {
-  return (
-    <div className="cc-card space-y-3 animate-pulse">
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-8 w-8 rounded-lg" />
-        <Skeleton className="h-3 w-24 rounded" />
-      </div>
-      <Skeleton className="h-10 rounded-lg" />
-    </div>
-  );
+const AFFIRMATIONS = [
+  "You are exactly where you need to be.",
+  "Today is yours to shape, not survive.",
+  "Progress isn't always visible — but it's happening.",
+  "Your energy matters. Protect it.",
+  "Small steps still move you forward.",
+  "You don't need to have it all figured out.",
+  "Rest is productive. Stillness is growth.",
+  "You are building something meaningful.",
+  "Trust the process you're creating.",
+  "Your calm is your power.",
+];
+
+interface OrbitModule {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  bgClass: string;
+  path: string;
+  badge?: string;
 }
 
-export default function HomeCommandCenter() {
-  const summary = useHomeSummary();
-  const [, navigate] = useLocation();
-
-  const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
-  const mock = MOCK_HOME_DATA;
-
-  const fmtTime = useCallback((d: Date | null, isAllDay: boolean) => {
-    if (isAllDay || !d) return "All day";
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  }, []);
-
-  const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
-
-  return (
-    <div className="flex flex-col h-full cosmic-bg">
-      <header className="flex items-center justify-center px-4 shrink-0" style={{ height: 64 }}>
-        <h1 className="text-base font-semibold text-foreground font-display" data-testid="text-command-center-title">
-          Command Center
-        </h1>
-      </header>
-
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-lg mx-auto px-4 pb-32 space-y-3">
-          <div className="pb-1">
-            <p className="text-lg font-semibold text-foreground font-display" data-testid="text-greeting">
-              {getGreeting()}{firstName ? `, ${firstName}` : ""}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-today-label">{summary.todayLabel}</p>
-          </div>
-
-          {summary.isLoading ? (
-            <>
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </>
-          ) : (
-            <>
-              <CommandCenterCard
-                title="Today"
-                icon={CalendarDays}
-                iconColor="text-blue-500"
-                dwContext="Help me plan my day today"
-                onOpen={() => navigate("/calendar")}
-                priority
-              >
-                {summary.nextEvent ? (
-                  <>
-                    <p className="text-sm text-foreground" data-testid="text-next-event">
-                      {fmtTime(summary.nextEvent.startTime, summary.nextEvent.isAllDay)} — {summary.nextEvent.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Next: {mock.today.workoutStatus}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-foreground">{mock.today.nextEvent.time} — {mock.today.nextEvent.title}</p>
-                    <p className="text-xs text-muted-foreground">Priority: {mock.today.priority}</p>
-                  </>
-                )}
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="Insight"
-                icon={Lightbulb}
-                iconColor="text-amber-500"
-                dwContext={summary.latestInsight ? `Let's explore this insight: ${summary.latestInsight.title}` : "Share an insight about my patterns"}
-                onOpen={() => navigate("/insights")}
-                orbState={summary.latestInsight ? "suggestion" : "idle"}
-                priority
-              >
-                {summary.latestInsight ? (
-                  <>
-                    <p className="text-sm text-foreground line-clamp-2" data-testid="text-insight">{summary.latestInsight.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{summary.latestInsight.category}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-foreground">{mock.insight.text}</p>
-                    <p className="text-xs text-muted-foreground">{mock.insight.tag}</p>
-                  </>
-                )}
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="Plan"
-                icon={Target}
-                iconColor="text-violet-500"
-                dwContext={summary.activeGoals[0] ? `Let's review my plan: ${summary.activeGoals[0].title}` : "Help me create a life plan"}
-                onOpen={() => navigate("/goals")}
-                priority
-              >
-                {summary.activeGoals[0] ? (
-                  <>
-                    <p className="text-sm text-foreground line-clamp-1" data-testid="text-plan">{summary.activeGoals[0].title}</p>
-                    {summary.activeGoals[0].progress != null && (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-violet-500 transition-all duration-300"
-                            style={{ width: `${summary.activeGoals[0].progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">{summary.activeGoals[0].progress}%</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-foreground">{mock.plan.title}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-violet-500" style={{ width: `${mock.plan.progress}%` }} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{mock.plan.badge}</span>
-                    </div>
-                  </>
-                )}
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="Health"
-                icon={Heart}
-                iconColor="text-rose-500"
-                dwContext="How is my health tracking looking?"
-                onOpen={() => navigate("/body")}
-              >
-                {summary.activeHabits.length > 0 ? (
-                  <>
-                    <p className="text-sm text-foreground" data-testid="text-health">
-                      {summary.activeHabits.length} active habit{summary.activeHabits.length !== 1 ? "s" : ""}
-                    </p>
-                    {topStreak > 0 && (
-                      <p className="text-xs text-muted-foreground">{topStreak} day streak 🔥</p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-foreground">{mock.health.proteinStatus}</p>
-                    <p className="text-xs text-muted-foreground">{mock.health.caloriesRemaining} calories remaining</p>
-                  </>
-                )}
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="Momentum"
-                icon={TrendingUp}
-                iconColor="text-emerald-500"
-                dwContext="How is my momentum looking?"
-                onOpen={() => navigate("/goals")}
-              >
-                {summary.momentumData && summary.momentumData.status ? (
-                  <>
-                    <p className="text-sm text-foreground capitalize" data-testid="text-momentum">{summary.momentumData.status}</p>
-                    {summary.momentumData.suggestedFocus && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">Focus: {summary.momentumData.suggestedFocus}</p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-foreground">{mock.momentum.streakLabel}</p>
-                    {topStreak > 0 && <p className="text-xs text-muted-foreground">{topStreak} day streak</p>}
-                  </>
-                )}
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="DW Prompt"
-                icon={Sparkles}
-                iconColor="text-indigo-400"
-                dwContext={summary.activeFollowUp?.prompt ?? "What is taking the most energy from you today?"}
-                orbState="suggestion"
-              >
-                <p className="text-sm text-foreground/80 italic" data-testid="text-prompt">
-                  "{summary.activeFollowUp?.prompt ?? "What is taking the most energy from you today?"}"
-                </p>
-              </CommandCenterCard>
-
-              <CommandCenterCard
-                title="Journal"
-                icon={BookOpen}
-                iconColor="text-teal-500"
-                dwContext={summary.latestJournalEntry ? `Let's talk about my journal entry: ${summary.latestJournalEntry.title}` : "Help me start a reflection"}
-                onOpen={() => navigate("/journal")}
-              >
-                {summary.latestJournalEntry ? (
-                  <>
-                    <p className="text-sm text-foreground line-clamp-1" data-testid="text-journal">{summary.latestJournalEntry.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{summary.latestJournalEntry.story}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Start a reflection to see it here</p>
-                )}
-              </CommandCenterCard>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+function getTimeOfDayClass(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 8) return "cc-time--dawn";
+  if (hour >= 8 && hour < 12) return "cc-time--morning";
+  if (hour >= 12 && hour < 17) return "cc-time--afternoon";
+  if (hour >= 17 && hour < 20) return "cc-time--evening";
+  return "cc-time--night";
 }
 
 function getGreeting(): string {
@@ -233,4 +51,213 @@ function getGreeting(): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function getDailyAffirmation(): string {
+  const dayIndex = Math.floor(Date.now() / 86400000) % AFFIRMATIONS.length;
+  return AFFIRMATIONS[dayIndex];
+}
+
+export default function HomeCommandCenter() {
+  const summary = useHomeSummary();
+  const [, navigate] = useLocation();
+
+  const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
+  const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
+
+  const modules: OrbitModule[] = useMemo(() => [
+    {
+      id: "today",
+      label: "Today",
+      icon: CalendarDays,
+      color: "text-blue-400",
+      bgClass: "bg-blue-500/15",
+      path: "/today",
+      badge: summary.nextEvent ? "1" : undefined,
+    },
+    {
+      id: "insight",
+      label: "Insight",
+      icon: Lightbulb,
+      color: "text-amber-400",
+      bgClass: "bg-amber-500/15",
+      path: "/insights",
+      badge: summary.latestInsight ? "•" : undefined,
+    },
+    {
+      id: "plan",
+      label: "Plan",
+      icon: Target,
+      color: "text-violet-400",
+      bgClass: "bg-violet-500/15",
+      path: "/goals",
+      badge: summary.activeGoals[0]?.progress != null ? `${summary.activeGoals[0].progress}%` : undefined,
+    },
+    {
+      id: "health",
+      label: "Health",
+      icon: Heart,
+      color: "text-rose-400",
+      bgClass: "bg-rose-500/15",
+      path: "/habits",
+      badge: topStreak > 0 ? `${topStreak}🔥` : undefined,
+    },
+    {
+      id: "momentum",
+      label: "Momentum",
+      icon: TrendingUp,
+      color: "text-emerald-400",
+      bgClass: "bg-emerald-500/15",
+      path: "/goals",
+    },
+    {
+      id: "prompt",
+      label: "DW",
+      icon: Sparkles,
+      color: "text-indigo-400",
+      bgClass: "bg-indigo-500/15",
+      path: "/talk",
+    },
+    {
+      id: "journal",
+      label: "Journal",
+      icon: BookOpen,
+      color: "text-teal-400",
+      bgClass: "bg-teal-500/15",
+      path: "/journal",
+    },
+  ], [summary, topStreak]);
+
+  const timeClass = getTimeOfDayClass();
+  const affirmation = getDailyAffirmation();
+
+  if (summary.isLoading) {
+    return (
+      <div className="flex flex-col h-full cosmic-bg">
+        <header className="flex items-center justify-center px-4 shrink-0" style={{ height: 64 }}>
+          <h1 className="text-base font-semibold text-foreground font-display" data-testid="text-command-center-title">
+            Command Center
+          </h1>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <Skeleton className="h-24 w-24 rounded-full" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col h-full cc-time-bg ${timeClass}`}>
+      <header className="flex items-center justify-center px-4 shrink-0" style={{ height: 64 }}>
+        <h1 className="text-base font-semibold text-foreground font-display" data-testid="text-command-center-title">
+          Command Center
+        </h1>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center justify-start overflow-auto">
+        <div className="w-full max-w-lg px-4 pt-2">
+          <p className="text-lg font-semibold text-foreground font-display text-center" data-testid="text-greeting">
+            {getGreeting()}{firstName ? `, ${firstName}` : ""}
+          </p>
+          <p className="text-xs text-muted-foreground text-center mt-0.5" data-testid="text-today-label">
+            {summary.todayLabel}
+          </p>
+        </div>
+
+        <div className="relative flex-1 flex items-center justify-center w-full max-w-sm mx-auto" style={{ minHeight: 340 }}>
+          <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: 280, height: 280 }} />
+
+          <div className="relative z-10">
+            <DWOrb
+              size={80}
+              state="idle"
+              onTap={() => navigate("/talk")}
+              label="Talk with DW"
+            />
+          </div>
+
+          {modules.map((mod, i) => {
+            const angle = (i * 360) / modules.length - 90;
+            const radius = 140;
+            const x = Math.cos((angle * Math.PI) / 180) * radius;
+            const y = Math.sin((angle * Math.PI) / 180) * radius;
+
+            return (
+              <OrbitIcon
+                key={mod.id}
+                module={mod}
+                x={x}
+                y={y}
+                onTap={() => navigate(mod.path)}
+              />
+            );
+          })}
+        </div>
+
+        <div className="w-full max-w-sm px-6 pb-6 text-center">
+          <p className="text-sm text-foreground/70 italic font-body leading-relaxed" data-testid="text-affirmation">
+            "{affirmation}"
+          </p>
+
+          {summary.nextEvent && (
+            <button
+              type="button"
+              onClick={() => navigate("/today")}
+              className="mt-4 w-full cc-card text-left"
+              data-testid="btn-next-event"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Next up</p>
+              <p className="text-sm font-medium text-foreground line-clamp-1 mt-0.5">{summary.nextEvent.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {summary.nextEvent.isAllDay
+                  ? "All day"
+                  : summary.nextEvent.startTime?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) ?? ""}
+              </p>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrbitIcon({
+  module,
+  x,
+  y,
+  onTap,
+}: {
+  module: OrbitModule;
+  x: number;
+  y: number;
+  onTap: () => void;
+}) {
+  const Icon = module.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className="absolute flex flex-col items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-transform duration-200 active:scale-90"
+      style={{
+        transform: `translate(${x}px, ${y}px)`,
+        left: "50%",
+        top: "50%",
+        marginLeft: -28,
+        marginTop: -28,
+      }}
+      aria-label={module.label}
+      data-testid={`orbit-icon-${module.id}`}
+    >
+      <div className={`relative p-3 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
+        <Icon className={`h-5 w-5 ${module.color}`} />
+        {module.badge && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold leading-none">
+            {module.badge}
+          </span>
+        )}
+      </div>
+      <span className="text-[10px] font-medium text-foreground/70">{module.label}</span>
+    </button>
+  );
 }

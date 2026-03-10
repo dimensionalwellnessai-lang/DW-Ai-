@@ -54,10 +54,12 @@ Preferred communication style: Simple, everyday language.
 6. **DW Orb System**: Reusable `DWOrb` component (`client/src/components/dw-orb.tsx`) — cosmic/galactic sphere representing DW's presence. States: idle, suggestion, active, chat. Only DW uses the orb visual (no other UI element).
 7. **Command Center Cards**: Reusable `CommandCenterCard` component with two-zone layout (info left, DW Orb right). 7 cards: Today, Insight, Plan, Health, Momentum, DW Prompt, Journal.
 8. **Cosmic Background**: `cosmic-bg` CSS class provides subtle gradient background (navy/indigo/violet in dark mode).
+9. **Time-of-Day Gradients**: CSS classes `cc-time--dawn/morning/afternoon/evening/night` in index.css for Command Center background. Uses layered CSS `background` gradients over `hsl(var(--background))`.
+10. **Insight Dimension Cards**: Clickable cards on `/insights` page open a dialog with dimension score, assessment questions, and "Talk with DW" CTA. Keyboard accessible (role="button", tabIndex, Enter/Space handlers).
 
 ### AI Integration
 - AI chat interface as primary interaction point
-- DW Orb appears on every Command Center card — tap orb to chat with DW about that card's context
+- DW Orb centered in Command Center orbital layout — tap orb to navigate to /talk
 - Floating DW Orb in bottom-right corner on all pages (except chat/onboarding)
 - DW Orb appears in Talk It Out chat header and inline with DW messages
 - Context-aware wellness guidance
