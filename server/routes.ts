@@ -420,7 +420,7 @@ function classifyAiError(error: unknown): { status: number; message: string } {
 
   // Authentication errors — API key is invalid or rejected
   if (httpStatus === 401 || httpStatus === 403) {
-    return { status: 502, message: "The AI service rejected the request. Please check your API configuration." };
+    return { status: 502, message: "The AI service rejected the request. Please verify your API key configuration." };
   }
 
   return { status: 500, message: "Something went wrong while getting a response. Please try again." };
