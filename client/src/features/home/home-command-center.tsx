@@ -344,7 +344,7 @@ function CardPreview({
           onClick={() => onDW(module.dwTopic)}
           data-testid="btn-card-dw"
         >
-          <DWOrb size={20} state="idle" decorative />
+          <DWOrb size={20} state="idle" />
           Chat with DW
         </Button>
       </DrawerFooter>
@@ -360,7 +360,10 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
   ].filter(Boolean) as { label: string; sub?: string }[];
 
   if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">No events or priorities today. Enjoy the space.</p>;
+    items.push(
+      { label: "No events or priorities today", sub: "Enjoy the space" },
+      { label: "Start a conversation with DW", sub: "Get personalized guidance for your day" },
+    );
   }
 
   return (
@@ -386,7 +389,10 @@ function InsightPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
   ].filter(Boolean) as { title: string; body: string; cat: string }[];
 
   if (insights.length === 0) {
-    return <p className="text-sm text-muted-foreground">No insights yet. Keep talking with DW — patterns will emerge.</p>;
+    insights.push(
+      { title: "No insights yet", body: "Keep talking with DW — patterns will emerge", cat: "Getting Started" },
+      { title: "How insights work", body: "DW analyzes your conversations to surface patterns across 8 life dimensions", cat: "Info" },
+    );
   }
 
   return (
@@ -408,7 +414,24 @@ function InsightPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
 
 function PlanPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
   if (summary.activeGoals.length === 0) {
-    return <p className="text-sm text-muted-foreground">No active plan. Tap "More" to create one.</p>;
+    return (
+      <Carousel opts={{ align: "start", dragFree: true }}>
+        <CarouselContent className="-ml-2">
+          <CarouselItem className="pl-2 basis-[85%]">
+            <div className="cc-card">
+              <p className="text-sm font-medium text-foreground">No active plan</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tap "More" to create one</p>
+            </div>
+          </CarouselItem>
+          <CarouselItem className="pl-2 basis-[85%]">
+            <div className="cc-card">
+              <p className="text-sm font-medium text-foreground">Plans adapt to you</p>
+              <p className="text-xs text-muted-foreground mt-0.5">DW helps break goals into manageable steps</p>
+            </div>
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
+    );
   }
 
   return (
@@ -438,115 +461,225 @@ function PlanPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }
 function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
   const snap = summary.nutritionSnapshot;
   if (!snap) {
-    return <p className="text-sm text-muted-foreground">No meals logged today. Tap "More" to start tracking.</p>;
+    return (
+      <Carousel opts={{ align: "start", dragFree: true }}>
+        <CarouselContent className="-ml-2">
+          <CarouselItem className="pl-2 basis-[85%]">
+            <div className="cc-card">
+              <p className="text-sm font-medium text-foreground">No meals logged today</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tap "More" to start tracking</p>
+            </div>
+          </CarouselItem>
+          <CarouselItem className="pl-2 basis-[85%]">
+            <div className="cc-card">
+              <p className="text-sm font-medium text-foreground">Track calories & protein</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Stay on top of your nutrition goals</p>
+            </div>
+          </CarouselItem>
+        </CarouselContent>
+      </Carousel>
+    );
   }
 
   const calPct = Math.min(100, Math.round((snap.caloriesConsumed / snap.caloriesTarget) * 100));
   const proPct = Math.min(100, Math.round((snap.proteinConsumed / snap.proteinTarget) * 100));
+  const calRemaining = snap.caloriesTarget - snap.caloriesConsumed;
 
   return (
-    <div className="space-y-3">
-      <div className="cc-card">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-medium text-foreground">Calories</span>
-          <span className="text-xs text-muted-foreground">{snap.caloriesConsumed} / {snap.caloriesTarget}</span>
-        </div>
-        <Progress value={calPct} className="h-2" />
-        <p className="text-xs text-muted-foreground mt-1">{snap.caloriesTarget - snap.caloriesConsumed} remaining</p>
-      </div>
-      <div className="cc-card">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-sm font-medium text-foreground">Protein</span>
-          <span className="text-xs text-muted-foreground">{snap.proteinConsumed}g / {snap.proteinTarget}g</span>
-        </div>
-        <Progress value={proPct} className="h-2" />
-        {proPct < 50 && <p className="text-xs text-rose-400 mt-1">Protein low today</p>}
-      </div>
-    </div>
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-medium text-foreground">Calories</span>
+              <span className="text-xs text-muted-foreground">{snap.caloriesConsumed} / {snap.caloriesTarget}</span>
+            </div>
+            <Progress value={calPct} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">{calRemaining > 0 ? `${calRemaining} remaining` : "Target reached"}</p>
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm font-medium text-foreground">Protein</span>
+              <span className="text-xs text-muted-foreground">{snap.proteinConsumed}g / {snap.proteinTarget}g</span>
+            </div>
+            <Progress value={proPct} className="h-2" />
+            {proPct < 50 && <p className="text-xs text-rose-400 mt-1">Protein low today</p>}
+            {proPct >= 50 && <p className="text-xs text-muted-foreground mt-1">On track</p>}
+          </div>
+        </CarouselItem>
+        <CarouselItem className="pl-2 basis-[85%]">
+          <div className="cc-card">
+            <p className="text-sm font-medium text-foreground">Daily Summary</p>
+            <p className="text-xs text-muted-foreground mt-1">{calPct}% of calories, {proPct}% of protein consumed</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Swipe for details or tap "More"</p>
+          </div>
+        </CarouselItem>
+      </CarouselContent>
+    </Carousel>
   );
 }
 
 function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
   const streakHabits = summary.activeHabits.filter((h) => (h.streak ?? 0) > 0);
 
-  return (
-    <div className="space-y-2">
-      {streakHabits.length > 0 ? (
-        <Carousel opts={{ align: "start", dragFree: true }}>
-          <CarouselContent className="-ml-2">
-            {streakHabits.map((h) => (
-              <CarouselItem key={h.id} className="pl-2 basis-[85%]">
-                <div className="cc-card flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">{h.title}</span>
-                  <Badge variant="secondary">{h.streak} day streak</Badge>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
-      ) : (
-        <p className="text-sm text-muted-foreground">No active streaks yet. Build momentum one day at a time.</p>
-      )}
+  const slides: { content: JSX.Element }[] = [];
 
-      {summary.momentumData && (
+  if (summary.momentumData) {
+    slides.push({
+      content: (
         <div className="cc-card">
           <div className="flex items-center gap-2 mb-1">
             <div className={`h-2 w-2 rounded-full ${
               summary.momentumData.status === "green" ? "bg-emerald-500" :
               summary.momentumData.status === "yellow" ? "bg-amber-500" : "bg-rose-500"
             }`} />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Momentum Status</span>
           </div>
           {summary.momentumData.reasons.slice(0, 2).map((r, i) => (
             <p key={i} className="text-xs text-muted-foreground">{r}</p>
           ))}
         </div>
-      )}
-    </div>
+      ),
+    });
+  }
+
+  streakHabits.forEach((h) => {
+    slides.push({
+      content: (
+        <div className="cc-card flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">{h.title}</span>
+          <Badge variant="secondary">{h.streak} day streak</Badge>
+        </div>
+      ),
+    });
+  });
+
+  if (slides.length === 0) {
+    slides.push({
+      content: (
+        <div className="cc-card">
+          <p className="text-sm font-medium text-foreground">No active streaks yet</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Build momentum one day at a time</p>
+        </div>
+      ),
+    });
+  }
+
+  return (
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        {slides.map((slide, i) => (
+          <CarouselItem key={i} className="pl-2 basis-[85%]">
+            {slide.content}
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
   );
 }
 
 function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const slides: { content: JSX.Element }[] = [];
+
   if (summary.activeFollowUp) {
-    return (
-      <div className="cc-card">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">DW wants to know</p>
-        <p className="text-sm font-medium text-foreground">{summary.activeFollowUp.prompt}</p>
-      </div>
-    );
+    slides.push({
+      content: (
+        <div className="cc-card">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">DW wants to know</p>
+          <p className="text-sm font-medium text-foreground">{summary.activeFollowUp.prompt}</p>
+        </div>
+      ),
+    });
   }
 
   if (summary.lastConversationTopic) {
-    return (
-      <div className="cc-card">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Last conversation</p>
-        <p className="text-sm font-medium text-foreground">{summary.lastConversationTopic}</p>
-        <p className="text-xs text-muted-foreground mt-1">Tap "Chat with DW" to continue</p>
-      </div>
-    );
+    slides.push({
+      content: (
+        <div className="cc-card">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Last conversation</p>
+          <p className="text-sm font-medium text-foreground">{summary.lastConversationTopic}</p>
+          <p className="text-xs text-muted-foreground mt-1">Tap "Chat with DW" to continue</p>
+        </div>
+      ),
+    });
   }
 
-  return <p className="text-sm text-muted-foreground">No recent conversations. Start talking with DW to get personalized follow-ups.</p>;
+  if (slides.length === 0) {
+    slides.push({
+      content: (
+        <div className="cc-card">
+          <p className="text-sm font-medium text-foreground">No follow-ups yet</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Start talking with DW to get personalized follow-ups</p>
+        </div>
+      ),
+    });
+  }
+
+  slides.push({
+    content: (
+      <div className="cc-card">
+        <p className="text-sm font-medium text-foreground">Stay connected</p>
+        <p className="text-xs text-muted-foreground mt-0.5">DW checks in based on your conversations and energy</p>
+      </div>
+    ),
+  });
+
+  return (
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        {slides.map((slide, i) => (
+          <CarouselItem key={i} className="pl-2 basis-[85%]">
+            {slide.content}
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
+  );
 }
 
 function JournalPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
-  if (!summary.latestJournalEntry) {
-    return <p className="text-sm text-muted-foreground">No journal entries yet. DW will generate entries from your conversations.</p>;
+  const slides: { content: JSX.Element }[] = [];
+
+  if (summary.latestJournalEntry) {
+    const entry = summary.latestJournalEntry;
+    slides.push({
+      content: (
+        <div className="cc-card">
+          <p className="text-sm font-semibold text-foreground">{entry.title}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{entry.story}</p>
+          {entry.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {entry.tags.slice(0, 4).map((tag) => (
+                <Badge key={tag} variant="outline" className="text-[9px]">{tag}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      ),
+    });
   }
 
-  const entry = summary.latestJournalEntry;
+  slides.push({
+    content: (
+      <div className="cc-card">
+        <p className="text-sm font-medium text-foreground">{summary.latestJournalEntry ? "Your journal grows with you" : "No journal entries yet"}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">DW creates journal entries from your conversations</p>
+      </div>
+    ),
+  });
+
   return (
-    <div className="cc-card">
-      <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-      <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{entry.story}</p>
-      {entry.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {entry.tags.slice(0, 4).map((tag) => (
-            <Badge key={tag} variant="outline" className="text-[9px]">{tag}</Badge>
-          ))}
-        </div>
-      )}
-    </div>
+    <Carousel opts={{ align: "start", dragFree: true }}>
+      <CarouselContent className="-ml-2">
+        {slides.map((slide, i) => (
+          <CarouselItem key={i} className="pl-2 basis-[85%]">
+            {slide.content}
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
   );
 }
 
