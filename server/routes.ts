@@ -2245,10 +2245,32 @@ export async function registerRoutes(
       const errAny = error as Record<string, unknown>;
       const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
       const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+      const errorCode =
+        typeof (errAny as { code?: unknown })?.code === "string"
+          ? ((errAny as { code?: unknown }).code as string)
+          : "";
+      const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
+      const causeCode =
+        cause && typeof cause.code === "string"
+          ? (cause.code as string)
+          : "";
+      const errorName =
+        typeof errAny?.name === "string"
+          ? (errAny.name as string)
+          : "";
+      const isTimeoutError =
+        errMsg.includes("timeout") ||
+        errMsg.includes("timed out") ||
+        httpStatus === 504 ||
+        errorCode === "ETIMEDOUT" ||
+        errorCode === "ESOCKETTIMEDOUT" ||
+        causeCode === "ETIMEDOUT" ||
+        causeCode === "ESOCKETTIMEDOUT" ||
+        errorName === "AbortError";
       if (httpStatus === 429) {
         return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
       }
-      if (errMsg.includes("timeout") || errMsg.includes("timed out") || httpStatus === 504) {
+      if (isTimeoutError) {
         return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
       }
       res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
