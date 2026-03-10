@@ -44,39 +44,25 @@ export interface ActiveFollowUp {
   prompt: string;
 }
 
-/**
- * Aggregated summary consumed by Home Command Center cards.
- * Fields are null/undefined when data is unavailable (empty state).
- */
+export interface NutritionSnapshot {
+  caloriesConsumed: number;
+  caloriesTarget: number;
+  proteinConsumed: number;
+  proteinTarget: number;
+}
+
 export interface HomeSummary {
-  /** Whether any data is still loading */
   isLoading: boolean;
-
-  /** Authenticated user display name (null for guests) */
   userName: string | null;
-
-  /** Next upcoming calendar event (null = none or loading) */
   nextEvent: NextCalendarEvent | null;
-
-  /** Active goals from /api/goals */
   activeGoals: ActiveGoal[];
-
-  /** Active habits from /api/habits */
   activeHabits: ActiveHabit[];
-
-  /** Most-recent DW-generated insight (legacy conversation insight cards) */
   latestInsight: LatestInsight | null;
-
-  /** Most-recent DW AI-generated journal entry (null if none or flag off) */
   latestJournalEntry: LatestJournalEntry | null;
-
-  /** First pending DW follow-up question (null if none or flag off) */
   activeFollowUp: ActiveFollowUp | null;
-
-  /** Today's date as a friendly string */
   todayLabel: string;
-
-  /** Elevation Engine: momentum status + reasons (null if flag off or not yet computed) */
+  nutritionSnapshot: NutritionSnapshot | null;
+  lastConversationTopic: string | null;
   momentumData: {
     status: MomentumStatus | null;
     reasons: string[];

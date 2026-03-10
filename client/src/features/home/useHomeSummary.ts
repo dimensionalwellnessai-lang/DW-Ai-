@@ -17,7 +17,7 @@ import { useElevationEngine } from "@/hooks/use-elevation-engine";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn, STALE_TIME } from "@/lib/queryClient";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp } from "./types";
+import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp, NutritionSnapshot } from "./types";
 import type { Habit, Goal } from "@shared/schema";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -94,7 +94,14 @@ export function useHomeSummary(): HomeSummary {
   // Elevation Engine (flag-gated, auth only)
   const elevation = useElevationEngine();
 
-  // DW Insight + Journal Intelligence System (flag-gated, auth only)
+  const { data: mealLogs = [] } = useQuery<Array<Record<string, unknown>>>({
+    queryKey: ["/api/meal-logs"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    retry: false,
+    staleTime: STALE_TIME.MEDIUM,
+  });
+
   const { data: latestDwJournal } = useQuery<Record<string, unknown> | null>({
     queryKey: ["/api/dw/latestJournal"],
     queryFn: getQueryFn({ on401: "returnNull" }),
@@ -181,6 +188,30 @@ export function useHomeSummary(): HomeSummary {
     };
   }, [dwInsightJournalEnabled, dwFollowups]);
 
+  const nutritionSnapshot: NutritionSnapshot | null = useMemo(() => {
+    if (!Array.isArray(mealLogs) || mealLogs.length === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLogs = mealLogs.filter((m) => {
+      const d = String(m.date ?? m.createdAt ?? "").slice(0, 10);
+      return d === today;
+    });
+    if (todayLogs.length === 0) return null;
+    let cal = 0;
+    let pro = 0;
+    for (const m of todayLogs) {
+      cal += Number(m.calories ?? 0);
+      pro += Number(m.protein ?? 0);
+    }
+    return { caloriesConsumed: cal, caloriesTarget: 2100, proteinConsumed: pro, proteinTarget: 150 }; // defaults until user sets targets
+  }, [mealLogs]);
+
+  const lastConversationTopic: string | null = useMemo(() => {
+    if (latestJournalEntry) return latestJournalEntry.title;
+    if (latestInsight) return latestInsight.title;
+    if (activeFollowUp) return activeFollowUp.prompt;
+    return null;
+  }, [latestJournalEntry, latestInsight, activeFollowUp]);
+
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
   return {
@@ -193,6 +224,8 @@ export function useHomeSummary(): HomeSummary {
     latestJournalEntry,
     activeFollowUp,
     todayLabel: buildTodayLabel(),
+    nutritionSnapshot,
+    lastConversationTopic,
     momentumData: elevation.enabled && isLoggedIn
       ? {
           status: elevation.status,

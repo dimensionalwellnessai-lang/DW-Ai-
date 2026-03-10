@@ -5,11 +5,11 @@ import { DWOrb } from "@/components/dw-orb";
 import { useHomeSummary } from "./useHomeSummary";
 import {
   CalendarDays,
+  Zap,
   Lightbulb,
-  Target,
-  Heart,
-  TrendingUp,
+  UtensilsCrossed,
   Sparkles,
+  MessageCircle,
   BookOpen,
   type LucideIcon,
 } from "lucide-react";
@@ -34,7 +34,9 @@ interface OrbitModule {
   color: string;
   bgClass: string;
   path: string;
+  dwTopic: string;
   badge?: string;
+  snippet?: string;
 }
 
 function getTimeOfDayClass(): string {
@@ -63,70 +65,102 @@ export default function HomeCommandCenter() {
   const [, navigate] = useLocation();
 
   const firstName = summary.userName ? summary.userName.split(" ")[0] : null;
-  const topStreak = summary.activeHabits.reduce((max, h) => Math.max(max, h.streak ?? 0), 0);
 
-  const modules: OrbitModule[] = useMemo(() => [
-    {
-      id: "today",
-      label: "Today",
-      icon: CalendarDays,
-      color: "text-blue-400",
-      bgClass: "bg-blue-500/15",
-      path: "/today",
-      badge: summary.nextEvent ? "1" : undefined,
-    },
-    {
-      id: "insight",
-      label: "Insight",
-      icon: Lightbulb,
-      color: "text-amber-400",
-      bgClass: "bg-amber-500/15",
-      path: "/insights",
-      badge: summary.latestInsight ? "•" : undefined,
-    },
-    {
-      id: "plan",
-      label: "Plan",
-      icon: Target,
-      color: "text-violet-400",
-      bgClass: "bg-violet-500/15",
-      path: "/goals",
-      badge: summary.activeGoals[0]?.progress != null ? `${summary.activeGoals[0].progress}%` : undefined,
-    },
-    {
-      id: "health",
-      label: "Health",
-      icon: Heart,
-      color: "text-rose-400",
-      bgClass: "bg-rose-500/15",
-      path: "/habits",
-      badge: topStreak > 0 ? `${topStreak}🔥` : undefined,
-    },
-    {
-      id: "momentum",
-      label: "Momentum",
-      icon: TrendingUp,
-      color: "text-emerald-400",
-      bgClass: "bg-emerald-500/15",
-      path: "/goals",
-    },
-    {
-      id: "prompt",
-      label: "DW",
-      icon: Sparkles,
-      color: "text-indigo-400",
-      bgClass: "bg-indigo-500/15",
-      path: "/talk",
-    },
-    {
-      id: "journal",
-      label: "Journal",
-      icon: BookOpen,
-      color: "text-teal-400",
-      bgClass: "bg-teal-500/15",
-      path: "/journal",
-    },
-  ], [summary, topStreak]);
+  const modules: OrbitModule[] = useMemo(() => {
+    const calRemaining = summary.nutritionSnapshot
+      ? summary.nutritionSnapshot.caloriesTarget - summary.nutritionSnapshot.caloriesConsumed
+      : null;
+
+    const momentumSnippet = summary.momentumData?.suggestedFocus
+      ?? (summary.momentumData?.reasons?.[0] || null);
+
+    return [
+      {
+        id: "today",
+        label: "Today",
+        icon: CalendarDays,
+        color: "text-blue-400",
+        bgClass: "bg-blue-500/15",
+        path: "/today",
+        dwTopic: "Talk about today",
+        badge: summary.nextEvent ? "1" : undefined,
+        snippet: summary.nextEvent
+          ? summary.nextEvent.title
+          : "No events",
+      },
+      {
+        id: "energy",
+        label: "Energy",
+        icon: Zap,
+        color: "text-amber-400",
+        bgClass: "bg-amber-500/15",
+        path: "/insights",
+        dwTopic: "Why is my energy like this?",
+        snippet: momentumSnippet
+          ? momentumSnippet.length > 40 ? momentumSnippet.slice(0, 37) + "…" : momentumSnippet
+          : "Check in",
+      },
+      {
+        id: "insight",
+        label: "Insight",
+        icon: Lightbulb,
+        color: "text-violet-400",
+        bgClass: "bg-violet-500/15",
+        path: "/insights",
+        dwTopic: "Break this down",
+        badge: summary.latestInsight ? "•" : undefined,
+        snippet: summary.latestInsight
+          ? summary.latestInsight.summary.length > 40
+            ? summary.latestInsight.summary.slice(0, 37) + "…"
+            : summary.latestInsight.summary
+          : "No new insights",
+      },
+      {
+        id: "nutrition",
+        label: "Nutrition",
+        icon: UtensilsCrossed,
+        color: "text-emerald-400",
+        bgClass: "bg-emerald-500/15",
+        path: "/tracking",
+        dwTopic: "Adjust my nutrition plan",
+        snippet: calRemaining != null
+          ? `${calRemaining} cal remaining`
+          : "Log a meal",
+      },
+      {
+        id: "action",
+        label: "Action",
+        icon: Sparkles,
+        color: "text-rose-400",
+        bgClass: "bg-rose-500/15",
+        path: "/journal",
+        dwTopic: "Start guided reflection",
+        snippet: summary.activeFollowUp
+          ? summary.activeFollowUp.prompt.length > 40
+            ? summary.activeFollowUp.prompt.slice(0, 37) + "…"
+            : summary.activeFollowUp.prompt
+          : summary.momentumData?.suggestedFocus
+            ? summary.momentumData.suggestedFocus.length > 40
+              ? summary.momentumData.suggestedFocus.slice(0, 37) + "…"
+              : summary.momentumData.suggestedFocus
+            : "Journal or reflect",
+      },
+      {
+        id: "continue",
+        label: "Continue",
+        icon: MessageCircle,
+        color: "text-indigo-400",
+        bgClass: "bg-indigo-500/15",
+        path: "/talk",
+        dwTopic: "Continue our conversation",
+        snippet: summary.lastConversationTopic
+          ? summary.lastConversationTopic.length > 40
+            ? summary.lastConversationTopic.slice(0, 37) + "…"
+            : summary.lastConversationTopic
+          : "Start a conversation",
+      },
+    ];
+  }, [summary]);
 
   const timeClass = getTimeOfDayClass();
   const affirmation = getDailyAffirmation();
@@ -189,7 +223,7 @@ export default function HomeCommandCenter() {
                 x={x}
                 y={y}
                 onTap={() => navigate(mod.path)}
-                onLongPress={() => navigate(`/talk?topic=${encodeURIComponent(mod.label)}`)}
+                onLongPress={() => navigate(`/talk?topic=${encodeURIComponent(mod.dwTopic)}`)}
               />
             );
           })}
@@ -269,18 +303,19 @@ function OrbitIcon({
       onPointerUp={endPress}
       onPointerLeave={endPress}
       onContextMenu={(e) => e.preventDefault()}
-      className="absolute flex flex-col items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-transform duration-200 active:scale-95"
+      className="absolute flex flex-col items-center gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-transform duration-200 active:scale-95"
       style={{
         transform: `translate(${x}px, ${y}px)`,
         left: "50%",
         top: "50%",
-        marginLeft: -28,
-        marginTop: -28,
+        marginLeft: -36,
+        marginTop: -32,
+        width: 72,
       }}
-      aria-label={`${module.label}. Long press to talk with DW.`}
+      aria-label={`${module.label}${module.snippet ? `: ${module.snippet}` : ""}. Long press to talk with DW.`}
       data-testid={`orbit-icon-${module.id}`}
     >
-      <div className={`relative p-3 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
+      <div className={`relative p-2.5 rounded-2xl ${module.bgClass} backdrop-blur-sm border border-white/5`}>
         <Icon className={`h-5 w-5 ${module.color}`} />
         {module.badge && (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold leading-none">
@@ -288,7 +323,12 @@ function OrbitIcon({
           </span>
         )}
       </div>
-      <span className="text-[10px] font-medium text-foreground/70">{module.label}</span>
+      <span className="text-[10px] font-semibold text-foreground/80 leading-tight">{module.label}</span>
+      {module.snippet && (
+        <span className="text-[8px] text-muted-foreground leading-tight text-center line-clamp-2 max-w-full px-0.5" data-testid={`snippet-${module.id}`}>
+          {module.snippet}
+        </span>
+      )}
     </button>
   );
 }

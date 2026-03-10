@@ -1,0 +1,181 @@
+1️⃣ TODAY Card
+
+Short synopsis.
+
+Example:
+
+Today
+	•	🗓 9:00AM – Work
+	•	🏋🏽 Workout scheduled
+	•	🍽 2,100 calories target
+	•	🔥 Focus: Body + Discipline
+
+Tap → opens full calendar view
+Tap DW → “Talk about today”
+
+⸻
+
+2️⃣ ENERGY / FOCUS Banner
+
+Small horizontal banner:
+
+“Your energy this week has been low after 6PM.”
+
+Tap → opens analytics
+Tap DW → “Why do you think that is?”
+
+⸻
+
+3️⃣ Insight Snapshot
+
+Instead of burying insights in a tab.
+
+You surface 1–2 highlights.
+
+Example:
+
+“You’ve been choosing distance over chaos in relationships.”
+
+Short.
+Powerful.
+Expandable.
+
+Tap → opens full Insights tab
+Tap DW → “Break this down”
+
+⸻
+
+4️⃣ Nutrition Snapshot
+
+“Calories remaining: 850”
+“Protein low today.”
+
+Tap → opens nutrition dashboard
+Tap DW → “Adjust my plan”
+
+⸻
+
+5️⃣ Suggested Action
+
+One AI-driven nudge.
+
+Example:
+
+“You haven’t journaled about yesterday’s conflict.”
+
+Tap → open journal
+Tap DW → start guided reflection
+
+⸻
+
+6️⃣ Conversation Continuity Card
+
+This is the Tolan-inspired part you liked.
+
+“Last time we talked about fear of losing yourself in intimacy.”
+
+Button:
+Continue conversation
+
+This pulls context memory.
+
+⸻
+
+✨ The Journal Generator (The Part You REALLY Liked)
+
+Now this is important.
+
+You want:
+
+When you and DW talk, it should automatically:
+	1.	Summarize the conversation
+	2.	Extract important quotes
+	3.	Detect emotional themes
+	4.	Generate a titled journal entry
+	5.	Store it in Insights
+	6.	Link it back to the related Switch
+
+Example Output:
+
+Title: Choosing Distance Without Losing Depth
+Summary: Today you reflected on loving deeply but fearing emotional enmeshment…
+Quote: “I love deeply but I won’t lose myself again.”
+Theme Tags: Relationships, Boundaries, Identity
+
+That is not a UI issue.
+
+That is a backend AI memory + summarization system.
+
+And yes — it is completely buildable.
+
+⸻
+
+🧩 What You’re Actually Designing
+
+You are not copying Tolan.
+
+You are designing:
+
+A modular AI command center that dynamically surfaces relevant micro-context from all Switch systems.
+
+This is way bigger.
+
+⸻
+
+🎯 The Architectural Difference
+
+Tolan = Personality-based life tracker.
+
+DW = Dimensional Life Operating System.
+
+Big difference.
+
+⸻
+
+💡 The Key Idea
+
+Home = Context Layer
+Menu = System Layer
+Bottom Nav = Core Domains
+DW Chat = Intelligent Interface Over Everything
+
+⸻
+
+🛠️ Technically, This Means
+
+You need:
+	•	A Home Aggregator Service
+	•	Pulls from calendar
+	•	Pulls from nutrition
+	•	Pulls from workout
+	•	Pulls from relationship insights
+	•	Pulls from recent chat summaries
+	•	A Conversation Memory Engine
+	•	Stores structured metadata from chats
+	•	Auto-generates journal entries
+	•	Assigns tags (Switch, Emotion, Theme)
+	•	Surfaces insights dynamically
+	•	A Smart Card Ranking System
+	•	Only shows 4–6 cards
+	•	Prioritized by urgency + behavioral pattern
+
+⸻
+
+🔥 What You Just Designed (In Clean Words)
+
+You want DW to feel like:
+
+A living assistant that:
+	•	Curates your day
+	•	Remembers your emotional patterns
+	•	Turns conversations into insight
+	•	Surfaces the right thing at the right time
+	•	Without overwhelming you
+
+⸻
+
+Now here’s the important question:
+
+Do you want the Home screen to be:
+
+A) Fully AI-driven (cards change daily based on data)
