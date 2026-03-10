@@ -10,17 +10,6 @@ const openai = new OpenAI({
 // Export the openai instance for direct use in routes
 export { openai };
 
-/**
- * Returns which AI integration env vars are present/missing.
- * Never includes secret values — safe to surface in API responses.
- */
-export function getAiConfigStatus(): { configured: boolean; missing: string[] } {
-  const missing: string[] = [];
-  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) missing.push("AI_INTEGRATIONS_OPENAI_BASE_URL");
-  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) missing.push("AI_INTEGRATIONS_OPENAI_API_KEY");
-  return { configured: missing.length === 0, missing };
-}
-
 interface ChatMessage {
   role: "assistant" | "user";
   content: string;

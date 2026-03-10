@@ -23,34 +23,6 @@ export async function apiRequest(
   return res;
 }
 
-/**
- * Extracts a human-readable message from an API error thrown by `apiRequest`.
- *
- * `apiRequest` throws `Error` with messages like `"503: {"error":"..."}"`.
- * This helper unwraps the JSON body's `error` field when present, or falls
- * back to the raw message text, so `onError` handlers can show something
- * meaningful instead of the generic "Connection issue" toast.
- */
-export function parseApiError(error: unknown): string {
-  if (error instanceof Error) {
-    // Message format from throwIfResNotOk: "<status>: <body>"
-    const colonIdx = error.message.indexOf(": ");
-    if (colonIdx !== -1) {
-      const body = error.message.slice(colonIdx + 2).trim();
-      try {
-        const parsed = JSON.parse(body) as Record<string, unknown>;
-        if (typeof parsed?.error === "string") return parsed.error;
-        if (typeof parsed?.message === "string") return parsed.message;
-      } catch {
-        // JSON parse failed — fall through to return the raw body text
-        if (body) return body;
-      }
-    }
-    return error.message;
-  }
-  return "An unexpected error occurred. Please try again.";
-}
-
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
