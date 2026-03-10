@@ -17,7 +17,7 @@ import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -2040,6 +2040,13 @@ export async function registerRoutes(
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        return res.status(503).json({
+          error: `AI is not configured on this server. Missing: ${aiConfig.missing.join(", ")}.`,
+        });
+      }
+
       let userId = req.session.userId;
       
       if (!userId) {
@@ -2235,7 +2242,16 @@ export async function registerRoutes(
       res.json({ ...result, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Smart chat error:", error);
-      res.status(500).json({ error: "Failed to get response" });
+      const errAny = error as Record<string, unknown>;
+      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
+      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+      if (httpStatus === 429) {
+        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
+      }
+      if (errMsg.includes("timeout") || errMsg.includes("timed out") || httpStatus === 504) {
+        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
+      }
+      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
     }
   });
 
@@ -9408,6 +9424,15 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
       console.error("POST /api/analytics/events error:", err);
       return res.status(500).json({ error: "Failed to process analytics events" });
     }
+  });
+
+  // AI health check – reports config status without exposing secret values
+  app.get("/api/health/ai", (_req, res) => {
+    const { configured, missing } = getAiConfigStatus();
+    if (configured) {
+      return res.json({ configured: true });
+    }
+    return res.status(503).json({ configured: false, missing });
   });
 
   return httpServer;

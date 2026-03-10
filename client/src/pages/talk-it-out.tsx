@@ -15,11 +15,11 @@ import { saveChatFeedback } from "@/lib/guest-storage";
 import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
 import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Heart, ClipboardCheck, X } from "lucide-react";
+import { Send, Loader2, Heart, ClipboardCheck, X, RefreshCw } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -98,6 +98,7 @@ export function TalkItOutPage() {
     return [TALK_WELCOME_MESSAGE];
   });
   const [isTyping, setIsTyping] = useState(false);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -323,12 +324,14 @@ export function TalkItOutPage() {
         }
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
+      setFailedMessage(null);
       setIsTyping(false);
     },
-    onError: () => {
+    onError: (error, variables) => {
+      setFailedMessage(variables);
       toast({
         title: "Connection issue",
-        description: "Couldn't get a response. Please try again.",
+        description: parseApiError(error),
         variant: "destructive",
       });
       setIsTyping(false);
@@ -469,6 +472,23 @@ export function TalkItOutPage() {
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <span className="text-sm font-body text-muted-foreground">Listening...</span>
               </div>
+            </article>
+          )}
+          {!isTyping && failedMessage && (
+            <article className="animate-fade-in-up">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTyping(true);
+                  setFailedMessage(null);
+                  chatMutation.mutate(failedMessage);
+                }}
+                className="flex items-center gap-2 text-sm text-destructive hover:text-destructive/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded py-1"
+                aria-label="Retry sending message"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Tap to retry</span>
+              </button>
             </article>
           )}
           <div ref={messagesEndRef} />
