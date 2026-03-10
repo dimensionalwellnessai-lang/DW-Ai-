@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COPY } from "@/copy/en";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function TrackingDashboard() {
   const [, navigate] = useLocation();

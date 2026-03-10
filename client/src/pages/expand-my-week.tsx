@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { WeeklyScheduleConfirmation, type ScheduleItem } from "@/components/weekly-schedule-confirmation";
 import { Send, Loader2, Calendar, Pencil, Check, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -216,10 +216,10 @@ export default function ExpandMyWeekPage() {
       }
       setIsTyping(false);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Connection issue",
-        description: "Couldn't get a response. Please try again.",
+        description: parseApiError(error),
         variant: "destructive",
       });
       setIsTyping(false);

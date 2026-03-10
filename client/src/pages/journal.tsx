@@ -24,6 +24,7 @@ import {
   Wind,
   Wand2,
   Tag,
+  Brain,
 } from "lucide-react";
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
@@ -39,7 +40,6 @@ import {
   getCategoryPrompts,
   type JournalCategory 
 } from "@/lib/journal-ai";
-import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
 

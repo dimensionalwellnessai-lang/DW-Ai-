@@ -10,6 +10,17 @@ const openai = new OpenAI({
 // Export the openai instance for direct use in routes
 export { openai };
 
+/**
+ * Returns which AI integration env vars are present/missing.
+ * Never includes secret values — safe to surface in API responses.
+ */
+export function getAiConfigStatus(): { configured: boolean; missing: string[] } {
+  const missing: string[] = [];
+  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) missing.push("AI_INTEGRATIONS_OPENAI_BASE_URL");
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) missing.push("AI_INTEGRATIONS_OPENAI_API_KEY");
+  return { configured: missing.length === 0, missing };
+}
+
 interface ChatMessage {
   role: "assistant" | "user";
   content: string;
@@ -190,6 +201,16 @@ TONE ADJUSTMENTS:
 - Balance warmth with clarity and order
 - Give a clear outcome or next action for each suggestion`;
   }
+}
+
+function getCosmicConsentGuidance(consent: { useAstrologyInGuidance: boolean; useNumerologyInGuidance: boolean }): string {
+  const lenses: string[] = [];
+  if (consent.useAstrologyInGuidance) lenses.push("astrology (birth chart, planetary transits, zodiac)");
+  if (consent.useNumerologyInGuidance) lenses.push("numerology (life path, expression, personal year)");
+  if (lenses.length === 0) {
+    return "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance.";
+  }
+  return `COSMIC LENSES: Enabled — user has consented to ${lenses.join(" and ")} being woven into guidance where relevant. Use these frameworks as additional lenses, but always lead with practical, grounded suggestions.`;
 }
 
 export async function generateChatResponse(
