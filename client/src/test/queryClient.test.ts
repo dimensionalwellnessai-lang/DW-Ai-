@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { queryClient, STALE_TIME } from "../lib/queryClient";
+import { queryClient, STALE_TIME, parseApiError } from "../lib/queryClient";
 
 describe("queryClient defaults", () => {
   it("has staleTime set to Infinity by default (no unnecessary refetches)", () => {
@@ -65,5 +65,49 @@ describe("STALE_TIME constants", () => {
 
   it("FOREVER >= MEDIUM (cache hierarchy is consistent)", () => {
     expect(STALE_TIME.FOREVER).toBeGreaterThanOrEqual(STALE_TIME.MEDIUM);
+  });
+});
+
+describe("parseApiError", () => {
+  it("extracts error field from JSON body", () => {
+    const err = new Error('503: {"error":"AI is not configured on this server."}');
+    expect(parseApiError(err)).toBe("AI is not configured on this server.");
+  });
+
+  it("extracts message field from JSON body when error field is absent", () => {
+    const err = new Error('400: {"message":"Message is required"}');
+    expect(parseApiError(err)).toBe("Message is required");
+  });
+
+  it("returns raw body text when JSON parse fails", () => {
+    const err = new Error("503: Service Unavailable");
+    expect(parseApiError(err)).toBe("Service Unavailable");
+  });
+
+  it("returns full error message when no colon separator is present", () => {
+    const err = new Error("Network request failed");
+    expect(parseApiError(err)).toBe("Network request failed");
+  });
+
+  it("returns fallback string for non-Error input", () => {
+    expect(parseApiError("something went wrong")).toBe(
+      "An unexpected error occurred. Please try again.",
+    );
+    expect(parseApiError(null)).toBe(
+      "An unexpected error occurred. Please try again.",
+    );
+    expect(parseApiError(undefined)).toBe(
+      "An unexpected error occurred. Please try again.",
+    );
+  });
+
+  it("prefers error field over message field when both are present", () => {
+    const err = new Error('422: {"error":"Validation failed","message":"Also valid"}');
+    expect(parseApiError(err)).toBe("Validation failed");
+  });
+
+  it("falls back to the full error.message when JSON object has neither error nor message string fields", () => {
+    const err = new Error('500: {"code":42}');
+    expect(parseApiError(err)).toBe('500: {"code":42}');
   });
 });

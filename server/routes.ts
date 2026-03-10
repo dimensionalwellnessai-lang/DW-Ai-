@@ -2042,9 +2042,8 @@ export async function registerRoutes(
 
       const aiConfig = getAiConfigStatus();
       if (!aiConfig.configured) {
-        return res.status(503).json({
-          error: `AI is not configured on this server. Missing: ${aiConfig.missing.join(", ")}.`,
-        });
+        console.error("[chat/smart] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
       let userId = req.session.userId;
@@ -9448,13 +9447,15 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     }
   });
 
-  // AI health check – reports config status without exposing secret values
+  // AI health check – reports config status without exposing infrastructure details.
+  // Missing var names are logged server-side only and never sent to callers.
   app.get("/api/health/ai", (_req, res) => {
     const { configured, missing } = getAiConfigStatus();
     if (configured) {
       return res.json({ configured: true });
     }
-    return res.status(503).json({ configured: false, missing });
+    console.warn("[health/ai] AI not configured. Missing:", missing.join(", "));
+    return res.status(503).json({ configured: false });
   });
 
   return httpServer;
