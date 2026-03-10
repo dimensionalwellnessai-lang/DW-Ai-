@@ -403,6 +403,26 @@ function classifyAiError(error: unknown): { status: number; message: string } {
     return { status: 504, message: "The AI service timed out. Please try again in a moment." };
   }
 
+  // Connection errors — the AI proxy/server is unreachable
+  const isConnectionError =
+    errorCode === "ECONNREFUSED" ||
+    errorCode === "ECONNRESET" ||
+    errorCode === "ENOTFOUND" ||
+    causeCode === "ECONNREFUSED" ||
+    causeCode === "ECONNRESET" ||
+    causeCode === "ENOTFOUND" ||
+    errMsg.includes("econnrefused") ||
+    errMsg.includes("econnreset") ||
+    errMsg.includes("fetch failed");
+  if (isConnectionError) {
+    return { status: 502, message: "Unable to reach the AI service. Please try again in a moment." };
+  }
+
+  // Authentication errors — API key is invalid or rejected
+  if (httpStatus === 401 || httpStatus === 403) {
+    return { status: 502, message: "The AI service rejected the request. Please check your API configuration." };
+  }
+
   return { status: 500, message: "Something went wrong while getting a response. Please try again." };
 }
 
