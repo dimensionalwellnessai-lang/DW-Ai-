@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImage from "@assets/generated_images/minimalist_eye_wellness_logo.png";
 import { BRAND } from "@/config/brand";
+
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+
+const ACTIVITY_EVENTS: (keyof DocumentEventMap)[] = [
+  "mousedown", "mousemove", "keydown", "scroll", "touchstart", "touchmove", "click",
+];
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -110,10 +116,34 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
 export function useSplashScreen() {
   const [showSplash, setShowSplash] = useState(true);
+  const [wasInactivityTimeout, setWasInactivityTimeout] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSplashComplete = () => {
+  const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
-  };
+  }, []);
 
-  return { showSplash, handleSplashComplete };
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setWasInactivityTimeout(true);
+      setShowSplash(true);
+    }, INACTIVITY_TIMEOUT_MS);
+  }, []);
+
+  useEffect(() => {
+    if (showSplash) return;
+
+    resetTimer();
+
+    const handler = () => resetTimer();
+    ACTIVITY_EVENTS.forEach((evt) => document.addEventListener(evt, handler, { passive: true }));
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      ACTIVITY_EVENTS.forEach((evt) => document.removeEventListener(evt, handler));
+    };
+  }, [showSplash, resetTimer]);
+
+  return { showSplash, wasInactivityTimeout, handleSplashComplete };
 }

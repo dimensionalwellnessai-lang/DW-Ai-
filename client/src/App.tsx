@@ -404,7 +404,7 @@ function AppContent() {
 }
 
 function App() {
-  const { showSplash, handleSplashComplete } = useSplashScreen();
+  const { showSplash, wasInactivityTimeout, handleSplashComplete } = useSplashScreen();
   const [termsAccepted, setTermsAccepted] = useState(hasAcceptedTerms);
 
   useEffect(() => {
@@ -412,6 +412,10 @@ function App() {
   }, []);
 
   const onSplashComplete = () => {
+    if (wasInactivityTimeout) {
+      try { localStorage.removeItem(LAST_ROUTE_KEY); } catch {}
+      window.history.replaceState(null, "", "/");
+    }
     handleSplashComplete();
   };
 
