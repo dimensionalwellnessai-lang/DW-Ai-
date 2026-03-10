@@ -760,13 +760,22 @@ summary::marker {
 }
 /* ─── iOS Modal Surface ───────────────────────────────────────────────── */
 
-/* Glass card surface used by iOS-styled modal overlays */
-.ios-modal-surface {
-  background-color: hsl(var(--background) / 0.95);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+@layer utilities {
+  /* Glass card surface used by iOS-styled modal overlays */
+  .ios-modal-surface {
+    background-color: hsl(var(--background) / 0.95);
+  }
+
+  .dark .ios-modal-surface {
+    background-color: hsl(var(--background) / 0.90);
+  }
 }
 
-.dark .ios-modal-surface {
-  background-color: hsl(var(--background) / 0.90);
+@supports (backdrop-filter: blur(20px)) {
+  @layer utilities {
+    .ios-modal-surface {
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    }
+  }
 }
