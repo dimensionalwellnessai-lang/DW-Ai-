@@ -37,6 +37,14 @@ export default function Welcome() {
     setLocation("/command-center");
   };
 
+  const INTENT_ROUTES: Record<FirstIntent, string> = {
+    stress: "/talk",
+    plan: "/talk",
+    move: "/talk",
+    eat: "/talk",
+    talk: "/talk",
+  };
+
   const handleComplete = () => {
     if (!intent) return;
     saveProfileSetup({ completedAt: Date.now() });
@@ -45,7 +53,7 @@ export default function Welcome() {
     localStorage.setItem("dw_voice_vibe", vibe);
     localStorage.setItem("dw_first_intent", intent);
     localStorage.setItem("dw:tour_pending_start", "true");
-    setLocation("/command-center");
+    setLocation(INTENT_ROUTES[intent]);
   };
 
   const canAdvance = step < 5 || (step === 5 && intent !== null);

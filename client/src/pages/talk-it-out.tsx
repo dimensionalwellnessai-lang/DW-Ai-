@@ -35,6 +35,27 @@ const TALK_WELCOME_MESSAGE: ChatMessage = {
   content: "This is a space for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.",
 };
 
+const INTENT_WELCOME_MESSAGES: Record<string, string> = {
+  stress: "I'm here. Let's slow down and look at what's weighing on you.\n\nWhat's going on?",
+  plan: "Good. Let's get clear on what needs to happen and build from there.\n\nWhat needs sorting first?",
+  move: "Ready when you are. Let's find movement that fits where you're at today.\n\nWhat does your body feel like right now?",
+  eat: "Let's work on this. Eating well doesn't have to be complicated.\n\nTell me where you're starting from.",
+  talk: "This is a space for you. No agenda, no rush.\n\nWhat's on your mind?",
+};
+
+function getIntentWelcomeMessage(): ChatMessage | null {
+  try {
+    const intent = localStorage.getItem("dw_first_intent");
+    if (!intent) return null;
+    localStorage.removeItem("dw_first_intent");
+    const content = INTENT_WELCOME_MESSAGES[intent];
+    if (!content) return null;
+    return { role: "assistant", content };
+  } catch {
+    return null;
+  }
+}
+
 function loadStoredMessages(): ChatMessage[] | null {
   try {
     const raw = localStorage.getItem(TALK_MESSAGES_KEY);
@@ -84,8 +105,6 @@ export function TalkItOutPage() {
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    // When arriving via jump-to-moment, restore prior conversation so the
-    // target message exists in the DOM for scroll/highlight.
     try {
       const params = new URLSearchParams(window.location.search);
       if (params.get("jumpToMessageIndex") !== null) {
@@ -95,6 +114,8 @@ export function TalkItOutPage() {
     } catch {
       // URL parsing unavailable – fall through to default
     }
+    const intentMsg = getIntentWelcomeMessage();
+    if (intentMsg) return [intentMsg];
     return [TALK_WELCOME_MESSAGE];
   });
   const [isTyping, setIsTyping] = useState(false);
