@@ -42,9 +42,13 @@ async function getCredentials() {
 
 export async function getResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
+  const isGmailFrom = fromEmail && fromEmail.toLowerCase().includes('@gmail.com');
+  const validFrom = isGmailFrom ? null : fromEmail;
+  const resolvedFrom = validFrom || 'DW.ai <no-reply@send.dimensionalwellnessai.com>';
+  console.log('[email] Using from address:', resolvedFrom);
   return {
     client: new Resend(apiKey),
-    fromEmail
+    fromEmail: validFrom
   };
 }
 
@@ -66,7 +70,7 @@ export async function sendFeedbackEmail(
     });
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
       to: 'rbisbigred@gmail.com',
       subject: 'Feedback',
       html: `
@@ -121,7 +125,7 @@ export async function sendMismatchReportEmail(
     const eventLabel = MISMATCH_EVENT_LABELS[report.eventType] ?? report.eventType;
 
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
       to: 'rbisbigred@gmail.com',
       subject: `[Mismatch Report] ${eventLabel}`,
       html: `
@@ -202,7 +206,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     const { data, error } = await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
       to: toEmail,
       subject: 'Reset Your DW.ai Password',
       html: `
@@ -292,7 +296,7 @@ export async function sendSupportReportEmail(
         : '';
 
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
       to: 'dimensionalwellnessai@gmail.com',
       subject: `Support Report [${report.category}]${report.eventType ? ` – ${report.eventType}` : ''}`,
       html: `
@@ -345,7 +349,7 @@ export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean
     });
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@resend.dev>',
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
       to: toEmail,
       subject: 'Your DW.ai Account Has Been Deleted',
       html: `
