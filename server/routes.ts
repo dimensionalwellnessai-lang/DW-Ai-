@@ -549,13 +549,15 @@ export async function registerRoutes(
     // Initiate Google OAuth – generate a CSRF state, save to session, then redirect
     app.get("/api/auth/google", (req, res, next) => {
       const state = crypto.randomBytes(16).toString("hex");
-      req.session.oauthState = state;
+      const stateHash = crypto.createHash("sha256").update(state + sessionSecret).digest("hex");
+      req.session.oauthState = stateHash;
       req.session.save((err) => {
         if (err) return next(err);
+        const combinedState = `${state}.${stateHash}`;
         passport.authenticate("google", {
           scope: ["profile", "email"],
           session: false,
-          state,
+          state: combinedState,
         })(req, res, next);
       });
     });
@@ -566,10 +568,20 @@ export async function registerRoutes(
       oauthCallbackLimiter,
       (req, res, next) => {
         const returnedState = typeof req.query.state === "string" ? req.query.state : undefined;
+        if (!returnedState) {
+          return res.redirect("/login?error=invalid_state");
+        }
+        const [rawState, stateHash] = returnedState.split(".");
+        if (!rawState || !stateHash) {
+          return res.redirect("/login?error=invalid_state");
+        }
+        const expectedHash = crypto.createHash("sha256").update(rawState + sessionSecret).digest("hex");
+        if (expectedHash !== stateHash) {
+          return res.redirect("/login?error=invalid_state");
+        }
         const sessionState = req.session.oauthState;
-        // Clear state immediately to prevent replay
         delete req.session.oauthState;
-        if (!returnedState || !sessionState || returnedState !== sessionState) {
+        if (sessionState && sessionState !== stateHash) {
           return res.redirect("/login?error=invalid_state");
         }
         next();
@@ -624,16 +636,18 @@ export async function registerRoutes(
     // Initiate Apple OAuth – generate CSRF state, save to session, then redirect
     app.get("/api/auth/apple", (req, res, next) => {
       const state = crypto.randomBytes(16).toString("hex");
-      req.session.oauthState = state;
+      const stateHash = crypto.createHash("sha256").update(state + sessionSecret).digest("hex");
+      req.session.oauthState = stateHash;
       req.session.save((err) => {
         if (err) return next(err);
+        const combinedState = `${state}.${stateHash}`;
         const params = new URLSearchParams({
           response_type: "code id_token",
           response_mode: "form_post",
           client_id: appleClientId!,
           redirect_uri: `${oauthRedirectBase}/api/auth/apple/callback`,
           scope: "name email",
-          state,
+          state: combinedState,
         });
         res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
       });
@@ -650,10 +664,20 @@ export async function registerRoutes(
         try {
           // Validate CSRF state before processing any credentials
           const returnedState = typeof req.body.state === "string" ? req.body.state : undefined;
+          if (!returnedState) {
+            return res.redirect("/login?error=invalid_state");
+          }
+          const [rawState, stateHash] = returnedState.split(".");
+          if (!rawState || !stateHash) {
+            return res.redirect("/login?error=invalid_state");
+          }
+          const expectedHash = crypto.createHash("sha256").update(rawState + sessionSecret).digest("hex");
+          if (expectedHash !== stateHash) {
+            return res.redirect("/login?error=invalid_state");
+          }
           const sessionState = req.session.oauthState;
-          // Clear state immediately to prevent replay
           delete req.session.oauthState;
-          if (!returnedState || !sessionState || returnedState !== sessionState) {
+          if (sessionState && sessionState !== stateHash) {
             return res.redirect("/login?error=invalid_state");
           }
 
