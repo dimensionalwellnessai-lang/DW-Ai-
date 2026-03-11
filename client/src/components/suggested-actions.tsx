@@ -17,18 +17,18 @@ const SUGGESTED_ACTIONS: Record<TimeOfDay, ActionItem[]> = {
     { id: 'routines', label: 'Morning Routine', icon: Coffee, path: '/routines' },
     { id: 'workout', label: "Today's Workout", icon: Activity, path: '/workout' },
     { id: 'meal-prep', label: 'Breakfast Plan', icon: Utensils, path: '/meal-prep' },
-    { id: 'today-hub', label: "Today's Schedule", icon: Calendar, path: '/today' },
+    { id: 'today-hub', label: "Today's Schedule", icon: Calendar, path: '/command-center' },
   ],
   afternoon: [
     { id: 'meal-prep', label: 'Lunch Plan', icon: Utensils, path: '/meal-prep' },
-    { id: 'today-hub', label: 'Midday Check-in', icon: Activity, path: '/today' },
+    { id: 'today-hub', label: 'Midday Check-in', icon: Activity, path: '/command-center' },
     { id: 'tracking', label: 'Review Progress', icon: Calendar, path: '/tracking' },
     { id: 'journal', label: 'Quick Journal', icon: BookOpen, path: '/journal' },
   ],
   evening: [
     { id: 'meal-prep', label: 'Dinner Plan', icon: Utensils, path: '/meal-prep' },
     { id: 'journal', label: 'Evening Reflection', icon: BookOpen, path: '/journal' },
-    { id: 'today-hub', label: "Review Today", icon: Calendar, path: '/today' },
+    { id: 'today-hub', label: "Review Today", icon: Calendar, path: '/command-center' },
     { id: 'routines', label: 'Wind Down Routine', icon: Sunset, path: '/routines' },
   ],
   night: [

@@ -873,7 +873,7 @@ export default function MoodTrackerPage() {
       <PageHeader 
         title="Mood & Activity Tracker" 
         showBack 
-        backPath="/today"
+        backPath="/command-center"
       />
       
       <div className="flex-1 overflow-auto">

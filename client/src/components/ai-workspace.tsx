@@ -1433,7 +1433,7 @@ export function AIWorkspace() {
         handleSendMessage("I want to talk. Just listen and help me process what's on my mind.");
         break;
       case "decide":
-        setLocation("/today");
+        setLocation("/command-center");
         break;
       case "breathing":
         setBreathingPlayerOpen(true);
@@ -1615,7 +1615,7 @@ export function AIWorkspace() {
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="mt-1 space-y-1 ml-2">
-                      <Link href="/today">
+                      <Link href="/command-center">
                         <button className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => setMenuOpen(false)} data-testid="menu-calendar-today">
                           <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                           <span className="text-sm text-foreground">Today</span>

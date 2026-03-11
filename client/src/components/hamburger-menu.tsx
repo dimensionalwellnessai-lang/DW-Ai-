@@ -19,7 +19,7 @@ interface HamburgerMenuProps {
 
 const CORE_ITEMS = [
   { id: 'home', label: 'Home', path: '/', icon: Home },
-  { id: 'today', label: 'Today', path: '/today', icon: Home },
+  { id: 'today', label: 'Today', path: '/command-center', icon: Home },
   { id: 'talk', label: 'Talk to DW', path: '/talk', icon: MessageCircle },
 ];
 

@@ -211,7 +211,7 @@ export async function showMorningBriefing(taskCount: number): Promise<void> {
       tag: 'morning-briefing',
       data: {
         notificationType: 'morning_briefing',
-        url: '/today'
+        url: '/command-center'
       },
       actions: [
         { action: 'open', title: 'View & Commit' },

@@ -17,8 +17,9 @@ import { useElevationEngine } from "@/hooks/use-elevation-engine";
 import { getCalendarEvents } from "@/lib/guest-storage";
 import { getQueryFn, STALE_TIME } from "@/lib/queryClient";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp, NutritionSnapshot } from "./types";
-import type { Habit, Goal } from "@shared/schema";
+import type { HomeSummary, NextCalendarEvent, ActiveGoal, ActiveHabit, LatestInsight, LatestJournalEntry, ActiveFollowUp, NutritionSnapshot, ScheduleBlockItem, CalendarEventItem, RoutineItem, ProactiveCardData } from "./types";
+import type { Habit, Goal, MoodLog, ScheduleBlock, Routine } from "@shared/schema";
+import { COPY } from "@/copy/en";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,30 @@ export function useHomeSummary(): HomeSummary {
     staleTime: STALE_TIME.MEDIUM,
   });
 
+  const { data: moodData } = useQuery<MoodLog | null>({
+    queryKey: ["/api/mood/today"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    retry: false,
+    staleTime: STALE_TIME.MEDIUM,
+  });
+
+  const { data: scheduleBlocks = [] } = useQuery<ScheduleBlock[]>({
+    queryKey: ["/api/schedule"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    retry: false,
+    staleTime: STALE_TIME.MEDIUM,
+  });
+
+  const { data: routines = [] } = useQuery<Routine[]>({
+    queryKey: ["/api/routines"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    retry: false,
+    staleTime: STALE_TIME.MEDIUM,
+  });
+
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const allEvents: Array<Record<string, unknown>> = useMemo(() => {
@@ -212,6 +237,126 @@ export function useHomeSummary(): HomeSummary {
     return null;
   }, [latestJournalEntry, latestInsight, activeFollowUp]);
 
+  const energyLevel = (moodData as Record<string, unknown> | null | undefined)?.energyLevel as number | null ?? null;
+  const moodLevel = (moodData as Record<string, unknown> | null | undefined)?.moodLevel as number | null ?? null;
+
+  const todayScheduleBlocks: ScheduleBlockItem[] = useMemo(() => {
+    const dayOfWeek = new Date().getDay();
+    return (scheduleBlocks as Array<Record<string, unknown>>)
+      .filter((b) => b.dayOfWeek === dayOfWeek)
+      .map((b) => ({
+        id: b.id as number | string,
+        title: String(b.title ?? ""),
+        startTime: String(b.startTime ?? ""),
+        endTime: b.endTime ? String(b.endTime) : undefined,
+        dayOfWeek: b.dayOfWeek as number,
+      }));
+  }, [scheduleBlocks]);
+
+  const todayCalendarEvents: CalendarEventItem[] = useMemo(() => {
+    const now = new Date();
+    const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return allEvents
+      .filter((e) => {
+        const st = String(e.startTime ?? "");
+        if (st.includes("T") || st.includes("-")) {
+          const d = new Date(st);
+          if (isNaN(d.getTime())) return false;
+          const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          return localStr === localTodayStr;
+        }
+        return true;
+      })
+      .map((e) => ({
+        id: e.id as number | string ?? "",
+        title: String(e.title ?? ""),
+        startTime: String(e.startTime ?? ""),
+        isAllDay: Boolean(e.isAllDay),
+      }));
+  }, [allEvents]);
+
+  const morningRoutinesList: RoutineItem[] = useMemo(() => {
+    return (routines as Array<Record<string, unknown>>)
+      .filter((r) => {
+        const tags = (r.dimensionTags as string[]) || [];
+        const name = String(r.name ?? "").toLowerCase();
+        return r.isActive !== false && (tags.includes("morning") || name.includes("morning"));
+      })
+      .map((r) => ({
+        id: r.id as number | string,
+        name: String(r.name ?? ""),
+        isActive: r.isActive as boolean,
+        dimensionTags: r.dimensionTags as string[],
+      }));
+  }, [routines]);
+
+  const eveningRoutinesList: RoutineItem[] = useMemo(() => {
+    return (routines as Array<Record<string, unknown>>)
+      .filter((r) => {
+        const tags = (r.dimensionTags as string[]) || [];
+        const name = String(r.name ?? "").toLowerCase();
+        return r.isActive !== false && (tags.includes("evening") || tags.includes("wind-down") || name.includes("wind") || name.includes("evening"));
+      })
+      .map((r) => ({
+        id: r.id as number | string,
+        name: String(r.name ?? ""),
+        isActive: r.isActive as boolean,
+        dimensionTags: r.dimensionTags as string[],
+      }));
+  }, [routines]);
+
+  const proactiveCards: ProactiveCardData[] = useMemo(() => {
+    const cards: ProactiveCardData[] = [];
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 12 && !moodData) {
+      cards.push({
+        type: "morning-briefing",
+        title: COPY.proactiveCards.morningTitle,
+        message: COPY.proactiveCards.morningMessage,
+        why: COPY.proactiveCards.morningWhy,
+        actionLabel: "Check in",
+        actionPath: "/weekly-checkin",
+        priority: "high",
+      });
+    }
+
+    if (energyLevel !== null && energyLevel <= 4) {
+      cards.push({
+        type: "energy-suggestion",
+        title: COPY.proactiveCards.energyTitle,
+        message: COPY.proactiveCards.energyMessage,
+        why: COPY.proactiveCards.energyWhy,
+        actionLabel: "See options",
+        actionPath: "/recovery",
+      });
+    }
+
+    if (hour >= 18 && hour < 22) {
+      cards.push({
+        type: "wind-down",
+        title: COPY.proactiveCards.windDownTitle,
+        message: COPY.proactiveCards.windDownMessage,
+        why: COPY.proactiveCards.windDownWhy,
+        actionLabel: "Wind down",
+        actionPath: "/routines",
+      });
+    }
+
+    if (activeGoals.length > 0 && todayScheduleBlocks.length === 0 && todayCalendarEvents.length === 0) {
+      cards.push({
+        type: "goal-reminder",
+        title: COPY.proactiveCards.goalTitle,
+        message: COPY.proactiveCards.goalMessage,
+        why: COPY.proactiveCards.goalWhy,
+        actionLabel: "Get suggestions",
+        actionPath: "/talk",
+      });
+    }
+
+    return cards;
+  }, [moodData, energyLevel, activeGoals.length, todayScheduleBlocks.length, todayCalendarEvents.length]);
+
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
   return {
@@ -235,6 +380,13 @@ export function useHomeSummary(): HomeSummary {
           checkNow: elevation.checkNow,
         }
       : null,
+    energyLevel,
+    moodLevel,
+    todayScheduleBlocks,
+    todayEvents: todayCalendarEvents,
+    proactiveCards,
+    morningRoutines: morningRoutinesList,
+    eveningRoutines: eveningRoutinesList,
   };
 }
 

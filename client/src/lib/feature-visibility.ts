@@ -51,7 +51,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "talk", name: "💬 Talk to DW", path: "/talk", visibility: "primary", description: "AI assistant", enabled: true },
   { id: "calendar", name: "📅 Life Timeline", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
   { id: "tracking", name: "📊 Tracking", path: "/tracking", visibility: "primary", description: "Track daily metrics", enabled: true },
-  { id: "daily-schedule", name: "Today", path: "/today", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
+  { id: "daily-schedule", name: "Today", path: "/command-center", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   
   // More/dormant features
   { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "more", description: "Your wellness hub", enabled: true },

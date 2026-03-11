@@ -203,7 +203,7 @@ function Router() {
       <Route path="/" component={HomeRedirect} />
       <Route path="/chat" component={AIWorkspace} />
       <Route path="/talk" component={TalkItOutPage} />
-      <Route path="/today" component={TodayHubPage} />
+      <Route path="/today"><Redirect to="/command-center" /></Route>
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />

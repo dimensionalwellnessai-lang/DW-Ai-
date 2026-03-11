@@ -51,6 +51,38 @@ export interface NutritionSnapshot {
   proteinTarget: number;
 }
 
+export interface ScheduleBlockItem {
+  id: number | string;
+  title: string;
+  startTime: string;
+  endTime?: string;
+  dayOfWeek?: number;
+}
+
+export interface CalendarEventItem {
+  id: number | string;
+  title: string;
+  startTime: string;
+  isAllDay?: boolean;
+}
+
+export interface RoutineItem {
+  id: number | string;
+  name: string;
+  isActive?: boolean;
+  dimensionTags?: string[];
+}
+
+export interface ProactiveCardData {
+  type: string;
+  title: string;
+  message: string;
+  why?: string;
+  actionLabel?: string;
+  actionPath?: string;
+  priority?: "high" | "medium" | "low";
+}
+
 export interface HomeSummary {
   isLoading: boolean;
   userName: string | null;
@@ -70,4 +102,11 @@ export interface HomeSummary {
     isLoading: boolean;
     checkNow: () => void;
   } | null;
+  energyLevel: number | null;
+  moodLevel: number | null;
+  todayScheduleBlocks: ScheduleBlockItem[];
+  todayEvents: CalendarEventItem[];
+  proactiveCards: ProactiveCardData[];
+  morningRoutines: RoutineItem[];
+  eveningRoutines: RoutineItem[];
 }

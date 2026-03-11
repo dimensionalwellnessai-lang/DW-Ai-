@@ -189,7 +189,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
   {
     id: "today-hub",
-    path: "/today",
+    path: "/command-center",
     label: "Today",
     navLabel: "Today",
     icon: "sun",
