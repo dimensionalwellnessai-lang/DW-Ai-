@@ -500,6 +500,8 @@ export async function registerRoutes(
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
+  console.log("[oauth] Google OAuth configured:", !!googleClientId && !!googleClientSecret);
+
   // Rate limiter applied only to OAuth callback endpoints (50 requests / 15 min per IP).
   // Initiation endpoints are not rate-limited; they just redirect to the provider.
   const oauthCallbackLimiter = rateLimit({
@@ -517,6 +519,13 @@ export async function registerRoutes(
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: "Too many chat requests. Please slow down and try again shortly." },
+  });
+
+  app.get("/api/auth/google/callback", (_req, res, next) => {
+    if (!googleClientId || !googleClientSecret) {
+      return res.redirect("/login?error=google_not_configured");
+    }
+    next();
   });
 
   if (googleClientId && googleClientSecret) {
