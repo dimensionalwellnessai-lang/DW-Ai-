@@ -419,16 +419,21 @@ export async function registerRoutes(
   // The base URL used for OAuth redirect URIs.  Falls back to the Replit URL
   // for local/staging use, and can be overridden via OAUTH_REDIRECT_BASE_URL
   // once a custom domain is in use.
-  const oauthRedirectBase = (
-    process.env.OAUTH_REDIRECT_BASE_URL ||
-    process.env.APP_URL ||
-    process.env.APP_BASE_URL ||
-    (process.env.REPLIT_DOMAINS
+  const oauthRedirectBase = (() => {
+    if (process.env.OAUTH_REDIRECT_BASE_URL) return process.env.OAUTH_REDIRECT_BASE_URL;
+    if (process.env.NODE_ENV === "production") {
+      return process.env.APP_URL || process.env.APP_BASE_URL || (
+        process.env.REPLIT_DOMAINS
+          ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+          : "https://dimensional-wellness-ai--dareiltrader.replit.app"
+      );
+    }
+    return process.env.REPLIT_DOMAINS
       ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-      : "https://dimensional-wellness-ai--dareiltrader.replit.app")
-  ).replace(/\/$/, "");
+      : process.env.APP_URL || process.env.APP_BASE_URL || "https://dimensional-wellness-ai--dareiltrader.replit.app";
+  })().replace(/\/$/, "");
 
-  console.log("[oauth] Redirect base URL:", oauthRedirectBase);
+  console.log("[oauth] Redirect base URL:", oauthRedirectBase, "(env:", process.env.NODE_ENV, ")");
 
   /** Find-or-create a user for an OAuth login, then set an Express session. */
   async function handleOAuthUser(
