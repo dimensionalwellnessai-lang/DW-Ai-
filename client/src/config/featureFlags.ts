@@ -29,6 +29,9 @@ export interface FeatureFlags {
    */
   MULTI_PLAN: boolean;
   SHARE_EXPORT: boolean;           // ⏸️ Share/export elevation plans + weekly summaries (PR #18)
+  DW_READING_CARD: boolean;        // ⏸️ Daily dimensional reading card on home command center
+  ONBOARDING_VALUE_PREVIEW: boolean; // ⏸️ Value preview layer before onboarding conversation
+  MILESTONE_MOMENTS: boolean;      // ⏸️ Milestone celebration cards for switch + habit progress
 }
 
 /**
@@ -308,6 +311,84 @@ function resolveMultiPlanFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the DW_READING_CARD feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_reading_card', 'true')  — persists across sessions
+ *   ?rc=1 query param                                 — one-time, per URL
+ */
+function resolveDwReadingCardFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reading_card") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("rc") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the initial value for the ONBOARDING_VALUE_PREVIEW feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_onboarding_value_preview', 'true')  — persists across sessions
+ *   ?ovp=1 query param                                            — one-time, per URL
+ */
+function resolveOnboardingValuePreviewFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_onboarding_value_preview") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("ovp") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the initial value for the MILESTONE_MOMENTS feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_milestone_moments', 'true')  — persists across sessions
+ *   ?mm=1 query param                                      — one-time, per URL
+ */
+function resolveMilestoneMomentsFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_milestone_moments") === "true") {
+      return true;
+    }
+  } catch {
+    // Blocked storage or restricted environment – ignore and fall back to query param
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("mm") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely
+  }
+
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
@@ -327,6 +408,9 @@ export const FEATURE_FLAGS: FeatureFlags = {
   WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
   MULTI_PLAN: resolveMultiPlanFlag(),
   SHARE_EXPORT: resolveShareExportFlag(),
+  DW_READING_CARD: resolveDwReadingCardFlag(),
+  ONBOARDING_VALUE_PREVIEW: resolveOnboardingValuePreviewFlag(),
+  MILESTONE_MOMENTS: resolveMilestoneMomentsFlag(),
 };
 
 /**

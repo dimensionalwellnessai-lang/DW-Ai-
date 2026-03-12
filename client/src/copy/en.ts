@@ -386,4 +386,22 @@ DW helps you see those connections, not just track tasks.`,
     schedule: "Events and blocks you've added or DW has suggested.",
     streaks: "Consistency across your habits and check-ins.",
   },
+
+  dwReadingCard: {
+    sectionLabel: "DW Reading",
+    fallbackPrompt: "Where are you at right now — honestly?",
+    orbLabel: "Talk to DW",
+  },
+
+  onboardingValuePreview: {
+    skipLabel: "Skip",
+    skipToAppLabel: "Skip to app",
+    nextLabel: "Next",
+    beginLabel: "Begin",
+  },
+
+  milestoneMoment: {
+    reflectCTA: "Reflect with DW",
+    dismissLabel: "Dismiss milestone",
+  },
 };
