@@ -206,22 +206,17 @@ export function DimensionOverviewCard({
             )}
           </div>
 
-          {/* Right: DW Orb (compact mode) or chevron */}
-          <div
-            className="flex-shrink-0 flex items-center"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDWTap();
-            }}
-          >
-            {expanded ? null : (
+          {/* Right: interactive DW Orb — compact mode only */}
+          {!expanded && (
+            <div className="flex-shrink-0 flex items-center">
               <DWOrb
                 size={32}
                 state="idle"
+                onTap={handleDWTap}
                 label={`Talk with DW about ${name}`}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { DWOrb } from "@/components/dw-orb";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COPY } from "@/copy/en";
 
 // ── Value Cards ───────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ export function OnboardingValuePreview({ onBegin, onSkip }: OnboardingValuePrevi
           className="text-muted-foreground text-xs"
           data-testid="value-preview-skip"
         >
-          Skip
+          {COPY.onboardingValuePreview.skipLabel}
         </Button>
       </div>
 
@@ -178,12 +179,12 @@ export function OnboardingValuePreview({ onBegin, onSkip }: OnboardingValuePrevi
         >
           {isLast ? (
             <>
-              Begin
+              {COPY.onboardingValuePreview.beginLabel}
               <ArrowRight className="w-4 h-4 ml-2" />
             </>
           ) : (
             <>
-              Next
+              {COPY.onboardingValuePreview.nextLabel}
               <ChevronRight className="w-4 h-4 ml-2" />
             </>
           )}
@@ -196,7 +197,7 @@ export function OnboardingValuePreview({ onBegin, onSkip }: OnboardingValuePrevi
             onClick={onSkip}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
           >
-            Skip to app
+            {COPY.onboardingValuePreview.skipToAppLabel}
           </button>
         )}
       </div>

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { DWOrb } from "@/components/dw-orb";
 import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COPY } from "@/copy/en";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -232,7 +233,7 @@ export function MilestoneMoment({
               data-testid="milestone-dw-cta"
             >
               <DWOrb size={16} state="idle" />
-              <span>Reflect with DW</span>
+              <span>{COPY.milestoneMoment.reflectCTA}</span>
             </button>
           </div>
 
@@ -242,7 +243,7 @@ export function MilestoneMoment({
             size="icon"
             className="h-6 w-6 flex-shrink-0 text-muted-foreground hover:text-foreground -mt-0.5 -mr-1"
             onClick={handleDismiss}
-            aria-label="Dismiss milestone"
+            aria-label={COPY.milestoneMoment.dismissLabel}
             data-testid="milestone-dismiss"
           >
             <X className="h-3.5 w-3.5" />

@@ -21,6 +21,7 @@ import { getSwitchStatuses, getSwitchData } from "@/lib/switch-storage";
 import { getDailyPrompt, getPromptForSwitch } from "@/lib/prompt-kit";
 import type { SwitchId, SwitchStatus } from "@/lib/switch-storage";
 import { cn } from "@/lib/utils";
+import { COPY } from "@/copy/en";
 
 // ── Switch display metadata ────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ export function DWReadingCard({ energyLevel, className }: DWReadingCardProps) {
             {/* Header row */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                DW Reading
+                {COPY.dwReadingCard.sectionLabel}
               </span>
               {focusSwitch && meta && (
                 <>
@@ -229,10 +230,10 @@ export function DWReadingCard({ energyLevel, className }: DWReadingCardProps) {
               state="suggestion"
               onTap={handleDWTap}
               context={prompt.text}
-              label="Talk with DW about this"
+              label={COPY.dwReadingCard.orbLabel}
             />
             <span className="text-[9px] text-muted-foreground mt-1.5 text-center leading-tight max-w-[44px]">
-              Talk to DW
+              {COPY.dwReadingCard.orbLabel}
             </span>
           </div>
         </div>
