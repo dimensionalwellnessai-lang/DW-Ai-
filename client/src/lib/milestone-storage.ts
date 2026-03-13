@@ -77,20 +77,22 @@ export function statusToMilestoneType(status: SwitchStatus): MilestoneType | nul
 }
 
 /**
- * Returns the list of [switchId, MilestoneType] pairs that the user has
- * earned (based on current switch statuses) but has not yet seen.
+ * Returns the list of pending milestones that the user has earned
+ * (based on current switch statuses) but has not yet seen.
+ * The `status` field is included to avoid callers needing a secondary lookup.
  */
 export function getPendingSwitchMilestones(
   switches: Array<{ switchId: SwitchId; status: SwitchStatus }>,
-): Array<{ switchId: SwitchId; milestoneType: MilestoneType }> {
-  return switches
-    .filter(({ switchId, status }) => {
-      const type = statusToMilestoneType(status);
-      if (!type) return false;
-      return !hasMilestoneSeen(switchMilestoneKey(switchId, status));
-    })
-    .map(({ switchId, status }) => ({
-      switchId,
-      milestoneType: statusToMilestoneType(status) as MilestoneType,
-    }));
+): Array<{ switchId: SwitchId; status: SwitchStatus; milestoneType: MilestoneType }> {
+  const result: Array<{ switchId: SwitchId; status: SwitchStatus; milestoneType: MilestoneType }> = [];
+
+  for (const { switchId, status } of switches) {
+    const milestoneType = statusToMilestoneType(status);
+    // statusToMilestoneType returns null for "off" — skip those
+    if (!milestoneType) continue;
+    if (hasMilestoneSeen(switchMilestoneKey(switchId, status))) continue;
+    result.push({ switchId, status, milestoneType });
+  }
+
+  return result;
 }

@@ -191,10 +191,16 @@ export default function MyProgressPage() {
     
     const lastUpdatedTs = localData?.lastUpdated || null;
     const lastTrainedAt = lastUpdatedTs ? new Date(lastUpdatedTs).toISOString() : serverData?.lastTrainedAt || null;
+
+    const VALID_STATUSES: SwitchStatus[] = ["off", "flickering", "stable", "powered"];
+    const rawStatus = localData?.status || serverData?.status || "off";
+    const status: SwitchStatus = VALID_STATUSES.includes(rawStatus as SwitchStatus)
+      ? (rawStatus as SwitchStatus)
+      : "off";
     
     return {
       switchId,
-      status: (localData?.status || serverData?.status || "off") as SwitchStatus,
+      status,
       lastTrainedAt,
       completedCount: localData?.checkIns || serverData?.completedCount21d || 0,
     };
@@ -206,10 +212,7 @@ export default function MyProgressPage() {
   );
 
   const pendingMilestones = getPendingSwitchMilestones(mergedSwitches).filter(
-    ({ switchId, milestoneType: _ }) => {
-      const key = switchMilestoneKey(switchId, mergedSwitches.find(s => s.switchId === switchId)!.status);
-      return !dismissedMilestoneKeys.has(key);
-    },
+    ({ switchId, status }) => !dismissedMilestoneKeys.has(switchMilestoneKey(switchId, status)),
   );
 
   const handleMilestoneDismiss = (switchId: SwitchId, status: SwitchStatus) => {
@@ -240,17 +243,14 @@ export default function MyProgressPage() {
             className="space-y-2"
             data-testid="progress-milestones"
           >
-            {pendingMilestones.slice(0, 2).map(({ switchId, milestoneType }) => {
-              const status = mergedSwitches.find(s => s.switchId === switchId)!.status;
-              return (
-                <MilestoneMoment
-                  key={`${switchId}-${milestoneType}`}
-                  type={milestoneType}
-                  subject={SWITCH_TITLES[switchId]}
-                  onDismiss={() => handleMilestoneDismiss(switchId, status)}
-                />
-              );
-            })}
+            {pendingMilestones.slice(0, 2).map(({ switchId, status, milestoneType }) => (
+              <MilestoneMoment
+                key={`${switchId}-${milestoneType}`}
+                type={milestoneType}
+                subject={SWITCH_TITLES[switchId]}
+                onDismiss={() => handleMilestoneDismiss(switchId, status)}
+              />
+            ))}
           </motion.div>
         )}
 

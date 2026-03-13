@@ -103,6 +103,7 @@ describe("milestone-storage: getPendingSwitchMilestones", () => {
     const pending = getPendingSwitchMilestones(switches);
     expect(pending).toHaveLength(1);
     expect(pending[0].switchId).toBe("body");
+    expect(pending[0].status).toBe("stable");
     expect(pending[0].milestoneType).toBe("switch-stable");
   });
 

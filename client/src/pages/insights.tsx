@@ -335,11 +335,12 @@ export default function InsightsDashboard() {
           {dwInsightJournalEnabled && (
             <TabsContent value="dw-insights" className="space-y-4">
               {showFirstInsightMilestone && (
-                <MilestoneMoment
-                  type="first-journal"
-                  onDismiss={handleInsightMilestoneDismiss}
-                  data-testid="insight-milestone"
-                />
+                <div data-testid="insight-milestone">
+                  <MilestoneMoment
+                    type="first-journal"
+                    onDismiss={handleInsightMilestoneDismiss}
+                  />
+                </div>
               )}
               <Card>
                 <CardHeader>
