@@ -8,6 +8,8 @@ import { BreathingPlayer } from "./breathing-player";
 import { saveCalendarEvent, saveSoftOnboardingProgress, getSoftOnboardingProgress, saveOnboardingLog } from "@/lib/guest-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Lightbulb } from "lucide-react";
+import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 export type OnboardingMood = "calm" | "heavy" | "scattered" | "pushing" | "unsure";
 
@@ -86,9 +88,12 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
   const [showResponseAction, setShowResponseAction] = useState(false);
   const [showBreathing, setShowBreathing] = useState(false);
   const [reframePerspective, setReframePerspective] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (open) {
+      // Show value preview on every fresh open when the feature flag is on
+      setShowPreview(isFeatureEnabled("ONBOARDING_VALUE_PREVIEW"));
       const saved = getSoftOnboardingProgress();
       if (saved) {
         setStep(saved.step || 1);
@@ -118,6 +123,16 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
   }, [open, step, selectedEnergies, selectedBackgrounds, selectedResponse]);
 
   if (!open) return null;
+
+  // Show value preview layer before the main soft-onboarding steps
+  if (showPreview) {
+    return (
+      <OnboardingValuePreview
+        onBegin={() => setShowPreview(false)}
+        onSkip={onSkip}
+      />
+    );
+  }
 
   const toggleEnergy = (value: OnboardingMood) => {
     setSelectedEnergies((prev) =>
