@@ -20,6 +20,25 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/", mockNavigate],
 }));
 
+// ── prompt-kit / storage mocks ────────────────────────────────────────────────
+
+const MOCK_CONTEXT_PROMPT_TEXT = "Where are you at right now — honestly?";
+
+vi.mock("@/lib/prompt-kit", () => ({
+  getDailyPrompt: vi.fn(() => ({
+    text: MOCK_CONTEXT_PROMPT_TEXT,
+    intent: "reflection",
+  })),
+}));
+
+vi.mock("@/lib/switch-storage", () => ({
+  getSwitchStatuses: vi.fn(() => ({})),
+}));
+
+vi.mock("@/lib/energy-context", () => ({
+  getCurrentEnergyContext: vi.fn(() => ({ energy: "medium" })),
+}));
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 /** Decode a navigate() URL string and return the prefill query param value. */
@@ -53,9 +72,9 @@ describe("FollowUpCard – no active follow-up (guest / default)", () => {
     expect(screen.getByText(/dw check-in/i)).toBeTruthy();
   });
 
-  it("shows generic invitation copy", () => {
+  it("shows context-aware prompt from prompt-kit", () => {
     render(<FollowUpCard summary={makeSummary()} />);
-    expect(screen.getByText(/ready when you are/i)).toBeTruthy();
+    expect(screen.getByText(MOCK_CONTEXT_PROMPT_TEXT)).toBeTruthy();
   });
 
   it("renders 'Start a conversation' CTA", () => {
@@ -63,13 +82,14 @@ describe("FollowUpCard – no active follow-up (guest / default)", () => {
     expect(screen.getByText(/start a conversation/i)).toBeTruthy();
   });
 
-  it("navigates to /talk with prefill=generic on CTA click", () => {
+  it("navigates to /talk with context-prompt prefill on CTA click (no summary data)", () => {
     render(<FollowUpCard summary={makeSummary()} />);
     fireEvent.click(screen.getByText(/start a conversation/i));
     expect(mockNavigate).toHaveBeenCalledOnce();
     const url: string = mockNavigate.mock.calls[0][0];
     expect(url).toContain("/talk");
-    expect(url).toContain("prefill=");
+    const prefill = getPrefill(url);
+    expect(prefill).toBe(MOCK_CONTEXT_PROMPT_TEXT);
   });
 
   it("uses insight-based prefill when latestInsight is set", () => {
@@ -200,8 +220,8 @@ describe("FollowUpCard – guest mode", () => {
     expect(screen.getByText(/dw check-in/i)).toBeTruthy();
   });
 
-  it("shows generic copy (no-data fallback) for guests", () => {
+  it("shows context-aware prompt copy (no-data fallback) for guests", () => {
     render(<FollowUpCard summary={makeSummary()} />);
-    expect(screen.getByText(/ready when you are/i)).toBeTruthy();
+    expect(screen.getByText(MOCK_CONTEXT_PROMPT_TEXT)).toBeTruthy();
   });
 });

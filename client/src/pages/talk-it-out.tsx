@@ -14,6 +14,9 @@ import { analyzeCrisisRisk } from "@/lib/crisis-detection";
 import { saveChatFeedback } from "@/lib/guest-storage";
 import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
 import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
+import { getDailyPrompt } from "@/lib/prompt-kit";
+import { getSwitchStatuses } from "@/lib/switch-storage";
+import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
 import { Send, Loader2, Heart, ClipboardCheck, X, RefreshCw } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
@@ -31,10 +34,30 @@ interface ChatMessage {
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
 
+const TALK_GREETING = "This is a space for you. There's no agenda here, no rush, no judgment.";
+
 const TALK_WELCOME_MESSAGE: ChatMessage = {
   role: "assistant",
-  content: "This is a space for you. There's no agenda here, no rush, no judgment.\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.",
+  content: `${TALK_GREETING}\n\nWhat's on your mind today? Or if you're not sure, we can sit with that for a moment too.`,
 };
+
+/**
+ * Builds a context-aware welcome message using the DW Prompt Kit.
+ * Falls back to the generic welcome message if context cannot be read.
+ */
+function getContextualWelcomeMessage(): ChatMessage {
+  try {
+    const statuses = getSwitchStatuses();
+    const { energy } = getCurrentEnergyContext();
+    const prompt = getDailyPrompt(statuses, energy);
+    return {
+      role: "assistant",
+      content: `${TALK_GREETING}\n\n${prompt.text}`,
+    };
+  } catch {
+    return TALK_WELCOME_MESSAGE;
+  }
+}
 
 const INTENT_WELCOME_MESSAGES: Record<string, string> = {
   stress: "I'm here. Let's slow down and look at what's weighing on you.\n\nWhat's going on?",
@@ -117,7 +140,7 @@ export function TalkItOutPage() {
     }
     const intentMsg = getIntentWelcomeMessage();
     if (intentMsg) return [intentMsg];
-    return [TALK_WELCOME_MESSAGE];
+    return [getContextualWelcomeMessage()];
   });
   const [isTyping, setIsTyping] = useState(false);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);

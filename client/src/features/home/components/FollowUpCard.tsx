@@ -1,18 +1,24 @@
 /**
  * FollowUpCard – shows the AI-generated follow-up prompt when available,
- * or falls back to a generic CTA inviting the user to check in with DW.
+ * or falls back to a context-aware prompt from the DW Prompt Kit.
  */
 
 import { useLocation } from "wouter";
 import { MessageCircle, ListChecks } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
+import { getDailyPrompt } from "@/lib/prompt-kit";
+import { getSwitchStatuses } from "@/lib/switch-storage";
+import { getCurrentEnergyContext } from "@/lib/energy-context";
 import type { HomeSummary } from "../types";
 
 interface FollowUpCardProps {
   summary: Pick<HomeSummary, "latestInsight" | "activeGoals" | "nextEvent" | "activeFollowUp">;
 }
 
-export function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): string {
+export function buildFollowUpPrefill(
+  summary: FollowUpCardProps["summary"],
+  contextPromptFallback?: string,
+): string {
   if (summary.activeFollowUp) {
     return summary.activeFollowUp.prompt;
   }
@@ -25,13 +31,23 @@ export function buildFollowUpPrefill(summary: FollowUpCardProps["summary"]): str
   if (summary.nextEvent) {
     return `I have "${summary.nextEvent.title}" coming up. Help me prepare or set intentions for it.`;
   }
-  return "I want to check in with you today. Where should I focus my energy?";
+  return contextPromptFallback ?? "I want to check in with you today. Where should I focus my energy?";
 }
 
 export function FollowUpCard({ summary }: FollowUpCardProps) {
   const [, navigate] = useLocation();
-  const prefill = buildFollowUpPrefill(summary);
   const hasAiFollowUp = Boolean(summary.activeFollowUp);
+
+  let contextPrompt: ReturnType<typeof getDailyPrompt> | null = null;
+  try {
+    const statuses = getSwitchStatuses();
+    const { energy } = getCurrentEnergyContext();
+    contextPrompt = getDailyPrompt(statuses, energy);
+  } catch {
+    // localStorage unavailable – fall through to null
+  }
+
+  const prefill = buildFollowUpPrefill(summary, contextPrompt?.text);
 
   function handleOpenChat() {
     const params = new URLSearchParams();
@@ -61,7 +77,7 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
         </p>
       ) : (
         <p className="text-sm text-foreground/80 leading-relaxed">
-          Ready when you are. No agenda, no pressure — just a space to think out loud.
+          {contextPrompt?.text ?? "Ready when you are. No agenda, no pressure — just a space to think out loud."}
         </p>
       )}
 

@@ -18,7 +18,6 @@ import {
   Power,
   Check,
   MessageCircle,
-  Sparkles,
 } from "lucide-react";
 import { 
   getSingleSwitchData, 
@@ -29,6 +28,12 @@ import {
 } from "@/lib/switch-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { MilestoneMoment, type MilestoneType } from "@/components/milestone-moment";
+import { 
+  switchMilestoneKey, 
+  statusToMilestoneType, 
+  markMilestoneSeen 
+} from "@/lib/milestone-storage";
 
 interface SwitchInfo {
   id: SwitchId;
@@ -190,6 +195,7 @@ export default function SwitchTrainingPage() {
   const switchInfo = SWITCH_INFO[switchId];
   const [switchData, setSwitchData] = useState(() => getSingleSwitchData(switchId));
   const [selectedPrompt, setSelectedPrompt] = useState<number | null>(null);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneType | null>(null);
 
   if (!switchInfo) {
     return (
@@ -209,21 +215,43 @@ export default function SwitchTrainingPage() {
   const statusConfig = STATUS_CONFIG[switchData.status];
 
   const handleStartTraining = () => {
-    startSwitchTraining(switchId);
+    const result = startSwitchTraining(switchId);
     setSwitchData(getSingleSwitchData(switchId));
-    toast({
-      title: `${switchInfo.name} training started`,
-      description: "Your switch is now flickering. Keep checking in to stabilize it.",
-    });
+    if (result.statusChanged) {
+      const milestoneType = statusToMilestoneType(result.newStatus);
+      if (milestoneType) {
+        setActiveMilestone(milestoneType);
+      }
+    } else {
+      toast({
+        title: `${switchInfo.name} training started`,
+        description: "Your switch is now flickering. Keep checking in to stabilize it.",
+      });
+    }
   };
 
   const handleCheckIn = () => {
-    recordSwitchCheckIn(switchId);
+    const result = recordSwitchCheckIn(switchId);
     setSwitchData(getSingleSwitchData(switchId));
-    toast({
-      title: "Check-in recorded",
-      description: `${switchData.checkIns + 1} check-ins completed. Keep going!`,
-    });
+    if (result.statusChanged) {
+      const milestoneType = statusToMilestoneType(result.newStatus);
+      if (milestoneType) {
+        setActiveMilestone(milestoneType);
+      }
+    } else {
+      toast({
+        title: "Check-in recorded",
+        description: `${switchData.checkIns + 1} check-ins completed. Keep going!`,
+      });
+    }
+  };
+
+  const handleMilestoneDismiss = () => {
+    if (activeMilestone) {
+      const newStatus = getSingleSwitchData(switchId).status;
+      markMilestoneSeen(switchMilestoneKey(switchId, newStatus));
+      setActiveMilestone(null);
+    }
   };
 
   const handleTalkToDW = () => {
@@ -355,6 +383,21 @@ export default function SwitchTrainingPage() {
             Talk to DW About This
           </Button>
         </div>
+
+        {activeMilestone && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            data-testid="switch-milestone-banner"
+          >
+            <MilestoneMoment
+              type={activeMilestone}
+              subject={switchInfo.name}
+              onDismiss={handleMilestoneDismiss}
+            />
+          </motion.div>
+        )}
 
         {switchData.status !== "off" && (
           <Card className="border-border bg-muted/30">
