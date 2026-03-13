@@ -90,7 +90,7 @@ import PrivacyTermsPage from "@/pages/privacy-terms";
 import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
-import DimensionOverviewPage from "@/pages/dimension-overview";
+const DimensionOverviewPage = lazy(() => import("@/pages/dimension-overview"));
 import DWHomePage from "@/pages/dw-home";
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
