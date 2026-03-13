@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { MODULES, type ModuleId } from "./HomeModuleDock";
 import type { HomeSummary } from "./types";
 import { MOCK_HOME_DATA } from "./homeData";
+import { ReadingCard, type ReadingCardData } from "./components/ReadingCard";
 
 // ── Snap heights ─────────────────────────────────────────────────────────────
 // "collapsed": only the handle bar is visible
@@ -37,49 +38,17 @@ interface ModuleCardProps {
   navigate: (path: string) => void;
 }
 
-function InsightView({ summary, navigate }: ModuleCardProps) {
-  const insight = summary.latestInsight;
-  const mockInsight = MOCK_HOME_DATA.insight;
+function InsightView({ summary }: ModuleCardProps) {
+  const readingData: ReadingCardData | null = summary.latestInsight
+    ? {
+        id: summary.latestInsight.id,
+        headline: summary.latestInsight.title,
+        summary: summary.latestInsight.summary,
+        category: summary.latestInsight.category || undefined,
+      }
+    : null;
 
-  function handleChatWithDW() {
-    const params = new URLSearchParams();
-    params.set("prefill", insight
-      ? `Let's explore this insight: "${insight.title}"`
-      : "What insights have you captured from our conversations so far?");
-    params.set("src", "home_dock_insight");
-    params.set("context", "insight");
-    navigate(`/talk?${params.toString()}`);
-  }
-
-  return (
-    <div className="space-y-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {insight ? insight.category : mockInsight.tag}
-      </p>
-      <p className="text-sm leading-relaxed text-foreground/80 line-clamp-3 italic">
-        "{insight ? insight.title : mockInsight.text}"
-      </p>
-      {insight?.summary && (
-        <p className="text-xs text-muted-foreground line-clamp-2">{insight.summary}</p>
-      )}
-      <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          onClick={() => navigate("/insights")}
-          className="flex-1 text-center rounded-lg bg-primary/10 text-primary text-xs font-medium px-3 py-2 hover:bg-primary/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          Open Insights
-        </button>
-        <button
-          type="button"
-          onClick={handleChatWithDW}
-          className="flex-1 text-center rounded-lg bg-muted/60 text-foreground/70 text-xs font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          Chat with DW
-        </button>
-      </div>
-    </div>
-  );
+  return <ReadingCard data={readingData} variant="embedded" />;
 }
 
 function PlanView({ summary, navigate }: ModuleCardProps) {

@@ -11,6 +11,7 @@ import { AllFeaturesView } from "@/components/all-features-view";
 import { ProactiveCard } from "@/components/proactive-card";
 import type { ProactiveCardProps } from "@/components/proactive-card";
 import { DWReadingCard } from "@/components/dw-reading-card";
+import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import type { ScheduleBlockItem, CalendarEventItem } from "./types";
@@ -354,6 +355,10 @@ export default function HomeCommandCenter() {
               <DWReadingCard energyLevel={summary.energyLevel} />
             </section>
           )}
+
+          <section data-testid="section-insight-reading">
+            <InsightSnapshotCard summary={summary} />
+          </section>
 
           {visibleProactiveCards.length > 0 && (
             <section data-testid="section-proactive">
