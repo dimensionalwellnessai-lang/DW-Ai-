@@ -9,12 +9,14 @@ import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { VOICE_SCRIPTS } from "@/config/voiceScripts";
+import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type InputMode = "voice" | "text";
 type VoiceState = "idle" | "listening" | "processing" | "error";
-type OnboardingPhase = "intro" | "thread";
+type OnboardingPhase = "value-preview" | "intro" | "thread";
 
 interface ThreadMessage {
   id: string;
@@ -207,8 +209,10 @@ export default function VoiceOnboardingPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Phase: "intro" = full-screen avatar; "thread" = chat thread view
-  const [phase, setPhase] = useState<OnboardingPhase>("intro");
+  // Phase: "value-preview" = show DW value proposition; "intro" = full-screen avatar; "thread" = chat thread view
+  const [phase, setPhase] = useState<OnboardingPhase>(
+    isFeatureEnabled("ONBOARDING_VALUE_PREVIEW") ? "value-preview" : "intro",
+  );
   const [inputMode, setInputMode] = useState<InputMode>("voice");
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -443,6 +447,18 @@ export default function VoiceOnboardingPage() {
     }
     setLocation("/");
   };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render: Value preview phase — show DW capability cards
+  // ─────────────────────────────────────────────────────────────────────────
+  if (phase === "value-preview") {
+    return (
+      <OnboardingValuePreview
+        onBegin={() => setPhase("intro")}
+        onSkip={handleSkip}
+      />
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Intro phase — full-screen avatar

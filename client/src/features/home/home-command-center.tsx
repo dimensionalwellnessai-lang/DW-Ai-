@@ -10,10 +10,12 @@ import { HamburgerMenu } from "@/components/hamburger-menu";
 import { AllFeaturesView } from "@/components/all-features-view";
 import { ProactiveCard } from "@/components/proactive-card";
 import type { ProactiveCardProps } from "@/components/proactive-card";
+import { DWReadingCard } from "@/components/dw-reading-card";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import type { ScheduleBlockItem, CalendarEventItem } from "./types";
 import { COPY } from "@/copy/en";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import {
   Drawer,
   DrawerContent,
@@ -346,6 +348,12 @@ export default function HomeCommandCenter() {
         </div>
 
         <div className="w-full max-w-lg mx-auto px-4 space-y-5 pb-6">
+
+          {isFeatureEnabled("DW_READING_CARD") && (
+            <section data-testid="section-dw-reading">
+              <DWReadingCard energyLevel={summary.energyLevel} />
+            </section>
+          )}
 
           {visibleProactiveCards.length > 0 && (
             <section data-testid="section-proactive">
