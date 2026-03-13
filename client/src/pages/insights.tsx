@@ -39,6 +39,8 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
 import { COPY } from "@/copy/en";
+import { MilestoneMoment } from "@/components/milestone-moment";
+import { insightMilestoneKey, hasMilestoneSeen, markMilestoneSeen } from "@/lib/milestone-storage";
 
 interface DimensionAssessment {
   dimension: string;
@@ -116,6 +118,22 @@ export default function InsightsDashboard() {
     retry: false,
   });
   const dwInsights = dwInsightsData ?? [];
+
+  // First-insight milestone: show once when insights are first populated
+  const firstInsightKey = insightMilestoneKey("first");
+  const [insightMilestoneDismissed, setInsightMilestoneDismissed] = useState(
+    () => hasMilestoneSeen(firstInsightKey),
+  );
+  const showFirstInsightMilestone =
+    dwInsightJournalEnabled &&
+    isLoggedIn &&
+    dwInsights.length > 0 &&
+    !insightMilestoneDismissed;
+
+  const handleInsightMilestoneDismiss = () => {
+    markMilestoneSeen(firstInsightKey);
+    setInsightMilestoneDismissed(true);
+  };
 
   // Calculate overall balance
   const getLatestAssessmentByDimension = () => {
@@ -316,6 +334,14 @@ export default function InsightsDashboard() {
           {/* DW Intelligence Insights Feed */}
           {dwInsightJournalEnabled && (
             <TabsContent value="dw-insights" className="space-y-4">
+              {showFirstInsightMilestone && (
+                <div data-testid="insight-milestone">
+                  <MilestoneMoment
+                    type="first-journal"
+                    onDismiss={handleInsightMilestoneDismiss}
+                  />
+                </div>
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

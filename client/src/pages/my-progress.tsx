@@ -24,9 +24,15 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
-import { getSwitchData, type SwitchId } from "@/lib/switch-storage";
+import { getSwitchData, type SwitchId, type SwitchStatus } from "@/lib/switch-storage";
 import { getUserSignals } from "@/lib/user-signals";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
+import { MilestoneMoment } from "@/components/milestone-moment";
+import {
+  getPendingSwitchMilestones,
+  switchMilestoneKey,
+  markMilestoneSeen,
+} from "@/lib/milestone-storage";
 
 interface ProgressSummary {
   range: string;
@@ -185,14 +191,35 @@ export default function MyProgressPage() {
     
     const lastUpdatedTs = localData?.lastUpdated || null;
     const lastTrainedAt = lastUpdatedTs ? new Date(lastUpdatedTs).toISOString() : serverData?.lastTrainedAt || null;
+
+    const VALID_STATUSES: SwitchStatus[] = ["off", "flickering", "stable", "powered"];
+    const rawStatus = localData?.status || serverData?.status || "off";
+    const status: SwitchStatus = VALID_STATUSES.includes(rawStatus as SwitchStatus)
+      ? (rawStatus as SwitchStatus)
+      : "off";
     
     return {
       switchId,
-      status: localData?.status || serverData?.status || "off",
+      status,
       lastTrainedAt,
       completedCount: localData?.checkIns || serverData?.completedCount21d || 0,
     };
   });
+
+  // Milestones: surface any switch-status milestones the user hasn't seen yet
+  const [dismissedMilestoneKeys, setDismissedMilestoneKeys] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+
+  const pendingMilestones = getPendingSwitchMilestones(mergedSwitches).filter(
+    ({ switchId, status }) => !dismissedMilestoneKeys.has(switchMilestoneKey(switchId, status)),
+  );
+
+  const handleMilestoneDismiss = (switchId: SwitchId, status: SwitchStatus) => {
+    const key = switchMilestoneKey(switchId, status);
+    markMilestoneSeen(key);
+    setDismissedMilestoneKeys(prev => new Set([...prev, key]));
+  };
 
   return (
     <ScrollArea className="h-[calc(100vh-4rem)]">
@@ -207,6 +234,25 @@ export default function MyProgressPage() {
             You don't need perfect weeks — just powered ones.
           </p>
         </motion.div>
+
+        {pendingMilestones.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="space-y-2"
+            data-testid="progress-milestones"
+          >
+            {pendingMilestones.slice(0, 2).map(({ switchId, status, milestoneType }) => (
+              <MilestoneMoment
+                key={`${switchId}-${milestoneType}`}
+                type={milestoneType}
+                subject={SWITCH_TITLES[switchId]}
+                onDismiss={() => handleMilestoneDismiss(switchId, status)}
+              />
+            ))}
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
