@@ -39,6 +39,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
 import { COPY } from "@/copy/en";
+import { ReadingCard, type ReadingCardData } from "@/features/home/components/ReadingCard";
 
 interface DimensionAssessment {
   dimension: string;
@@ -332,48 +333,27 @@ export default function InsightsDashboard() {
                       Sign in to see your DW insights
                     </p>
                   ) : dwInsights.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-foreground font-medium">{COPY.emptyStates.insights.title}</p>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        {COPY.emptyStates.insights.body}
-                      </p>
-                    </div>
+                    <ReadingCard data={null} />
                   ) : (
-                    dwInsights.map((insight) => (
-                      <div key={insight.id} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-medium text-sm leading-snug">{insight.title}</p>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {format(new Date(insight.createdAt), "MMM d")}
-                          </span>
-                        </div>
-                        {insight.insightLine && (
-                          <p className="text-xs font-medium text-primary italic">
-                            "{insight.insightLine}"
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">{insight.summary}</p>
-                        {Array.isArray(insight.quotes) && insight.quotes.length > 0 && (
-                          <div className="space-y-1">
-                            {insight.quotes.slice(0, 2).map((q, i) => (
-                              <p key={i} className="text-xs border-l-2 border-primary/30 pl-2 text-muted-foreground italic">
-                                "{q}"
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                        {Array.isArray(insight.tags) && insight.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {insight.tags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-[10px] py-0">
-                                <Tag className="h-2.5 w-2.5 mr-1" />
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))
+                    dwInsights.map((insight) => {
+                      // insightLine is a punchy 1-liner extracted from the conversation and
+                      // makes a better headline than title. Title is the fallback for older
+                      // records that pre-date the insightLine field.
+                      const readingData: ReadingCardData = {
+                        id: insight.id,
+                        headline: insight.insightLine ?? insight.title,
+                        summary: insight.summary,
+                        category: insight.switchTag ?? insight.theme ?? undefined,
+                        bullets: Array.isArray(insight.quotes)
+                          ? (insight.quotes as string[])
+                          : undefined,
+                        tags: Array.isArray(insight.tags)
+                          ? (insight.tags as string[])
+                          : undefined,
+                        switchTag: insight.switchTag ?? undefined,
+                      };
+                      return <ReadingCard key={insight.id} data={readingData} />;
+                    })
                   )}
                 </CardContent>
               </Card>
