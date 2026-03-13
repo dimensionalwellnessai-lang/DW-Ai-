@@ -83,8 +83,15 @@ export function saveSwitchMode(id: SwitchId, mode: SwitchMode): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-export function startSwitchTraining(id: SwitchId): void {
+export interface SwitchTrainingResult {
+  prevStatus: SwitchStatus;
+  newStatus: SwitchStatus;
+  statusChanged: boolean;
+}
+
+export function startSwitchTraining(id: SwitchId): SwitchTrainingResult {
   const data = getSwitchData();
+  const prevStatus: SwitchStatus = data[id]?.status ?? "off";
   data[id] = {
     ...data[id],
     status: "flickering",
@@ -93,11 +100,13 @@ export function startSwitchTraining(id: SwitchId): void {
     lastUpdated: Date.now(),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  return { prevStatus, newStatus: "flickering", statusChanged: prevStatus !== "flickering" };
 }
 
-export function recordSwitchCheckIn(id: SwitchId): void {
+export function recordSwitchCheckIn(id: SwitchId): SwitchTrainingResult {
   const data = getSwitchData();
   const current = data[id];
+  const prevStatus: SwitchStatus = current.status;
   const newCheckIns = (current.checkIns || 0) + 1;
   
   let newStatus: SwitchStatus = current.status;
@@ -117,6 +126,7 @@ export function recordSwitchCheckIn(id: SwitchId): void {
     lastUpdated: Date.now(),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  return { prevStatus, newStatus, statusChanged: prevStatus !== newStatus };
 }
 
 export function getActiveSwitches(): SwitchId[] {
