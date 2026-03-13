@@ -5,19 +5,23 @@ import { useLocation } from "wouter";
 import { saveEnhancedOnboarding, isEnhancedOnboardingComplete } from "@/lib/guest-storage";
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import { useState, useEffect } from "react";
+import { useState, useLayoutEffect } from "react";
 
 export default function EnhancedOnboardingPage() {
   const [, setLocation] = useLocation();
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
   const [showPreview, setShowPreview] = useState(isFeatureEnabled("ONBOARDING_VALUE_PREVIEW"));
+  const [redirecting, setRedirecting] = useState(false);
 
-  // If already completed, redirect to main app
-  useEffect(() => {
+  // If already completed, redirect to main app before any paint to avoid a flash
+  useLayoutEffect(() => {
     if (isEnhancedOnboardingComplete()) {
+      setRedirecting(true);
       setLocation("/");
     }
   }, [setLocation]);
+
+  if (redirecting) return null;
 
   const handleOnboardingComplete = (data: OnboardingData, takeTour: boolean) => {
     // Save onboarding data

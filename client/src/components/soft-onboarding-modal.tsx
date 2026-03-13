@@ -127,10 +127,12 @@ export function SoftOnboardingModal({ open, onComplete, onSkip, onOpenChat }: So
   // Show value preview layer before the main soft-onboarding steps
   if (showPreview) {
     return (
-      <OnboardingValuePreview
-        onBegin={() => setShowPreview(false)}
-        onSkip={onSkip}
-      />
+      <div className="fixed inset-0 z-50 overflow-hidden bg-background">
+        <OnboardingValuePreview
+          onBegin={() => setShowPreview(false)}
+          onSkip={onSkip}
+        />
+      </div>
     );
   }
 
