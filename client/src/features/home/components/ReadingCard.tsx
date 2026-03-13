@@ -131,21 +131,27 @@ export function ReadingCard({
     : [];
 
   // Key pattern shared by the talk page to retrieve cached insight data.
-  // Must stay in sync with any readers in talk-it-out.tsx / life-command-center.tsx.
+  // Must stay in sync with readers in talk-it-out.tsx and components/ai-workspace.tsx.
   const sessionKey = `dwInsight:${data.id}`;
 
   function handleContinueWithDW() {
     try {
       if (typeof window !== "undefined" && window.sessionStorage) {
-        window.sessionStorage.setItem(sessionKey, JSON.stringify(data));
+        // Store the shape expected by talk-it-out.tsx and ai-workspace.tsx:
+        // both readers cast the payload as { title?: string; summary?: string }.
+        window.sessionStorage.setItem(
+          sessionKey,
+          JSON.stringify({ title: data.headline, summary: data.summary }),
+        );
       }
     } catch {
       // sessionStorage unavailable – continue without caching
     }
     const params = new URLSearchParams();
     params.set("insightId", data.id);
-    params.set("prefill", `Let's explore this reading: "${data.headline}"`);
-    params.set("src", "reading_card");
+    // Omit `prefill` when insightId is present: talk-it-out.tsx builds the
+    // prefill from the insight payload above, and a dangling ?prefill param
+    // would not be cleaned up if the input is already populated from insightId.
     navigate(`/talk?${params.toString()}`);
   }
 

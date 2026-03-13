@@ -9,7 +9,8 @@
  *  - Recommended actions from switchTag (full mode only)
  *  - Compact mode hides extended sections
  *  - "View all insights" nav button
- *  - "Continue with DW" CTA routing (insightId + prefill)
+ *  - "Continue with DW" CTA routing (insightId only, no prefill)
+ *  - sessionStorage payload contract: stores { title, summary } for /talk readers
  *  - Embedded variant renders without Card shell
  */
 
@@ -134,6 +135,35 @@ describe("ReadingCard – data state, full mode", () => {
     );
     const call = mockNavigate.mock.calls[0][0] as string;
     expect(call).toContain("insightId=ins-1");
+    // prefill must not be present: /talk builds its own prefill from the insight payload
+    expect(call).not.toContain("prefill=");
+  });
+
+  it("stores { title, summary } in sessionStorage on CTA click for /talk readers", () => {
+    const storedItems: Record<string, string> = {};
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(
+      (key: string, value: string) => { storedItems[key] = value; }
+    );
+
+    render(
+      <ReadingCard
+        data={makeData({
+          id: "ins-contract",
+          headline: "The headline value",
+          summary: "The summary value",
+        })}
+      />
+    );
+    fireEvent.click(screen.getByTestId("reading-card-cta"));
+
+    const key = "dwInsight:ins-contract";
+    expect(storedItems[key]).toBeDefined();
+    const parsed = JSON.parse(storedItems[key]) as Record<string, unknown>;
+    // Readers in talk-it-out.tsx and ai-workspace.tsx expect `title` and `summary`
+    expect(parsed.title).toBe("The headline value");
+    expect(parsed.summary).toBe("The summary value");
+
+    setItemSpy.mockRestore();
   });
 
   it("navigates to /insights on the chevron button", () => {
