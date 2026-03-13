@@ -3,7 +3,6 @@
  * or falls back to a context-aware prompt from the DW Prompt Kit.
  */
 
-import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { MessageCircle, ListChecks } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
@@ -39,15 +38,14 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
   const [, navigate] = useLocation();
   const hasAiFollowUp = Boolean(summary.activeFollowUp);
 
-  const contextPrompt = useMemo(() => {
-    try {
-      const statuses = getSwitchStatuses();
-      const { energy } = getCurrentEnergyContext();
-      return getDailyPrompt(statuses, energy);
-    } catch {
-      return null;
-    }
-  }, []);
+  let contextPrompt: ReturnType<typeof getDailyPrompt> | null = null;
+  try {
+    const statuses = getSwitchStatuses();
+    const { energy } = getCurrentEnergyContext();
+    contextPrompt = getDailyPrompt(statuses, energy);
+  } catch {
+    // localStorage unavailable – fall through to null
+  }
 
   const prefill = buildFollowUpPrefill(summary, contextPrompt?.text);
 

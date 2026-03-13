@@ -82,7 +82,7 @@ describe("FollowUpCard – no active follow-up (guest / default)", () => {
     expect(screen.getByText(/start a conversation/i)).toBeTruthy();
   });
 
-  it("navigates to /talk with context-prompt prefill on CTA click (no context data)", () => {
+  it("navigates to /talk with context-prompt prefill on CTA click (no summary data)", () => {
     render(<FollowUpCard summary={makeSummary()} />);
     fireEvent.click(screen.getByText(/start a conversation/i));
     expect(mockNavigate).toHaveBeenCalledOnce();
