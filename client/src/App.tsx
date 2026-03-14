@@ -90,6 +90,7 @@ import PrivacyTermsPage from "@/pages/privacy-terms";
 import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
+const DimensionOverviewPage = lazy(() => import("@/pages/dimension-overview"));
 import DWHomePage from "@/pages/dw-home";
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
@@ -217,6 +218,7 @@ function Router() {
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
+      <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home" component={DWHomePage} />
       <Route path="/command-center" component={HomeCommandCenter} />

@@ -74,6 +74,7 @@ const DIMENSION_CONFIGS = [
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
     path: "/workout",
+    overviewPath: "/dimension/body",
     description: "Movement, exercise & body care",
     defaultPhrase: "How I care for my physical self",
   },
@@ -84,6 +85,7 @@ const DIMENSION_CONFIGS = [
     color: "text-pink-500",
     bgColor: "bg-pink-500/10",
     path: "/talk",
+    overviewPath: "/dimension/mind",
     description: "Feelings, coping & self-awareness",
     defaultPhrase: "How I process my emotions",
   },
@@ -94,6 +96,7 @@ const DIMENSION_CONFIGS = [
     color: "text-teal-500",
     bgColor: "bg-teal-500/10",
     path: "/community",
+    overviewPath: "/dimension/relationships",
     description: "Relationships & connection",
     defaultPhrase: "How I connect with others",
   },
@@ -124,6 +127,7 @@ const DIMENSION_CONFIGS = [
     color: "text-amber-500",
     bgColor: "bg-amber-500/10",
     path: "/projects",
+    overviewPath: "/dimension/purpose",
     description: "Work, purpose & contribution",
     defaultPhrase: "How I find meaning in my work",
   },
@@ -134,6 +138,7 @@ const DIMENSION_CONFIGS = [
     color: "text-emerald-500",
     bgColor: "bg-emerald-500/10",
     path: "/finances",
+    overviewPath: "/dimension/money",
     description: "Money, security & abundance",
     defaultPhrase: "My relationship with money",
   },
@@ -144,6 +149,7 @@ const DIMENSION_CONFIGS = [
     color: "text-green-500",
     bgColor: "bg-green-500/10",
     path: "/routines",
+    overviewPath: "/dimension/environment",
     description: "Surroundings, space & nature",
     defaultPhrase: "How my environment supports me",
   },
@@ -576,6 +582,17 @@ export default function LifeDashboardPage() {
                       <p className="text-sm text-muted-foreground">
                         {phrase}
                       </p>
+                      {dimension.overviewPath && (
+                        <Link
+                          href={dimension.overviewPath}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                          data-testid={`link-overview-${dimension.id}`}
+                        >
+                          Full Overview
+                          <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      )}
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   </div>
@@ -971,6 +988,14 @@ function DimensionDetailSheet({ open, onOpenChange, dimension }: DimensionDetail
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
+              {dimension.overviewPath && (
+                <Link href={dimension.overviewPath}>
+                  <Button variant="ghost" className="w-full mt-2" data-testid="button-full-overview">
+                    View Full Dimension Overview
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+              )}
             </TabsContent>
 
             <TabsContent value="assessment" className="mt-4 space-y-4">
