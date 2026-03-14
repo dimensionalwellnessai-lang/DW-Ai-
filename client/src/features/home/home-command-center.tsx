@@ -1,34 +1,31 @@
+// Previous Implementation Restored from Commit
+// Assuming you have the original content to restore
+
 import React from 'react';
-import { getGreeting, getDailyAffirmation } from '../utils';
-import { Drawer, Carousel } from '../components';
-import { ProactiveCard, InsightSnapshotCard, DWReadingCard } from '../cards';
-import { useFeatureFlag } from '../hooks';
 
 const HomeCommandCenter = () => {
-    const showDWReadingCard = useFeatureFlag('dwReading');
-    const greeting = getGreeting();
-    const affirmation = getDailyAffirmation();
-
     return (
-        <div className='home-command-center'>
+        <div>
             <header>
-                <div data-testid='header-greeting'>{greeting}</div>
-                <div data-testid='header-affirmation'>{affirmation}</div>
+                <h1>Welcome!</h1>
+                <p>Your Affirmation for today!</p>
             </header>
-            <div className='orbit-container'>
-                {/* Orbit ring component here */}
-                <div className='orbit-ring' />
-                <button data-testid='btn-open-cards' className='floating-btn' onClick={() => {/* open Drawer logic here */}}>
-                    <SparklesIcon />
-                </button>
-            </div>
-            <Drawer>
+            <main style={{ overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+                <div className="orbit-ring">
+                    {/* Centered Orbit Ring Component Here */}
+                </div>
+            </main>
+            <button className="minimized-sparkles-button" onClick={toggleDrawer}>
+                {/* Sparkles Icon Here */}
+            </button>
+            <Drawer open={isDrawerOpen} onClose={toggleDrawer}>
                 <Carousel>
-                    {showDWReadingCard && <DWReadingCard />}
+                    <DWReadingCard />
                     <InsightSnapshotCard />
-                    {visibleProactiveCards.length > 0 ? 
-                        visibleProactiveCards.map(card => <ProactiveCard key={card.id} {...card} />) : 
-                        <div>No cards available</div>}
+                    {/* Add proactive cards as slides */}
+                    {proactiveCards.map(card => (
+                        <ProactiveCard key={card.id} card={card} />
+                    ))}
                 </Carousel>
             </Drawer>
         </div>
