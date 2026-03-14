@@ -1,25 +1,24 @@
-// Full implementation from commit 25cb362258fe9ff5ce3735df3d4a69fd65ffdcaf with adjustments as per request
-
+// Updated component based on new design
 import React from 'react';
-import { Drawer, Carousel } from 'some-drawer-library'; // Ensure correct imports
-import { AFFIRMATIONS } from 'path-to-affirmations'; // Ensure correct import for affirmations
-import DWReadingCard from 'path-to-DWReadingCard';
-import InsightSnapshotCard from 'path-to-InsightSnapshotCard';
-import CardPreview from 'path-to-CardPreview'; // Existing component
+import Orbit from './Orbit';
+import SparklesButton from './SparklesButton';
+import DWReadingCard from './DWReadingCard';
+import InsightSnapshotCard from './InsightSnapshotCard';
+import { Carousel } from 'some-carousel-library';
 
 const HomeCommandCenter = () => {
     return (
-        <div className="orbit-wrapper"> {/* Removed overflow-auto and Command Center header */} 
-            <div className="header"> {/* Showing only orbit, greeting, and affirmation here */}
-                <AFFIRMATIONS /> {/* Display affirmations */}
-                {/* Place for greeting */}
-            </div>
-            <Drawer >
-                {/* Sparkles floating icon setup */}
+        <div style={{ overflow: 'hidden' }}>
+            <Orbit />
+            <SparklesButton />
+            <Drawer>
                 <Carousel>
-                    {featureFlag && <DWReadingCard />}
+                    <DWReadingCard />
                     <InsightSnapshotCard />
-                    {visibleProactiveCards.map(card => <CarouselItem>{card}</CarouselItem>)}
+                    {/* Render existing visible proactive cards here */}
+                    {visibleProactiveCards.map(card => (
+                        <ProactiveCard key={card.id} {...card} />
+                    ))}
                 </Carousel>
             </Drawer>
         </div>
