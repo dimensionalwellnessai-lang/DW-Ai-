@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent } from "@/components/ui/card";
 import { DWOrb } from "@/components/dw-orb";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { AllFeaturesView } from "@/components/all-features-view";
@@ -14,8 +13,6 @@ import { DWReadingCard } from "@/components/dw-reading-card";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
-import type { ScheduleBlockItem, CalendarEventItem } from "./types";
-import { COPY } from "@/copy/en";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import {
   Drawer,
@@ -43,28 +40,8 @@ import {
   Sparkles,
   Moon,
   Compass,
-  Zap,
-  Heart,
-  Brain,
-  Clock,
-  Sun,
-  Circle,
-  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
-
-const AFFIRMATIONS = [
-  "You are exactly where you need to be.",
-  "Today is yours to shape, not survive.",
-  "Progress isn't always visible — but it's happening.",
-  "Your energy matters. Protect it.",
-  "Small steps still move you forward.",
-  "You don't need to have it all figured out.",
-  "Rest is productive. Stillness is growth.",
-  "You are building something meaningful.",
-  "Trust the process you're creating.",
-  "Your calm is your power.",
-];
 
 interface OrbitModule {
   id: string;
@@ -101,34 +78,6 @@ function getDailyAffirmation(): string {
 
 function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
-}
-
-function formatTime12Hour(timeStr: string): string {
-  if (!timeStr) return "";
-  if (timeStr.includes("T") || timeStr.includes("-")) {
-    const d = new Date(timeStr);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  }
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  if (isNaN(hours) || isNaN(minutes)) return "";
-  const period = hours >= 12 ? "PM" : "AM";
-  const hours12 = hours % 12 || 12;
-  return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
-}
-
-function getEnergyColor(level: number | null) {
-  if (level === null) return "text-muted-foreground";
-  if (level >= 7) return "text-emerald-500";
-  if (level >= 4) return "text-amber-500";
-  return "text-rose-500";
-}
-
-function getEnergyBgColor(level: number | null) {
-  if (level === null) return "bg-muted/50";
-  if (level >= 7) return "bg-emerald-500/10";
-  if (level >= 4) return "bg-amber-500/10";
-  return "bg-rose-500/10";
 }
 
 export default function HomeCommandCenter() {
@@ -345,20 +294,24 @@ export default function HomeCommandCenter() {
               );
             })}
 
-            <button
-              type="button"
-              onClick={() => setCardsOpen(true)}
-              className="absolute z-20 h-11 w-11 rounded-full bg-primary/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            <div
+              className="absolute z-20"
               style={{
                 left: "50%",
                 top: "50%",
                 transform: "translate(115px, 115px)",
               }}
-              aria-label="Open cards"
-              data-testid="btn-open-cards"
             >
-              <Sparkles className="h-5 w-5 text-primary" />
-            </button>
+              <button
+                type="button"
+                onClick={() => setCardsOpen(true)}
+                className="h-11 w-11 rounded-full bg-primary/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label="Open cards"
+                data-testid="btn-open-cards"
+              >
+                <Sparkles className="h-5 w-5 text-primary" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -381,6 +334,10 @@ export default function HomeCommandCenter() {
 
       <Drawer open={cardsOpen} onOpenChange={setCardsOpen}>
         <DrawerContent data-testid="drawer-cards-carousel">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Cards</DrawerTitle>
+            <DrawerDescription>DW reading, insights, and suggestions</DrawerDescription>
+          </DrawerHeader>
           <div className="px-4 pb-6 pt-2">
             <Carousel opts={{ align: "start", dragFree: true }}>
               <CarouselContent className="-ml-2">
@@ -886,52 +843,6 @@ function ForYouPreview() {
         </CarouselItem>
       </CarouselContent>
     </Carousel>
-  );
-}
-
-function ScheduleFeed({ blocks, events }: { blocks: ScheduleBlockItem[]; events: CalendarEventItem[] }) {
-  type FeedItem = { id: string; title: string; time: string; type: "block" | "event"; sortKey: string };
-
-  const items: FeedItem[] = useMemo(() => {
-    const feed: FeedItem[] = [];
-    for (const b of blocks) {
-      feed.push({ id: `b-${b.id}`, title: b.title, time: b.startTime, type: "block", sortKey: b.startTime });
-    }
-    for (const e of events) {
-      feed.push({ id: `e-${e.id}`, title: e.title, time: e.startTime, type: "event", sortKey: e.startTime });
-    }
-    feed.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-    return feed;
-  }, [blocks, events]);
-
-  const visible = items.slice(0, 4);
-  const hiddenCount = items.length - visible.length;
-
-  return (
-    <div className="space-y-2">
-      {visible.map((item) => (
-        <Card key={item.id} className="border-border/30 bg-card/50 backdrop-blur-sm" data-testid={`schedule-item-${item.id}`}>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="text-xs text-muted-foreground w-16 flex-shrink-0">
-              {formatTime12Hour(item.time)}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-            </div>
-            {item.type === "event" ? (
-              <Badge variant="secondary" className="text-xs">Event</Badge>
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </CardContent>
-        </Card>
-      ))}
-      {hiddenCount > 0 && (
-        <p className="text-xs text-muted-foreground text-center py-2">
-          +{hiddenCount} more items
-        </p>
-      )}
-    </div>
   );
 }
 
