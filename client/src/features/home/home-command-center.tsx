@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef } from "react";
-import { useLocation, Link } from "wouter";
+import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,8 +136,8 @@ export default function HomeCommandCenter() {
   const [, navigate] = useLocation();
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
-  const scheduleRef = useRef<HTMLDivElement>(null);
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
 
   const dismissCard = (type: string) => {
@@ -261,7 +261,6 @@ export default function HomeCommandCenter() {
   ], [summary, topStreak, calRemaining, momentumSnippet]);
 
   const timeClass = getTimeOfDayClass();
-  const affirmation = getDailyAffirmation();
 
   if (summary.isLoading) {
     return (
@@ -306,7 +305,7 @@ export default function HomeCommandCenter() {
         </h1>
       </header>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden">
         <div className="flex flex-col items-center">
           <div className="w-full max-w-lg px-4 pt-1">
             <p className="text-lg font-semibold text-foreground font-display text-center" data-testid="text-greeting">
@@ -345,235 +344,21 @@ export default function HomeCommandCenter() {
                 />
               );
             })}
-          </div>
-        </div>
 
-        <div className="w-full max-w-lg mx-auto px-4 space-y-5 pb-6">
-
-          {isFeatureEnabled("DW_READING_CARD") && (
-            <section data-testid="section-dw-reading">
-              <DWReadingCard energyLevel={summary.energyLevel} />
-            </section>
-          )}
-
-          <section data-testid="section-insight-reading">
-            <InsightSnapshotCard summary={summary} />
-          </section>
-
-          {visibleProactiveCards.length > 0 && (
-            <section data-testid="section-proactive">
-              <div className="space-y-3">
-                {visibleProactiveCards.map((card, index) => (
-                  <div
-                    key={card.type}
-                    className="animate-fade-in-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <ProactiveCard
-                      type={card.type as ProactiveCardProps["type"]}
-                      title={card.title}
-                      message={card.message}
-                      why={card.why}
-                      actionLabel={card.actionLabel}
-                      onAction={card.actionPath ? () => navigate(card.actionPath!) : undefined}
-                      onDismiss={() => dismissCard(card.type)}
-                      priority={card.priority}
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="grid grid-cols-3 gap-3" data-testid="section-vitals">
-            <Link href="/mood-tracker">
-              <Card className="cursor-pointer h-full border-border/30 bg-card/50 backdrop-blur-sm" data-testid="card-energy">
-                <CardContent className="p-3 text-center flex flex-col items-center justify-center h-full">
-                  <div className={`w-10 h-10 rounded-full mx-auto flex items-center justify-center ${getEnergyBgColor(summary.energyLevel)}`}>
-                    <Zap className={`h-5 w-5 ${getEnergyColor(summary.energyLevel)}`} />
-                  </div>
-                  <p className={`text-lg font-bold mt-2 ${getEnergyColor(summary.energyLevel)}`}>
-                    {summary.energyLevel !== null ? summary.energyLevel : "--"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Energy</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/mood-tracker">
-              <Card className="cursor-pointer h-full border-border/30 bg-card/50 backdrop-blur-sm" data-testid="card-mood">
-                <CardContent className="p-3 text-center flex flex-col items-center justify-center h-full">
-                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-rose-500/10">
-                    <Heart className="h-5 w-5 text-rose-500" />
-                  </div>
-                  <p className="text-lg font-bold mt-2">
-                    {summary.moodLevel !== null ? summary.moodLevel : "--"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Mood</p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/weekly-checkin">
-              <Card className="cursor-pointer h-full border-border/30 bg-card/50 backdrop-blur-sm" data-testid="card-checkin">
-                <CardContent className="p-3 text-center flex flex-col items-center justify-center h-full">
-                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center bg-primary/10">
-                    <Brain className="h-5 w-5 text-primary" />
-                  </div>
-                  <p className="text-xs font-medium mt-2 text-primary">Check in</p>
-                </CardContent>
-              </Card>
-            </Link>
-          </section>
-
-          <section ref={scheduleRef} data-testid="section-schedule">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold flex items-center gap-2 text-foreground text-sm">
-                <CalendarDays className="h-4 w-4" />
-                Today's Schedule
-              </h2>
-              <Link href="/calendar/schedule">
-                <Button variant="ghost" size="sm" className="text-xs h-7" data-testid="button-view-calendar">
-                  View all
-                  <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            </div>
-
-            {summary.todayScheduleBlocks.length === 0 && summary.todayEvents.length === 0 ? (
-              <Card className="border-dashed border-border/30 bg-card/50 backdrop-blur-sm">
-                <CardContent className="py-8 text-center">
-                  <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p className="text-sm font-medium text-foreground mb-1">{COPY.emptyStates.schedule.title}</p>
-                  <p className="text-xs text-muted-foreground mb-3">{COPY.emptyStates.schedule.body}</p>
-                  <Link href="/talk?topic=Help%20me%20plan%20my%20day">
-                    <Button variant="outline" size="sm" data-testid="button-ask-dw">
-                      <Sparkles className="h-3 w-3 mr-2" />
-                      Ask DW to plan my day
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              <ScheduleFeed blocks={summary.todayScheduleBlocks} events={summary.todayEvents} />
-            )}
-          </section>
-
-          {summary.activeGoals.length > 0 && (
-            <section data-testid="section-goals">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold flex items-center gap-2 text-foreground text-sm">
-                  <Target className="h-4 w-4" />
-                  Active Goals
-                </h2>
-                <Link href="/goals">
-                  <Button variant="ghost" size="sm" className="text-xs h-7" data-testid="button-view-goals">
-                    View all
-                    <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="space-y-2">
-                {summary.activeGoals.slice(0, 3).map((goal) => (
-                  <Card key={goal.id} className="border-border/30 bg-card/50 backdrop-blur-sm" data-testid={`goal-card-${goal.id}`}>
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-foreground">{goal.title}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {goal.progress || 0}%
-                        </Badge>
-                      </div>
-                      <Progress value={goal.progress || 0} className="h-1.5" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="grid grid-cols-2 gap-3" data-testid="section-routines">
-            <Card className="border-border/30 bg-card/50 backdrop-blur-sm" data-testid="card-morning-routine">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sun className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-medium text-foreground">Morning</span>
-                </div>
-                {summary.morningRoutines.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Not set up yet</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {summary.morningRoutines.slice(0, 2).map((routine) => (
-                      <div key={routine.id} className="flex items-center gap-2">
-                        <Circle className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs truncate">{routine.name}</span>
-                      </div>
-                    ))}
-                    {summary.morningRoutines.length > 2 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{summary.morningRoutines.length - 2} more
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/30 bg-card/50 backdrop-blur-sm" data-testid="card-evening-routine">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Moon className="h-4 w-4 text-indigo-500" />
-                  <span className="text-sm font-medium text-foreground">Wind Down</span>
-                </div>
-                {summary.eveningRoutines.length === 0 ? (
-                  <Link href="/routines">
-                    <Button variant="ghost" size="sm" className="w-full text-xs h-8" data-testid="button-setup-routine">
-                      Set up routine
-                    </Button>
-                  </Link>
-                ) : (
-                  <div className="space-y-1.5">
-                    {summary.eveningRoutines.slice(0, 2).map((routine) => (
-                      <div key={routine.id} className="flex items-center gap-2">
-                        <Circle className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs truncate">{routine.name}</span>
-                      </div>
-                    ))}
-                    {summary.eveningRoutines.length > 2 && (
-                      <p className="text-xs text-muted-foreground">
-                        +{summary.eveningRoutines.length - 2} more
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </section>
-
-          <section data-testid="section-talk-cta">
-            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <DWOrb size={40} state="idle" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm text-foreground">Talk to DW</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Process thoughts, plan your day, or just check in.
-                    </p>
-                  </div>
-                  <Link href="/talk">
-                    <Button size="sm" data-testid="button-talk-to-dw">
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <div className="w-full max-w-sm mx-auto px-2 pb-4 text-center">
-            <p className="text-sm text-foreground/70 italic font-body leading-relaxed" data-testid="text-affirmation">
-              "{affirmation}"
-            </p>
+            <button
+              type="button"
+              onClick={() => setCardsOpen(true)}
+              className="absolute z-20 h-11 w-11 rounded-full bg-primary/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              style={{
+                left: "50%",
+                top: "50%",
+                transform: "translate(115px, 115px)",
+              }}
+              aria-label="Open cards"
+              data-testid="btn-open-cards"
+            >
+              <Sparkles className="h-5 w-5 text-primary" />
+            </button>
           </div>
         </div>
       </div>
@@ -586,17 +371,46 @@ export default function HomeCommandCenter() {
               summary={summary}
               onMore={() => {
                 setActiveCard(null);
-                if (activeCard.id === "today" && scheduleRef.current) {
-                  setTimeout(() => {
-                    scheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 300);
-                } else {
-                  navigate(activeCard.path);
-                }
+                navigate(activeCard.path);
               }}
               onDW={(topic) => { setActiveCard(null); navigate(`/talk?topic=${encodeURIComponent(topic)}`); }}
             />
           )}
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer open={cardsOpen} onOpenChange={setCardsOpen}>
+        <DrawerContent data-testid="drawer-cards-carousel">
+          <div className="px-4 pb-6 pt-2">
+            <Carousel opts={{ align: "start", dragFree: true }}>
+              <CarouselContent className="-ml-2">
+                {isFeatureEnabled("DW_READING_CARD") && (
+                  <CarouselItem className="pl-2 basis-[92%]">
+                    <DWReadingCard energyLevel={summary.energyLevel} />
+                  </CarouselItem>
+                )}
+
+                <CarouselItem className="pl-2 basis-[92%]">
+                  <InsightSnapshotCard summary={summary} />
+                </CarouselItem>
+
+                {visibleProactiveCards.map((card) => (
+                  <CarouselItem key={card.type} className="pl-2 basis-[92%]">
+                    <ProactiveCard
+                      type={card.type as ProactiveCardProps["type"]}
+                      title={card.title}
+                      message={card.message}
+                      why={card.why}
+                      actionLabel={card.actionLabel}
+                      onAction={card.actionPath ? () => navigate(card.actionPath!) : undefined}
+                      onDismiss={() => dismissCard(card.type)}
+                      priority={card.priority}
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </div>
         </DrawerContent>
       </Drawer>
 
