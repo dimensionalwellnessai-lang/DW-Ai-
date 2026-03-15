@@ -55,19 +55,6 @@ interface OrbitModule {
   snippet?: string;
 }
 
-const AFFIRMATIONS = [
-  "You are exactly where you need to be.",
-  "Today is yours to shape, not survive.",
-  "Progress isn't always visible — but it's happening.",
-  "Your energy matters. Protect it.",
-  "Small steps still move you forward.",
-  "You don't need to have it all figured out.",
-  "Rest is productive. Stillness is growth.",
-  "You are building something meaningful.",
-  "Trust the process you're creating.",
-  "Your calm is your power.",
-];
-
 function getTimeOfDayClass(): string {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 8) return "cc-time--dawn";
@@ -273,8 +260,8 @@ export default function HomeCommandCenter() {
             <p className="text-lg font-semibold text-foreground font-display text-center" data-testid="text-greeting">
               {getGreeting()}{firstName ? `, ${firstName}` : ""}
             </p>
-            <p className="text-xs text-muted-foreground/70 italic text-center mt-0.5" data-testid="text-affirmation">
-              {getDailyAffirmation()}
+            <p className="text-xs text-muted-foreground text-center mt-0.5" data-testid="text-today-label">
+              {summary.todayLabel}
             </p>
           </div>
 
@@ -312,7 +299,7 @@ export default function HomeCommandCenter() {
               style={{
                 left: "50%",
                 top: "50%",
-                transform: "translate(146px, -84px)",
+                transform: "translate(115px, 115px)",
               }}
             >
               <button
