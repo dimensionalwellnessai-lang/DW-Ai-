@@ -289,7 +289,7 @@ export default function HomeCommandCenter() {
 
             {modules.map((mod, i) => {
               const angle = (i * 360) / modules.length - 90;
-              const radius = 140;
+              const radius = 115;
               const x = Math.cos((angle * Math.PI) / 180) * radius;
               const y = Math.sin((angle * Math.PI) / 180) * radius;
 

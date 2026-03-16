@@ -150,8 +150,8 @@ export function SwipeableDrawer({
     <div 
       className={`fixed left-0 right-0 bg-background/60 backdrop-blur-sm ${elevated ? "z-[10001]" : "z-[60]"}`}
       style={{
-        top: "calc(max(env(safe-area-inset-top, 0px), 24px) + 52px)",
-        bottom: "calc(3.5rem + max(env(safe-area-inset-bottom, 0px), 32px))"
+        top: "env(safe-area-inset-top, 0px)",
+        bottom: "var(--bottom-nav-total-height)"
       }}
       onClick={onClose}
       data-testid="swipeable-drawer-overlay"
