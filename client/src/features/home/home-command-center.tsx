@@ -309,19 +309,19 @@ export default function HomeCommandCenter() {
 
         <div className="shrink-0 px-4 pb-1 pt-0 w-full max-w-lg mx-auto" data-testid="section-cards">
           <Carousel opts={{ align: "start", dragFree: true }}>
-            <CarouselContent className="-ml-2">
+            <CarouselContent className="-ml-2 items-stretch">
               {isFeatureEnabled("DW_READING_CARD") && (
-                <CarouselItem className="pl-2 basis-[85%]">
-                  <DWReadingCard energyLevel={summary.energyLevel} />
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <DWReadingCard energyLevel={summary.energyLevel} className="h-full" />
                 </CarouselItem>
               )}
 
-              <CarouselItem className="pl-2 basis-[85%]">
-                <InsightSnapshotCard summary={summary} />
+              <CarouselItem className="pl-2 basis-[85%] h-full">
+                <InsightSnapshotCard summary={summary} className="h-full" />
               </CarouselItem>
 
               {visibleProactiveCards.map((card) => (
-                <CarouselItem key={card.type} className="pl-2 basis-[85%]">
+                <CarouselItem key={card.type} className="pl-2 basis-[85%] h-full">
                   <ProactiveCard
                     type={card.type as ProactiveCardProps["type"]}
                     title={card.title}
@@ -331,6 +331,7 @@ export default function HomeCommandCenter() {
                     onAction={card.actionPath ? () => navigate(card.actionPath!) : undefined}
                     onDismiss={() => dismissCard(card.type)}
                     priority={card.priority}
+                    className="h-full"
                   />
                 </CarouselItem>
               ))}

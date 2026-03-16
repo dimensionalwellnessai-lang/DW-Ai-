@@ -9,9 +9,10 @@ import type { HomeSummary } from "../types";
 
 interface InsightSnapshotCardProps {
   summary: Pick<HomeSummary, "latestInsight">;
+  className?: string;
 }
 
-export function InsightSnapshotCard({ summary }: InsightSnapshotCardProps) {
+export function InsightSnapshotCard({ summary, className }: InsightSnapshotCardProps) {
   const { latestInsight } = summary;
 
   const readingData: ReadingCardData | null = latestInsight
@@ -23,5 +24,5 @@ export function InsightSnapshotCard({ summary }: InsightSnapshotCardProps) {
       }
     : null;
 
-  return <ReadingCard data={readingData} compact />;
+  return <ReadingCard data={readingData} compact className={className} />;
 }
