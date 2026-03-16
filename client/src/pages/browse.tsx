@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import {
@@ -59,6 +59,21 @@ import { ExploreFeedCard } from "@/components/explore-feed-card";
 import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
 import type { ExploreFeedContentType } from "@/components/explore-feed-card";
 import { COPY } from "@/copy/en";
+
+/**
+ * Validates that a URL is safe to open externally.
+ * Only https: URLs with a parseable hostname are allowed — prevents
+ * javascript: / data: injection from AI-provided or backend content.
+ */
+function isSafeExternalUrl(url: unknown): url is string {
+  if (typeof url !== "string" || !url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && !!parsed.hostname;
+  } catch {
+    return false;
+  }
+}
 
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
@@ -341,7 +356,7 @@ const SAMPLE_CONTENT = [
     title: "Breathing Techniques for Instant Calm",
     description: "Four evidence-based breathing patterns you can use anywhere to reduce stress",
     contentType: "blog",
-    category: "mindfulness",
+    category: "blog",
     duration: 5,
     difficulty: "beginner",
     goalTags: ["stress-relief", "focus", "mindfulness"],
@@ -753,7 +768,7 @@ ${contentList}`,
     if (!selectedContent) return;
     
     const url = (selectedContent as any).url;
-    if (url) {
+    if (isSafeExternalUrl(url)) {
       window.open(url, "_blank", "noopener,noreferrer");
       setContentDetailOpen(false);
       return;
@@ -1625,7 +1640,11 @@ ${contentList}`,
                   <Card
                     key={article.id}
                     className="card-modern hover-lift cursor-pointer transition-all"
-                    onClick={() => window.open(article.url, "_blank", "noopener,noreferrer")}
+                    onClick={() => {
+                      if (isSafeExternalUrl(article.url)) {
+                        window.open(article.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
                     data-testid={`card-ai-article-${article.id}`}
                   >
                     <CardContent className="p-4">
@@ -1655,9 +1674,12 @@ ${contentList}`,
                               className="flex-1 text-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(article.url, "_blank", "noopener,noreferrer");
+                                if (isSafeExternalUrl(article.url)) {
+                                  window.open(article.url, "_blank", "noopener,noreferrer");
+                                }
                               }}
                               data-testid={`button-ai-article-open-${article.id}`}
+                              disabled={!isSafeExternalUrl(article.url)}
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
                               Read Article

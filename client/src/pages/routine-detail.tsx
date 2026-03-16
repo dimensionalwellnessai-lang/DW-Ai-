@@ -51,9 +51,10 @@ export default function RoutineDetailPage() {
     );
   }
 
+  const routineData = routine.data as Record<string, unknown> | null | undefined;
   const steps: string[] =
-    Array.isArray((routine.data as any)?.steps)
-      ? (routine.data as any).steps
+    Array.isArray(routineData?.steps)
+      ? (routineData.steps as unknown[]).filter((s): s is string => typeof s === "string")
       : [];
 
   const toggleStep = (idx: number) => {

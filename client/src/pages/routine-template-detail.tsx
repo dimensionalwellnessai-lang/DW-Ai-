@@ -5,10 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Sun,
-  Moon,
-  Coffee,
-  Briefcase,
   Check,
   Plus,
   BookOpen,
@@ -20,77 +16,7 @@ import {
 import { useLocation, useParams } from "wouter";
 import { saveRoutine } from "@/lib/guest-storage";
 import { apiRequest } from "@/lib/queryClient";
-
-/** Routine templates – kept in sync with the list in routines.tsx */
-export const SUGGESTED_ROUTINES = [
-  {
-    id: "morning",
-    title: "Morning Routine",
-    icon: Sun,
-    description: "Start your day with intention",
-    defaultSteps: [
-      "Wake up gently",
-      "Hydrate with water",
-      "5-min stretch",
-      "Set daily intention",
-      "Light breakfast",
-    ],
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-    tags: ["morning", "energy", "mindfulness"],
-    routineType: "workout" as const,
-  },
-  {
-    id: "work",
-    title: "Work Routine",
-    icon: Briefcase,
-    description: "Stay focused and productive",
-    defaultSteps: [
-      "Clear workspace",
-      "Review priorities",
-      "Deep work block",
-      "Short break every 90 min",
-      "End-of-day review",
-    ],
-    color: "text-blue-500",
-    bgColor: "bg-blue-500/10",
-    tags: ["productivity", "focus", "work"],
-    routineType: "spiritual_practice" as const,
-  },
-  {
-    id: "lunch",
-    title: "Lunch Routine",
-    icon: Coffee,
-    description: "Recharge midday",
-    defaultSteps: [
-      "Step away from work",
-      "Mindful eating",
-      "Brief walk",
-      "Quick reset meditation",
-    ],
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    tags: ["lunch", "reset", "mindfulness"],
-    routineType: "meal_plan" as const,
-  },
-  {
-    id: "evening",
-    title: "Evening Routine",
-    icon: Moon,
-    description: "Wind down peacefully",
-    defaultSteps: [
-      "Limit screens 1hr before bed",
-      "Light stretching",
-      "Gratitude reflection",
-      "Prepare for tomorrow",
-      "Relaxing activity",
-    ],
-    color: "text-purple-500",
-    bgColor: "bg-purple-500/10",
-    tags: ["evening", "relaxation", "sleep"],
-    routineType: "meditation" as const,
-  },
-];
+import { SUGGESTED_ROUTINES } from "@/lib/routine-templates";
 
 export default function RoutineTemplateDetailPage() {
   const params = useParams<{ templateId: string }>();
@@ -107,9 +33,17 @@ export default function RoutineTemplateDetailPage() {
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [adding, setAdding] = useState(false);
 
-  // Fetch AI-generated steps on mount
+  // Reset all derived state and re-fetch whenever the template changes so that
+  // navigating between /routines/templates/:id paths never shows stale data.
   useEffect(() => {
     if (!template) return;
+
+    // Reset to defaults immediately so the UI is never in a stale state
+    setSteps(template.defaultSteps);
+    setWhySuggested(null);
+    setAiGenerated(false);
+    setCheckedSteps(new Set());
+
     let cancelled = false;
 
     async function fetchAiSteps() {
@@ -139,7 +73,6 @@ export default function RoutineTemplateDetailPage() {
 
     fetchAiSteps();
     return () => { cancelled = true; };
-    // template is stable per templateId; using id avoids deep-equality re-runs
   }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!template) {

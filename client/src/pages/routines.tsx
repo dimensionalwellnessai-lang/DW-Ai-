@@ -14,10 +14,6 @@ import {
   FolderOpen,
   Wallet,
   Sparkles,
-  Sun,
-  Moon,
-  Coffee,
-  Briefcase
 } from "lucide-react";
 import { 
   getSavedRoutinesByType,
@@ -27,6 +23,7 @@ import {
   type SavedRoutine,
   type RoutineType
 } from "@/lib/guest-storage";
+import { SUGGESTED_ROUTINES } from "@/lib/routine-templates";
 import { useLocation, useSearch } from "wouter";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 
@@ -46,40 +43,6 @@ const TYPE_LABELS: Record<RoutineType, string> = {
   spiritual_practice: "Spiritual Practices",
 };
 
-const SUGGESTED_ROUTINES = [
-  {
-    id: "morning",
-    title: "Morning Routine",
-    icon: Sun,
-    description: "Start your day with intention",
-    defaultSteps: ["Wake up gently", "Hydrate with water", "5-min stretch", "Set daily intention", "Light breakfast"],
-    personalizable: true,
-  },
-  {
-    id: "work",
-    title: "Work Routine",
-    icon: Briefcase,
-    description: "Stay focused and productive",
-    defaultSteps: ["Clear workspace", "Review priorities", "Deep work block", "Short break every 90 min", "End-of-day review"],
-    personalizable: true,
-  },
-  {
-    id: "lunch",
-    title: "Lunch Routine",
-    icon: Coffee,
-    description: "Recharge midday",
-    defaultSteps: ["Step away from work", "Mindful eating", "Brief walk", "Quick reset meditation"],
-    personalizable: true,
-  },
-  {
-    id: "evening",
-    title: "Evening Routine",
-    icon: Moon,
-    description: "Wind down peacefully",
-    defaultSteps: ["Limit screens 1hr before bed", "Light stretching", "Gratitude reflection", "Prepare for tomorrow", "Relaxing activity"],
-    personalizable: true,
-  },
-];
 
 export default function RoutinesPage() {
   useTutorialStart("routines", 1000);

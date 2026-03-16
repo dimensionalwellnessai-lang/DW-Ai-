@@ -3517,23 +3517,39 @@ export async function registerRoutes(
     }
   });
 
+  // ── Shared AI limiter for new non-chat AI endpoints ────────────────────────
+  const aiContentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please slow down and try again shortly." },
+  });
+
   // ── AI Routine Step Generation ─────────────────────────────────────────────
   // Generates personalized routine steps for a given template using the user's
   // profile (fitness goal, energy time, day structure, goals, habits).
   // Falls back to curated defaults if AI is not configured or fails.
-  app.post("/api/routines/generate-steps", async (req, res) => {
+  app.post("/api/routines/generate-steps", aiContentLimiter, async (req, res) => {
+    const bodySchema = z.object({
+      templateId: z.string().min(1, "templateId is required"),
+      templateTitle: z.string().min(1, "templateTitle is required"),
+      defaultSteps: z.array(z.string().min(1)).min(1, "defaultSteps must be a non-empty array"),
+    });
+
+    let body: z.infer<typeof bodySchema>;
     try {
-      const { templateId, templateTitle, defaultSteps } = req.body as {
-        templateId: string;
-        templateTitle: string;
-        defaultSteps: string[];
-      };
-
-      if (!templateId || !Array.isArray(defaultSteps)) {
-        return res.status(400).json({ error: "templateId and defaultSteps are required" });
+      body = bodySchema.parse(req.body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: err.errors[0]?.message ?? "Invalid request" });
       }
+      return res.status(400).json({ error: "Invalid request body" });
+    }
 
-      const aiConfig = getAiConfigStatus();
+    const { templateId, templateTitle, defaultSteps } = body;
+
+    try {
       if (!aiConfig.configured) {
         return res.json({ steps: defaultSteps, aiGenerated: false, reason: "AI not configured" });
       }
@@ -3589,17 +3605,20 @@ Return ONLY a valid JSON object:
       if (!content) throw new Error("Empty AI response");
 
       const parsed = JSON.parse(content);
-      const steps = Array.isArray(parsed.steps) && parsed.steps.length > 0
-        ? parsed.steps
-        : defaultSteps;
+      // Only report aiGenerated=true when the AI actually provided usable steps
+      const aiSteps = Array.isArray(parsed.steps) && parsed.steps.length > 0
+        ? (parsed.steps as unknown[]).filter((s): s is string => typeof s === "string")
+        : [];
+      const usedAiSteps = aiSteps.length > 0;
+      const steps = usedAiSteps ? aiSteps : defaultSteps;
+      const whySuggested = typeof parsed.whySuggested === "string" ? parsed.whySuggested : null;
 
-      return res.json({ steps, whySuggested: parsed.whySuggested || null, aiGenerated: true });
+      return res.json({ steps, whySuggested, aiGenerated: usedAiSteps });
     } catch (error) {
       console.error("Routine step generation error:", error);
-      // Graceful fallback to defaults
-      const { defaultSteps } = req.body;
+      // Graceful fallback to validated defaults (from Zod-parsed body)
       return res.json({
-        steps: Array.isArray(defaultSteps) ? defaultSteps : [],
+        steps: defaultSteps,
         aiGenerated: false,
       });
     }
@@ -3609,7 +3628,7 @@ Return ONLY a valid JSON object:
   // Uses AI to suggest real wellness articles on topics relevant to the user.
   // Each item includes title, synopsis, why it's relevant, and a plausible URL.
   // Falls back to an empty array (client shows sample content) if AI not configured.
-  app.get("/api/browse/ai-articles", async (req, res) => {
+  app.get("/api/browse/ai-articles", aiContentLimiter, async (req, res) => {
     try {
       const aiConfig = getAiConfigStatus();
       if (!aiConfig.configured) {
@@ -3673,9 +3692,26 @@ Return ONLY a valid JSON object:
       if (!content) throw new Error("Empty AI response");
 
       const parsed = JSON.parse(content);
-      const articles = Array.isArray(parsed.articles) ? parsed.articles : [];
+      const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : [];
 
-      return res.json({ articles, aiGenerated: true });
+      // Sanitize AI-provided URLs: only accept https: URLs with a parseable hostname.
+      // This prevents javascript: / data: injections from reaching the client.
+      const safeArticles = rawArticles.map((a: Record<string, unknown>) => {
+        let safeUrl = "";
+        if (typeof a.url === "string") {
+          try {
+            const parsed = new URL(a.url);
+            if (parsed.protocol === "https:" && parsed.hostname) {
+              safeUrl = a.url;
+            }
+          } catch {
+            // Drop malformed URL
+          }
+        }
+        return { ...a, url: safeUrl };
+      });
+
+      return res.json({ articles: safeArticles, aiGenerated: true });
     } catch (error) {
       console.error("AI article curation error:", error);
       return res.json({ articles: [], aiGenerated: false });
