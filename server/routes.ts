@@ -3517,6 +3517,207 @@ export async function registerRoutes(
     }
   });
 
+  // ── Shared AI limiter for new non-chat AI endpoints ────────────────────────
+  const aiContentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please slow down and try again shortly." },
+  });
+
+  // ── AI Routine Step Generation ─────────────────────────────────────────────
+  // Generates personalized routine steps for a given template using the user's
+  // profile (fitness goal, energy time, day structure, goals, habits).
+  // Falls back to curated defaults if AI is not configured or fails.
+  app.post("/api/routines/generate-steps", aiContentLimiter, async (req, res) => {
+    const bodySchema = z.object({
+      templateId: z.string().min(1, "templateId is required"),
+      templateTitle: z.string().min(1, "templateTitle is required"),
+      defaultSteps: z.array(z.string().min(1)).min(1, "defaultSteps must be a non-empty array"),
+    });
+
+    let body: z.infer<typeof bodySchema>;
+    try {
+      body = bodySchema.parse(req.body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: err.errors[0]?.message ?? "Invalid request" });
+      }
+      return res.status(400).json({ error: "Invalid request body" });
+    }
+
+    const { templateId, templateTitle, defaultSteps } = body;
+
+    try {
+      if (!aiConfig.configured) {
+        return res.json({ steps: defaultSteps, aiGenerated: false, reason: "AI not configured" });
+      }
+
+      // Try to get user context for personalisation
+      let userContext: Record<string, unknown> = {};
+      const userId = req.session?.userId;
+      if (userId) {
+        try {
+          const [userProfile, goals, habits] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getGoals(userId),
+            storage.getHabits(userId),
+          ]);
+          userContext = {
+            fitnessGoal: userProfile?.fitnessGoal || null,
+            energyLevel: userProfile?.energyLevel || null,
+            goals: goals.slice(0, 3).map((g: Goal) => g.title),
+            habits: habits.slice(0, 3).map((h: Habit) => h.title),
+          };
+        } catch {
+          // Non-fatal — proceed without profile context
+        }
+      }
+
+      const contextBlock = Object.keys(userContext).length
+        ? `\nUSER CONTEXT:\n${Object.entries(userContext)
+            .filter(([, v]) => v && (Array.isArray(v) ? (v as unknown[]).length > 0 : true))
+            .map(([k, v]) => `- ${k}: ${Array.isArray(v) ? (v as unknown[]).join(", ") : v}`)
+            .join("\n")}`
+        : "";
+
+      const prompt = `You are a wellness coach creating a personalized "${templateTitle}" routine.${contextBlock}
+
+Default steps for reference: ${defaultSteps.join(", ")}
+
+Create 5-7 actionable, personalized steps for the "${templateTitle}" routine. Make them:
+- Specific and time-aware (e.g., "5-min gentle stretch focusing on neck tension")
+- Tailored to the user context if provided, otherwise keep them practical for most people
+- In a natural daily flow order
+
+Return ONLY a valid JSON object:
+{ "steps": ["step 1", "step 2", ...], "whySuggested": "One sentence explaining the routine's focus" }`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 400,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error("Empty AI response");
+
+      const parsed = JSON.parse(content);
+      // Only report aiGenerated=true when the AI actually provided usable steps
+      const aiSteps = Array.isArray(parsed.steps) && parsed.steps.length > 0
+        ? (parsed.steps as unknown[]).filter((s): s is string => typeof s === "string")
+        : [];
+      const usedAiSteps = aiSteps.length > 0;
+      const steps = usedAiSteps ? aiSteps : defaultSteps;
+      const whySuggested = typeof parsed.whySuggested === "string" ? parsed.whySuggested : null;
+
+      return res.json({ steps, whySuggested, aiGenerated: usedAiSteps });
+    } catch (error) {
+      console.error("Routine step generation error:", error);
+      // Graceful fallback to validated defaults (from Zod-parsed body)
+      return res.json({
+        steps: defaultSteps,
+        aiGenerated: false,
+      });
+    }
+  });
+
+  // ── AI Article Curation ────────────────────────────────────────────────────
+  // Uses AI to suggest real wellness articles on topics relevant to the user.
+  // Each item includes title, synopsis, why it's relevant, and a plausible URL.
+  // Falls back to an empty array (client shows sample content) if AI not configured.
+  app.get("/api/browse/ai-articles", aiContentLimiter, async (req, res) => {
+    try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        return res.json({ articles: [], aiGenerated: false });
+      }
+
+      // Optional user context
+      let topics: string[] = [];
+      const userId = req.session?.userId;
+      if (userId) {
+        try {
+          const [userProfile, goals] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getGoals(userId),
+          ]);
+          if (userProfile?.fitnessGoal) topics.push(userProfile.fitnessGoal);
+          goals.slice(0, 2).forEach((g: Goal) => {
+            if (g.wellnessDimension) topics.push(g.wellnessDimension);
+          });
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      const topicsLine = topics.length
+        ? `The user is interested in: ${topics.join(", ")}.`
+        : "The user is interested in general wellness, mindfulness, and healthy living.";
+
+      const prompt = `You are a wellness content curator. ${topicsLine}
+
+Suggest 6 real or highly plausible wellness article topics that would genuinely help this person. For each, provide:
+- A realistic article title (as it would appear on a wellness blog or site)
+- A 2-3 sentence synopsis of the article's content
+- A 1-sentence personalised reason why this article is being recommended to this user
+- A plausible URL (use real wellness domains like healthline.com, verywellhealth.com, mindbodygreen.com, greatist.com, self.com, psychologytoday.com, medicalnewstoday.com)
+- One of these categories: article, blog, mindfulness, nutrition
+
+Return ONLY a valid JSON object:
+{
+  "articles": [
+    {
+      "id": "ai-article-1",
+      "title": "...",
+      "synopsis": "...",
+      "whySuggested": "...",
+      "url": "https://...",
+      "category": "article",
+      "readTimeMinutes": 5
+    }
+  ]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 900,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error("Empty AI response");
+
+      const parsed = JSON.parse(content);
+      const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : [];
+
+      // Sanitize AI-provided URLs: only accept https: URLs with a parseable hostname.
+      // This prevents javascript: / data: injections from reaching the client.
+      const safeArticles = rawArticles.map((a: Record<string, unknown>) => {
+        let safeUrl = "";
+        if (typeof a.url === "string") {
+          try {
+            const parsed = new URL(a.url);
+            if (parsed.protocol === "https:" && parsed.hostname) {
+              safeUrl = a.url;
+            }
+          } catch {
+            // Drop malformed URL
+          }
+        }
+        return { ...a, url: safeUrl };
+      });
+
+      return res.json({ articles: safeArticles, aiGenerated: true });
+    } catch (error) {
+      console.error("AI article curation error:", error);
+      return res.json({ articles: [], aiGenerated: false });
+    }
+  });
+
   app.get("/api/tasks", requireAuth, async (req, res) => {
     try {
       const tasks = await storage.getTasks(req.session.userId!);

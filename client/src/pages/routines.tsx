@@ -14,10 +14,6 @@ import {
   FolderOpen,
   Wallet,
   Sparkles,
-  Sun,
-  Moon,
-  Coffee,
-  Briefcase
 } from "lucide-react";
 import { 
   getSavedRoutinesByType,
@@ -27,6 +23,7 @@ import {
   type SavedRoutine,
   type RoutineType
 } from "@/lib/guest-storage";
+import { SUGGESTED_ROUTINES } from "@/lib/routine-templates";
 import { useLocation, useSearch } from "wouter";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 
@@ -46,40 +43,6 @@ const TYPE_LABELS: Record<RoutineType, string> = {
   spiritual_practice: "Spiritual Practices",
 };
 
-const SUGGESTED_ROUTINES = [
-  {
-    id: "morning",
-    title: "Morning Routine",
-    icon: Sun,
-    description: "Start your day with intention",
-    defaultSteps: ["Wake up gently", "Hydrate with water", "5-min stretch", "Set daily intention", "Light breakfast"],
-    personalizable: true,
-  },
-  {
-    id: "work",
-    title: "Work Routine",
-    icon: Briefcase,
-    description: "Stay focused and productive",
-    defaultSteps: ["Clear workspace", "Review priorities", "Deep work block", "Short break every 90 min", "End-of-day review"],
-    personalizable: true,
-  },
-  {
-    id: "lunch",
-    title: "Lunch Routine",
-    icon: Coffee,
-    description: "Recharge midday",
-    defaultSteps: ["Step away from work", "Mindful eating", "Brief walk", "Quick reset meditation"],
-    personalizable: true,
-  },
-  {
-    id: "evening",
-    title: "Evening Routine",
-    icon: Moon,
-    description: "Wind down peacefully",
-    defaultSteps: ["Limit screens 1hr before bed", "Light stretching", "Gratitude reflection", "Prepare for tomorrow", "Relaxing activity"],
-    personalizable: true,
-  },
-];
 
 export default function RoutinesPage() {
   useTutorialStart("routines", 1000);
@@ -192,7 +155,10 @@ export default function RoutinesPage() {
                   </Button>
                   <Button 
                     size="icon"
-                    onClick={() => handleUse(routine)}
+                    onClick={() => {
+                      handleUse(routine);
+                      setLocation(`/routines/${routine.id}`);
+                    }}
                     data-testid={`button-use-${routine.id}`}
                   >
                     <Play className="w-4 h-4" />
@@ -249,7 +215,7 @@ export default function RoutinesPage() {
                 const Icon = routine.icon;
                 const steps = getPersonalizedSteps(routine.id);
                 return (
-                  <Card key={routine.id} className="hover-elevate cursor-pointer" data-testid={`card-suggested-${routine.id}`}>
+                  <Card key={routine.id} className="hover-elevate cursor-pointer" onClick={() => setLocation(`/routines/templates/${routine.id}`)} data-testid={`card-suggested-${routine.id}`}>
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center gap-2">
                         <Icon className="w-5 h-5 text-primary" />

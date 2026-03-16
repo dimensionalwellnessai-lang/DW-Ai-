@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import {
@@ -60,12 +60,29 @@ import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
 import type { ExploreFeedContentType } from "@/components/explore-feed-card";
 import { COPY } from "@/copy/en";
 
+/**
+ * Validates that a URL is safe to open externally.
+ * Only https: URLs with a parseable hostname are allowed — prevents
+ * javascript: / data: injection from AI-provided or backend content.
+ */
+function isSafeExternalUrl(url: unknown): url is string {
+  if (typeof url !== "string" || !url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && !!parsed.hostname;
+  } catch {
+    return false;
+  }
+}
+
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
   { id: "meditation", name: "Meditation", icon: Brain },
   { id: "nutrition", name: "Nutrition", icon: Utensils },
   { id: "mindfulness", name: "Mindfulness", icon: Sun },
   { id: "recovery", name: "Recovery", icon: Heart },
+  { id: "article", name: "Articles", icon: FileText },
+  { id: "blog", name: "Blog", icon: FileText },
 ];
 
 const SAMPLE_CONTENT = [
@@ -285,6 +302,91 @@ const SAMPLE_CONTENT = [
     moodTags: ["exhausted", "stressed"],
     thumbnailUrl: "/api/placeholder/recovery-restorative",
   },
+  // Article-type content – ensures the Articles tab always has content
+  {
+    id: "19",
+    title: "10 Habits That Actually Stick",
+    description: "Science-backed strategies for building routines that last beyond 30 days",
+    contentType: "article",
+    category: "article",
+    duration: 7,
+    difficulty: "beginner",
+    goalTags: ["habits", "consistency", "mental-health"],
+    moodTags: ["motivated", "curious"],
+    thumbnailUrl: "/api/placeholder/article-habits",
+  },
+  {
+    id: "20",
+    title: "The Gut-Brain Connection",
+    description: "How what you eat directly influences your mood, focus, and energy levels",
+    contentType: "article",
+    category: "article",
+    duration: 8,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "mental-health", "energy"],
+    moodTags: ["curious", "low-energy"],
+    thumbnailUrl: "/api/placeholder/article-gut-brain",
+  },
+  {
+    id: "21",
+    title: "Rest Is Productive: Why Recovery Matters",
+    description: "Reframe your relationship with rest and learn why downtime fuels long-term performance",
+    contentType: "article",
+    category: "article",
+    duration: 6,
+    difficulty: "beginner",
+    goalTags: ["recovery", "mental-health", "stress-relief"],
+    moodTags: ["overwhelmed", "tired"],
+    thumbnailUrl: "/api/placeholder/article-recovery",
+  },
+  {
+    id: "22",
+    title: "Morning Sunlight & Your Circadian Rhythm",
+    description: "A simple daily habit that sets your biological clock, improves sleep, and boosts mood",
+    contentType: "article",
+    category: "article",
+    duration: 5,
+    difficulty: "beginner",
+    goalTags: ["sleep", "energy", "habits"],
+    moodTags: ["tired", "scattered"],
+    thumbnailUrl: "/api/placeholder/article-sunlight",
+  },
+  {
+    id: "23",
+    title: "Breathing Techniques for Instant Calm",
+    description: "Four evidence-based breathing patterns you can use anywhere to reduce stress",
+    contentType: "blog",
+    category: "blog",
+    duration: 5,
+    difficulty: "beginner",
+    goalTags: ["stress-relief", "focus", "mindfulness"],
+    moodTags: ["anxious", "overwhelmed"],
+    thumbnailUrl: "/api/placeholder/blog-breathing",
+  },
+  {
+    id: "24",
+    title: "Understanding Your Energy Levels",
+    description: "Map your personal energy peaks and valleys to do your best work at the right time",
+    contentType: "article",
+    category: "article",
+    duration: 9,
+    difficulty: "beginner",
+    goalTags: ["productivity", "energy", "self-awareness"],
+    moodTags: ["scattered", "low-energy"],
+    thumbnailUrl: "/api/placeholder/article-energy",
+  },
+  {
+    id: "25",
+    title: "Anti-Inflammatory Eating Made Simple",
+    description: "Practical nutrition shifts to reduce chronic inflammation without a total diet overhaul",
+    contentType: "article",
+    category: "nutrition",
+    duration: 10,
+    difficulty: "beginner",
+    goalTags: ["nutrition", "recovery", "habits"],
+    moodTags: ["motivated", "sore"],
+    thumbnailUrl: "/api/placeholder/article-nutrition",
+  },
 ];
 
 const COMMUNITY_GROUPS = [
@@ -320,6 +422,7 @@ const FOR_YOU_PAGE_SIZE = 9;
 export default function Browse() {
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community">("for-you");
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
@@ -390,6 +493,24 @@ export default function Browse() {
   const { data: savedContent, isLoading: savedLoading } = useQuery<SavedContent[]>({
     queryKey: ["/api/saved-content"],
     enabled: activeTab === "saved",
+  });
+
+  // Articles tab: AI-curated articles with synopsis + reason + real links
+  const { data: aiArticlesData, isLoading: aiArticlesLoading } = useQuery<{
+    articles: Array<{
+      id: string;
+      title: string;
+      synopsis: string;
+      whySuggested: string;
+      url: string;
+      category: string;
+      readTimeMinutes: number;
+    }>;
+    aiGenerated: boolean;
+  }>({
+    queryKey: ["/api/browse/ai-articles"],
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled: activeTab === "articles",
   });
 
   // Fetch previously not-interested URLs for persistent hiding
@@ -628,6 +749,8 @@ ${contentList}`,
       mindfulness: "from-green-500/20 to-teal-500/5",
       recovery: "from-blue-500/20 to-cyan-500/5",
       nutrition: "from-yellow-500/20 to-orange-500/5",
+      article: "from-indigo-500/20 to-violet-500/5",
+      blog: "from-indigo-500/20 to-violet-500/5",
     };
     return gradients[category] || "from-primary/20 to-primary/5";
   };
@@ -644,17 +767,34 @@ ${contentList}`,
   const handleStartContent = () => {
     if (!selectedContent) return;
     
-    // Close the dialog and show toast for now
+    const url = (selectedContent as any).url;
+    if (isSafeExternalUrl(url)) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      setContentDetailOpen(false);
+      return;
+    }
+
+    // Navigate to the relevant in-app section based on content type
+    const contentType = (selectedContent as any).contentType || selectedContent.category;
+    const typeRoutes: Record<string, string> = {
+      workout: "/workout",
+      meditation: "/spiritual",
+      mindfulness: "/spiritual",
+      nutrition: "/meal-prep",
+      recovery: "/workout",
+      article: "/browse?tab=articles",
+      blog: "/browse?tab=articles",
+    };
+    const destination = typeRoutes[contentType];
     setContentDetailOpen(false);
-    toast({ 
-      title: "Starting content...", 
-      description: `Get ready for: ${selectedContent.title}`,
-    });
-    
-    // In a real implementation, this would navigate to the appropriate page
-    // For workouts: navigate to workout player
-    // For meditations: navigate to meditation player
-    // etc.
+    if (destination) {
+      setLocation(destination);
+    } else {
+      toast({ 
+        title: "Starting content...", 
+        description: `Get ready for: ${selectedContent.title}`,
+      });
+    }
   };
 
   const handleLocalSearch = async () => {
@@ -1471,6 +1611,125 @@ ${contentList}`,
             </div>
           </div>
 
+          {/* AI-Curated Articles */}
+          {aiArticlesLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Suggested for You</h2>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-1" />
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : aiArticlesData?.articles && aiArticlesData.articles.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Suggested for You</h2>
+              </div>
+              <div className="space-y-3">
+                {aiArticlesData.articles.map((article) => (
+                  <Card
+                    key={article.id}
+                    className="card-modern hover-lift cursor-pointer transition-all"
+                    onClick={() => {
+                      if (isSafeExternalUrl(article.url)) {
+                        window.open(article.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    data-testid={`card-ai-article-${article.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5 text-indigo-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-medium text-sm leading-snug">{article.title}</h3>
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {article.readTimeMinutes}m
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{article.synopsis}</p>
+                          {article.whySuggested && (
+                            <div className="flex items-start gap-1.5 text-xs text-primary bg-primary/5 rounded-md px-2 py-1.5">
+                              <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span>{article.whySuggested}</span>
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSafeExternalUrl(article.url)) {
+                                  window.open(article.url, "_blank", "noopener,noreferrer");
+                                }
+                              }}
+                              data-testid={`button-ai-article-open-${article.id}`}
+                              disabled={!isSafeExternalUrl(article.url)}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Read Article
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!saveContentMutation.isPending) {
+                                  saveContentMutation.mutate({
+                                    contentType: article.category || "article",
+                                    title: article.title,
+                                    description: article.synopsis,
+                                    url: article.url,
+                                    source: "ai-curated",
+                                    duration: String(article.readTimeMinutes),
+                                    metadata: { whySuggested: article.whySuggested },
+                                  });
+                                }
+                              }}
+                              data-testid={`button-ai-article-save-${article.id}`}
+                            >
+                              <Bookmark className="h-3 w-3 mr-1" />
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="px-2 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNotInterested({ title: article.title, url: article.url, type: "article" });
+                              }}
+                              title="Not interested"
+                              data-testid={`button-ai-article-notinterested-${article.id}`}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <h2 className="text-lg font-semibold mb-3">Wellness Articles</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredContent.filter(c =>
@@ -1540,10 +1799,39 @@ ${contentList}`,
               ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
                 (c as any).contentType || c.category || ""
               )
-            ).length === 0 && (
-            <div className="text-center py-12">
+            ).length === 0 && !aiArticlesLoading && !(aiArticlesData?.articles?.length) && (
+            <div className="text-center py-12 space-y-3">
               <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">{COPY.emptyStates.browse.title}</p>
+              <p className="font-medium">No articles match your current filters</p>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                Try clearing filters or search for a specific wellness topic.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setTopicFilter("");
+                    setLengthFilter(null);
+                  }}
+                  data-testid="button-articles-clear-filters"
+                >
+                  Clear Filters
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setSearchDialogType("articles");
+                    setSearchDialogOpen(true);
+                    setExternalSearchQuery("");
+                    setExternalSearchResults([]);
+                  }}
+                  data-testid="button-articles-search-empty"
+                >
+                  <Search className="h-3.5 w-3.5 mr-1" />
+                  Search Articles
+                </Button>
+              </div>
             </div>
           )}
         </main>
@@ -2108,20 +2396,50 @@ ${contentList}`,
                     onClick={handleStartContent}
                     className="flex-1"
                     size="lg"
+                    data-testid="button-content-start"
                   >
                     <Play className="h-4 w-4 mr-2" />
-                    Start Now
+                    {(selectedContent as any).url ? "Open" : "Start Now"}
                   </Button>
                   <Button 
                     variant="outline"
+                    disabled={saveContentMutation.isPending}
                     onClick={() => {
-                      toast({ 
-                        title: "Added to favorites", 
-                        description: "This content has been saved for later" 
+                      if (!selectedContent) return;
+                      saveContentMutation.mutate({
+                        contentType: (selectedContent as any).contentType || selectedContent.category,
+                        title: selectedContent.title,
+                        description: selectedContent.description || "",
+                        url: (selectedContent as any).url || "",
+                        thumbnail: selectedContent.thumbnailUrl,
+                        source: "browse",
+                        duration: selectedContent.duration ? String(selectedContent.duration) : undefined,
+                        metadata: {
+                          goalTags: selectedContent.goalTags,
+                          moodTags: selectedContent.moodTags,
+                          difficulty: selectedContent.difficulty,
+                        },
                       });
+                      setContentDetailOpen(false);
                     }}
+                    data-testid="button-content-save"
                   >
-                    <Heart className="h-4 w-4" />
+                    <Bookmark className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (!selectedContent) return;
+                      handleAddToSchedule({
+                        title: selectedContent.title,
+                        url: (selectedContent as any).url || "",
+                        type: (selectedContent as any).contentType || selectedContent.category,
+                      });
+                      setContentDetailOpen(false);
+                    }}
+                    data-testid="button-content-schedule"
+                  >
+                    <Calendar className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

@@ -55,6 +55,8 @@ const ChallengesPage = lazy(() =>
   import("@/pages/challenges").then((m) => ({ default: m.ChallengesPage })),
 );
 const RoutinesPage = lazy(() => import("@/pages/routines"));
+const RoutineTemplateDetailPage = lazy(() => import("@/pages/routine-template-detail"));
+const RoutineDetailPage = lazy(() => import("@/pages/routine-detail"));
 const MealPrepPage = lazy(() => import("@/pages/meal-prep"));
 const ShoppingListPage = lazy(() => import("@/pages/shopping-list"));
 const CookSessionPage = lazy(() => import("@/pages/cook-session"));
@@ -254,6 +256,9 @@ function Router() {
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}
+      {/* Routine sub-routes must come before /routines so wouter matches them first */}
+      {isRouteEnabled("/routines") && <Route path="/routines/templates/:templateId" component={RoutineTemplateDetailPage} />}
+      {isRouteEnabled("/routines") && <Route path="/routines/:id" component={RoutineDetailPage} />}
       {isRouteEnabled("/routines") && <Route path="/routines" component={RoutinesPage} />}
       {isRouteEnabled("/meal-prep") && <Route path="/meal-prep" component={MealPrepPage} />}
       {isRouteEnabled("/shopping-list") && <Route path="/shopping-list" component={ShoppingListPage} />}
