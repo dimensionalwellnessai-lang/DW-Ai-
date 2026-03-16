@@ -28,6 +28,8 @@ export const ROUTES: RouteConfig[] = [
   
   { path: "/talk", name: "Talk It Out", enabled: true },
   { path: "/challenges", name: "Challenges", enabled: true },
+  { path: "/routines/templates/:templateId", name: "Routine Template", enabled: true },
+  { path: "/routines/:id", name: "Routine Detail", enabled: true },
   { path: "/routines", name: "Routines", enabled: true },
   { path: "/finances", name: "Finances", enabled: true },
   { path: "/feedback", name: "Feedback", enabled: true },

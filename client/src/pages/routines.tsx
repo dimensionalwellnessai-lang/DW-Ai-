@@ -192,7 +192,10 @@ export default function RoutinesPage() {
                   </Button>
                   <Button 
                     size="icon"
-                    onClick={() => handleUse(routine)}
+                    onClick={() => {
+                      handleUse(routine);
+                      setLocation(`/routines/${routine.id}`);
+                    }}
                     data-testid={`button-use-${routine.id}`}
                   >
                     <Play className="w-4 h-4" />
@@ -249,7 +252,7 @@ export default function RoutinesPage() {
                 const Icon = routine.icon;
                 const steps = getPersonalizedSteps(routine.id);
                 return (
-                  <Card key={routine.id} className="hover-elevate cursor-pointer" data-testid={`card-suggested-${routine.id}`}>
+                  <Card key={routine.id} className="hover-elevate cursor-pointer" onClick={() => setLocation(`/routines/templates/${routine.id}`)} data-testid={`card-suggested-${routine.id}`}>
                     <CardContent className="p-4 space-y-2">
                       <div className="flex items-center gap-2">
                         <Icon className="w-5 h-5 text-primary" />
