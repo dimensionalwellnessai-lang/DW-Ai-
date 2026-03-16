@@ -1060,7 +1060,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                         data-testid={`button-add-today-${index}`}
                       >
                         <Calendar className="w-3.5 h-3.5 mr-1" />
-                        Add to Today
+                        Add to Orbit
                       </Button>
                       <Button 
                         size="icon" 
@@ -1331,7 +1331,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                       }}
                     >
                       <Calendar className="w-4 h-4 mr-1" />
-                      Add to Today
+                      Add to Orbit
                     </Button>
                   </div>
                 </div>
@@ -1432,7 +1432,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                             }}
                             data-testid={`button-add-suggestion-${idx}`}
                           >
-                            Add to Today
+                            Add to Orbit
                           </Button>
                           <Button
                             size="icon"
@@ -1482,7 +1482,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
               <div className="flex flex-col gap-2">
                 <Button onClick={confirmAddToCalendar} data-testid="button-add-today">
                   <Calendar className="w-4 h-4 mr-2" />
-                  Add to Today
+                  Add to Orbit
                 </Button>
                 <Button 
                   variant="outline"

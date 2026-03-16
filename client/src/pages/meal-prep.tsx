@@ -1809,7 +1809,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   data-testid="button-save-ai-pick-nutrition"
                 >
                   <Heart className="h-4 w-4 mr-2" />
-                  Add to Today
+                  Add to Orbit
                 </Button>
               </div>
             </section>
@@ -2786,7 +2786,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               <div className="flex flex-col gap-2">
                 <Button onClick={confirmAddMealToCalendar} data-testid="button-add-meal-today">
                   <Calendar className="w-4 h-4 mr-2" />
-                  Add to Today
+                  Add to Orbit
                 </Button>
                 <Button 
                   variant="outline"
@@ -2866,7 +2866,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                 data-testid="button-ai-pick-nutrition-confirm"
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Add to Today
+                Add to Orbit
               </Button>
             </div>
           </DialogContent>

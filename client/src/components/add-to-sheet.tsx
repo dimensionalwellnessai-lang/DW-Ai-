@@ -177,7 +177,7 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
         </SheetHeader>
 
         <div className="space-y-4 mt-6">
-          {/* Add to Today */}
+          {/* Add to Orbit */}
           <Button
             className="w-full justify-start h-auto py-4"
             variant="outline"
@@ -189,7 +189,7 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
                 <CalendarIcon className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-medium">Add to Today</p>
+                <p className="font-medium">Add to Orbit</p>
                 <p className="text-sm text-muted-foreground">
                   Schedule for today's calendar
                 </p>

@@ -225,7 +225,7 @@ export default function HomeCommandCenter() {
 
   if (summary.isLoading) {
     return (
-      <div className="flex flex-col h-full cosmic-bg">
+      <div className="flex flex-col h-full bg-background">
         <header className="flex items-center px-4 shrink-0" style={{ height: 68 }}>
           <button
             type="button"
@@ -252,7 +252,7 @@ export default function HomeCommandCenter() {
   }
 
   return (
-    <div className={`flex flex-col h-full cc-time-bg ${timeClass}`}>
+    <div className="flex flex-col h-full bg-background">
       <header className="flex items-center px-4 shrink-0" style={{ height: 68 }}>
         <button
           type="button"
