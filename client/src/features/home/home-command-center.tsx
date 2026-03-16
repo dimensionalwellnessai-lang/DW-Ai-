@@ -98,7 +98,6 @@ export default function HomeCommandCenter() {
   const [, navigate] = useLocation();
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cardsOpen, setCardsOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
 
@@ -237,9 +236,11 @@ export default function HomeCommandCenter() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <h1 className="flex-1 text-center text-base font-semibold text-foreground font-display pr-7" data-testid="text-command-center-title">
-            Command Center
-          </h1>
+          <div className="flex-1 text-center pr-7">
+            <p className="text-base font-semibold text-foreground font-display" data-testid="text-greeting">
+              {getGreeting()}
+            </p>
+          </div>
         </header>
         <div className="flex-1 flex items-center justify-center">
           <Skeleton className="h-24 w-24 rounded-full" />
@@ -262,24 +263,20 @@ export default function HomeCommandCenter() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="flex-1 text-center text-base font-semibold text-foreground font-display pr-7" data-testid="text-command-center-title">
-          Command Center
-        </h1>
+        <div className="flex-1 text-center pr-7">
+          <p className="text-base font-semibold text-foreground font-display" data-testid="text-greeting">
+            {getGreeting()}{firstName ? `, ${firstName}` : ""}
+          </p>
+          <p className="text-[11px] text-muted-foreground/70 italic leading-tight" data-testid="text-affirmation">
+            {getDailyAffirmation()}
+          </p>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-hidden">
-        <div className="flex flex-col items-center">
-          <div className="w-full max-w-lg px-4 pt-1">
-            <p className="text-lg font-semibold text-foreground font-display text-center" data-testid="text-greeting">
-              {getGreeting()}{firstName ? `, ${firstName}` : ""}
-            </p>
-            <p className="text-xs text-muted-foreground/70 italic text-center mt-0.5" data-testid="text-affirmation">
-              {getDailyAffirmation()}
-            </p>
-          </div>
-
-          <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto" style={{ height: 340 }}>
-            <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: 280, height: 280 }} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+          <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto aspect-square" style={{ maxHeight: "min(340px, 50vh)" }}>
+            <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: "66.7%", height: "66.7%" }} data-testid="orbit-ring" />
 
             <div className="relative z-10">
               <DWOrb
@@ -307,25 +304,38 @@ export default function HomeCommandCenter() {
               );
             })}
 
-            <div
-              className="absolute z-20"
-              style={{
-                left: "50%",
-                top: "50%",
-                transform: "translate(146px, -84px)",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setCardsOpen(true)}
-                className="h-11 w-11 rounded-full bg-primary/10 backdrop-blur-sm border border-white/10 flex items-center justify-center shadow-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label="Open cards"
-                data-testid="btn-open-cards"
-              >
-                <Sparkles className="h-5 w-5 text-primary" />
-              </button>
-            </div>
           </div>
+        </div>
+
+        <div className="shrink-0 px-4 pb-4 pt-2 w-full max-w-lg mx-auto" data-testid="section-cards">
+          <Carousel opts={{ align: "start", dragFree: true }}>
+            <CarouselContent className="-ml-2">
+              {isFeatureEnabled("DW_READING_CARD") && (
+                <CarouselItem className="pl-2 basis-[85%]">
+                  <DWReadingCard energyLevel={summary.energyLevel} />
+                </CarouselItem>
+              )}
+
+              <CarouselItem className="pl-2 basis-[85%]">
+                <InsightSnapshotCard summary={summary} />
+              </CarouselItem>
+
+              {visibleProactiveCards.map((card) => (
+                <CarouselItem key={card.type} className="pl-2 basis-[85%]">
+                  <ProactiveCard
+                    type={card.type as ProactiveCardProps["type"]}
+                    title={card.title}
+                    message={card.message}
+                    why={card.why}
+                    actionLabel={card.actionLabel}
+                    onAction={card.actionPath ? () => navigate(card.actionPath!) : undefined}
+                    onDismiss={() => dismissCard(card.type)}
+                    priority={card.priority}
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         </div>
       </div>
 
@@ -342,45 +352,6 @@ export default function HomeCommandCenter() {
               onDW={(topic) => { setActiveCard(null); navigate(`/talk?topic=${encodeURIComponent(topic)}`); }}
             />
           )}
-        </DrawerContent>
-      </Drawer>
-
-      <Drawer open={cardsOpen} onOpenChange={setCardsOpen}>
-        <DrawerContent data-testid="drawer-cards-carousel">
-          <DrawerHeader className="sr-only">
-            <DrawerTitle>Cards</DrawerTitle>
-            <DrawerDescription>DW reading, insights, and suggestions</DrawerDescription>
-          </DrawerHeader>
-          <div className="px-4 pb-6 pt-2">
-            <Carousel opts={{ align: "start", dragFree: true }}>
-              <CarouselContent className="-ml-2">
-                {isFeatureEnabled("DW_READING_CARD") && (
-                  <CarouselItem className="pl-2 basis-[92%]">
-                    <DWReadingCard energyLevel={summary.energyLevel} />
-                  </CarouselItem>
-                )}
-
-                <CarouselItem className="pl-2 basis-[92%]">
-                  <InsightSnapshotCard summary={summary} />
-                </CarouselItem>
-
-                {visibleProactiveCards.map((card) => (
-                  <CarouselItem key={card.type} className="pl-2 basis-[92%]">
-                    <ProactiveCard
-                      type={card.type as ProactiveCardProps["type"]}
-                      title={card.title}
-                      message={card.message}
-                      why={card.why}
-                      actionLabel={card.actionLabel}
-                      onAction={card.actionPath ? () => navigate(card.actionPath!) : undefined}
-                      onDismiss={() => dismissCard(card.type)}
-                      priority={card.priority}
-                    />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
-          </div>
         </DrawerContent>
       </Drawer>
 
