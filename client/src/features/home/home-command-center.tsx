@@ -307,7 +307,7 @@ export default function HomeCommandCenter() {
           </div>
         </div>
 
-        <div className="shrink-0 px-4 pb-4 pt-2 w-full max-w-lg mx-auto" data-testid="section-cards">
+        <div className="shrink-0 px-4 pb-1 pt-0 w-full max-w-lg mx-auto" data-testid="section-cards">
           <Carousel opts={{ align: "start", dragFree: true }}>
             <CarouselContent className="-ml-2">
               {isFeatureEnabled("DW_READING_CARD") && (

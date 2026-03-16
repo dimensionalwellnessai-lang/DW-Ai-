@@ -36,7 +36,7 @@ export function BottomNav() {
       data-testid="nav-bottom"
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around h-12 w-full max-w-xl mx-auto px-2">
+      <div className="flex items-center justify-around h-10 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
           const isActive = item.path && (location === item.path || 
             (item.path !== "/" && location.startsWith(item.path)));
@@ -47,7 +47,7 @@ export function BottomNav() {
               key={item.label}
               onClick={() => item.path && setLocation(item.path)}
               className={cn(
-                "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all duration-200",
+                "flex flex-col items-center justify-center w-14 h-10 rounded-xl transition-all duration-200",
                 isActive 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground",
