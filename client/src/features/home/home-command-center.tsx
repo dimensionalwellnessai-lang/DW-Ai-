@@ -226,7 +226,7 @@ export default function HomeCommandCenter() {
   if (summary.isLoading) {
     return (
       <div className="flex flex-col h-full cosmic-bg">
-        <header className="flex items-center px-4 shrink-0" style={{ height: 56 }}>
+        <header className="flex items-center px-4 shrink-0" style={{ height: 68 }}>
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -253,7 +253,7 @@ export default function HomeCommandCenter() {
 
   return (
     <div className={`flex flex-col h-full cc-time-bg ${timeClass}`}>
-      <header className="flex items-center px-4 shrink-0" style={{ height: 56 }}>
+      <header className="flex items-center px-4 shrink-0" style={{ height: 68 }}>
         <button
           type="button"
           onClick={() => setMenuOpen(true)}
@@ -274,7 +274,7 @@ export default function HomeCommandCenter() {
       </header>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0 pt-6">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
           <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto aspect-square" style={{ maxHeight: "min(340px, 50vh)" }}>
             <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: "66.7%", height: "66.7%" }} data-testid="orbit-ring" />
 
