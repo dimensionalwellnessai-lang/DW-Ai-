@@ -480,6 +480,24 @@ export default function Browse() {
     enabled: activeTab === "saved",
   });
 
+  // Articles tab: AI-curated articles with synopsis + reason + real links
+  const { data: aiArticlesData, isLoading: aiArticlesLoading } = useQuery<{
+    articles: Array<{
+      id: string;
+      title: string;
+      synopsis: string;
+      whySuggested: string;
+      url: string;
+      category: string;
+      readTimeMinutes: number;
+    }>;
+    aiGenerated: boolean;
+  }>({
+    queryKey: ["/api/browse/ai-articles"],
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    enabled: activeTab === "articles",
+  });
+
   // Fetch previously not-interested URLs for persistent hiding
   const { data: notInterestedData } = useQuery<{ contentUrl: string | null }[]>({
     queryKey: ["/api/feed-interactions/not-interested"],
@@ -1578,6 +1596,118 @@ ${contentList}`,
             </div>
           </div>
 
+          {/* AI-Curated Articles */}
+          {aiArticlesLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Suggested for You</h2>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-1" />
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : aiArticlesData?.articles && aiArticlesData.articles.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Suggested for You</h2>
+              </div>
+              <div className="space-y-3">
+                {aiArticlesData.articles.map((article) => (
+                  <Card
+                    key={article.id}
+                    className="card-modern hover-lift cursor-pointer transition-all"
+                    onClick={() => window.open(article.url, "_blank", "noopener,noreferrer")}
+                    data-testid={`card-ai-article-${article.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5 text-indigo-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-medium text-sm leading-snug">{article.title}</h3>
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {article.readTimeMinutes}m
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{article.synopsis}</p>
+                          {article.whySuggested && (
+                            <div className="flex items-start gap-1.5 text-xs text-primary bg-primary/5 rounded-md px-2 py-1.5">
+                              <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span>{article.whySuggested}</span>
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(article.url, "_blank", "noopener,noreferrer");
+                              }}
+                              data-testid={`button-ai-article-open-${article.id}`}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Read Article
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!saveContentMutation.isPending) {
+                                  saveContentMutation.mutate({
+                                    contentType: article.category || "article",
+                                    title: article.title,
+                                    description: article.synopsis,
+                                    url: article.url,
+                                    source: "ai-curated",
+                                    duration: String(article.readTimeMinutes),
+                                    metadata: { whySuggested: article.whySuggested },
+                                  });
+                                }
+                              }}
+                              data-testid={`button-ai-article-save-${article.id}`}
+                            >
+                              <Bookmark className="h-3 w-3 mr-1" />
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="px-2 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNotInterested({ title: article.title, url: article.url, type: "article" });
+                              }}
+                              title="Not interested"
+                              data-testid={`button-ai-article-notinterested-${article.id}`}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <h2 className="text-lg font-semibold mb-3">Wellness Articles</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredContent.filter(c =>
@@ -1647,7 +1777,7 @@ ${contentList}`,
               ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
                 (c as any).contentType || c.category || ""
               )
-            ).length === 0 && (
+            ).length === 0 && !aiArticlesLoading && !(aiArticlesData?.articles?.length) && (
             <div className="text-center py-12 space-y-3">
               <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
               <p className="font-medium">No articles match your current filters</p>

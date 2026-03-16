@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,13 @@ import {
   Plus,
   BookOpen,
   ChevronRight,
+  Sparkles,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
-import {
-  saveRoutine,
-  getGettingToKnowYou,
-} from "@/lib/guest-storage";
+import { saveRoutine } from "@/lib/guest-storage";
+import { apiRequest } from "@/lib/queryClient";
 
 /** Routine templates – kept in sync with the list in routines.tsx */
 export const SUGGESTED_ROUTINES = [
@@ -37,7 +38,7 @@ export const SUGGESTED_ROUTINES = [
     color: "text-yellow-500",
     bgColor: "bg-yellow-500/10",
     tags: ["morning", "energy", "mindfulness"],
-    routineType: "workout" as const, // closest type: physical morning wake-up
+    routineType: "workout" as const,
   },
   {
     id: "work",
@@ -54,7 +55,7 @@ export const SUGGESTED_ROUTINES = [
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
     tags: ["productivity", "focus", "work"],
-    routineType: "spiritual_practice" as const, // mindset/discipline practice
+    routineType: "spiritual_practice" as const,
   },
   {
     id: "lunch",
@@ -70,7 +71,7 @@ export const SUGGESTED_ROUTINES = [
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
     tags: ["lunch", "reset", "mindfulness"],
-    routineType: "meal_plan" as const, // nutrition/meal-based
+    routineType: "meal_plan" as const,
   },
   {
     id: "evening",
@@ -87,29 +88,9 @@ export const SUGGESTED_ROUTINES = [
     color: "text-purple-500",
     bgColor: "bg-purple-500/10",
     tags: ["evening", "relaxation", "sleep"],
-    routineType: "meditation" as const, // wind-down/relaxation practice
+    routineType: "meditation" as const,
   },
 ];
-
-function getPersonalizedSteps(routineId: string): string[] {
-  const routine = SUGGESTED_ROUTINES.find((r) => r.id === routineId);
-  if (!routine) return [];
-
-  const steps = [...routine.defaultSteps];
-  const gtky = getGettingToKnowYou();
-
-  if (gtky?.peakEnergyTime === "morning" && routineId === "morning") {
-    steps[0] = "Quick energizing workout";
-  }
-  if (gtky?.peakEnergyTime === "evening" && routineId === "evening") {
-    steps.unshift("Light exercise");
-  }
-  if (gtky?.dayStructure === "scattered" && routineId === "work") {
-    steps.unshift("Time block your day");
-  }
-
-  return steps;
-}
 
 export default function RoutineTemplateDetailPage() {
   const params = useParams<{ templateId: string }>();
@@ -119,8 +100,47 @@ export default function RoutineTemplateDetailPage() {
   const templateId = params.templateId;
   const template = SUGGESTED_ROUTINES.find((r) => r.id === templateId);
 
+  const [steps, setSteps] = useState<string[]>(template?.defaultSteps ?? []);
+  const [whySuggested, setWhySuggested] = useState<string | null>(null);
+  const [aiGenerated, setAiGenerated] = useState(false);
+  const [loadingSteps, setLoadingSteps] = useState(false);
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [adding, setAdding] = useState(false);
+
+  // Fetch AI-generated steps on mount
+  useEffect(() => {
+    if (!template) return;
+    let cancelled = false;
+
+    async function fetchAiSteps() {
+      if (!template) return;
+      setLoadingSteps(true);
+      try {
+        const res = await apiRequest("POST", "/api/routines/generate-steps", {
+          templateId: template.id,
+          templateTitle: template.title,
+          defaultSteps: template.defaultSteps,
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.steps) && data.steps.length > 0) {
+            setSteps(data.steps);
+            setAiGenerated(!!data.aiGenerated);
+            setWhySuggested(data.whySuggested ?? null);
+          }
+        }
+      } catch {
+        // Silent fallback – defaults already shown
+      } finally {
+        if (!cancelled) setLoadingSteps(false);
+      }
+    }
+
+    fetchAiSteps();
+    return () => { cancelled = true; };
+    // template is stable per templateId; using id avoids deep-equality re-runs
+  }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!template) {
     return (
@@ -140,7 +160,6 @@ export default function RoutineTemplateDetailPage() {
   }
 
   const Icon = template.icon;
-  const steps = getPersonalizedSteps(templateId);
 
   const toggleStep = (idx: number) => {
     setCheckedSteps((prev) => {
@@ -154,21 +173,46 @@ export default function RoutineTemplateDetailPage() {
     });
   };
 
+  const handleRefreshSteps = async () => {
+    setLoadingSteps(true);
+    setCheckedSteps(new Set());
+    try {
+      const res = await apiRequest("POST", "/api/routines/generate-steps", {
+        templateId: template.id,
+        templateTitle: template.title,
+        defaultSteps: template.defaultSteps,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.steps) && data.steps.length > 0) {
+          setSteps(data.steps);
+          setAiGenerated(!!data.aiGenerated);
+          setWhySuggested(data.whySuggested ?? null);
+          toast({ title: "Steps refreshed", description: "Your routine has been updated." });
+        }
+      }
+    } catch {
+      toast({ title: "Could not refresh", description: "Using current steps.", variant: "destructive" });
+    } finally {
+      setLoadingSteps(false);
+    }
+  };
+
   const handleAddToRoutines = () => {
     setAdding(true);
     try {
       const saved = saveRoutine({
         type: template.routineType,
         title: template.title,
-        description: template.description,
-        data: { steps, templateId },
+        description: whySuggested ?? template.description,
+        data: { steps, templateId, aiGenerated },
         tags: template.tags,
         dimensionSignals: template.tags,
       });
 
       toast({
         title: "Routine added!",
-        description: `${template.title} has been added to your routines.`,
+        description: `${template.title} has been saved to your routines.`,
       });
 
       setLocation(`/routines?selected=${encodeURIComponent(saved.id)}`);
@@ -201,7 +245,7 @@ export default function RoutineTemplateDetailPage() {
                 <div className="flex-1 min-w-0">
                   <h1 className="text-xl font-semibold">{template.title}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {template.description}
+                    {whySuggested ?? template.description}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-3">
                     {template.tags.map((tag) => (
@@ -209,6 +253,12 @@ export default function RoutineTemplateDetailPage() {
                         {tag}
                       </Badge>
                     ))}
+                    {aiGenerated && (
+                      <Badge variant="outline" className="text-xs gap-1 border-primary/40 text-primary">
+                        <Sparkles className="w-3 h-3" />
+                        AI personalized
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -217,61 +267,94 @@ export default function RoutineTemplateDetailPage() {
 
           {/* Steps list */}
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Steps ({steps.length})
-            </h2>
-            <div className="space-y-2">
-              {steps.map((step, idx) => (
-                <Card
-                  key={idx}
-                  className={`hover-elevate cursor-pointer transition-all ${
-                    checkedSteps.has(idx)
-                      ? "opacity-60 bg-muted/50"
-                      : ""
-                  }`}
-                  onClick={() => toggleStep(idx)}
-                  data-testid={`step-${idx}`}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                {loadingSteps ? "Personalizing steps…" : `Steps (${steps.length})`}
+              </h2>
+              {!loadingSteps && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={handleRefreshSteps}
+                  data-testid="button-refresh-steps"
                 >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        checkedSteps.has(idx)
-                          ? "bg-primary border-primary"
-                          : "border-muted-foreground"
-                      }`}
-                    >
-                      {checkedSteps.has(idx) && (
-                        <Check className="w-3.5 h-3.5 text-primary-foreground" />
-                      )}
-                    </div>
-                    <p
-                      className={`text-sm flex-1 ${
-                        checkedSteps.has(idx)
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }`}
-                    >
-                      {step}
-                    </p>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      Step {idx + 1}
-                    </span>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Refresh
+                </Button>
+              )}
             </div>
+
+            {loadingSteps ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-muted shrink-0" />
+                      <div className="h-4 bg-muted rounded flex-1" />
+                    </CardContent>
+                  </Card>
+                ))}
+                <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  AI is personalizing your routine…
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {steps.map((step, idx) => (
+                  <Card
+                    key={idx}
+                    className={`hover-elevate cursor-pointer transition-all ${
+                      checkedSteps.has(idx) ? "opacity-60 bg-muted/50" : ""
+                    }`}
+                    onClick={() => toggleStep(idx)}
+                    data-testid={`step-${idx}`}
+                  >
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          checkedSteps.has(idx)
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground"
+                        }`}
+                      >
+                        {checkedSteps.has(idx) && (
+                          <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                        )}
+                      </div>
+                      <p
+                        className={`text-sm flex-1 ${
+                          checkedSteps.has(idx)
+                            ? "line-through text-muted-foreground"
+                            : ""
+                        }`}
+                      >
+                        {step}
+                      </p>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        Step {idx + 1}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tip card */}
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Tip: </span>
-                Tap any step to mark it as completed while following along. Add
-                this routine to start tracking your progress.
-              </p>
-            </CardContent>
-          </Card>
+          {!loadingSteps && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Tip: </span>
+                  Tap any step to mark it complete. Hit "Refresh" to get a new
+                  AI-generated variation, or "Add to My Routines" to save this
+                  version.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -284,7 +367,7 @@ export default function RoutineTemplateDetailPage() {
           className="w-full"
           size="lg"
           onClick={handleAddToRoutines}
-          disabled={adding}
+          disabled={adding || loadingSteps}
           data-testid="button-add-to-routines"
         >
           <Plus className="w-4 h-4 mr-2" />
