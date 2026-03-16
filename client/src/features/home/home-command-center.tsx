@@ -274,7 +274,7 @@ export default function HomeCommandCenter() {
       </header>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 pt-6">
           <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto aspect-square" style={{ maxHeight: "min(340px, 50vh)" }}>
             <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: "66.7%", height: "66.7%" }} data-testid="orbit-ring" />
 

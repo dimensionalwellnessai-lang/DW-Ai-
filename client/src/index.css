@@ -44,9 +44,9 @@
   --search-bar-height: 65px; /* Approximate: input (40px) + py-3 padding (24px) + border */
   
   /* Bottom nav dimensions */
-  --bottom-nav-height: 56px; /* h-14 = 56px */
-  --bottom-nav-padding: max(env(safe-area-inset-bottom, 0px), 32px); /* 32px = minimum comfortable tap target + spacing */
-  --bottom-nav-total-height: calc(var(--bottom-nav-height) + var(--bottom-nav-padding)); /* ~88-88+ px */
+  --bottom-nav-height: 48px; /* h-12 = 48px */
+  --bottom-nav-padding: max(env(safe-area-inset-bottom, 0px), 20px); /* 20px = comfortable safe area + spacing */
+  --bottom-nav-total-height: calc(var(--bottom-nav-height) + var(--bottom-nav-padding)); /* ~68-88px */
 }
 
 html, body {

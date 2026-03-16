@@ -36,7 +36,7 @@ export function BottomNav() {
       data-testid="nav-bottom"
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around h-14 w-full max-w-xl mx-auto px-2">
+      <div className="flex items-center justify-around h-12 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
           const isActive = item.path && (location === item.path || 
             (item.path !== "/" && location.startsWith(item.path)));
@@ -47,7 +47,7 @@ export function BottomNav() {
               key={item.label}
               onClick={() => item.path && setLocation(item.path)}
               className={cn(
-                "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-200",
+                "flex flex-col items-center justify-center w-14 h-12 rounded-xl transition-all duration-200",
                 isActive 
                   ? "text-primary" 
                   : "text-muted-foreground hover:text-foreground",
@@ -59,16 +59,16 @@ export function BottomNav() {
               {...(tourAttr && { "data-tour": tourAttr })}
             >
               <div className={cn(
-                "p-1.5 rounded-lg transition-all duration-200",
+                "p-1 rounded-lg transition-all duration-200",
                 isActive && "bg-primary/10"
               )}>
                 <item.icon className={cn(
-                  "h-5 w-5 transition-transform duration-200",
+                  "h-[18px] w-[18px] transition-transform duration-200",
                   isActive && "scale-110"
                 )} aria-hidden="true" />
               </div>
               <span className={cn(
-                "text-[10px] font-medium mt-0.5 transition-all",
+                "text-[9px] font-medium mt-0.5 transition-all",
                 isActive && "font-semibold"
               )}>
                 {item.label}
