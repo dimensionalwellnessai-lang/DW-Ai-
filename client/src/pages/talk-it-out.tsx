@@ -20,7 +20,7 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Sparkles, ClipboardCheck, X, RefreshCw, History, Plus, MessageSquare, Tag } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, RefreshCw, History, Plus, MessageSquare } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
@@ -30,8 +30,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 interface ChatMessage {
-  role: "assistant" | "user";
+  role: "assistant" | "user" | "insight";
   content: string;
+  insightCategory?: string;
+  insightTitle?: string;
 }
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
@@ -42,6 +44,8 @@ interface SavedSession {
   id: string;
   savedAt: number;
   preview: string;
+  topicTitle?: string;
+  categories: string[];
   messageCount: number;
   messages: ChatMessage[];
 }
@@ -185,7 +189,7 @@ export function TalkItOutPage() {
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
   const sessionIdRef = useRef<string>(generateSessionId());
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -238,47 +242,102 @@ export function TalkItOutPage() {
     pendingInsightRef.current = null;
     try {
       if (shouldCaptureInsight({ userText: pending.userText, assistantText: pending.assistantText })) {
-        captureInsight(buildInsight(pending));
+        const insight = buildInsight(pending);
+        captureInsight(insight);
+        // Also inject an inline insight card into the message stream
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "insight" as const,
+            content: insight.summary,
+            insightCategory: insight.category,
+            insightTitle: insight.title,
+          },
+        ]);
       }
     } catch {
       // Insight capture is non-critical – swallow any error
     }
   }, [messages, captureInsight]);
 
+  // AI title generation: after 4+ messages, ask the AI to name the conversation topic
+  const titleGenAttempted = useRef(false);
+  const titleMutation = useMutation({
+    mutationFn: async (msgs: ChatMessage[]) => {
+      const history = msgs.filter((m) => m.role !== "insight").slice(0, 8);
+      const res = await apiRequest("POST", "/api/chat/smart", {
+        message:
+          "In 4 words or fewer, what is the core topic of this conversation? Reply ONLY with the title, no punctuation.",
+        context: "title-gen",
+        conversationHistory: history,
+        systemOverride:
+          "You are a conversation labeler. Return ONLY a 4-word-or-fewer topic title. No punctuation, no explanation.",
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const title = (data?.response as string | undefined)?.trim();
+      if (!title) return;
+      // Update the saved session with the AI-generated title
+      const history = loadHistory();
+      const idx = history.findIndex((s) => s.id === sessionIdRef.current);
+      if (idx !== -1) {
+        history[idx].topicTitle = title;
+        try {
+          localStorage.setItem(TALK_HISTORY_KEY, JSON.stringify(history));
+        } catch {
+          // storage unavailable
+        }
+        setHistory([...history]);
+      }
+    },
+  });
+
   // Auto-save session to history whenever conversation grows past 3 messages
   useEffect(() => {
     if (messages.length < 3) return;
+    // Collect categories from insight messages in this session
+    const cats = Array.from(
+      new Set(messages.filter((m) => m.role === "insight" && m.insightCategory).map((m) => m.insightCategory!))
+    );
     const session: SavedSession = {
       id: sessionIdRef.current,
       savedAt: Date.now(),
       preview: buildSessionPreview(messages),
-      messageCount: messages.length,
+      categories: cats,
+      messageCount: messages.filter((m) => m.role !== "insight").length,
       messages,
     };
     saveSessionToHistory(session);
     setHistory(loadHistory());
+    // Attempt AI title generation once per session after 4 real messages
+    const realCount = messages.filter((m) => m.role !== "insight").length;
+    if (!titleGenAttempted.current && realCount >= 4) {
+      titleGenAttempted.current = true;
+      titleMutation.mutate(messages);
+    }
   }, [messages]);
 
   const handleNewConversation = useCallback(() => {
     setMessages([getContextualWelcomeMessage()]);
     setInput("");
     sessionIdRef.current = generateSessionId();
+    titleGenAttempted.current = false;
     setHistoryOpen(false);
   }, []);
 
   const handleRestoreSession = useCallback((session: SavedSession) => {
     setMessages(session.messages);
     sessionIdRef.current = session.id;
+    titleGenAttempted.current = true; // don't re-generate title for restored sessions
     setHistoryOpen(false);
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   }, []);
 
-  // Derive current-conversation insights from the global insights list
-  const sessionInsights = insights.filter(
-    (ins) => ins.source?.surface === "talk"
-  );
+  // Derive current-conversation insights from insight messages
+  const sessionInsights = messages.filter((m) => m.role === "insight");
 
   // Prefill input from insight card "Continue with DW" (?insightId=<id>)
   // Track whether we've already applied the prefill so it only happens once
@@ -539,7 +598,17 @@ export function TalkItOutPage() {
     }
   };
 
-  const groupedHistory = history.reduce<Record<string, SavedSession[]>>((acc, session) => {
+  // All unique categories across all sessions (for toggles)
+  const allCategories = Array.from(
+    new Set(history.flatMap((s) => s.categories ?? []))
+  ).sort();
+
+  // Sessions filtered by selected category
+  const filteredHistory = selectedCategory
+    ? history.filter((s) => (s.categories ?? []).includes(selectedCategory))
+    : history;
+
+  const groupedHistory = filteredHistory.reduce<Record<string, SavedSession[]>>((acc, session) => {
     const label = formatSessionDate(session.savedAt);
     if (!acc[label]) acc[label] = [];
     acc[label].push(session);
@@ -568,30 +637,19 @@ export function TalkItOutPage() {
         }
         backPath="/"
         rightContent={
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setInsightsOpen(true)}
-              className="p-2 rounded-full hover:bg-muted transition-colors"
-              aria-label="View conversation insights"
-              data-testid="button-insights"
-            >
-              <Sparkles className="h-4 w-4 text-violet-500" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="p-2 rounded-full hover:bg-muted transition-colors"
-              aria-label="View conversation history"
-              data-testid="button-history"
-            >
-              <History className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="p-2 rounded-full hover:bg-muted transition-colors"
+            aria-label="View conversation history"
+            data-testid="button-history"
+          >
+            <History className="h-4 w-4 text-muted-foreground" />
+          </button>
         }
       />
 
-      {/* ── Chat History Drawer ── */}
+      {/* ── Chat History Drawer (left side) ── */}
       <SwipeableDrawer
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
@@ -601,19 +659,71 @@ export function TalkItOutPage() {
         <Button
           variant="outline"
           size="sm"
-          className="mb-4 w-full"
+          className="mb-3 w-full"
           onClick={handleNewConversation}
           data-testid="button-new-conversation"
         >
           <Plus className="h-4 w-4 mr-2" />
           New conversation
         </Button>
+
+        {/* Category filter toggles */}
+        {allCategories.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium ${
+                selectedCategory === null
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+              }`}
+              data-testid="filter-all"
+            >
+              All
+            </button>
+            {allCategories.map((cat) => {
+              const isActive = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(isActive ? null : cat)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors font-medium capitalize ${
+                    isActive
+                      ? (DIMENSION_COLORS[cat] ?? "bg-muted text-foreground") + " border-transparent"
+                      : "bg-transparent text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                  data-testid={`filter-${cat}`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <ScrollArea className="flex-1">
           {Object.keys(groupedHistory).length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No saved conversations yet</p>
-              <p className="text-xs mt-1 opacity-70">They appear here after a few exchanges</p>
+              {selectedCategory ? (
+                <>
+                  <p className="text-sm">No <span className="capitalize">{selectedCategory}</span> conversations</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-xs text-primary mt-1 hover:underline"
+                  >
+                    Clear filter
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm">No saved conversations yet</p>
+                  <p className="text-xs mt-1 opacity-70">They appear here after a few exchanges</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-5">
@@ -630,54 +740,30 @@ export function TalkItOutPage() {
                         }`}
                         data-testid={`session-${session.id}`}
                       >
-                        <p className="text-sm text-foreground truncate">{session.preview}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatSessionTime(session.savedAt)} · {session.messageCount} messages
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {session.topicTitle ?? session.preview}
                         </p>
+                        {session.topicTitle && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{session.preview}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground/70">
+                            {formatSessionTime(session.savedAt)} · {session.messageCount} msg
+                          </span>
+                          {session.categories.slice(0, 2).map((cat) => (
+                            <span
+                              key={cat}
+                              className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                DIMENSION_COLORS[cat] ?? "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
                       </button>
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </SwipeableDrawer>
-
-      {/* ── Insights Drawer ── */}
-      <SwipeableDrawer
-        open={insightsOpen}
-        onClose={() => setInsightsOpen(false)}
-        title="Conversation Insights"
-        width="w-80"
-      >
-        <ScrollArea className="flex-1">
-          {sessionInsights.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No insights captured yet</p>
-              <p className="text-xs mt-1 opacity-70">Keep talking — DW will surface patterns and themes</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sessionInsights.map((insight) => (
-                <div key={insight.id} className="p-3 rounded-xl border border-border bg-card space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-foreground leading-snug">{insight.title}</p>
-                    <span
-                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
-                        DIMENSION_COLORS[insight.category] ?? "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {insight.category}
-                    </span>
-                  </div>
-                  {insight.summary && (
-                    <p className="text-xs text-muted-foreground leading-relaxed">{insight.summary}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground/60">
-                    {formatSessionTime(insight.createdAt)}
-                  </p>
                 </div>
               ))}
             </div>
@@ -691,55 +777,88 @@ export function TalkItOutPage() {
             <DWOrb size={56} state="chat" />
             <p className="text-xs text-muted-foreground">You're talking with DW</p>
           </div>
-          {messages.map((message, index) => (
-            <article
-              key={index}
-              className={`animate-fade-in-up rounded-lg transition-colors duration-700 ${
-                message.role === "user" 
-                  ? "border-l-4 border-primary/40 pl-4 py-2" 
-                  : ""
-              } ${highlightedIndex === index ? "ring-2 ring-primary/40 bg-primary/5 px-2" : ""}`}
-              data-testid={`message-talk-${index}`}
-            >
-              {message.role === "user" ? (
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
-                  <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
-                  <MessageActions
-                    messageIndex={index}
-                    messageContent={message.content}
-                    isUserMessage={true}
-                    isLoggedIn={isLoggedIn}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 mb-3">
-                    <DWOrb size={28} state="chat" />
-                    <p className="text-sm font-medium text-foreground">DW</p>
+          {messages.map((message, index) => {
+            /* ── Inline insight card ── */
+            if (message.role === "insight") {
+              return (
+                <div
+                  key={index}
+                  className="animate-fade-in-up flex items-start gap-2.5 my-1"
+                  data-testid={`insight-card-${index}`}
+                >
+                  <div className="mt-0.5 shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-violet-500/15">
+                    <Sparkles className="h-3 w-3 text-violet-500" />
                   </div>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
-                  </div>
-                  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                    <MessageActions
-                      messageIndex={index}
-                      messageContent={message.content}
-                      isUserMessage={false}
-                      isLoggedIn={isLoggedIn}
-                    />
-                    {/* Feedback only available after the first welcome message */}
-                    {index > 0 && (
-                      <ChatFeedbackBar 
-                        messageId={`talk-${index}`} 
-                        onFeedback={handleFeedback} 
-                      />
+                  <div className="flex-1 px-3 py-2 rounded-xl bg-violet-500/8 border border-violet-500/15 space-y-0.5">
+                    {message.insightTitle && (
+                      <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 leading-snug">
+                        {message.insightTitle}
+                      </p>
+                    )}
+                    <p className="text-xs text-foreground/70 leading-relaxed">{message.content}</p>
+                    {message.insightCategory && (
+                      <span
+                        className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                          DIMENSION_COLORS[message.insightCategory] ?? "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {message.insightCategory}
+                      </span>
                     )}
                   </div>
                 </div>
-              )}
-            </article>
-          ))}
+              );
+            }
+
+            return (
+              <article
+                key={index}
+                className={`animate-fade-in-up rounded-lg transition-colors duration-700 ${
+                  message.role === "user"
+                    ? "border-l-4 border-primary/40 pl-4 py-2"
+                    : ""
+                } ${highlightedIndex === index ? "ring-2 ring-primary/40 bg-primary/5 px-2" : ""}`}
+                data-testid={`message-talk-${index}`}
+              >
+                {message.role === "user" ? (
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
+                    <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
+                    <MessageActions
+                      messageIndex={index}
+                      messageContent={message.content}
+                      isUserMessage={true}
+                      isLoggedIn={isLoggedIn}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DWOrb size={28} state="chat" />
+                      <p className="text-sm font-medium text-foreground">DW</p>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                      <MessageActions
+                        messageIndex={index}
+                        messageContent={message.content}
+                        isUserMessage={false}
+                        isLoggedIn={isLoggedIn}
+                      />
+                      {index > 0 && (
+                        <ChatFeedbackBar
+                          messageId={`talk-${index}`}
+                          onFeedback={handleFeedback}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
           {isTyping && (
             <article className="animate-fade-in-up">
               <div className="flex items-center gap-3 py-3">

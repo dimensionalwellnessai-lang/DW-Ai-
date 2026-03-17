@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sparkles, ArrowLeft, Loader2, Mail, TestTube } from "lucide-react";
+import { Sparkles, ArrowLeft, Loader2, Mail, TestTube, Eye, EyeOff } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -74,6 +74,9 @@ export function LoginPage() {
   const [forgotEmailSent, setForgotEmailSent] = useState(false);
   const [showDemoInfo, setShowDemoInfo] = useState(false);
   const [showDemoFallback, setShowDemoFallback] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const guestMessageCount = getGuestMessageCount();
 
@@ -399,16 +402,27 @@ export function LoginPage() {
                         Forgot password?
                       </button>
                     </div>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      placeholder="Enter your password"
-                      required
-                      className="h-10 sm:h-11 text-base"
-                      data-testid="input-login-password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showLoginPassword ? "text" : "password"}
+                        value={loginData.password}
+                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                        placeholder="Enter your password"
+                        required
+                        className="h-10 sm:h-11 text-base pr-11"
+                        data-testid="input-login-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                        data-testid="button-toggle-login-password"
+                      >
+                        {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 min-h-[44px]">
                     <Checkbox
@@ -450,29 +464,51 @@ export function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password" className="text-sm sm:text-base">Password</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      value={registerData.password}
-                      onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      placeholder="Choose a password (min 6 characters)"
-                      required
-                      className="h-10 sm:h-11 text-base"
-                      data-testid="input-register-password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="register-password"
+                        type={showRegisterPassword ? "text" : "password"}
+                        value={registerData.password}
+                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                        placeholder="Choose a password (min 6 characters)"
+                        required
+                        className="h-10 sm:h-11 text-base pr-11"
+                        data-testid="input-register-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegisterPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                        data-testid="button-toggle-register-password"
+                      >
+                        {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-confirm" className="text-sm sm:text-base">Confirm Password</Label>
-                    <Input
-                      id="register-confirm"
-                      type="password"
-                      value={registerData.confirmPassword}
-                      onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                      placeholder="Confirm your password"
-                      required
-                      className="h-10 sm:h-11 text-base"
-                      data-testid="input-register-confirm"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="register-confirm"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={registerData.confirmPassword}
+                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                        placeholder="Confirm your password"
+                        required
+                        className="h-10 sm:h-11 text-base pr-11"
+                        data-testid="input-register-confirm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                        data-testid="button-toggle-confirm-password"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-start gap-2 min-h-[44px]">
                     <Checkbox
