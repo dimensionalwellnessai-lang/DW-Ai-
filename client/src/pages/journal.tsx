@@ -305,20 +305,24 @@ export default function JournalPage() {
       
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
-          {dwInsightJournalEnabled && (
-            <Tabs
-              value={activeJournalTab}
-              onValueChange={(v) => setActiveJournalTab(v as "my-entries" | "dw-journal" | "dw-insights")}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="my-entries">My Entries</TabsTrigger>
+          <Tabs
+            value={activeJournalTab}
+            onValueChange={(v) => setActiveJournalTab(v as "my-entries" | "dw-journal" | "dw-insights")}
+            className="w-full"
+          >
+            <TabsList className={`grid w-full ${dwInsightJournalEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+              <TabsTrigger value="my-entries">My Entries</TabsTrigger>
+              {dwInsightJournalEnabled && (
                 <TabsTrigger value="dw-journal">DW Journal</TabsTrigger>
-                <TabsTrigger value="dw-insights">
-                  <Sparkles className="h-3.5 w-3.5 mr-1" />
-                  Insights
-                </TabsTrigger>
-              </TabsList>
+              )}
+              <TabsTrigger value="dw-insights" className="flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                Insights
+              </TabsTrigger>
+            </TabsList>
+
+            {/* DW Journal tab — backend entries, flag-gated */}
+            {dwInsightJournalEnabled && (
               <TabsContent value="dw-journal" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
@@ -371,31 +375,36 @@ export default function JournalPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+            )}
 
-              {/* ── DW Conversation Insights tab ── */}
-              <TabsContent value="dw-insights" className="space-y-4 mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Sparkles className="h-4 w-4 text-violet-500" />
-                      What DW Has Gathered
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      These are patterns and themes DW noticed in your conversations — small truths worth sitting with.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {dwConvInsights.length === 0 ? (
-                      <div className="text-center py-8 space-y-2">
-                        <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/40" />
-                        <p className="text-sm text-muted-foreground">No insights captured yet</p>
-                        <p className="text-xs text-muted-foreground/70">
-                          Talk with DW and insights will appear here as you go deeper
+            {/* ── DW Conversation Insights tab — always visible, reads from localStorage ── */}
+            <TabsContent value="dw-insights" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Sparkles className="h-4 w-4 text-violet-500" />
+                    What DW Has Gathered
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Patterns and themes DW noticed in your conversations — small truths worth sitting with.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {dwConvInsights.length === 0 ? (
+                    <div className="text-center py-10 space-y-3">
+                      <Sparkles className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">No insights captured yet</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1 max-w-[220px] mx-auto">
+                          Talk with DW — insights appear here as patterns emerge from your conversations
                         </p>
                       </div>
-                    ) : (
-                      dwConvInsights.map((ins) => (
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {dwConvInsights.map((ins) => (
                         <div key={ins.id} className="border border-border rounded-xl p-4 space-y-3 bg-card">
+                          {/* Title + category badge */}
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-semibold text-sm text-foreground leading-snug">{ins.title}</p>
                             <Badge variant="secondary" className="shrink-0 text-xs capitalize">
@@ -403,27 +412,38 @@ export default function JournalPage() {
                               {ins.category}
                             </Badge>
                           </div>
+
+                          {/* Summary */}
                           <p className="text-sm text-foreground/80 leading-relaxed">{ins.summary}</p>
-                          <div className="pt-2 border-t border-border/50 space-y-2">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Go deeper</p>
+
+                          {/* Go deeper prompt */}
+                          <div className="rounded-lg bg-muted/50 px-3 py-2.5 space-y-1">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Go deeper</p>
                             <p className="text-xs text-muted-foreground/80 leading-relaxed italic">
-                              Reflect: What does this pattern tell you about what you value? Where in your life do you see it most?
+                              What does this pattern reveal about what you value most? Where in your life do you see it playing out?
                             </p>
                           </div>
+
+                          {/* Date */}
                           <p className="text-xs text-muted-foreground/50">
                             {new Date(ins.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                           </p>
                         </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          )}
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Manual journal UI — always shown when flag is off; shown only on "My Entries" tab when on */}
-          {(!dwInsightJournalEnabled || activeJournalTab === "my-entries") && (
+            {/* My Entries tab content — always present */}
+            <TabsContent value="my-entries">
+              {/* spacer – actual entries rendered below outside tabs */}
+            </TabsContent>
+          </Tabs>
+
+          {/* Manual journal UI — shown on "My Entries" tab */}
+          {activeJournalTab === "my-entries" && (
             <>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">

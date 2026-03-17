@@ -56,25 +56,17 @@ function resolveInteractionEngineFlag(): boolean {
  *   ?ci=1 query param                                                  — one-time, per URL
  */
 function resolveConversationInsightsFlag(): boolean {
-  // Check persisted flag first (localStorage may throw in blocked-storage environments)
+  // ON by default — insight cards are captured during Talk It Out sessions
+  // Disable locally via: localStorage.setItem('dw_conversation_insights_enabled', 'false')
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_conversation_insights_enabled") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_conversation_insights_enabled") === "false") {
+      return false;
     }
   } catch {
-    // Blocked storage or restricted environment – ignore and fall back to query param
+    // Blocked storage – ignore
   }
 
-  // Always attempt the URL param check as a fallback
-  try {
-    if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("ci") === "1";
-    }
-  } catch {
-    // URL parsing failed – fail safely
-  }
-
-  return false;
+  return true;
 }
 
 /**
