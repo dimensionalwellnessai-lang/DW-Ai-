@@ -38,7 +38,7 @@ const MENU_ICON_MAP: Record<string, typeof Sun> = {
 };
 
 interface PageHeaderProps {
-  title: string;
+  title: React.ReactNode;
   showBack?: boolean;
   backPath?: string;
   rightContent?: React.ReactNode;

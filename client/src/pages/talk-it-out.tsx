@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
-import { shouldCaptureInsight, buildInsight, type InsightSource } from "@/core/conversationInsights";
+import { shouldCaptureInsight, buildInsight, type InsightSource, type Insight } from "@/core/conversationInsights";
 import { useInsights } from "@/hooks/use-insights";
 import { useDailyCheckin } from "@/hooks/use-daily-checkin";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -18,7 +20,7 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Heart, ClipboardCheck, X, RefreshCw } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, RefreshCw, History, Plus, MessageSquare, Tag } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
@@ -33,6 +35,60 @@ interface ChatMessage {
 }
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
+const TALK_HISTORY_KEY = "dw_talk_history";
+const MAX_HISTORY = 30;
+
+interface SavedSession {
+  id: string;
+  savedAt: number;
+  preview: string;
+  messageCount: number;
+  messages: ChatMessage[];
+}
+
+function generateSessionId(): string {
+  return `talk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatSessionDate(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  const day = 86400000;
+  if (diff < day) return "Today";
+  if (diff < 2 * day) return "Yesterday";
+  if (diff < 7 * day) return "This week";
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatSessionTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function loadHistory(): SavedSession[] {
+  try {
+    const raw = localStorage.getItem(TALK_HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as SavedSession[];
+  } catch {
+    return [];
+  }
+}
+
+function saveSessionToHistory(session: SavedSession): void {
+  try {
+    const history = loadHistory().filter((s) => s.id !== session.id);
+    history.unshift(session);
+    localStorage.setItem(TALK_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  } catch {
+    // storage unavailable
+  }
+}
+
+function buildSessionPreview(msgs: ChatMessage[]): string {
+  const firstUser = msgs.find((m) => m.role === "user");
+  if (!firstUser) return "New conversation";
+  return firstUser.content.length > 80 ? firstUser.content.slice(0, 80) + "…" : firstUser.content;
+}
 
 const TALK_GREETING = "This is a space for you. There's no agenda here, no rush, no judgment.";
 
@@ -128,6 +184,10 @@ export function TalkItOutPage() {
   const isLoggedIn = !!user;
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
+  const sessionIdRef = useRef<string>(generateSessionId());
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -184,6 +244,41 @@ export function TalkItOutPage() {
       // Insight capture is non-critical – swallow any error
     }
   }, [messages, captureInsight]);
+
+  // Auto-save session to history whenever conversation grows past 3 messages
+  useEffect(() => {
+    if (messages.length < 3) return;
+    const session: SavedSession = {
+      id: sessionIdRef.current,
+      savedAt: Date.now(),
+      preview: buildSessionPreview(messages),
+      messageCount: messages.length,
+      messages,
+    };
+    saveSessionToHistory(session);
+    setHistory(loadHistory());
+  }, [messages]);
+
+  const handleNewConversation = useCallback(() => {
+    setMessages([getContextualWelcomeMessage()]);
+    setInput("");
+    sessionIdRef.current = generateSessionId();
+    setHistoryOpen(false);
+  }, []);
+
+  const handleRestoreSession = useCallback((session: SavedSession) => {
+    setMessages(session.messages);
+    sessionIdRef.current = session.id;
+    setHistoryOpen(false);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  }, []);
+
+  // Derive current-conversation insights from the global insights list
+  const sessionInsights = insights.filter(
+    (ins) => ins.source?.surface === "talk"
+  );
 
   // Prefill input from insight card "Continue with DW" (?insightId=<id>)
   // Track whether we've already applied the prefill so it only happens once
@@ -444,17 +539,151 @@ export function TalkItOutPage() {
     }
   };
 
+  const groupedHistory = history.reduce<Record<string, SavedSession[]>>((acc, session) => {
+    const label = formatSessionDate(session.savedAt);
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(session);
+    return acc;
+  }, {});
+
+  const DIMENSION_COLORS: Record<string, string> = {
+    emotional: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+    planning: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+    physical: "bg-green-500/15 text-green-600 dark:text-green-400",
+    financial: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
+    social: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+    spiritual: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+    nutrition: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+    mindset: "bg-teal-500/15 text-teal-600 dark:text-teal-400",
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader 
-        title="Talk It Out" 
+      <PageHeader
+        title={
+          <span className="font-display text-xl font-medium tracking-tight">
+            <span className="text-primary font-bold">D</span>imensional{" "}
+            <span className="text-primary font-bold">W</span>ellness
+          </span>
+        }
         backPath="/"
         rightContent={
-          <div className="p-2 rounded-full bg-pink-500/10">
-            <Heart className="h-4 w-4 text-pink-500" />
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setInsightsOpen(true)}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="View conversation insights"
+              data-testid="button-insights"
+            >
+              <Sparkles className="h-4 w-4 text-violet-500" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="View conversation history"
+              data-testid="button-history"
+            >
+              <History className="h-4 w-4 text-muted-foreground" />
+            </button>
           </div>
         }
       />
+
+      {/* ── Chat History Drawer ── */}
+      <SwipeableDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title="Conversations"
+        width="w-72"
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-4 w-full"
+          onClick={handleNewConversation}
+          data-testid="button-new-conversation"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New conversation
+        </Button>
+        <ScrollArea className="flex-1">
+          {Object.keys(groupedHistory).length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No saved conversations yet</p>
+              <p className="text-xs mt-1 opacity-70">They appear here after a few exchanges</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {Object.entries(groupedHistory).map(([label, sessions]) => (
+                <div key={label}>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">{label}</p>
+                  <div className="space-y-1">
+                    {sessions.map((session) => (
+                      <button
+                        key={session.id}
+                        onClick={() => handleRestoreSession(session)}
+                        className={`w-full text-left p-2.5 rounded-lg hover:bg-muted transition-colors ${
+                          session.id === sessionIdRef.current ? "bg-muted" : ""
+                        }`}
+                        data-testid={`session-${session.id}`}
+                      >
+                        <p className="text-sm text-foreground truncate">{session.preview}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatSessionTime(session.savedAt)} · {session.messageCount} messages
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </SwipeableDrawer>
+
+      {/* ── Insights Drawer ── */}
+      <SwipeableDrawer
+        open={insightsOpen}
+        onClose={() => setInsightsOpen(false)}
+        title="Conversation Insights"
+        width="w-80"
+      >
+        <ScrollArea className="flex-1">
+          {sessionInsights.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No insights captured yet</p>
+              <p className="text-xs mt-1 opacity-70">Keep talking — DW will surface patterns and themes</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sessionInsights.map((insight) => (
+                <div key={insight.id} className="p-3 rounded-xl border border-border bg-card space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground leading-snug">{insight.title}</p>
+                    <span
+                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                        DIMENSION_COLORS[insight.category] ?? "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {insight.category}
+                    </span>
+                  </div>
+                  {insight.summary && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">{insight.summary}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground/60">
+                    {formatSessionTime(insight.createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </SwipeableDrawer>
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
