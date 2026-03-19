@@ -40,11 +40,11 @@ export default function HabitsPage() {
 
   const toggleHabitMutation = useMutation({
     mutationFn: async ({ habitId, completedToday }: { habitId: string; completedToday: boolean }) => {
-      const method = completedToday ? 'DELETE' : 'POST';
-      const res = await fetch(`/api/habits/${habitId}/log`, {
-        method,
+      const res = await fetch(`/api/habits/${habitId}/toggle`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ completed: !completedToday }),
       });
       if (!res.ok) throw new Error('Failed to update habit');
       return res.json();
