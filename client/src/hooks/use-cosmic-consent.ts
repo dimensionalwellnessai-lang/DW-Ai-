@@ -12,7 +12,7 @@ const DEFAULT_CONSENT: CosmicConsent = {
   useNumerologyInGuidance: false,
 };
 
-function loadConsent(): CosmicConsent {
+export function loadConsent(): CosmicConsent {
   try {
     return JSON.parse(localStorage.getItem(COSMIC_CONSENT_KEY) ?? "null") ?? DEFAULT_CONSENT;
   } catch {
@@ -20,7 +20,7 @@ function loadConsent(): CosmicConsent {
   }
 }
 
-function saveConsent(consent: CosmicConsent): void {
+export function saveConsent(consent: CosmicConsent): void {
   try {
     localStorage.setItem(COSMIC_CONSENT_KEY, JSON.stringify(consent));
   } catch {

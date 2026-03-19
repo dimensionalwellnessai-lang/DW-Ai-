@@ -38,12 +38,9 @@ export function parseApiError(error: unknown): string {
     if (colonIdx !== -1) {
       const body = error.message.slice(colonIdx + 2).trim();
       try {
-        // Limit body size before parsing to avoid slow parsing of huge payloads
-        if (body.length <= 2048) {
-          const parsed = JSON.parse(body) as Record<string, unknown>;
-          if (typeof parsed?.error === "string") return parsed.error;
-          if (typeof parsed?.message === "string") return parsed.message;
-        }
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        if (typeof parsed?.error === "string") return parsed.error;
+        if (typeof parsed?.message === "string") return parsed.message;
       } catch {
         // JSON parse failed — fall through to return the raw body text
         if (body) return body;

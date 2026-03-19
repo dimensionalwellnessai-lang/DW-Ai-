@@ -409,6 +409,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 
 function DimensionsSection() {
   const { toast } = useToast();
+  const dimensionDetailRef = useRef<HTMLDivElement>(null);
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<Record<string, { level: number; notes: string; supports: string[]; questionAnswers?: Record<string, string> }>>({});
   const [newSupport, setNewSupport] = useState("");

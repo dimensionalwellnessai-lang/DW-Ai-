@@ -17,7 +17,7 @@ import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, generateCookSessionRecipe, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import {
@@ -83,6 +83,7 @@ import {
   type MoodLog,
   type ScheduleBlock,
   type CoachingMode,
+  coachingModeEnum,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -362,6 +363,68 @@ const DW_MAX_CONVERSATION_MESSAGES = 100;
 const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
+
+/**
+ * Extracts a user-friendly error message and HTTP status from an AI service error.
+ * Returns { status, message } so callers can use them consistently.
+ */
+function classifyAiError(error: unknown): { status: number; message: string } {
+  const errAny = error as Record<string, unknown>;
+  const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
+  const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
+  const errorCode =
+    typeof (errAny as { code?: unknown })?.code === "string"
+      ? ((errAny as { code?: unknown }).code as string)
+      : "";
+  const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
+  const causeCode =
+    cause && typeof cause.code === "string"
+      ? (cause.code as string)
+      : "";
+  const errorName =
+    typeof errAny?.name === "string"
+      ? (errAny.name as string)
+      : "";
+
+  if (httpStatus === 429) {
+    return { status: 429, message: "The AI service is currently rate limited. Please wait a moment and try again." };
+  }
+
+  const isTimeout =
+    errMsg.includes("timeout") ||
+    errMsg.includes("timed out") ||
+    httpStatus === 504 ||
+    errorCode === "ETIMEDOUT" ||
+    errorCode === "ESOCKETTIMEDOUT" ||
+    causeCode === "ETIMEDOUT" ||
+    causeCode === "ESOCKETTIMEDOUT" ||
+    errorName === "AbortError";
+  if (isTimeout) {
+    return { status: 504, message: "The AI service timed out. Please try again in a moment." };
+  }
+
+  // Connection errors — the AI proxy/server is unreachable
+  const isConnectionError =
+    errorCode === "ECONNREFUSED" ||
+    errorCode === "ECONNRESET" ||
+    errorCode === "ENOTFOUND" ||
+    causeCode === "ECONNREFUSED" ||
+    causeCode === "ECONNRESET" ||
+    causeCode === "ENOTFOUND" ||
+    errMsg.includes("econnrefused") ||
+    errMsg.includes("econnreset") ||
+    errMsg.includes("fetch failed");
+  if (isConnectionError) {
+    return { status: 502, message: "Unable to reach the AI service. Please try again in a moment." };
+  }
+
+  // Authentication errors — API key is invalid or rejected
+  if (httpStatus === 401 || httpStatus === 403) {
+    return { status: 502, message: "The AI service rejected the request. Please verify your API key configuration." };
+  }
+
+  return { status: 500, message: "Something went wrong while getting a response. Please try again." };
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -1737,6 +1800,13 @@ export async function registerRoutes(
       if (query.length > 300) {
         return res.status(400).json({ error: "query must be 300 characters or fewer" });
       }
+
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[cook-session] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
+
       const validModes = ["lightweight", "full"];
       const sessionMode = validModes.includes(mode) ? mode : "full";
 
@@ -1791,6 +1861,12 @@ export async function registerRoutes(
       }
       if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[chat] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
       let userId = req.session.userId;
@@ -2025,7 +2101,8 @@ export async function registerRoutes(
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Chat error:", error);
-      res.status(500).json({ error: "Failed to get response" });
+      const { status, message } = classifyAiError(error);
+      res.status(status).json({ error: message });
     }
   });
 
@@ -2042,9 +2119,8 @@ export async function registerRoutes(
 
       const aiConfig = getAiConfigStatus();
       if (!aiConfig.configured) {
-        return res.status(503).json({
-          error: `AI is not configured on this server. Missing: ${aiConfig.missing.join(", ")}.`,
-        });
+        console.error("[chat/smart] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
       let userId = req.session.userId;
@@ -2242,38 +2318,8 @@ export async function registerRoutes(
       res.json({ ...result, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Smart chat error:", error);
-      const errAny = error as Record<string, unknown>;
-      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
-      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
-      const errorCode =
-        typeof (errAny as { code?: unknown })?.code === "string"
-          ? ((errAny as { code?: unknown }).code as string)
-          : "";
-      const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
-      const causeCode =
-        cause && typeof cause.code === "string"
-          ? (cause.code as string)
-          : "";
-      const errorName =
-        typeof errAny?.name === "string"
-          ? (errAny.name as string)
-          : "";
-      const isTimeoutError =
-        errMsg.includes("timeout") ||
-        errMsg.includes("timed out") ||
-        httpStatus === 504 ||
-        errorCode === "ETIMEDOUT" ||
-        errorCode === "ESOCKETTIMEDOUT" ||
-        causeCode === "ETIMEDOUT" ||
-        causeCode === "ESOCKETTIMEDOUT" ||
-        errorName === "AbortError";
-      if (httpStatus === 429) {
-        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
-      }
-      if (isTimeoutError) {
-        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
-      }
-      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
+      const { status, message } = classifyAiError(error);
+      res.status(status).json({ error: message });
     }
   });
 
@@ -2329,6 +2375,12 @@ export async function registerRoutes(
       }
       if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
+      }
+
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[chat/stream] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
       let userId = req.session.userId;
@@ -2546,13 +2598,19 @@ export async function registerRoutes(
       res.end();
     } catch (error) {
       console.error("Streaming chat error:", error);
-      res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);
+      const { message } = classifyAiError(error);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
       res.end();
     }
   });
 
   app.post("/api/workout/generate", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[workout] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { preferences } = req.body;
       const plan = await generateWorkoutPlan(preferences || {});
       res.json(plan);
@@ -2564,6 +2622,11 @@ export async function registerRoutes(
 
   app.post("/api/meditation/suggest", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[meditation] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { preferences } = req.body;
       const suggestions = await generateMeditationSuggestions(preferences || {});
       res.json(suggestions);
@@ -2575,6 +2638,11 @@ export async function registerRoutes(
 
   app.post("/api/learn-mode/question", async (req, res) => {
     try {
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        console.error("[learn-mode] AI not configured. Missing:", aiConfig.missing.join(", "));
+        return res.status(503).json({ error: "AI is not configured on this server." });
+      }
       const { previousAnswers, focusArea } = req.body;
       const result = await generateLearnModeQuestion(previousAnswers || [], focusArea);
       res.json(result);
@@ -9448,13 +9516,15 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     }
   });
 
-  // AI health check – reports config status without exposing secret values
+  // AI health check – reports config status without exposing infrastructure details.
+  // Missing var names are logged server-side only and never sent to callers.
   app.get("/api/health/ai", (_req, res) => {
     const { configured, missing } = getAiConfigStatus();
     if (configured) {
       return res.json({ configured: true });
     }
-    return res.status(503).json({ configured: false, missing });
+    console.warn("[health/ai] AI not configured. Missing:", missing.join(", "));
+    return res.status(503).json({ configured: false });
   });
 
   return httpServer;

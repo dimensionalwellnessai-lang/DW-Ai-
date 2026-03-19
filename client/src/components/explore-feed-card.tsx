@@ -242,7 +242,7 @@ export function ExploreFeedCard({
         open={reportOpen}
         onOpenChange={setReportOpen}
         eventType={contentEventType}
-        requestedItem={requestedContent || title}
+        requestedItem={title}
         closestMatch={title}
         pageContext={typeof window !== "undefined" ? window.location.pathname : undefined}
       />

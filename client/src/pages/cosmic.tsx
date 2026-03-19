@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Moon,
   Sun,
@@ -23,9 +25,10 @@ import {
   ChevronUp,
   Info,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
+import { useCosmicConsent, loadConsent, saveConsent } from "@/hooks/use-cosmic-consent";
 import {
   calcLifePath,
   calcExpression,
@@ -1232,8 +1235,7 @@ function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void 
 
 // ─── Consent section ───────────────────────────────────────────────────────────
 function ConsentSection() {
-  const { data: authData } = useAuth();
-  const isAuthenticated = !!authData?.user;
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
   // For authenticated users, fetch consent from the server
