@@ -206,9 +206,13 @@ export function useElevationPlan() {
       const updated = getGuestElevationPlans().find((p) => p.id === id) ?? { id, title: title ?? "", status: status ?? "draft", startDate: "", endDate: "", createdAt: "" };
       return updated as unknown as ElevationPlanItem;
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (_data, { id, status }) => {
       queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
       queryClient.invalidateQueries({ queryKey: [`/api/elevation-plans/${id}`] });
+      // When activating a plan, the server bulk-creates calendar events; refresh calendar.
+      if (status === "active") {
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      }
     },
   });
 
