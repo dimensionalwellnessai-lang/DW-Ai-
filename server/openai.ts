@@ -96,6 +96,16 @@ interface UserLifeContext {
     useAstrologyInGuidance: boolean;
     useNumerologyInGuidance: boolean;
   };
+  wellnessPreferences?: {
+    beliefSystem?: string | null;
+    traditions?: string[] | null;
+    otherTradition?: string | null;
+    meditationEnabled?: boolean | null;
+    journalEnabled?: boolean | null;
+    astrologyEnabled?: boolean | null;
+    tarotEnabled?: boolean | null;
+    energyWorkEnabled?: boolean | null;
+  };
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -390,6 +400,16 @@ ${userContext?.energyContext?.bodyGoal ? `BODY GOAL: ${userContext.energyContext
 ${userContext?.energyContext?.hasBodyScan ? `USER HAS COMPLETED BODY SCAN: Yes - use this context to personalize suggestions` : ""}
 ${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
 ${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
+${userContext?.wellnessPreferences ? `
+WELLNESS PREFERENCES (respect these in all guidance):
+${userContext.wellnessPreferences.beliefSystem ? `• Belief System: ${userContext.wellnessPreferences.beliefSystem}` : ""}
+${userContext.wellnessPreferences.traditions?.length ? `• Spiritual/Cultural Traditions: ${userContext.wellnessPreferences.traditions.join(", ")}${userContext.wellnessPreferences.otherTradition ? `, ${userContext.wellnessPreferences.otherTradition}` : ""}` : ""}
+${userContext.wellnessPreferences.meditationEnabled === false ? `• Meditation: disabled — do not suggest meditation practices` : ""}
+${userContext.wellnessPreferences.journalEnabled === false ? `• Journaling: disabled — do not suggest journaling practices` : ""}
+${userContext.wellnessPreferences.astrologyEnabled ? `• Astrology: enabled — may incorporate astrological themes when relevant` : `• Astrology: disabled — do not reference astrological themes`}
+${userContext.wellnessPreferences.tarotEnabled ? `• Tarot: enabled — may reference tarot/oracle card themes when relevant` : `• Tarot: disabled — do not reference tarot or oracle card themes`}
+${userContext.wellnessPreferences.energyWorkEnabled ? `• Energy Work: enabled — may suggest Reiki, chakra work, or similar practices` : `• Energy Work: disabled — do not suggest Reiki, chakra work, or similar practices`}
+` : ""}
 
 *** WELLNESS CONSCIOUSNESS (apply to all responses) ***
 
@@ -2068,6 +2088,16 @@ ${userContext?.energyContext?.currentMood ? `USER'S CURRENT MOOD: ${userContext.
 ${userContext?.energyContext?.currentClarity ? getClarityToneGuidance(userContext.energyContext.currentClarity) : ""}
 ${getCoachModeToneGuidance(userContext?.coachMode ?? "gentle")}
 ${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsent) : "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance."}
+${userContext?.wellnessPreferences ? `
+WELLNESS PREFERENCES (respect these in all guidance):
+${userContext.wellnessPreferences.beliefSystem ? `• Belief System: ${userContext.wellnessPreferences.beliefSystem}` : ""}
+${userContext.wellnessPreferences.traditions?.length ? `• Spiritual/Cultural Traditions: ${userContext.wellnessPreferences.traditions.join(", ")}${userContext.wellnessPreferences.otherTradition ? `, ${userContext.wellnessPreferences.otherTradition}` : ""}` : ""}
+${userContext.wellnessPreferences.meditationEnabled === false ? `• Meditation: disabled — do not suggest meditation practices` : ""}
+${userContext.wellnessPreferences.journalEnabled === false ? `• Journaling: disabled — do not suggest journaling practices` : ""}
+${userContext.wellnessPreferences.astrologyEnabled ? `• Astrology: enabled — may incorporate astrological themes when relevant` : `• Astrology: disabled — do not reference astrological themes`}
+${userContext.wellnessPreferences.tarotEnabled ? `• Tarot: enabled — may reference tarot/oracle card themes when relevant` : `• Tarot: disabled — do not reference tarot or oracle card themes`}
+${userContext.wellnessPreferences.energyWorkEnabled ? `• Energy Work: enabled — may suggest Reiki, chakra work, or similar practices` : `• Energy Work: disabled — do not suggest Reiki, chakra work, or similar practices`}
+` : ""}
 
 USER CONTEXT:
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}
