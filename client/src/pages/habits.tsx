@@ -39,12 +39,12 @@ export default function HabitsPage() {
   });
 
   const toggleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, completed }: { habitId: string, completed: boolean }) => {
+    mutationFn: async ({ habitId, completedToday }: { habitId: string; completedToday: boolean }) => {
       const res = await fetch(`/api/habits/${habitId}/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ completed }),
+        body: JSON.stringify({ completed: !completedToday }),
       });
       if (!res.ok) throw new Error('Failed to update habit');
       return res.json();
@@ -64,8 +64,8 @@ export default function HabitsPage() {
     }
   };
 
-  const handleToggleHabit = (habitId: string, currentCompleted: boolean) => {
-    toggleHabitMutation.mutate({ habitId, completed: !currentCompleted });
+  const handleToggleHabit = (habitId: string, completedToday: boolean) => {
+    toggleHabitMutation.mutate({ habitId, completedToday });
   };
 
 

@@ -3194,7 +3194,7 @@ export async function registerRoutes(
   app.post("/api/habits/:id/log", requireAuth, async (req, res) => {
     try {
       const habit = await storage.getHabit(req.params.id);
-      if (!habit) {
+      if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
       await storage.createHabitLog({ habitId: req.params.id, notes: req.body.notes });
