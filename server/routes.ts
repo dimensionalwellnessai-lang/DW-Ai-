@@ -7756,7 +7756,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.get("/api/accountability/partner/invite/:token", async (req, res) => {
     try {
       const { token } = req.params;
-      if (!token || token.length < 16) {
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
         return res.status(400).json({ error: "Invalid token." });
       }
       const invite = await accountability.getInviteByToken(token);
