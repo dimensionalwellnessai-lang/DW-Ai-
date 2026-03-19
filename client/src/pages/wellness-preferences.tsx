@@ -9,18 +9,11 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Save } from "lucide-react";
-
-interface WellnessPreferences {
-  id: string;
-  beliefSystem?: string;
-  traditions?: string[];
-  otherTradition?: string;
-  meditationEnabled: boolean;
-  journalEnabled: boolean;
-  astrologyEnabled: boolean;
-  tarotEnabled: boolean;
-  energyWorkEnabled: boolean;
-}
+import {
+  normaliseApiResponse,
+  buildSavePayload,
+  type WellnessPreferencesData,
+} from "@/lib/wellness-preferences-helpers";
 
 export default function WellnessPreferencesPage() {
   const { toast } = useToast();
@@ -35,29 +28,34 @@ export default function WellnessPreferencesPage() {
   const [astrologyEnabled, setAstrologyEnabled] = useState(false);
   const [tarotEnabled, setTarotEnabled] = useState(false);
   const [energyWorkEnabled, setEnergyWorkEnabled] = useState(false);
+  const [useAstrologyInGuidance, setUseAstrologyInGuidance] = useState(false);
+  const [useNumerologyInGuidance, setUseNumerologyInGuidance] = useState(false);
 
   // Fetch existing preferences
-  const { data: preferences, isLoading } = useQuery<WellnessPreferences>({
+  const { data: preferences, isLoading } = useQuery<WellnessPreferencesData>({
     queryKey: ['/api/wellness-preferences'],
   });
 
   // Update local state when data is fetched
   useEffect(() => {
     if (preferences) {
-      setBeliefSystem(preferences.beliefSystem || "");
-      setTraditions(preferences.traditions || []);
-      setOtherTradition(preferences.otherTradition || "");
-      setMeditationEnabled(preferences.meditationEnabled);
-      setJournalEnabled(preferences.journalEnabled);
-      setAstrologyEnabled(preferences.astrologyEnabled);
-      setTarotEnabled(preferences.tarotEnabled);
-      setEnergyWorkEnabled(preferences.energyWorkEnabled);
+      const state = normaliseApiResponse(preferences);
+      setBeliefSystem(state.beliefSystem);
+      setTraditions(state.traditions);
+      setOtherTradition(state.otherTradition);
+      setMeditationEnabled(state.meditationEnabled);
+      setJournalEnabled(state.journalEnabled);
+      setAstrologyEnabled(state.astrologyEnabled);
+      setTarotEnabled(state.tarotEnabled);
+      setEnergyWorkEnabled(state.energyWorkEnabled);
+      setUseAstrologyInGuidance(state.useAstrologyInGuidance);
+      setUseNumerologyInGuidance(state.useNumerologyInGuidance);
     }
   }, [preferences]);
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: Partial<WellnessPreferences>) => {
+    mutationFn: async (data: Omit<WellnessPreferencesData, "id">) => {
       if (preferences?.id) {
         // Update existing
         const res = await fetch(`/api/wellness-preferences/${preferences.id}`, {
@@ -101,16 +99,20 @@ export default function WellnessPreferencesPage() {
   });
 
   const handleSave = () => {
-    saveMutation.mutate({
-      beliefSystem,
-      traditions,
-      otherTradition,
-      meditationEnabled,
-      journalEnabled,
-      astrologyEnabled,
-      tarotEnabled,
-      energyWorkEnabled,
-    });
+    saveMutation.mutate(
+      buildSavePayload({
+        beliefSystem,
+        traditions,
+        otherTradition,
+        meditationEnabled,
+        journalEnabled,
+        astrologyEnabled,
+        tarotEnabled,
+        energyWorkEnabled,
+        useAstrologyInGuidance,
+        useNumerologyInGuidance,
+      }),
+    );
   };
 
   const handleTraditionToggle = (tradition: string, checked: boolean) => {
@@ -301,6 +303,42 @@ export default function WellnessPreferencesPage() {
                 checked={energyWorkEnabled}
                 disabled
                 onCheckedChange={(checked) => setEnergyWorkEnabled(checked as boolean)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Guidance Personalization</CardTitle>
+            <CardDescription>
+              Allow DW AI to incorporate cosmic data into your personalized guidance
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Astrology in Guidance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Include birth chart & transit data in AI recommendations
+                </p>
+              </div>
+              <Checkbox
+                checked={useAstrologyInGuidance}
+                onCheckedChange={(checked) => setUseAstrologyInGuidance(checked === true)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Numerology in Guidance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Include numerology cycles in AI recommendations
+                </p>
+              </div>
+              <Checkbox
+                checked={useNumerologyInGuidance}
+                onCheckedChange={(checked) => setUseNumerologyInGuidance(checked === true)}
               />
             </div>
           </CardContent>
