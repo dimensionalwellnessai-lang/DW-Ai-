@@ -5,16 +5,20 @@
 
 import { db } from "./db";
 import { pool } from "./db";
+import { randomBytes } from "crypto";
 import {
   taskAccountability,
   accountabilityStats,
   notificationPreferences,
+  accountabilityPartners,
+  users,
   type InsertTaskAccountability,
   type TaskAccountability,
   type AccountabilityStats,
-  type NotificationPreferences
+  type NotificationPreferences,
+  type AccountabilityPartner,
 } from "@shared/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, or } from "drizzle-orm";
 
 /**
  * Record a user's commitment response to a task
@@ -467,5 +471,266 @@ export async function getWeeklySynopsis(
     longestStreak: stats?.longestStreak || 0,
     bestDays,
     patterns
+  };
+}
+
+// =============================================
+// ACCOUNTABILITY PARTNER LINKING
+// =============================================
+
+/**
+ * Send an invite to an email address to become an accountability partner.
+ * Returns the created invite record (including the token).
+ */
+export async function invitePartner(
+  requesterId: string,
+  invitedEmail: string
+): Promise<AccountabilityPartner> {
+  // Prevent duplicate pending/active invites to the same email from this user
+  const existing = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.requesterId, requesterId),
+        eq(accountabilityPartners.invitedEmail, invitedEmail.toLowerCase()),
+        or(
+          eq(accountabilityPartners.status, "pending"),
+          eq(accountabilityPartners.status, "active")
+        )
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    // Return the existing invite so the caller can re-send the link
+    return existing[0];
+  }
+
+  const token = randomBytes(32).toString("hex");
+
+  const [invite] = await db
+    .insert(accountabilityPartners)
+    .values({
+      requesterId,
+      invitedEmail: invitedEmail.toLowerCase(),
+      inviteToken: token,
+      status: "pending",
+    })
+    .returning();
+
+  return invite;
+}
+
+/**
+ * Accept an accountability partner invite via token.
+ * Sets the recipientId and marks the link as active.
+ */
+export async function acceptPartnerInvite(
+  token: string,
+  recipientId: string
+): Promise<AccountabilityPartner | null> {
+  const [invite] = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.inviteToken, token),
+        eq(accountabilityPartners.status, "pending")
+      )
+    )
+    .limit(1);
+
+  if (!invite) return null;
+
+  // Prevent self-linking
+  if (invite.requesterId === recipientId) return null;
+
+  const [updated] = await db
+    .update(accountabilityPartners)
+    .set({
+      recipientId,
+      status: "active",
+      acceptedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(accountabilityPartners.id, invite.id))
+    .returning();
+
+  return updated;
+}
+
+/**
+ * Decline an accountability partner invite via token.
+ */
+export async function declinePartnerInvite(
+  token: string,
+  recipientId: string
+): Promise<AccountabilityPartner | null> {
+  const [invite] = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.inviteToken, token),
+        eq(accountabilityPartners.status, "pending")
+      )
+    )
+    .limit(1);
+
+  if (!invite) return null;
+  if (invite.requesterId === recipientId) return null;
+
+  const [updated] = await db
+    .update(accountabilityPartners)
+    .set({
+      recipientId,
+      status: "declined",
+      updatedAt: new Date(),
+    })
+    .where(eq(accountabilityPartners.id, invite.id))
+    .returning();
+
+  return updated;
+}
+
+/**
+ * Get the active partnership for a user (either as requester or recipient).
+ * Returns the partner record with enriched display info.
+ */
+export async function getActivePartnership(userId: string): Promise<{
+  partner: AccountabilityPartner;
+  partnerEmail: string;
+  partnerName: string | null;
+  role: "requester" | "recipient";
+} | null> {
+  const [row] = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.status, "active"),
+        or(
+          eq(accountabilityPartners.requesterId, userId),
+          eq(accountabilityPartners.recipientId, userId)
+        )
+      )
+    )
+    .limit(1);
+
+  if (!row) return null;
+
+  const isRequester = row.requesterId === userId;
+  const partnerId = isRequester ? row.recipientId : row.requesterId;
+
+  if (!partnerId) return null;
+
+  // Look up partner display info
+  const [partnerUser] = await db
+    .select({ email: users.email, firstName: users.firstName, username: users.username })
+    .from(users)
+    .where(eq(users.id, partnerId))
+    .limit(1);
+
+  const partnerEmail = partnerUser?.email ?? row.invitedEmail;
+  const partnerName = partnerUser?.firstName ?? partnerUser?.username ?? null;
+
+  return {
+    partner: row,
+    partnerEmail,
+    partnerName,
+    role: isRequester ? "requester" : "recipient",
+  };
+}
+
+/**
+ * Get pending outgoing invites for a user.
+ */
+export async function getPendingOutgoingInvites(
+  userId: string
+): Promise<AccountabilityPartner[]> {
+  return db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.requesterId, userId),
+        eq(accountabilityPartners.status, "pending")
+      )
+    )
+    .orderBy(desc(accountabilityPartners.invitedAt));
+}
+
+/**
+ * Unlink an active accountability partnership.
+ * Either user in the partnership can unlink.
+ */
+export async function unlinkPartner(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(
+      and(
+        eq(accountabilityPartners.status, "active"),
+        or(
+          eq(accountabilityPartners.requesterId, userId),
+          eq(accountabilityPartners.recipientId, userId)
+        )
+      )
+    )
+    .limit(1);
+
+  if (!row) return false;
+
+  await db
+    .update(accountabilityPartners)
+    .set({ status: "unlinked", unlinkedAt: new Date(), updatedAt: new Date() })
+    .where(eq(accountabilityPartners.id, row.id));
+
+  return true;
+}
+
+/**
+ * Cancel / revoke a pending outgoing invite.
+ */
+export async function cancelInvite(inviteId: string, requesterId: string): Promise<boolean> {
+  const result = await db
+    .update(accountabilityPartners)
+    .set({ status: "declined", updatedAt: new Date() })
+    .where(
+      and(
+        eq(accountabilityPartners.id, inviteId),
+        eq(accountabilityPartners.requesterId, requesterId),
+        eq(accountabilityPartners.status, "pending")
+      )
+    );
+
+  return (result.rowCount ?? 0) > 0;
+}
+
+/**
+ * Look up an invite by token (for the accept-invite page).
+ */
+export async function getInviteByToken(
+  token: string
+): Promise<(AccountabilityPartner & { requesterEmail: string; requesterName: string | null }) | null> {
+  const [invite] = await db
+    .select()
+    .from(accountabilityPartners)
+    .where(eq(accountabilityPartners.inviteToken, token))
+    .limit(1);
+
+  if (!invite) return null;
+
+  const [requester] = await db
+    .select({ email: users.email, firstName: users.firstName, username: users.username })
+    .from(users)
+    .where(eq(users.id, invite.requesterId))
+    .limit(1);
+
+  return {
+    ...invite,
+    requesterEmail: requester?.email ?? "",
+    requesterName: requester?.firstName ?? requester?.username ?? null,
   };
 }

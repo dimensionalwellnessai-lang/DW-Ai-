@@ -7718,6 +7718,127 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ------ Partner Linking ------
+
+  // POST /api/accountability/partner/invite
+  // Body: { email: string }
+  app.post("/api/accountability/partner/invite", requireAuth, async (req, res) => {
+    try {
+      const { email } = req.body as { email?: string };
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "A valid email address is required." });
+      }
+      const invite = await accountability.invitePartner(req.session.userId!, email.trim());
+      // Return the invite token so the client can construct a deep-link if desired
+      res.json({ invite });
+    } catch (error) {
+      console.error("Partner invite error:", error);
+      res.status(500).json({ error: "Failed to send invite." });
+    }
+  });
+
+  // GET /api/accountability/partner
+  // Returns the active partnership (or pending outgoing invites) for the logged-in user
+  app.get("/api/accountability/partner", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const active = await accountability.getActivePartnership(userId);
+      const pending = await accountability.getPendingOutgoingInvites(userId);
+      res.json({ active, pending });
+    } catch (error) {
+      console.error("Get partner error:", error);
+      res.status(500).json({ error: "Failed to load partner info." });
+    }
+  });
+
+  // GET /api/accountability/partner/invite/:token
+  // Public-ish: look up an invite by token (used on the accept-invite page)
+  app.get("/api/accountability/partner/invite/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      if (!token || token.length < 16) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
+      const invite = await accountability.getInviteByToken(token);
+      if (!invite || invite.status !== "pending") {
+        return res.status(404).json({ error: "Invite not found or already used." });
+      }
+      // Only expose safe fields to the client
+      res.json({
+        invitedEmail: invite.invitedEmail,
+        requesterEmail: invite.requesterEmail,
+        requesterName: invite.requesterName,
+        invitedAt: invite.invitedAt,
+      });
+    } catch (error) {
+      console.error("Get invite by token error:", error);
+      res.status(500).json({ error: "Failed to look up invite." });
+    }
+  });
+
+  // POST /api/accountability/partner/accept/:token
+  // Authenticated: logged-in user accepts the invite
+  app.post("/api/accountability/partner/accept/:token", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.params;
+      const result = await accountability.acceptPartnerInvite(token, req.session.userId!);
+      if (!result) {
+        return res.status(400).json({ error: "Invite is invalid, expired, or already used." });
+      }
+      res.json({ success: true, partner: result });
+    } catch (error) {
+      console.error("Accept partner invite error:", error);
+      res.status(500).json({ error: "Failed to accept invite." });
+    }
+  });
+
+  // POST /api/accountability/partner/decline/:token
+  // Authenticated: logged-in user declines the invite
+  app.post("/api/accountability/partner/decline/:token", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.params;
+      const result = await accountability.declinePartnerInvite(token, req.session.userId!);
+      if (!result) {
+        return res.status(400).json({ error: "Invite not found or already handled." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Decline partner invite error:", error);
+      res.status(500).json({ error: "Failed to decline invite." });
+    }
+  });
+
+  // DELETE /api/accountability/partner
+  // Unlink the active partnership
+  app.delete("/api/accountability/partner", requireAuth, async (req, res) => {
+    try {
+      const unlinked = await accountability.unlinkPartner(req.session.userId!);
+      if (!unlinked) {
+        return res.status(404).json({ error: "No active partnership found." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Unlink partner error:", error);
+      res.status(500).json({ error: "Failed to unlink partner." });
+    }
+  });
+
+  // DELETE /api/accountability/partner/invite/:inviteId
+  // Cancel a pending outgoing invite
+  app.delete("/api/accountability/partner/invite/:inviteId", requireAuth, async (req, res) => {
+    try {
+      const { inviteId } = req.params;
+      const cancelled = await accountability.cancelInvite(inviteId, req.session.userId!);
+      if (!cancelled) {
+        return res.status(404).json({ error: "Invite not found or already handled." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Cancel invite error:", error);
+      res.status(500).json({ error: "Failed to cancel invite." });
+    }
+  });
+
   // ========================================
   // PR #3: NEW API ROUTES
   // ========================================

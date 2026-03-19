@@ -20,9 +20,11 @@ import {
   Clock,
   BarChart3,
   Award,
-  MessageSquare
+  MessageSquare,
+  Users,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AccountabilityPartner } from "@/components/accountability-partner";
 import type { AccountabilityStats, TaskAccountability } from "@shared/schema";
 
 interface AccountabilitySynopsis {
@@ -304,6 +306,9 @@ export function AccountabilityDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Accountability Partner */}
+      <AccountabilityPartner />
     </div>
   );
 }

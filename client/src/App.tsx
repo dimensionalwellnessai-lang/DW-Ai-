@@ -110,6 +110,7 @@ import GoalsPage from "@/pages/goals";
 import HabitsPage from "@/pages/habits";
 import AccountabilityPage from "@/pages/accountability";
 import AccountabilitySettingsPage from "@/pages/accountability-settings";
+import AcceptInvitePage from "@/pages/accept-invite";
 import SupportReportPage from "@/pages/support-report";
 import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
@@ -235,6 +236,7 @@ function Router() {
       <Route path="/habits" component={HabitsPage} />
       <Route path="/accountability" component={AccountabilityPage} />
       <Route path="/accountability/settings" component={AccountabilitySettingsPage} />
+      <Route path="/accountability/accept-invite/:token" component={AcceptInvitePage} />
       <Route path="/plan" component={PlanPage} />
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
