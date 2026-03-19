@@ -260,7 +260,7 @@ import {
   type UpdateWeeklyPlanReview,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or, inArray } from "drizzle-orm";
 import { createHash } from "crypto";
 
 export interface IStorage {
@@ -292,7 +292,9 @@ export interface IStorage {
   deleteHabit(id: string): Promise<void>;
 
   getHabitLogs(habitId: string): Promise<HabitLog[]>;
+  getTodayHabitLogsByUser(userId: string): Promise<HabitLog[]>;
   createHabitLog(log: InsertHabitLog): Promise<HabitLog>;
+  deleteHabitLog(habitId: string, date: Date): Promise<void>;
 
   getMoodLogs(userId: string): Promise<MoodLog[]>;
   getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
@@ -1014,6 +1016,42 @@ export class DatabaseStorage implements IStorage {
   async createHabitLog(log: InsertHabitLog): Promise<HabitLog> {
     const [created] = await db.insert(habitLogs).values(log).returning();
     return created;
+  }
+
+  async getTodayHabitLogsByUser(userId: string): Promise<HabitLog[]> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    const userHabits = await db.select({ id: habits.id }).from(habits).where(eq(habits.userId, userId));
+    if (userHabits.length === 0) return [];
+    const habitIds = userHabits.map((h) => h.id);
+    return db
+      .select()
+      .from(habitLogs)
+      .where(
+        and(
+          inArray(habitLogs.habitId, habitIds),
+          gte(habitLogs.completedAt, startOfDay),
+          lte(habitLogs.completedAt, endOfDay)
+        )
+      );
+  }
+
+  async deleteHabitLog(habitId: string, date: Date): Promise<void> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    await db
+      .delete(habitLogs)
+      .where(
+        and(
+          eq(habitLogs.habitId, habitId),
+          gte(habitLogs.completedAt, startOfDay),
+          lte(habitLogs.completedAt, endOfDay)
+        )
+      );
   }
 
   async getMoodLogs(userId: string): Promise<MoodLog[]> {

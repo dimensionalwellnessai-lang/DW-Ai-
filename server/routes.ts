@@ -3069,7 +3069,10 @@ export async function registerRoutes(
 
   app.get("/api/habits", requireAuth, async (req, res) => {
     const habits = await storage.getHabits(req.session.userId!);
-    res.json(habits);
+    const todayLogs = await storage.getTodayHabitLogsByUser(req.session.userId!);
+    const completedIds = new Set(todayLogs.map((l) => l.habitId));
+    const annotated = habits.map((h) => ({ ...h, completedToday: completedIds.has(h.id) }));
+    res.json(annotated);
   });
 
   app.post("/api/habits", requireAuth, async (req, res) => {
@@ -3165,7 +3168,7 @@ export async function registerRoutes(
   app.post("/api/habits/:id/log", requireAuth, async (req, res) => {
     try {
       const habit = await storage.getHabit(req.params.id);
-      if (!habit) {
+      if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
       await storage.createHabitLog({ habitId: req.params.id, notes: req.body.notes });
@@ -3173,6 +3176,19 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to log habit" });
+    }
+  });
+
+  app.delete("/api/habits/:id/log", requireAuth, async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit || habit.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
+      await storage.deleteHabitLog(req.params.id, new Date());
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unlog habit" });
     }
   });
 

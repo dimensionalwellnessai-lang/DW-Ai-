@@ -39,12 +39,12 @@ export default function HabitsPage() {
   });
 
   const toggleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, completed }: { habitId: string, completed: boolean }) => {
-      const res = await fetch(`/api/habits/${habitId}/toggle`, {
-        method: 'POST',
+    mutationFn: async ({ habitId, completedToday }: { habitId: string; completedToday: boolean }) => {
+      const method = completedToday ? 'DELETE' : 'POST';
+      const res = await fetch(`/api/habits/${habitId}/log`, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ completed }),
       });
       if (!res.ok) throw new Error('Failed to update habit');
       return res.json();
@@ -57,19 +57,16 @@ export default function HabitsPage() {
   const handleCreateHabit = () => {
     if (habitTitle.trim()) {
       createHabitMutation.mutate({
-        name: habitTitle,
+        title: habitTitle,
         frequency: 'daily',
-        status: 'active',
+        isActive: true,
       });
     }
   };
 
-  const handleToggleHabit = (habitId: string, currentCompleted: boolean) => {
-    toggleHabitMutation.mutate({ habitId, completed: !currentCompleted });
+  const handleToggleHabit = (habitId: string, completedToday: boolean) => {
+    toggleHabitMutation.mutate({ habitId, completedToday });
   };
-
-  // Get today's date for checking completion
-  const today = new Date().toDateString();
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
@@ -141,9 +138,7 @@ export default function HabitsPage() {
             )}
 
             {habits.map((habit: any) => {
-              const completedToday = habit.completions?.some(
-                (c: any) => new Date(c.completedAt).toDateString() === today
-              );
+              const completedToday = Boolean(habit.completedToday);
               
               return (
                 <div
@@ -153,8 +148,9 @@ export default function HabitsPage() {
                   <button
                     onClick={() => handleToggleHabit(habit.id, completedToday)}
                     className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
-                    aria-label={completedToday ? `Mark ${habit.name} as incomplete` : `Mark ${habit.name} as complete`}
-                    aria-pressed={Boolean(completedToday)}
+                    aria-label={completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
+                    aria-pressed={completedToday}
+                    disabled={toggleHabitMutation.isPending}
                   >
                     {completedToday ? (
                       <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
@@ -164,16 +160,16 @@ export default function HabitsPage() {
                   </button>
                   <div className="flex-1">
                     <p className={`font-medium ${completedToday ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                      {habit.name}
+                      {habit.title}
                     </p>
-                    {habit.currentStreak > 0 && (
+                    {habit.streak > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        🔥 {habit.currentStreak} day streak
+                        🔥 {habit.streak} day streak
                       </p>
                     )}
                   </div>
-                  <Badge variant={habit.status === 'active' ? 'default' : 'secondary'}>
-                    {habit.status}
+                  <Badge variant={habit.isActive ? 'default' : 'secondary'}>
+                    {habit.isActive ? 'active' : 'inactive'}
                   </Badge>
                 </div>
               );
