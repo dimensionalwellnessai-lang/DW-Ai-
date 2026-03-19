@@ -206,12 +206,13 @@ TONE ADJUSTMENTS:
 export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
-  userContext?: UserLifeContext
+  userContext?: UserLifeContext,
+  systemOverride?: string
 ): Promise<string | ChatResponseWithTools> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   
-  const systemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+  const baseSystemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
 
 TODAY: ${today} at ${currentTime}
 
@@ -1244,6 +1245,14 @@ Clarity over cleverness.
 Agency over answers.
 Calm over speed.`;
 
+  // When a systemOverride is provided it is prepended to (not a replacement of)
+  // the base DW system prompt. The override appears first so the model treats it
+  // as the higher-priority context (e.g. onboarding instructions over general DW
+  // behaviour), with the full DW identity still applying for tone and safety rules.
+  const systemPrompt = systemOverride
+    ? `${systemOverride}\n\n${baseSystemPrompt}`
+    : baseSystemPrompt;
+
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     ...conversationHistory.map((msg) => ({
@@ -1879,7 +1888,8 @@ Respond with valid JSON array:
 export async function detectIntentAndRespond(
   userMessage: string,
   conversationHistory: ChatMessage[],
-  userContext?: UserLifeContext
+  userContext?: UserLifeContext,
+  systemOverride?: string
 ): Promise<{
   response: string;
   intent: "workout" | "meditation" | "learn" | "general";
@@ -1944,7 +1954,7 @@ export async function detectIntentAndRespond(
     intent = isWorkoutIntent ? "workout" : "meditation";
   }
   
-  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext);
+  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext, systemOverride);
   const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
   const toolCalls = typeof rawResponse === 'object' && 'toolCalls' in rawResponse ? rawResponse.toolCalls : undefined;
   
