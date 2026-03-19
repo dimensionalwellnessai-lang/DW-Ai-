@@ -36,6 +36,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
   const [routine, setRoutine] = useState<{ title: string; steps: ImportRoutineStep[] }>({ title: "Meal Prep Routine", steps: [] });
   const [calendarSuggestions, setCalendarSuggestions] = useState<ImportCalendarSuggestion[]>([]);
   const [error, setError] = useState<UploadError | null>(null);
+  const [ocrWarning, setOcrWarning] = useState<string | null>(null);
   const [savedData, setSavedData] = useState<{ mealsCount: number; hasRoutine: boolean; calendarCount: number } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,6 +63,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
     onSuccess: (data) => {
       setDocumentId(data.documentId);
       setError(null);
+      setOcrWarning(data.ocrWarning ?? null);
       setStep("scanning");
       analyzeMutation.mutate(data.documentId);
     },
@@ -208,6 +210,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
     setRoutine({ title: "Meal Prep Routine", steps: [] });
     setCalendarSuggestions([]);
     setError(null);
+    setOcrWarning(null);
     setSavedData(null);
     onOpenChange(false);
   };
@@ -360,6 +363,13 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
             <p className="text-sm text-muted-foreground">
               This is a draft. Edit anything. Save only what you want.
             </p>
+
+            {ocrWarning && (
+              <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3 flex items-start gap-2" data-testid="ocr-warning">
+                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">{ocrWarning}</p>
+              </div>
+            )}
 
             {/* Summary Card */}
             <Card>
