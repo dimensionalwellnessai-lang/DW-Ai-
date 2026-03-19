@@ -12,14 +12,16 @@ import { Sparkles, Save } from "lucide-react";
 
 interface WellnessPreferences {
   id: string;
-  beliefSystem?: string;
-  traditions?: string[];
-  otherTradition?: string;
-  meditationEnabled: boolean;
-  journalEnabled: boolean;
-  astrologyEnabled: boolean;
-  tarotEnabled: boolean;
-  energyWorkEnabled: boolean;
+  beliefSystem?: string | null;
+  traditions?: string[] | null;
+  otherTradition?: string | null;
+  meditationEnabled: boolean | null;
+  journalEnabled: boolean | null;
+  astrologyEnabled: boolean | null;
+  tarotEnabled: boolean | null;
+  energyWorkEnabled: boolean | null;
+  useAstrologyInGuidance: boolean | null;
+  useNumerologyInGuidance: boolean | null;
 }
 
 export default function WellnessPreferencesPage() {
@@ -35,6 +37,8 @@ export default function WellnessPreferencesPage() {
   const [astrologyEnabled, setAstrologyEnabled] = useState(false);
   const [tarotEnabled, setTarotEnabled] = useState(false);
   const [energyWorkEnabled, setEnergyWorkEnabled] = useState(false);
+  const [useAstrologyInGuidance, setUseAstrologyInGuidance] = useState(false);
+  const [useNumerologyInGuidance, setUseNumerologyInGuidance] = useState(false);
 
   // Fetch existing preferences
   const { data: preferences, isLoading } = useQuery<WellnessPreferences>({
@@ -47,11 +51,13 @@ export default function WellnessPreferencesPage() {
       setBeliefSystem(preferences.beliefSystem || "");
       setTraditions(preferences.traditions || []);
       setOtherTradition(preferences.otherTradition || "");
-      setMeditationEnabled(preferences.meditationEnabled);
-      setJournalEnabled(preferences.journalEnabled);
-      setAstrologyEnabled(preferences.astrologyEnabled);
-      setTarotEnabled(preferences.tarotEnabled);
-      setEnergyWorkEnabled(preferences.energyWorkEnabled);
+      setMeditationEnabled(preferences.meditationEnabled ?? true);
+      setJournalEnabled(preferences.journalEnabled ?? true);
+      setAstrologyEnabled(preferences.astrologyEnabled ?? false);
+      setTarotEnabled(preferences.tarotEnabled ?? false);
+      setEnergyWorkEnabled(preferences.energyWorkEnabled ?? false);
+      setUseAstrologyInGuidance(preferences.useAstrologyInGuidance ?? false);
+      setUseNumerologyInGuidance(preferences.useNumerologyInGuidance ?? false);
     }
   }, [preferences]);
 
@@ -103,13 +109,16 @@ export default function WellnessPreferencesPage() {
   const handleSave = () => {
     saveMutation.mutate({
       beliefSystem,
-      traditions,
-      otherTradition,
+      // Only persist traditions when belief system is "religious"
+      traditions: beliefSystem === "religious" ? traditions : [],
+      otherTradition: beliefSystem === "religious" ? otherTradition : "",
       meditationEnabled,
       journalEnabled,
       astrologyEnabled,
       tarotEnabled,
       energyWorkEnabled,
+      useAstrologyInGuidance,
+      useNumerologyInGuidance,
     });
   };
 
@@ -301,6 +310,42 @@ export default function WellnessPreferencesPage() {
                 checked={energyWorkEnabled}
                 disabled
                 onCheckedChange={(checked) => setEnergyWorkEnabled(checked as boolean)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Guidance Personalization</CardTitle>
+            <CardDescription>
+              Allow DW AI to incorporate cosmic data into your personalized guidance
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Astrology in Guidance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Include birth chart & transit data in AI recommendations
+                </p>
+              </div>
+              <Checkbox
+                checked={useAstrologyInGuidance}
+                onCheckedChange={(checked) => setUseAstrologyInGuidance(checked as boolean)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Numerology in Guidance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Include numerology cycles in AI recommendations
+                </p>
+              </div>
+              <Checkbox
+                checked={useNumerologyInGuidance}
+                onCheckedChange={(checked) => setUseNumerologyInGuidance(checked as boolean)}
               />
             </div>
           </CardContent>

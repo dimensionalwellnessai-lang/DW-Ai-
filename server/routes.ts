@@ -7813,7 +7813,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const userId = req.session.userId!;
       const preferences = await storage.getWellnessPreferences(userId);
-      res.json(preferences);
+      res.json(preferences ?? null);
     } catch (error) {
       console.error("Get wellness preferences error:", error);
       res.status(500).json({ error: "Failed to get preferences" });
@@ -7841,7 +7841,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const preferences = await storage.updateWellnessPreferences(id, userId, req.body);
+      const parsed = insertWellnessPreferencesSchema
+        .omit({ userId: true })
+        .partial()
+        .safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors });
+      }
+      const preferences = await storage.updateWellnessPreferences(id, userId, parsed.data);
       if (!preferences) {
         return res.status(404).json({ error: "Preferences not found" });
       }
