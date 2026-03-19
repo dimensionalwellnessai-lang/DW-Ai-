@@ -137,7 +137,7 @@ export function MealPlanImport({ open, onOpenChange }: MealPlanImportProps) {
       if (savedData) {
         setSavedData({ ...savedData, calendarCount: data.eventsCreated || 0 });
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar-events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       toast({ title: "Calendar updated", description: `Added ${data.eventsCreated || 0} events to your calendar.` });
     },
     onError: (err: Error) => {

@@ -1176,7 +1176,7 @@ export function AIWorkspace() {
         queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
         queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
         queryClient.invalidateQueries({ queryKey: ["/api/mood-logs"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
       }
       
       // Refresh sync session if items were created

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
-import { format, startOfWeek, addDays } from "date-fns";
+import { Calendar, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { format, addDays } from "date-fns";
 
 export interface ScheduleItem {
   id: string;
@@ -23,7 +23,13 @@ interface WeeklyScheduleConfirmationProps {
   onOpenChange: (open: boolean) => void;
   scheduleItems: ScheduleItem[];
   onConfirm: (confirmedItems: ScheduleItem[]) => void;
+  /**
+   * The first day of the week to display. Must be pre-normalised to midnight
+   * (00:00:00) on the desired week-start day, and must match the week start
+   * the server will use to anchor calendar events. Defaults to today.
+   */
   weekStartDate?: Date;
+  isLoading?: boolean;
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -44,12 +50,18 @@ export function WeeklyScheduleConfirmation({
   scheduleItems,
   onConfirm,
   weekStartDate = new Date(),
+  isLoading = false,
 }: WeeklyScheduleConfirmationProps) {
   const [confirmed, setConfirmed] = useState<Set<string>>(
     new Set(scheduleItems.filter(item => item.isConfirmed).map(item => item.id))
   );
+  // Synchronous guard to prevent rapid double-click from submitting twice before
+  // React Query's isLoading state update propagates.
+  const submittingRef = useRef(false);
 
-  const weekStart = startOfWeek(weekStartDate);
+  // Use the provided weekStartDate directly (caller is responsible for computing
+  // the correct week start, matching the server's anchoring).
+  const weekStart = weekStartDate;
 
   // Group items by day
   const groupedByDay = scheduleItems.reduce((acc, item) => {
@@ -86,6 +98,8 @@ export function WeeklyScheduleConfirmation({
   };
 
   const handleConfirm = () => {
+    if (submittingRef.current || isLoading) return;
+    submittingRef.current = true;
     const confirmedItems = scheduleItems.map(item => ({
       ...item,
       isConfirmed: confirmed.has(item.id),
@@ -98,7 +112,14 @@ export function WeeklyScheduleConfirmation({
   const totalCount = scheduleItems.length;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        // Reset the double-click guard when the dialog opens
+        if (newOpen) submittingRef.current = false;
+        onOpenChange(newOpen);
+      }}
+    >
       <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -211,12 +232,21 @@ export function WeeklyScheduleConfirmation({
         </ScrollArea>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Confirm {confirmedCount} Item{confirmedCount !== 1 ? 's' : ''}
+          <Button onClick={handleConfirm} disabled={isLoading || confirmedCount === 0}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Confirm {confirmedCount} Item{confirmedCount !== 1 ? 's' : ''}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

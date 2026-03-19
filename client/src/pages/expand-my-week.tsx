@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { WeeklyScheduleConfirmation, type ScheduleItem } from "@/components/weekly-schedule-confirmation";
 import { Send, Loader2, Calendar, Pencil, Check, X } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -169,6 +169,7 @@ function ProposedBlockCard({
 export default function ExpandMyWeekPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -186,6 +187,19 @@ export default function ExpandMyWeekPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Compute the upcoming week start (next Sunday, or today if Sunday) once per mount.
+  // This is shared with WeeklyScheduleConfirmation (for display) and the confirm API
+  // (for anchoring) so both sides show and save to the same week.
+  const upcomingWeekStart = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sunday
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const d = new Date(now);
+    d.setDate(now.getDate() + daysUntilSunday);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -230,6 +244,9 @@ export default function ExpandMyWeekPage() {
     mutationFn: async (items: ScheduleItem[]) => {
       const response = await apiRequest("POST", "/api/week-planner/confirm", {
         confirmedItems: items.filter((i) => i.isConfirmed === true),
+        // Pass the computed week start so the server anchors events to the same week
+        // that the confirmation dialog displayed to the user.
+        weekStart: upcomingWeekStart.toISOString(),
       });
       return response.json();
     },
@@ -237,14 +254,16 @@ export default function ExpandMyWeekPage() {
       setPhase("confirmed");
       toast({
         title: "Week plan saved!",
-        description: `${data.created} blocks added to your schedule.`,
+        description: `${data.created} block${data.created !== 1 ? "s" : ""} added to your schedule.`,
       });
-      redirectTimeoutRef.current = setTimeout(() => setLocation("/daily-schedule"), 1500);
+      // Refresh calendar views so newly-created events appear immediately
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      redirectTimeoutRef.current = setTimeout(() => setLocation("/plans"), 1500);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Save failed",
-        description: "Couldn't save the schedule. Please try again.",
+        description: parseApiError(error) || "Couldn't save the schedule. Please try again.",
         variant: "destructive",
       });
     },
@@ -452,6 +471,8 @@ export default function ExpandMyWeekPage() {
         onOpenChange={setConfirmOpen}
         scheduleItems={scheduleItems}
         onConfirm={handleConfirmSchedule}
+        isLoading={confirmMutation.isPending}
+        weekStartDate={upcomingWeekStart}
       />
     </div>
   );

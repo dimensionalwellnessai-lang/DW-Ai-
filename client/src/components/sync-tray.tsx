@@ -41,7 +41,7 @@ export function SyncTray() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sync/sessions/active"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
     },
   });
 
