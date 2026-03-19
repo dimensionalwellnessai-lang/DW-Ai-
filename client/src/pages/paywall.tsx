@@ -1,20 +1,34 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { activateDWPlus } from "@/lib/entitlement";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { simulateUpgrade, simulateRestore } from "@/lib/billing";
+
+/** Inline spinner label used on buttons with pending billing requests. */
+function ProcessingLabel() {
+  return (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Processing…
+    </>
+  );
+}
 
 /**
  * DW Plus paywall — shown once after onboarding (soft paywall) and also when
  * free-tier limits are reached. Design: calm, minimal, consistent with app.
  *
  * Purchase simulation: on web/Replit, tapping "Start Free Trial" immediately
- * sets dw_is_plus=true. Compatible with future RevenueCat/StoreKit integration
- * (replace activateDWPlus call with real purchase flow).
+ * sets dw_is_plus=true and calls the backend billing stub. Compatible with
+ * future RevenueCat/StoreKit integration (replace simulateUpgrade with the real
+ * purchase flow).
  */
 export default function PaywallPage() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [showOtherPlans, setShowOtherPlans] = useState(false);
+  const [loading, setLoading] = useState<"trial" | "monthly" | "restore" | null>(null);
+  const { toast } = useToast();
 
   // Determine upgrade context from query param so bonus mechanics are applied
   const searchParams = new URLSearchParams(
@@ -30,26 +44,79 @@ export default function PaywallPage() {
     ? ctx
     : "paywall";
 
-  const handleStartTrial = () => {
-    // Simulated purchase — replace with RevenueCat/StoreKit when available
-    activateDWPlus(upgradeContext);
-    setLocation("/talk");
+  const handleStartTrial = async () => {
+    setLoading("trial");
+    try {
+      await simulateUpgrade("plus", upgradeContext);
+      toast({
+        title: "DW Plus activated!",
+        description: "Your 7-day free trial has started. Enjoy unlimited access.",
+      });
+      setLocation("/talk");
+    } catch {
+      toast({
+        title: "Something went wrong",
+        description: "Could not start trial. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
   };
 
-  const handleMonthly = () => {
-    activateDWPlus(upgradeContext);
-    setLocation("/talk");
+  const handleMonthly = async () => {
+    setLoading("monthly");
+    try {
+      await simulateUpgrade("plus", upgradeContext);
+      toast({
+        title: "DW Plus activated!",
+        description: "Monthly subscription started. Enjoy unlimited access.",
+      });
+      setLocation("/talk");
+    } catch {
+      toast({
+        title: "Something went wrong",
+        description: "Could not start subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleContinueFree = () => {
     setLocation("/talk");
   };
 
-  const handleRestore = () => {
-    // No-op on web; replace with real restore flow when purchase infra exists
-    activateDWPlus("restore");
-    setLocation("/talk");
+  const handleRestore = async () => {
+    setLoading("restore");
+    try {
+      const result = await simulateRestore();
+      if (result.success) {
+        toast({
+          title: "Purchase restored",
+          description: "DW Plus has been restored to your account.",
+        });
+        setLocation("/talk");
+      } else {
+        toast({
+          title: "Nothing to restore",
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Restore failed",
+        description: "Could not restore purchase. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
   };
+
+  const isLoading = loading !== null;
 
   return (
     <div
@@ -94,9 +161,10 @@ export default function PaywallPage() {
             size="lg"
             className="w-full"
             onClick={handleStartTrial}
+            disabled={isLoading}
             data-testid="button-start-trial"
           >
-            Start 7-day free trial
+            {loading === "trial" ? <ProcessingLabel /> : "Start 7-day free trial"}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
             Then $79.99/year&nbsp;•&nbsp;Cancel anytime
@@ -110,6 +178,7 @@ export default function PaywallPage() {
             className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
             data-testid="button-other-plans-toggle"
             aria-expanded={showOtherPlans}
+            disabled={isLoading}
           >
             Other plans
             {showOtherPlans ? (
@@ -132,9 +201,10 @@ export default function PaywallPage() {
                 size="sm"
                 className="w-full"
                 onClick={handleMonthly}
+                disabled={isLoading}
                 data-testid="button-monthly"
               >
-                Subscribe monthly
+                {loading === "monthly" ? <ProcessingLabel /> : "Subscribe monthly"}
               </Button>
             </div>
           )}
@@ -146,6 +216,7 @@ export default function PaywallPage() {
           size="sm"
           className="w-full text-muted-foreground"
           onClick={handleContinueFree}
+          disabled={isLoading}
           data-testid="button-continue-free"
         >
           Continue with free
@@ -155,10 +226,17 @@ export default function PaywallPage() {
         <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
           <button
             onClick={handleRestore}
-            className="hover:text-foreground transition-colors"
+            className="hover:text-foreground transition-colors disabled:opacity-50"
+            disabled={isLoading}
             data-testid="button-restore"
           >
-            Restore purchase
+            {loading === "restore" ? (
+              <span className="flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />Restoring…
+              </span>
+            ) : (
+              "Restore purchase"
+            )}
           </button>
           <span aria-hidden="true">·</span>
           <a

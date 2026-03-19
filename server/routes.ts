@@ -20,6 +20,7 @@ import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, se
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
+import { googleVisionService } from "./google-vision";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -1018,6 +1019,108 @@ export async function registerRoutes(
       return res.status(404).json({ error: "User not found" });
     }
     res.json({ user: { id: user.id, email: user.email, firstName: user.firstName, onboardingCompleted: user.onboardingCompleted, systemName: user.systemName } });
+  });
+
+  // ─── Billing stub endpoints ───────────────────────────────────────────────
+  // These are MVP simulation endpoints. Replace the stub logic with real
+  // RevenueCat / Stripe webhook handling when billing infra is available.
+
+  /**
+   * GET /api/billing/status
+   * Returns the caller's current subscription tier.
+   * For unauthenticated (guest) users, always returns "free".
+   */
+  app.get("/api/billing/status", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.json({ tier: "free", updatedAt: null });
+      }
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.json({ tier: "free", updatedAt: null });
+      }
+      return res.json({
+        tier: user.subscriptionTier ?? "free",
+        updatedAt: user.subscriptionUpdatedAt ?? null,
+      });
+    } catch (err) {
+      console.error("[billing] status error", err);
+      return res.status(500).json({ error: "Failed to fetch subscription status" });
+    }
+  });
+
+  /**
+   * POST /api/billing/upgrade
+   * Simulates a successful purchase and sets the user's subscription tier to
+   * "plus". Accepts an optional `plan` body field for future plan variants.
+   * "free" is intentionally excluded — use a dedicated cancel/downgrade endpoint
+   * when that flow is needed.
+   * For unauthenticated users the upgrade is acknowledged but not persisted
+   * (the client handles entitlement via localStorage).
+   */
+  app.post("/api/billing/upgrade", async (req, res) => {
+    try {
+      const VALID_PLANS = ["plus", "premium", "lifetime"] as const;
+      const plan: string = req.body?.plan ?? "plus";
+      if (!VALID_PLANS.includes(plan as typeof VALID_PLANS[number])) {
+        return res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
+      }
+      // All paid plans map to the "plus" tier for MVP
+      const tier = "plus" as const;
+
+      if (req.session.userId) {
+        const updated = await storage.updateUser(req.session.userId, {
+          subscriptionTier: tier,
+          subscriptionUpdatedAt: new Date(),
+        });
+        if (!updated) {
+          // Session is stale — user row no longer exists; DB entitlement was not persisted.
+          return res.status(404).json({ error: "User not found; subscription not persisted to database" });
+        }
+      }
+
+      return res.json({
+        success: true,
+        tier,
+        message: "DW Plus activated",
+      });
+    } catch (err) {
+      console.error("[billing] upgrade error", err);
+      return res.status(500).json({ error: "Failed to process upgrade" });
+    }
+  });
+
+  /**
+   * POST /api/billing/restore
+   * Simulates a purchase restore. If the user already has a "plus" tier in the
+   * DB the restore succeeds; otherwise it returns a "not found" response so the
+   * client can surface the right message.
+   * For unauthenticated users the response always indicates nothing to restore.
+   */
+  app.post("/api/billing/restore", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.json({ success: false, tier: "free", message: "No active subscription found" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.json({ success: false, tier: "free", message: "No active subscription found" });
+      }
+
+      if (user.subscriptionTier === "plus") {
+        return res.json({
+          success: true,
+          tier: "plus",
+          message: "DW Plus restored successfully",
+        });
+      }
+
+      return res.json({ success: false, tier: "free", message: "No active subscription found" });
+    } catch (err) {
+      console.error("[billing] restore error", err);
+      return res.status(500).json({ error: "Failed to restore subscription" });
+    }
   });
 
   app.post("/api/feedback", async (req, res) => {
@@ -4720,6 +4823,7 @@ Return as JSON array with format:
         metadata: extracted.metadata,
         extractionMethod: extracted.extractionMethod,
         ocrConfidence: extracted.ocrConfidence,
+        ocrWarning: extracted.ocrWarning,
         processingTimeMs,
         message: "Document uploaded. Ready for analysis."
       });
@@ -5077,6 +5181,7 @@ Return as JSON array with format:
         textLength: extracted.text.length,
         extractionMethod: extracted.extractionMethod,
         ocrConfidence: extracted.ocrConfidence,
+        ocrWarning: extracted.ocrWarning,
         processingTimeMs,
       });
     } catch (error) {
@@ -7718,6 +7823,140 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // ------ Partner Linking ------
+
+  // POST /api/accountability/partner/invite
+  // Body: { email: string }
+  app.post("/api/accountability/partner/invite", requireAuth, async (req, res) => {
+    try {
+      const { email } = req.body as { email?: string };
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "A valid email address is required." });
+      }
+      const invite = await accountability.invitePartner(req.session.userId!, email.trim());
+      // Return the invite token so the client can construct a deep-link if desired
+      res.json({ invite });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      if (
+        message === "You cannot invite yourself as an accountability partner." ||
+        message?.startsWith("You already have an active accountability partner")
+      ) {
+        return res.status(400).json({ error: message });
+      }
+      console.error("Partner invite error:", error);
+      res.status(500).json({ error: "Failed to send invite." });
+    }
+  });
+
+  // GET /api/accountability/partner
+  // Returns the active partnership (or pending outgoing invites) for the logged-in user
+  app.get("/api/accountability/partner", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const active = await accountability.getActivePartnership(userId);
+      const pending = await accountability.getPendingOutgoingInvites(userId);
+      res.json({ active, pending });
+    } catch (error) {
+      console.error("Get partner error:", error);
+      res.status(500).json({ error: "Failed to load partner info." });
+    }
+  });
+
+  // GET /api/accountability/partner/invite/:token
+  // Public-ish: look up an invite by token (used on the accept-invite page)
+  app.get("/api/accountability/partner/invite/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
+      const invite = await accountability.getInviteByToken(token);
+      if (!invite || invite.status !== "pending") {
+        return res.status(404).json({ error: "Invite not found or already used." });
+      }
+      // Only expose safe fields to the client
+      res.json({
+        invitedEmail: invite.invitedEmail,
+        requesterEmail: invite.requesterEmail,
+        requesterName: invite.requesterName,
+        invitedAt: invite.invitedAt,
+      });
+    } catch (error) {
+      console.error("Get invite by token error:", error);
+      res.status(500).json({ error: "Failed to look up invite." });
+    }
+  });
+
+  // POST /api/accountability/partner/accept/:token
+  // Authenticated: logged-in user accepts the invite
+  app.post("/api/accountability/partner/accept/:token", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.params;
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
+      const result = await accountability.acceptPartnerInvite(token, req.session.userId!);
+      if (!result) {
+        return res.status(400).json({ error: "Invite is invalid, expired, or already used." });
+      }
+      res.json({ success: true, partner: result });
+    } catch (error) {
+      console.error("Accept partner invite error:", error);
+      res.status(500).json({ error: "Failed to accept invite." });
+    }
+  });
+
+  // POST /api/accountability/partner/decline/:token
+  // Authenticated: logged-in user declines the invite
+  app.post("/api/accountability/partner/decline/:token", requireAuth, async (req, res) => {
+    try {
+      const { token } = req.params;
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
+      const result = await accountability.declinePartnerInvite(token, req.session.userId!);
+      if (!result) {
+        return res.status(400).json({ error: "Invite not found or already handled." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Decline partner invite error:", error);
+      res.status(500).json({ error: "Failed to decline invite." });
+    }
+  });
+
+  // DELETE /api/accountability/partner
+  // Unlink the active partnership
+  app.delete("/api/accountability/partner", requireAuth, async (req, res) => {
+    try {
+      const unlinked = await accountability.unlinkPartner(req.session.userId!);
+      if (!unlinked) {
+        return res.status(404).json({ error: "No active partnership found." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Unlink partner error:", error);
+      res.status(500).json({ error: "Failed to unlink partner." });
+    }
+  });
+
+  // DELETE /api/accountability/partner/invite/:inviteId
+  // Cancel a pending outgoing invite
+  app.delete("/api/accountability/partner/invite/:inviteId", requireAuth, async (req, res) => {
+    try {
+      const { inviteId } = req.params;
+      const cancelled = await accountability.cancelInvite(inviteId, req.session.userId!);
+      if (!cancelled) {
+        return res.status(404).json({ error: "Invite not found or already handled." });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Cancel invite error:", error);
+      res.status(500).json({ error: "Failed to cancel invite." });
+    }
+  });
+
   // ========================================
   // PR #3: NEW API ROUTES
   // ========================================
@@ -9705,196 +9944,17 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     return res.status(503).json({ configured: false, missing });
   });
 
-  // ─── Week Planner ─────────────────────────────────────────────────────────
-
-  // POST /api/week-planner/chat – AI conversation that builds a personalised weekly schedule
-  app.post("/api/week-planner/chat", chatLimiter, requireAuth, async (req, res) => {
-    try {
-      const { message, conversationHistory, questionCount } = req.body;
-
-      if (!message || typeof message !== "string" || message.trim().length === 0) {
-        return res.status(400).json({ error: "Message content is required" });
-      }
-      if (message.length > DW_MAX_MESSAGE_CONTENT_LENGTH) {
-        return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
-      }
-
-      const aiConfig = getAiConfigStatus();
-      if (!aiConfig.configured) {
-        return res.status(503).json({ error: "AI is not configured on this server." });
-      }
-
-      const currentQuestionCount: number = typeof questionCount === "number" ? questionCount : 0;
-      const today = new Date();
-      const todayStr = today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
-      // Build message history for the AI
-      const history: { role: "user" | "assistant"; content: string }[] = Array.isArray(conversationHistory)
-        ? conversationHistory
-            .filter((m: { role?: string; content?: string }) => m && typeof m.role === "string" && typeof m.content === "string")
-            .map((m: { role: string; content: string }) => ({ role: m.role as "user" | "assistant", content: m.content }))
-        : [];
-
-      const systemPrompt = `You are the DW Week Planner, a calm and thoughtful assistant that helps users build their personalised weekly schedule.
-
-TODAY: ${todayStr}
-
-YOUR GOAL: Gather information across up to 8 targeted questions, then propose a structured week plan.
-
-QUESTIONS TO COVER (spread across the conversation, not all at once):
-1. Wake time and morning energy
-2. Work/school schedule and core commitments
-3. Physical activity preferences and frequency
-4. Meal preferences or prep habits
-5. Evening wind-down or sleep goals
-6. Social or personal commitments
-7. Self-care or wellness priorities
-8. Any blockers, constraints, or preferences
-
-CURRENT QUESTION COUNT: ${currentQuestionCount} questions asked so far.
-
-PHASE RULES:
-- If questionCount < 7: Ask the NEXT unanswered question naturally. Keep responses brief and conversational (2-4 sentences). DO NOT produce a schedule yet.
-- If questionCount >= 7: Summarise what you know, then produce the final schedule as JSON.
-
-SCHEDULE JSON FORMAT (only when questionCount >= 7):
-When ready, end your response with a JSON block in this exact format — no additional text after the JSON:
-
-<SCHEDULE_JSON>
-[
-  {
-    "id": "block-1",
-    "title": "Morning Workout",
-    "day": 1,
-    "startTime": "07:00",
-    "endTime": "08:00",
-    "category": "workout",
-    "why": "Aligns with your high morning energy on weekdays."
-  }
-]
-</SCHEDULE_JSON>
-
-FIELD RULES:
-- "day": 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-- "startTime" and "endTime": HH:mm 24-hour format
-- "category": one of workout, meal, work, personal, social, wellness, sleep
-- "id": unique string like "block-1", "block-2" etc.
-- "why": brief one-sentence rationale personalised to the user
-- Propose 5–12 blocks spread across the week
-- Always include sleep blocks, at least one meal prep or meal block, and blocks matching the user's stated priorities
-
-TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy level.`;
-
-      const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
-        { role: "system", content: systemPrompt },
-        ...history,
-        { role: "user", content: message },
-      ];
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        temperature: 0.7,
-        max_tokens: 1200,
-      });
-
-      const rawResponse = completion.choices[0]?.message?.content || "I'm here to help plan your week. Could you tell me more?";
-
-      // Extract schedule JSON if present
-      let proposedSchedule: unknown[] | null = null;
-      let cleanResponse = rawResponse;
-      const jsonMatch = rawResponse.match(/<SCHEDULE_JSON>([\s\S]*?)<\/SCHEDULE_JSON>/);
-      if (jsonMatch) {
-        try {
-          proposedSchedule = JSON.parse(jsonMatch[1].trim());
-          cleanResponse = rawResponse.replace(/<SCHEDULE_JSON>[\s\S]*?<\/SCHEDULE_JSON>/, "").trim();
-        } catch {
-          // If JSON parse fails, treat as plain text response
-        }
-      }
-
-      const newQuestionCount = Math.min(currentQuestionCount + 1, 8);
-      const phase = proposedSchedule ? "proposal" : "questions";
-
-      res.json({
-        response: cleanResponse,
-        questionCount: newQuestionCount,
-        phase,
-        ...(proposedSchedule ? { proposedSchedule } : {}),
-      });
-    } catch (error) {
-      console.error("Week planner chat error:", error);
-      res.status(500).json({ error: "Failed to process week planner message" });
-    }
-  });
-
-  // POST /api/week-planner/confirm – save confirmed schedule blocks as calendar events
-  app.post("/api/week-planner/confirm", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const { confirmedItems } = req.body;
-
-      if (!Array.isArray(confirmedItems) || confirmedItems.length === 0) {
-        return res.status(400).json({ error: "At least one schedule item must be confirmed" });
-      }
-
-      // Calculate the start of the upcoming week (next Sunday or today if Sunday)
-      const now = new Date();
-      const dayOfWeek = now.getDay(); // 0=Sunday
-      const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() + daysUntilSunday);
-      weekStart.setHours(0, 0, 0, 0);
-
-      let created = 0;
-      for (const item of confirmedItems) {
-        if (!item.isConfirmed) continue;
-        if (typeof item.day !== "number" || typeof item.startTime !== "string") continue;
-
-        // Calculate the date for this block
-        const eventDate = new Date(weekStart);
-        eventDate.setDate(weekStart.getDate() + (item.day % 7));
-
-        // Parse startTime (HH:mm)
-        const [startHour, startMin] = (item.startTime as string).split(":").map(Number);
-        if (isNaN(startHour) || isNaN(startMin)) continue;
-        eventDate.setHours(startHour, startMin, 0, 0);
-
-        // Parse endTime (HH:mm) or default to +1 hour
-        let endDate: Date;
-        if (item.endTime && typeof item.endTime === "string") {
-          const [endHour, endMin] = (item.endTime as string).split(":").map(Number);
-          endDate = new Date(eventDate);
-          if (!isNaN(endHour) && !isNaN(endMin)) {
-            endDate.setHours(endHour, endMin, 0, 0);
-          } else {
-            endDate = new Date(eventDate.getTime() + 60 * 60 * 1000);
-          }
-        } else {
-          endDate = new Date(eventDate.getTime() + 60 * 60 * 1000);
-        }
-
-        try {
-          const data = insertCalendarEventSchema.parse({
-            userId,
-            title: String(item.title || "Untitled block"),
-            description: item.description ? String(item.description) : null,
-            startTime: eventDate.toISOString(),
-            endTime: endDate.toISOString(),
-            eventType: item.category || "event",
-          });
-          await storage.createCalendarEvent(data);
-          created++;
-        } catch {
-          // Skip invalid items rather than failing the whole batch
-        }
-      }
-
-      res.json({ created });
-    } catch (error) {
-      console.error("Week planner confirm error:", error);
-      res.status(500).json({ error: "Failed to save schedule. Please try again." });
-    }
+  // OCR status – reports which OCR providers are available
+  app.get("/api/ocr/status", (_req, res) => {
+    const visionConfigured = googleVisionService.isConfigured();
+    res.json({
+      tesseract: true,
+      googleVision: visionConfigured,
+      enhancedOcrConfigured: visionConfigured,
+      hint: visionConfigured
+        ? "Both Tesseract and Google Vision OCR are available."
+        : "Only basic OCR (Tesseract) is active. Set the GOOGLE_VISION_API_KEY environment variable to enable enhanced image text extraction.",
+    });
   });
 
   return httpServer;

@@ -1,15 +1,13 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Users,
   Heart,
   MapPin,
@@ -18,11 +16,11 @@ import {
   Check,
   ChevronRight,
   Sparkles,
-  Search,
   Calendar,
   ExternalLink,
   SkipForward,
-  X,
+  Bookmark,
+  BookmarkCheck,
   TrendingUp,
   HandHeart,
   GraduationCap,
@@ -35,7 +33,11 @@ import {
   saveCommunityProfile,
   getCommunityOpportunities,
   hasCompletedCommunityProfile,
+  getSavedCommunityOpportunityIds,
+  toggleSavedCommunityOpportunity,
+  saveCalendarEvent,
   type CommunityProfile,
+  type CommunityOpportunity,
   type CommunityFocus,
   type AvailabilityLevel,
 } from "@/lib/guest-storage";
@@ -161,13 +163,56 @@ export default function CommunityPage() {
   const hasProfile = hasCompletedCommunityProfile();
   const { toast } = useToast();
 
+  const [selectedOpp, setSelectedOpp] = useState<OpportunityDisplay | null>(null);
+  const [savedIds, setSavedIds] = useState<string[]>(() => getSavedCommunityOpportunityIds());
+
   const handleSaveProfile = (newProfile: CommunityProfile) => {
     saveCommunityProfile(newProfile);
     setProfile(newProfile);
     setProfileOpen(false);
   };
 
-  const displayOpportunities = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
+  const handleToggleSave = (opp: OpportunityDisplay) => {
+    const nowSaved = toggleSavedCommunityOpportunity(opp.id);
+    setSavedIds(getSavedCommunityOpportunityIds());
+    toast({
+      title: nowSaved ? "Opportunity saved" : "Opportunity removed",
+      description: nowSaved ? `"${opp.title}" added to your saved list.` : `"${opp.title}" removed from saved.`,
+    });
+  };
+
+  const handleAddToCalendar = (opp: OpportunityDisplay) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    const end = new Date(tomorrow);
+    end.setHours(10, 0, 0, 0);
+    saveCalendarEvent({
+      title: opp.title,
+      description: `${opp.organization} — ${opp.description}`,
+      dimension: "social", // community maps closest to social wellness dimension
+      startTime: tomorrow.getTime(),
+      endTime: end.getTime(),
+      isAllDay: false,
+      location: opp.location,
+      virtualLink: opp.url,
+      reminders: [15],
+      recurring: false,
+      recurrencePattern: null,
+      recurrenceEndDate: null,
+      relatedFoundationIds: [],
+      tags: opp.tags,
+    });
+    toast({
+      title: "Added to calendar",
+      description: `"${opp.title}" scheduled for tomorrow at 9 AM.`,
+    });
+  };
+
+  const displayOpportunities: OpportunityDisplay[] = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
+  const hasRealOpportunities = opportunities.length > 0;
+  const savedOpportunities = displayOpportunities.filter((o) => savedIds.includes(o.id));
+  const featuredOpp = displayOpportunities.find((o) => o.featured);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -305,6 +350,54 @@ export default function CommunityPage() {
             />
           </section>
 
+          {/* Saved Opportunities */}
+          {savedOpportunities.length > 0 && (
+            <section className="space-y-3" aria-label="Saved opportunities">
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <BookmarkCheck className="w-4 h-4 text-teal-500" aria-hidden="true" />
+                Saved
+                <Badge variant="secondary" className="text-xs ml-1">{savedOpportunities.length}</Badge>
+              </h2>
+              <div className="space-y-2">
+                {savedOpportunities.map((opp) => {
+                  const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
+                  const Icon = style.icon;
+                  return (
+                    <Card
+                      key={opp.id}
+                      className="hover-elevate cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`View details for ${opp.title}`}
+                      onClick={() => setSelectedOpp(opp)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedOpp(opp);
+                        }
+                      }}
+                      data-testid={`card-saved-opportunity-${opp.id}`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
+                            <Icon className={`h-4 w-4 ${style.color}`} aria-hidden="true" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{opp.title}</p>
+                            <p className="text-xs text-muted-foreground truncate">{opp.organization}</p>
+                          </div>
+                          <BookmarkCheck className="w-4 h-4 text-teal-500 flex-shrink-0" aria-hidden="true" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Opportunities for You */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">Opportunities for You</h2>
@@ -313,113 +406,159 @@ export default function CommunityPage() {
               </Badge>
             </div>
 
-            {/* Featured Opportunity */}
-            {displayOpportunities.find((opp: OpportunityDisplay) => opp.featured) && (
-              <Card className="hover-elevate cursor-pointer border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-transparent" data-testid="card-featured-opportunity">
-                <CardContent className="p-0">
-                  {/* Featured Image Placeholder */}
-                  <div className="h-32 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-t-lg flex items-center justify-center">
-                    <Badge className="bg-teal-600 text-white">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      Featured
-                    </Badge>
-                  </div>
-                  <div className="p-4">
-                    {(() => {
-                      const opp = displayOpportunities.find((o: OpportunityDisplay) => o.featured)!;
-                      const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
-                      const Icon = style.icon;
-                      return (
-                        <>
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
-                              <Icon className={`h-5 w-5 ${style.color}`} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-lg">{opp.title}</h3>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-2">{opp.organization}</p>
-                            </div>
-                          </div>
-                          <p className="text-sm mb-3">{opp.description}</p>
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <Badge variant="secondary" className={style.color}>
-                              {style.label}
-                            </Badge>
-                            {opp.isOnline ? (
-                              <Badge variant="outline" className="text-xs">
-                                <Globe className="w-3 h-3 mr-1" />
-                                Online
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {opp.location}
-                              </Badge>
-                            )}
-                            {opp.tags.map((tag: string) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
+            {!hasRealOpportunities ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
+                  <p className="font-medium mb-1">No opportunities yet</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Set up your community profile to get personalized recommendations.
+                  </p>
+                  <Button size="sm" onClick={() => setProfileOpen(true)} data-testid="button-setup-from-empty">
+                    Set up profile
+                  </Button>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Regular Opportunities */}
-            <div className="space-y-3">
-              {displayOpportunities.filter((opp: OpportunityDisplay) => !opp.featured).map((opp: OpportunityDisplay) => {
-                const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
-                const Icon = style.icon;
-                
-                return (
-                  <Card key={opp.id} className="hover-elevate cursor-pointer" data-testid={`card-opportunity-${opp.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
-                          <Icon className={`h-5 w-5 ${style.color}`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-foreground">{opp.title}</h3>
-                            <Badge variant="secondary" className={`text-xs ${style.color}`}>
-                              {style.label}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">{opp.organization}</p>
-                          <p className="text-sm mb-2">{opp.description}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {opp.isOnline ? (
-                              <Badge variant="outline" className="text-xs">
-                                <Globe className="w-3 h-3 mr-1" />
-                                Online
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {opp.location}
-                              </Badge>
-                            )}
-                            {opp.tags.map((tag: string) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            ) : (
+              <>
+                {/* Featured Opportunity */}
+                {featuredOpp && (
+                  <Card
+                    className="hover-elevate cursor-pointer border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-transparent"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View featured opportunity: ${featuredOpp.title}`}
+                    onClick={() => setSelectedOpp(featuredOpp)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedOpp(featuredOpp);
+                      }
+                    }}
+                    data-testid="card-featured-opportunity"
+                  >
+                    <CardContent className="p-0">
+                      <div className="h-32 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-t-lg flex items-center justify-center">
+                        <Badge className="bg-teal-600 text-white">
+                          <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" />
+                          Featured
+                        </Badge>
+                      </div>
+                      <div className="p-4">
+                        {(() => {
+                          const style = OPPORTUNITY_STYLES[featuredOpp.type as CommunityFocus];
+                          const Icon = style.icon;
+                          const isSaved = savedIds.includes(featuredOpp.id);
+                          return (
+                            <>
+                              <div className="flex items-start gap-3 mb-3">
+                                <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
+                                  <Icon className={`h-5 w-5 ${style.color}`} aria-hidden="true" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-semibold text-lg">{featuredOpp.title}</h3>
+                                    {isSaved && <BookmarkCheck className="w-4 h-4 text-teal-500 flex-shrink-0" aria-hidden="true" />}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mb-2">{featuredOpp.organization}</p>
+                                </div>
+                              </div>
+                              <p className="text-sm mb-3">{featuredOpp.description}</p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                <Badge variant="secondary" className={style.color}>
+                                  {style.label}
+                                </Badge>
+                                {featuredOpp.isOnline ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Globe className="w-3 h-3 mr-1" aria-hidden="true" />
+                                    Online
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">
+                                    <MapPin className="w-3 h-3 mr-1" aria-hidden="true" />
+                                    {featuredOpp.location}
+                                  </Badge>
+                                )}
+                                {featuredOpp.tags.map((tag: string) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
+                )}
+
+                {/* Regular Opportunities */}
+                <div className="space-y-3">
+                  {displayOpportunities.filter((opp: OpportunityDisplay) => !opp.featured).map((opp: OpportunityDisplay) => {
+                    const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
+                    const Icon = style.icon;
+                    const isSaved = savedIds.includes(opp.id);
+
+                    return (
+                      <Card
+                        key={opp.id}
+                        className="hover-elevate cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`View details for ${opp.title}`}
+                        onClick={() => setSelectedOpp(opp)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedOpp(opp);
+                          }
+                        }}
+                        data-testid={`card-opportunity-${opp.id}`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
+                              <Icon className={`h-5 w-5 ${style.color}`} aria-hidden="true" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-medium text-foreground">{opp.title}</h3>
+                                <Badge variant="secondary" className={`text-xs ${style.color}`}>
+                                  {style.label}
+                                </Badge>
+                                {isSaved && <BookmarkCheck className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" aria-hidden="true" />}
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">{opp.organization}</p>
+                              <p className="text-sm mb-2">{opp.description}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {opp.isOnline ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Globe className="w-3 h-3 mr-1" />
+                                    Online
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    {opp.location}
+                                  </Badge>
+                                )}
+                                {opp.tags.map((tag: string) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </main>
       </ScrollArea>
@@ -430,6 +569,107 @@ export default function CommunityPage() {
         existingProfile={profile}
         onSave={handleSaveProfile}
       />
+
+      {/* Opportunity Detail Modal */}
+      <Dialog open={!!selectedOpp} onOpenChange={(open) => !open && setSelectedOpp(null)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="opportunity-detail-description">
+          {selectedOpp && (() => {
+            const style = OPPORTUNITY_STYLES[selectedOpp.type as CommunityFocus];
+            const Icon = style.icon;
+            const isSaved = savedIds.includes(selectedOpp.id);
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
+                      <Icon className={`h-5 w-5 ${style.color}`} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <DialogTitle>{selectedOpp.title}</DialogTitle>
+                      <p className="text-sm text-muted-foreground">{selectedOpp.organization}</p>
+                    </div>
+                  </div>
+                  <DialogDescription id="opportunity-detail-description">
+                    {selectedOpp.description}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 mt-2">
+                  {/* Type & Location */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className={style.color}>
+                      {style.label}
+                    </Badge>
+                    {selectedOpp.isOnline ? (
+                      <Badge variant="outline" className="text-xs">
+                        <Globe className="w-3 h-3 mr-1" />
+                        Online
+                      </Badge>
+                    ) : selectedOpp.location ? (
+                      <Badge variant="outline" className="text-xs">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {selectedOpp.location}
+                      </Badge>
+                    ) : null}
+                    {selectedOpp.tags.map((tag: string) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant={isSaved ? "secondary" : "outline"}
+                      className="w-full justify-start"
+                      onClick={() => handleToggleSave(selectedOpp)}
+                      data-testid="button-modal-save"
+                    >
+                      {isSaved ? (
+                        <>
+                          <BookmarkCheck className="w-4 h-4 mr-2 text-teal-500" />
+                          Saved
+                        </>
+                      ) : (
+                        <>
+                          <Bookmark className="w-4 h-4 mr-2" />
+                          Save opportunity
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleAddToCalendar(selectedOpp);
+                        setSelectedOpp(null);
+                      }}
+                      data-testid="button-modal-calendar"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Add to calendar
+                    </Button>
+
+                    {selectedOpp.url && (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => window.open(selectedOpp.url!, "_blank", "noopener,noreferrer")}
+                        data-testid="button-modal-external-link"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Learn more
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

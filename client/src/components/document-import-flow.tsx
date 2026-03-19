@@ -119,6 +119,7 @@ export function DocumentImportFlow({
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("summary");
   const [uploadError, setUploadError] = useState<UploadError | null>(null);
+  const [ocrWarning, setOcrWarning] = useState<string | null>(null);
 
   const currentFile = fileQueue[currentFileIndex]?.file || null;
   const totalFiles = fileQueue.length;
@@ -133,6 +134,7 @@ export function DocumentImportFlow({
     setSelectedItems(new Set());
     setActiveTab("summary");
     setUploadError(null);
+    setOcrWarning(null);
   };
 
   const handleClose = () => {
@@ -169,6 +171,7 @@ export function DocumentImportFlow({
     },
     onSuccess: async (data) => {
       setUploadError(null);
+      setOcrWarning(data.ocrWarning ?? null);
       setCurrentDocumentId(data.documentId);
       setFileQueue(prev => prev.map((item, i) => 
         i === currentFileIndex 
@@ -602,6 +605,12 @@ export function DocumentImportFlow({
 
           {step === "preview" && analysisResult && (
             <div className="flex flex-col h-full">
+              {ocrWarning && (
+                <div className="mb-3 rounded-md bg-amber-500/10 border border-amber-500/20 p-3 flex items-start gap-2" data-testid="ocr-warning">
+                  <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">{ocrWarning}</p>
+                </div>
+              )}
               {totalFiles > 1 && (
                 <div className="mb-3 pb-3 border-b">
                   <div className="flex items-center justify-between">

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Volume2, Square } from "lucide-react";
 import { ttsService } from "@/lib/tts-service";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface TTSButtonProps {
   text: string;
@@ -30,6 +31,13 @@ export function TTSButton({
 }: TTSButtonProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSupported] = useState(ttsService.isAvailable());
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Load persisted settings once on mount so voice/rate/pitch/volume/enabled
+    // preferences are applied correctly before any speak or visibility check.
+    ttsService.loadSettings();
+  }, []);
 
   useEffect(() => {
     const settings = ttsService.getSettings();
@@ -65,8 +73,14 @@ export function TTSButton({
       await ttsService.speak(text);
       setIsPlaying(false);
     } catch (error) {
-      console.error('TTS error:', error);
       setIsPlaying(false);
+      const msg = error instanceof Error ? error.message : String(error);
+      // "interrupted" and "canceled" fire when audio is stopped by the user — not real errors
+      const isUserCancelled = msg.includes("interrupted") || msg.includes("canceled");
+      if (!isUserCancelled) {
+        console.error('TTS error:', error);
+        toast({ description: "Audio playback failed. Please try again.", variant: "destructive" });
+      }
     }
   };
 
