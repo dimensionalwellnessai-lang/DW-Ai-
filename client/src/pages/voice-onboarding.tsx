@@ -63,6 +63,7 @@ const START_ONBOARDING_TRIGGER = "[START_ONBOARDING]";
 // localStorage keys for tracking onboarding completion state
 const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
+const LS_INPUT_MODE = "dw_voice_onboarding_input_mode";
 
 // ─── System prompt ───────────────────────────────────────────────────────────
 
@@ -220,6 +221,7 @@ export default function VoiceOnboardingPage() {
   const [thread, setThread] = useState<ThreadMessage[]>([]);
   const [isReplying, setIsReplying] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(true);
+  const [micPermissionDenied, setMicPermissionDenied] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,12 +235,31 @@ export default function VoiceOnboardingPage() {
     setVoiceState(next);
   }, []);
 
+  // Helper: set input mode and persist to localStorage
+  const updateInputMode = useCallback((mode: InputMode) => {
+    setInputMode(mode);
+    try {
+      localStorage.setItem(LS_INPUT_MODE, mode);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   // ── Check voice support ──
   useEffect(() => {
     const API = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!API) {
       setVoiceSupported(false);
       setInputMode("text");
+    } else {
+      // Restore persisted input mode preference
+      try {
+        const saved = localStorage.getItem(LS_INPUT_MODE);
+        if (saved === "text") setInputMode("text");
+        else if (saved === "voice") setInputMode("voice");
+      } catch {
+        // Ignore storage errors
+      }
     }
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -353,11 +374,18 @@ export default function VoiceOnboardingPage() {
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         updateVoiceState("error");
-        const msg =
-          event.error === "not-allowed" || event.error === "permission-denied"
-            ? VOICE_SCRIPTS.microphoneError
-            : VOICE_SCRIPTS.errorFallback;
-        toast({ title: "Voice input", description: msg, variant: "destructive" });
+        const isPermissionError = event.error === "not-allowed" || event.error === "permission-denied";
+        if (isPermissionError) {
+          setMicPermissionDenied(true);
+          updateInputMode("text");
+          toast({
+            title: "Microphone access denied",
+            description: VOICE_SCRIPTS.microphoneError,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "Voice input", description: VOICE_SCRIPTS.errorFallback, variant: "destructive" });
+        }
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
       };
@@ -374,7 +402,7 @@ export default function VoiceOnboardingPage() {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
     }
-  }, [sendUserMessage, toast, updateVoiceState]);
+  }, [sendUserMessage, toast, updateVoiceState, updateInputMode]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
@@ -512,7 +540,7 @@ export default function VoiceOnboardingPage() {
             size="sm"
             className="text-muted-foreground"
             onClick={() => {
-              setInputMode("text");
+              updateInputMode("text");
               handleBegin();
             }}
             data-testid="button-use-text-instead"
@@ -613,22 +641,32 @@ export default function VoiceOnboardingPage() {
           {/* Mode toggle */}
           <div className="flex items-center gap-2 mb-3">
             <button
-              onClick={() => setInputMode("voice")}
-              disabled={!voiceSupported}
+              onClick={() => updateInputMode("voice")}
+              disabled={!voiceSupported || micPermissionDenied}
+              aria-disabled={!voiceSupported || micPermissionDenied}
+              aria-pressed={inputMode === "voice"}
+              title={
+                !voiceSupported
+                  ? VOICE_SCRIPTS.voiceNotSupported
+                  : micPermissionDenied
+                  ? VOICE_SCRIPTS.microphoneError
+                  : undefined
+              }
               className={cn(
                 "flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-colors",
                 inputMode === "voice"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "text-muted-foreground border-border hover:border-primary/50",
+                (!voiceSupported || micPermissionDenied) && "opacity-50 cursor-not-allowed",
               )}
               data-testid="button-mode-voice"
-              aria-pressed={inputMode === "voice"}
             >
               <Mic className="w-3 h-3" />
               Voice
             </button>
             <button
-              onClick={() => setInputMode("text")}
+              onClick={() => updateInputMode("text")}
+              aria-pressed={inputMode === "text"}
               className={cn(
                 "flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-colors",
                 inputMode === "text"
@@ -636,26 +674,40 @@ export default function VoiceOnboardingPage() {
                   : "text-muted-foreground border-border hover:border-primary/50",
               )}
               data-testid="button-mode-text"
-              aria-pressed={inputMode === "text"}
             >
               <Keyboard className="w-3 h-3" />
               Text
             </button>
           </div>
 
+          {/* Voice/mic status notices */}
+          {!voiceSupported && (
+            <p className="text-xs text-muted-foreground mb-3" role="note" data-testid="notice-voice-unsupported">
+              {VOICE_SCRIPTS.voiceNotSupported}
+            </p>
+          )}
+          {micPermissionDenied && voiceSupported && (
+            <p className="text-xs text-destructive mb-3" role="alert" data-testid="notice-mic-permission-denied">
+              {VOICE_SCRIPTS.microphoneError}
+            </p>
+          )}
+
           {/* Voice input */}
           {inputMode === "voice" && (
             <div className="flex flex-col items-center gap-3 py-2">
               <button
                 onClick={handleMicClick}
-                disabled={isReplying || voiceState === "processing"}
+                disabled={isReplying || voiceState === "processing" || voiceState === "error"}
                 className={cn(
                   "relative w-16 h-16 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                   voiceState === "listening"
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                    : voiceState === "error"
+                    ? "bg-destructive/10 text-destructive"
                     : "bg-muted hover:bg-muted/80",
                 )}
                 aria-label={voiceState === "listening" ? "Stop listening" : "Start listening"}
+                aria-busy={voiceState === "processing" || isReplying}
                 data-testid="button-mic"
               >
                 {voiceState === "listening" && (
@@ -665,15 +717,19 @@ export default function VoiceOnboardingPage() {
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : voiceState === "listening" ? (
                   <MicOff className="w-6 h-6" />
+                ) : voiceState === "error" ? (
+                  <MicOff className="w-6 h-6" />
                 ) : (
                   <Mic className="w-6 h-6 text-foreground" />
                 )}
               </button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground" aria-live="polite">
                 {voiceState === "listening"
                   ? "Listening — tap to stop"
                   : voiceState === "processing"
                   ? "Processing…"
+                  : voiceState === "error"
+                  ? "Try again"
                   : "Tap to speak"}
               </p>
             </div>
