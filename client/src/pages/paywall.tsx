@@ -20,7 +20,7 @@ export default function PaywallPage() {
   const [restoring, setRestoring] = useState(false);
   const { toast } = useToast();
 
-  // Determine upgrade context from query param so bonus mechanics are applied
+  // Determine upgrade context and post-payment destination from query params
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   );
@@ -30,6 +30,12 @@ export default function PaywallPage() {
     | "paywall"
     | "restore"
     | null;
+  // `from` lets callers specify an explicit return path after payment
+  const fromParam = searchParams.get("from");
+
+  const upgradeContext = ctx === "message_limit" || ctx === "session_limit"
+    ? ctx
+    : "paywall";
 
   const handleStartTrial = () => {
     const params = new URLSearchParams({ plan: "plus-yearly", from: "/paywall" });
