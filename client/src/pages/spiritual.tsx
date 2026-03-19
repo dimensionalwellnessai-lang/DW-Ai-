@@ -29,6 +29,7 @@ import { ExclusionsButton } from "@/components/exclusions-manager";
 import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { TTSButton } from "@/components/tts-button";
+import { MeditationAudioPlayer } from "@/components/meditation-audio-player";
 
 const PRACTICE_LABELS: Record<string, string> = {
   meditation: "Meditation",
@@ -504,6 +505,9 @@ export default function SpiritualPage() {
               )}
             </div>
           </div>
+
+          {/* Ambient audio player */}
+          <MeditationAudioPlayer />
 
           <SpiritualProfileDialog
             open={profileOpen}
