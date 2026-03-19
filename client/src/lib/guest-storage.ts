@@ -557,6 +557,7 @@ export interface GuestData {
   foundationsProfile: FoundationsProfile | null;
   communityProfile: CommunityProfile | null;
   communityOpportunities: CommunityOpportunity[];
+  savedCommunityOpportunityIds?: string[];
   calendarEvents: CalendarEvent[];
   dimensionWellnessProfiles: DimensionWellnessProfile[];
   savedRoutines: SavedRoutine[];
@@ -1364,6 +1365,28 @@ export function saveCommunityOpportunity(opp: Omit<CommunityOpportunity, "id" | 
   data.communityOpportunities.push(newOpp);
   saveGuestData(data);
   return newOpp;
+}
+
+export function getSavedCommunityOpportunityIds(): string[] {
+  const data = getGuestData();
+  return data?.savedCommunityOpportunityIds || [];
+}
+
+export function isCommunityOpportunitySaved(id: string): boolean {
+  return getSavedCommunityOpportunityIds().includes(id);
+}
+
+export function toggleSavedCommunityOpportunity(id: string): boolean {
+  const data = getGuestData() || initGuestData();
+  if (!data.savedCommunityOpportunityIds) data.savedCommunityOpportunityIds = [];
+  const idx = data.savedCommunityOpportunityIds.indexOf(id);
+  if (idx >= 0) {
+    data.savedCommunityOpportunityIds.splice(idx, 1);
+  } else {
+    data.savedCommunityOpportunityIds.push(id);
+  }
+  saveGuestData(data);
+  return idx < 0;
 }
 
 export function getCalendarEvents(): CalendarEvent[] {
