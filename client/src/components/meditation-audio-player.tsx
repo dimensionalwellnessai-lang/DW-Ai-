@@ -128,6 +128,7 @@ function buildOcean(ctx: AudioContext, destination: AudioNode): () => void {
     try { lfo.stop(); } catch { /* ignore */ }
     source.disconnect();
     filter.disconnect();
+    lfo.disconnect();
     lfoGain.disconnect();
     waveGain.disconnect();
   };
@@ -199,7 +200,15 @@ function buildBowl(ctx: AudioContext, destination: AudioNode): () => void {
       gainNode.connect(destination);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 6.5);
-      nodes.push({ osc, gain: gainNode });
+      const entry = { osc, gain: gainNode };
+      nodes.push(entry);
+      // Clean up the node once it has finished playing naturally
+      osc.onended = () => {
+        osc.disconnect();
+        gainNode.disconnect();
+        const idx = nodes.indexOf(entry);
+        if (idx !== -1) nodes.splice(idx, 1);
+      };
     });
   }
 
@@ -289,7 +298,7 @@ export function MeditationAudioPlayer() {
   }, []);
 
   const playTrack = useCallback(
-    (track: Track) => {
+    async (track: Track) => {
       // Stop whatever is currently playing
       stopTrack();
 
@@ -305,6 +314,16 @@ export function MeditationAudioPlayer() {
       master.gain.value = muted ? 0 : volume / 100;
       master.connect(ctx.destination);
       masterGainRef.current = master;
+
+      // Resume the context explicitly — required on Safari/iOS where a newly
+      // constructed AudioContext starts in the "suspended" state and would
+      // otherwise play silence even though sources are running.
+      try {
+        await ctx.resume();
+      } catch {
+        stopTrack();
+        return;
+      }
 
       cleanupRef.current = track.build(ctx, master);
       setActiveTrackId(track.id);
