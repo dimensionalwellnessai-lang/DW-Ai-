@@ -349,7 +349,10 @@ export default function VoiceOnboardingPage() {
       recognition.lang = "en-US";
       recognition.maxAlternatives = 1;
 
-      recognition.onstart = () => updateVoiceState("listening");
+      recognition.onstart = () => {
+        setMicPermissionDenied(false);
+        updateVoiceState("listening");
+      };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let interim = "";
@@ -642,22 +645,16 @@ export default function VoiceOnboardingPage() {
           <div className="flex items-center gap-2 mb-3">
             <button
               onClick={() => updateInputMode("voice")}
-              disabled={!voiceSupported || micPermissionDenied}
-              aria-disabled={!voiceSupported || micPermissionDenied}
+              disabled={!voiceSupported}
+              aria-disabled={!voiceSupported}
               aria-pressed={inputMode === "voice"}
-              title={
-                !voiceSupported
-                  ? VOICE_SCRIPTS.voiceNotSupported
-                  : micPermissionDenied
-                  ? VOICE_SCRIPTS.microphoneError
-                  : undefined
-              }
+              title={!voiceSupported ? VOICE_SCRIPTS.voiceNotSupported : undefined}
               className={cn(
                 "flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-colors",
                 inputMode === "voice"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "text-muted-foreground border-border hover:border-primary/50",
-                (!voiceSupported || micPermissionDenied) && "opacity-50 cursor-not-allowed",
+                !voiceSupported && "opacity-50 cursor-not-allowed",
               )}
               data-testid="button-mode-voice"
             >
@@ -688,7 +685,7 @@ export default function VoiceOnboardingPage() {
           )}
           {micPermissionDenied && voiceSupported && (
             <p className="text-xs text-destructive mb-3" role="alert" data-testid="notice-mic-permission-denied">
-              {VOICE_SCRIPTS.microphoneError}
+              {VOICE_SCRIPTS.microphoneError} Tap Voice to retry once you've updated your browser settings.
             </p>
           )}
 
