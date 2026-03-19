@@ -9714,7 +9714,7 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     res.json({
       tesseract: true,
       googleVision: visionConfigured,
-      configured: visionConfigured,
+      enhancedOcrConfigured: visionConfigured,
       hint: visionConfigured
         ? "Both Tesseract and Google Vision OCR are available."
         : "Only basic OCR (Tesseract) is active. Set the GOOGLE_VISION_API_KEY environment variable to enable enhanced image text extraction.",
