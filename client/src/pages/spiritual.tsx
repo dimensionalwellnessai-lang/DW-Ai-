@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  Play
 } from "lucide-react";
 import { SpiritualProfileDialog } from "@/components/spiritual-profile-dialog";
 import { 
@@ -29,6 +28,7 @@ import { AlternativesDialog } from "@/components/alternatives-dialog";
 import { ExclusionsButton } from "@/components/exclusions-manager";
 import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
+import { TTSButton } from "@/components/tts-button";
 
 const PRACTICE_LABELS: Record<string, string> = {
   meditation: "Meditation",
@@ -292,11 +292,25 @@ export default function SpiritualPage() {
               </div>
               
               <div>
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Play className="w-4 h-4 text-primary" />
-                  Step-by-Step Guide
-                  <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
-                </h4>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    Step-by-Step Guide
+                    <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
+                  </h4>
+                  <span role="presentation" onClick={(e) => e.stopPropagation()}>
+                    <TTSButton
+                      text={[
+                        practice.title,
+                        practice.guidance,
+                        `Step by step guide: ${practice.steps.map((step, i) => `Step ${i + 1}, ${step}`).join('. ')}`,
+                      ].join('. ')}
+                      alwaysShow
+                      size="sm"
+                      variant="ghost"
+                      label="Listen"
+                    />
+                  </span>
+                </div>
                 <ol className="space-y-1">
                   {practice.steps.map((step, stepIdx) => (
                     <li 
@@ -432,6 +446,24 @@ export default function SpiritualPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {hasProfile && personalizedPractices.length === 0 && (
+            <Card className="border-dashed">
+              <CardContent className="p-4 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No practices match your current profile yet.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setProfileOpen(true)}
+                  data-testid="button-update-spiritual-profile"
+                >
+                  Update profile
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {/* AI-Powered Spiritual Search */}
