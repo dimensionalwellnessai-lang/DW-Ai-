@@ -2762,3 +2762,59 @@ export const insertAccountabilityPartnerSchema = createInsertSchema(accountabili
 
 export type AccountabilityPartner = typeof accountabilityPartners.$inferSelect;
 export type InsertAccountabilityPartner = z.infer<typeof insertAccountabilityPartnerSchema>;
+
+// ========================================
+// COMMUNITY OPPORTUNITIES
+// ========================================
+
+export const communityFocusEnum = ["volunteering", "mentoring", "advocacy", "local_events", "online_groups", "donations"] as const;
+export type CommunityFocusType = typeof communityFocusEnum[number];
+
+export const communityOpportunities = pgTable("community_opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  organization: text("organization").notNull(),
+  description: text("description").notNull(),
+  /** CommunityFocusType */
+  type: text("type").notNull(),
+  isOnline: boolean("is_online").default(false),
+  location: text("location"),
+  url: text("url"),
+  tags: text("tags").array().default([]),
+  matchScore: real("match_score").default(0.5), // 0–1 scale; 0.5 = neutral fit
+  featured: boolean("featured").default(false),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommunityOpportunitySchema = createInsertSchema(communityOpportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CommunityOpportunityRecord = typeof communityOpportunities.$inferSelect;
+export type InsertCommunityOpportunityRecord = z.infer<typeof insertCommunityOpportunitySchema>;
+
+export const savedCommunityOpportunities = pgTable("saved_community_opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  opportunityId: varchar("opportunity_id").notNull().references(() => communityOpportunities.id),
+  savedAt: timestamp("saved_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("saved_community_opp_user_opp_idx").on(t.userId, t.opportunityId),
+]);
+
+export const savedCommunityOpportunitiesRelations = relations(savedCommunityOpportunities, ({ one }) => ({
+  user: one(users, {
+    fields: [savedCommunityOpportunities.userId],
+    references: [users.id],
+  }),
+  opportunity: one(communityOpportunities, {
+    fields: [savedCommunityOpportunities.opportunityId],
+    references: [communityOpportunities.id],
+  }),
+}));
+
+export type SavedCommunityOpportunity = typeof savedCommunityOpportunities.$inferSelect;

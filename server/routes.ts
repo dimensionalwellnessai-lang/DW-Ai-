@@ -10214,6 +10214,65 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
     }
   });
 
+  // ========================================
+  // COMMUNITY OPPORTUNITIES (live data)
+  // ========================================
+
+  // Seed default opportunities on startup (no-op if already seeded)
+  storage.seedDefaultCommunityOpportunities().catch((err) =>
+    console.error("[community] seed error:", err),
+  );
+
+  // GET /api/community/opportunities — public; includes isSaved if authenticated
+  app.get("/api/community/opportunities", async (req, res) => {
+    try {
+      const opportunities = await storage.getCommunityOpportunities();
+      const userId = (req as any).user?.id as string | undefined;
+      const savedIds = userId
+        ? await storage.getSavedCommunityOpportunityIds(userId)
+        : [];
+
+      const result = opportunities.map((opp) => ({
+        ...opp,
+        discoveredAt: opp.createdAt ? opp.createdAt.getTime() : Date.now(),
+        isSaved: savedIds.includes(opp.id),
+      }));
+      res.json(result);
+    } catch (error) {
+      console.error("GET /api/community/opportunities error:", error);
+      res.status(500).json({ error: "Failed to fetch community opportunities" });
+    }
+  });
+
+  // POST /api/community/opportunities/saved — auth required
+  app.post("/api/community/opportunities/saved", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user!.id as string;
+      const { opportunityId } = req.body as { opportunityId?: string };
+      if (!opportunityId) {
+        return res.status(400).json({ error: "opportunityId is required" });
+      }
+      await storage.saveCommunityOpportunity(userId, opportunityId);
+      res.json({ success: true, saved: true });
+    } catch (error) {
+      console.error("POST /api/community/opportunities/saved error:", error);
+      res.status(500).json({ error: "Failed to save opportunity" });
+    }
+  });
+
+  // DELETE /api/community/opportunities/saved/:id — auth required
+  app.delete("/api/community/opportunities/saved/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user!.id as string;
+      const opportunityId = req.params.id;
+      await storage.unsaveCommunityOpportunity(userId, opportunityId);
+      res.json({ success: true, saved: false });
+    } catch (error) {
+      console.error("DELETE /api/community/opportunities/saved error:", error);
+      res.status(500).json({ error: "Failed to unsave opportunity" });
+    }
+  });
+
   return httpServer;
 }
 
