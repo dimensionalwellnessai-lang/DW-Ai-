@@ -1,110 +1,28 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Map, PlayCircle, Loader2, ShieldCheck } from "lucide-react";
+import { Check, Map, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInteractiveTour } from "@/components/interactive-tour";
-import { useToast } from "@/hooks/use-toast";
-import { simulateUpgrade } from "@/lib/billing";
 
 type PlanType = "free" | "premium" | "lifetime";
 
-interface PlanDetails {
-  label: string;
-  price: string;
-  description: string;
-}
-
-const PLAN_DETAILS: Record<Exclude<PlanType, "free">, PlanDetails> = {
-  premium: {
-    label: "DW Plus — Premium",
-    price: "$9.99 / month",
-    description: "Free for 7 days, then $9.99/month. Cancel anytime before the trial ends.",
-  },
-  lifetime: {
-    label: "DW Plus — Lifetime",
-    price: "$99 one-time",
-    description: "One-time payment. Lifetime access to all current and future DW features.",
-  },
-};
-
-/** Inline spinner label used on plan buttons with pending billing requests. */
-function ProcessingLabel() {
-  return (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Processing…
-    </>
-  );
-}
-
 export default function SubscriptionPage() {
   const [, setLocation] = useLocation();
-  const [loadingPlan, setLoadingPlan] = useState<PlanType | null>(null);
-  const [pendingPlan, setPendingPlan] = useState<Exclude<PlanType, "free"> | null>(null);
   const [showTourPrompt, setShowTourPrompt] = useState(false);
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
-  const { toast } = useToast();
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Focus the Cancel button when the overlay opens
-  useEffect(() => {
-    if (pendingPlan) {
-      cancelButtonRef.current?.focus();
-    }
-  }, [pendingPlan]);
-
-  // Close the overlay on Escape
-  useEffect(() => {
-    if (!pendingPlan) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPendingPlan(null);
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [pendingPlan]);
 
   const handleSelectPlan = (plan: PlanType) => {
     if (plan === "free") {
-      localStorage.setItem("dw_selected_plan", "free");
+      localStorage.setItem("dw_selected_plan", plan);
       setShowTourPrompt(true);
       return;
     }
-    // For paid plans, show payment confirmation before processing
-    setPendingPlan(plan);
-  };
-
-  const handleConfirmPurchase = async () => {
-    if (!pendingPlan) return;
-    const plan = pendingPlan;
-    setPendingPlan(null);
-    setLoadingPlan(plan);
-    try {
-      await simulateUpgrade(plan, "paywall");
-      toast({
-        title: plan === "lifetime" ? "Lifetime access activated!" : "DW Plus activated!",
-        description:
-          plan === "lifetime"
-            ? "You now have lifetime access to all DW features."
-            : "Your free trial has started. Enjoy unlimited access.",
-      });
-      localStorage.setItem("dw_selected_plan", plan);
-      setShowTourPrompt(true);
-    } catch {
-      toast({
-        title: "Something went wrong",
-        description: "Could not process payment. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPlan(null);
-    }
-  };
-
-  const handleCancelPurchase = () => {
-    setPendingPlan(null);
+    // Paid plans → checkout page handles the billing
+    const planKey = plan === "lifetime" ? "lifetime" : "premium";
+    setLocation(`/checkout?plan=${planKey}&from=/subscription`);
   };
 
   const handleMaybeLater = () => {
@@ -135,8 +53,6 @@ export default function SubscriptionPage() {
   const handleAppTour = () => {
     setLocation("/app-tour");
   };
-
-  const isLoading = loadingPlan !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex flex-col items-center justify-center p-6">
@@ -186,7 +102,6 @@ export default function SubscriptionPage() {
                   onClick={() => handleSelectPlan("free")}
                   variant="outline"
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-free"
                 >
                   Continue Free
@@ -242,10 +157,9 @@ export default function SubscriptionPage() {
                 <Button
                   onClick={() => handleSelectPlan("premium")}
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-premium"
                 >
-                  {loadingPlan === "premium" ? <ProcessingLabel /> : "Start Free Trial"}
+                  Start Free Trial
                 </Button>
               </CardContent>
             </Card>
@@ -284,10 +198,9 @@ export default function SubscriptionPage() {
                   onClick={() => handleSelectPlan("lifetime")}
                   variant="outline"
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-lifetime"
                 >
-                  {loadingPlan === "lifetime" ? <ProcessingLabel /> : "Get Lifetime"}
+                  Get Lifetime
                 </Button>
               </CardContent>
             </Card>
@@ -304,7 +217,6 @@ export default function SubscriptionPage() {
             variant="ghost"
             onClick={handleMaybeLater}
             className="text-muted-foreground"
-            disabled={isLoading}
             data-testid="button-maybe-later"
           >
             Maybe Later
@@ -314,7 +226,6 @@ export default function SubscriptionPage() {
               variant="outline"
               onClick={handleAppTour}
               className="gap-2"
-              disabled={isLoading}
             >
               <PlayCircle className="w-4 h-4" />
               Take the App Tour
@@ -359,80 +270,6 @@ export default function SubscriptionPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Payment confirmation overlay */}
-      {pendingPlan && (
-        <div
-          className="fixed inset-0 z-[10004] bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="subscription-payment-confirm-title"
-          data-testid="payment-confirm-overlay"
-        >
-          <div className="w-full max-w-sm bg-background border border-border rounded-2xl shadow-lg p-6 space-y-5">
-            {/* Icon + heading */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p
-                  id="subscription-payment-confirm-title"
-                  className="text-base font-semibold text-foreground"
-                >
-                  Confirm Purchase
-                </p>
-                <p className="text-xs text-muted-foreground">Review your plan before continuing</p>
-              </div>
-            </div>
-
-            {/* Plan details */}
-            <div className="rounded-xl border border-border p-4 space-y-1">
-              <p className="text-sm font-medium text-foreground">
-                {PLAN_DETAILS[pendingPlan].label}
-              </p>
-              <p className="text-lg font-bold text-foreground">
-                {PLAN_DETAILS[pendingPlan].price}
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {PLAN_DETAILS[pendingPlan].description}
-              </p>
-            </div>
-
-            <p className="text-xs text-muted-foreground text-center">
-              By confirming you agree to our{" "}
-              <a href="/privacy-terms" className="underline hover:text-foreground">
-                Terms &amp; Privacy
-              </a>
-              .
-            </p>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-2">
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleConfirmPurchase}
-                disabled={isLoading}
-                data-testid="button-confirm-purchase"
-              >
-                {isLoading ? <ProcessingLabel /> : "Confirm Purchase"}
-              </Button>
-              <Button
-                ref={cancelButtonRef}
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                onClick={handleCancelPurchase}
-                disabled={isLoading}
-                data-testid="button-cancel-purchase"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
