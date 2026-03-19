@@ -9,20 +9,11 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Save } from "lucide-react";
-
-interface WellnessPreferences {
-  id: string;
-  beliefSystem?: string | null;
-  traditions?: string[] | null;
-  otherTradition?: string | null;
-  meditationEnabled: boolean | null;
-  journalEnabled: boolean | null;
-  astrologyEnabled: boolean | null;
-  tarotEnabled: boolean | null;
-  energyWorkEnabled: boolean | null;
-  useAstrologyInGuidance: boolean | null;
-  useNumerologyInGuidance: boolean | null;
-}
+import {
+  normaliseApiResponse,
+  buildSavePayload,
+  type WellnessPreferencesData,
+} from "@/lib/wellness-preferences-helpers";
 
 export default function WellnessPreferencesPage() {
   const { toast } = useToast();
@@ -41,29 +32,30 @@ export default function WellnessPreferencesPage() {
   const [useNumerologyInGuidance, setUseNumerologyInGuidance] = useState(false);
 
   // Fetch existing preferences
-  const { data: preferences, isLoading } = useQuery<WellnessPreferences>({
+  const { data: preferences, isLoading } = useQuery<WellnessPreferencesData>({
     queryKey: ['/api/wellness-preferences'],
   });
 
   // Update local state when data is fetched
   useEffect(() => {
     if (preferences) {
-      setBeliefSystem(preferences.beliefSystem || "");
-      setTraditions(preferences.traditions || []);
-      setOtherTradition(preferences.otherTradition || "");
-      setMeditationEnabled(preferences.meditationEnabled ?? true);
-      setJournalEnabled(preferences.journalEnabled ?? true);
-      setAstrologyEnabled(preferences.astrologyEnabled ?? false);
-      setTarotEnabled(preferences.tarotEnabled ?? false);
-      setEnergyWorkEnabled(preferences.energyWorkEnabled ?? false);
-      setUseAstrologyInGuidance(preferences.useAstrologyInGuidance ?? false);
-      setUseNumerologyInGuidance(preferences.useNumerologyInGuidance ?? false);
+      const state = normaliseApiResponse(preferences);
+      setBeliefSystem(state.beliefSystem);
+      setTraditions(state.traditions);
+      setOtherTradition(state.otherTradition);
+      setMeditationEnabled(state.meditationEnabled);
+      setJournalEnabled(state.journalEnabled);
+      setAstrologyEnabled(state.astrologyEnabled);
+      setTarotEnabled(state.tarotEnabled);
+      setEnergyWorkEnabled(state.energyWorkEnabled);
+      setUseAstrologyInGuidance(state.useAstrologyInGuidance);
+      setUseNumerologyInGuidance(state.useNumerologyInGuidance);
     }
   }, [preferences]);
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: Partial<WellnessPreferences>) => {
+    mutationFn: async (data: Omit<WellnessPreferencesData, "id">) => {
       if (preferences?.id) {
         // Update existing
         const res = await fetch(`/api/wellness-preferences/${preferences.id}`, {
@@ -107,19 +99,20 @@ export default function WellnessPreferencesPage() {
   });
 
   const handleSave = () => {
-    saveMutation.mutate({
-      beliefSystem,
-      // Only persist traditions when belief system is "religious"
-      traditions: beliefSystem === "religious" ? traditions : [],
-      otherTradition: beliefSystem === "religious" ? otherTradition : "",
-      meditationEnabled,
-      journalEnabled,
-      astrologyEnabled,
-      tarotEnabled,
-      energyWorkEnabled,
-      useAstrologyInGuidance,
-      useNumerologyInGuidance,
-    });
+    saveMutation.mutate(
+      buildSavePayload({
+        beliefSystem,
+        traditions,
+        otherTradition,
+        meditationEnabled,
+        journalEnabled,
+        astrologyEnabled,
+        tarotEnabled,
+        energyWorkEnabled,
+        useAstrologyInGuidance,
+        useNumerologyInGuidance,
+      }),
+    );
   };
 
   const handleTraditionToggle = (tradition: string, checked: boolean) => {
@@ -332,7 +325,7 @@ export default function WellnessPreferencesPage() {
               </div>
               <Checkbox
                 checked={useAstrologyInGuidance}
-                onCheckedChange={(checked) => setUseAstrologyInGuidance(checked as boolean)}
+                onCheckedChange={(checked) => setUseAstrologyInGuidance(checked === true)}
               />
             </div>
 
@@ -345,7 +338,7 @@ export default function WellnessPreferencesPage() {
               </div>
               <Checkbox
                 checked={useNumerologyInGuidance}
-                onCheckedChange={(checked) => setUseNumerologyInGuidance(checked as boolean)}
+                onCheckedChange={(checked) => setUseNumerologyInGuidance(checked === true)}
               />
             </div>
           </CardContent>

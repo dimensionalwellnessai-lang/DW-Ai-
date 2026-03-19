@@ -9,77 +9,19 @@
  */
 
 import { describe, it, expect } from "vitest";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers that mirror the component's normalisation logic so we can test it
-// in isolation without rendering the full component.
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface WellnessPreferences {
-  id: string;
-  beliefSystem?: string | null;
-  traditions?: string[] | null;
-  otherTradition?: string | null;
-  meditationEnabled: boolean | null;
-  journalEnabled: boolean | null;
-  astrologyEnabled: boolean | null;
-  tarotEnabled: boolean | null;
-  energyWorkEnabled: boolean | null;
-  useAstrologyInGuidance: boolean | null;
-  useNumerologyInGuidance: boolean | null;
-}
-
-interface FormState {
-  beliefSystem: string;
-  traditions: string[];
-  otherTradition: string;
-  meditationEnabled: boolean;
-  journalEnabled: boolean;
-  astrologyEnabled: boolean;
-  tarotEnabled: boolean;
-  energyWorkEnabled: boolean;
-  useAstrologyInGuidance: boolean;
-  useNumerologyInGuidance: boolean;
-}
-
-/** Mirrors the useEffect that populates form state from the API response. */
-function normaliseApiResponse(prefs: WellnessPreferences): FormState {
-  return {
-    beliefSystem: prefs.beliefSystem || "",
-    traditions: prefs.traditions || [],
-    otherTradition: prefs.otherTradition || "",
-    meditationEnabled: prefs.meditationEnabled ?? true,
-    journalEnabled: prefs.journalEnabled ?? true,
-    astrologyEnabled: prefs.astrologyEnabled ?? false,
-    tarotEnabled: prefs.tarotEnabled ?? false,
-    energyWorkEnabled: prefs.energyWorkEnabled ?? false,
-    useAstrologyInGuidance: prefs.useAstrologyInGuidance ?? false,
-    useNumerologyInGuidance: prefs.useNumerologyInGuidance ?? false,
-  };
-}
-
-/** Mirrors the handleSave payload assembly. */
-function buildSavePayload(state: FormState): Partial<WellnessPreferences> {
-  return {
-    beliefSystem: state.beliefSystem,
-    traditions: state.beliefSystem === "religious" ? state.traditions : [],
-    otherTradition: state.beliefSystem === "religious" ? state.otherTradition : "",
-    meditationEnabled: state.meditationEnabled,
-    journalEnabled: state.journalEnabled,
-    astrologyEnabled: state.astrologyEnabled,
-    tarotEnabled: state.tarotEnabled,
-    energyWorkEnabled: state.energyWorkEnabled,
-    useAstrologyInGuidance: state.useAstrologyInGuidance,
-    useNumerologyInGuidance: state.useNumerologyInGuidance,
-  };
-}
+import {
+  normaliseApiResponse,
+  buildSavePayload,
+  type WellnessPreferencesData,
+  type WellnessFormState,
+} from "../lib/wellness-preferences-helpers";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Null-value defaults
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("normaliseApiResponse – null boolean fields default to schema defaults", () => {
-  const basePrefs: WellnessPreferences = {
+  const basePrefs: WellnessPreferencesData = {
     id: "pref-1",
     meditationEnabled: null,
     journalEnabled: null,
@@ -148,7 +90,7 @@ describe("normaliseApiResponse – null boolean fields default to schema default
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("buildSavePayload – traditions cleared for non-religious belief systems", () => {
-  const baseState: FormState = {
+  const baseState: WellnessFormState = {
     beliefSystem: "secular",
     traditions: ["Christianity", "Buddhism"],
     otherTradition: "Some other",
@@ -194,7 +136,7 @@ describe("buildSavePayload – traditions cleared for non-religious belief syste
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("buildSavePayload – all schema fields are present", () => {
-  const fullState: FormState = {
+  const fullState: WellnessFormState = {
     beliefSystem: "religious",
     traditions: ["Islam"],
     otherTradition: "",
@@ -219,7 +161,7 @@ describe("buildSavePayload – all schema fields are present", () => {
     expect(payload.useNumerologyInGuidance).toBe(false);
   });
 
-  it("payload contains all 9 updatable fields", () => {
+  it("payload contains all 10 updatable fields", () => {
     const payload = buildSavePayload(fullState);
     const expectedKeys = [
       "beliefSystem",
@@ -249,7 +191,7 @@ describe("null API response (no existing preferences)", () => {
     // from the server leaves form state at its initial defaults.
     const prefs = null;
     // Simulate the `if (preferences)` guard in useEffect
-    const formState: FormState = {
+    const formState: WellnessFormState = {
       beliefSystem: "",
       traditions: [],
       otherTradition: "",
@@ -275,7 +217,7 @@ describe("null API response (no existing preferences)", () => {
   it("save after null response triggers POST (no id on preferences)", () => {
     // When preferences is null, preferences?.id is undefined → POST path
     const preferences = null;
-    const shouldPatch = Boolean(preferences && (preferences as WellnessPreferences).id);
+    const shouldPatch = Boolean(preferences && (preferences as WellnessPreferencesData).id);
     expect(shouldPatch).toBe(false);
   });
 });
