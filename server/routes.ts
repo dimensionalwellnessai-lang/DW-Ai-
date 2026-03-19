@@ -365,6 +365,25 @@ const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
+/**
+ * Server-controlled system prompt overrides keyed by chat `context` value.
+ * Clients send a context name (e.g. "voice-onboarding"); the server resolves
+ * the actual prompt text, preventing arbitrary prompt injection from clients.
+ */
+const CONTEXT_SYSTEM_OVERRIDES: Record<string, string> = {
+  "voice-onboarding":
+    "You are DW, a warm and grounding AI wellness companion.\n" +
+    "You are meeting this person for the first time during voice onboarding.\n\n" +
+    "Your role in this conversation:\n" +
+    "- Introduce yourself briefly and warmly\n" +
+    "- Learn what dimension of wellness matters most to them right now (physical, emotional, mental, financial, spiritual, occupational)\n" +
+    "- Ask one thoughtful question at a time\n" +
+    "- Help them feel heard and welcome\n" +
+    "- Keep responses concise (2–4 sentences) and calm\n" +
+    "- Avoid overwhelming them with information\n\n" +
+    "Start by welcoming them and asking a single open question about how they're doing or what brought them here today.",
+};
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -2181,7 +2200,7 @@ export async function registerRoutes(
 
   app.post("/api/chat/smart", chatLimiter, async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, systemOverride } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
 
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
@@ -2264,7 +2283,9 @@ export async function registerRoutes(
         enhancedMessage,
         conversationHistory || [],
         userContext,
-        typeof systemOverride === "string" && systemOverride.trim() ? systemOverride.trim() : undefined
+        typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
+          ? CONTEXT_SYSTEM_OVERRIDES[context]
+          : undefined
       );
       
       // Execute tool calls if any

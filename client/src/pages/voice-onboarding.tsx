@@ -69,20 +69,6 @@ const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
 const LS_INPUT_MODE = "dw_voice_onboarding_input_mode";
 
-// ─── System prompt ───────────────────────────────────────────────────────────
-
-const ONBOARDING_SYSTEM_PROMPT =
-  "You are DW, a warm and grounding AI wellness companion.\n" +
-  "You are meeting this person for the first time during voice onboarding.\n\n" +
-  "Your role in this conversation:\n" +
-  "- Introduce yourself briefly and warmly\n" +
-  "- Learn what dimension of wellness matters most to them right now (physical, emotional, mental, financial, spiritual, occupational)\n" +
-  "- Ask one thoughtful question at a time\n" +
-  "- Help them feel heard and welcome\n" +
-  "- Keep responses concise (2–4 sentences) and calm\n" +
-  "- Avoid overwhelming them with information\n\n" +
-  "Start by welcoming them and asking a single open question about how they're doing or what brought them here today.";
-
 // ─── Avatar component ─────────────────────────────────────────────────────────
 
 function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: OnboardingPhase }) {
@@ -276,6 +262,11 @@ export default function VoiceOnboardingPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread, isReplying]);
 
+  // Ref for startListening — declared here (before the auto-listen effect that
+  // needs it) and assigned after useCallback initialises the real function below.
+  // This avoids a temporal dead zone while keeping the effect's dep array clean.
+  const startListeningRef = useRef<(() => void) | null>(null);
+
   // ── Auto-listen: restart mic automatically after each AI response in voice mode ──
   // This makes the voice flow feel continuous — the user doesn't need to tap the
   // mic button after every AI question; the app advances the conversation for them.
@@ -285,15 +276,15 @@ export default function VoiceOnboardingPage() {
     if (lastMsg?.role !== "assistant") return;
     const timer = setTimeout(() => {
       if (voiceStateRef.current === "idle") {
-        startListening();
+        startListeningRef.current?.();
       }
     }, VOICE_AUTO_RESTART_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isReplying, inputMode, phase, thread, startListening]);
+  }, [isReplying, inputMode, phase, thread]);
 
   // ── AI chat mutation ──
-  // systemOverride ensures the onboarding system prompt is applied on every turn,
-  // not only the first. This keeps the AI in onboarding mode throughout the flow.
+  // The server derives the onboarding system prompt from `context: "voice-onboarding"`,
+  // so it is applied on every turn without needing to pass text from the client.
   const chatMutation = useMutation({
     mutationFn: async (history: ThreadMessage[]) => {
       const latestMessage = history[history.length - 1];
@@ -301,7 +292,6 @@ export default function VoiceOnboardingPage() {
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: latestMessage.content,
         context: "voice-onboarding",
-        systemOverride: ONBOARDING_SYSTEM_PROMPT,
         conversationHistory: history.slice(0, -1).map((m) => ({
           role: m.role,
           content: m.content,
@@ -427,6 +417,10 @@ export default function VoiceOnboardingPage() {
     }
     // sendUserMessage intentionally omitted — accessed via sendUserMessageRef to prevent stale closures
   }, [toast, updateVoiceState, updateInputMode]);
+
+  // Keep startListeningRef in sync with the real callback so the auto-listen
+  // effect (declared above, before this callback) can call it without a TDZ issue.
+  startListeningRef.current = startListening;
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();

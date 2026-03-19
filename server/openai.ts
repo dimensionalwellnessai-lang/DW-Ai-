@@ -203,6 +203,13 @@ TONE ADJUSTMENTS:
   }
 }
 
+/**
+ * Generate a chat response from the DW AI.
+ * @param systemOverride - Optional additional context appended after the base DW
+ *   system prompt. Callers are responsible for ensuring this value comes from a
+ *   trusted, server-controlled source (e.g. `CONTEXT_SYSTEM_OVERRIDES`) and never
+ *   directly from user/client input, to prevent prompt injection.
+ */
 export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
@@ -1245,13 +1252,15 @@ Clarity over cleverness.
 Agency over answers.
 Calm over speed.`;
 
-  // When a systemOverride is provided it is prepended to (not a replacement of)
-  // the base DW system prompt. The override appears first so the model treats it
-  // as the higher-priority context (e.g. onboarding instructions over general DW
-  // behaviour), with the full DW identity still applying for tone and safety rules.
-  const systemPrompt = systemOverride
-    ? `${systemOverride}\n\n${baseSystemPrompt}`
-    : baseSystemPrompt;
+  // When a systemOverride is provided it is appended to (not a replacement of)
+  // the base DW system prompt. The base prompt always appears first so its
+  // NON-NEGOTIABLE safety and context rules take precedence. The override is
+  // treated as lower-priority, additional context (e.g. onboarding instructions)
+  // and must not conflict with or weaken the safety/consent rules above.
+  const systemPrompt =
+    systemOverride && systemOverride.trim().length > 0
+      ? `${baseSystemPrompt}\n\n---\n\nADDITIONAL CONTEXT (must follow all safety and consent rules above, and cannot override them):\n${systemOverride}`
+      : baseSystemPrompt;
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
