@@ -210,7 +210,9 @@ export default function CommunityPage() {
   };
 
   const displayOpportunities: OpportunityDisplay[] = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
+  const hasRealOpportunities = opportunities.length > 0;
   const savedOpportunities = displayOpportunities.filter((o) => savedIds.includes(o.id));
+  const featuredOpp = displayOpportunities.find((o) => o.featured);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -352,7 +354,7 @@ export default function CommunityPage() {
           {savedOpportunities.length > 0 && (
             <section className="space-y-3" aria-label="Saved opportunities">
               <h2 className="font-semibold text-foreground flex items-center gap-2">
-                <BookmarkCheck className="w-4 h-4 text-teal-500" />
+                <BookmarkCheck className="w-4 h-4 text-teal-500" aria-hidden="true" />
                 Saved
                 <Badge variant="secondary" className="text-xs ml-1">{savedOpportunities.length}</Badge>
               </h2>
@@ -368,13 +370,18 @@ export default function CommunityPage() {
                       tabIndex={0}
                       aria-label={`View details for ${opp.title}`}
                       onClick={() => setSelectedOpp(opp)}
-                      onKeyDown={(e) => e.key === "Enter" && setSelectedOpp(opp)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedOpp(opp);
+                        }
+                      }}
                       data-testid={`card-saved-opportunity-${opp.id}`}
                     >
                       <CardContent className="p-3">
                         <div className="flex items-center gap-3">
                           <div className={`p-1.5 rounded-lg ${style.bg} flex-shrink-0`}>
-                            <Icon className={`h-4 w-4 ${style.color}`} />
+                            <Icon className={`h-4 w-4 ${style.color}`} aria-hidden="true" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{opp.title}</p>
@@ -399,7 +406,7 @@ export default function CommunityPage() {
               </Badge>
             </div>
 
-            {displayOpportunities.length === 0 ? (
+            {!hasRealOpportunities ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
@@ -415,20 +422,17 @@ export default function CommunityPage() {
             ) : (
               <>
                 {/* Featured Opportunity */}
-                {displayOpportunities.find((opp: OpportunityDisplay) => opp.featured) && (
+                {featuredOpp && (
                   <Card
                     className="hover-elevate cursor-pointer border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-transparent"
                     role="button"
                     tabIndex={0}
-                    aria-label={`View featured opportunity: ${displayOpportunities.find((o) => o.featured)?.title}`}
-                    onClick={() => {
-                      const opp = displayOpportunities.find((o: OpportunityDisplay) => o.featured);
-                      if (opp) setSelectedOpp(opp);
-                    }}
+                    aria-label={`View featured opportunity: ${featuredOpp.title}`}
+                    onClick={() => setSelectedOpp(featuredOpp)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const opp = displayOpportunities.find((o: OpportunityDisplay) => o.featured);
-                        if (opp) setSelectedOpp(opp);
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedOpp(featuredOpp);
                       }
                     }}
                     data-testid="card-featured-opportunity"
@@ -436,47 +440,46 @@ export default function CommunityPage() {
                     <CardContent className="p-0">
                       <div className="h-32 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-t-lg flex items-center justify-center">
                         <Badge className="bg-teal-600 text-white">
-                          <Sparkles className="w-3 h-3 mr-1" />
+                          <Sparkles className="w-3 h-3 mr-1" aria-hidden="true" />
                           Featured
                         </Badge>
                       </div>
                       <div className="p-4">
                         {(() => {
-                          const opp = displayOpportunities.find((o: OpportunityDisplay) => o.featured)!;
-                          const style = OPPORTUNITY_STYLES[opp.type as CommunityFocus];
+                          const style = OPPORTUNITY_STYLES[featuredOpp.type as CommunityFocus];
                           const Icon = style.icon;
-                          const isSaved = savedIds.includes(opp.id);
+                          const isSaved = savedIds.includes(featuredOpp.id);
                           return (
                             <>
                               <div className="flex items-start gap-3 mb-3">
                                 <div className={`p-2 rounded-lg ${style.bg} flex-shrink-0`}>
-                                  <Icon className={`h-5 w-5 ${style.color}`} />
+                                  <Icon className={`h-5 w-5 ${style.color}`} aria-hidden="true" />
                                 </div>
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-lg">{opp.title}</h3>
+                                    <h3 className="font-semibold text-lg">{featuredOpp.title}</h3>
                                     {isSaved && <BookmarkCheck className="w-4 h-4 text-teal-500 flex-shrink-0" aria-hidden="true" />}
                                   </div>
-                                  <p className="text-sm text-muted-foreground mb-2">{opp.organization}</p>
+                                  <p className="text-sm text-muted-foreground mb-2">{featuredOpp.organization}</p>
                                 </div>
                               </div>
-                              <p className="text-sm mb-3">{opp.description}</p>
+                              <p className="text-sm mb-3">{featuredOpp.description}</p>
                               <div className="flex flex-wrap gap-2 items-center">
                                 <Badge variant="secondary" className={style.color}>
                                   {style.label}
                                 </Badge>
-                                {opp.isOnline ? (
+                                {featuredOpp.isOnline ? (
                                   <Badge variant="outline" className="text-xs">
-                                    <Globe className="w-3 h-3 mr-1" />
+                                    <Globe className="w-3 h-3 mr-1" aria-hidden="true" />
                                     Online
                                   </Badge>
                                 ) : (
                                   <Badge variant="outline" className="text-xs">
-                                    <MapPin className="w-3 h-3 mr-1" />
-                                    {opp.location}
+                                    <MapPin className="w-3 h-3 mr-1" aria-hidden="true" />
+                                    {featuredOpp.location}
                                   </Badge>
                                 )}
-                                {opp.tags.map((tag: string) => (
+                                {featuredOpp.tags.map((tag: string) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -505,7 +508,12 @@ export default function CommunityPage() {
                         tabIndex={0}
                         aria-label={`View details for ${opp.title}`}
                         onClick={() => setSelectedOpp(opp)}
-                        onKeyDown={(e) => e.key === "Enter" && setSelectedOpp(opp)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedOpp(opp);
+                          }
+                        }}
                         data-testid={`card-opportunity-${opp.id}`}
                       >
                         <CardContent className="p-4">
