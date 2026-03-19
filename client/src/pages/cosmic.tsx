@@ -595,11 +595,11 @@ function InsightsTab({
                   `Life path ${lifePath}`,
                   LIFE_PATH_MEANINGS[lifePath]?.desc ?? "Your numbers shape your journey",
                   `Personal year ${personalYear}`,
-                  PERSONAL_YEAR_MEANINGS[personalYear],
+                  PERSONAL_YEAR_MEANINGS[personalYear] ?? "a master number year of heightened energy",
                   `Personal month ${personalMonth}`,
-                  PERSONAL_MONTH_MEANINGS[personalMonth],
+                  PERSONAL_MONTH_MEANINGS[personalMonth] ?? "a master number month of heightened energy",
                   `Personal day ${personalDay}`,
-                  PERSONAL_DAY_MEANINGS[personalDay],
+                  PERSONAL_DAY_MEANINGS[personalDay] ?? "a master number day of heightened energy",
                 ].filter(Boolean).join('. ')}
                 alwaysShow
                 size="sm"

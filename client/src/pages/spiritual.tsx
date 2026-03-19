@@ -297,17 +297,19 @@ export default function SpiritualPage() {
                     Step-by-Step Guide
                     <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
                   </h4>
-                  <TTSButton
-                    text={[
-                      practice.title,
-                      practice.guidance,
-                      `Step by step guide: ${practice.steps.map((step, i) => `Step ${i + 1}, ${step}`).join('. ')}`,
-                    ].join('. ')}
-                    alwaysShow
-                    size="sm"
-                    variant="ghost"
-                    label="Listen"
-                  />
+                  <span role="presentation" onClick={(e) => e.stopPropagation()}>
+                    <TTSButton
+                      text={[
+                        practice.title,
+                        practice.guidance,
+                        `Step by step guide: ${practice.steps.map((step, i) => `Step ${i + 1}, ${step}`).join('. ')}`,
+                      ].join('. ')}
+                      alwaysShow
+                      size="sm"
+                      variant="ghost"
+                      label="Listen"
+                    />
+                  </span>
                 </div>
                 <ol className="space-y-1">
                   {practice.steps.map((step, stepIdx) => (

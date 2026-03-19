@@ -34,6 +34,12 @@ export function TTSButton({
   const { toast } = useToast();
 
   useEffect(() => {
+    // Load persisted settings once on mount so voice/rate/pitch/volume/enabled
+    // preferences are applied correctly before any speak or visibility check.
+    ttsService.loadSettings();
+  }, []);
+
+  useEffect(() => {
     const settings = ttsService.getSettings();
     if (autoPlay && settings.enabled && settings.autoSpeak && text) {
       handleSpeak();
