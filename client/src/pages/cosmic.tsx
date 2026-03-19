@@ -40,6 +40,7 @@ import {
   PERSONAL_MONTH_MEANINGS,
   PERSONAL_DAY_MEANINGS,
 } from "@/lib/numerology";
+import { TTSButton } from "@/components/tts-button";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
 // Reuse the same key as /cosmic-insights so both pages share one birth chart record
@@ -526,10 +527,19 @@ function InsightsTab({
       {/* Daily moon insight */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Moon className="h-4 w-4 text-blue-400" />
-            Moon Energy Today
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Moon className="h-4 w-4 text-blue-400" />
+              Moon Energy Today
+            </CardTitle>
+            <TTSButton
+              text={`${moonPhase} moon. ${MOON_PHASE_GUIDANCE[moonPhase]}`}
+              alwaysShow
+              size="sm"
+              variant="ghost"
+              label="Listen"
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm font-medium">{MOON_PHASE_EMOJI[moonPhase]} {moonPhase}</p>
@@ -541,10 +551,19 @@ function InsightsTab({
       {sunSign ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-400" />
-              Your Sun Sign Lens
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-400" />
+                Your Sun Sign Lens
+              </CardTitle>
+              <TTSButton
+                text={`${sunSign} sun sign. ${SIGN_MEANINGS[sunSign]}. Today, notice where your ${sunSign} energy wants to express itself.`}
+                alwaysShow
+                size="sm"
+                variant="ghost"
+                label="Listen"
+              />
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm font-medium">{ZODIAC_SYMBOLS[sunSign]} {sunSign}</p>
@@ -566,10 +585,28 @@ function InsightsTab({
       {lifePath !== null && personalYear !== null && personalMonth !== null && personalDay !== null ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Hash className="h-4 w-4 text-purple-400" />
-              Numerology Pulse
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Hash className="h-4 w-4 text-purple-400" />
+                Numerology Pulse
+              </CardTitle>
+              <TTSButton
+                text={[
+                  `Life path ${lifePath}`,
+                  LIFE_PATH_MEANINGS[lifePath]?.desc ?? "Your numbers shape your journey",
+                  `Personal year ${personalYear}`,
+                  PERSONAL_YEAR_MEANINGS[personalYear],
+                  `Personal month ${personalMonth}`,
+                  PERSONAL_MONTH_MEANINGS[personalMonth],
+                  `Personal day ${personalDay}`,
+                  PERSONAL_DAY_MEANINGS[personalDay],
+                ].filter(Boolean).join('. ')}
+                alwaysShow
+                size="sm"
+                variant="ghost"
+                label="Listen"
+              />
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex gap-2 flex-wrap">
