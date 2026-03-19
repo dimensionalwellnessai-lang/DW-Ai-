@@ -10,6 +10,9 @@ export type UserRole = typeof userRoleEnum[number];
 export const coachingModeEnum = ["gentle", "direct", "structured"] as const;
 export type CoachingMode = typeof coachingModeEnum[number];
 
+export const subscriptionTierEnum = ["free", "plus"] as const;
+export type SubscriptionTier = typeof subscriptionTierEnum[number];
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -24,6 +27,8 @@ export const users = pgTable("users", {
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
   coachingMode: text("coaching_mode").default("gentle").$type<CoachingMode>(),
+  subscriptionTier: text("subscription_tier").default("free").$type<SubscriptionTier>(),
+  subscriptionUpdatedAt: timestamp("subscription_updated_at"),
 }, (t) => [
   // Ensure each OAuth identity maps to exactly one user, and make lookups fast
   uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),
