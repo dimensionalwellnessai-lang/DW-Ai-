@@ -30,7 +30,7 @@ export default function PaywallPage() {
   const [loading, setLoading] = useState<"trial" | "monthly" | "restore" | null>(null);
   const { toast } = useToast();
 
-  // Determine upgrade context from query param so bonus mechanics are applied
+  // Determine upgrade context and post-payment destination from query params
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   );
@@ -40,9 +40,24 @@ export default function PaywallPage() {
     | "paywall"
     | "restore"
     | null;
+  // `from` lets callers specify an explicit return path after payment
+  const fromParam = searchParams.get("from");
+
   const upgradeContext = ctx === "message_limit" || ctx === "session_limit"
     ? ctx
     : "paywall";
+
+  /**
+   * Determine where to navigate after a successful purchase/restore.
+   * - Explicit `from` param always wins (e.g. "from=/talk")
+   * - message_limit / session_limit  → back to /talk (user was mid-conversation)
+   * - General paywall (first open, manual upgrade) → home
+   */
+  function postPaymentDestination(): string {
+    if (fromParam) return decodeURIComponent(fromParam);
+    if (ctx === "message_limit" || ctx === "session_limit") return "/talk";
+    return "/";
+  }
 
   const handleStartTrial = async () => {
     setLoading("trial");
@@ -52,7 +67,7 @@ export default function PaywallPage() {
         title: "DW Plus activated!",
         description: "Your 7-day free trial has started. Enjoy unlimited access.",
       });
-      setLocation("/talk");
+      setLocation(postPaymentDestination());
     } catch {
       toast({
         title: "Something went wrong",
@@ -72,7 +87,7 @@ export default function PaywallPage() {
         title: "DW Plus activated!",
         description: "Monthly subscription started. Enjoy unlimited access.",
       });
-      setLocation("/talk");
+      setLocation(postPaymentDestination());
     } catch {
       toast({
         title: "Something went wrong",
@@ -85,7 +100,8 @@ export default function PaywallPage() {
   };
 
   const handleContinueFree = () => {
-    setLocation("/talk");
+    // On the general paywall go home; if mid-conversation return to /talk
+    setLocation(postPaymentDestination());
   };
 
   const handleRestore = async () => {
@@ -97,7 +113,7 @@ export default function PaywallPage() {
           title: "Purchase restored",
           description: "DW Plus has been restored to your account.",
         });
-        setLocation("/talk");
+        setLocation(postPaymentDestination());
       } else {
         toast({
           title: "Nothing to restore",
