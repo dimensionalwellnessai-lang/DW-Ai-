@@ -3069,7 +3069,14 @@ export async function registerRoutes(
 
   app.get("/api/habits", requireAuth, async (req, res) => {
     const habits = await storage.getHabits(req.session.userId!);
-    res.json(habits);
+    // Single batch query instead of N+1
+    const todaysLogs = await storage.getTodayHabitLogsByUser(req.session.userId!);
+    const completedHabitIds = new Set(todaysLogs.map((l) => l.habitId));
+    const habitsWithCompletion = habits.map((habit) => ({
+      ...habit,
+      completedToday: completedHabitIds.has(habit.id),
+    }));
+    res.json(habitsWithCompletion);
   });
 
   app.post("/api/habits", requireAuth, async (req, res) => {
@@ -3173,6 +3180,39 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to log habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/toggle", requireAuth, async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit || habit.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
+      const todaysLog = await storage.getTodaysHabitLog(req.params.id);
+      // If a `completed` boolean is provided in the request body, treat it as an
+      // idempotent set operation (the caller controls the desired state).
+      // If omitted, fall back to pure toggle semantics based on current server state.
+      const requestedCompleted =
+        typeof req.body?.completed === "boolean" ? req.body.completed : !todaysLog;
+      if (!requestedCompleted) {
+        // Uncheck: delete ALL of today's logs to avoid stale duplicates
+        await storage.deleteAllTodaysHabitLogs(req.params.id);
+        const updated = await storage.getHabit(req.params.id);
+        return res.json({ ...updated, completedToday: false });
+      } else {
+        // Check: only create a log and increment streak if not already completed today
+        if (!todaysLog) {
+          await storage.createHabitLog({ habitId: req.params.id });
+          const newStreak = (habit.streak || 0) + 1;
+          const updated = await storage.updateHabit(req.params.id, { streak: newStreak });
+          return res.json({ ...updated, completedToday: true });
+        }
+        // Already completed today — return current state without duplicating
+        return res.json({ ...habit, completedToday: true });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle habit" });
     }
   });
 

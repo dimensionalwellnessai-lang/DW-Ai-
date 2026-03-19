@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateUpgrade, simulateRestore } from "@/lib/billing";
 
@@ -15,20 +15,58 @@ function ProcessingLabel() {
   );
 }
 
+interface PlanDetails {
+  label: string;
+  price: string;
+  description: string;
+}
+
+const PLAN_DETAILS: Record<"trial" | "monthly", PlanDetails> = {
+  trial: {
+    label: "DW Plus — 7-Day Free Trial",
+    price: "$79.99 / year",
+    description: "Free for 7 days, then $79.99/year. Cancel anytime before the trial ends.",
+  },
+  monthly: {
+    label: "DW Plus — Monthly",
+    price: "$9.99 / month",
+    description: "Billed monthly. No trial period. Cancel anytime.",
+  },
+};
+
 /**
  * DW Plus paywall — shown once after onboarding (soft paywall) and also when
  * free-tier limits are reached. Design: calm, minimal, consistent with app.
  *
- * Purchase simulation: on web/Replit, tapping "Start Free Trial" immediately
- * sets dw_is_plus=true and calls the backend billing stub. Compatible with
- * future RevenueCat/StoreKit integration (replace simulateUpgrade with the real
- * purchase flow).
+ * Purchase flow: tapping a plan CTA shows a confirmation overlay with pricing
+ * details before processing. On confirmation, calls the billing stub and
+ * navigates to the app home. Compatible with future RevenueCat/StoreKit
+ * integration (replace simulateUpgrade with the real purchase flow).
  */
 export default function PaywallPage() {
   const [, setLocation] = useLocation();
   const [showOtherPlans, setShowOtherPlans] = useState(false);
   const [loading, setLoading] = useState<"trial" | "monthly" | "restore" | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<"trial" | "monthly" | null>(null);
   const { toast } = useToast();
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the Cancel button when the overlay opens
+  useEffect(() => {
+    if (pendingPlan) {
+      cancelButtonRef.current?.focus();
+    }
+  }, [pendingPlan]);
+
+  // Close the overlay on Escape
+  useEffect(() => {
+    if (!pendingPlan) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPendingPlan(null);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pendingPlan]);
 
   // Determine upgrade context and post-payment destination from query params
   const searchParams = new URLSearchParams(
@@ -47,31 +85,33 @@ export default function PaywallPage() {
     ? ctx
     : "paywall";
 
-  /**
-   * Determine where to navigate after a successful purchase/restore.
-   * - Explicit `from` param always wins (e.g. "from=/talk")
-   * - message_limit / session_limit  → back to /talk (user was mid-conversation)
-   * - General paywall (first open, manual upgrade) → home
-   */
-  function postPaymentDestination(): string {
-    if (fromParam) return decodeURIComponent(fromParam);
-    if (ctx === "message_limit" || ctx === "session_limit") return "/talk";
-    return "/";
-  }
+  const handleStartTrial = () => {
+    setPendingPlan("trial");
+  };
 
-  const handleStartTrial = async () => {
-    setLoading("trial");
+  const handleMonthly = () => {
+    setPendingPlan("monthly");
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!pendingPlan) return;
+    const plan = pendingPlan;
+    setPendingPlan(null);
+    setLoading(plan);
     try {
       await simulateUpgrade("plus", upgradeContext);
       toast({
         title: "DW Plus activated!",
-        description: "Your 7-day free trial has started. Enjoy unlimited access.",
+        description:
+          plan === "trial"
+            ? "Your 7-day free trial has started. Enjoy unlimited access."
+            : "Monthly subscription started. Enjoy unlimited access.",
       });
-      setLocation(postPaymentDestination());
+      setLocation("/command-center");
     } catch {
       toast({
         title: "Something went wrong",
-        description: "Could not start trial. Please try again.",
+        description: "Could not process payment. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -79,29 +119,12 @@ export default function PaywallPage() {
     }
   };
 
-  const handleMonthly = async () => {
-    setLoading("monthly");
-    try {
-      await simulateUpgrade("plus", upgradeContext);
-      toast({
-        title: "DW Plus activated!",
-        description: "Monthly subscription started. Enjoy unlimited access.",
-      });
-      setLocation(postPaymentDestination());
-    } catch {
-      toast({
-        title: "Something went wrong",
-        description: "Could not start subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(null);
-    }
+  const handleCancelPurchase = () => {
+    setPendingPlan(null);
   };
 
   const handleContinueFree = () => {
-    // On the general paywall go home; if mid-conversation return to /talk
-    setLocation(postPaymentDestination());
+    setLocation("/command-center");
   };
 
   const handleRestore = async () => {
@@ -113,7 +136,7 @@ export default function PaywallPage() {
           title: "Purchase restored",
           description: "DW Plus has been restored to your account.",
         });
-        setLocation(postPaymentDestination());
+        setLocation("/command-center");
       } else {
         toast({
           title: "Nothing to restore",
@@ -264,6 +287,80 @@ export default function PaywallPage() {
           </a>
         </div>
       </div>
+
+      {/* Payment confirmation overlay */}
+      {pendingPlan && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-confirm-title"
+          data-testid="payment-confirm-overlay"
+        >
+          <div className="w-full max-w-sm bg-background border border-border rounded-2xl shadow-lg p-6 space-y-5">
+            {/* Icon + heading */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p
+                  id="payment-confirm-title"
+                  className="text-base font-semibold text-foreground"
+                >
+                  Confirm Purchase
+                </p>
+                <p className="text-xs text-muted-foreground">Review your plan before continuing</p>
+              </div>
+            </div>
+
+            {/* Plan details */}
+            <div className="rounded-xl border border-border p-4 space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                {PLAN_DETAILS[pendingPlan].label}
+              </p>
+              <p className="text-lg font-bold text-foreground">
+                {PLAN_DETAILS[pendingPlan].price}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {PLAN_DETAILS[pendingPlan].description}
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              By confirming you agree to our{" "}
+              <a href="/privacy-terms" className="underline hover:text-foreground">
+                Terms &amp; Privacy
+              </a>
+              .
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleConfirmPurchase}
+                disabled={isLoading}
+                data-testid="button-confirm-purchase"
+              >
+                {isLoading ? <ProcessingLabel /> : "Confirm Purchase"}
+              </Button>
+              <Button
+                ref={cancelButtonRef}
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={handleCancelPurchase}
+                disabled={isLoading}
+                data-testid="button-cancel-purchase"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
