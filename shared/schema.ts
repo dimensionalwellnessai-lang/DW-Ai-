@@ -2718,3 +2718,47 @@ export const updateWeeklyPlanReviewSchema = insertWeeklyPlanReviewSchema.partial
 export type WeeklyPlanReview = typeof weeklyPlanReviews.$inferSelect;
 export type InsertWeeklyPlanReview = z.infer<typeof insertWeeklyPlanReviewSchema>;
 export type UpdateWeeklyPlanReview = z.infer<typeof updateWeeklyPlanReviewSchema>;
+
+// ========================================
+// ACCOUNTABILITY PARTNER LINKING
+// ========================================
+
+export const accountabilityPartners = pgTable("accountability_partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  /** The user who sent the invite */
+  requesterId: varchar("requester_id").notNull().references(() => users.id),
+  /** The user who received the invite (null until they accept) */
+  recipientId: varchar("recipient_id").references(() => users.id),
+  /** Email address the invite was sent to */
+  invitedEmail: text("invited_email").notNull(),
+  /** Opaque one-time token sent in invite link */
+  inviteToken: varchar("invite_token").notNull().unique(),
+  /** "pending" → invite sent, "active" → both linked, "declined" → recipient declined, "unlinked" → either party unlinked */
+  status: text("status").notNull().default("pending"),
+  invitedAt: timestamp("invited_at").defaultNow(),
+  acceptedAt: timestamp("accepted_at"),
+  unlinkedAt: timestamp("unlinked_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const accountabilityPartnersRelations = relations(accountabilityPartners, ({ one }) => ({
+  requester: one(users, {
+    fields: [accountabilityPartners.requesterId],
+    references: [users.id],
+    relationName: "requester",
+  }),
+  recipient: one(users, {
+    fields: [accountabilityPartners.recipientId],
+    references: [users.id],
+    relationName: "recipient",
+  }),
+}));
+
+export const insertAccountabilityPartnerSchema = createInsertSchema(accountabilityPartners).omit({
+  id: true,
+  invitedAt: true,
+  updatedAt: true,
+});
+
+export type AccountabilityPartner = typeof accountabilityPartners.$inferSelect;
+export type InsertAccountabilityPartner = z.infer<typeof insertAccountabilityPartnerSchema>;
