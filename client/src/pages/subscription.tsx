@@ -3,32 +3,18 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Map, PlayCircle, Loader2 } from "lucide-react";
+import { Check, Map, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInteractiveTour } from "@/components/interactive-tour";
-import { useToast } from "@/hooks/use-toast";
-import { simulateUpgrade } from "@/lib/billing";
 
 type PlanType = "free" | "premium" | "lifetime";
 
-/** Inline spinner label used on plan buttons with pending billing requests. */
-function ProcessingLabel() {
-  return (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Processing…
-    </>
-  );
-}
-
 export default function SubscriptionPage() {
   const [, setLocation] = useLocation();
-  const [loadingPlan, setLoadingPlan] = useState<PlanType | null>(null);
   const [showTourPrompt, setShowTourPrompt] = useState(false);
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
-  const { toast } = useToast();
 
-  const handleSelectPlan = async (plan: PlanType) => {
+  const handleSelectPlan = (plan: PlanType) => {
     if (plan === "free") {
       localStorage.setItem("dw_selected_plan", plan);
       setShowTourPrompt(true);
@@ -67,8 +53,6 @@ export default function SubscriptionPage() {
   const handleAppTour = () => {
     setLocation("/app-tour");
   };
-
-  const isLoading = loadingPlan !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex flex-col items-center justify-center p-6">
@@ -118,7 +102,6 @@ export default function SubscriptionPage() {
                   onClick={() => handleSelectPlan("free")}
                   variant="outline"
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-free"
                 >
                   Continue Free
@@ -174,10 +157,9 @@ export default function SubscriptionPage() {
                 <Button
                   onClick={() => handleSelectPlan("premium")}
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-premium"
                 >
-                  {loadingPlan === "premium" ? <ProcessingLabel /> : "Start Free Trial"}
+                  Start Free Trial
                 </Button>
               </CardContent>
             </Card>
@@ -216,10 +198,9 @@ export default function SubscriptionPage() {
                   onClick={() => handleSelectPlan("lifetime")}
                   variant="outline"
                   className="w-full mt-6"
-                  disabled={isLoading}
                   data-testid="button-plan-lifetime"
                 >
-                  {loadingPlan === "lifetime" ? <ProcessingLabel /> : "Get Lifetime"}
+                  Get Lifetime
                 </Button>
               </CardContent>
             </Card>
@@ -236,7 +217,6 @@ export default function SubscriptionPage() {
             variant="ghost"
             onClick={handleMaybeLater}
             className="text-muted-foreground"
-            disabled={isLoading}
             data-testid="button-maybe-later"
           >
             Maybe Later
@@ -246,7 +226,6 @@ export default function SubscriptionPage() {
               variant="outline"
               onClick={handleAppTour}
               className="gap-2"
-              disabled={isLoading}
             >
               <PlayCircle className="w-4 h-4" />
               Take the App Tour

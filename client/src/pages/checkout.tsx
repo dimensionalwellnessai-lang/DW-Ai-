@@ -82,6 +82,9 @@ const PLAN_DETAILS: Record<
   },
 };
 
+/** Allowed back-navigation destinations from the checkout page. */
+const ALLOWED_BACK_PATHS = new Set(["/paywall", "/subscription"]);
+
 /**
  * Checkout confirmation page.
  *
@@ -110,12 +113,15 @@ export default function CheckoutPage() {
     | "session_limit"
     | "paywall"
     | null;
-  const from = searchParams.get("from") ?? "/paywall";
+  // Sanitize `from` to a known in-app path only.
+  const rawFrom = searchParams.get("from") ?? "";
+  const from = ALLOWED_BACK_PATHS.has(rawFrom) ? rawFrom : "/paywall";
 
   const upgradeContext =
     ctx === "message_limit" || ctx === "session_limit" ? ctx : "paywall";
 
   const plan = PLAN_DETAILS[planKey] ?? PLAN_DETAILS["plus-yearly"];
+  const isLifetime = plan.billingPlan === "lifetime";
 
   const handleConfirm = async () => {
     setProcessing(true);
@@ -124,7 +130,9 @@ export default function CheckoutPage() {
       setSuccess(true);
       toast({
         title: "Payment confirmed!",
-        description: `${plan.label} is now active. Welcome to DW Plus!`,
+        description: isLifetime
+          ? `${plan.label} is now active. You have lifetime access!`
+          : `${plan.label} is now active. Enjoy unlimited access!`,
       });
       setTimeout(() => setLocation("/"), 1500);
     } catch {
@@ -215,7 +223,11 @@ export default function CheckoutPage() {
             {/* Trust badge */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Secure checkout&nbsp;•&nbsp;Cancel anytime</span>
+              <span>
+                {isLifetime
+                  ? "Secure checkout\u00a0\u2022\u00a0One-time payment"
+                  : "Secure checkout\u00a0\u2022\u00a0Cancel anytime"}
+              </span>
             </div>
 
             {/* CTA */}
