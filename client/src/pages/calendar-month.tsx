@@ -30,7 +30,7 @@ export default function CalendarMonthPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const { data: events } = useQuery<CalendarEvent[]>({
-    queryKey: ["/api/calendar/events"],
+    queryKey: ["/api/calendar"],
   });
 
   const monthStart = startOfMonth(currentDate);

@@ -237,14 +237,14 @@ export default function ExpandMyWeekPage() {
       setPhase("confirmed");
       toast({
         title: "Week plan saved!",
-        description: `${data.created} blocks added to your schedule.`,
+        description: `${data.created} block${data.created !== 1 ? "s" : ""} added to your schedule.`,
       });
-      redirectTimeoutRef.current = setTimeout(() => setLocation("/daily-schedule"), 1500);
+      redirectTimeoutRef.current = setTimeout(() => setLocation("/plans"), 1500);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Save failed",
-        description: "Couldn't save the schedule. Please try again.",
+        description: parseApiError(error) || "Couldn't save the schedule. Please try again.",
         variant: "destructive",
       });
     },
@@ -452,6 +452,7 @@ export default function ExpandMyWeekPage() {
         onOpenChange={setConfirmOpen}
         scheduleItems={scheduleItems}
         onConfirm={handleConfirmSchedule}
+        isLoading={confirmMutation.isPending}
       />
     </div>
   );

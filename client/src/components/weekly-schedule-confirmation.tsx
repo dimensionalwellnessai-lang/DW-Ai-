@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 
 export interface ScheduleItem {
@@ -24,6 +24,7 @@ interface WeeklyScheduleConfirmationProps {
   scheduleItems: ScheduleItem[];
   onConfirm: (confirmedItems: ScheduleItem[]) => void;
   weekStartDate?: Date;
+  isLoading?: boolean;
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -44,6 +45,7 @@ export function WeeklyScheduleConfirmation({
   scheduleItems,
   onConfirm,
   weekStartDate = new Date(),
+  isLoading = false,
 }: WeeklyScheduleConfirmationProps) {
   const [confirmed, setConfirmed] = useState<Set<string>>(
     new Set(scheduleItems.filter(item => item.isConfirmed).map(item => item.id))
@@ -211,12 +213,21 @@ export function WeeklyScheduleConfirmation({
         </ScrollArea>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Confirm {confirmedCount} Item{confirmedCount !== 1 ? 's' : ''}
+          <Button onClick={handleConfirm} disabled={isLoading || confirmedCount === 0}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Confirm {confirmedCount} Item{confirmedCount !== 1 ? 's' : ''}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
