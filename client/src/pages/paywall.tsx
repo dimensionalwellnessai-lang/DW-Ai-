@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2, ShieldCheck } from "lucide-react";
@@ -16,7 +16,6 @@ function ProcessingLabel() {
 }
 
 interface PlanDetails {
-  id: "trial" | "monthly";
   label: string;
   price: string;
   description: string;
@@ -24,13 +23,11 @@ interface PlanDetails {
 
 const PLAN_DETAILS: Record<"trial" | "monthly", PlanDetails> = {
   trial: {
-    id: "trial",
     label: "DW Plus — 7-Day Free Trial",
     price: "$79.99 / year",
     description: "Free for 7 days, then $79.99/year. Cancel anytime before the trial ends.",
   },
   monthly: {
-    id: "monthly",
     label: "DW Plus — Monthly",
     price: "$9.99 / month",
     description: "Billed monthly. No trial period. Cancel anytime.",
@@ -52,6 +49,24 @@ export default function PaywallPage() {
   const [loading, setLoading] = useState<"trial" | "monthly" | "restore" | null>(null);
   const [pendingPlan, setPendingPlan] = useState<"trial" | "monthly" | null>(null);
   const { toast } = useToast();
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the Cancel button when the overlay opens
+  useEffect(() => {
+    if (pendingPlan) {
+      cancelButtonRef.current?.focus();
+    }
+  }, [pendingPlan]);
+
+  // Close the overlay on Escape
+  useEffect(() => {
+    if (!pendingPlan) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPendingPlan(null);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pendingPlan]);
 
   // Determine upgrade context from query param so bonus mechanics are applied
   const searchParams = new URLSearchParams(
@@ -329,6 +344,7 @@ export default function PaywallPage() {
                 {isLoading ? <ProcessingLabel /> : "Confirm Purchase"}
               </Button>
               <Button
+                ref={cancelButtonRef}
                 variant="ghost"
                 size="sm"
                 className="w-full text-muted-foreground"

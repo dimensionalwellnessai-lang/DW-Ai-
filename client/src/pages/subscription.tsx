@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,24 @@ export default function SubscriptionPage() {
   const [showTourPrompt, setShowTourPrompt] = useState(false);
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
   const { toast } = useToast();
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the Cancel button when the overlay opens
+  useEffect(() => {
+    if (pendingPlan) {
+      cancelButtonRef.current?.focus();
+    }
+  }, [pendingPlan]);
+
+  // Close the overlay on Escape
+  useEffect(() => {
+    if (!pendingPlan) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPendingPlan(null);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pendingPlan]);
 
   const handleSelectPlan = (plan: PlanType) => {
     if (plan === "free") {
@@ -401,6 +419,7 @@ export default function SubscriptionPage() {
                 {isLoading ? <ProcessingLabel /> : "Confirm Purchase"}
               </Button>
               <Button
+                ref={cancelButtonRef}
                 variant="ghost"
                 size="sm"
                 className="w-full text-muted-foreground"
