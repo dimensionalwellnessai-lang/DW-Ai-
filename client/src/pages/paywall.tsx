@@ -68,7 +68,7 @@ export default function PaywallPage() {
     return () => document.removeEventListener("keydown", handler);
   }, [pendingPlan]);
 
-  // Determine upgrade context from query param so bonus mechanics are applied
+  // Determine upgrade context and post-payment destination from query params
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   );
@@ -78,6 +78,9 @@ export default function PaywallPage() {
     | "paywall"
     | "restore"
     | null;
+  // `from` lets callers specify an explicit return path after payment
+  const fromParam = searchParams.get("from");
+
   const upgradeContext = ctx === "message_limit" || ctx === "session_limit"
     ? ctx
     : "paywall";
