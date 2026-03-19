@@ -7,7 +7,7 @@
  * localStorage state from the entitlement module.
  */
 
-import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // ── localStorage stub ─────────────────────────────────────────────────────────
 
@@ -68,13 +68,20 @@ describe("billing stub", () => {
       expect(result.tier).toBe("plus");
     });
 
-    it("still returns success when backend call fails (graceful degradation)", async () => {
-      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
+    it("degrades gracefully on TypeError (network unreachable)", async () => {
+      // fetch throws TypeError for genuine network failures (offline, DNS failure)
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
       const result = await simulateUpgrade("premium", "message_limit");
       // Local activation should still have been called
       expect(activateDWPlus).toHaveBeenCalledWith("message_limit");
       expect(result.success).toBe(true);
       expect(result.tier).toBe("plus");
+    });
+
+    it("propagates non-OK HTTP errors (does not swallow server errors)", async () => {
+      // Server returns 400 (e.g. invalid plan) — should propagate, not return success
+      mockFetch({ error: "Invalid plan" }, false, 400);
+      await expect(simulateUpgrade("plus")).rejects.toThrow("400:");
     });
 
     it("passes plan in request body to the backend", async () => {
@@ -120,13 +127,11 @@ describe("billing stub", () => {
       expect(result.success).toBe(false);
     });
 
-    it("falls back to failure on network error (does NOT grant access)", async () => {
-      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
-      const result = await simulateRestore();
-      // Should NOT call activateDWPlus — cannot verify subscription without server
+    it("throws on network/transport error so caller can show accurate message", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+      await expect(simulateRestore()).rejects.toThrow("Failed to fetch");
+      // Should NOT have granted local entitlement
       expect(activateDWPlus).not.toHaveBeenCalled();
-      expect(result.success).toBe(false);
-      expect(result.tier).toBe("free");
     });
   });
 

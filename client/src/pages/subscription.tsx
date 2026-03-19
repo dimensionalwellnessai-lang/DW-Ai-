@@ -23,7 +23,6 @@ function ProcessingLabel() {
 
 export default function SubscriptionPage() {
   const [, setLocation] = useLocation();
-  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<PlanType | null>(null);
   const [showTourPrompt, setShowTourPrompt] = useState(false);
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
@@ -42,7 +41,6 @@ export default function SubscriptionPage() {
               : "Your free trial has started. Enjoy unlimited access.",
         });
       }
-      setSelectedPlan(plan);
       localStorage.setItem("dw_selected_plan", plan);
       setShowTourPrompt(true);
     } catch {

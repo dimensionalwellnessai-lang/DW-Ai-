@@ -101,7 +101,7 @@ export default function PaywallPage() {
       } else {
         toast({
           title: "Nothing to restore",
-          description: "No active subscription was found for this account.",
+          description: result.message,
           variant: "destructive",
         });
       }

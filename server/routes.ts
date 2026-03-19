@@ -1052,30 +1052,36 @@ export async function registerRoutes(
    * POST /api/billing/upgrade
    * Simulates a successful purchase and sets the user's subscription tier to
    * "plus". Accepts an optional `plan` body field for future plan variants.
+   * "free" is intentionally excluded — use a dedicated cancel/downgrade endpoint
+   * when that flow is needed.
    * For unauthenticated users the upgrade is acknowledged but not persisted
    * (the client handles entitlement via localStorage).
    */
   app.post("/api/billing/upgrade", async (req, res) => {
     try {
-      const VALID_PLANS = ["plus", "premium", "lifetime", "free"] as const;
+      const VALID_PLANS = ["plus", "premium", "lifetime"] as const;
       const plan: string = req.body?.plan ?? "plus";
       if (!VALID_PLANS.includes(plan as typeof VALID_PLANS[number])) {
         return res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
       }
-      // Normalise: treat "premium" / "lifetime" as "plus" for MVP
-      const tier = plan === "free" ? "free" : "plus";
+      // All paid plans map to the "plus" tier for MVP
+      const tier = "plus" as const;
 
       if (req.session.userId) {
-        await storage.updateUser(req.session.userId, {
-          subscriptionTier: tier as "free" | "plus",
+        const updated = await storage.updateUser(req.session.userId, {
+          subscriptionTier: tier,
           subscriptionUpdatedAt: new Date(),
         });
+        if (!updated) {
+          // Session is stale — user row no longer exists; DB entitlement was not persisted.
+          return res.status(404).json({ error: "User not found; subscription not persisted to database" });
+        }
       }
 
       return res.json({
         success: true,
         tier,
-        message: tier === "plus" ? "DW Plus activated" : "Subscription updated",
+        message: "DW Plus activated",
       });
     } catch (err) {
       console.error("[billing] upgrade error", err);

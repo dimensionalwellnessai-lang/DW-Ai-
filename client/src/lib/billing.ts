@@ -13,7 +13,7 @@
 
 import { activateDWPlus, setDWPlus } from "./entitlement";
 
-export type BillingPlan = "plus" | "premium" | "lifetime" | "free";
+export type BillingPlan = "plus" | "premium" | "lifetime";
 
 export interface BillingResult {
   success: boolean;
@@ -46,11 +46,15 @@ async function postBilling(
  * Simulate a purchase upgrade.
  *
  * @param plan    The plan being purchased ("plus" | "premium" | "lifetime").
- *                "premium" and "lifetime" both map to the "plus" tier for MVP.
+ *                All paid plans map to the "plus" tier for MVP.
  * @param context Passed through to `activateDWPlus` for bonus-message logic.
  *
- * The function always applies the local entitlement regardless of whether the
- * backend call succeeds, so the user is never left gated after a network hiccup.
+ * Local entitlement is applied immediately so the UI is responsive.  If the
+ * backend returns a non-OK HTTP response (e.g. 400 bad request, 404 stale
+ * session, 500 server error) the error is re-thrown so the caller can surface
+ * it and the user understands the DB was not updated.  Pure network failures
+ * (fetch throws TypeError) are the only case where we degrade gracefully and
+ * keep the local-only entitlement.
  */
 export async function simulateUpgrade(
   plan: BillingPlan = "plus",
@@ -62,9 +66,15 @@ export async function simulateUpgrade(
   try {
     const result = await postBilling("/api/billing/upgrade", { plan });
     return result;
-  } catch {
-    // Backend call failed — local state is already updated; return graceful stub.
-    return { success: true, tier: "plus", message: "DW Plus activated" };
+  } catch (err) {
+    // Degrade gracefully ONLY for transport-level failures where `fetch` itself
+    // throws (e.g. device offline, DNS failure — always a TypeError in browsers).
+    // Non-OK HTTP responses are thrown by `postBilling` as plain Error objects
+    // (message: "<status>: <body>") and should propagate to the caller.
+    if (err instanceof TypeError) {
+      return { success: true, tier: "plus", message: "DW Plus activated" };
+    }
+    throw err;
   }
 }
 
@@ -74,19 +84,17 @@ export async function simulateUpgrade(
  * Calls the backend to check whether the authenticated user has a stored "plus"
  * tier.  If so, the local entitlement is also refreshed.  For guests (no
  * session) the backend will return `success: false`.
+ *
+ * Any transport or HTTP error is allowed to throw so the caller's catch block
+ * can display an accurate error message (e.g. "network unavailable") instead of
+ * the misleading "no subscription found" message.
  */
 export async function simulateRestore(): Promise<BillingResult> {
-  try {
-    const result = await postBilling("/api/billing/restore");
-    if (result.success && result.tier === "plus") {
-      activateDWPlus("restore");
-    }
-    return result;
-  } catch {
-    // Network error — cannot verify subscription; return failure so the caller
-    // can surface an appropriate message rather than granting unverified access.
-    return { success: false, tier: "free", message: "Could not reach the server. Please try again." };
+  const result = await postBilling("/api/billing/restore");
+  if (result.success && result.tier === "plus") {
+    activateDWPlus("restore");
   }
+  return result;
 }
 
 /**
