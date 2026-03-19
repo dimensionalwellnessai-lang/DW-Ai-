@@ -203,15 +203,23 @@ TONE ADJUSTMENTS:
   }
 }
 
+/**
+ * Generate a chat response from the DW AI.
+ * @param systemOverride - Optional additional context appended after the base DW
+ *   system prompt. Callers are responsible for ensuring this value comes from a
+ *   trusted, server-controlled source (e.g. `CONTEXT_SYSTEM_OVERRIDES`) and never
+ *   directly from user/client input, to prevent prompt injection.
+ */
 export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
-  userContext?: UserLifeContext
+  userContext?: UserLifeContext,
+  systemOverride?: string
 ): Promise<string | ChatResponseWithTools> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   
-  const systemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+  const baseSystemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
 
 TODAY: ${today} at ${currentTime}
 
@@ -1244,6 +1252,16 @@ Clarity over cleverness.
 Agency over answers.
 Calm over speed.`;
 
+  // When a systemOverride is provided it is appended to (not a replacement of)
+  // the base DW system prompt. The base prompt always appears first so its
+  // NON-NEGOTIABLE safety and context rules take precedence. The override is
+  // treated as lower-priority, additional context (e.g. onboarding instructions)
+  // and must not conflict with or weaken the safety/consent rules above.
+  const systemPrompt =
+    systemOverride && systemOverride.trim().length > 0
+      ? `${baseSystemPrompt}\n\n---\n\nADDITIONAL CONTEXT (must follow all safety and consent rules above, and cannot override them):\n${systemOverride}`
+      : baseSystemPrompt;
+
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     ...conversationHistory.map((msg) => ({
@@ -1879,7 +1897,8 @@ Respond with valid JSON array:
 export async function detectIntentAndRespond(
   userMessage: string,
   conversationHistory: ChatMessage[],
-  userContext?: UserLifeContext
+  userContext?: UserLifeContext,
+  systemOverride?: string
 ): Promise<{
   response: string;
   intent: "workout" | "meditation" | "learn" | "general";
@@ -1944,7 +1963,7 @@ export async function detectIntentAndRespond(
     intent = isWorkoutIntent ? "workout" : "meditation";
   }
   
-  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext);
+  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext, systemOverride);
   const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
   const toolCalls = typeof rawResponse === 'object' && 'toolCalls' in rawResponse ? rawResponse.toolCalls : undefined;
   
