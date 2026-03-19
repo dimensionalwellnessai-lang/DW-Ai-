@@ -3069,7 +3069,13 @@ export async function registerRoutes(
 
   app.get("/api/habits", requireAuth, async (req, res) => {
     const habits = await storage.getHabits(req.session.userId!);
-    res.json(habits);
+    const habitsWithCompletion = await Promise.all(
+      habits.map(async (habit) => {
+        const todaysLog = await storage.getTodaysHabitLog(habit.id);
+        return { ...habit, completedToday: !!todaysLog };
+      })
+    );
+    res.json(habitsWithCompletion);
   });
 
   app.post("/api/habits", requireAuth, async (req, res) => {
@@ -3173,6 +3179,30 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to log habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/toggle", requireAuth, async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit || habit.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
+      const todaysLog = await storage.getTodaysHabitLog(req.params.id);
+      if (todaysLog) {
+        // Uncheck: remove today's log; leave streak unchanged (streak tracks consecutive days)
+        await storage.deleteHabitLog(todaysLog.id);
+        const updated = await storage.getHabit(req.params.id);
+        return res.json({ ...updated, completedToday: false });
+      } else {
+        // Check: create a log and increment streak
+        await storage.createHabitLog({ habitId: req.params.id, completedAt: new Date() });
+        const newStreak = (habit.streak || 0) + 1;
+        const updated = await storage.updateHabit(req.params.id, { streak: newStreak });
+        return res.json({ ...updated, completedToday: true });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle habit" });
     }
   });
 

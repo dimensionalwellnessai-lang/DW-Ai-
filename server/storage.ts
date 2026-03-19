@@ -292,7 +292,9 @@ export interface IStorage {
   deleteHabit(id: string): Promise<void>;
 
   getHabitLogs(habitId: string): Promise<HabitLog[]>;
+  getTodaysHabitLog(habitId: string): Promise<HabitLog | undefined>;
   createHabitLog(log: InsertHabitLog): Promise<HabitLog>;
+  deleteHabitLog(logId: string): Promise<void>;
 
   getMoodLogs(userId: string): Promise<MoodLog[]>;
   getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
@@ -1011,9 +1013,25 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(habitLogs).where(eq(habitLogs.habitId, habitId)).orderBy(desc(habitLogs.completedAt));
   }
 
+  async getTodaysHabitLog(habitId: string): Promise<HabitLog | undefined> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const [log] = await db
+      .select()
+      .from(habitLogs)
+      .where(and(eq(habitLogs.habitId, habitId), gte(habitLogs.completedAt, startOfDay)))
+      .orderBy(desc(habitLogs.completedAt))
+      .limit(1);
+    return log || undefined;
+  }
+
   async createHabitLog(log: InsertHabitLog): Promise<HabitLog> {
     const [created] = await db.insert(habitLogs).values(log).returning();
     return created;
+  }
+
+  async deleteHabitLog(logId: string): Promise<void> {
+    await db.delete(habitLogs).where(eq(habitLogs.id, logId));
   }
 
   async getMoodLogs(userId: string): Promise<MoodLog[]> {
