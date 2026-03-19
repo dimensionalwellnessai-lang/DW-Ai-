@@ -9309,6 +9309,55 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
       const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Plan not found" });
+
+      // When activating a plan, bulk-create calendar events for all actions that
+      // are not already linked to a calendar event (non-fatal: errors are logged).
+      if (parsed.data.status === "active") {
+        try {
+          const days = await storage.getElevationPlanDays(updated.id);
+          const daysWithActions = await Promise.all(
+            days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+          );
+          for (const day of daysWithActions) {
+            for (const action of day.actions) {
+              const linked = action.linkedEntity as { type?: string; id?: string } | null;
+              if (linked?.type === "calendar_event" && linked.id) continue; // already linked
+              try {
+                const { startTime, endTime } = buildActionEventTimes(
+                  updated.startDate,
+                  day.dayIndex,
+                  action.timeOfDay,
+                  action.durationMinutes
+                );
+                const calendarEvent = await storage.createCalendarEvent({
+                  userId,
+                  title: action.title,
+                  description: action.description ?? "",
+                  startTime,
+                  endTime,
+                  eventType: actionTypeToEventType(action.actionType),
+                  linkedType: "elevation_action",
+                  linkedId: action.id,
+                  linkedRoute: "/elevation-plan",
+                  linkedMeta: {
+                    planTitle: updated.title ?? "",
+                    planDayIndex: day.dayIndex,
+                    actionType: action.actionType,
+                  },
+                });
+                await storage.updateElevationPlanAction(action.id, userId, {
+                  linkedEntity: { type: "calendar_event", id: calendarEvent.id },
+                });
+              } catch (actionErr) {
+                console.error(`Failed to create calendar event for action ${action.id}:`, actionErr);
+              }
+            }
+          }
+        } catch (bulkErr) {
+          console.error("Failed to bulk-create calendar events on plan activation:", bulkErr);
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Elevation plan update error:", error);
