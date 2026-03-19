@@ -29,29 +29,14 @@ export default function SubscriptionPage() {
   const { toast } = useToast();
 
   const handleSelectPlan = async (plan: PlanType) => {
-    setLoadingPlan(plan);
-    try {
-      if (plan !== "free") {
-        await simulateUpgrade(plan, "paywall");
-        toast({
-          title: plan === "lifetime" ? "Lifetime access activated!" : "DW Plus activated!",
-          description:
-            plan === "lifetime"
-              ? "You now have lifetime access to all DW features."
-              : "Your free trial has started. Enjoy unlimited access.",
-        });
-      }
+    if (plan === "free") {
       localStorage.setItem("dw_selected_plan", plan);
       setShowTourPrompt(true);
-    } catch {
-      toast({
-        title: "Something went wrong",
-        description: "Could not process your selection. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPlan(null);
+      return;
     }
+    // Paid plans → checkout page handles the billing
+    const planKey = plan === "lifetime" ? "lifetime" : "premium";
+    setLocation(`/checkout?plan=${planKey}&from=/subscription`);
   };
 
   const handleMaybeLater = () => {

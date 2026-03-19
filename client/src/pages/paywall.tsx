@@ -3,17 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { simulateUpgrade, simulateRestore } from "@/lib/billing";
-
-/** Inline spinner label used on buttons with pending billing requests. */
-function ProcessingLabel() {
-  return (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Processing…
-    </>
-  );
-}
+import { simulateRestore } from "@/lib/billing";
 
 /**
  * DW Plus paywall — shown once after onboarding (soft paywall) and also when
@@ -27,7 +17,7 @@ function ProcessingLabel() {
 export default function PaywallPage() {
   const [, setLocation] = useLocation();
   const [showOtherPlans, setShowOtherPlans] = useState(false);
-  const [loading, setLoading] = useState<"trial" | "monthly" | "restore" | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const { toast } = useToast();
 
   // Determine upgrade context from query param so bonus mechanics are applied
@@ -40,56 +30,25 @@ export default function PaywallPage() {
     | "paywall"
     | "restore"
     | null;
-  const upgradeContext = ctx === "message_limit" || ctx === "session_limit"
-    ? ctx
-    : "paywall";
 
-  const handleStartTrial = async () => {
-    setLoading("trial");
-    try {
-      await simulateUpgrade("plus", upgradeContext);
-      toast({
-        title: "DW Plus activated!",
-        description: "Your 7-day free trial has started. Enjoy unlimited access.",
-      });
-      setLocation("/talk");
-    } catch {
-      toast({
-        title: "Something went wrong",
-        description: "Could not start trial. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(null);
-    }
+  const handleStartTrial = () => {
+    const params = new URLSearchParams({ plan: "plus-yearly", from: "/paywall" });
+    if (ctx) params.set("ctx", ctx);
+    setLocation(`/checkout?${params.toString()}`);
   };
 
-  const handleMonthly = async () => {
-    setLoading("monthly");
-    try {
-      await simulateUpgrade("plus", upgradeContext);
-      toast({
-        title: "DW Plus activated!",
-        description: "Monthly subscription started. Enjoy unlimited access.",
-      });
-      setLocation("/talk");
-    } catch {
-      toast({
-        title: "Something went wrong",
-        description: "Could not start subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(null);
-    }
+  const handleMonthly = () => {
+    const params = new URLSearchParams({ plan: "plus-monthly", from: "/paywall" });
+    if (ctx) params.set("ctx", ctx);
+    setLocation(`/checkout?${params.toString()}`);
   };
 
   const handleContinueFree = () => {
-    setLocation("/talk");
+    setLocation("/");
   };
 
   const handleRestore = async () => {
-    setLoading("restore");
+    setRestoring(true);
     try {
       const result = await simulateRestore();
       if (result.success) {
@@ -97,7 +56,7 @@ export default function PaywallPage() {
           title: "Purchase restored",
           description: "DW Plus has been restored to your account.",
         });
-        setLocation("/talk");
+        setLocation("/");
       } else {
         toast({
           title: "Nothing to restore",
@@ -112,11 +71,9 @@ export default function PaywallPage() {
         variant: "destructive",
       });
     } finally {
-      setLoading(null);
+      setRestoring(false);
     }
   };
-
-  const isLoading = loading !== null;
 
   return (
     <div
@@ -161,10 +118,10 @@ export default function PaywallPage() {
             size="lg"
             className="w-full"
             onClick={handleStartTrial}
-            disabled={isLoading}
+            disabled={restoring}
             data-testid="button-start-trial"
           >
-            {loading === "trial" ? <ProcessingLabel /> : "Start 7-day free trial"}
+            Start 7-day free trial
           </Button>
           <p className="text-center text-xs text-muted-foreground">
             Then $79.99/year&nbsp;•&nbsp;Cancel anytime
@@ -178,7 +135,7 @@ export default function PaywallPage() {
             className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
             data-testid="button-other-plans-toggle"
             aria-expanded={showOtherPlans}
-            disabled={isLoading}
+            disabled={restoring}
           >
             Other plans
             {showOtherPlans ? (
@@ -201,10 +158,10 @@ export default function PaywallPage() {
                 size="sm"
                 className="w-full"
                 onClick={handleMonthly}
-                disabled={isLoading}
+                disabled={restoring}
                 data-testid="button-monthly"
               >
-                {loading === "monthly" ? <ProcessingLabel /> : "Subscribe monthly"}
+                Subscribe monthly
               </Button>
             </div>
           )}
@@ -216,7 +173,7 @@ export default function PaywallPage() {
           size="sm"
           className="w-full text-muted-foreground"
           onClick={handleContinueFree}
-          disabled={isLoading}
+          disabled={restoring}
           data-testid="button-continue-free"
         >
           Continue with free
@@ -227,10 +184,10 @@ export default function PaywallPage() {
           <button
             onClick={handleRestore}
             className="hover:text-foreground transition-colors disabled:opacity-50"
-            disabled={isLoading}
+            disabled={restoring}
             data-testid="button-restore"
           >
-            {loading === "restore" ? (
+            {restoring ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />Restoring…
               </span>
