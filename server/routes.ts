@@ -20,6 +20,7 @@ import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, se
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
+import { googleVisionService } from "./google-vision";
 import {
   insertUserSchema,
   insertGoalSchema,
@@ -4720,6 +4721,7 @@ Return as JSON array with format:
         metadata: extracted.metadata,
         extractionMethod: extracted.extractionMethod,
         ocrConfidence: extracted.ocrConfidence,
+        ocrWarning: extracted.ocrWarning,
         processingTimeMs,
         message: "Document uploaded. Ready for analysis."
       });
@@ -5077,6 +5079,7 @@ Return as JSON array with format:
         textLength: extracted.text.length,
         extractionMethod: extracted.extractionMethod,
         ocrConfidence: extracted.ocrConfidence,
+        ocrWarning: extracted.ocrWarning,
         processingTimeMs,
       });
     } catch (error) {
@@ -9703,6 +9706,19 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
       return res.json({ configured: true });
     }
     return res.status(503).json({ configured: false, missing });
+  });
+
+  // OCR status – reports which OCR providers are available
+  app.get("/api/ocr/status", (_req, res) => {
+    const visionConfigured = googleVisionService.isConfigured();
+    res.json({
+      tesseract: true,
+      googleVision: visionConfigured,
+      configured: visionConfigured,
+      hint: visionConfigured
+        ? "Both Tesseract and Google Vision OCR are available."
+        : "Only basic OCR (Tesseract) is active. Set the GOOGLE_VISION_API_KEY environment variable to enable enhanced image text extraction.",
+    });
   });
 
   return httpServer;
