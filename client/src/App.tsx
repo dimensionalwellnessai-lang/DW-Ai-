@@ -37,6 +37,7 @@ const AccountDeletePage = lazy(() => import("@/pages/account-delete"));
 const WelcomePage = lazy(() => import("@/pages/welcome"));
 const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
 const SubscriptionPage = lazy(() => import("@/pages/subscription"));
+const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
 const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
 const CalendarPlansPage = lazy(() =>
@@ -215,6 +216,7 @@ function Router() {
       <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
       <Route path="/paywall" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />
+      <Route path="/checkout" component={CheckoutPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}

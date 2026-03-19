@@ -68,6 +68,7 @@ export default function HabitsPage() {
     toggleHabitMutation.mutate({ habitId, completedToday });
   };
 
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader 
@@ -139,6 +140,7 @@ export default function HabitsPage() {
 
             {habits.map((habit: any) => {
               const completedToday = Boolean(habit.completedToday);
+              const isActive = habit.isActive !== false;
               
               return (
                 <div
@@ -150,7 +152,6 @@ export default function HabitsPage() {
                     className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
                     aria-label={completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
                     aria-pressed={completedToday}
-                    disabled={toggleHabitMutation.isPending}
                   >
                     {completedToday ? (
                       <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
@@ -162,14 +163,14 @@ export default function HabitsPage() {
                     <p className={`font-medium ${completedToday ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
                       {habit.title}
                     </p>
-                    {habit.streak > 0 && (
+                    {(habit.streak ?? 0) > 0 && (
                       <p className="text-sm text-muted-foreground">
                         🔥 {habit.streak} day streak
                       </p>
                     )}
                   </div>
-                  <Badge variant={habit.isActive ? 'default' : 'secondary'}>
-                    {habit.isActive ? 'active' : 'inactive'}
+                  <Badge variant={isActive ? 'default' : 'secondary'}>
+                    {isActive ? 'active' : 'inactive'}
                   </Badge>
                 </div>
               );

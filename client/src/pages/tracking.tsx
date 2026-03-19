@@ -45,21 +45,24 @@ export default function TrackingDashboard() {
 
   // Toggle habit completion
   const toggleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, completedToday }: { habitId: string; completedToday: boolean }) => {
-      const method = completedToday ? 'DELETE' : 'POST';
-      const res = await fetch(`/api/habits/${habitId}/log`, {
-        method,
+    mutationFn: async (habitId: string) => {
+      const res = await fetch(`/api/habits/${habitId}/toggle`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to update habit');
+      if (!res.ok) throw new Error('Failed to toggle habit');
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
     },
     onError: () => {
-      toast({ title: "Failed to update habit", variant: "destructive" });
+      toast({
+        title: "Failed to update habit",
+        description: "Please try again",
+        variant: "destructive",
+      });
     },
   });
 
@@ -258,11 +261,11 @@ export default function TrackingDashboard() {
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
                       <button
-                        className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
-                        onClick={() => toggleHabitMutation.mutate({ habitId: habit.id, completedToday: Boolean(habit.completedToday) })}
+                        className="h-6 w-6 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        onClick={() => toggleHabitMutation.mutate(habit.id)}
+                        disabled={toggleHabitMutation.isPending}
                         aria-label={habit.completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
                         aria-pressed={Boolean(habit.completedToday)}
-                        disabled={toggleHabitMutation.isPending}
                       >
                         {habit.completedToday ? (
                           <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
@@ -271,7 +274,9 @@ export default function TrackingDashboard() {
                         )}
                       </button>
                       <div className="flex-1">
-                        <p className={`font-medium ${habit.completedToday ? 'text-muted-foreground line-through' : ''}`}>{habit.title}</p>
+                        <p className={`font-medium ${habit.completedToday ? 'text-muted-foreground line-through' : ''}`}>
+                          {habit.title}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {habit.streak > 0 ? `${habit.streak} day streak 🔥` : 'Start today!'}
                         </p>
