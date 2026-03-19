@@ -260,7 +260,7 @@ import {
   type UpdateWeeklyPlanReview,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, or } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or, inArray } from "drizzle-orm";
 import { createHash } from "crypto";
 
 export interface IStorage {
@@ -293,8 +293,10 @@ export interface IStorage {
 
   getHabitLogs(habitId: string): Promise<HabitLog[]>;
   getTodaysHabitLog(habitId: string): Promise<HabitLog | undefined>;
+  getTodayHabitLogsByUser(userId: string): Promise<HabitLog[]>;
   createHabitLog(log: InsertHabitLog): Promise<HabitLog>;
   deleteHabitLog(logId: string): Promise<void>;
+  deleteAllTodaysHabitLogs(habitId: string): Promise<void>;
 
   getMoodLogs(userId: string): Promise<MoodLog[]>;
   getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
@@ -1025,6 +1027,19 @@ export class DatabaseStorage implements IStorage {
     return log || undefined;
   }
 
+  async getTodayHabitLogsByUser(userId: string): Promise<HabitLog[]> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    // Fetch all today's logs for habits owned by this user in a single query
+    const userHabits = await db.select({ id: habits.id }).from(habits).where(eq(habits.userId, userId));
+    if (userHabits.length === 0) return [];
+    const habitIds = userHabits.map((h) => h.id);
+    return db
+      .select()
+      .from(habitLogs)
+      .where(and(inArray(habitLogs.habitId, habitIds), gte(habitLogs.completedAt, startOfDay)));
+  }
+
   async createHabitLog(log: InsertHabitLog): Promise<HabitLog> {
     const [created] = await db.insert(habitLogs).values(log).returning();
     return created;
@@ -1032,6 +1047,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteHabitLog(logId: string): Promise<void> {
     await db.delete(habitLogs).where(eq(habitLogs.id, logId));
+  }
+
+  async deleteAllTodaysHabitLogs(habitId: string): Promise<void> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    await db
+      .delete(habitLogs)
+      .where(and(eq(habitLogs.habitId, habitId), gte(habitLogs.completedAt, startOfDay)));
   }
 
   async getMoodLogs(userId: string): Promise<MoodLog[]> {
