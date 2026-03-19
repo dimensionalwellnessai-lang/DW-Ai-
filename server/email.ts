@@ -40,15 +40,49 @@ async function getCredentials() {
   return { apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email };
 }
 
+// Resend's shared, pre-verified sender address.  Used as a last-resort
+// fallback when RESEND_FROM_EMAIL is not configured, so emails are actually
+// delivered even without a custom domain.
+const RESEND_SHARED_SENDER = 'onboarding@resend.dev';
+
+// Resend error name/message fragments that indicate a domain verification failure.
+const DOMAIN_ERROR_FRAGMENTS = [
+  'domain is not verified',
+  'domain not verified',
+  'validation_error',
+  'sender address',
+  'not a verified',
+];
+
+function isDomainVerificationError(err: any): boolean {
+  const msg = (
+    (typeof err?.message === 'string' ? err.message : '') ||
+    (typeof err?.name === 'string' ? err.name : '') ||
+    (typeof err === 'string' ? err : JSON.stringify(err) || '')
+  ).toLowerCase();
+  return DOMAIN_ERROR_FRAGMENTS.some((f) => msg.includes(f));
+}
+
 export async function getResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
   const isGmailFrom = fromEmail && fromEmail.toLowerCase().includes('@gmail.com');
   const validFrom = isGmailFrom ? null : fromEmail;
-  const resolvedFrom = validFrom || 'DW.ai <no-reply@send.dimensionalwellnessai.com>';
+
+  if (!validFrom) {
+    console.warn(
+      '[email] RESEND_FROM_EMAIL is not set (or is a Gmail address). ' +
+      'Falling back to Resend shared sender (' + RESEND_SHARED_SENDER + '). ' +
+      'To use a branded from-address, set RESEND_FROM_EMAIL to an address on a ' +
+      'verified domain in your Resend dashboard (https://resend.com/domains).'
+    );
+  }
+
+  const resolvedFrom = validFrom || RESEND_SHARED_SENDER;
   console.log('[email] Using from address:', resolvedFrom);
   return {
     client: new Resend(apiKey),
-    fromEmail: validFrom
+    fromEmail: validFrom,
+    resolvedFrom,
   };
 }
 
@@ -61,7 +95,7 @@ export async function sendFeedbackEmail(
   metadata: Record<string, any> | null
 ): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
     
     const timestamp = new Date().toLocaleString('en-US', {
       timeZone: 'America/New_York',
@@ -70,7 +104,7 @@ export async function sendFeedbackEmail(
     });
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: 'rbisbigred@gmail.com',
       subject: 'Feedback',
       html: `
@@ -114,7 +148,7 @@ export async function sendMismatchReportEmail(
   report: MismatchReportPayload
 ): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
 
     const timestamp = new Date().toLocaleString('en-US', {
       timeZone: 'America/New_York',
@@ -125,7 +159,7 @@ export async function sendMismatchReportEmail(
     const eventLabel = MISMATCH_EVENT_LABELS[report.eventType] ?? report.eventType;
 
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: 'rbisbigred@gmail.com',
       subject: `[Mismatch Report] ${eventLabel}`,
       html: `
@@ -175,7 +209,7 @@ export async function sendMismatchReportEmail(
 
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
     
     const explicitAppUrl = process.env.APP_URL || process.env.APP_BASE_URL;
     const replitDomain =
@@ -206,7 +240,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
     const { data, error } = await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: toEmail,
       subject: 'Reset Your DW.ai Password',
       html: `
@@ -248,14 +282,32 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
     });
     
     if (error) {
-      console.error('[email] Resend API error for password reset to:', toEmail, '-', error.message);
+      if (isDomainVerificationError(error)) {
+        console.error(
+          '[email] Resend rejected the password reset email — the sending domain is not verified. ' +
+          'Go to https://resend.com/domains, verify your sending domain, then set ' +
+          'RESEND_FROM_EMAIL=no-reply@<your-verified-domain> in your environment. ' +
+          'Error detail:', error.message
+        );
+      } else {
+        console.error('[email] Resend API error for password reset to:', toEmail, '-', error.message);
+      }
       return false;
     }
     
-    console.log('[email] Password reset email sent successfully to:', toEmail);
+    console.log('[email] Password reset email sent successfully to:', toEmail, '- id:', data?.id);
     return true;
   } catch (error: any) {
-    console.error('[email] Failed to send password reset email to:', toEmail, '- error:', error?.message || error);
+    if (isDomainVerificationError(error)) {
+      console.error(
+        '[email] Resend rejected the password reset email — the sending domain is not verified. ' +
+        'Go to https://resend.com/domains, verify your sending domain, then set ' +
+        'RESEND_FROM_EMAIL=no-reply@<your-verified-domain> in your environment. ' +
+        'Error detail:', error?.message || error
+      );
+    } else {
+      console.error('[email] Failed to send password reset email to:', toEmail, '- error:', error?.message || error);
+    }
     if (error?.statusCode) console.error('[email] Resend status code:', error.statusCode);
     return false;
   }
@@ -279,7 +331,7 @@ export async function sendSupportReportEmail(
   }
 ): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
 
     const esc = (s: string) =>
       s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -296,7 +348,7 @@ export async function sendSupportReportEmail(
         : '';
 
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: 'dimensionalwellnessai@gmail.com',
       subject: `Support Report [${report.category}]${report.eventType ? ` – ${report.eventType}` : ''}`,
       html: `
@@ -340,7 +392,7 @@ export async function sendSupportReportEmail(
 
 export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
     
     const timestamp = new Date().toLocaleString('en-US', {
       timeZone: 'America/New_York',
@@ -349,7 +401,7 @@ export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean
     });
     
     await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: toEmail,
       subject: 'Your DW.ai Account Has Been Deleted',
       html: `

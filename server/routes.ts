@@ -16,7 +16,7 @@ import { pool } from "./db";
 import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
-import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, getResendClient } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -9949,6 +9949,30 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
       return res.json({ configured: true });
     }
     return res.status(503).json({ configured: false, missing });
+  });
+
+  // Email health check – reports whether the email service is reachable and
+  // whether a custom verified sending domain is configured.
+  app.get("/api/health/email", async (_req, res) => {
+    try {
+      const { resolvedFrom, fromEmail } = await getResendClient();
+      const usingSharedDomain = !fromEmail;
+      return res.json({
+        configured: true,
+        usingSharedDomain,
+        fromAddress: resolvedFrom,
+        hint: usingSharedDomain
+          ? "Email will be sent from the Resend shared sender (onboarding@resend.dev). " +
+            "To use a branded from-address, verify your domain at https://resend.com/domains " +
+            "and set the RESEND_FROM_EMAIL environment variable."
+          : "Custom sending domain is configured.",
+      });
+    } catch (err: any) {
+      return res.status(503).json({
+        configured: false,
+        error: "Email service not configured. Set RESEND_API_KEY (and optionally RESEND_FROM_EMAIL) environment variables.",
+      });
+    }
   });
 
   // OCR status – reports which OCR providers are available
