@@ -7732,6 +7732,13 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       // Return the invite token so the client can construct a deep-link if desired
       res.json({ invite });
     } catch (error) {
+      const message = error instanceof Error ? error.message : null;
+      if (
+        message === "You cannot invite yourself as an accountability partner." ||
+        message?.startsWith("You already have an active accountability partner")
+      ) {
+        return res.status(400).json({ error: message });
+      }
       console.error("Partner invite error:", error);
       res.status(500).json({ error: "Failed to send invite." });
     }
@@ -7781,6 +7788,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.post("/api/accountability/partner/accept/:token", requireAuth, async (req, res) => {
     try {
       const { token } = req.params;
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
       const result = await accountability.acceptPartnerInvite(token, req.session.userId!);
       if (!result) {
         return res.status(400).json({ error: "Invite is invalid, expired, or already used." });
@@ -7797,6 +7807,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.post("/api/accountability/partner/decline/:token", requireAuth, async (req, res) => {
     try {
       const { token } = req.params;
+      if (!token || token.length !== 64 || !/^[0-9a-f]+$/.test(token)) {
+        return res.status(400).json({ error: "Invalid token." });
+      }
       const result = await accountability.declinePartnerInvite(token, req.session.userId!);
       if (!result) {
         return res.status(400).json({ error: "Invite not found or already handled." });

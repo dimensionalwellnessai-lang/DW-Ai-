@@ -34,7 +34,7 @@ import {
   Copy,
   Loader2,
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AccountabilityPartner as PartnerRecord } from "@shared/schema";
 
@@ -76,20 +76,20 @@ export function AccountabilityPartner() {
       });
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (_data, inviteEmail) => {
       invalidate();
       setEmail("");
       setShowInviteForm(false);
       toast({
         title: "Invite sent!",
-        description: `An invite link was created for ${email}. Share the link below with your partner.`,
+        description: `An invite link was created for ${inviteEmail}. Share the link below with your partner.`,
       });
       // If invite link should be shown, it's surfaced via the pending list refetch
     },
     onError: (err: Error) => {
       toast({
         title: "Failed to send invite",
-        description: err.message ?? "Please try again.",
+        description: parseApiError(err) ?? "Please try again.",
         variant: "destructive",
       });
     },
@@ -107,7 +107,7 @@ export function AccountabilityPartner() {
     onError: (err: Error) => {
       toast({
         title: "Failed to unlink",
-        description: err.message ?? "Please try again.",
+        description: parseApiError(err) ?? "Please try again.",
         variant: "destructive",
       });
     },
@@ -125,7 +125,7 @@ export function AccountabilityPartner() {
     onError: (err: Error) => {
       toast({
         title: "Failed to cancel invite",
-        description: err.message ?? "Please try again.",
+        description: parseApiError(err) ?? "Please try again.",
         variant: "destructive",
       });
     },
@@ -139,9 +139,18 @@ export function AccountabilityPartner() {
 
   const copyInviteLink = (token: string) => {
     const link = `${window.location.origin}/accountability/accept-invite/${token}`;
-    navigator.clipboard.writeText(link).then(() => {
-      toast({ title: "Link copied!", description: "Share this link with your partner." });
-    });
+    navigator.clipboard.writeText(link).then(
+      () => {
+        toast({ title: "Link copied!", description: "Share this link with your partner." });
+      },
+      () => {
+        toast({
+          title: "Could not copy link",
+          description: `Copy this link manually: ${link}`,
+          variant: "destructive",
+        });
+      }
+    );
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -303,8 +312,8 @@ export function AccountabilityPartner() {
           </div>
         )}
 
-        {/* Invite form */}
-        {showInviteForm && (
+        {/* Invite form — only shown when there are no pending invites yet */}
+        {showInviteForm && pending.length === 0 && (
           <form onSubmit={handleInviteSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="partner-email">Partner's email address</Label>
@@ -386,6 +395,7 @@ export function AccountabilityPartner() {
                     size="sm"
                     onClick={() => copyInviteLink(invite.inviteToken)}
                     title="Copy invite link"
+                    aria-label="Copy invite link"
                   >
                     <Copy className="w-4 h-4" />
                   </Button>
@@ -396,6 +406,7 @@ export function AccountabilityPartner() {
                     disabled={cancelInviteMutation.isPending}
                     onClick={() => cancelInviteMutation.mutate(invite.id)}
                     title="Cancel invite"
+                    aria-label="Cancel invite"
                   >
                     <XCircle className="w-4 h-4" />
                   </Button>

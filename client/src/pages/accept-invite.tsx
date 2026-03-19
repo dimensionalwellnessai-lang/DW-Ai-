@@ -9,7 +9,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Users, CheckCircle2, XCircle, Link2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -25,15 +25,15 @@ export default function AcceptInvitePage() {
   const token = params?.token ?? "";
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [outcome, setOutcome] = useState<"accepted" | "declined" | null>(null);
 
   // If the user is not logged in, redirect to login with a return URL
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated && token) {
       navigate(`/login?redirect=/accountability/accept-invite/${token}`);
     }
-  }, [isAuthenticated, navigate, token]);
+  }, [authLoading, isAuthenticated, navigate, token]);
 
   // Look up the invite details
   const { data: invite, isLoading, isError } = useQuery<InviteInfo>({
@@ -54,7 +54,7 @@ export default function AcceptInvitePage() {
     onError: (err: Error) => {
       toast({
         title: "Could not accept invite",
-        description: err.message ?? "The invite may have expired.",
+        description: parseApiError(err) ?? "The invite may have expired.",
         variant: "destructive",
       });
     },
@@ -72,14 +72,14 @@ export default function AcceptInvitePage() {
     onError: (err: Error) => {
       toast({
         title: "Could not decline invite",
-        description: err.message ?? "Please try again.",
+        description: parseApiError(err) ?? "Please try again.",
         variant: "destructive",
       });
     },
   });
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (!isAuthenticated || isLoading) {
+  if (authLoading || !isAuthenticated || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

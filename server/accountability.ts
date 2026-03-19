@@ -486,6 +486,25 @@ export async function invitePartner(
   requesterId: string,
   invitedEmail: string
 ): Promise<AccountabilityPartner> {
+  const normalizedEmail = invitedEmail.toLowerCase();
+
+  // Look up requester to prevent self-invites
+  const [requester] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, requesterId))
+    .limit(1);
+
+  if (requester && requester.email.toLowerCase() === normalizedEmail) {
+    throw new Error("You cannot invite yourself as an accountability partner.");
+  }
+
+  // Block if the requester already has an active partnership
+  const activePartnership = await getActivePartnership(requesterId);
+  if (activePartnership) {
+    throw new Error("You already have an active accountability partner. Unlink first to invite someone new.");
+  }
+
   // Prevent duplicate pending/active invites to the same email from this user
   const existing = await db
     .select()
@@ -493,7 +512,7 @@ export async function invitePartner(
     .where(
       and(
         eq(accountabilityPartners.requesterId, requesterId),
-        eq(accountabilityPartners.invitedEmail, invitedEmail.toLowerCase()),
+        eq(accountabilityPartners.invitedEmail, normalizedEmail),
         or(
           eq(accountabilityPartners.status, "pending"),
           eq(accountabilityPartners.status, "active")
@@ -513,7 +532,7 @@ export async function invitePartner(
     .insert(accountabilityPartners)
     .values({
       requesterId,
-      invitedEmail: invitedEmail.toLowerCase(),
+      invitedEmail: normalizedEmail,
       inviteToken: token,
       status: "pending",
     })
@@ -546,6 +565,22 @@ export async function acceptPartnerInvite(
   // Prevent self-linking
   if (invite.requesterId === recipientId) return null;
 
+  // Verify the accepting user's email matches the invited email to prevent
+  // link forwarding / unauthorized linking
+  const [recipientUser] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, recipientId))
+    .limit(1);
+
+  if (
+    recipientUser &&
+    recipientUser.email.toLowerCase() !== invite.invitedEmail.toLowerCase()
+  ) {
+    return null;
+  }
+
+  // UPDATE is conditioned on status='pending' to guard against race conditions
   const [updated] = await db
     .update(accountabilityPartners)
     .set({
@@ -554,10 +589,15 @@ export async function acceptPartnerInvite(
       acceptedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(accountabilityPartners.id, invite.id))
+    .where(
+      and(
+        eq(accountabilityPartners.id, invite.id),
+        eq(accountabilityPartners.status, "pending")
+      )
+    )
     .returning();
 
-  return updated;
+  return updated ?? null;
 }
 
 /**
@@ -581,6 +621,7 @@ export async function declinePartnerInvite(
   if (!invite) return null;
   if (invite.requesterId === recipientId) return null;
 
+  // UPDATE is conditioned on status='pending' to guard against race conditions
   const [updated] = await db
     .update(accountabilityPartners)
     .set({
@@ -588,10 +629,15 @@ export async function declinePartnerInvite(
       status: "declined",
       updatedAt: new Date(),
     })
-    .where(eq(accountabilityPartners.id, invite.id))
+    .where(
+      and(
+        eq(accountabilityPartners.id, invite.id),
+        eq(accountabilityPartners.status, "pending")
+      )
+    )
     .returning();
 
-  return updated;
+  return updated ?? null;
 }
 
 /**

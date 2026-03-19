@@ -21,7 +21,6 @@ import {
   BarChart3,
   Award,
   MessageSquare,
-  Users,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { AccountabilityPartner } from "@/components/accountability-partner";
