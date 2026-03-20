@@ -55,20 +55,35 @@ const DOMAIN_ERROR_FRAGMENTS = [
 ];
 
 function isDomainVerificationError(err: any): boolean {
+  let serializedErr = '';
+  if (typeof err === 'string') {
+    serializedErr = err;
+  } else {
+    try {
+      serializedErr = JSON.stringify(err) || '';
+    } catch {
+      serializedErr = '';
+    }
+  }
+
   const msg = (
     (typeof err?.message === 'string' ? err.message : '') ||
     (typeof err?.name === 'string' ? err.name : '') ||
-    (typeof err === 'string' ? err : JSON.stringify(err) || '')
+    serializedErr
   ).toLowerCase();
   return DOMAIN_ERROR_FRAGMENTS.some((f) => msg.includes(f));
 }
+
+// Guard so the "no custom domain" warning is emitted at most once per process.
+let sharedSenderWarnEmitted = false;
 
 export async function getResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
   const isGmailFrom = fromEmail && fromEmail.toLowerCase().includes('@gmail.com');
   const validFrom = isGmailFrom ? null : fromEmail;
 
-  if (!validFrom) {
+  if (!validFrom && !sharedSenderWarnEmitted) {
+    sharedSenderWarnEmitted = true;
     console.warn(
       '[email] RESEND_FROM_EMAIL is not set (or is a Gmail address). ' +
       'Falling back to Resend shared sender (' + RESEND_SHARED_SENDER + '). ' +
