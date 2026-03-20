@@ -2780,13 +2780,15 @@ export const communityOpportunities = pgTable("community_opportunities", {
   isOnline: boolean("is_online").default(false),
   location: text("location"),
   url: text("url"),
-  tags: text("tags").array().default([]),
+  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   matchScore: real("match_score").default(0.5), // 0–1 scale; 0.5 = neutral fit
   featured: boolean("featured").default(false),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("community_opp_title_org_idx").on(t.title, t.organization),
+]);
 
 export const insertCommunityOpportunitySchema = createInsertSchema(communityOpportunities).omit({
   id: true,

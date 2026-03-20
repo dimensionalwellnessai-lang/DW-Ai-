@@ -10227,15 +10227,16 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
   app.get("/api/community/opportunities", async (req, res) => {
     try {
       const opportunities = await storage.getCommunityOpportunities();
-      const userId = (req as any).user?.id as string | undefined;
+      const userId = req.session.userId;
       const savedIds = userId
         ? await storage.getSavedCommunityOpportunityIds(userId)
         : [];
 
+      const savedIdSet = new Set(savedIds);
       const result = opportunities.map((opp) => ({
         ...opp,
         discoveredAt: opp.createdAt ? opp.createdAt.getTime() : Date.now(),
-        isSaved: savedIds.includes(opp.id),
+        isSaved: savedIdSet.has(opp.id),
       }));
       res.json(result);
     } catch (error) {
@@ -10247,12 +10248,12 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
   // POST /api/community/opportunities/saved — auth required
   app.post("/api/community/opportunities/saved", requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user!.id as string;
-      const { opportunityId } = req.body as { opportunityId?: string };
-      if (!opportunityId) {
+      const userId = req.session.userId!;
+      const bodyResult = z.object({ opportunityId: z.string().min(1) }).safeParse(req.body);
+      if (!bodyResult.success) {
         return res.status(400).json({ error: "opportunityId is required" });
       }
-      await storage.saveCommunityOpportunity(userId, opportunityId);
+      await storage.saveCommunityOpportunity(userId, bodyResult.data.opportunityId);
       res.json({ success: true, saved: true });
     } catch (error) {
       console.error("POST /api/community/opportunities/saved error:", error);
@@ -10263,9 +10264,12 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
   // DELETE /api/community/opportunities/saved/:id — auth required
   app.delete("/api/community/opportunities/saved/:id", requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user!.id as string;
-      const opportunityId = req.params.id;
-      await storage.unsaveCommunityOpportunity(userId, opportunityId);
+      const userId = req.session.userId!;
+      const idResult = z.string().min(1).safeParse(req.params.id);
+      if (!idResult.success) {
+        return res.status(400).json({ error: "Invalid opportunity id" });
+      }
+      await storage.unsaveCommunityOpportunity(userId, idResult.data);
       res.json({ success: true, saved: false });
     } catch (error) {
       console.error("DELETE /api/community/opportunities/saved error:", error);

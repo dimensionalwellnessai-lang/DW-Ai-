@@ -79,7 +79,7 @@ interface OpportunityDisplay {
   isOnline: boolean | null;
   location: string | null;
   url: string | null;
-  tags: string[];
+  tags: string[] | null;
   matchScore: number | null;
   featured: boolean | null;
   discoveredAt: number;
@@ -107,7 +107,7 @@ export default function CommunityPage() {
   const [selectedOpp, setSelectedOpp] = useState<OpportunityDisplay | null>(null);
 
   // Fetch live opportunities from the API
-  const { data: opportunitiesData = [], isLoading: oppsLoading } = useQuery<OpportunityDisplay[]>({
+  const { data: opportunitiesData = [], isLoading: oppsLoading, isError: oppsError } = useQuery<OpportunityDisplay[]>({
     queryKey: ["/api/community/opportunities"],
   });
 
@@ -167,7 +167,7 @@ export default function CommunityPage() {
       recurrencePattern: null,
       recurrenceEndDate: null,
       relatedFoundationIds: [],
-      tags: opp.tags,
+      tags: opp.tags ?? [],
     });
     toast({
       title: "Added to calendar",
@@ -379,6 +379,19 @@ export default function CommunityPage() {
                   <p className="text-sm text-muted-foreground">Loading opportunities…</p>
                 </CardContent>
               </Card>
+            ) : oppsError ? (
+              <Card className="border-destructive/30">
+                <CardContent className="p-8 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
+                  <p className="font-medium mb-1">Could not load opportunities</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    There was a problem fetching community opportunities. Please try again.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/community/opportunities"] })} data-testid="button-retry-opportunities">
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
             ) : !hasRealOpportunities ? (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -452,7 +465,7 @@ export default function CommunityPage() {
                                     {featuredOpp.location}
                                   </Badge>
                                 )}
-                                {featuredOpp.tags.map((tag: string) => (
+                                {(featuredOpp.tags ?? []).map((tag: string) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -516,7 +529,7 @@ export default function CommunityPage() {
                                     {opp.location}
                                   </Badge>
                                 )}
-                                {opp.tags.map((tag: string) => (
+                                {(opp.tags ?? []).map((tag: string) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -584,7 +597,7 @@ export default function CommunityPage() {
                         {selectedOpp.location}
                       </Badge>
                     ) : null}
-                    {selectedOpp.tags.map((tag: string) => (
+                    {(selectedOpp.tags ?? []).map((tag: string) => (
                       <Badge key={tag} variant="outline" className="text-xs">
                         {tag}
                       </Badge>

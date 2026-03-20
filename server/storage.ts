@@ -3471,12 +3471,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedDefaultCommunityOpportunities(): Promise<void> {
-    const existing = await db
-      .select({ id: communityOpportunities.id })
-      .from(communityOpportunities)
-      .limit(1);
-    if (existing.length > 0) return;
-
     await db.insert(communityOpportunities).values([
       {
         title: "Weekend Park Cleanup",
@@ -3569,7 +3563,7 @@ export class DatabaseStorage implements IStorage {
         featured: false,
         active: true,
       },
-    ]);
+    ]).onConflictDoNothing();
   }
 
   async getSavedCommunityOpportunityIds(userId: string): Promise<string[]> {
