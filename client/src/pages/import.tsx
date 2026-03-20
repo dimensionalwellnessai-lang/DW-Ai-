@@ -1,8 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight } from "lucide-react";
+import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight, AlertCircle } from "lucide-react";
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -57,16 +56,22 @@ export default function ImportPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [uploadError, setUploadError] = useState<{ message: string; suggestions: string[] } | null>(null);
+  const [ocrWarning, setOcrWarning] = useState<string | null>(null);
 
   const handleSelectType = (type: ImportType) => {
     setSelectedType(type);
     setUploadedFile(null);
+    setUploadError(null);
+    setOcrWarning(null);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFile(file);
+      setUploadError(null);
+      setOcrWarning(null);
     }
   };
 
@@ -76,24 +81,82 @@ export default function ImportPage() {
 
   const handleAnalyze = async () => {
     if (!uploadedFile) return;
-    
-    setIsAnalyzing(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast({
-      title: "Document Analyzed",
-      description: "Your document has been processed. Redirecting to review...",
-    });
-    
-    setIsAnalyzing(false);
-    
-    if (selectedType === "meal-plan") {
-      setLocation("/meal-prep");
-    } else if (selectedType === "schedule") {
-      setLocation("/calendar");
-    } else {
-      setLocation("/plans");
+
+    setIsUploading(true);
+    setUploadError(null);
+    setOcrWarning(null);
+
+    try {
+      // Step 1: Upload and extract text (general endpoint handles all document types)
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+
+      const uploadResponse = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        setUploadError({
+          message: uploadData.userMessage || uploadData.error || "Upload failed",
+          suggestions: uploadData.suggestions || [],
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      if (uploadData.ocrWarning) {
+        setOcrWarning(uploadData.ocrWarning);
+      }
+
+      setIsUploading(false);
+      setIsAnalyzing(true);
+
+      // Step 2: Analyze — general endpoint returns previewRoute for correct category-aware redirect
+      const analyzeResponse = await fetch(`/api/documents/${uploadData.documentId}/analyze`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!analyzeResponse.ok) {
+        let errorData: { error?: string; userMessage?: string; suggestions?: string[] } = {};
+        try {
+          errorData = await analyzeResponse.json();
+        } catch {
+          // ignore JSON parse errors
+        }
+        setUploadError({
+          message: errorData.userMessage || errorData.error || "Analysis failed. Please try again.",
+          suggestions: errorData.suggestions ?? ["Try uploading again", "Try a different file format"],
+        });
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const analyzeData = await analyzeResponse.json();
+
+      toast({
+        title: "Document Analyzed",
+        description: "Your document has been processed. Redirecting to review...",
+      });
+
+      setIsAnalyzing(false);
+
+      // Use previewRoute from server (category-aware) or fall back to a safe default
+      setLocation(analyzeData.previewRoute || "/import/preview");
+    } catch (error) {
+      const isNetworkError = error instanceof TypeError && error.message.includes("fetch");
+      setUploadError({
+        message: isNetworkError
+          ? "Network error. Please check your connection and try again."
+          : "Something went wrong while processing your file.",
+        suggestions: ["Try uploading again", "Try a different file format"],
+      });
+      setIsUploading(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -187,11 +250,40 @@ export default function ImportPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setUploadedFile(null)}
+                          onClick={() => {
+                            setUploadedFile(null);
+                            setUploadError(null);
+                            setOcrWarning(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
                         >
                           Change
                         </Button>
                       </div>
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="rounded-md bg-destructive/10 border border-destructive/20 p-4 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-destructive">{uploadError.message}</p>
+                          {uploadError.suggestions.length > 0 && (
+                            <ul className="text-xs text-muted-foreground space-y-0.5">
+                              {uploadError.suggestions.map((s, i) => (
+                                <li key={i}>• {s}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {ocrWarning && (
+                    <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3">
+                      <p className="text-xs text-amber-700 dark:text-amber-400">{ocrWarning}</p>
                     </div>
                   )}
                 </CardContent>
@@ -203,7 +295,10 @@ export default function ImportPage() {
                   onClick={() => {
                     setSelectedType(null);
                     setUploadedFile(null);
+                    setUploadError(null);
+                    setOcrWarning(null);
                   }}
+                  disabled={isUploading || isAnalyzing}
                   className="flex-1"
                   data-testid="button-back-import"
                 >
@@ -211,11 +306,16 @@ export default function ImportPage() {
                 </Button>
                 <Button
                   onClick={handleAnalyze}
-                  disabled={!uploadedFile || isAnalyzing}
+                  disabled={!uploadedFile || isUploading || isAnalyzing}
                   className="flex-1 gap-2"
                   data-testid="button-analyze"
                 >
-                  {isAnalyzing ? (
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : isAnalyzing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Analyzing...

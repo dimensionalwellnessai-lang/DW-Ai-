@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import {
   ChevronUp,
   Info,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
@@ -41,6 +42,7 @@ import {
   PERSONAL_DAY_MEANINGS,
 } from "@/lib/numerology";
 import { TTSButton } from "@/components/tts-button";
+import { apiRequest } from "@/lib/queryClient";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
 // Reuse the same key as /cosmic-insights so both pages share one birth chart record
@@ -520,6 +522,64 @@ function InsightsTab({
   const personalMonth = numerologyData?.birthDate ? calcPersonalMonth(numerologyData.birthDate) : null;
   const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
 
+  const { consent } = useCosmicConsent();
+  const astrologyConsent = consent?.useAstrologyInGuidance ?? false;
+  const numerologyConsent = consent?.useNumerologyInGuidance ?? false;
+
+  const [aiReading, setAiReading] = useState<string | null>(null);
+
+  const readingMutation = useMutation({
+    mutationFn: async () => {
+      const contextParts: string[] = [];
+      if (astrologyConsent && sunSign) contextParts.push(`Sun sign: ${sunSign}`);
+      // Moon phase is publicly observable — not personal birth data, no consent required
+      contextParts.push(`Moon phase: ${moonPhase}`);
+      if (numerologyConsent && lifePath !== null) contextParts.push(`Life Path number: ${lifePath}`);
+      if (numerologyConsent && personalYear !== null) contextParts.push(`Personal Year: ${personalYear}`);
+      if (numerologyConsent && personalMonth !== null) contextParts.push(`Personal Month: ${personalMonth}`);
+      if (numerologyConsent && personalDay !== null) contextParts.push(`Personal Day: ${personalDay}`);
+
+      const context = contextParts.join(", ");
+      const prompt = `You are a gentle cosmic guide speaking in a warm, grounded voice. Using this person's cosmic context (${context}), provide a short, personalized daily reading.
+
+Follow this 4-step structure:
+1. GROUND: Start with a grounding phrase
+2. NAME: Name the energy or theme present today
+3. SHIFT: Offer a gentle perspective or insight
+4. NEXT STEP: End with one small, optional action
+
+Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded". Never use "you should", "fix", "broken", "optimize", "maximize". Do not create goals, habits, schedule blocks, or log anything.`;
+
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: prompt,
+        conversationHistory: [],
+        cosmicConsent: consent,
+      });
+      const json = (await response.json()) as unknown;
+      if (
+        !json ||
+        typeof json !== "object" ||
+        typeof (json as { response?: unknown }).response !== "string"
+      ) {
+        throw new Error("Invalid AI response format");
+      }
+      return json as { response: string };
+    },
+    onSuccess: (data) => {
+      setAiReading(data.response);
+    },
+  });
+
+  // Auto-fetch reading when user data is available (run once when ready)
+  const hasInitiated = useRef(false);
+  const { mutate: triggerReading } = readingMutation;
+  useEffect(() => {
+    if (!hasInitiated.current && (sunSign || lifePath !== null)) {
+      hasInitiated.current = true;
+      triggerReading();
+    }
+  }, [sunSign, lifePath, triggerReading]);
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">{today}</p>
@@ -650,13 +710,73 @@ function InsightsTab({
         </Card>
       )}
 
-      {/* Practical prompt */}
-      <Card className="bg-muted/50">
-        <CardContent className="p-4 space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Today's Reflection Prompt</p>
-          <p className="text-sm">
-            {MOON_PHASE_GUIDANCE[moonPhase]}
-          </p>
+      {/* Personalized Daily Reading */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Your Daily Reading
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              {aiReading && (
+                <TTSButton
+                  text={aiReading}
+                  alwaysShow
+                  size="sm"
+                  variant="ghost"
+                  label="Listen"
+                />
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => readingMutation.mutate()}
+                disabled={readingMutation.isPending}
+                aria-label="Refresh daily reading"
+              >
+                <RefreshCw className={`h-3 w-3 ${readingMutation.isPending ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {readingMutation.isPending ? (
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-4/6" />
+            </div>
+          ) : aiReading ? (
+            <p className="text-sm leading-relaxed">{aiReading}</p>
+          ) : readingMutation.isError ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">{MOON_PHASE_GUIDANCE[moonPhase]}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs px-2 gap-1"
+                onClick={() => readingMutation.mutate()}
+              >
+                Try personalized reading <RefreshCw className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">{MOON_PHASE_GUIDANCE[moonPhase]}</p>
+              {(sunSign || lifePath !== null) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2 gap-1"
+                  onClick={() => readingMutation.mutate()}
+                >
+                  Get personalized reading <Sparkles className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

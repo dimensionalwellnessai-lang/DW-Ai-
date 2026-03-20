@@ -447,9 +447,12 @@ export default function ElevationPlanPage() {
       // For guests, refresh local state to reflect the new active status
       if (!isLoggedIn) {
         setLocalDraft(asElevationPlanFull(getGuestElevationPlanFull(planData.plan.id)));
+      } else {
+        toast({ title: "Plan Activated", description: "Your elevation plan is now active and events have been added to your calendar." });
       }
     } catch (err) {
       console.error("Failed to activate plan:", err);
+      toast({ title: "Error", description: "Could not activate plan. Please try again.", variant: "destructive" });
     }
   };
 

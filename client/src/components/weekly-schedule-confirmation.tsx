@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,11 +53,21 @@ export function WeeklyScheduleConfirmation({
   isLoading = false,
 }: WeeklyScheduleConfirmationProps) {
   const [confirmed, setConfirmed] = useState<Set<string>>(
-    new Set(scheduleItems.filter(item => item.isConfirmed).map(item => item.id))
+    new Set(scheduleItems.filter(item => item.isConfirmed !== false).map(item => item.id))
   );
   // Synchronous guard to prevent rapid double-click from submitting twice before
   // React Query's isLoading state update propagates.
   const submittingRef = useRef(false);
+
+  // Re-initialise the confirmed set whenever the dialog opens so that items
+  // generated after this component first mounted (e.g. AI-proposed blocks) are
+  // pre-selected. scheduleItems is intentionally included so a fresh batch of
+  // proposals always replaces an old confirmed selection.
+  useEffect(() => {
+    if (open) {
+      setConfirmed(new Set(scheduleItems.filter(item => item.isConfirmed !== false).map(item => item.id)));
+    }
+  }, [open, scheduleItems]);
 
   // Use the provided weekStartDate directly (caller is responsible for computing
   // the correct week start, matching the server's anchoring).

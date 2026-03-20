@@ -365,6 +365,25 @@ const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
+/**
+ * Server-controlled system prompt overrides keyed by chat `context` value.
+ * Clients send a context name (e.g. "voice-onboarding"); the server resolves
+ * the actual prompt text, preventing arbitrary prompt injection from clients.
+ */
+const CONTEXT_SYSTEM_OVERRIDES: Record<string, string> = {
+  "voice-onboarding":
+    "You are DW, a warm and grounding AI wellness companion.\n" +
+    "You are meeting this person for the first time during voice onboarding.\n\n" +
+    "Your role in this conversation:\n" +
+    "- Introduce yourself briefly and warmly\n" +
+    "- Learn what dimension of wellness matters most to them right now (physical, emotional, mental, financial, spiritual, occupational)\n" +
+    "- Ask one thoughtful question at a time\n" +
+    "- Help them feel heard and welcome\n" +
+    "- Keep responses concise (2–4 sentences) and calm\n" +
+    "- Avoid overwhelming them with information\n\n" +
+    "Start by welcoming them and asking a single open question about how they're doing or what brought them here today.",
+};
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -2285,7 +2304,10 @@ export async function registerRoutes(
       const result = await detectIntentAndRespond(
         enhancedMessage,
         conversationHistory || [],
-        userContext
+        userContext,
+        typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
+          ? CONTEXT_SYSTEM_OVERRIDES[context]
+          : undefined
       );
       
       // Execute tool calls if any
@@ -3102,7 +3124,14 @@ export async function registerRoutes(
 
   app.get("/api/habits", requireAuth, async (req, res) => {
     const habits = await storage.getHabits(req.session.userId!);
-    res.json(habits);
+    // Single batch query instead of N+1
+    const todaysLogs = await storage.getTodayHabitLogsByUser(req.session.userId!);
+    const completedHabitIds = new Set(todaysLogs.map((l) => l.habitId));
+    const habitsWithCompletion = habits.map((habit) => ({
+      ...habit,
+      completedToday: completedHabitIds.has(habit.id),
+    }));
+    res.json(habitsWithCompletion);
   });
 
   app.post("/api/habits", requireAuth, async (req, res) => {
@@ -3198,7 +3227,7 @@ export async function registerRoutes(
   app.post("/api/habits/:id/log", requireAuth, async (req, res) => {
     try {
       const habit = await storage.getHabit(req.params.id);
-      if (!habit) {
+      if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
       await storage.createHabitLog({ habitId: req.params.id, notes: req.body.notes });
@@ -3206,6 +3235,39 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to log habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/toggle", requireAuth, async (req, res) => {
+    try {
+      const habit = await storage.getHabit(req.params.id);
+      if (!habit || habit.userId !== req.session.userId) {
+        return res.status(404).json({ error: "Habit not found" });
+      }
+      const todaysLog = await storage.getTodaysHabitLog(req.params.id);
+      // If a `completed` boolean is provided in the request body, treat it as an
+      // idempotent set operation (the caller controls the desired state).
+      // If omitted, fall back to pure toggle semantics based on current server state.
+      const requestedCompleted =
+        typeof req.body?.completed === "boolean" ? req.body.completed : !todaysLog;
+      if (!requestedCompleted) {
+        // Uncheck: delete ALL of today's logs to avoid stale duplicates
+        await storage.deleteAllTodaysHabitLogs(req.params.id);
+        const updated = await storage.getHabit(req.params.id);
+        return res.json({ ...updated, completedToday: false });
+      } else {
+        // Check: only create a log and increment streak if not already completed today
+        if (!todaysLog) {
+          await storage.createHabitLog({ habitId: req.params.id });
+          const newStreak = (habit.streak || 0) + 1;
+          const updated = await storage.updateHabit(req.params.id, { streak: newStreak });
+          return res.json({ ...updated, completedToday: true });
+        }
+        // Already completed today — return current state without duplicating
+        return res.json({ ...habit, completedToday: true });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle habit" });
     }
   });
 
@@ -9342,6 +9404,55 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       }
       const updated = await storage.updateElevationPlan(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Plan not found" });
+
+      // When activating a plan, bulk-create calendar events for all actions that
+      // are not already linked to a calendar event (non-fatal: errors are logged).
+      if (parsed.data.status === "active") {
+        try {
+          const days = await storage.getElevationPlanDays(updated.id);
+          const daysWithActions = await Promise.all(
+            days.map(async (d) => ({ ...d, actions: await storage.getElevationPlanActions(d.id) }))
+          );
+          for (const day of daysWithActions) {
+            for (const action of day.actions) {
+              const linked = action.linkedEntity as { type?: string; id?: string } | null;
+              if (linked?.type === "calendar_event" && linked.id) continue; // already linked
+              try {
+                const { startTime, endTime } = buildActionEventTimes(
+                  updated.startDate,
+                  day.dayIndex,
+                  action.timeOfDay,
+                  action.durationMinutes
+                );
+                const calendarEvent = await storage.createCalendarEvent({
+                  userId,
+                  title: action.title,
+                  description: action.description ?? "",
+                  startTime,
+                  endTime,
+                  eventType: actionTypeToEventType(action.actionType),
+                  linkedType: "elevation_action",
+                  linkedId: action.id,
+                  linkedRoute: "/elevation-plan",
+                  linkedMeta: {
+                    planTitle: updated.title ?? "",
+                    planDayIndex: day.dayIndex,
+                    actionType: action.actionType,
+                  },
+                });
+                await storage.updateElevationPlanAction(action.id, userId, {
+                  linkedEntity: { type: "calendar_event", id: calendarEvent.id },
+                });
+              } catch (actionErr) {
+                console.error(`Failed to create calendar event for action ${action.id}:`, actionErr);
+              }
+            }
+          }
+        } catch (bulkErr) {
+          console.error("Failed to bulk-create calendar events on plan activation:", bulkErr);
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Elevation plan update error:", error);
@@ -9984,6 +10095,35 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     return res.status(503).json({ configured: false, missing });
   });
 
+  // Email health check – lightweight, side-effect-free.
+  // Reports whether email is configured and whether a custom sending domain is set,
+  // based solely on environment variables to avoid repeatedly instantiating clients.
+  app.get("/api/health/email", (_req, res) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+    if (!apiKey) {
+      return res.status(503).json({
+        configured: false,
+        error: "Email service not configured. Set RESEND_API_KEY (and optionally RESEND_FROM_EMAIL) environment variables.",
+      });
+    }
+
+    const usingSharedDomain = !fromEmail;
+    const resolvedFrom = fromEmail ?? 'onboarding@resend.dev';
+
+    return res.json({
+      configured: true,
+      usingSharedDomain,
+      fromAddress: resolvedFrom,
+      hint: usingSharedDomain
+        ? "Email will be sent from the Resend shared sender (onboarding@resend.dev). " +
+          "To use a branded from-address, verify your domain at https://resend.com/domains " +
+          "and set the RESEND_FROM_EMAIL environment variable."
+        : "Custom sending domain is configured.",
+    });
+  });
+
   // OCR status – reports which OCR providers are available
   app.get("/api/ocr/status", (_req, res) => {
     const visionConfigured = googleVisionService.isConfigured();
@@ -10244,6 +10384,69 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
     } catch (error) {
       console.error("Week planner confirm error:", error);
       res.status(500).json({ error: "Failed to save schedule. Please try again." });
+    }
+  });
+
+  // ========================================
+  // COMMUNITY OPPORTUNITIES (live data)
+  // ========================================
+
+  // Seed default opportunities on startup (no-op if already seeded)
+  storage.seedDefaultCommunityOpportunities().catch((err) =>
+    console.error("[community] seed error:", err),
+  );
+
+  // GET /api/community/opportunities — public; includes isSaved if authenticated
+  app.get("/api/community/opportunities", async (req, res) => {
+    try {
+      const opportunities = await storage.getCommunityOpportunities();
+      const userId = req.session.userId;
+      const savedIds = userId
+        ? await storage.getSavedCommunityOpportunityIds(userId)
+        : [];
+
+      const savedIdSet = new Set(savedIds);
+      const result = opportunities.map((opp) => ({
+        ...opp,
+        discoveredAt: opp.createdAt ? opp.createdAt.getTime() : Date.now(),
+        isSaved: savedIdSet.has(opp.id),
+      }));
+      res.json(result);
+    } catch (error) {
+      console.error("GET /api/community/opportunities error:", error);
+      res.status(500).json({ error: "Failed to fetch community opportunities" });
+    }
+  });
+
+  // POST /api/community/opportunities/saved — auth required
+  app.post("/api/community/opportunities/saved", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const bodyResult = z.object({ opportunityId: z.string().min(1) }).safeParse(req.body);
+      if (!bodyResult.success) {
+        return res.status(400).json({ error: "opportunityId is required" });
+      }
+      await storage.saveCommunityOpportunity(userId, bodyResult.data.opportunityId);
+      res.json({ success: true, saved: true });
+    } catch (error) {
+      console.error("POST /api/community/opportunities/saved error:", error);
+      res.status(500).json({ error: "Failed to save opportunity" });
+    }
+  });
+
+  // DELETE /api/community/opportunities/saved/:id — auth required
+  app.delete("/api/community/opportunities/saved/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const idResult = z.string().min(1).safeParse(req.params.id);
+      if (!idResult.success) {
+        return res.status(400).json({ error: "Invalid opportunity id" });
+      }
+      await storage.unsaveCommunityOpportunity(userId, idResult.data);
+      res.json({ success: true, saved: false });
+    } catch (error) {
+      console.error("DELETE /api/community/opportunities/saved error:", error);
+      res.status(500).json({ error: "Failed to unsave opportunity" });
     }
   });
 

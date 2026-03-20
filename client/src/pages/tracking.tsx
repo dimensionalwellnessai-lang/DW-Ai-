@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
 import {
@@ -40,6 +41,29 @@ export default function TrackingDashboard() {
   // Fetch today's habits
   const { data: habits = [] } = useQuery({
     queryKey: ['/api/habits'],
+  });
+
+  // Toggle habit completion
+  const toggleHabitMutation = useMutation({
+    mutationFn: async (habitId: string) => {
+      const res = await fetch(`/api/habits/${habitId}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to toggle habit');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/habits'] });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to update habit",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    },
   });
 
   // Calculate water intake today
@@ -236,20 +260,27 @@ export default function TrackingDashboard() {
                       key={habit.id}
                       className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
-                      <button 
-                        className="h-6 w-6 rounded border-2 border-primary flex items-center justify-center hover:bg-primary/10 transition-colors"
-                        onClick={() => toast({ title: "Habit tracking", description: "Full habit completion coming soon!" })}
-                        aria-label={`Mark ${habit.title} as complete`}
+                      <button
+                        className="h-6 w-6 rounded-full flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        onClick={() => toggleHabitMutation.mutate(habit.id)}
+                        disabled={toggleHabitMutation.isPending}
+                        aria-label={habit.completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
+                        aria-pressed={Boolean(habit.completedToday)}
                       >
-                        <CheckCircle2 className="h-4 w-4 text-primary opacity-0 hover:opacity-100 transition-opacity" />
+                        {habit.completedToday ? (
+                          <CheckCircle2 className="h-6 w-6 text-green-500" aria-hidden="true" />
+                        ) : (
+                          <Circle className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                        )}
                       </button>
                       <div className="flex-1">
-                        <p className="font-medium">{habit.title}</p>
+                        <p className={`font-medium ${habit.completedToday ? 'text-muted-foreground line-through' : ''}`}>
+                          {habit.title}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {habit.streak > 0 ? `${habit.streak} day streak 🔥` : 'Start today!'}
                         </p>
                       </div>
-                      <Circle className="h-5 w-5 text-muted-foreground" />
                     </div>
                   ))}
                 </div>
