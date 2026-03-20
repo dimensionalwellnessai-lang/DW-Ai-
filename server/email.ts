@@ -356,7 +356,7 @@ export async function sendPartnerInviteEmail(
     const { client, fromEmail } = await getResendClient();
 
     const baseUrl = getBaseUrl();
-    const inviteUrl = `${baseUrl}/accept-invite?token=${inviteToken}`;
+    const inviteUrl = `${baseUrl}/accountability/accept-invite/${inviteToken}`;
     const safeRequesterEmail = escapeHtml(requesterEmail);
 
     const { data, error } = await client.emails.send({

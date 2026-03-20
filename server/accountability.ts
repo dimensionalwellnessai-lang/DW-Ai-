@@ -480,12 +480,12 @@ export async function getWeeklySynopsis(
 
 /**
  * Send an invite to an email address to become an accountability partner.
- * Returns the created invite record (including the token).
+ * Returns the created invite record (including the token) and the requester's email.
  */
 export async function invitePartner(
   requesterId: string,
   invitedEmail: string
-): Promise<AccountabilityPartner> {
+): Promise<AccountabilityPartner & { requesterEmail: string | null }> {
   const normalizedEmail = invitedEmail.toLowerCase();
 
   // Look up requester to prevent self-invites
@@ -523,7 +523,7 @@ export async function invitePartner(
 
   if (existing.length > 0) {
     // Return the existing invite so the caller can re-send the link
-    return existing[0];
+    return { ...existing[0], requesterEmail: requester?.email ?? null };
   }
 
   const token = randomBytes(32).toString("hex");
@@ -538,7 +538,7 @@ export async function invitePartner(
     })
     .returning();
 
-  return invite;
+  return { ...invite, requesterEmail: requester?.email ?? null };
 }
 
 /**

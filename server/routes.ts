@@ -7833,12 +7833,16 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!email || typeof email !== "string") {
         return res.status(400).json({ error: "A valid email address is required." });
       }
-      const invite = await accountability.invitePartner(req.session.userId!, email.trim());
+      const trimmedEmail = email.trim();
+      const basicEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!basicEmailRegex.test(trimmedEmail)) {
+        return res.status(400).json({ error: "A valid email address is required." });
+      }
+      const invite = await accountability.invitePartner(req.session.userId!, trimmedEmail);
 
-      // Send invitation email to the invited partner
-      const requester = await storage.getUser(req.session.userId!);
-      if (requester?.email) {
-        sendPartnerInviteEmail(email.trim(), requester.email, invite.inviteToken).catch((err) => {
+      // Send invitation email — requesterEmail is already available from invitePartner()
+      if (invite.requesterEmail) {
+        sendPartnerInviteEmail(trimmedEmail, invite.requesterEmail, invite.inviteToken).catch((err) => {
           console.error("Failed to send partner invite email:", err);
         });
       }
