@@ -213,6 +213,21 @@ TONE ADJUSTMENTS:
   }
 }
 
+function getCosmicConsentGuidance(consent: { useAstrologyInGuidance: boolean; useNumerologyInGuidance: boolean }): string {
+  const parts: string[] = [];
+  if (consent.useAstrologyInGuidance) {
+    parts.push("Astrology: ON — may reference birth charts, zodiac signs, and astrological themes when relevant");
+  } else {
+    parts.push("Astrology: OFF — do not reference birth charts, zodiac signs, or astrological themes");
+  }
+  if (consent.useNumerologyInGuidance) {
+    parts.push("Numerology: ON — may reference numerological insights when relevant");
+  } else {
+    parts.push("Numerology: OFF — do not reference numerological insights");
+  }
+  return `COSMIC LENSES:\n${parts.map(p => `• ${p}`).join("\n")}`;
+}
+
 export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
@@ -403,7 +418,10 @@ ${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsen
 ${userContext?.wellnessPreferences ? `
 WELLNESS PREFERENCES (respect these in all guidance):
 ${userContext.wellnessPreferences.beliefSystem ? `• Belief System: ${userContext.wellnessPreferences.beliefSystem}` : ""}
-${userContext.wellnessPreferences.traditions?.length ? `• Spiritual/Cultural Traditions: ${userContext.wellnessPreferences.traditions.join(", ")}${userContext.wellnessPreferences.otherTradition ? `, ${userContext.wellnessPreferences.otherTradition}` : ""}` : ""}
+${(userContext.wellnessPreferences.traditions?.length || userContext.wellnessPreferences.otherTradition) ? `• Spiritual/Cultural Traditions: ${[
+  ...(userContext.wellnessPreferences.traditions ?? []),
+  ...(userContext.wellnessPreferences.otherTradition ? [userContext.wellnessPreferences.otherTradition] : []),
+].join(", ")}` : ""}
 ${userContext.wellnessPreferences.meditationEnabled === false ? `• Meditation: disabled — do not suggest meditation practices` : ""}
 ${userContext.wellnessPreferences.journalEnabled === false ? `• Journaling: disabled — do not suggest journaling practices` : ""}
 ${userContext.wellnessPreferences.astrologyEnabled ? `• Astrology: enabled — may incorporate astrological themes when relevant` : `• Astrology: disabled — do not reference astrological themes`}
@@ -2091,7 +2109,10 @@ ${userContext?.cosmicConsent ? getCosmicConsentGuidance(userContext.cosmicConsen
 ${userContext?.wellnessPreferences ? `
 WELLNESS PREFERENCES (respect these in all guidance):
 ${userContext.wellnessPreferences.beliefSystem ? `• Belief System: ${userContext.wellnessPreferences.beliefSystem}` : ""}
-${userContext.wellnessPreferences.traditions?.length ? `• Spiritual/Cultural Traditions: ${userContext.wellnessPreferences.traditions.join(", ")}${userContext.wellnessPreferences.otherTradition ? `, ${userContext.wellnessPreferences.otherTradition}` : ""}` : ""}
+${(userContext.wellnessPreferences.traditions?.length || userContext.wellnessPreferences.otherTradition) ? `• Spiritual/Cultural Traditions: ${[
+  ...(userContext.wellnessPreferences.traditions ?? []),
+  ...(userContext.wellnessPreferences.otherTradition ? [userContext.wellnessPreferences.otherTradition] : []),
+].join(", ")}` : ""}
 ${userContext.wellnessPreferences.meditationEnabled === false ? `• Meditation: disabled — do not suggest meditation practices` : ""}
 ${userContext.wellnessPreferences.journalEnabled === false ? `• Journaling: disabled — do not suggest journaling practices` : ""}
 ${userContext.wellnessPreferences.astrologyEnabled ? `• Astrology: enabled — may incorporate astrological themes when relevant` : `• Astrology: disabled — do not reference astrological themes`}
