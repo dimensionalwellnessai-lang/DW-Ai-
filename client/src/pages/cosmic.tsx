@@ -26,7 +26,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
+import { useCosmicConsent, loadConsent, saveConsent } from "@/hooks/use-cosmic-consent";
+import { useAuth } from "@/hooks/use-auth";
 import {
   calcLifePath,
   calcExpression,
@@ -1389,8 +1390,7 @@ function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void 
 
 // ─── Consent section ───────────────────────────────────────────────────────────
 function ConsentSection() {
-  const { data: authData } = useAuth();
-  const isAuthenticated = !!authData?.user;
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
   // For authenticated users, fetch consent from the server

@@ -54,7 +54,7 @@ export default function LifeBlueprintPage() {
   const dimensionDetailRef = useRef<HTMLDivElement>(null);
 
   // Fetch dimension blueprints
-  const { data: blueprints = [] } = useQuery({
+  const { data: blueprints = [] } = useQuery<any[]>({
     queryKey: ['/api/dimension-blueprints'],
   });
 

@@ -135,6 +135,7 @@ export function ReadingCard({
   const sessionKey = `dwInsight:${data.id}`;
 
   function handleContinueWithDW() {
+    if (!data) return;
     try {
       if (typeof window !== "undefined" && window.sessionStorage) {
         // Store the shape expected by talk-it-out.tsx and ai-workspace.tsx:

@@ -21,6 +21,7 @@ export interface FeatureFlags {
   DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
   REMINDERS: boolean;               // ⏸️ Reminder scheduling and banner (PR #7)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
+  COACH_MODES: boolean;             // ✅ Coaching mode selector in settings
   WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
   /**
    * Multi-plan support + plan history (PR #17).
@@ -129,8 +130,8 @@ function resolveElevationEngineFlag(): boolean {
  */
 function resolveElevationPlanFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_elevation_plan") === "false") {
+      return false;
     }
   } catch {
     // Blocked storage or restricted environment – ignore and fall back to query param
@@ -138,13 +139,14 @@ function resolveElevationPlanFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("ep") === "1";
+      const param = new URLSearchParams(location.search).get("ep");
+      if (param === "0") return false;
     }
   } catch {
     // URL parsing failed – fail safely
   }
 
-  return false;
+  return true;
 }
 
 /**
@@ -233,8 +235,8 @@ function resolveJournalAutogenFlag(): boolean {
  */
 function resolveWeeklyReviewFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_weekly_review") === "false") {
+      return false;
     }
   } catch {
     // Blocked storage or restricted environment – ignore and fall back to query param
@@ -242,13 +244,14 @@ function resolveWeeklyReviewFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("wr") === "1";
+      const param = new URLSearchParams(location.search).get("wr");
+      if (param === "0") return false;
     }
   } catch {
     // URL parsing failed – fail safely
   }
 
-  return false;
+  return true;
 }
 
 /**
@@ -285,8 +288,8 @@ function resolveRemindersFlag(): boolean {
  */
 function resolveMultiPlanFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_multi_plan") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_multi_plan") === "false") {
+      return false;
     }
   } catch {
     // Blocked storage or restricted environment – ignore and fall back to query param
@@ -294,13 +297,14 @@ function resolveMultiPlanFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("mp") === "1";
+      const param = new URLSearchParams(location.search).get("mp");
+      if (param === "0") return false;
     }
   } catch {
     // URL parsing failed – fail safely
   }
 
-  return false;
+  return true;
 }
 
 /**
@@ -397,6 +401,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   DAILY_CHECKIN: resolveDailyCheckinFlag(),
   REMINDERS: resolveRemindersFlag(),
   DW_LEARNS: true,
+  COACH_MODES: true,
   WEEKLY_REVIEW: resolveWeeklyReviewFlag(),
   MULTI_PLAN: resolveMultiPlanFlag(),
   SHARE_EXPORT: resolveShareExportFlag(),

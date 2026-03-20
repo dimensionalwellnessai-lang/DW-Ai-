@@ -106,6 +106,56 @@ export function useElevationPlan() {
     staleTime: STALE_TIME.MEDIUM,
   });
 
+  // ─── Fetch all plans (history) ──────────────────────────────────────────────
+
+  const {
+    data: allPlansData,
+    isLoading: isLoadingAllPlans,
+  } = useQuery<ElevationPlanWithStats[]>({
+    queryKey: [ALL_PLANS_KEY],
+    enabled: enabled && isLoggedIn,
+    queryFn: async () => {
+      const res = await fetch(ALL_PLANS_KEY, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<ElevationPlanWithStats[]>;
+    },
+    staleTime: STALE_TIME.MEDIUM,
+  });
+
+  const archivePlanMutation = useMutation<ElevationPlanItem, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const res = await fetch(`/api/elevation-plans/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "archived" }),
+      });
+      if (!res.ok) throw new Error("Failed to archive plan");
+      return res.json() as Promise<ElevationPlanItem>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+    },
+  });
+
+  const reactivatePlanMutation = useMutation<ElevationPlanItem, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const res = await fetch(`/api/elevation-plans/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "active" }),
+      });
+      if (!res.ok) throw new Error("Failed to reactivate plan");
+      return res.json() as Promise<ElevationPlanItem>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ALL_PLANS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ACTIVE_PLAN_KEY] });
+    },
+  });
+
   // ─── Generate / get draft plan ─────────────────────────────────────────────
 
   const generateDraftMutation = useMutation<
@@ -383,6 +433,12 @@ export function useElevationPlan() {
     activePlan: activePlanData ?? null,
     isLoadingActive,
     refetchActive,
+    allPlans: allPlansData ?? [],
+    isLoadingAllPlans,
+    archivePlan: archivePlanMutation.mutateAsync,
+    isArchiving: archivePlanMutation.isPending,
+    reactivatePlan: reactivatePlanMutation.mutateAsync,
+    isReactivating: reactivatePlanMutation.isPending,
     generateDraft: generateDraftMutation.mutateAsync,
     isGenerating: generateDraftMutation.isPending,
     generateError: generateDraftMutation.error,

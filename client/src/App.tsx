@@ -88,7 +88,6 @@ import WakeUpSystemPage from "@/pages/systems/wake-up";
 import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
-import TodayHubPage from "@/pages/today-hub";
 import PrivacyTermsPage from "@/pages/privacy-terms";
 import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";

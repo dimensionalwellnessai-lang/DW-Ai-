@@ -484,15 +484,22 @@ export default function VoiceOnboardingPage() {
     setLocation("/");
   };
 
-  // ── Done: mark as completed ──
-  const handleDone = () => {
+  // ── Done: extract profile from conversation, then mark completed ──
+  const handleDone = useCallback(async () => {
     try {
       localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
     } catch {
       // Ignore storage errors to avoid blocking navigation
     }
+    try {
+      await apiRequest("POST", "/api/onboarding/voice-complete", {
+        messages: thread.map((m) => ({ role: m.role, content: m.content })),
+      });
+    } catch {
+      // Non-fatal — navigate home even if save fails
+    }
     setLocation("/");
-  };
+  }, [thread, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Value preview phase — show DW capability cards

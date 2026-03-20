@@ -24,13 +24,14 @@ import {
   Wind,
   Wand2,
   Tag,
+  Brain,
 } from "lucide-react";
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
 import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import { useDwIntelligence, type DwJournalRecord } from "@/hooks/use-dw-intelligence";
+import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
 import { 
   detectJournalCategory, 
   generateJournalTitle, 
@@ -43,6 +44,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
 
 const JOURNAL_STORAGE_KEY = "dw_journal_entries";
+
+interface DwJournalRecord {
+  id: string;
+  title: string;
+  story: string;
+  tags: string[];
+  createdAt: string | number;
+}
 
 interface JournalEntry {
   id: string;
@@ -144,7 +153,9 @@ export default function JournalPage() {
 
   // DW Intelligence AI-generated journal entries
   const dwIntelligenceOn = isFeatureEnabled("JOURNAL_AUTOGEN");
-  const { allJournalEntries: dwJournalEntries, isLoading: dwLoading } = useDwIntelligence();
+  useDwIntelligence();
+  const dwJournalEntries: DwJournalRecord[] = [];
+  const dwLoading = false;
 
   useEffect(() => {
     setEntries(getStoredEntries());

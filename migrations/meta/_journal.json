@@ -29,6 +29,13 @@
       "when": 1773125000000,
       "tag": "0003_weekly_plan_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773974729481,
+      "tag": "0004_add_missing_tables",
+      "breakpoints": true
     }
   ]
 }

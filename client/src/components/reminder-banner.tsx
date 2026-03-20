@@ -69,14 +69,14 @@ export function ReminderBanner() {
 
   const handleDismiss = async () => {
     // Use `dismissed` status for user-initiated dismissal
-    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "dismissed", reminderType: activeReminder.type });
+    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "dismissed", reminderType: activeReminder.type, reminderId: activeReminder.id });
     await dismissReminder(activeReminder.id);
     setActiveReminder(null);
     setShowSnooze(false);
   };
 
   const handleSnooze = async (until: Date) => {
-    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "snoozed", reminderType: activeReminder.type });
+    trackEvent(EVENTS.REMINDER_INTERACTED, { action: "snoozed", reminderType: activeReminder.type, reminderId: activeReminder.id });
     await snoozeReminder(activeReminder.id, until);
     handledRef.current.delete(activeReminder.id);
     setActiveReminder(null);

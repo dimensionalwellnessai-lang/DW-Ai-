@@ -50,6 +50,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const MENU_TUTORIAL_KEY = "dw:menuTutorialDone";
 const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";

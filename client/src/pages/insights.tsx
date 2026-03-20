@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -31,7 +32,11 @@ import {
   BookOpen,
   Tag,
   MessageCircle,
+  Brain,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+import { ReadingCard, type ReadingCardData } from "@/features/home/components/ReadingCard";
 import { LIFE_DIMENSIONS, getDimensionById, ASSESSMENT_QUESTIONS, type LifeDimension } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
