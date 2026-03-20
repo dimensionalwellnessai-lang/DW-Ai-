@@ -10062,6 +10062,35 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
     return res.status(503).json({ configured: false, missing });
   });
 
+  // Email health check – lightweight, side-effect-free.
+  // Reports whether email is configured and whether a custom sending domain is set,
+  // based solely on environment variables to avoid repeatedly instantiating clients.
+  app.get("/api/health/email", (_req, res) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+    if (!apiKey) {
+      return res.status(503).json({
+        configured: false,
+        error: "Email service not configured. Set RESEND_API_KEY (and optionally RESEND_FROM_EMAIL) environment variables.",
+      });
+    }
+
+    const usingSharedDomain = !fromEmail;
+    const resolvedFrom = fromEmail ?? 'onboarding@resend.dev';
+
+    return res.json({
+      configured: true,
+      usingSharedDomain,
+      fromAddress: resolvedFrom,
+      hint: usingSharedDomain
+        ? "Email will be sent from the Resend shared sender (onboarding@resend.dev). " +
+          "To use a branded from-address, verify your domain at https://resend.com/domains " +
+          "and set the RESEND_FROM_EMAIL environment variable."
+        : "Custom sending domain is configured.",
+    });
+  });
+
   // OCR status – reports which OCR providers are available
   app.get("/api/ocr/status", (_req, res) => {
     const visionConfigured = googleVisionService.isConfigured();
