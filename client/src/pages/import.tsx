@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight, AlertCircle } from "lucide-react";
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
@@ -71,6 +70,8 @@ export default function ImportPage() {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFile(file);
+      setUploadError(null);
+      setOcrWarning(null);
     }
   };
 
@@ -86,11 +87,11 @@ export default function ImportPage() {
     setOcrWarning(null);
 
     try {
-      // Step 1: Upload and extract text
+      // Step 1: Upload and extract text (general endpoint handles all document types)
       const formData = new FormData();
       formData.append("file", uploadedFile);
 
-      const uploadResponse = await fetch("/api/import/upload", {
+      const uploadResponse = await fetch("/api/documents/upload", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -114,26 +115,28 @@ export default function ImportPage() {
       setIsUploading(false);
       setIsAnalyzing(true);
 
-      // Step 2: Analyze the extracted text
-      const analyzeResponse = await fetch(`/api/import/analyze/${uploadData.documentId}`, {
+      // Step 2: Analyze — general endpoint returns previewRoute for correct category-aware redirect
+      const analyzeResponse = await fetch(`/api/documents/${uploadData.documentId}/analyze`, {
         method: "POST",
         credentials: "include",
       });
 
       if (!analyzeResponse.ok) {
-        let errorData: { error?: string } = {};
+        let errorData: { error?: string; userMessage?: string; suggestions?: string[] } = {};
         try {
           errorData = await analyzeResponse.json();
         } catch {
           // ignore JSON parse errors
         }
         setUploadError({
-          message: errorData.error || "Analysis failed. Please try again.",
-          suggestions: ["Try uploading again", "Try a different file format"],
+          message: errorData.userMessage || errorData.error || "Analysis failed. Please try again.",
+          suggestions: errorData.suggestions ?? ["Try uploading again", "Try a different file format"],
         });
         setIsAnalyzing(false);
         return;
       }
+
+      const analyzeData = await analyzeResponse.json();
 
       toast({
         title: "Document Analyzed",
@@ -142,13 +145,8 @@ export default function ImportPage() {
 
       setIsAnalyzing(false);
 
-      if (selectedType === "meal-plan") {
-        setLocation("/meal-prep");
-      } else if (selectedType === "schedule") {
-        setLocation("/calendar");
-      } else {
-        setLocation("/plans");
-      }
+      // Use previewRoute from server (category-aware) or fall back to a safe default
+      setLocation(analyzeData.previewRoute || "/import/preview");
     } catch (error) {
       const isNetworkError = error instanceof TypeError && error.message.includes("fetch");
       setUploadError({
@@ -252,7 +250,12 @@ export default function ImportPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setUploadedFile(null)}
+                          onClick={() => {
+                            setUploadedFile(null);
+                            setUploadError(null);
+                            setOcrWarning(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
                         >
                           Change
                         </Button>
@@ -295,6 +298,7 @@ export default function ImportPage() {
                     setUploadError(null);
                     setOcrWarning(null);
                   }}
+                  disabled={isUploading || isAnalyzing}
                   className="flex-1"
                   data-testid="button-back-import"
                 >
