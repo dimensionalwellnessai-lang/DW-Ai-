@@ -222,35 +222,44 @@ export async function sendMismatchReportEmail(
   }
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getBaseUrl(): string {
+  const explicitAppUrl = process.env.APP_URL || process.env.APP_BASE_URL;
+  if (explicitAppUrl) return explicitAppUrl.replace(/\/$/, '');
+
+  const replitDomain =
+    process.env.REPLIT_DOMAINS && process.env.REPLIT_DOMAINS.length > 0
+      ? process.env.REPLIT_DOMAINS.split(',')[0]
+      : null;
+  if (replitDomain) return `https://${replitDomain}`;
+
+  const replitSlugDomain =
+    process.env.REPL_SLUG && process.env.REPL_OWNER
+      ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : null;
+  if (replitSlugDomain) return `https://${replitSlugDomain}`;
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'APP_URL environment variable must be set in production (or provide REPLIT_DOMAINS / REPL_SLUG & REPL_OWNER) to generate absolute URLs for emails.',
+    );
+  }
+  return 'http://localhost:5000';
+}
+
 export async function sendPasswordResetEmail(toEmail: string, resetToken: string): Promise<boolean> {
   try {
     const { client, resolvedFrom } = await getResendClient();
     
-    const explicitAppUrl = process.env.APP_URL || process.env.APP_BASE_URL;
-    const replitDomain =
-      process.env.REPLIT_DOMAINS && process.env.REPLIT_DOMAINS.length > 0
-        ? process.env.REPLIT_DOMAINS.split(',')[0]
-        : null;
-    const replitSlugDomain =
-      process.env.REPL_SLUG && process.env.REPL_OWNER
-        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : null;
-
-    let baseUrl: string;
-
-    if (explicitAppUrl) {
-      baseUrl = explicitAppUrl.replace(/\/$/, '');
-    } else if (replitDomain) {
-      baseUrl = `https://${replitDomain}`;
-    } else if (replitSlugDomain) {
-      baseUrl = `https://${replitSlugDomain}`;
-    } else if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        'APP_URL environment variable must be set in production (or provide REPLIT_DOMAINS / REPL_SLUG & REPL_OWNER) to generate password reset links.',
-      );
-    } else {
-      baseUrl = 'http://localhost:5000';
-    }
+    const baseUrl = getBaseUrl();
     
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
     
@@ -401,6 +410,74 @@ export async function sendSupportReportEmail(
     return true;
   } catch (error) {
     console.error('Failed to send support report email:', error);
+    return false;
+  }
+}
+
+export async function sendPartnerInviteEmail(
+  toEmail: string,
+  requesterEmail: string,
+  inviteToken: string
+): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+
+    const baseUrl = getBaseUrl();
+    const inviteUrl = `${baseUrl}/accountability/accept-invite/${inviteToken}`;
+    const safeRequesterEmail = escapeHtml(requesterEmail);
+
+    const { data, error } = await client.emails.send({
+      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      to: toEmail,
+      subject: `${requesterEmail} invited you to be their accountability partner on DW.ai`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">DW.ai</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Dimensional Wellness AI</p>
+          </div>
+
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 20px;">
+            <h2 style="margin: 0 0 15px; color: #333; font-size: 20px;">You've Been Invited!</h2>
+            <p style="margin: 0 0 20px; color: #666;">
+              <strong>${safeRequesterEmail}</strong> has invited you to be their accountability partner on DW.ai.
+              As accountability partners, you'll support each other's commitments and follow-through.
+            </p>
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${inviteUrl}" style="display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 500; font-size: 16px;">
+                Accept Invite
+              </a>
+            </div>
+            <p style="margin: 20px 0 0; color: #888; font-size: 14px;">
+              If you don't have a DW.ai account yet, you'll be prompted to create one when you accept the invite.
+              If you didn't expect this invitation, you can safely ignore this email.
+            </p>
+          </div>
+
+          <div style="text-align: center; color: #888; font-size: 12px;">
+            <p style="margin: 0;">DW.ai - Your Life Intelligence System</p>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('[email] Resend API error for partner invite to:', toEmail, '-', error.message);
+      return false;
+    }
+
+    console.log('[email] Partner invite email sent successfully to:', toEmail);
+    return true;
+  } catch (error: any) {
+    console.error('[email] Failed to send partner invite email to:', toEmail, '- error:', error?.message || error);
+    if (error?.statusCode) console.error('[email] Resend status code:', error.statusCode);
     return false;
   }
 }
