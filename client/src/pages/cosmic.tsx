@@ -522,17 +522,22 @@ function InsightsTab({
   const personalMonth = numerologyData?.birthDate ? calcPersonalMonth(numerologyData.birthDate) : null;
   const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
 
+  const { consent } = useCosmicConsent();
+  const astrologyConsent = consent?.useAstrologyInGuidance ?? false;
+  const numerologyConsent = consent?.useNumerologyInGuidance ?? false;
+
   const [aiReading, setAiReading] = useState<string | null>(null);
 
   const readingMutation = useMutation({
     mutationFn: async () => {
       const contextParts: string[] = [];
-      if (sunSign) contextParts.push(`Sun sign: ${sunSign}`);
+      if (astrologyConsent && sunSign) contextParts.push(`Sun sign: ${sunSign}`);
+      // Moon phase is publicly observable — not personal birth data, no consent required
       contextParts.push(`Moon phase: ${moonPhase}`);
-      if (lifePath !== null) contextParts.push(`Life Path number: ${lifePath}`);
-      if (personalYear !== null) contextParts.push(`Personal Year: ${personalYear}`);
-      if (personalMonth !== null) contextParts.push(`Personal Month: ${personalMonth}`);
-      if (personalDay !== null) contextParts.push(`Personal Day: ${personalDay}`);
+      if (numerologyConsent && lifePath !== null) contextParts.push(`Life Path number: ${lifePath}`);
+      if (numerologyConsent && personalYear !== null) contextParts.push(`Personal Year: ${personalYear}`);
+      if (numerologyConsent && personalMonth !== null) contextParts.push(`Personal Month: ${personalMonth}`);
+      if (numerologyConsent && personalDay !== null) contextParts.push(`Personal Day: ${personalDay}`);
 
       const context = contextParts.join(", ");
       const prompt = `You are a gentle cosmic guide speaking in a warm, grounded voice. Using this person's cosmic context (${context}), provide a short, personalized daily reading.
@@ -543,27 +548,37 @@ Follow this 4-step structure:
 3. SHIFT: Offer a gentle perspective or insight
 4. NEXT STEP: End with one small, optional action
 
-Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded". Never use "you should", "fix", "broken", "optimize", "maximize".`;
+Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded". Never use "you should", "fix", "broken", "optimize", "maximize". Do not create goals, habits, schedule blocks, or log anything.`;
 
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: prompt,
         conversationHistory: [],
+        cosmicConsent: consent,
       });
-      return response.json() as Promise<{ response: string }>;
+      const json = (await response.json()) as unknown;
+      if (
+        !json ||
+        typeof json !== "object" ||
+        typeof (json as { response?: unknown }).response !== "string"
+      ) {
+        throw new Error("Invalid AI response format");
+      }
+      return json as { response: string };
     },
     onSuccess: (data) => {
       setAiReading(data.response);
     },
   });
 
-  // Auto-fetch reading when user data is available (run once on mount)
+  // Auto-fetch reading when user data is available (run once when ready)
   const hasInitiated = useRef(false);
+  const { mutate: triggerReading } = readingMutation;
   useEffect(() => {
     if (!hasInitiated.current && (sunSign || lifePath !== null)) {
       hasInitiated.current = true;
-      readingMutation.mutate();
+      triggerReading();
     }
-  });
+  }, [sunSign, lifePath, triggerReading]);
 
   return (
     <div className="space-y-4">
