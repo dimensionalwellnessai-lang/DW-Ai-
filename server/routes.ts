@@ -1050,7 +1050,9 @@ export async function registerRoutes(
   /**
    * GET /api/billing/status
    * Returns the caller's current subscription tier.
-   * For unauthenticated (guest) users, always returns "free".
+   * NOTE: Paywall is disabled until App Store in-app purchases are configured.
+   *       All authenticated users are treated as "plus" tier in the meantime.
+   *       Restore the original logic (user.subscriptionTier) once IAP is live.
    */
   app.get("/api/billing/status", async (req, res) => {
     try {
@@ -1061,8 +1063,9 @@ export async function registerRoutes(
       if (!user) {
         return res.json({ tier: "free", updatedAt: null });
       }
+      // Paywall disabled — grant plus to all signed-in users until IAP is ready
       return res.json({
-        tier: user.subscriptionTier ?? "free",
+        tier: "plus",
         updatedAt: user.subscriptionUpdatedAt ?? null,
       });
     } catch (err) {
