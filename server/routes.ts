@@ -16,7 +16,7 @@ import { pool } from "./db";
 import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
 import * as accountability from "./accountability";
-import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail } from "./email";
+import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
@@ -7834,6 +7834,15 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
         return res.status(400).json({ error: "A valid email address is required." });
       }
       const invite = await accountability.invitePartner(req.session.userId!, email.trim());
+
+      // Send invitation email to the invited partner
+      const requester = await storage.getUser(req.session.userId!);
+      if (requester?.email) {
+        sendPartnerInviteEmail(email.trim(), requester.email, invite.inviteToken).catch((err) => {
+          console.error("Failed to send partner invite email:", err);
+        });
+      }
+
       // Return the invite token so the client can construct a deep-link if desired
       res.json({ invite });
     } catch (error) {
