@@ -1976,7 +1976,7 @@ export async function registerRoutes(
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs] = await Promise.all([
+      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs, wellnessPrefs] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
@@ -1988,6 +1988,7 @@ export async function registerRoutes(
         storage.getLifeSystem(userId),
         storage.getUserProfile(userId),
         storage.getUserSystemPreferences(userId),
+        storage.getWellnessPreferences(userId),
       ]);
       
       const today = new Date();
@@ -2062,6 +2063,16 @@ export async function registerRoutes(
         coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
           ? (user!.coachingMode as CoachingMode)
           : "gentle",
+        wellnessPreferences: wellnessPrefs ? {
+          beliefSystem: wellnessPrefs.beliefSystem,
+          traditions: wellnessPrefs.traditions,
+          otherTradition: wellnessPrefs.otherTradition,
+          meditationEnabled: wellnessPrefs.meditationEnabled,
+          journalEnabled: wellnessPrefs.journalEnabled,
+          astrologyEnabled: wellnessPrefs.astrologyEnabled,
+          tarotEnabled: wellnessPrefs.tarotEnabled,
+          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
+        } : undefined,
       };
       
       const rawResponse = await generateChatResponse(
@@ -2230,11 +2241,12 @@ export async function registerRoutes(
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, profile] = await Promise.all([
+      const [user, goals, habits, profile, wellnessPrefs] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getUserProfile(userId),
+        storage.getWellnessPreferences(userId),
       ]);
       
       let documentContext = "";
@@ -2277,6 +2289,16 @@ export async function registerRoutes(
         coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
           ? (user!.coachingMode as CoachingMode)
           : "gentle",
+        wellnessPreferences: wellnessPrefs ? {
+          beliefSystem: wellnessPrefs.beliefSystem,
+          traditions: wellnessPrefs.traditions,
+          otherTradition: wellnessPrefs.otherTradition,
+          meditationEnabled: wellnessPrefs.meditationEnabled,
+          journalEnabled: wellnessPrefs.journalEnabled,
+          astrologyEnabled: wellnessPrefs.astrologyEnabled,
+          tarotEnabled: wellnessPrefs.tarotEnabled,
+          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
+        } : undefined,
       };
       
       const result = await detectIntentAndRespond(
@@ -2523,11 +2545,12 @@ export async function registerRoutes(
       res.setHeader('Connection', 'keep-alive');
       
       // Fetch user context (same as smart endpoint)
-      const [user, goals, habits, profile] = await Promise.all([
+      const [user, goals, habits, profile, wellnessPrefs] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getUserProfile(userId),
+        storage.getWellnessPreferences(userId),
       ]);
       
       // Handle document attachments
@@ -2571,6 +2594,16 @@ export async function registerRoutes(
               useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
             }
           : undefined,
+        wellnessPreferences: wellnessPrefs ? {
+          beliefSystem: wellnessPrefs.beliefSystem,
+          traditions: wellnessPrefs.traditions,
+          otherTradition: wellnessPrefs.otherTradition,
+          meditationEnabled: wellnessPrefs.meditationEnabled,
+          journalEnabled: wellnessPrefs.journalEnabled,
+          astrologyEnabled: wellnessPrefs.astrologyEnabled,
+          tarotEnabled: wellnessPrefs.tarotEnabled,
+          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
+        } : undefined,
       };
       
       // Use detectIntentAndRespond to get the AI response with streaming support
