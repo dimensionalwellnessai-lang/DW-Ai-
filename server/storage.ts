@@ -258,6 +258,10 @@ import {
   type WeeklyPlanReview,
   type InsertWeeklyPlanReview,
   type UpdateWeeklyPlanReview,
+  communityOpportunities,
+  savedCommunityOpportunities,
+  type CommunityOpportunityRecord,
+  type InsertCommunityOpportunityRecord,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or, inArray } from "drizzle-orm";
@@ -701,6 +705,13 @@ export interface IStorage {
   createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview>;
   updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined>;
   getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
+
+  // Community Opportunities
+  getCommunityOpportunities(): Promise<CommunityOpportunityRecord[]>;
+  seedDefaultCommunityOpportunities(): Promise<void>;
+  getSavedCommunityOpportunityIds(userId: string): Promise<string[]>;
+  saveCommunityOpportunity(userId: string, opportunityId: string): Promise<void>;
+  unsaveCommunityOpportunity(userId: string, opportunityId: string): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -3490,6 +3501,136 @@ export class DatabaseStorage implements IStorage {
       .from(elevationPlans)
       .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
       .orderBy(desc(elevationPlans.createdAt));
+  }
+
+  async getCommunityOpportunities(): Promise<CommunityOpportunityRecord[]> {
+    return db
+      .select()
+      .from(communityOpportunities)
+      .where(eq(communityOpportunities.active, true))
+      .orderBy(desc(communityOpportunities.featured), desc(communityOpportunities.createdAt));
+  }
+
+  async seedDefaultCommunityOpportunities(): Promise<void> {
+    await db.insert(communityOpportunities).values([
+      {
+        title: "Weekend Park Cleanup",
+        organization: "Green City Initiative",
+        description: "Join us to beautify local parks and green spaces. No experience needed — just show up and help!",
+        type: "volunteering",
+        isOnline: false,
+        location: "Local parks",
+        url: null,
+        tags: ["environment", "outdoors", "group"],
+        matchScore: 0.85,
+        featured: true,
+        active: true,
+      },
+      {
+        title: "Virtual Mentor Program",
+        organization: "Youth Forward",
+        description: "Guide young professionals through career challenges and share your experience to help them grow.",
+        type: "mentoring",
+        isOnline: true,
+        location: null,
+        url: null,
+        tags: ["mentoring", "career", "remote"],
+        matchScore: 0.9,
+        featured: false,
+        active: true,
+      },
+      {
+        title: "Community Garden Project",
+        organization: "Neighborhood Alliance",
+        description: "Help grow fresh produce for local food banks. Slots available every Saturday morning.",
+        type: "volunteering",
+        isOnline: false,
+        location: "Community center",
+        url: null,
+        tags: ["food", "gardening", "local"],
+        matchScore: 0.8,
+        featured: false,
+        active: true,
+      },
+      {
+        title: "Climate Action Advocacy",
+        organization: "Earth Defenders",
+        description: "Join campaigns for environmental policy change. Write letters, attend local council meetings, and make your voice heard.",
+        type: "advocacy",
+        isOnline: true,
+        location: null,
+        url: null,
+        tags: ["environment", "advocacy", "policy"],
+        matchScore: 0.75,
+        featured: false,
+        active: true,
+      },
+      {
+        title: "Local Art Festival",
+        organization: "Arts Council",
+        description: "Help organize community cultural events that bring neighborhoods together through art and creativity.",
+        type: "local_events",
+        isOnline: false,
+        location: "City Hall Plaza",
+        url: null,
+        tags: ["arts", "culture", "events"],
+        matchScore: 0.7,
+        featured: false,
+        active: true,
+      },
+      {
+        title: "Mental Health Peer Support Group",
+        organization: "Mind & Wellness Collective",
+        description: "Facilitate or participate in peer support circles for mental wellness. Training provided.",
+        type: "online_groups",
+        isOnline: true,
+        location: null,
+        url: null,
+        tags: ["mental health", "support", "wellness"],
+        matchScore: 0.8,
+        featured: false,
+        active: true,
+      },
+      {
+        title: "Food Bank Donation Drive",
+        organization: "Community Food Network",
+        description: "Help fundraise and collect non-perishable food donations for families in need this season.",
+        type: "donations",
+        isOnline: false,
+        location: "Multiple drop-off points",
+        url: null,
+        tags: ["food", "poverty", "community"],
+        matchScore: 0.72,
+        featured: false,
+        active: true,
+      },
+    ]).onConflictDoNothing();
+  }
+
+  async getSavedCommunityOpportunityIds(userId: string): Promise<string[]> {
+    const saved = await db
+      .select({ opportunityId: savedCommunityOpportunities.opportunityId })
+      .from(savedCommunityOpportunities)
+      .where(eq(savedCommunityOpportunities.userId, userId));
+    return saved.map((s) => s.opportunityId);
+  }
+
+  async saveCommunityOpportunity(userId: string, opportunityId: string): Promise<void> {
+    await db
+      .insert(savedCommunityOpportunities)
+      .values({ userId, opportunityId })
+      .onConflictDoNothing();
+  }
+
+  async unsaveCommunityOpportunity(userId: string, opportunityId: string): Promise<void> {
+    await db
+      .delete(savedCommunityOpportunities)
+      .where(
+        and(
+          eq(savedCommunityOpportunities.userId, userId),
+          eq(savedCommunityOpportunities.opportunityId, opportunityId),
+        ),
+      );
   }
 }
 

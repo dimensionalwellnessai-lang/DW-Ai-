@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,16 +32,13 @@ import { useToast } from "@/hooks/use-toast";
 import {
   getCommunityProfile,
   saveCommunityProfile,
-  getCommunityOpportunities,
   hasCompletedCommunityProfile,
-  getSavedCommunityOpportunityIds,
-  toggleSavedCommunityOpportunity,
   saveCalendarEvent,
   type CommunityProfile,
-  type CommunityOpportunity,
   type CommunityFocus,
   type AvailabilityLevel,
 } from "@/lib/guest-storage";
+import { apiRequest } from "@/lib/queryClient";
 
 const FOCUS_OPTIONS: { id: CommunityFocus; label: string; description: string }[] = [
   { id: "volunteering", label: "Volunteering", description: "Hands-on help for causes you care about" },
@@ -71,79 +69,22 @@ const CAUSE_OPTIONS = [
   "Community Development",
 ];
 
-// Extended type for display purposes
-interface OpportunityDisplay extends CommunityOpportunity {
-  featured?: boolean;
+// Extended type for display purposes (matches API response shape)
+interface OpportunityDisplay {
+  id: string;
+  title: string;
+  organization: string;
+  description: string;
+  type: CommunityFocus;
+  isOnline: boolean | null;
+  location: string | null;
+  url: string | null;
+  tags: string[] | null;
+  matchScore: number | null;
+  featured: boolean | null;
+  discoveredAt: number;
+  isSaved?: boolean;
 }
-
-const SAMPLE_OPPORTUNITIES: OpportunityDisplay[] = [
-  {
-    id: "1",
-    title: "Weekend Park Cleanup",
-    organization: "Green City Initiative",
-    description: "Join us to beautify local parks and green spaces",
-    type: "volunteering" as CommunityFocus,
-    isOnline: false,
-    location: "Local parks",
-    url: null,
-    tags: ["environment", "outdoors", "group"],
-    matchScore: 0.85,
-    discoveredAt: Date.now() - 86400000, // 1 day ago
-    featured: true,
-  },
-  {
-    id: "2",
-    title: "Virtual Mentor Program",
-    organization: "Youth Forward",
-    description: "Guide young professionals through career challenges",
-    type: "mentoring" as CommunityFocus,
-    isOnline: true,
-    location: null,
-    url: null,
-    tags: ["mentoring", "career", "remote"],
-    matchScore: 0.9,
-    discoveredAt: Date.now() - 172800000, // 2 days ago
-  },
-  {
-    id: "3",
-    title: "Community Garden Project",
-    organization: "Neighborhood Alliance",
-    description: "Help grow fresh produce for local food banks",
-    type: "volunteering" as CommunityFocus,
-    isOnline: false,
-    location: "Community center",
-    url: null,
-    tags: ["food", "gardening", "local"],
-    matchScore: 0.8,
-    discoveredAt: Date.now() - 259200000, // 3 days ago
-  },
-  {
-    id: "4",
-    title: "Climate Action Advocacy",
-    organization: "Earth Defenders",
-    description: "Join campaigns for environmental policy change",
-    type: "advocacy" as CommunityFocus,
-    isOnline: true,
-    location: null,
-    url: null,
-    tags: ["environment", "advocacy", "policy"],
-    matchScore: 0.75,
-    discoveredAt: Date.now() - 345600000, // 4 days ago
-  },
-  {
-    id: "5",
-    title: "Local Art Festival",
-    organization: "Arts Council",
-    description: "Help organize community cultural events",
-    type: "local_events" as CommunityFocus,
-    isOnline: false,
-    location: "City Hall Plaza",
-    url: null,
-    tags: ["arts", "culture", "events"],
-    matchScore: 0.7,
-    discoveredAt: Date.now() - 432000000, // 5 days ago
-  },
-];
 
 // Opportunity type styling
 const OPPORTUNITY_STYLES: Record<CommunityFocus, { icon: typeof HandHeart; color: string; bg: string; label: string }> = {
@@ -159,12 +100,37 @@ export default function CommunityPage() {
   useTutorialStart("community", 1000);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<CommunityProfile | null>(getCommunityProfile());
-  const opportunities = getCommunityOpportunities();
   const hasProfile = hasCompletedCommunityProfile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [selectedOpp, setSelectedOpp] = useState<OpportunityDisplay | null>(null);
-  const [savedIds, setSavedIds] = useState<string[]>(() => getSavedCommunityOpportunityIds());
+
+  // Fetch live opportunities from the API
+  const { data: opportunitiesData = [], isLoading: oppsLoading, isError: oppsError } = useQuery<OpportunityDisplay[]>({
+    queryKey: ["/api/community/opportunities"],
+  });
+
+  const savedIds = useMemo(
+    () => opportunitiesData.filter((o) => o.isSaved).map((o) => o.id),
+    [opportunitiesData],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ opportunityId, saving }: { opportunityId: string; saving: boolean }) => {
+      if (saving) {
+        await apiRequest("POST", "/api/community/opportunities/saved", { opportunityId });
+      } else {
+        await apiRequest("DELETE", `/api/community/opportunities/saved/${opportunityId}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/opportunities"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Could not update saved status. Please try again.", variant: "destructive" });
+    },
+  });
 
   const handleSaveProfile = (newProfile: CommunityProfile) => {
     saveCommunityProfile(newProfile);
@@ -173,8 +139,8 @@ export default function CommunityPage() {
   };
 
   const handleToggleSave = (opp: OpportunityDisplay) => {
-    const nowSaved = toggleSavedCommunityOpportunity(opp.id);
-    setSavedIds(getSavedCommunityOpportunityIds());
+    const nowSaved = !opp.isSaved;
+    saveMutation.mutate({ opportunityId: opp.id, saving: nowSaved });
     toast({
       title: nowSaved ? "Opportunity saved" : "Opportunity removed",
       description: nowSaved ? `"${opp.title}" added to your saved list.` : `"${opp.title}" removed from saved.`,
@@ -201,7 +167,7 @@ export default function CommunityPage() {
       recurrencePattern: null,
       recurrenceEndDate: null,
       relatedFoundationIds: [],
-      tags: opp.tags,
+      tags: opp.tags ?? [],
     });
     toast({
       title: "Added to calendar",
@@ -209,8 +175,8 @@ export default function CommunityPage() {
     });
   };
 
-  const displayOpportunities: OpportunityDisplay[] = opportunities.length > 0 ? opportunities : SAMPLE_OPPORTUNITIES;
-  const hasRealOpportunities = opportunities.length > 0;
+  const displayOpportunities: OpportunityDisplay[] = opportunitiesData;
+  const hasRealOpportunities = opportunitiesData.length > 0;
   const savedOpportunities = displayOpportunities.filter((o) => savedIds.includes(o.id));
   const featuredOpp = displayOpportunities.find((o) => o.featured);
 
@@ -402,11 +368,31 @@ export default function CommunityPage() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">Opportunities for You</h2>
               <Badge variant="outline" className="text-xs">
-                {displayOpportunities.length} available
+                {oppsLoading ? "Loading…" : `${displayOpportunities.length} available`}
               </Badge>
             </div>
 
-            {!hasRealOpportunities ? (
+            {oppsLoading ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3 animate-pulse" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground">Loading opportunities…</p>
+                </CardContent>
+              </Card>
+            ) : oppsError ? (
+              <Card className="border-destructive/30">
+                <CardContent className="p-8 text-center">
+                  <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
+                  <p className="font-medium mb-1">Could not load opportunities</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    There was a problem fetching community opportunities. Please try again.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/community/opportunities"] })} data-testid="button-retry-opportunities">
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : !hasRealOpportunities ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" aria-hidden="true" />
@@ -479,7 +465,7 @@ export default function CommunityPage() {
                                     {featuredOpp.location}
                                   </Badge>
                                 )}
-                                {featuredOpp.tags.map((tag: string) => (
+                                {(featuredOpp.tags ?? []).map((tag: string) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -543,7 +529,7 @@ export default function CommunityPage() {
                                     {opp.location}
                                   </Badge>
                                 )}
-                                {opp.tags.map((tag: string) => (
+                                {(opp.tags ?? []).map((tag: string) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -611,7 +597,7 @@ export default function CommunityPage() {
                         {selectedOpp.location}
                       </Badge>
                     ) : null}
-                    {selectedOpp.tags.map((tag: string) => (
+                    {(selectedOpp.tags ?? []).map((tag: string) => (
                       <Badge key={tag} variant="outline" className="text-xs">
                         {tag}
                       </Badge>
