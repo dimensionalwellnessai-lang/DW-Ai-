@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Loader2, ShieldCheck, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateUpgrade } from "@/lib/billing";
 import type { BillingPlan } from "@/lib/billing";
@@ -185,6 +185,14 @@ export default function CheckoutPage() {
         ) : (
           /* ── Checkout form ───────────────────────────────────────────── */
           <>
+            {/* Demo notice */}
+            <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5">
+              <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-blue-600 dark:text-blue-400 leading-snug">
+                Payments aren't live yet — no charge will be made. Confirming will activate your plan in demo mode.
+              </p>
+            </div>
+
             {/* Header */}
             <div className="text-center space-y-1">
               <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">

@@ -437,6 +437,9 @@ export function MeditationAudioPlayer() {
             </span>
           </div>
         )}
+      <p className="text-xs text-muted-foreground/60 text-center pt-1">
+        All sounds are synthesized locally. Guided recordings coming soon.
+      </p>
       </CardContent>
     </Card>
   );

@@ -179,7 +179,7 @@ async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
 
   if (tesseractResult && tesseractResult.text.length >= 10) {
     const ocrWarning = !visionConfigured
-      ? "OCR quality is limited. Set the GOOGLE_VISION_API_KEY environment variable to enable enhanced image text extraction via Google Vision."
+      ? "Text was extracted using basic OCR — accuracy may be limited for scanned or image-based files. Results should still be usable."
       : "OCR extracted partial text. The image may be blurry or low resolution.";
     console.warn(`[DocumentParser] Returning low-confidence Tesseract result (${tesseractResult.confidence}%). ${ocrWarning}`);
     return {
@@ -197,15 +197,12 @@ async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
 
   throw createProcessingError(
     "OCR_FAILED",
-    `Could not extract text from image. ${visionNotConfiguredMsg}`,
+    "Could not extract text from this image.",
     "We couldn't read the text in this image clearly.",
     true,
     [
-      ...(!visionConfigured
-        ? ["Configure GOOGLE_VISION_API_KEY for enhanced OCR support"]
-        : []),
       "Make sure the photo is well-lit and in focus",
-      "Try taking a straighter photo",
+      "Try taking a straighter, closer photo",
       "Type the content directly instead",
     ]
   );
@@ -347,7 +344,7 @@ async function ocrPdfFallback(buffer: Buffer, numPages: number): Promise<ParsedD
 
     // Attach a non-blocking warning when Vision is absent so the caller can surface it in the UI
     const ocrWarning = !visionConfigured
-      ? "This scanned PDF was processed with basic OCR (Tesseract). For better accuracy, set the GOOGLE_VISION_API_KEY environment variable."
+      ? "This scanned PDF was read using basic text recognition. Accuracy may vary — please review the extracted items before saving."
       : undefined;
     
     return {

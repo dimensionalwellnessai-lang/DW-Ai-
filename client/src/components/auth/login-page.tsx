@@ -643,8 +643,11 @@ export function LoginPage() {
               <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Mail className="h-6 w-6 text-primary" />
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                If an account exists for <span className="font-medium text-foreground">{forgotEmail}</span>, you'll receive an email with instructions to reset your password.
+              <p className="text-sm text-muted-foreground mb-2">
+                If an account exists for <span className="font-medium text-foreground">{forgotEmail}</span>, you'll receive an email with a link to reset your password.
+              </p>
+              <p className="text-xs text-muted-foreground/70 mb-4">
+                Don't see it? Check your spam or junk folder — it may take a minute to arrive.
               </p>
               <Button onClick={closeForgotPassword} className="w-full" data-testid="button-close-forgot">
                 Back to Login
