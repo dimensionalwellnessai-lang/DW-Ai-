@@ -66,6 +66,13 @@ Preferred communication style: Simple, everyday language.
 - Proactive nudges based on user history and energy state
 - System prompts enforce calm, consent-based tone
 
+### Browse Page (client/src/pages/browse.tsx)
+- **For You tab**: Shows time-aware real content (videos, articles, workouts, meal idea) via `GET /api/browse/for-you` using Perplexity web search. Refreshes when time slot changes. Greeting banner adapts to time of day and user name. Topic suggestions from `/api/explore/suggestions` shown below.
+- **Video tab**: Auto-loads recommended videos from `forYouData` at the top; Search YouTube section below.
+- **Articles tab**: Curated via `GET /api/browse/ai-articles` — uses Perplexity first (real URLs), falls back to OpenAI. Time-slot and day-of-week aware.
+- **Community tab**: Groups and Feed tabs show "Coming Soon" empty states (no mock data). Local Resources tab remains functional with Perplexity-powered local search.
+- **Server endpoint** `GET /api/browse/for-you`: Perplexity-powered, returns `{ videos, articles, workouts, meal, timeSlot, dayName, timeLabel }`. Falls back to curated static content.
+
 ## External Dependencies
 
 ### Core Services

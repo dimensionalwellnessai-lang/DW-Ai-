@@ -85,6 +85,27 @@ const CONTENT_CATEGORIES = [
   { id: "blog", name: "Blog", icon: FileText },
 ];
 
+// ── Time helpers ─────────────────────────────────────────────────────────────
+function getTimeSlot(): "morning" | "late-morning" | "afternoon" | "evening" | "night" {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 9)   return "morning";
+  if (h >= 9 && h < 12)  return "late-morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+}
+function getTimeGreeting(): string {
+  const slot = getTimeSlot();
+  if (slot === "morning" || slot === "late-morning") return "Good morning";
+  if (slot === "afternoon") return "Good afternoon";
+  if (slot === "evening") return "Good evening";
+  return "Good night";
+}
+function getDayName(): string {
+  return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
+}
+
+// Minimal static fallback for the "All" tab (real content comes from APIs)
 const SAMPLE_CONTENT = [
   {
     id: "1",
@@ -389,21 +410,6 @@ const SAMPLE_CONTENT = [
   },
 ];
 
-const COMMUNITY_GROUPS = [
-  { id: "morning-reset", name: "Morning Reset", members: 234, icon: Sun, description: "Start your day with intention" },
-  { id: "meal-prep", name: "Meal Prep Crew", members: 189, icon: Utensils, description: "Weekly meal planning together" },
-  { id: "gym-strength", name: "Gym & Strength", members: 412, icon: Dumbbell, description: "Lift heavy, support each other" },
-  { id: "study-sprint", name: "Study Sprint", members: 156, icon: Brain, description: "Focus sessions and study tips" },
-  { id: "money-moves", name: "Money Moves", members: 98, icon: Sparkles, description: "Financial wellness & goals" },
-];
-
-const COMMUNITY_POSTS = [
-  { id: "1", authorName: "Alex M.", timeAgo: "2h", text: "Just finished my morning workout. 30 minutes felt like nothing today. Small wins add up!", tags: ["motivation", "workout"] },
-  { id: "2", authorName: "Sam K.", timeAgo: "4h", text: "Anyone else meal prepping for the week? Made a big batch of overnight oats and it's a game changer.", tags: ["meal-prep"] },
-  { id: "3", authorName: "Jordan T.", timeAgo: "6h", text: "Had a rough day but took 5 minutes to breathe. Sometimes that's all you need.", tags: ["mindfulness"] },
-  { id: "4", authorName: "Riley P.", timeAgo: "1d", text: "Pro tip: I started tracking my spending with just a notes app. Don't overcomplicate it.", tags: ["money", "tips"] },
-  { id: "5", authorName: "Casey L.", timeAgo: "1d", text: "Joining the study sprint group helped me stay accountable. Highly recommend!", tags: ["community", "study"] },
-];
 
 interface LocalResource {
   title: string;
@@ -482,11 +488,28 @@ export default function Browse() {
     queryKey: ["/api/wellness-content"],
   });
 
-  // For You tab: AI suggestions
+  // For You tab: AI suggestions (topic keywords)
   const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery<{ suggestions: any[] }>({
     queryKey: ["/api/explore/suggestions"],
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     enabled: activeTab === "for-you",
+  });
+
+  // For You + Video tab: real time-aware content via Perplexity
+  const timeSlotNow = getTimeSlot();
+  const dayNameNow = getDayName();
+  const { data: forYouData, isLoading: forYouLoading } = useQuery<{
+    videos: Array<{ id: string; title: string; description: string; url: string; channel: string; duration: string; category: string }>;
+    articles: Array<{ id: string; title: string; synopsis: string; url: string; source: string; readTimeMinutes: number; whySuggested: string }>;
+    workouts: Array<{ id: string; title: string; description: string; url: string; duration: string; difficulty: string }>;
+    meal: { id: string; title: string; description: string; url: string; prepTime: string } | null;
+    timeSlot: string;
+    dayName: string;
+    timeLabel: string;
+  }>({
+    queryKey: ["/api/browse/for-you", timeSlotNow, dayNameNow],
+    staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
+    enabled: activeTab === "for-you" || activeTab === "video",
   });
 
   // Saved tab: Saved content
@@ -495,7 +518,7 @@ export default function Browse() {
     enabled: activeTab === "saved",
   });
 
-  // Articles tab: AI-curated articles with synopsis + reason + real links
+  // Articles tab: AI-curated real articles — refreshes when time slot changes
   const { data: aiArticlesData, isLoading: aiArticlesLoading } = useQuery<{
     articles: Array<{
       id: string;
@@ -508,8 +531,8 @@ export default function Browse() {
     }>;
     aiGenerated: boolean;
   }>({
-    queryKey: ["/api/browse/ai-articles"],
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    queryKey: ["/api/browse/ai-articles", timeSlotNow, dayNameNow],
+    staleTime: 30 * 60 * 1000, // 30 min
     enabled: activeTab === "articles",
   });
 
@@ -935,20 +958,175 @@ ${contentList}`,
       
       {activeTab === "for-you" && (
         <main className="p-4 space-y-6">
-          {/* Personalization context banner */}
-          {userProfile && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10 text-sm">
-              <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-muted-foreground">
-                Personalized based on your{" "}
-                {userProfile.fitnessGoal && (
-                  <Badge variant="secondary" className="mx-1 text-xs">{userProfile.fitnessGoal}</Badge>
-                )}
-                {userProfile.meditationStyle && (
-                  <Badge variant="secondary" className="mx-1 text-xs">{userProfile.meditationStyle}</Badge>
-                )}
-                profile
-              </span>
+          {/* Time-aware greeting */}
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{getTimeGreeting()}{userProfile?.firstName ? `, ${userProfile.firstName}` : ""}</span>
+              {" — "}{dayNameNow} picks tailored for this time of day
+            </span>
+          </div>
+
+          {/* Real time-aware content from Perplexity */}
+          {forYouLoading ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Loading your picks...</h2>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : forYouData ? (
+            <div className="space-y-6">
+              {/* Videos */}
+              {forYouData.videos.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Videos for {forYouData.timeLabel ?? timeSlotNow}</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {forYouData.videos.slice(0, 4).filter(v => !notInterestedUrls.has(v.url)).map((video) => (
+                      <Card key={video.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-video-${video.id}`}>
+                        <CardContent className="p-3 flex items-start gap-3">
+                          <div className={`w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)}`}>
+                            {video.category === "yoga" || video.category === "meditation" ? <Brain className="h-6 w-6 text-primary/60" /> : <Dumbbell className="h-6 w-6 text-primary/60" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{video.channel}{video.duration ? ` · ${video.duration}` : ""}</p>
+                            <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">{video.description}</p>
+                          </div>
+                          <div className="flex flex-col gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-video-open-${video.id}`}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground/50" onClick={(e) => { e.stopPropagation(); handleNotInterested({ title: video.title, url: video.url, type: "video" }); }} data-testid={`button-foryou-video-notinterested-${video.id}`}>
+                              <ThumbsDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Articles */}
+              {forYouData.articles.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Reads for Today</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {forYouData.articles.slice(0, 3).filter(a => !notInterestedUrls.has(a.url)).map((article) => (
+                      <Card key={article.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-article-${article.id}`}>
+                        <CardContent className="p-3 flex items-start gap-3">
+                          <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-500/20 to-violet-500/5">
+                            <FileText className="h-6 w-6 text-primary/60" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm leading-snug line-clamp-2">{article.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{article.source}{article.readTimeMinutes ? ` · ${article.readTimeMinutes} min read` : ""}</p>
+                            {article.whySuggested && <p className="text-xs text-primary/70 mt-1 line-clamp-1 italic">{article.whySuggested}</p>}
+                          </div>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-article-open-${article.id}`}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Workouts */}
+              {forYouData.workouts && forYouData.workouts.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Dumbbell className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Workouts</h2>
+                  </div>
+                  <div className="space-y-2">
+                    {forYouData.workouts.filter(w => !notInterestedUrls.has(w.url)).map((workout) => (
+                      <Card key={workout.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-workout-${workout.id}`}>
+                        <CardContent className="p-3 flex items-start gap-3">
+                          <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-red-500/5">
+                            <Dumbbell className="h-6 w-6 text-primary/60" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm leading-snug line-clamp-2">{workout.title}</p>
+                            <div className="flex gap-2 mt-1">
+                              {workout.duration && <Badge variant="secondary" className="text-xs"><Clock className="h-2.5 w-2.5 mr-1" />{workout.duration}</Badge>}
+                              {workout.difficulty && <Badge variant="outline" className="text-xs capitalize">{workout.difficulty}</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{workout.description}</p>
+                          </div>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-workout-open-${workout.id}`}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meal */}
+              {forYouData.meal && !notInterestedUrls.has(forYouData.meal.url) && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Utensils className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Meal Idea</h2>
+                  </div>
+                  <Card className="card-modern hover-lift cursor-pointer" onClick={() => { if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="card-foryou-meal">
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-yellow-500/20 to-orange-500/5">
+                        <Utensils className="h-6 w-6 text-primary/60" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm leading-snug line-clamp-2">{forYouData.meal.title}</p>
+                        {forYouData.meal.prepTime && <p className="text-xs text-muted-foreground mt-0.5"><Clock className="h-3 w-3 inline mr-1" />{forYouData.meal.prepTime}</p>}
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{forYouData.meal.description}</p>
+                      </div>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="button-foryou-meal-open">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* DW topic suggestions */}
+          {suggestionsData?.suggestions && suggestionsData.suggestions.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Explore by Topic</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {suggestionsData.suggestions.map((suggestion: any, idx: number) => (
+                  <TopicSuggestionCard
+                    key={idx}
+                    dimension={suggestion.dimension}
+                    title={suggestion.title}
+                    description={suggestion.description}
+                    topicKeywords={suggestion.keywords || []}
+                    onExplore={handleSuggestionExplore}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -966,33 +1144,7 @@ ${contentList}`,
             </div>
           )}
 
-          {suggestionsLoading ? (
-            <div className="text-center py-12">
-              <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading personalized suggestions...</p>
-            </div>
-          ) : suggestionsData?.suggestions && suggestionsData.suggestions.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Curated for You</h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {suggestionsData.suggestions.map((suggestion: any, idx: number) => (
-                  <TopicSuggestionCard
-                    key={idx}
-                    dimension={suggestion.dimension}
-                    title={suggestion.title}
-                    description={suggestion.description}
-                    topicKeywords={suggestion.keywords || []}
-                    onExplore={handleSuggestionExplore}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Personalized curated content */}
+          {/* Personalized curated content (from DB/sample) */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-primary" />
@@ -1445,6 +1597,56 @@ ${contentList}`,
               </Button>
             </div>
           )}
+
+          {/* Auto-loaded time-aware videos */}
+          {forYouLoading ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Play className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Loading picks...</h2>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : forYouData?.videos && forYouData.videos.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Play className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Recommended for {forYouData.timeLabel ?? timeSlotNow}</h2>
+              </div>
+              <div className="space-y-2">
+                {forYouData.videos.filter(v => !notInterestedUrls.has(v.url)).map((video) => (
+                  <Card key={video.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-video-rec-${video.id}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <div className={`w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)}`}>
+                        {video.category === "yoga" || video.category === "meditation" ? <Brain className="h-6 w-6 text-primary/60" /> : <Dumbbell className="h-6 w-6 text-primary/60" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{video.channel}{video.duration ? ` · ${video.duration}` : ""}</p>
+                        <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">{video.description}</p>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-video-rec-open-${video.id}`}>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground/50" onClick={(e) => { e.stopPropagation(); handleNotInterested({ title: video.title, url: video.url, type: "video" }); }} data-testid={`button-video-rec-notinterested-${video.id}`}>
+                          <ThumbsDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mb-4">
             <h2 className="text-lg font-semibold mb-3">Search YouTube</h2>
@@ -1917,84 +2119,26 @@ ${contentList}`,
 
           {communityCategory === "groups" && (
             <main className="p-4">
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {COMMUNITY_GROUPS.map((group) => {
-                  const GroupIcon = group.icon;
-                  return (
-                    <Card
-                      key={group.id}
-                      className="card-modern hover-lift cursor-pointer transition-all"
-                      onClick={handleComingSoon}
-                      data-testid={`card-group-${group.id}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <GroupIcon className="h-5 w-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm">{group.name}</h3>
-                            <p className="text-xs text-muted-foreground mb-2">{group.description}</p>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Users className="h-3 w-3" />
-                              <span>{group.members} members</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 px-8">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-8 w-8 text-primary/60" />
+                </div>
+                <h3 className="text-lg font-semibold">Community Groups Coming Soon</h3>
+                <p className="text-sm text-muted-foreground max-w-xs">We're building a warm, supportive community where you can connect with others on the same wellness journey. Stay tuned.</p>
+                <Badge variant="secondary" className="text-xs">Coming in a future update</Badge>
               </div>
             </main>
           )}
 
           {communityCategory === "feed" && (
             <main className="p-4">
-              <div className="space-y-3">
-                {COMMUNITY_POSTS.map((post) => (
-                  <Card key={post.id} className="card-modern" data-testid={`card-post-${post.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
-                          {post.authorName.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{post.authorName}</span>
-                            <span className="text-xs text-muted-foreground">{post.timeAgo}</span>
-                          </div>
-                          <p className="text-sm mb-2">{post.text}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {post.tags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="flex items-center gap-4 mt-3">
-                            <button 
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                              onClick={handleComingSoon}
-                              data-testid={`button-like-${post.id}`}
-                            >
-                              <ThumbsUp className="h-3.5 w-3.5" aria-hidden="true" />
-                              Like
-                            </button>
-                            <button 
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                              onClick={handleComingSoon}
-                              data-testid={`button-comment-${post.id}`}
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                              Comment
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 px-8">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageCircle className="h-8 w-8 text-primary/60" />
+                </div>
+                <h3 className="text-lg font-semibold">Community Feed Coming Soon</h3>
+                <p className="text-sm text-muted-foreground max-w-xs">Share your wins, ask questions, and cheer each other on. A real feed is on the way — built around kindness, not competition.</p>
+                <Badge variant="secondary" className="text-xs">Coming in a future update</Badge>
               </div>
             </main>
           )}

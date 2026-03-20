@@ -3924,10 +3924,13 @@ Return ONLY a valid JSON object:
   // Falls back to an empty array (client shows sample content) if AI not configured.
   app.get("/api/browse/ai-articles", aiContentLimiter, async (req, res) => {
     try {
-      const aiConfig = getAiConfigStatus();
-      if (!aiConfig.configured) {
-        return res.json({ articles: [], aiGenerated: false });
-      }
+      const hour = new Date().getHours();
+      const timeSlot =
+        hour >= 5 && hour < 9   ? "morning" :
+        hour >= 9 && hour < 12  ? "late-morning" :
+        hour >= 12 && hour < 17 ? "afternoon" :
+        hour >= 17 && hour < 21 ? "evening" : "night";
+      const dayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
 
       // Optional user context
       let topics: string[] = [];
@@ -3951,29 +3954,64 @@ Return ONLY a valid JSON object:
         ? `The user is interested in: ${topics.join(", ")}.`
         : "The user is interested in general wellness, mindfulness, and healthy living.";
 
-      const prompt = `You are a wellness content curator. ${topicsLine}
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
 
-Suggest 6 real or highly plausible wellness article topics that would genuinely help this person. For each, provide:
-- A realistic article title (as it would appear on a wellness blog or site)
-- A 2-3 sentence synopsis of the article's content
-- A 1-sentence personalised reason why this article is being recommended to this user
-- A plausible URL (use real wellness domains like healthline.com, verywellhealth.com, mindbodygreen.com, greatist.com, self.com, psychologytoday.com, medicalnewstoday.com)
-- One of these categories: article, blog, mindfulness, nutrition
+      // Try Perplexity first for real article URLs
+      if (perplexityApiKey) {
+        const pxPrompt = `Today is ${dayName}, ${timeSlot}. ${topicsLine}
 
-Return ONLY a valid JSON object:
-{
-  "articles": [
-    {
-      "id": "ai-article-1",
-      "title": "...",
-      "synopsis": "...",
-      "whySuggested": "...",
-      "url": "https://...",
-      "category": "article",
-      "readTimeMinutes": 5
-    }
-  ]
-}`;
+Search the web and find 6 real wellness articles from established health sites appropriate for this time of day. Use real article URLs from sites like healthline.com, verywellfit.com, mindbodygreen.com, self.com, psychologytoday.com, medicalnewstoday.com, greatist.com.
+
+Return ONLY this JSON, no other text:
+{"articles":[{"id":"a1","title":"...","synopsis":"2-3 sentence summary","whySuggested":"1 sentence personalised reason","url":"https://...","category":"article","readTimeMinutes":5}]}`;
+
+        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama-3.1-sonar-large-128k-online",
+            messages: [
+              { role: "system", content: "You are a wellness content curator. Search the web and return only valid JSON with real article URLs." },
+              { role: "user", content: pxPrompt },
+            ],
+            temperature: 0.1,
+            max_tokens: 1800,
+          }),
+        });
+
+        if (pxRes.ok) {
+          const pxData = await pxRes.json();
+          let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+          if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+          try {
+            const parsed = JSON.parse(raw);
+            const rawArticles = Array.isArray(parsed.articles) ? parsed.articles : [];
+            const safeArticles = rawArticles.map((a: Record<string, unknown>) => {
+              let safeUrl = "";
+              if (typeof a.url === "string") {
+                try { const p = new URL(a.url); if (p.protocol === "https:" && p.hostname) safeUrl = a.url; } catch {}
+              }
+              return { ...a, url: safeUrl };
+            }).filter((a: any) => a.url && a.title);
+            if (safeArticles.length >= 3) {
+              return res.json({ articles: safeArticles, aiGenerated: true });
+            }
+          } catch { /* fall through to OpenAI */ }
+        }
+      }
+
+      // Fallback to OpenAI
+      const aiConfig = getAiConfigStatus();
+      if (!aiConfig.configured) {
+        return res.json({ articles: [], aiGenerated: false });
+      }
+
+      const prompt = `You are a wellness content curator. Today is ${dayName}, ${timeSlot}. ${topicsLine}
+
+Suggest 6 real wellness article topics appropriate for this time of day. For each provide a title, synopsis, whySuggested, a URL from a real wellness domain (healthline.com, verywellhealth.com, mindbodygreen.com, greatist.com, self.com, psychologytoday.com), and category.
+
+Return ONLY:
+{"articles":[{"id":"ai-article-1","title":"...","synopsis":"...","whySuggested":"...","url":"https://...","category":"article","readTimeMinutes":5}]}`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -4009,6 +4047,174 @@ Return ONLY a valid JSON object:
     } catch (error) {
       console.error("AI article curation error:", error);
       return res.json({ articles: [], aiGenerated: false });
+    }
+  });
+
+  /**
+   * GET /api/browse/for-you
+   * Returns time-aware, day-aware real wellness content using Perplexity web search.
+   * Falls back to curated static content when Perplexity is unavailable.
+   */
+  app.get("/api/browse/for-you", async (req, res) => {
+    try {
+      const hour = new Date().getHours();
+      const timeSlot: string =
+        hour >= 5 && hour < 9   ? "morning" :
+        hour >= 9 && hour < 12  ? "late-morning" :
+        hour >= 12 && hour < 17 ? "afternoon" :
+        hour >= 17 && hour < 21 ? "evening" : "night";
+      const dayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
+
+      const timeLabel: Record<string, string> = {
+        "morning": "early morning", "late-morning": "mid-morning",
+        "afternoon": "afternoon", "evening": "evening", "night": "night",
+      };
+      const videoFocus: Record<string, string> = {
+        "morning": "morning yoga, energising wake-up workout, or breathwork",
+        "late-morning": "HIIT workout, strength training, or focused flow yoga",
+        "afternoon": "desk stretches, walking workout, or mindfulness break",
+        "evening": "wind-down yoga, relaxing stretches, or meditation",
+        "night": "sleep yoga, body scan meditation, or gentle stretching",
+      };
+      const mealFocus: Record<string, string> = {
+        "morning": "healthy breakfast or morning smoothie",
+        "late-morning": "healthy snack or brunch recipe",
+        "afternoon": "lunch or meal prep idea",
+        "evening": "healthy dinner recipe",
+        "night": "light evening snack or sleep-supportive food",
+      };
+
+      let userId: number | undefined;
+      let userTopics = "";
+      if (req.session?.userId) {
+        userId = req.session.userId;
+        try {
+          const [profile, goals] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getGoals(userId),
+          ]);
+          const parts: string[] = [];
+          if (profile?.fitnessGoal) parts.push(profile.fitnessGoal);
+          goals.slice(0, 2).forEach((g: any) => { if (g.wellnessDimension) parts.push(g.wellnessDimension); });
+          if (parts.length) userTopics = ` User interests: ${parts.join(", ")}.`;
+        } catch { /* non-fatal */ }
+      }
+
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+
+      interface VideoItem { id: string; title: string; description: string; url: string; channel: string; duration: string; category: string; }
+      interface ArticleItem { id: string; title: string; synopsis: string; url: string; source: string; readTimeMinutes: number; whySuggested: string; }
+      interface WorkoutItem { id: string; title: string; description: string; url: string; duration: string; difficulty: string; }
+      interface MealItem { id: string; title: string; description: string; url: string; prepTime: string; }
+
+      let videos: VideoItem[] = [];
+      let articles: ArticleItem[] = [];
+      let workouts: WorkoutItem[] = [];
+      let meal: MealItem | null = null;
+
+      if (perplexityApiKey) {
+        const prompt = `Today is ${dayName} and it is ${timeLabel[timeSlot]}.${userTopics}
+
+Find real wellness content appropriate for this time. Search for ACTUAL existing content with real working URLs.
+
+1. Find 4 real YouTube wellness videos about ${videoFocus[timeSlot]}. Use real YouTube video IDs (e.g. https://www.youtube.com/watch?v=REAL_ID). Try channels like Yoga With Adriene, Heather Robertson, MedBridge, Headspace, Pick Up Limes, Jeff Nippard.
+2. Find 3 real wellness articles from sites like healthline.com, mindbodygreen.com, verywellfit.com, self.com, psychologytoday.com. Use real article URLs.
+3. Find 2 real workout videos for ${dayName} ${timeLabel[timeSlot]}.
+4. Find 1 real recipe for a ${mealFocus[timeSlot]} from a real recipe site like allrecipes.com, budgetbytes.com, or minimalistbaker.com.
+
+Return ONLY this exact JSON structure, no other text:
+{
+  "videos": [{"id":"v1","title":"...","description":"...","url":"https://www.youtube.com/watch?v=...","channel":"...","duration":"15 min","category":"yoga"}],
+  "articles": [{"id":"a1","title":"...","synopsis":"...","url":"https://...","source":"Healthline","readTimeMinutes":5,"whySuggested":"..."}],
+  "workouts": [{"id":"w1","title":"...","description":"...","url":"https://www.youtube.com/watch?v=...","duration":"20 min","difficulty":"beginner"}],
+  "meal": {"id":"m1","title":"...","description":"...","url":"https://...","prepTime":"15 min"}
+}`;
+
+        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama-3.1-sonar-large-128k-online",
+            messages: [
+              { role: "system", content: "You are a wellness content curator. Return only valid JSON with real URLs from the web." },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.1,
+            max_tokens: 2000,
+          }),
+        });
+
+        if (pxRes.ok) {
+          const pxData = await pxRes.json();
+          let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+          if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+          try {
+            const parsed = JSON.parse(raw);
+            const sanitizeUrl = (u: unknown) => {
+              if (typeof u !== "string") return "";
+              try { const p = new URL(u); return p.protocol === "https:" ? u : ""; } catch { return ""; }
+            };
+            if (Array.isArray(parsed.videos)) {
+              videos = parsed.videos
+                .filter((v: any) => v?.title && sanitizeUrl(v?.url))
+                .slice(0, 6)
+                .map((v: any, i: number) => ({ id: `v${i}`, title: String(v.title), description: String(v.description || ""), url: sanitizeUrl(v.url), channel: String(v.channel || ""), duration: String(v.duration || ""), category: String(v.category || "wellness") }));
+            }
+            if (Array.isArray(parsed.articles)) {
+              articles = parsed.articles
+                .filter((a: any) => a?.title && sanitizeUrl(a?.url))
+                .slice(0, 5)
+                .map((a: any, i: number) => ({ id: `a${i}`, title: String(a.title), synopsis: String(a.synopsis || ""), url: sanitizeUrl(a.url), source: String(a.source || ""), readTimeMinutes: Number(a.readTimeMinutes) || 5, whySuggested: String(a.whySuggested || "") }));
+            }
+            if (Array.isArray(parsed.workouts)) {
+              workouts = parsed.workouts
+                .filter((w: any) => w?.title && sanitizeUrl(w?.url))
+                .slice(0, 3)
+                .map((w: any, i: number) => ({ id: `w${i}`, title: String(w.title), description: String(w.description || ""), url: sanitizeUrl(w.url), duration: String(w.duration || ""), difficulty: String(w.difficulty || "beginner") }));
+            }
+            if (parsed.meal?.title && sanitizeUrl(parsed.meal?.url)) {
+              meal = { id: "m0", title: String(parsed.meal.title), description: String(parsed.meal.description || ""), url: sanitizeUrl(parsed.meal.url), prepTime: String(parsed.meal.prepTime || "") };
+            }
+          } catch (e) {
+            console.warn("[browse/for-you] JSON parse failed, using fallback");
+          }
+        }
+      }
+
+      // Static fallbacks for when Perplexity returns empty results
+      if (videos.length === 0) {
+        const fallbackVideos: Record<string, VideoItem[]> = {
+          "morning": [
+            { id: "fv1", title: "Morning Yoga for Energy", description: "Gentle wake-up flow to energise your body", url: "https://www.youtube.com/results?search_query=morning+yoga+energy+flow", channel: "Yoga With Adriene", duration: "20 min", category: "yoga" },
+            { id: "fv2", title: "5-Minute Morning Stretch", description: "Quick full-body stretch to start the day right", url: "https://www.youtube.com/results?search_query=5+minute+morning+stretch+routine", channel: "FitnessBlender", duration: "5 min", category: "stretch" },
+          ],
+          "afternoon": [
+            { id: "fv3", title: "Afternoon HIIT Workout", description: "Beat the afternoon slump with this energising HIIT", url: "https://www.youtube.com/results?search_query=afternoon+hiit+workout+30+minutes", channel: "Heather Robertson", duration: "30 min", category: "workout" },
+            { id: "fv4", title: "Desk Yoga & Stretches", description: "Counteract sitting all day with these office-friendly moves", url: "https://www.youtube.com/results?search_query=desk+yoga+stretches+for+office+workers", channel: "Yoga With Adriene", duration: "10 min", category: "yoga" },
+          ],
+          "evening": [
+            { id: "fv5", title: "Evening Wind-Down Yoga", description: "Release the day's tension with this calming flow", url: "https://www.youtube.com/results?search_query=evening+wind+down+yoga+relaxing", channel: "Yoga With Adriene", duration: "25 min", category: "yoga" },
+            { id: "fv6", title: "Guided Evening Meditation", description: "Calm your mind for a restful night's sleep", url: "https://www.youtube.com/results?search_query=guided+evening+meditation+10+minutes", channel: "Headspace", duration: "10 min", category: "meditation" },
+          ],
+          "night": [
+            { id: "fv7", title: "Sleep Meditation", description: "Deep relaxation to help you drift off peacefully", url: "https://www.youtube.com/results?search_query=sleep+meditation+guided+relaxation", channel: "Headspace", duration: "20 min", category: "meditation" },
+            { id: "fv8", title: "Gentle Bedtime Yoga", description: "Slow, restorative poses to prepare your body for sleep", url: "https://www.youtube.com/results?search_query=bedtime+yoga+gentle+restorative", channel: "Yoga With Adriene", duration: "15 min", category: "yoga" },
+          ],
+        };
+        videos = fallbackVideos[timeSlot] || fallbackVideos["afternoon"];
+      }
+      if (articles.length === 0) {
+        articles = [
+          { id: "fa1", title: "How to Build a Sustainable Morning Routine", synopsis: "Science-backed strategies for creating a morning routine that actually sticks and energizes your whole day.", url: "https://www.healthline.com/health/morning-routine", source: "Healthline", readTimeMinutes: 6, whySuggested: "Morning routines are the foundation of a thriving life." },
+          { id: "fa2", title: "The Science of Habit Formation", synopsis: "Understand the habit loop and how to rewire your brain for lasting positive change.", url: "https://www.verywellmind.com/what-is-a-habit-2795023", source: "Verywell Mind", readTimeMinutes: 8, whySuggested: "Habits are how DW helps you build the life you want." },
+          { id: "fa3", title: "Mindful Eating: How to Listen to Your Body", synopsis: "Practical tips for eating mindfully and developing a healthier relationship with food.", url: "https://www.mindbodygreen.com/food", source: "Mindbodygreen", readTimeMinutes: 5, whySuggested: "Nutrition is one of the 8 dimensions of your wellness." },
+        ];
+      }
+
+      return res.json({ videos, articles, workouts, meal, timeSlot, dayName, timeLabel: timeLabel[timeSlot] });
+    } catch (err) {
+      console.error("[browse/for-you] error", err);
+      return res.status(500).json({ error: "Failed to load content" });
     }
   });
 
