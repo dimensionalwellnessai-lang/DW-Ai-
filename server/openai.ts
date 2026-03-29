@@ -3588,3 +3588,39 @@ Do not make specific predictions. Focus on energy, invitation, and inner orienta
     return "";
   }
 }
+
+/**
+ * Generates random/surprise discover content: fun facts, history, spiritual lessons, quotes, or life lessons.
+ * Returns an array of items with title, body, dimension, source fields.
+ */
+export async function generateDiscoverRandomContent(type: string): Promise<Array<{ title: string; body: string; dimension: string; source: string }>> {
+  const prompts: Record<string, string> = {
+    fun_fact: "Generate 5 genuinely surprising and delightful fun facts about the world, science, nature, or human behavior. Each should make someone stop and think.",
+    history: "Generate 5 fascinating historical moments or forgotten stories that most people have never heard. Make them vivid and humanizing.",
+    spiritual: "Generate 5 spiritual teachings or wisdom messages drawn from diverse traditions (Buddhism, Stoicism, indigenous wisdom, Taoism, Sufism, etc.). Each should be practically grounding.",
+    quote: "Generate 5 powerful life quotes with 3-4 sentences of context explaining why this quote matters and how to apply it.",
+    lesson: "Generate 5 practical life lessons about relationships, money, health, mindset, or self-awareness. Each should feel like advice from a wise friend.",
+  };
+  const prompt = prompts[type] || prompts.fun_fact;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: 'Return ONLY valid JSON with this exact shape (no markdown, no explanation): { "items": [ { "title": "...", "body": "3-4 sentences", "dimension": "emotional|physical|financial|social|spiritual|intellectual|environmental|purpose", "source": "attribution or empty string" } ] }',
+        },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 1400,
+    });
+    const raw = completion.choices[0]?.message?.content || "{}";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return [];
+    const parsed = JSON.parse(jsonMatch[0]);
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch (error) {
+    console.error("generateDiscoverRandomContent error:", error);
+    return [];
+  }
+}

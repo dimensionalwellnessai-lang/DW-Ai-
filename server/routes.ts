@@ -18,7 +18,7 @@ import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, c
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import { googleVisionService } from "./google-vision";
@@ -11503,6 +11503,207 @@ Response:`;
     } catch (error) {
       console.error("POST /api/community/posts/:id/like error:", error);
       res.status(500).json({ error: "Failed to like post" });
+    }
+  });
+
+  // ── DISCOVER FEED STATIC LIBRARY ────────────────────────────────────────────
+  // Rich curated fallback content when AI is unavailable
+  const DISCOVER_STATIC_LIBRARY = [
+    // ── FOR YOU ──
+    { type: "article", bucket: "for_you", title: "The 5-Minute Morning Reset That Changes Everything", summary: "A simple ritual used by top performers to start every day with intention rather than reaction.", synopsis: "Most people start their day by reaching for their phone. This simple reset takes just 5 minutes and rewires your morning for focus and calm. It involves three breaths, one intention, and one thing you're grateful for — nothing more. Over time, this micro-habit compounds into a life that feels authored, not accidental.", dwConnection: "Starting the day with intention directly nurtures your emotional and mental wellness dimensions.", url: "https://www.healthline.com/health/morning-routine", source: "Healthline", dimension: "emotional", readTime: "4 min read" },
+    { type: "video", bucket: "for_you", title: "Andrew Huberman: The Science of a Perfect Morning", summary: "Stanford neuroscientist explains exactly what to do in the first 60 minutes after waking up.", synopsis: "Dr. Andrew Huberman walks through the neuroscience of morning light, cortisol timing, and how your first hour sets your dopamine baseline for the entire day. He explains why viewing natural light within 30 minutes of waking is the single most powerful biological lever available to you. This video changed the morning routines of millions.", dwConnection: "Understanding your biology is the foundation of sustainable physical and emotional wellness.", url: "https://www.youtube.com/watch?v=gR_f-iwUGY4", source: "YouTube", dimension: "physical", readTime: "Watch" },
+    { type: "article", bucket: "for_you", title: "How to Build Habits That Actually Stick", summary: "James Clear's framework from Atomic Habits: why tiny changes create remarkable results.", synopsis: "Most people try to change too much at once. James Clear's research shows that 1% improvement, done consistently, leads to 37x improvement over a year. The key insight: don't set goals, design systems. Every habit has a cue, craving, response, and reward — and you can engineer all four. This framework has been applied by millions worldwide.", dwConnection: "Building sustainable habits is the foundation of every wellness dimension you're working to improve.", url: "https://jamesclear.com/atomic-habits", source: "James Clear", dimension: "general", readTime: "8 min read" },
+    { type: "article", bucket: "for_you", title: "The Hidden Cost of Never Saying No", summary: "Why boundaries aren't walls — they're the architecture of a life that actually belongs to you.", synopsis: "Research from Brené Brown and others shows that people who struggle with boundaries often suffer chronic depletion, resentment, and a sense that their life is happening to them rather than by them. Saying no to the wrong things is saying yes to the right ones. This piece walks through practical scripts and the psychological shift required to make boundaries feel natural.", dwConnection: "Healthy boundaries are the bedrock of emotional wellness and sustainable social connection.", url: "https://brenebrown.com/resources/", source: "Brené Brown", dimension: "emotional", readTime: "6 min read" },
+    { type: "video", bucket: "for_you", title: "This Is Your Brain on Gratitude", summary: "Neuroscientist explains what happens in the brain when you practice gratitude — and why it works.", synopsis: "Dr. Rick Hanson breaks down how gratitude physically rewires your brain over time. The brain has a negativity bias baked in from evolution — gratitude practice counteracts this by strengthening neural pathways associated with positive emotion, social connection, and resilience. Even 30 seconds a day has measurable effects within weeks.", dwConnection: "A regular gratitude practice is one of the most evidence-based tools for emotional regulation.", url: "https://www.youtube.com/watch?v=JMd1CcGZYwU", source: "YouTube", dimension: "emotional", readTime: "Watch" },
+    { type: "article", bucket: "for_you", title: "Money Mindset: The Psychology Behind Financial Stress", summary: "Why your relationship with money is mostly emotional — and how to change it.", synopsis: "Financial therapists have found that most money problems aren't about math — they're about meaning. Our money scripts (beliefs formed in childhood) drive adult financial decisions unconsciously. Understanding and rewriting these scripts is the first step toward real financial peace. This article walks through three common money wounds and how to heal them.", dwConnection: "Your financial wellness dimension starts with self-awareness, not spreadsheets.", url: "https://www.psychologytoday.com/us/blog/financial-therapy", source: "Psychology Today", dimension: "financial", readTime: "7 min read" },
+    { type: "article", bucket: "for_you", title: "Why Walking Is the Most Underrated Health Practice", summary: "Science keeps finding new benefits of daily walking — from brain health to longevity.", synopsis: "Walking 7,000–10,000 steps a day is associated with a 50–70% reduction in all-cause mortality risk. But beyond the cardiovascular benefits, walking is the only exercise that meaningfully reduces cortisol while simultaneously boosting creativity and mood. A 2019 Stanford study found that walking increased creative output by 81%. It's free, requires no gym, and works immediately.", dwConnection: "Movement is medicine — especially the kind that doesn't feel like medicine.", url: "https://www.health.harvard.edu/staying-healthy/5-surprising-benefits-of-walking", source: "Harvard Health", dimension: "physical", readTime: "5 min read" },
+    { type: "video", bucket: "for_you", title: "Mel Robbins: How to Stop Screwing Yourself Over", summary: "One of the most-watched TED Talks ever — and the 5-second rule that changed millions of lives.", synopsis: "Mel Robbins discovered that the moment you feel resistance to doing something you know you should do, you have exactly 5 seconds before your brain talks you out of it. The 5-second rule is simple: count down 5-4-3-2-1 and physically move. It interrupts the habit loop and activates your prefrontal cortex. Simple, ridiculous, and it works.", dwConnection: "Taking action in the face of fear is the core of building momentum in any life dimension.", url: "https://www.youtube.com/watch?v=Lp7E973zozc", source: "YouTube", dimension: "general", readTime: "Watch" },
+    // ── EXPLORE ──
+    { type: "article", bucket: "explore", title: "The Japanese Art of Kintsugi: Beauty in Broken Things", summary: "The 500-year-old philosophy of repairing broken objects with gold — and what it teaches us about resilience.", synopsis: "Kintsugi, the Japanese art of repairing broken pottery with gold lacquer, is a profound metaphor for human resilience. Instead of hiding damage, kintsugi highlights it, treating breakage as part of the object's history rather than something to conceal. The philosophy behind it — wabi-sabi and mono no aware — suggests that imperfection is not just acceptable but beautiful. Psychologists have started using this concept in trauma therapy.", dwConnection: "Your breaks and scars are not weaknesses — they're where your light gets in. This is a deeply emotional and spiritual insight.", url: "https://en.wikipedia.org/wiki/Kintsugi", source: "Wikipedia", dimension: "spiritual", readTime: "5 min read" },
+    { type: "article", bucket: "explore", title: "The Science of Flow: How to Enter Your Peak State", summary: "Mihaly Csikszentmihalyi's research on the state where time disappears and work becomes effortless.", synopsis: "Flow is the state of complete absorption where self-consciousness disappears and performance peaks. Psychologist Mihaly Csikszentmihalyi spent decades studying this state, interviewing artists, surgeons, chess players, and athletes. He found flow emerges when challenge slightly exceeds current skill level — not too easy (boredom), not too hard (anxiety). Learning to engineer flow conditions can transform any area of your life.", dwConnection: "Flow states are where your best work lives — and they're accessible in any dimension of your life.", url: "https://www.ted.com/talks/mihaly_csikszentmihalyi_flow_the_secret_to_happiness", source: "TED", dimension: "intellectual", readTime: "Watch" },
+    { type: "article", bucket: "explore", title: "Forest Bathing: What the Japanese Have Known for Decades", summary: "Shinrin-yoku, the practice of spending time in forests, has extraordinary measurable health effects.", synopsis: "Japanese researchers have documented that spending time in forests reduces cortisol by 15%, blood pressure by 7%, and significantly boosts NK (natural killer) immune cells. These effects last 30 days after a single weekend in nature. The practice is called Shinrin-yoku — forest bathing — and it's now prescribed by some Japanese doctors. The key mechanism is phytoncides, organic compounds released by trees.", dwConnection: "Your environment shapes your biology. Environmental wellness isn't just about tidying your space — it's about what environments you choose.", url: "https://www.nationalgeographic.com/travel/article/forest-bathing", source: "National Geographic", dimension: "environmental", readTime: "6 min read" },
+    { type: "article", bucket: "explore", title: "The Forgotten Science of Belonging", summary: "Loneliness is more dangerous than smoking 15 cigarettes a day. Here's what the research says.", synopsis: "Surgeon General Vivek Murthy declared loneliness an epidemic in 2023. The research is stark: chronic loneliness increases mortality risk by 26%, equivalent to smoking 15 cigarettes daily. Social connection isn't a nice-to-have — it's a biological necessity. Our nervous systems are literally calibrated to regulate via other humans. This article walks through the neuroscience of belonging and practical ways to build deeper connection.", dwConnection: "Social wellness is not about having many connections — it's about the quality of the ones you do have.", url: "https://www.hhs.gov/sites/default/files/surgeon-general-social-connection-advisory.pdf", source: "U.S. Surgeon General", dimension: "social", readTime: "8 min read" },
+    { type: "video", bucket: "explore", title: "The Most Unknown Thing About How Memory Works", summary: "Every time you remember something, you rewrite it. Memory is reconstruction, not recording.", synopsis: "Memory researcher Elizabeth Loftus reveals one of the most counterintuitive findings in psychology: human memory is not a recording — it's a reconstruction. Every time you recall a memory, you subtly alter it. This means our memories of the past are partly fictional, edited by our present emotions and beliefs. The implications for identity, relationships, and self-improvement are profound.", dwConnection: "Understanding how your mind works is core to intellectual wellness and self-compassion.", url: "https://www.youtube.com/watch?v=PB2OegI6wvI", source: "YouTube", dimension: "intellectual", readTime: "Watch" },
+    { type: "article", bucket: "explore", title: "Why Stoicism Is the Most Practical Philosophy Ever Written", summary: "Marcus Aurelius governed an empire while writing private notes to himself about not losing his mind.", synopsis: "The Stoics — Epictetus, Seneca, Marcus Aurelius — developed a philosophy for navigating chaos, loss, and uncertainty with equanimity. Epictetus was a slave. Marcus Aurelius was an emperor. Both concluded the same thing: the only thing you control is your response. Stoicism offers concrete daily practices (negative visualization, voluntary discomfort, memento mori) that train psychological resilience.", dwConnection: "Stoic practices directly build emotional regulation, resilience, and purposeful living.", url: "https://dailystoic.com/what-is-stoicism-a-definition-3-stoic-exercises-to-get-you-started/", source: "Daily Stoic", dimension: "spiritual", readTime: "7 min read" },
+    { type: "article", bucket: "explore", title: "The Polyvagal Theory: Your Nervous System Is Running Your Life", summary: "Why you can't just 'think' your way out of anxiety — and what to do instead.", synopsis: "Dr. Stephen Porges' Polyvagal Theory explains that the autonomic nervous system has three states: safe and social, fight-or-flight, and shutdown. Most people shift between these states without knowing why. Once you understand your neuroception — how your nervous system reads safety — you can learn to regulate these states with specific somatic practices. This is the missing piece in most mental health conversations.", dwConnection: "Understanding your nervous system is foundational to emotional wellness and building safe, authentic relationships.", url: "https://www.nicabm.com/trauma-how-to-help-your-clients-understand-the-window-of-tolerance/", source: "NICABM", dimension: "emotional", readTime: "8 min read" },
+    // ── RANDOM / SURPRISE ──
+    { type: "fact", bucket: "random", title: "Cleopatra Lived Closer to the Moon Landing Than to the Building of the Pyramids", summary: "The Great Pyramid was built around 2560 BCE. Cleopatra lived in 69 BCE — 2,500 years later. The moon landing was 1969 CE — just 2,038 years after her. Time is genuinely strange.", synopsis: "The Great Pyramid of Giza was built around 2560 BCE. Cleopatra lived from 69–30 BCE — nearly 2,500 years after the pyramids. The Apollo 11 moon landing happened in 1969 CE, only 2,038 years after Cleopatra. This means she was temporally closer to Neil Armstrong's first step on the moon than to the pyramids she likely gazed upon as ancient history. History is not as evenly spaced as we imagine.", dwConnection: "Perspective is a superpower. When you zoom out on time, your current challenges find their proper proportion.", url: "", source: "Historical Research", dimension: "intellectual", readTime: "1 min" },
+    { type: "quote", bucket: "random", title: "\"The cave you fear to enter holds the treasure you seek.\" — Joseph Campbell", summary: "Campbell spent his life studying mythology and found one story repeated across every culture: the hero's journey. The monster at the gate is always the guardian of the gift.", synopsis: "Joseph Campbell spent decades studying myths from every human culture and found a single pattern: the hero must descend into darkness, face their greatest fear, and only then return with the gift that heals their world. The cave metaphor is universal. Whatever you're avoiding — the difficult conversation, the creative risk, the vulnerable honesty — inside it is exactly what you need. The fear is the sign, not the warning.", dwConnection: "This applies to every dimension of your life. What are you circling around instead of entering?", url: "", source: "Joseph Campbell", dimension: "spiritual", readTime: "1 min" },
+    { type: "spiritual", bucket: "random", title: "The Zen Teaching of 'Beginner's Mind'", summary: "In the beginner's mind there are many possibilities. In the expert's mind there are few. — Shunryu Suzuki", synopsis: "Shunryu Suzuki, the Zen master who brought Zen Buddhism to America, wrote: 'In the beginner's mind there are many possibilities. In the expert's mind there are few.' Beginner's mind means approaching each moment — a conversation, a meal, a problem — as if encountering it for the first time. The opposite is being so full of what you already know that nothing new can enter. Most of our suffering comes from insisting reality match our existing maps.", dwConnection: "Beginner's mind is the antidote to rigidity in any dimension — relationships, work, health habits, beliefs.", url: "", source: "Shunryu Suzuki, Zen Mind, Beginner's Mind", dimension: "spiritual", readTime: "1 min" },
+    { type: "fact", bucket: "random", title: "Trees Communicate Through Underground Fungal Networks", summary: "Forests are not individual trees — they're communities. Mother trees send nutrients to young seedlings and dying trees redistribute resources to their neighbors.", synopsis: "Ecologist Suzanne Simard discovered that trees in forests are connected by vast underground fungal networks — sometimes called the 'Wood Wide Web.' Through these networks, older 'mother trees' send carbon, water, and nutrients to younger, struggling seedlings, including those of different species. When a tree is dying, it redistributes its resources to neighboring trees. Forests are not collections of individuals competing for resources — they're cooperative superorganisms.", dwConnection: "We are built for interdependence, not independence. This is true of trees, of neurons, and of human communities.", url: "https://www.youtube.com/watch?v=Un2yBgIAxYs", source: "TED Talk", dimension: "environmental", readTime: "1 min" },
+    { type: "lesson", bucket: "random", title: "The 10-10-10 Rule for Hard Decisions", summary: "Ask yourself: how will I feel about this in 10 minutes? 10 months? 10 years? The answers usually make the right choice obvious.", synopsis: "Suzy Welch developed the 10-10-10 rule for cutting through the emotional fog of hard decisions. When facing a difficult choice, ask: How will I feel about this decision in 10 minutes? In 10 months? In 10 years? The short-term answer addresses immediate emotion. The medium-term grounds you in your season of life. The long-term connects you to your values. Most regrets live in the 10-year column — and so do most of the things that matter.", dwConnection: "Good decision-making is a foundational life skill that improves every dimension — relationships, career, health, money.", url: "", source: "Suzy Welch", dimension: "intellectual", readTime: "1 min" },
+    { type: "spiritual", bucket: "random", title: "Viktor Frankl's Discovery in the Concentration Camp", summary: "Everything can be taken from a man but one thing: the last of the human freedoms — to choose one's attitude in any given set of circumstances.", synopsis: "Viktor Frankl, psychiatrist and Holocaust survivor, observed in Auschwitz that the prisoners who survived the longest were not the physically strongest — they were the ones who maintained a sense of meaning. He wrote: 'When we are no longer able to change a situation, we are challenged to change ourselves.' From his experience emerged logotherapy — the idea that meaning is the primary human motivational force, not pleasure or power.", dwConnection: "Meaning-making is not passive — it's an active, daily practice. This touches your purpose and spiritual dimensions profoundly.", url: "", source: "Viktor Frankl, Man's Search for Meaning", dimension: "purpose", readTime: "1 min" },
+    { type: "fact", bucket: "random", title: "Your Body Replaces Almost Every Cell Every 7–10 Years", summary: "The 'you' of 10 years ago is physically almost entirely gone. You are always becoming, never just being.", synopsis: "Most of the cells in your body are replaced over time. Your red blood cells live 120 days. Liver cells: about a year. Bone cells: 10 years. Even neurons, long thought to be permanent, have some turnover. The implication is profound: you are not a fixed object but a continuous process. The 'you' who made a mistake 10 years ago is literally, atomically, not the same person. Transformation is not metaphorical — it's biological.", dwConnection: "You are built to change. Stagnation is the anomaly, not the norm. This truth belongs to your physical and emotional dimensions.", url: "", source: "Scientific Research", dimension: "physical", readTime: "1 min" },
+    { type: "quote", bucket: "random", title: "\"The present moment always will have been.\" — Eckhart Tolle", summary: "Whatever good you experience right now is permanent in a way nothing can undo. It happened. It's real. Forever.", synopsis: "Eckhart Tolle offers a radical comfort: the present moment, once lived, is eternally woven into the fabric of what has happened. No future suffering can un-happen your joy. The kindness you gave, the peace you felt, the love you experienced — these are indestructible facts. This realization shifts our relationship with impermanence. We don't need to cling to good moments because they're already safe. They will always have been.", dwConnection: "This perspective is a profound gift for emotional wellness, especially during difficult seasons.", url: "", source: "Eckhart Tolle", dimension: "spiritual", readTime: "1 min" },
+    { type: "lesson", bucket: "random", title: "The Ownership Paradox: Why Accepting Responsibility Feels Like Freedom", summary: "The moment you take full ownership of your situation is the moment you regain the power to change it.", synopsis: "Jocko Willink, in Extreme Ownership, argues that the most powerful shift available to any person is total personal responsibility. Not blame, not self-flagellation — ownership. When you own a problem completely, you also own the solution. This is counterintuitive: accepting that something is 'your fault' feels like losing, but it's actually the only path to agency. Victims wait. Owners act.", dwConnection: "Ownership thinking transforms every life dimension — from relationships to finances to health. It's not about blame. It's about power.", url: "", source: "Jocko Willink, Extreme Ownership", dimension: "purpose", readTime: "1 min" },
+    { type: "fact", bucket: "random", title: "Humans Are the Only Animals That Voluntarily Delay Sleep", summary: "Every other species sleeps when it's tired. Only humans override this biological signal — and it's destroying our health.", synopsis: "Sleep scientist Matthew Walker calls voluntary sleep deprivation a catastrophic modern phenomenon. No other animal on earth voluntarily stays awake when its body signals sleep. Humans alone override this with artificial light, deadlines, and entertainment. The costs are staggering: impaired immunity, emotional dysregulation, cognitive decline, increased cancer risk, and reduced lifespan. Sleeping less to do more is, mathematically, doing less — because everything you do suffers.", dwConnection: "Sleep is the foundation. Without it, every other wellness habit is undermined. This belongs to your physical dimension.", url: "https://www.sleepfoundation.org/how-sleep-works/why-do-we-need-sleep", source: "Sleep Foundation", dimension: "physical", readTime: "1 min" },
+  ];
+
+  // ── DISCOVER FEED ──────────────────────────────────────────────────────────
+  // GET /api/discover/feed?page=1
+  // Returns a mixed batch of AI-curated content cards (for_you | explore | random)
+  app.get("/api/discover/feed", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      const page = parseInt(req.query.page as string) || 1;
+
+      // Fetch user context for personalization
+      let profileCtx = "";
+      let firstGoalTitle = "";
+      if (userId) {
+        try {
+          const profile = await storage.getUserProfile(userId);
+          const goals = (await storage.getGoals(userId)).filter((g: any) => g.status === "active");
+          firstGoalTitle = goals[0]?.title || "";
+          const lp = (profile as any)?.lifestylePreferences;
+          const parts = [
+            profile?.occupation && `Occupation: ${profile.occupation}`,
+            profile?.interests?.length && `Interests: ${(profile.interests as string[]).join(", ")}`,
+            lp?.identityVision && `Identity vision: ${lp.identityVision}`,
+            lp?.styleLikes && `Style: ${lp.styleLikes}`,
+            lp?.watchLikes && `Watches: ${lp.watchLikes}`,
+            lp?.readLikes && `Reads: ${lp.readLikes}`,
+            goals.length && `Active goals: ${goals.map((g: any) => g.title).join(", ")}`,
+          ].filter(Boolean);
+          profileCtx = parts.join(". ");
+        } catch (_) {}
+      }
+
+      const perplexityKey = process.env.PERPLEXITY_API_KEY;
+      const cards: any[] = [];
+      const ts = Date.now();
+
+      const pxPost = async (systemMsg: string, userMsg: string) => {
+        const r = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${perplexityKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "sonar",
+            messages: [
+              { role: "system", content: systemMsg },
+              { role: "user", content: userMsg },
+            ],
+            max_tokens: 2000,
+          }),
+        });
+        if (!r.ok) return null;
+        const d = await r.json();
+        const text: string = d.choices?.[0]?.message?.content || "";
+        const m = text.match(/\[[\s\S]*?\]/);
+        if (!m) return null;
+        try { return JSON.parse(m[0]); } catch { return null; }
+      };
+
+      if (perplexityKey) {
+        // ── FOR YOU: personalized real content ──
+        try {
+          const forYouQ = profileCtx
+            ? `Find 5 specific real articles or YouTube videos for someone with this profile: ${profileCtx}. Focus on personal development, wellness, productivity, or their stated interests. Return ONLY a JSON array with fields: title (string), url (real URL), source (e.g. YouTube/Medium/TED), summary (2 sentences), synopsis (4 sentences with more depth), type ("article"|"video"), dimension ("emotional"|"physical"|"financial"|"social"|"spiritual"|"intellectual"|"environmental"|"purpose"|"general").`
+            : `Find 5 real trending personal development or wellness articles/videos right now. Return ONLY a JSON array: title, url, source, summary (2 sentences), synopsis (4 sentences), type ("article"|"video"), dimension.`;
+          const forYouItems = await pxPost("You are a wellness content curator. Return ONLY valid JSON arrays. Use only real, verifiable URLs.", forYouQ);
+          if (Array.isArray(forYouItems)) {
+            for (const item of forYouItems.slice(0, 5)) {
+              if (!item.title) continue;
+              cards.push({
+                id: `fy-p${page}-${cards.length}-${ts}`,
+                type: item.type === "video" ? "video" : "article",
+                bucket: "for_you",
+                title: String(item.title).slice(0, 120),
+                summary: String(item.summary || "").slice(0, 200),
+                synopsis: String(item.synopsis || item.summary || "").slice(0, 600),
+                dwConnection: firstGoalTitle
+                  ? `This connects to your goal of "${firstGoalTitle}" and nurtures your ${item.dimension || "general"} dimension.`
+                  : `Chosen to support your personal growth and ${item.dimension || "general"} wellness.`,
+                url: String(item.url || ""),
+                source: String(item.source || "Web"),
+                dimension: String(item.dimension || "general"),
+                readTime: item.type === "video" ? "Watch" : "Read",
+              });
+            }
+          }
+        } catch (e) { console.error("Discover for_you error:", e); }
+
+        // ── EXPLORE: new, adjacent topics ──
+        try {
+          const exploreQ = profileCtx
+            ? `Find 5 real fascinating articles or videos on topics this person would find enriching but probably hasn't explored yet, based on their profile: ${profileCtx}. Choose topics adjacent to their interests but genuinely new — history, science, philosophy, art, culture, unexpected places. Return ONLY a JSON array: title, url, source, summary (2 sentences), synopsis (4 sentences), type ("article"|"video"), dimension.`
+            : `Find 5 real fascinating articles or videos on unexpected enriching topics — history, science, philosophy, culture. Return ONLY a JSON array: title, url, source, summary (2 sentences), synopsis (4 sentences), type ("article"|"video"), dimension.`;
+          const exploreItems = await pxPost("You are a curiosity guide. Return ONLY valid JSON arrays. Use only real URLs.", exploreQ);
+          if (Array.isArray(exploreItems)) {
+            for (const item of exploreItems.slice(0, 5)) {
+              if (!item.title) continue;
+              cards.push({
+                id: `ex-p${page}-${cards.length}-${ts}`,
+                type: item.type === "video" ? "video" : "article",
+                bucket: "explore",
+                title: String(item.title).slice(0, 120),
+                summary: String(item.summary || "").slice(0, 200),
+                synopsis: String(item.synopsis || item.summary || "").slice(0, 600),
+                dwConnection: "Something new to explore — broadening your perspective and expanding what you thought was possible.",
+                url: String(item.url || ""),
+                source: String(item.source || "Web"),
+                dimension: String(item.dimension || "intellectual"),
+                readTime: item.type === "video" ? "Watch" : "Read",
+              });
+            }
+          }
+        } catch (e) { console.error("Discover explore error:", e); }
+      }
+
+      // ── RANDOM / SURPRISE: facts, history, spiritual, quotes, lessons ──
+      try {
+        const randomTypes = ["fun_fact", "history", "spiritual", "quote", "lesson"];
+        const rType = randomTypes[(page + Math.floor(ts / 1000)) % randomTypes.length];
+        const typeMap: Record<string, string> = {
+          fun_fact: "fact", history: "fact", spiritual: "spiritual", quote: "quote", lesson: "lesson",
+        };
+        const sourceMap: Record<string, string> = {
+          fun_fact: "DW Insights", history: "History", spiritual: "DW Wisdom", quote: "DW Quotes", lesson: "DW Lessons",
+        };
+        const rItems = await generateDiscoverRandomContent(rType);
+        for (const item of rItems.slice(0, 5)) {
+          if (!item.title) continue;
+          const body = String(item.body || "");
+          cards.push({
+            id: `rnd-p${page}-${cards.length}-${ts}`,
+            type: typeMap[rType] || "fact",
+            bucket: "random",
+            title: String(item.title).slice(0, 120),
+            summary: body.slice(0, 150) + (body.length > 150 ? "…" : ""),
+            synopsis: body,
+            dwConnection: `This touches your ${item.dimension || "spiritual"} dimension — a moment to pause and absorb.`,
+            url: "",
+            source: item.source || sourceMap[rType] || "DW Insights",
+            dimension: String(item.dimension || "intellectual"),
+            readTime: "1 min",
+          });
+        }
+      } catch (e) { console.error("Discover random error:", e); }
+
+      // If AI returned fewer than 5 cards (e.g., API unavailable), fill in from static library
+      if (cards.length < 5) {
+        // Rotate through static library so each page shows different content
+        const pageOffset = (page - 1) * 5;
+        const staticCards = DISCOVER_STATIC_LIBRARY.map((item, idx) => ({
+          id: `static-p${page}-${idx}-${ts}`,
+          ...item,
+        }));
+        // Shuffle static with a page-seeded deterministic sort
+        const seeded = staticCards.sort((a, b) => {
+          const h = (s: string) => [...s].reduce((acc, c) => acc + c.charCodeAt(0), page * 37);
+          return h(a.id) - h(b.id);
+        });
+        const needed = Math.max(0, 12 - cards.length);
+        const slice = seeded.slice(pageOffset % seeded.length).concat(seeded).slice(0, needed);
+        cards.push(...slice);
+      }
+
+      // Shuffle the three buckets together so they interleave naturally
+      const shuffled = cards.sort(() => Math.random() - 0.5);
+      res.json({ cards: shuffled, page, hasMore: true });
+    } catch (error) {
+      console.error("GET /api/discover/feed error:", error);
+      res.status(500).json({ cards: [], page: 1, hasMore: false });
     }
   });
 

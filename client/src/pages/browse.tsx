@@ -46,6 +46,12 @@ import {
   Leaf,
   Target,
   BookOpen,
+  Shuffle,
+  Telescope,
+  Quote,
+  BookMarked,
+  History,
+  FlameKindling,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -435,7 +441,28 @@ export default function Browse() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community" | "discover">("for-you");
+
+  // ── Discover feed state ──
+  interface DiscoverCard {
+    id: string;
+    type: "article" | "video" | "quote" | "fact" | "spiritual" | "lesson";
+    bucket: "for_you" | "explore" | "random";
+    title: string;
+    summary: string;
+    synopsis: string;
+    dwConnection: string;
+    url: string;
+    source: string;
+    dimension: string;
+    readTime: string;
+  }
+  const [discoverCards, setDiscoverCards] = useState<DiscoverCard[]>([]);
+  const [discoverPage, setDiscoverPage] = useState(1);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [discoverHasMore, setDiscoverHasMore] = useState(true);
+  const [selectedDiscoverCard, setSelectedDiscoverCard] = useState<DiscoverCard | null>(null);
+  const discoverSentinelRef = useRef<HTMLDivElement>(null);
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "engage" | "local">("groups");
   const [engageLocation, setEngageLocation] = useState("");
   const [engageSearchInput, setEngageSearchInput] = useState("");
@@ -623,6 +650,45 @@ export default function Browse() {
       }
     }
   }, [notInterestedData]);
+
+  // ── Discover feed: fetch a batch of cards ──
+  const fetchDiscoverPage = useCallback(async (page: number) => {
+    if (discoverLoading) return;
+    setDiscoverLoading(true);
+    try {
+      const res = await fetch(`/api/discover/feed?page=${page}`, { credentials: "include" });
+      const data = await res.json();
+      setDiscoverCards(prev => page === 1 ? data.cards : [...prev, ...data.cards]);
+      setDiscoverHasMore(data.hasMore);
+      setDiscoverPage(page);
+    } catch {
+      // silently fail — keep existing cards
+    } finally {
+      setDiscoverLoading(false);
+    }
+  }, [discoverLoading]);
+
+  // Load first page when discover tab is activated
+  useEffect(() => {
+    if (activeTab === "discover" && discoverCards.length === 0) {
+      fetchDiscoverPage(1);
+    }
+  }, [activeTab]);
+
+  // IntersectionObserver: load next page when sentinel enters viewport
+  useEffect(() => {
+    if (!discoverSentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && discoverHasMore && !discoverLoading) {
+          fetchDiscoverPage(discoverPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(discoverSentinelRef.current);
+    return () => observer.disconnect();
+  }, [discoverHasMore, discoverLoading, discoverPage]);
 
   const aiCustomizeMutation = useMutation({
     mutationFn: async (mood: string) => {
@@ -1059,7 +1125,7 @@ ${contentList}`,
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community");
+          setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community" | "discover");
           // Reset per-tab filters when switching tabs
           setTopicFilter("");
           setLengthFilter(null);
@@ -1068,6 +1134,10 @@ ${contentList}`,
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
               For You
+            </TabsTrigger>
+            <TabsTrigger value="discover" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-discover">
+              <Telescope className="h-4 w-4 mr-1" />
+              Discover
             </TabsTrigger>
             <TabsTrigger value="video" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-video">
               <Video className="h-4 w-4 mr-1" />
@@ -1500,6 +1570,236 @@ ${contentList}`,
           </div>
         </main>
       )}
+
+      {/* ── DISCOVER FEED ───────────────────────────────────────────── */}
+      {activeTab === "discover" && (() => {
+        const bucketMeta = {
+          for_you:  { label: "For You",         Icon: Sparkles,      color: "text-primary",     bg: "bg-primary/10"     },
+          explore:  { label: "Explore",          Icon: Telescope,     color: "text-blue-500",    bg: "bg-blue-500/10"    },
+          random:   { label: "Surprise",         Icon: Shuffle,       color: "text-orange-500",  bg: "bg-orange-500/10"  },
+        } as const;
+        const typeMeta = {
+          article:  { Icon: FileText,            color: "text-sky-500"     },
+          video:    { Icon: Play,                color: "text-red-500"     },
+          quote:    { Icon: Quote,               color: "text-violet-500"  },
+          fact:     { Icon: Zap,                 color: "text-yellow-500"  },
+          spiritual:{ Icon: Star,                color: "text-purple-500"  },
+          lesson:   { Icon: BookMarked,          color: "text-green-500"   },
+        } as const;
+
+        return (
+          <main className="p-4 space-y-4 pb-28">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold">Your AI Feed</h2>
+                <p className="text-xs text-muted-foreground">Live content — personalized, exploratory, and surprising</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setDiscoverCards([]); setDiscoverPage(1); setDiscoverHasMore(true); fetchDiscoverPage(1); }}
+                disabled={discoverLoading}
+                data-testid="button-discover-refresh"
+              >
+                <Shuffle className="h-3.5 w-3.5 mr-1.5" />Refresh
+              </Button>
+            </div>
+
+            {/* Bucket legend */}
+            <div className="flex gap-2 flex-wrap">
+              {(["for_you", "explore", "random"] as const).map(b => {
+                const m = bucketMeta[b];
+                return (
+                  <div key={b} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${m.bg}`}>
+                    <m.Icon className={`h-3 w-3 ${m.color}`} />
+                    <span className={`text-xs font-medium ${m.color}`}>{m.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Initial loading skeleton */}
+            {discoverLoading && discoverCards.length === 0 && (
+              <div className="space-y-4">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="rounded-2xl border bg-card p-4 animate-pulse space-y-3">
+                    <div className="h-3 bg-muted rounded w-1/4" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                    <div className="h-3 bg-muted rounded w-4/5" />
+                  </div>
+                ))}
+                <p className="text-xs text-center text-muted-foreground pt-2">DW is curating your feed…</p>
+              </div>
+            )}
+
+            {/* Card list */}
+            <div className="space-y-3">
+              {discoverCards.map((card) => {
+                const bm = bucketMeta[card.bucket] ?? bucketMeta.random;
+                const tm = typeMeta[card.type as keyof typeof typeMeta] ?? typeMeta.article;
+                const TypeIcon = tm.Icon;
+                const BucketIcon = bm.Icon;
+                return (
+                  <Card
+                    key={card.id}
+                    className="card-modern cursor-pointer active:scale-[0.99] transition-transform"
+                    onClick={() => setSelectedDiscoverCard(card)}
+                    data-testid={`card-discover-${card.id}`}
+                  >
+                    <CardContent className="p-4">
+                      {/* Top row: bucket + type badges */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bm.bg} ${bm.color}`}>
+                          <BucketIcon className="h-3 w-3" />
+                          {bm.label}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <TypeIcon className={`h-3 w-3 ${tm.color}`} />
+                          <span className="capitalize">{card.type}</span>
+                        </div>
+                        <span className="ml-auto text-xs text-muted-foreground">{card.source}</span>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="font-semibold text-sm leading-snug mb-1.5">{card.title}</h3>
+
+                      {/* Summary */}
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{card.summary}</p>
+
+                      {/* Bottom row */}
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                        <span className="text-xs text-muted-foreground capitalize">{card.dimension} · {card.readTime}</span>
+                        <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                          <span>See more</span>
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={discoverSentinelRef} className="h-10 flex items-center justify-center">
+              {discoverLoading && discoverCards.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  Loading more…
+                </div>
+              )}
+            </div>
+
+            {/* Empty state */}
+            {!discoverLoading && discoverCards.length === 0 && (
+              <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Telescope className="h-7 w-7 text-primary/60" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Nothing yet</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Tap Refresh to load your feed</p>
+                </div>
+                <Button onClick={() => fetchDiscoverPage(1)} data-testid="button-discover-load">
+                  <Telescope className="h-4 w-4 mr-2" />Load Feed
+                </Button>
+              </div>
+            )}
+
+            {/* ── Card Expansion Sheet ── */}
+            {selectedDiscoverCard && (() => {
+              const card = selectedDiscoverCard;
+              const bm = bucketMeta[card.bucket] ?? bucketMeta.random;
+              const tm = typeMeta[card.type as keyof typeof typeMeta] ?? typeMeta.article;
+              const TypeIcon = tm.Icon;
+              return (
+                <div
+                  className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-sm"
+                  onClick={(e) => { if (e.target === e.currentTarget) setSelectedDiscoverCard(null); }}
+                  data-testid="overlay-discover-card"
+                >
+                  <div className="bg-background rounded-t-3xl max-h-[85vh] overflow-y-auto">
+                    {/* Handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                      <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bm.bg} ${bm.color}`}>
+                              <bm.Icon className="h-3 w-3" />
+                              {bm.label}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <TypeIcon className={`h-3 w-3 ${tm.color}`} />
+                              <span className="capitalize">{card.type} · {card.source}</span>
+                            </div>
+                          </div>
+                          <h2 className="text-base font-bold leading-snug">{card.title}</h2>
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setSelectedDiscoverCard(null)} data-testid="button-close-discover-card">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Synopsis */}
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Synopsis</p>
+                        <p className="text-sm leading-relaxed">{card.synopsis || card.summary}</p>
+                      </div>
+
+                      {/* DW connection */}
+                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 flex gap-3">
+                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-primary mb-0.5">Why DW picked this</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{card.dwConnection}</p>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-2 pt-1">
+                        {card.url ? (
+                          <Button
+                            className="w-full"
+                            onClick={() => window.open(card.url, "_blank", "noopener,noreferrer")}
+                            data-testid="button-discover-open-content"
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            {card.type === "video" ? "Watch on " + card.source : "Read on " + card.source}
+                          </Button>
+                        ) : (
+                          <div className="text-xs text-center text-muted-foreground py-2">
+                            This is a self-contained insight — no external link needed.
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setSelectedDiscoverCard(null);
+                            setLocation(`/talk?topic=${encodeURIComponent("Let's explore: " + card.title)}`);
+                          }}
+                          data-testid="button-discover-chat-dw"
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />Talk to DW about this
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </main>
+        );
+      })()}
 
       {activeTab === "all" && (
         <>
