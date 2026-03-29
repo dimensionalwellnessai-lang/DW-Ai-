@@ -32,7 +32,12 @@ export function SyncTray() {
 
   const { data, isLoading } = useQuery<SyncTrayData | null>({
     queryKey: ["/api/sync/sessions/active"],
-    refetchInterval: 2000,
+    // Poll every 8 seconds — only keep polling while there's an active session
+    refetchInterval: (query) => {
+      const d = query.state.data as SyncTrayData | null | undefined;
+      return d?.session ? 8000 : false;
+    },
+    retry: false,
   });
 
   const acceptGroupMutation = useMutation({

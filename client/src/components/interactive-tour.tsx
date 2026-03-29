@@ -372,8 +372,10 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className={`absolute w-full max-w-md mx-4 glass-strong rounded-2xl p-6 shadow-2xl ${
-              isCenter ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : ""
+            className={`absolute glass-strong rounded-2xl p-6 shadow-2xl ${
+              isCenter
+                ? "top-1/2 left-[50%] -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md"
+                : ""
             }`}
             style={isCenter ? undefined : getCardStyle()}
           >
