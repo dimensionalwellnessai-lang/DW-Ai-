@@ -2351,17 +2351,116 @@ ${contentList}`,
 
           {/* GROUPS */}
           {communityCategory === "groups" && (
-            <main className="p-4 space-y-4">
+            <main className="p-4 space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold">Online Groups</h2>
+                  <h2 className="text-base font-semibold">Community Groups</h2>
                   <p className="text-xs text-muted-foreground">Connect with people on the same journey</p>
                 </div>
                 <Button size="sm" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group">
                   <Plus className="h-4 w-4 mr-1" />New Group
                 </Button>
               </div>
+
               {groupsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+
+              {communityGroupsData?.groups && communityGroupsData.groups.length > 0 && (() => {
+                const dwGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId === "dw-ai-system");
+                const userGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId !== "dw-ai-system");
+
+                const renderGroupCard = (group: any) => {
+                  const isDw = group.createdByUserId === "dw-ai-system";
+                  const typeIcon = group.type === "online_video" ? Video : group.type === "physical" ? MapPin : MessageCircle;
+                  const TypeIcon = typeIcon;
+                  const typeLabel = group.type === "online_video" ? "Video calls" : group.type === "physical" ? "In-person" : "Chat";
+                  return (
+                    <Card
+                      key={group.id}
+                      className={`card-modern ${isDw ? "border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.04]" : ""}`}
+                      data-testid={`card-group-${group.id}`}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {isDw && (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
+                                  <Sparkles className="h-3 w-3" />DW
+                                </span>
+                              )}
+                              <h3 className="font-semibold text-sm">{group.name}</h3>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <TypeIcon className="h-3 w-3" />{typeLabel}
+                              </Badge>
+                              {group.isMember && <Badge variant="secondary" className="text-xs"><Check className="h-3 w-3 mr-1" />Joined</Badge>}
+                            </div>
+                            {group.description && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{group.description}</p>}
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{group.membersCount} {group.membersCount === 1 ? "member" : "members"}</span>
+                              {group.meetingSchedule && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{group.meetingSchedule}</span>}
+                              {group.meetingUrl && isSafeExternalUrl(group.meetingUrl) && (
+                                <a href={group.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <Globe className="h-3 w-3" />Join link
+                                </a>
+                              )}
+                            </div>
+                            {group.tags?.length > 0 && (
+                              <div className="flex gap-1 mt-2 flex-wrap">
+                                {group.tags.slice(0, 4).map((tag: string) => (
+                                  <span key={tag} className="text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5">#{tag}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={group.isMember ? "outline" : "default"}
+                            className="shrink-0"
+                            onClick={() => group.isMember ? leaveGroupMutation.mutate(group.id) : joinGroupMutation.mutate(group.id)}
+                            disabled={joinGroupMutation.isPending || leaveGroupMutation.isPending}
+                            data-testid={`button-group-join-${group.id}`}
+                          >
+                            {group.isMember ? "Leave" : "Join"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                };
+
+                return (
+                  <>
+                    {dwGroups.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DW starter groups</span>
+                        </div>
+                        {dwGroups.map(renderGroupCard)}
+                      </div>
+                    )}
+                    {userGroups.length > 0 && (
+                      <div className="space-y-3">
+                        {dwGroups.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Member-created</span>
+                          </div>
+                        )}
+                        {userGroups.map(renderGroupCard)}
+                      </div>
+                    )}
+                    <div className="pt-2 border-t">
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-bottom">
+                        <Plus className="h-4 w-4 mr-2" />Start Your Own Group
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
+
               {!groupsLoading && (!communityGroupsData?.groups || communityGroupsData.groups.length === 0) && (
                 <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -2374,40 +2473,6 @@ ${contentList}`,
                   <Button onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-empty">
                     <Plus className="h-4 w-4 mr-2" />Create First Group
                   </Button>
-                </div>
-              )}
-              {communityGroupsData?.groups && communityGroupsData.groups.length > 0 && (
-                <div className="space-y-3">
-                  {communityGroupsData.groups.map((group: any) => (
-                    <Card key={group.id} className="card-modern" data-testid={`card-group-${group.id}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-medium text-sm">{group.name}</h3>
-                              <Badge variant="outline" className="text-xs capitalize">{group.type?.replace("_", " ")}</Badge>
-                              {group.isMember && <Badge variant="secondary" className="text-xs"><Check className="h-3 w-3 mr-1" />Joined</Badge>}
-                            </div>
-                            {group.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{group.description}</p>}
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                              <span><Users className="h-3 w-3 inline mr-1" />{group.membersCount} members</span>
-                              {group.meetingSchedule && <span><Calendar className="h-3 w-3 inline mr-1" />{group.meetingSchedule}</span>}
-                              {group.meetingUrl && <a href={group.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}><Globe className="h-3 w-3" />Join link</a>}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant={group.isMember ? "outline" : "default"}
-                            onClick={() => group.isMember ? leaveGroupMutation.mutate(group.id) : joinGroupMutation.mutate(group.id)}
-                            disabled={joinGroupMutation.isPending || leaveGroupMutation.isPending}
-                            data-testid={`button-group-join-${group.id}`}
-                          >
-                            {group.isMember ? "Leave" : "Join"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
                 </div>
               )}
             </main>
