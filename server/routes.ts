@@ -11353,24 +11353,45 @@ Return ONLY this JSON:
     }
   });
 
-  // ── Community: Posts / Forum ─────────────────────────────────────────────────
+  // ── Community: Posts / Group Chat ─────────────────────────────────────────────
   app.get("/api/community/posts", async (req, res) => {
     try {
+      const groupId = req.query.groupId as string | undefined;
       const category = req.query.category as string | undefined;
       const userId = req.session?.userId;
-      const rows = await db.select().from(communityPosts).orderBy(communityPosts.createdAt);
-      const filtered = category && category !== "all" ? rows.filter((p) => p.category === category) : rows;
+
+      let rows = await db.select().from(communityPosts).orderBy(communityPosts.createdAt);
+      // Filter by group
+      if (groupId) rows = rows.filter((p) => p.groupId === groupId);
+      // Filter to top-level posts only (replies are nested below)
+      const topLevel = rows.filter((p) => !p.parentId);
+      const replies = rows.filter((p) => !!p.parentId);
+      // Apply category filter only on user posts
+      const filtered = category && category !== "all"
+        ? topLevel.filter((p) => p.category === category)
+        : topLevel;
+
       let likedPostIds: Set<string> = new Set();
       if (userId) {
         const likes = await db.select().from(communityPostLikes).where(eq(communityPostLikes.userId, userId));
         likedPostIds = new Set(likes.map((l) => l.postId));
       }
-      const result = filtered.map((p) => ({
+
+      // Build reply map: parentId → replies array
+      const replyMap: Record<string, any[]> = {};
+      for (const r of replies) {
+        if (!r.parentId) continue;
+        if (!replyMap[r.parentId]) replyMap[r.parentId] = [];
+        replyMap[r.parentId].push({ ...r, isLiked: likedPostIds.has(r.id) });
+      }
+
+      const result = filtered.reverse().map((p) => ({
         ...p,
         isLiked: likedPostIds.has(p.id),
         displayName: p.isAnonymous ? "Anonymous" : "Community Member",
+        replies: replyMap[p.id] || [],
       }));
-      res.json({ posts: result.reverse() });
+      res.json({ posts: result });
     } catch (error) {
       console.error("GET /api/community/posts error:", error);
       res.status(500).json({ posts: [] });
@@ -11380,16 +11401,84 @@ Return ONLY this JSON:
   app.post("/api/community/posts", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { title, body, category, isAnonymous } = req.body;
+      const { title, body, category, isAnonymous, groupId } = req.body;
       if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "Title and body are required" });
+
       const [post] = await db.insert(communityPosts).values({
         userId,
+        groupId: groupId || null,
         title: title.trim(),
         body: body.trim(),
         category: category || "general",
         isAnonymous: isAnonymous ?? false,
+        isDwResponse: false,
       }).returning();
+
       res.json(post);
+
+      // Generate DW AI response asynchronously (don't block the response)
+      if (groupId) {
+        try {
+          // Get group context
+          const groupRows = await pool.query("SELECT name, description, tags FROM community_groups WHERE id = $1", [groupId]);
+          const group = groupRows.rows[0];
+          // Get user context for personalization
+          let userCtx = "";
+          try {
+            const [profile, onboarding] = await Promise.all([
+              storage.getUserProfile(userId),
+              storage.getOnboardingProfile(userId),
+            ]);
+            const firstName = profile?.firstName || "friend";
+            userCtx = `The person who shared this: name is ${firstName}.`;
+          } catch { /* non-fatal */ }
+
+          const groupCtx = group ? `This is the "${group.name}" support group — ${group.description}` : "a wellness support group";
+
+          const dwPrompt = `You are DW — a warm, emotionally intelligent AI companion facilitating a support group. ${groupCtx}.
+
+${userCtx}
+
+A community member just shared this post:
+Title: "${title}"
+Message: "${body}"
+
+Write a brief, warm, supportive response (2-4 sentences max). 
+- Acknowledge what they shared with genuine empathy
+- Offer one gentle reflection, insight, or question to help them go deeper
+- Never give medical advice or diagnose
+- Tone: calm, caring, human — like a wise friend who truly listens
+- Do NOT start with "DW here" or "As DW" — just speak naturally
+- Do NOT use bullet points or headers
+
+Response:`;
+
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: dwPrompt }],
+            temperature: 0.8,
+            max_tokens: 250,
+          });
+
+          const dwBody = completion.choices[0]?.message?.content?.trim() ?? "";
+          if (dwBody) {
+            await db.insert(communityPosts).values({
+              userId: "dw-ai-system",
+              groupId: groupId || null,
+              parentId: post.id,
+              isDwResponse: true,
+              title: "DW Response",
+              body: dwBody,
+              category: "support",
+              isAnonymous: false,
+            });
+            // Update comments count
+            await pool.query("UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = $1", [post.id]);
+          }
+        } catch (aiErr) {
+          console.error("DW response generation error:", aiErr);
+        }
+      }
     } catch (error) {
       console.error("POST /api/community/posts error:", error);
       res.status(500).json({ error: "Failed to create post" });

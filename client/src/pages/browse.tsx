@@ -31,6 +31,7 @@ import {
   Phone,
   Globe,
   ChevronRight,
+  ChevronLeft,
   Calendar,
   Plus,
   Bookmark,
@@ -41,6 +42,10 @@ import {
   Trash2,
   Video,
   Zap,
+  TrendingUp,
+  Leaf,
+  Target,
+  BookOpen,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -446,6 +451,7 @@ export default function Browse() {
   const [newGroupType, setNewGroupType] = useState("online_chat");
   const [newGroupUrl, setNewGroupUrl] = useState("");
   const [newGroupSchedule, setNewGroupSchedule] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lengthFilter, setLengthFilter] = useState<"short" | "medium" | "long" | null>(null);
   const [topicFilter, setTopicFilter] = useState("");
@@ -553,10 +559,21 @@ export default function Browse() {
     enabled: activeTab === "community" && communityCategory === "groups",
   });
 
-  // Community: Posts / Forum
+  // Community: Posts / Group Chat (filtered by selectedGroup when viewing a group)
+  const communityPostsQueryKey = selectedGroup
+    ? ["/api/community/posts", selectedGroup.id]
+    : ["/api/community/posts"];
+  const communityPostsUrl = selectedGroup
+    ? `/api/community/posts?groupId=${selectedGroup.id}`
+    : "/api/community/posts";
   const { data: communityPostsData, isLoading: postsLoading } = useQuery<{ posts: any[] }>({
-    queryKey: ["/api/community/posts"],
-    enabled: activeTab === "community" && communityCategory === "feed",
+    queryKey: communityPostsQueryKey,
+    queryFn: async () => {
+      const res = await fetch(communityPostsUrl, { credentials: "include" });
+      return res.json();
+    },
+    enabled: activeTab === "community" && (communityCategory === "feed" || !!selectedGroup),
+    refetchInterval: selectedGroup ? 5000 : false, // Poll every 5s when in group chat for DW replies
   });
 
   // Community: Engage (volunteering/events by location)
@@ -722,16 +739,17 @@ ${contentList}`,
 
   // Community mutations
   const createPostMutation = useMutation({
-    mutationFn: async (data: { title: string; body: string; category: string; isAnonymous: boolean }) => {
+    mutationFn: async (data: { title: string; body: string; category: string; isAnonymous: boolean; groupId?: string }) => {
       const response = await apiRequest("POST", "/api/community/posts", data);
       if (!response.ok) throw new Error("Failed to post");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/community/posts"] });
+      if (selectedGroup) queryClient.invalidateQueries({ queryKey: ["/api/community/posts", selectedGroup.id] });
       setCreatePostOpen(false);
       setNewPostTitle(""); setNewPostBody(""); setNewPostCategory("general"); setNewPostAnonymous(false);
-      toast({ title: "Post shared!", description: "Your post is now visible to the community." });
+      toast({ title: "Shared!", description: selectedGroup ? "DW will respond shortly." : "Your post is now visible to the community." });
     },
     onError: () => toast({ title: "Error", description: "Failed to share post", variant: "destructive" }),
   });
@@ -2349,134 +2367,254 @@ ${contentList}`,
             </div>
           </div>
 
-          {/* GROUPS */}
-          {communityCategory === "groups" && (
-            <main className="p-4 space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">Community Groups</h2>
-                  <p className="text-xs text-muted-foreground">Connect with people on the same journey</p>
-                </div>
-                <Button size="sm" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group">
-                  <Plus className="h-4 w-4 mr-1" />New Group
-                </Button>
-              </div>
+          {/* GROUPS — list or group chat view */}
+          {communityCategory === "groups" && (() => {
+            // Dimension meta for DW groups
+            const DW_DIMENSION_META: Record<string, { Icon: any; color: string; bg: string }> = {
+              "dw-dim-emotional":    { Icon: Heart,      color: "text-rose-500",   bg: "bg-rose-500/10" },
+              "dw-dim-physical":     { Icon: Dumbbell,   color: "text-green-500",  bg: "bg-green-500/10" },
+              "dw-dim-social":       { Icon: Users,      color: "text-blue-500",   bg: "bg-blue-500/10" },
+              "dw-dim-financial":    { Icon: TrendingUp, color: "text-yellow-600", bg: "bg-yellow-500/10" },
+              "dw-dim-spiritual":    { Icon: Star,       color: "text-purple-500", bg: "bg-purple-500/10" },
+              "dw-dim-intellectual": { Icon: Brain,      color: "text-indigo-500", bg: "bg-indigo-500/10" },
+              "dw-dim-environmental":{ Icon: Leaf,       color: "text-teal-500",   bg: "bg-teal-500/10" },
+              "dw-dim-purpose":      { Icon: Target,     color: "text-orange-500", bg: "bg-orange-500/10" },
+            };
 
-              {groupsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+            // ── GROUP CHAT VIEW ─────────────────────────────────────────────
+            if (selectedGroup) {
+              const meta = DW_DIMENSION_META[selectedGroup.id];
+              const DimIcon = meta?.Icon ?? MessageCircle;
+              return (
+                <main className="flex flex-col" style={{ minHeight: "calc(100vh - 200px)" }}>
+                  {/* Group chat header */}
+                  <div className="sticky z-20 bg-background border-b px-4 py-3 flex items-center gap-3" style={{ top: "calc(var(--header-total-height, 80px) + var(--tabs-height, 48px) + 48px)" }}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setSelectedGroup(null)} data-testid="button-back-to-groups">
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <div className={`w-8 h-8 rounded-full ${meta?.bg ?? "bg-primary/10"} flex items-center justify-center shrink-0`}>
+                      <DimIcon className={`h-4 w-4 ${meta?.color ?? "text-primary"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm leading-tight truncate">{selectedGroup.name}</p>
+                      <p className="text-xs text-muted-foreground">{selectedGroup.membersCount} members · DW responds</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {isSafeExternalUrl(selectedGroup.meetingUrl) && (
+                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => window.open(selectedGroup.meetingUrl, "_blank", "noopener,noreferrer")} data-testid="button-group-videocall" title="Group video call">
+                          <Video className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
 
-              {communityGroupsData?.groups && communityGroupsData.groups.length > 0 && (() => {
-                const dwGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId === "dw-ai-system");
-                const userGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId !== "dw-ai-system");
+                  {/* Posts feed */}
+                  <div className="flex-1 p-4 space-y-4">
+                    {/* DW welcome banner */}
+                    <div className="flex gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-primary mb-0.5">DW · Support Guide</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">Welcome to {selectedGroup.name}. This is a safe, judgment-free space. Share what's on your mind and I'll respond with care. Video calls are available for deeper support.</p>
+                      </div>
+                    </div>
 
-                const renderGroupCard = (group: any) => {
-                  const isDw = group.createdByUserId === "dw-ai-system";
-                  const typeIcon = group.type === "online_video" ? Video : group.type === "physical" ? MapPin : MessageCircle;
-                  const TypeIcon = typeIcon;
-                  const typeLabel = group.type === "online_video" ? "Video calls" : group.type === "physical" ? "In-person" : "Chat";
-                  return (
-                    <Card
-                      key={group.id}
-                      className={`card-modern ${isDw ? "border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.04]" : ""}`}
-                      data-testid={`card-group-${group.id}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {isDw && (
-                                <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
-                                  <Sparkles className="h-3 w-3" />DW
-                                </span>
-                              )}
-                              <h3 className="font-semibold text-sm">{group.name}</h3>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <TypeIcon className="h-3 w-3" />{typeLabel}
-                              </Badge>
-                              {group.isMember && <Badge variant="secondary" className="text-xs"><Check className="h-3 w-3 mr-1" />Joined</Badge>}
-                            </div>
-                            {group.description && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{group.description}</p>}
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
-                              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{group.membersCount} {group.membersCount === 1 ? "member" : "members"}</span>
-                              {group.meetingSchedule && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{group.meetingSchedule}</span>}
-                              {group.meetingUrl && isSafeExternalUrl(group.meetingUrl) && (
-                                <a href={group.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                  <Globe className="h-3 w-3" />Join link
-                                </a>
-                              )}
-                            </div>
-                            {group.tags?.length > 0 && (
-                              <div className="flex gap-1 mt-2 flex-wrap">
-                                {group.tags.slice(0, 4).map((tag: string) => (
-                                  <span key={tag} className="text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5">#{tag}</span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            size="sm"
-                            variant={group.isMember ? "outline" : "default"}
-                            className="shrink-0"
-                            onClick={() => group.isMember ? leaveGroupMutation.mutate(group.id) : joinGroupMutation.mutate(group.id)}
-                            disabled={joinGroupMutation.isPending || leaveGroupMutation.isPending}
-                            data-testid={`button-group-join-${group.id}`}
-                          >
-                            {group.isMember ? "Leave" : "Join"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                };
+                    {postsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
 
-                return (
-                  <>
-                    {dwGroups.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DW starter groups</span>
-                        </div>
-                        {dwGroups.map(renderGroupCard)}
+                    {!postsLoading && communityPostsData?.posts?.length === 0 && (
+                      <div className="text-center py-10">
+                        <p className="text-sm text-muted-foreground">Be the first to share something here. DW will respond.</p>
+                        <Button className="mt-4" onClick={() => setCreatePostOpen(true)} data-testid="button-first-post">
+                          <Plus className="h-4 w-4 mr-2" />Share Something
+                        </Button>
                       </div>
                     )}
-                    {userGroups.length > 0 && (
-                      <div className="space-y-3">
-                        {dwGroups.length > 0 && (
+
+                    {communityPostsData?.posts?.map((post: any) => (
+                      <div key={post.id} className="space-y-2" data-testid={`post-thread-${post.id}`}>
+                        {/* User post */}
+                        <Card className="card-modern">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-medium">{post.displayName}</span>
+                                  {post.category && post.category !== "general" && <Badge variant="outline" className="text-xs capitalize h-4 px-1.5">{post.category}</Badge>}
+                                  <span className="text-xs text-muted-foreground ml-auto">{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}</span>
+                                </div>
+                                <p className="text-sm font-medium mb-1">{post.title}</p>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{post.body}</p>
+                                <Button size="sm" variant="ghost" className={`h-6 px-2 mt-2 text-xs gap-1 ${post.isLiked ? "text-primary" : "text-muted-foreground"}`} onClick={() => likePostMutation.mutate(post.id)} data-testid={`button-like-${post.id}`}>
+                                  <ThumbsUp className="h-3 w-3" />{post.likesCount > 0 ? post.likesCount : ""}
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* DW AI reply */}
+                        {post.replies?.filter((r: any) => r.isDwResponse).map((reply: any) => (
+                          <div key={reply.id} className="ml-6 flex gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10" data-testid={`dw-reply-${reply.id}`}>
+                            <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                              <Sparkles className="h-3.5 w-3.5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-primary mb-1">DW · AI Guide</p>
+                              <p className="text-sm text-foreground leading-relaxed">{reply.body}</p>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* DW response loading hint — show briefly after post creation */}
+                        {post.replies?.length === 0 && post.commentsCount === 0 && (
+                          <div className="ml-6 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                            <span>DW is responding...</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Compose bar */}
+                  <div className="sticky bottom-20 bg-background border-t px-4 py-3 flex gap-2">
+                    <Button className="flex-1" onClick={() => setCreatePostOpen(true)} data-testid="button-compose-post">
+                      <Plus className="h-4 w-4 mr-2" />Share with the group
+                    </Button>
+                    {isSafeExternalUrl(selectedGroup.meetingUrl) && (
+                      <Button variant="outline" onClick={() => window.open(selectedGroup.meetingUrl, "_blank", "noopener,noreferrer")} data-testid="button-video-call-bottom">
+                        <Video className="h-4 w-4 mr-1.5" />Video Call
+                      </Button>
+                    )}
+                  </div>
+                </main>
+              );
+            }
+
+            // ── GROUPS LIST VIEW ────────────────────────────────────────────
+            return (
+              <main className="p-4 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold">Support Groups</h2>
+                    <p className="text-xs text-muted-foreground">AI-supported spaces for every dimension of your life</p>
+                  </div>
+                  <Button size="sm" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group">
+                    <Plus className="h-4 w-4 mr-1" />New Group
+                  </Button>
+                </div>
+
+                {groupsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+
+                {communityGroupsData?.groups && communityGroupsData.groups.length > 0 && (() => {
+                  const dwGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId === "dw-ai-system");
+                  const userGroups = communityGroupsData.groups.filter((g: any) => g.createdByUserId !== "dw-ai-system");
+
+                  const renderGroupCard = (group: any) => {
+                    const isDw = group.createdByUserId === "dw-ai-system";
+                    const meta = DW_DIMENSION_META[group.id];
+                    const DimIcon = meta?.Icon ?? (group.type === "online_video" ? Video : group.type === "physical" ? MapPin : MessageCircle);
+                    return (
+                      <Card
+                        key={group.id}
+                        className={`card-modern ${isDw ? "border-primary/15" : ""}`}
+                        data-testid={`card-group-${group.id}`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${meta?.bg ?? "bg-primary/10"}`}>
+                              <DimIcon className={`h-5 w-5 ${meta?.color ?? "text-primary"}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                {isDw && <span className="inline-flex items-center gap-1 text-xs font-medium text-primary"><Sparkles className="h-3 w-3" />DW</span>}
+                                <h3 className="font-semibold text-sm">{group.name}</h3>
+                                {group.isMember && <Badge variant="secondary" className="text-xs h-4 px-1.5"><Check className="h-2.5 w-2.5 mr-0.5" />In</Badge>}
+                              </div>
+                              {group.description && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2">{group.description}</p>}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1"><Users className="h-3 w-3" />{group.membersCount}</span>
+                                {group.meetingSchedule && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{group.meetingSchedule}</span>}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Action row */}
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => { setSelectedGroup(group); queryClient.invalidateQueries({ queryKey: ["/api/community/posts", group.id] }); }}
+                              data-testid={`button-group-open-${group.id}`}
+                            >
+                              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />Open Chat
+                            </Button>
+                            {isSafeExternalUrl(group.meetingUrl) && (
+                              <Button size="sm" variant="outline" onClick={() => window.open(group.meetingUrl, "_blank", "noopener,noreferrer")} data-testid={`button-group-video-${group.id}`}>
+                                <Video className="h-3.5 w-3.5 mr-1.5" />Video Call
+                              </Button>
+                            )}
+                            {!group.isMember && (
+                              <Button size="sm" variant="ghost" onClick={() => joinGroupMutation.mutate(group.id)} disabled={joinGroupMutation.isPending} data-testid={`button-group-join-${group.id}`}>
+                                Join
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {dwGroups.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">DW Support Groups · AI responds</span>
+                          </div>
+                          {dwGroups.map(renderGroupCard)}
+                        </div>
+                      )}
+                      {userGroups.length > 0 && (
+                        <div className="space-y-3 pt-2">
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-muted-foreground" />
                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Member-created</span>
                           </div>
-                        )}
-                        {userGroups.map(renderGroupCard)}
+                          {userGroups.map(renderGroupCard)}
+                        </div>
+                      )}
+                      <div className="pt-2 border-t">
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-bottom">
+                          <Plus className="h-4 w-4 mr-2" />Start Your Own Group
+                        </Button>
                       </div>
-                    )}
-                    <div className="pt-2 border-t">
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-bottom">
-                        <Plus className="h-4 w-4 mr-2" />Start Your Own Group
-                      </Button>
-                    </div>
-                  </>
-                );
-              })()}
+                    </>
+                  );
+                })()}
 
-              {!groupsLoading && (!communityGroupsData?.groups || communityGroupsData.groups.length === 0) && (
-                <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
-                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="h-7 w-7 text-primary/60" />
+                {!groupsLoading && (!communityGroupsData?.groups || communityGroupsData.groups.length === 0) && (
+                  <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
+                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Users className="h-7 w-7 text-primary/60" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">No groups yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1 max-w-xs">Be the first to create a group.</p>
+                    </div>
+                    <Button onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-empty">
+                      <Plus className="h-4 w-4 mr-2" />Create First Group
+                    </Button>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">No groups yet</h3>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">Be the first to create a group. Connect with others on similar paths.</p>
-                  </div>
-                  <Button onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-empty">
-                    <Plus className="h-4 w-4 mr-2" />Create First Group
-                  </Button>
-                </div>
-              )}
-            </main>
-          )}
+                )}
+              </main>
+            );
+          })()}
 
           {/* FEED */}
           {communityCategory === "feed" && (
@@ -2779,7 +2917,7 @@ ${contentList}`,
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              Share with the Community
+              {selectedGroup ? `Share in ${selectedGroup.name}` : "Share with the Community"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -2824,7 +2962,7 @@ ${contentList}`,
             <Button variant="outline" onClick={() => setCreatePostOpen(false)}>Cancel</Button>
             <Button
               disabled={!newPostTitle.trim() || !newPostBody.trim() || createPostMutation.isPending}
-              onClick={() => createPostMutation.mutate({ title: newPostTitle, body: newPostBody, category: newPostCategory, isAnonymous: newPostAnonymous })}
+              onClick={() => createPostMutation.mutate({ title: newPostTitle, body: newPostBody, category: newPostCategory, isAnonymous: newPostAnonymous, groupId: selectedGroup?.id })}
               data-testid="button-post-submit"
             >
               {createPostMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}

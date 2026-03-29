@@ -2860,6 +2860,9 @@ export const communityPostCategoryEnum = ["wins", "questions", "support", "accou
 export const communityPosts = pgTable("community_posts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  groupId: varchar("group_id"),  // references communityGroups.id (set after table declaration)
+  parentId: varchar("parent_id"), // null = top-level, set = reply
+  isDwResponse: boolean("is_dw_response").default(false),
   title: text("title").notNull(),
   body: text("body").notNull(),
   category: text("category").notNull().default("general"),

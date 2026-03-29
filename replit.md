@@ -83,12 +83,16 @@ Preferred communication style: Simple, everyday language.
 - **Video tab**: Auto-loads recommended videos from `forYouData` at the top; Search YouTube section below.
 - **Articles tab**: Curated via `GET /api/browse/ai-articles` — uses Perplexity first (real URLs), falls back to OpenAI. Time-slot and day-of-week aware.
 - **Community tab** — 4 sub-tabs:
-  - **Groups**: Online community groups stored in DB (`community_groups`). Create group dialog (name, description, type, meeting URL/schedule), join/leave buttons. `GET /api/community/groups/online`, `POST /api/community/groups`, `POST/DELETE /api/community/groups/:id/join|leave`
-  - **Feed**: In-app community forum posts (`community_posts`). Create post dialog (title, body, category, anonymous toggle), like/unlike. `GET/POST /api/community/posts`, `POST /api/community/posts/:id/like`
-  - **Engage**: Location-aware Perplexity search for volunteering, community events, and service. Filter by type (volunteering/events/service). `GET /api/community/engage?location=&type=`
-  - **Local**: Original Perplexity-powered local resource search (gyms, therapists, yoga studios, etc.)
+  - **Groups**: 8 DW AI-created dimension support groups (Emotional, Physical, Social, Financial, Spiritual, Intellectual, Environmental, Purpose). Each group has: colored dimension icon, "Open Chat" and "Video Call" (Jitsi Meet) buttons. Tapping "Open Chat" opens in-app group chat with DW welcome banner, posts thread, and compose bar. Users can also create their own groups.
+    - **DW AI responses**: When a user posts in a group, DW auto-generates a warm, personalized support response (via OpenAI) and stores it as a reply, shown with sparkle badge. Chat polls every 5s to show new DW replies.
+    - **Video calls**: Each DW group has a Jitsi Meet URL (e.g. `https://meet.jit.si/DW-EmotionalWellness`). Video Call button in group list and in chat header. Group video + 1-on-1 both available via Jitsi.
+    - **Group IDs**: `dw-dim-emotional`, `dw-dim-physical`, `dw-dim-social`, `dw-dim-financial`, `dw-dim-spiritual`, `dw-dim-intellectual`, `dw-dim-environmental`, `dw-dim-purpose`
+    - **DB**: `community_groups`, `community_group_members`. Posts: `community_posts` (added `group_id`, `parent_id`, `is_dw_response` columns)
+  - **Feed**: Cross-group in-app community posts with like/create. DW system user (`dw-ai-system`) seeded in `users` table.
+  - **Engage**: Location-aware Perplexity search for volunteering, community events, and service. Filter by type.
+  - **Local**: Perplexity-powered local resource search (gyms, therapists, yoga studios, etc.)
 - **Server endpoint** `GET /api/browse/for-you`: Perplexity-powered, returns `{ videos, articles, workouts, meal, timeSlot, dayName, timeLabel }`. Falls back to curated static content.
-- **Community DB tables**: `community_posts`, `community_post_likes`, `community_groups`, `community_group_members`
+- **Community DB tables**: `community_posts` (with group_id, parent_id, is_dw_response), `community_post_likes`, `community_groups`, `community_group_members`
 
 ## External Dependencies
 
