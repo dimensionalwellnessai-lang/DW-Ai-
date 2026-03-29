@@ -56,7 +56,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
             <TimeIcon timeOfDay={timeOfDay} className="h-6 w-6" />
             <ContextualGreeting 
               timeOfDay={timeOfDay} 
-              userName={user?.email?.split('@')[0]}
+              userName={user?.firstName || user?.systemName || undefined}
             />
           </div>
 
@@ -126,7 +126,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
           )}
           {user && (
             <div className="px-2 py-1.5 text-sm text-muted-foreground" data-testid="text-logged-in">
-              Logged in as {user.firstName || user.email?.split('@')[0] || 'User'}
+              Logged in as {user.firstName || user.systemName || 'you'}
             </div>
           )}
           <Link href="/settings">

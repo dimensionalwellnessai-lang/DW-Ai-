@@ -12097,6 +12097,20 @@ Response:`;
     }
   });
 
+  app.patch("/api/users/me", requireAuth, async (req, res) => {
+    try {
+      const { firstName } = req.body;
+      if (typeof firstName !== "string" || !firstName.trim()) {
+        return res.status(400).json({ error: "Invalid name" });
+      }
+      const updated = await storage.updateUser(req.session.userId!, { firstName: firstName.trim().slice(0, 50) });
+      res.json({ ok: true, firstName: updated?.firstName });
+    } catch (err) {
+      console.error("Update user name error:", err);
+      res.status(500).json({ error: "Failed to update name" });
+    }
+  });
+
   // ── Discover Filter (AI-tailored) ──────────────────────────────────────────
   app.get("/api/discover/filter", async (req, res) => {
     try {

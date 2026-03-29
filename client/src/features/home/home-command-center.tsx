@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -40,6 +43,9 @@ import {
   Sparkles,
   Moon,
   Compass,
+  Pencil,
+  Check,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,18 +61,48 @@ interface OrbitModule {
   snippet?: string;
 }
 
-const AFFIRMATIONS = [
-  "You are exactly where you need to be.",
-  "Today is yours to shape, not survive.",
-  "Progress isn't always visible — but it's happening.",
-  "Your energy matters. Protect it.",
-  "Small steps still move you forward.",
-  "You don't need to have it all figured out.",
-  "Rest is productive. Stillness is growth.",
-  "You are building something meaningful.",
-  "Trust the process you're creating.",
-  "Your calm is your power.",
-];
+const AFFIRMATIONS = {
+  morning: {
+    low:  ["Start slow — you still get to show up.", "Gentle mornings count too.", "You don't have to rush into this day.", "Even a quiet start is a start."],
+    mid:  ["Today is already in motion.", "You woke up — that's the first win.", "This morning is yours to shape.", "Step by step, the day opens."],
+    high: ["Morning energy is yours — use it well.", "Today has good things in it.", "You're already ahead just by beginning.", "Rise and build something real."],
+  },
+  afternoon: {
+    low:  ["The afternoon doesn't need your best — just your presence.", "One thing at a time is enough.", "You've made it this far today.", "Pace yourself. There's still time."],
+    mid:  ["Progress isn't always visible, but it's happening.", "Stay with it — you're doing more than you know.", "Midday is a good place to reset.", "Keep going. Steady is enough."],
+    high: ["You're in the middle of something good.", "The afternoon is yours to finish strong.", "You've got momentum — ride it.", "Trust what you've built so far today."],
+  },
+  evening: {
+    low:  ["You made it through. That's real.", "Let the day be enough.", "Rest is your next right move.", "Evening is permission to soften."],
+    mid:  ["Whatever today held, you were in it.", "Wind down gently — you earned it.", "Reflect, release, rest.", "Evenings are for coming back to yourself."],
+    high: ["What a day you've built.", "Finish strong, then let go.", "Celebrate what moved forward today.", "Tonight is yours — you've earned it."],
+  },
+  night: {
+    low:  ["Tomorrow starts fresh.", "Sleep is the kindest thing you can give yourself.", "Rest now. Tomorrow is a new canvas.", "You did enough. Let it be."],
+    mid:  ["The night is good for letting go.", "Tomorrow's version of you will be grateful for the rest.", "Peace is productive.", "You are allowed to stop."],
+    high: ["End the night as well as you started it.", "Rest well — tomorrow needs you.", "A good night's sleep is part of the plan.", "Close today knowing you showed up."],
+  },
+};
+
+function getDynamicAffirmation(energyLevel: number | null, moodLevel: number | null): string {
+  const hour = new Date().getHours();
+  const minuteSlot = Math.floor(new Date().getMinutes() / 15);
+
+  const timeKey: keyof typeof AFFIRMATIONS =
+    hour >= 5 && hour < 12 ? "morning" :
+    hour >= 12 && hour < 18 ? "afternoon" :
+    hour >= 18 && hour < 22 ? "evening" : "night";
+
+  const combined = energyLevel ?? moodLevel ?? null;
+  const moodKey: "low" | "mid" | "high" =
+    combined === null ? "mid" :
+    combined <= 4 ? "low" :
+    combined >= 7 ? "high" : "mid";
+
+  const pool = AFFIRMATIONS[timeKey][moodKey];
+  const idx = (Math.floor(Date.now() / 3600000) + minuteSlot) % pool.length;
+  return pool[idx];
+}
 
 function getTimeOfDayClass(): string {
   const hour = new Date().getHours();
@@ -84,10 +120,6 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-function getDailyAffirmation(): string {
-  const dayIndex = Math.floor(Date.now() / 86400000) % AFFIRMATIONS.length;
-  return AFFIRMATIONS[dayIndex];
-}
 
 function truncate(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 1) + "…" : str;
@@ -99,11 +131,39 @@ export default function HomeCommandCenter() {
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
 
   const dismissCard = (type: string) => {
     setDismissedCards(prev => new Set(Array.from(prev).concat(type)));
   };
+
+  const updateNameMutation = useMutation({
+    mutationFn: (firstName: string) =>
+      apiRequest("PATCH", "/api/users/me", { firstName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setEditingName(false);
+    },
+  });
+
+  const startEditingName = () => {
+    setNameInput(firstName ?? "");
+    setEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
+  };
+
+  const saveName = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed) updateNameMutation.mutate(trimmed);
+    else setEditingName(false);
+  };
+
+  useEffect(() => {
+    if (editingName) nameInputRef.current?.focus();
+  }, [editingName]);
 
   const visibleProactiveCards = summary.proactiveCards.filter(c => !dismissedCards.has(c.type));
 
@@ -264,11 +324,52 @@ export default function HomeCommandCenter() {
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex-1 text-center pr-7">
-          <p className="text-base font-semibold text-foreground font-display" data-testid="text-greeting">
-            {getGreeting()}{firstName ? `, ${firstName}` : ""}
-          </p>
-          <p className="text-[11px] text-muted-foreground/70 italic leading-tight" data-testid="text-affirmation">
-            {getDailyAffirmation()}
+          {editingName ? (
+            <div className="flex items-center justify-center gap-1.5">
+              <Input
+                ref={nameInputRef}
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") setEditingName(false); }}
+                placeholder="Your preferred name"
+                className="h-7 text-sm text-center w-36 px-2"
+                data-testid="input-preferred-name"
+              />
+              <button
+                onClick={saveName}
+                disabled={updateNameMutation.isPending}
+                className="p-1 rounded text-green-500 hover:text-green-600 transition-colors"
+                aria-label="Save name"
+                data-testid="btn-save-name"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Cancel"
+                data-testid="btn-cancel-name"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-1">
+              <p className="text-base font-semibold text-foreground font-display" data-testid="text-greeting">
+                {getGreeting()}{firstName ? `, ${firstName}` : ""}
+              </p>
+              <button
+                onClick={startEditingName}
+                className="p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                aria-label="Edit preferred name"
+                data-testid="btn-edit-name"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground/70 italic leading-tight mt-0.5" data-testid="text-affirmation">
+            {getDynamicAffirmation(summary.energyLevel, summary.moodLevel)}
           </p>
         </div>
       </header>
