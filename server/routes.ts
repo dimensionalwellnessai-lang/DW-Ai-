@@ -1936,7 +1936,7 @@ export async function registerRoutes(
 
       try {
         const openai = (await import("openai")).default;
-        const ai = new openai({ apiKey: process.env.OPENAI_API_KEY });
+        const ai = new openai({ apiKey: process.env.OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
         const completion = await ai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
@@ -4075,7 +4075,7 @@ Make the "whySuggested" field personal and specific to what you know about this 
 Return ONLY this JSON, no other text:
 {"articles":[{"id":"a1","title":"...","synopsis":"2-3 sentence summary","whySuggested":"1 sentence personal reason tied to their goals or identity","url":"https://...","category":"article","readTimeMinutes":5}]}`;
 
-        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
           method: "POST",
           headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -4257,7 +4257,7 @@ Return ONLY this exact JSON structure, no other text:
   "meal": {"id":"m1","title":"...","description":"...","url":"https://...","prepTime":"15 min"}
 }`;
 
-        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+        const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
           method: "POST",
           headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -5097,7 +5097,7 @@ Return only valid JSON, no markdown, no extra text.`;
       youtubeUrl.searchParams.set("type", "video");
       youtubeUrl.searchParams.set("key", process.env.YOUTUBE_API_KEY);
 
-      const response = await fetch(youtubeUrl.toString());
+      const response = await fetch(youtubeUrl.toString(), { signal: AbortSignal.timeout(15000) });
       const data = await response.json();
 
       if (!response.ok) {
@@ -5154,7 +5154,7 @@ Return only valid JSON, no markdown, no extra text.`;
       newsUrl.searchParams.set("pageSize", "10");
       newsUrl.searchParams.set("apiKey", process.env.NEWS_API_KEY);
 
-      const response = await fetch(newsUrl.toString());
+      const response = await fetch(newsUrl.toString(), { signal: AbortSignal.timeout(15000) });
       const data = await response.json();
 
       if (!response.ok) {
@@ -5209,6 +5209,7 @@ Return only valid JSON, no markdown, no extra text.`;
       if (type) exerciseUrl.searchParams.set("type", type);
 
       const response = await fetch(exerciseUrl.toString(), {
+        signal: AbortSignal.timeout(15000),
         headers: {
           "X-Api-Key": process.env.EXERCISE_API_KEY,
         },
@@ -5600,7 +5601,7 @@ Return only valid JSON, no other text.`;
       const analysisPrompt = generateDocumentAnalysisPrompt(doc.rawText);
       
       const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI();
+      const openai = new OpenAI({ timeout: 25 * 1000, maxRetries: 1 });
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -6794,6 +6795,8 @@ Return only valid JSON, no other text.`;
       const openai = new OpenAI({
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        timeout: 25 * 1000,
+        maxRetries: 1,
       });
 
       const systemPrompt = `You are an AI that extracts actionable life system items from conversation content.
@@ -7387,7 +7390,7 @@ Rules:
       }
 
       // Call Perplexity API for web search
-      const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      const response = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
         method: "POST",
         headers: {
           "Authorization": `Bearer ${perplexityApiKey}`,
@@ -11137,7 +11140,7 @@ Return ONLY this JSON, no other text:
       let shows: any[] = [];
       if (perplexityApiKey) {
         try {
-          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
             method: "POST",
             headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -11259,7 +11262,7 @@ Return ONLY this JSON:
       let resources: any[] = [];
       if (perplexityApiKey) {
         try {
-          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
             method: "POST",
             headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -11313,7 +11316,7 @@ Return ONLY this JSON:
       let opportunities: any[] = [];
       if (perplexityApiKey) {
         try {
-          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
             method: "POST",
             headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -11351,7 +11354,7 @@ Return ONLY this JSON:
       let groups: any[] = [];
       if (perplexityApiKey) {
         try {
-          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
             method: "POST",
             headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -11668,7 +11671,7 @@ Response:`;
       const ts = Date.now();
 
       const pxPost = async (systemMsg: string, userMsg: string) => {
-        const r = await fetch("https://api.perplexity.ai/chat/completions", {
+        const r = await fetch("https://api.perplexity.ai/chat/completions", { signal: AbortSignal.timeout(25000),
           method: "POST",
           headers: { Authorization: `Bearer ${perplexityKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({

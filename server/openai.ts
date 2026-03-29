@@ -5,6 +5,8 @@ import type { CoachingMode } from "@shared/schema";
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  timeout: 25 * 1000, // 25 second hard timeout — prevents the server from hanging on slow/unresponsive AI calls
+  maxRetries: 1,      // one retry max so a failed call doesn't double the wait time
 });
 
 // Export the openai instance for direct use in routes
