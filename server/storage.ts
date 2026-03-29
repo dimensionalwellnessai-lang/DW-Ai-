@@ -21,6 +21,7 @@ import {
   projects,
   projectChats,
   calendarEvents,
+  calendarEventTasks,
   userProfiles,
   wellnessContent,
   savedContent,
@@ -104,6 +105,8 @@ import {
   type InsertProjectChat,
   type CalendarEvent,
   type InsertCalendarEvent,
+  type CalendarEventTask,
+  type InsertCalendarEventTask,
   type UserProfile,
   type InsertUserProfile,
   type WellnessContent,
@@ -378,6 +381,11 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEventForUser(id: string, userId: string): Promise<boolean>;
+
+  getEventTasks(calendarEventId: string, userId: string): Promise<CalendarEventTask[]>;
+  createEventTask(task: InsertCalendarEventTask): Promise<CalendarEventTask>;
+  updateEventTask(id: string, userId: string, data: Partial<CalendarEventTask>): Promise<CalendarEventTask | undefined>;
+  deleteEventTask(id: string, userId: string): Promise<boolean>;
 
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
@@ -1421,8 +1429,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCalendarEventForUser(id: string, userId: string): Promise<boolean> {
-    const result = await db.delete(calendarEvents)
+    await db.delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
+    return true;
+  }
+
+  async getEventTasks(calendarEventId: string, userId: string): Promise<CalendarEventTask[]> {
+    return db.select().from(calendarEventTasks)
+      .where(and(
+        eq(calendarEventTasks.calendarEventId, calendarEventId),
+        eq(calendarEventTasks.userId, userId),
+      ))
+      .orderBy(calendarEventTasks.createdAt);
+  }
+
+  async createEventTask(task: InsertCalendarEventTask): Promise<CalendarEventTask> {
+    const [created] = await db.insert(calendarEventTasks).values(task).returning();
+    return created;
+  }
+
+  async updateEventTask(id: string, userId: string, data: Partial<CalendarEventTask>): Promise<CalendarEventTask | undefined> {
+    const [updated] = await db.update(calendarEventTasks)
+      .set(data)
+      .where(and(eq(calendarEventTasks.id, id), eq(calendarEventTasks.userId, userId)))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteEventTask(id: string, userId: string): Promise<boolean> {
+    await db.delete(calendarEventTasks)
+      .where(and(eq(calendarEventTasks.id, id), eq(calendarEventTasks.userId, userId)));
     return true;
   }
 

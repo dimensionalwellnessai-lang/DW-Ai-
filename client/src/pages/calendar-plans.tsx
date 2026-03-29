@@ -14,6 +14,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarCSVImportDialog } from "@/components/calendar-csv-import-dialog";
+import { EventDetailSheet } from "@/components/event-detail-sheet";
 import type { CSVCalendarEvent } from "@/lib/csv-calendar-import";
 import {
   ChevronLeft,
@@ -95,6 +96,7 @@ export function CalendarPlansPage() {
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [editEventOpen, setEditEventOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [localEvents, setLocalEvents] = useState<LocalCalendarEvent[]>(getCalendarEvents());
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -210,13 +212,8 @@ export function CalendarPlansPage() {
   };
 
   const handleEventClick = (event: DisplayEvent) => {
-    const deepLink = getEventDeepLink(event);
-    if (deepLink) {
-      setLocation(deepLink);
-    } else {
-      setSelectedEvent(event);
-      setEditEventOpen(true);
-    }
+    setSelectedEvent(event);
+    setDetailSheetOpen(true);
   };
 
   const handleUpdateEvent = (eventId: string, updates: { title: string; description: string; startTime: Date; endTime: Date }, source: "db" | "local") => {
@@ -487,6 +484,11 @@ export function CalendarPlansPage() {
         onOpenChange={setUploadOpen}
         selectedDate={selectedDate}
         onSave={handleAddEvent}
+      />
+      <EventDetailSheet
+        event={detailSheetOpen ? selectedEvent : null}
+        onClose={() => { setDetailSheetOpen(false); setSelectedEvent(null); }}
+        onEdit={() => { setDetailSheetOpen(false); setEditEventOpen(true); }}
       />
       {selectedEvent && (
         <EditEventDialog

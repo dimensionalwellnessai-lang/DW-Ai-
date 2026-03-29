@@ -575,12 +575,44 @@ export const calendarEvents = pgTable("calendar_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+export const calendarEventsRelations = relations(calendarEvents, ({ one, many }) => ({
   user: one(users, {
     fields: [calendarEvents.userId],
     references: [users.id],
   }),
+  eventTasks: many(calendarEventTasks),
 }));
+
+// ── Calendar Event Tasks ───────────────────────────────────────────────────
+export const calendarEventTasks = pgTable("calendar_event_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  calendarEventId: varchar("calendar_event_id").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  isCompleted: boolean("is_completed").default(false),
+  dwSuggested: boolean("dw_suggested").default(false),
+  linkedRoute: text("linked_route"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const calendarEventTasksRelations = relations(calendarEventTasks, ({ one }) => ({
+  event: one(calendarEvents, {
+    fields: [calendarEventTasks.calendarEventId],
+    references: [calendarEvents.id],
+  }),
+  user: one(users, {
+    fields: [calendarEventTasks.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertCalendarEventTaskSchema = createInsertSchema(calendarEventTasks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CalendarEventTask = typeof calendarEventTasks.$inferSelect;
+export type InsertCalendarEventTask = z.infer<typeof insertCalendarEventTaskSchema>;
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
   user: one(users, {

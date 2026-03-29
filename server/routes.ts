@@ -4426,6 +4426,93 @@ Return ONLY this exact JSON structure, no other text:
     }
   });
 
+  // ── Calendar Event Tasks ────────────────────────────────────────────────
+  app.get("/api/calendar/:eventId/tasks", requireAuth, async (req, res) => {
+    try {
+      const tasks = await storage.getEventTasks(req.params.eventId, req.session.userId!);
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load tasks" });
+    }
+  });
+
+  app.post("/api/calendar/:eventId/tasks", requireAuth, async (req, res) => {
+    try {
+      const task = await storage.createEventTask({
+        calendarEventId: req.params.eventId,
+        userId: req.session.userId!,
+        title: req.body.title,
+        dwSuggested: req.body.dwSuggested ?? false,
+        linkedRoute: req.body.linkedRoute ?? null,
+      });
+      res.json(task);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/calendar/tasks/:taskId", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateEventTask(req.params.taskId, req.session.userId!, req.body);
+      if (!updated) return res.status(404).json({ error: "Task not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/calendar/tasks/:taskId", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteEventTask(req.params.taskId, req.session.userId!);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  // DW suggests tasks for a calendar event
+  app.post("/api/calendar/:eventId/suggest-tasks", requireAuth, async (req, res) => {
+    try {
+      const { title, description, startTime, endTime, dimensionTags, location } = req.body;
+      const timeStr = startTime ? `at ${startTime}` : "";
+      const durationStr = (startTime && endTime) ? ` until ${endTime}` : "";
+      const tagStr = (dimensionTags && dimensionTags.length) ? ` (${dimensionTags.join(", ")})` : "";
+      const locationStr = location ? ` at ${location}` : "";
+
+      const prompt = `You are DW, a wellness AI. A user has a calendar event: "${title}"${timeStr}${durationStr}${tagStr}${locationStr}.${description ? ` Notes: ${description}` : ""}
+
+Generate 4-5 specific, actionable tasks that would help this person make the most of this time block. Tasks should be concrete steps, not vague suggestions.
+
+Return ONLY a JSON array of task objects. Each object must have:
+- "title": short task title (max 60 chars)
+- "linkedRoute": the best app section path (one of: /workout, /insights, /habits, /goals, /talk, /browse, /mood-tracker, /tracking, or null if none fits)
+
+Example: [{"title": "Start with 5 deep breathing cycles","linkedRoute":"/insights"},{"title":"Follow the DW body scan meditation","linkedRoute":"/insights"}]
+
+Return only valid JSON, no markdown, no extra text.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 400,
+      });
+
+      const raw = completion.choices[0]?.message?.content?.trim() ?? "[]";
+      let suggestions: { title: string; linkedRoute: string | null }[] = [];
+      try {
+        const cleaned = raw.replace(/^```(?:json)?|```$/g, "").trim();
+        suggestions = JSON.parse(cleaned);
+      } catch {
+        suggestions = [];
+      }
+
+      res.json({ suggestions });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate suggestions" });
+    }
+  });
+
   app.get("/api/profile", requireAuth, async (req, res) => {
     try {
       const profile = await storage.getUserProfile(req.session.userId!);
