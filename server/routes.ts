@@ -4496,8 +4496,10 @@ Return ONLY this exact JSON structure, no other text:
 
       const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
       const lifestyleCtx = [
+        lp.identityVision ? `Who they're becoming / identity vision: ${lp.identityVision}` : "",
+        lp.styleLikes ? `Their style / aesthetic: ${lp.styleLikes}` : "",
         lp.watchLikes ? `TV/Movies they enjoy: ${lp.watchLikes}` : "",
-        lp.readLikes ? `Reading/Listening interests: ${lp.readLikes}` : "",
+        lp.readLikes ? `Reading interests: ${lp.readLikes}` : "",
         lp.doLikes ? `Activities they love: ${lp.doLikes}` : "",
         lp.musicLikes ? `Music/Podcasts they like: ${lp.musicLikes}` : "",
         lp.goLikes ? `Places/experiences they enjoy: ${lp.goLikes}` : "",
@@ -4523,44 +4525,60 @@ Return ONLY this exact JSON structure, no other text:
       let prompt: string;
 
       const hasLifestylePrefs = lifestyleCtx.length > 0;
+      const identityLens = lp.identityVision ? `This person is actively becoming: ${lp.identityVision}. Every suggestion should feel like it serves that version of them.` : "";
+      const styleLens = lp.styleLikes ? `Their style/aesthetic is: ${lp.styleLikes}. Suggestions should feel aligned with this vibe.` : "";
 
       if (isFreeTime) {
-        prompt = `You are DW, a personal AI companion who knows this person deeply. They have free/leisure time${startTime ? ` at ${startTime}` : ""}${endTime ? ` until ${endTime}` : ""}${location ? ` in/near ${location}` : ""}.
+        prompt = `You are DW, a personal AI companion who knows this person more deeply than anyone. They have free/leisure time${startTime ? ` at ${startTime}` : ""}${endTime ? ` until ${endTime}` : ""}${location ? ` in/near ${location}` : ""}.
 
-Here is what you know about them:
-${userCtx || "No specific context available — make diverse, inspiring suggestions."}
+═══ EVERYTHING YOU KNOW ABOUT THIS PERSON ═══
+${userCtx || "Limited context — give diverse, growth-oriented suggestions."}
 
-${hasLifestylePrefs ? `IMPORTANT: Their lifestyle preferences are listed above. Use them to be VERY SPECIFIC — if they like thrillers, name a specific thriller show or movie. If they like hiking, suggest an actual type of hike or trail activity. If they like jazz, name a specific artist or playlist genre. Do NOT be generic.` : `Since we don't have their specific preferences yet, give diverse options across categories that would appeal to someone building a healthier, more intentional life.`}
+${identityLens}
+${styleLens}
+═══════════════════════════════════════════════
 
-Generate 5-6 personalized suggestions for how they could spend this time. Each suggestion should feel hand-picked for THIS person — not generic. Vary the categories.
+${hasLifestylePrefs
+  ? `USE THEIR PREFERENCES TO BE EXTREMELY SPECIFIC:
+- If they like crime dramas → suggest a specific type of crime drama, not just "watch TV"
+- If they're into R&B → suggest a specific mood or artist type, not just "listen to music"  
+- If they enjoy coffee shops → suggest going to a cozy spot to work on something specific
+- Every suggestion should feel like it was written specifically for this person
+- Their identity vision is the filter — does this suggestion serve who they're becoming?`
+  : `No specific preferences yet — make suggestions that feel aspirational and growth-oriented for someone building a healthier, more intentional life.`}
+
+Generate 5-6 suggestions for their free time. Each should feel like it was curated specifically for THIS person. Vary the categories. Make some suggestions serve their goals, some serve pure enjoyment — but all should feel right for who they are.
 
 Return ONLY a JSON array. Each object must have:
-- "title": the suggestion itself (max 70 chars, be specific — name actual shows, books, activities, genres, artists when preferences are known)
-- "category": one of "Watch", "Read", "Go", "Do", "Listen", "Create"
-- "why": one short sentence (max 80 chars) tying this to their goals or preferences — make it personal, not generic
-- "linkedRoute": relevant app path or null (options: /browse, /workout, /insights, /goals, /habits, /talk)
+- "title": specific and personal (max 70 chars) — name real content types, genres, activity types, vibes
+- "category": one of "Watch", "Read", "Go", "Do", "Listen", "Create"  
+- "why": one short sentence (max 80 chars) — tie it to their identity, goals, or preferences specifically. Never say "This is relaxing" — say WHY it fits THEM.
+- "linkedRoute": relevant app route or null (options: /browse, /workout, /insights, /goals, /habits, /talk)
 
-Return only valid JSON, no markdown.`;
+Return only valid JSON, no markdown, no extra text.`;
       } else {
         const timeStr = startTime ? ` at ${startTime}` : "";
         const durationStr = endTime ? ` until ${endTime}` : "";
         const tagStr = dimensionTags?.length ? ` [${dimensionTags.join(", ")}]` : "";
         const locationStr = location ? ` at ${location}` : "";
 
-        prompt = `You are DW, a wellness AI who knows this person well. They have a calendar event: "${title}"${timeStr}${durationStr}${tagStr}${locationStr}.${description ? ` Notes: ${description}` : ""}
+        prompt = `You are DW, a personal AI companion who knows this person deeply. They have a calendar event: "${title}"${timeStr}${durationStr}${tagStr}${locationStr}.${description ? ` Notes: ${description}` : ""}
 
-Here is what you know about them:
+═══ WHAT YOU KNOW ABOUT THIS PERSON ═══
 ${userCtx || "No specific context — suggest practical, actionable steps."}
+${identityLens}
+${styleLens}
+═══════════════════════════════════════
 
-Generate 4-5 specific, actionable tasks to help them make the most of this event. Tailor suggestions to their goals and style — not generic steps.
+Generate 4-5 specific, actionable tasks for this event. Every task should serve both the event AND who this person is becoming. Reference their goals and style directly — not generic advice anyone would get.
 
 Return ONLY a JSON array. Each object must have:
-- "title": task title (max 65 chars)
+- "title": task title (max 65 chars) — be specific and practical
 - "category": one of "Prepare", "Do", "Track", "Reflect", "Connect"
-- "why": one short sentence (max 80 chars) tying this to their goals or style
-- "linkedRoute": relevant app path or null (options: /workout, /insights, /habits, /goals, /talk, /browse, /mood-tracker, /tracking)
+- "why": one short sentence (max 80 chars) — tie it to their specific goals, identity, or style
+- "linkedRoute": relevant app route or null (options: /workout, /insights, /habits, /goals, /talk, /browse, /mood-tracker, /tracking)
 
-Return only valid JSON, no markdown.`;
+Return only valid JSON, no markdown, no extra text.`;
       }
 
       const completion = await openai.chat.completions.create({

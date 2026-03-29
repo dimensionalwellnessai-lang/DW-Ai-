@@ -186,7 +186,15 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
   const [isFreeTime, setIsFreeTime] = useState(false);
   const [hasLifestylePrefs, setHasLifestylePrefs] = useState(true);
   const [showPrefsForm, setShowPrefsForm] = useState(false);
-  const [prefsForm, setPrefsForm] = useState({ watchLikes: "", doLikes: "", musicLikes: "", readLikes: "" });
+  const [prefsForm, setPrefsForm] = useState({
+    watchLikes: "",
+    doLikes: "",
+    musicLikes: "",
+    readLikes: "",
+    goLikes: "",
+    styleLikes: "",
+    identityVision: "",
+  });
   const [savingPrefs, setSavingPrefs] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -257,7 +265,8 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
 
   // Save lifestyle preferences then refresh suggestions
   const saveLifestylePrefs = async () => {
-    if (!prefsForm.watchLikes && !prefsForm.doLikes && !prefsForm.musicLikes && !prefsForm.readLikes) return;
+    const hasAny = Object.values(prefsForm).some((v) => v.trim());
+    if (!hasAny) return;
     setSavingPrefs(true);
     try {
       await apiRequest("POST", "/api/profile/lifestyle-preferences", prefsForm);
@@ -513,61 +522,101 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
 
                     {/* Quick preferences capture */}
                     {showPrefsForm && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 mb-3 space-y-2.5" data-testid="prefs-form">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                            <Heart className="h-3 w-3" />
-                            What are you into?
-                          </p>
-                          <button type="button" onClick={() => setShowPrefsForm(false)} className="text-muted-foreground/40 hover:text-foreground">
+                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 mb-3" data-testid="prefs-form">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                              <Heart className="h-3 w-3" />
+                              Tell DW who you are
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Fill in what applies — DW remembers this forever</p>
+                          </div>
+                          <button type="button" onClick={() => setShowPrefsForm(false)} className="text-muted-foreground/40 hover:text-foreground p-1">
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
+                          {/* Identity Vision — most important, shown first */}
                           <div>
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
-                              <Tv className="h-2.5 w-2.5" /> Watch
+                              <Sparkles className="h-2.5 w-2.5 text-primary" /> Who I'm becoming
+                            </label>
+                            <Input
+                              value={prefsForm.identityVision}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, identityVision: e.target.value }))}
+                              placeholder="e.g. disciplined, healthy, financially free, confident"
+                              className="h-8 text-xs"
+                              data-testid="input-identity-vision"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Palette className="h-2.5 w-2.5" /> My style / aesthetic
+                            </label>
+                            <Input
+                              value={prefsForm.styleLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, styleLikes: e.target.value }))}
+                              placeholder="e.g. minimal, streetwear, clean girl, dark academia"
+                              className="h-8 text-xs"
+                              data-testid="input-style-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Tv className="h-2.5 w-2.5" /> What I like to watch
                             </label>
                             <Input
                               value={prefsForm.watchLikes}
                               onChange={(e) => setPrefsForm((p) => ({ ...p, watchLikes: e.target.value }))}
-                              placeholder="e.g. crime dramas, anime, documentaries"
+                              placeholder="e.g. crime dramas, anime, reality TV, documentaries"
                               className="h-8 text-xs"
                               data-testid="input-watch-likes"
                             />
                           </div>
                           <div>
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
-                              <Zap className="h-2.5 w-2.5" /> Do
-                            </label>
-                            <Input
-                              value={prefsForm.doLikes}
-                              onChange={(e) => setPrefsForm((p) => ({ ...p, doLikes: e.target.value }))}
-                              placeholder="e.g. hiking, cooking, journaling"
-                              className="h-8 text-xs"
-                              data-testid="input-do-likes"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
-                              <Headphones className="h-2.5 w-2.5" /> Listen
+                              <Headphones className="h-2.5 w-2.5" /> Music & podcasts
                             </label>
                             <Input
                               value={prefsForm.musicLikes}
                               onChange={(e) => setPrefsForm((p) => ({ ...p, musicLikes: e.target.value }))}
-                              placeholder="e.g. R&B, true crime pods, lo-fi beats"
+                              placeholder="e.g. R&B, true crime pods, lo-fi, motivational"
                               className="h-8 text-xs"
                               data-testid="input-music-likes"
                             />
                           </div>
                           <div>
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
-                              <BookOpen className="h-2.5 w-2.5" /> Read
+                              <Zap className="h-2.5 w-2.5" /> Activities I enjoy
+                            </label>
+                            <Input
+                              value={prefsForm.doLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, doLikes: e.target.value }))}
+                              placeholder="e.g. cooking, journaling, going out, exploring"
+                              className="h-8 text-xs"
+                              data-testid="input-do-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Navigation className="h-2.5 w-2.5" /> Places I like to go
+                            </label>
+                            <Input
+                              value={prefsForm.goLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, goLikes: e.target.value }))}
+                              placeholder="e.g. coffee shops, nature, markets, new restaurants"
+                              className="h-8 text-xs"
+                              data-testid="input-go-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <BookOpen className="h-2.5 w-2.5" /> What I like to read
                             </label>
                             <Input
                               value={prefsForm.readLikes}
                               onChange={(e) => setPrefsForm((p) => ({ ...p, readLikes: e.target.value }))}
-                              placeholder="e.g. self-help, sci-fi, business books"
+                              placeholder="e.g. self-help, sci-fi, business, spiritual growth"
                               className="h-8 text-xs"
                               data-testid="input-read-likes"
                             />
@@ -575,9 +624,9 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
                         </div>
                         <Button
                           size="sm"
-                          className="w-full h-8 text-xs mt-1"
+                          className="w-full h-8 text-xs mt-3"
                           onClick={saveLifestylePrefs}
-                          disabled={savingPrefs || (!prefsForm.watchLikes && !prefsForm.doLikes && !prefsForm.musicLikes && !prefsForm.readLikes)}
+                          disabled={savingPrefs || !Object.values(prefsForm).some((v) => v.trim())}
                           data-testid="button-save-lifestyle-prefs"
                         >
                           {savingPrefs ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}

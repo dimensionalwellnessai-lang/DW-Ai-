@@ -59,7 +59,9 @@ Preferred communication style: Simple, everyday language.
 11. **Event Detail Sheet** (`client/src/components/event-detail-sheet.tsx`): Bottom sheet opens on every calendar event tap. Shows event time, section link (auto-detected from title keywords), tasks list with checkboxes, and a merged Add+Suggest flow — tapping "Add" opens the type-your-own input AND auto-loads personalized DW suggestions simultaneously. Tasks stored in `calendar_event_tasks` DB table (requires auth). Guest users see sign-in prompt.
     - **Free time detection**: Events titled "free", "watch tv", "chill", blank, etc. trigger "Ideas & Plans" mode — suggestions are rich lifestyle cards with category icons (Watch/Read/Go/Do/Listen/Create) and a "why this fits you" sentence.
     - **Structured event tasks**: Non-free-time events show compact task-style suggestion rows.
-    - **Personalization**: Backend pulls onboarding profile, active goals, user profile preferences, and AI learnings to tailor every suggestion to the specific user.
+    - **Personalization**: Backend pulls onboarding profile, active goals, user profile preferences, AI learnings, AND `lifestylePreferences` (identity vision, style/aesthetic, watch/read/do/listen/go preferences) to tailor every suggestion.
+    - **Lifestyle Preferences form**: First-time free-time event shows "Make these more personal" nudge → 7-field form: Who I'm becoming, My style/aesthetic, What I watch, Music/podcasts, Activities I enjoy, Places I like to go, What I read. Saved once to `user_profiles.lifestyle_preferences` (jsonb), used forever.
+    - **Identity/style lens**: Both free-time and structured event prompts filter suggestions through `identityVision` and `styleLikes` — every suggestion serves who the user is becoming, not just what's convenient.
 
 ### AI Integration
 - AI chat interface as primary interaction point
