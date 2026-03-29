@@ -3935,24 +3935,37 @@ Return ONLY a valid JSON object:
 
       // Optional user context
       let topics: string[] = [];
+      let articlePersonalCtx = "";
       const userId = req.session?.userId;
       if (userId) {
         try {
-          const [userProfile, goals] = await Promise.all([
+          const [userProfile, goals, onboarding] = await Promise.all([
             storage.getUserProfile(userId),
             storage.getGoals(userId),
+            storage.getOnboardingProfile(userId),
           ]);
           if (userProfile?.fitnessGoal) topics.push(userProfile.fitnessGoal);
-          goals.slice(0, 2).forEach((g: Goal) => {
+          goals.slice(0, 3).forEach((g: Goal) => {
             if (g.wellnessDimension) topics.push(g.wellnessDimension);
+            if (g.title) topics.push(g.title);
           });
+          const lp = (userProfile?.lifestylePreferences ?? {}) as Record<string, string>;
+          const ctxParts = [
+            lp.identityVision ? `They are becoming: ${lp.identityVision}` : "",
+            lp.styleLikes ? `Style/aesthetic: ${lp.styleLikes}` : "",
+            lp.readLikes ? `They like reading about: ${lp.readLikes}` : "",
+            lp.doLikes ? `They enjoy: ${lp.doLikes}` : "",
+            onboarding?.shortTermGoals ? `Short-term goal: ${onboarding.shortTermGoals}` : "",
+            onboarding?.wellnessFocus?.length ? `Wellness focus: ${onboarding.wellnessFocus.join(", ")}` : "",
+          ].filter(Boolean).join(". ");
+          if (ctxParts) articlePersonalCtx = ctxParts;
         } catch {
           // Non-fatal
         }
       }
 
       const topicsLine = topics.length
-        ? `The user is interested in: ${topics.join(", ")}.`
+        ? `The user is interested in: ${topics.join(", ")}.${articlePersonalCtx ? ` Context: ${articlePersonalCtx}.` : ""}`
         : "The user is interested in general wellness, mindfulness, and healthy living.";
 
       const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
@@ -3961,10 +3974,12 @@ Return ONLY a valid JSON object:
       if (perplexityApiKey) {
         const pxPrompt = `Today is ${dayName}, ${timeSlot}. ${topicsLine}
 
-Search the web and find 6 real wellness articles from established health sites appropriate for this time of day. Use real article URLs from sites like healthline.com, verywellfit.com, mindbodygreen.com, self.com, psychologytoday.com, medicalnewstoday.com, greatist.com.
+Search the web and find 6 real wellness articles from established health sites that are specifically relevant to this person's goals and interests. Use real article URLs from sites like healthline.com, verywellfit.com, mindbodygreen.com, self.com, psychologytoday.com, medicalnewstoday.com, greatist.com.
+
+Make the "whySuggested" field personal and specific to what you know about this person — not generic wellness copy. Reference their actual goals, what they're working toward, or their style.
 
 Return ONLY this JSON, no other text:
-{"articles":[{"id":"a1","title":"...","synopsis":"2-3 sentence summary","whySuggested":"1 sentence personalised reason","url":"https://...","category":"article","readTimeMinutes":5}]}`;
+{"articles":[{"id":"a1","title":"...","synopsis":"2-3 sentence summary","whySuggested":"1 sentence personal reason tied to their goals or identity","url":"https://...","category":"article","readTimeMinutes":5}]}`;
 
         const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
           method: "POST",
@@ -4090,14 +4105,31 @@ Return ONLY:
       if (req.session?.userId) {
         userId = req.session.userId;
         try {
-          const [profile, goals] = await Promise.all([
+          const [profile, goals, onboarding] = await Promise.all([
             storage.getUserProfile(userId),
             storage.getGoals(userId),
+            storage.getOnboardingProfile(userId),
           ]);
           const parts: string[] = [];
           if (profile?.fitnessGoal) parts.push(profile.fitnessGoal);
-          goals.slice(0, 2).forEach((g: any) => { if (g.wellnessDimension) parts.push(g.wellnessDimension); });
-          if (parts.length) userTopics = ` User interests: ${parts.join(", ")}.`;
+          goals.slice(0, 3).forEach((g: any) => {
+            if (g.wellnessDimension) parts.push(g.wellnessDimension);
+            if (g.title) parts.push(g.title);
+          });
+          const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+          const personalParts = [
+            lp.identityVision ? `becoming: ${lp.identityVision}` : "",
+            lp.styleLikes ? `style: ${lp.styleLikes}` : "",
+            lp.doLikes ? `enjoys: ${lp.doLikes}` : "",
+            lp.watchLikes ? `watches: ${lp.watchLikes}` : "",
+            lp.musicLikes ? `listens to: ${lp.musicLikes}` : "",
+            lp.goLikes ? `likes going to: ${lp.goLikes}` : "",
+            onboarding?.shortTermGoals ? `working on: ${onboarding.shortTermGoals}` : "",
+            onboarding?.wellnessFocus?.length ? `wellness focus: ${onboarding.wellnessFocus.join(", ")}` : "",
+          ].filter(Boolean).join("; ");
+          if (parts.length || personalParts) {
+            userTopics = ` This person is ${personalParts || parts.join(", ")}.${parts.length ? ` Goals: ${parts.join(", ")}.` : ""} Make ALL content — videos, articles, workouts, meals — feel curated specifically for them.`;
+          }
         } catch { /* non-fatal */ }
       }
 
@@ -5126,43 +5158,49 @@ Return only valid JSON, no markdown, no extra text.`;
       const userId = req.session.userId!;
 
       // Fetch user data for personalized suggestions
-      const [dimensionBlueprints, goals, habits, userProfile] = await Promise.all([
+      const [dimensionBlueprints, goals, habits, userProfile, onboardingProfile] = await Promise.all([
         storage.getDimensionBlueprints(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getUserProfile(userId),
+        storage.getOnboardingProfile(userId),
       ]);
 
-      // Build context for AI
-      const context = {
-        dimensions: dimensionBlueprints.map(d => ({
-          dimension: d.dimension,
-          focus: d.whatIStandFor?.join(", ") || "wellness",
-        })),
-        goals: goals.slice(0, 3).map(g => ({ title: g.title, dimension: g.wellnessDimension })),
-        habits: habits.slice(0, 3).map(h => ({ title: h.title })),
-        fitnessGoal: userProfile?.fitnessGoal,
-      };
+      const lp = (userProfile?.lifestylePreferences ?? {}) as Record<string, string>;
+      const exploreIdentityCtx = [
+        lp.identityVision ? `Who they're becoming: ${lp.identityVision}` : "",
+        lp.styleLikes ? `Their aesthetic/style: ${lp.styleLikes}` : "",
+        lp.readLikes ? `They like reading about: ${lp.readLikes}` : "",
+        lp.doLikes ? `Activities they love: ${lp.doLikes}` : "",
+        lp.watchLikes ? `Content they watch: ${lp.watchLikes}` : "",
+        lp.musicLikes ? `Music/podcasts they follow: ${lp.musicLikes}` : "",
+        lp.goLikes ? `Places/experiences they seek: ${lp.goLikes}` : "",
+        onboardingProfile?.shortTermGoals ? `Short-term focus: ${onboardingProfile.shortTermGoals}` : "",
+        onboardingProfile?.longTermGoals ? `Long-term vision: ${onboardingProfile.longTermGoals}` : "",
+        onboardingProfile?.wellnessFocus?.length ? `Wellness areas: ${onboardingProfile.wellnessFocus.join(", ")}` : "",
+      ].filter(Boolean).join("\n");
 
       // Generate AI suggestions
-      const prompt = `Based on the user's wellness data:
-- Dimensions: ${context.dimensions.map(d => d.dimension).join(", ")}
-- Active Goals: ${context.goals.map(g => g.title).join(", ")}
-- Current Habits: ${context.habits.map(h => h.title).join(", ")}
-${context.fitnessGoal ? `- Fitness Goal: ${context.fitnessGoal}` : ""}
+      const prompt = `You are DW, a personal AI who knows this person deeply. Generate content discovery suggestions that feel curated specifically for them — not generic wellness categories.
 
-Generate 3-4 personalized topic suggestions for content discovery. For each suggestion:
-1. A brief title explaining the connection to their wellness focus
-2. A short description (1-2 sentences)
-3. 3 specific topic keywords they can explore
+═══ WHO THIS PERSON IS ═══
+Active Goals: ${goals.slice(0, 3).map((g: any) => g.title).join(", ") || "none set"}
+Current Habits: ${habits.slice(0, 3).map((h: any) => h.title).join(", ") || "none set"}
+${userProfile?.fitnessGoal ? `Fitness Goal: ${userProfile.fitnessGoal}` : ""}
+${exploreIdentityCtx || "No lifestyle preferences set yet — give diverse, growth-oriented suggestions."}
+═══════════════════════════
 
-Return as JSON array with format:
+Generate 3-4 content topic suggestions. Each should feel like it was chosen specifically because of who this person is and who they're becoming — not generic "explore wellness" suggestions. Reference their identity, style, or specific goals directly in the description.
+
+Return as JSON array:
 [{
-  "dimension": "dimension name",
-  "title": "suggestion title",
-  "description": "why this is relevant",
+  "dimension": "life area (Body / Mind / Money / Purpose / Environment / Life / Spiritual / Social)",
+  "title": "specific, personal topic title",
+  "description": "1-2 sentences — tie it to their goals, identity, or preferences specifically",
   "keywords": ["keyword1", "keyword2", "keyword3"]
-}]`;
+}]
+
+Return only valid JSON, no other text.`;
 
       const aiResponse = await generateChatResponse(prompt, []);
       
