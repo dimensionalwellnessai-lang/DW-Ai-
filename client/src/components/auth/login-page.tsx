@@ -81,7 +81,7 @@ export function LoginPage() {
   const guestMessageCount = getGuestMessageCount();
 
   // Detect available OAuth providers from the backend
-  const { data: oauthProviders } = useQuery<{ google: boolean; apple: boolean }>({
+  const { data: oauthProviders } = useQuery<{ google: boolean; apple: boolean; facebook: boolean }>({
     queryKey: ["/api/auth/providers"],
     staleTime: 5 * 60 * 1000,
     retry: false,
@@ -97,10 +97,11 @@ export function LoginPage() {
         google_failed: "Google sign-in failed. Please try again or use email/password.",
         apple_failed: "Apple sign-in failed. Please try again or use email/password.",
         apple_no_email: "Apple did not provide an email address. Please try again.",
+        facebook_failed: "Facebook sign-in failed. Please try again or use email/password.",
         no_email: "Sign-in provider did not return an email address.",
         invalid_state: "Sign-in request expired or was tampered with. Please try again.",
         account_exists_use_password:
-          "An account with this email already exists. Please sign in with your email and password, then link your social account from Settings.",
+          "An account with this email already exists. Please sign in with your email and password.",
       };
       toast({
         title: "Sign-in failed",
@@ -120,6 +121,10 @@ export function LoginPage() {
 
   const handleAppleSignIn = () => {
     window.location.href = "/api/auth/apple";
+  };
+
+  const handleFacebookSignIn = () => {
+    window.location.href = "/api/auth/facebook";
   };
 
   const loginMutation = useMutation({
@@ -325,7 +330,7 @@ export function LoginPage() {
             </div>
             <Tabs defaultValue="login" className="w-full">
               {/* OAuth Sign-In Buttons */}
-              {(oauthProviders?.google || oauthProviders?.apple) && (
+              {(oauthProviders?.google || oauthProviders?.apple || oauthProviders?.facebook) && (
                 <div className="space-y-2 mb-4">
                   {oauthProviders.google && (
                     <Button
@@ -358,6 +363,21 @@ export function LoginPage() {
                         <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
                       </svg>
                       Continue with Apple
+                    </Button>
+                  )}
+                  {oauthProviders.facebook && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-11 sm:h-12 text-sm sm:text-base font-medium flex items-center justify-center gap-3"
+                      onClick={handleFacebookSignIn}
+                      data-testid="button-facebook-signin"
+                    >
+                      {/* Facebook logo */}
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="#1877F2">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                      Continue with Facebook
                     </Button>
                   )}
                   <div className="relative flex items-center py-1">

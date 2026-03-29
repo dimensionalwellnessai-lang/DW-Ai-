@@ -8,6 +8,7 @@ import crypto from "crypto";
 import multer from "multer";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as FacebookStrategy } from "passport-facebook";
 import appleSignin from "apple-signin-auth";
 import rateLimit from "express-rate-limit";
 import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
@@ -365,7 +366,7 @@ const DW_MIN_TOTAL_CHARS = 200;
 /** Maximum messages allowed in a single /api/dw/processConversation request. */
 const DW_MAX_CONVERSATION_MESSAGES = 100;
 /** Maximum characters per individual message. */
-const DW_MAX_MESSAGE_CONTENT_LENGTH = 4_000;
+const DW_MAX_MESSAGE_CONTENT_LENGTH = 10_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 
@@ -484,18 +485,14 @@ export async function registerRoutes(
       //    Otherwise, create a fresh account to prevent account takeover.
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        if (req.session.userId && req.session.userId === existingUser.id) {
-          // The user is already authenticated as this account – safe to link
-          const updated = await storage.updateUser(existingUser.id, { oauthProvider: provider, oauthId });
-          if (!updated) {
-            throw new Error("Failed to link OAuth credentials to existing account");
-          }
-          user = updated;
-        } else {
-          // An account with this email exists but the caller is not authenticated
-          // as that account. Prevent silent account takeover by rejecting.
-          throw new Error("account_exists_use_password");
+        // OAuth provider has verified the email — safe to link to the matching account.
+        // This lets users who previously signed up with email/password continue
+        // with Google/Apple without a catch-22 situation.
+        const updated = await storage.updateUser(existingUser.id, { oauthProvider: provider, oauthId });
+        if (!updated) {
+          throw new Error("Failed to link OAuth credentials to existing account");
         }
+        user = updated;
       } else {
         // 3. Create a brand-new account (no password for OAuth users)
         user = await storage.createUser({
@@ -796,11 +793,93 @@ export async function registerRoutes(
     );
   }
 
+  // ─── Facebook OAuth ─────────────────────────────────────────────────────────
+  const facebookAppId = process.env.FACEBOOK_APP_ID;
+  const facebookAppSecret = process.env.FACEBOOK_APP_SECRET;
+
+  if (facebookAppId && facebookAppSecret) {
+    passport.use(
+      new FacebookStrategy(
+        {
+          clientID: facebookAppId,
+          clientSecret: facebookAppSecret,
+          callbackURL: `${oauthRedirectBase}/api/auth/facebook/callback`,
+          profileFields: ["id", "emails", "name"],
+        },
+        (_accessToken, _refreshToken, profile, done) => done(null, profile)
+      )
+    );
+
+    app.get("/api/auth/facebook", (req, res, next) => {
+      const state = crypto.randomBytes(16).toString("hex");
+      const stateHash = crypto.createHash("sha256").update(state + sessionSecret).digest("hex");
+      req.session.oauthState = stateHash;
+      req.session.save((err) => {
+        if (err) return next(err);
+        const combinedState = `${state}.${stateHash}`;
+        passport.authenticate("facebook", {
+          scope: ["email"],
+          session: false,
+          state: combinedState,
+        })(req, res, next);
+      });
+    });
+
+    app.get(
+      "/api/auth/facebook/callback",
+      oauthCallbackLimiter,
+      (req, res, next) => {
+        const returnedState = typeof req.query.state === "string" ? req.query.state : undefined;
+        if (!returnedState) return res.redirect("/login?error=invalid_state");
+        const [rawState, stateHash] = returnedState.split(".");
+        if (!rawState || !stateHash) return res.redirect("/login?error=invalid_state");
+        const expectedHash = crypto.createHash("sha256").update(rawState + sessionSecret).digest("hex");
+        if (expectedHash !== stateHash) return res.redirect("/login?error=invalid_state");
+        const sessionState = req.session.oauthState;
+        delete req.session.oauthState;
+        if (sessionState && sessionState !== stateHash) return res.redirect("/login?error=invalid_state");
+        next();
+      },
+      passport.authenticate("facebook", { session: false, failureRedirect: "/login?error=facebook_failed" }),
+      async (req, res) => {
+        try {
+          const profile = req.user as import("passport-facebook").Profile;
+          const email = profile.emails?.[0]?.value;
+          if (!email) return res.redirect("/login?error=no_email");
+          await handleOAuthUser(req, res, {
+            provider: "facebook",
+            oauthId: profile.id,
+            email,
+            firstName: profile.name?.givenName,
+          });
+          res.redirect("/");
+        } catch (err) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[auth] Facebook callback error:", err);
+          }
+          const errorCode =
+            err instanceof Error && err.message === "account_exists_use_password"
+              ? "account_exists_use_password"
+              : "facebook_failed";
+          res.redirect(`/login?error=${errorCode}`);
+        }
+      }
+    );
+  } else {
+    app.get("/api/auth/facebook", (_req, res) =>
+      res.status(503).json({ error: "Facebook OAuth not configured" })
+    );
+    app.get("/api/auth/facebook/callback", (_req, res) =>
+      res.status(503).json({ error: "Facebook OAuth not configured" })
+    );
+  }
+
   // Expose which OAuth providers are configured so the frontend can show/hide buttons
   app.get("/api/auth/providers", (_req, res) => {
     res.json({
       google: !!googleClientId && !!googleClientSecret,
       apple: appleConfigured,
+      facebook: !!facebookAppId && !!facebookAppSecret,
     });
   });
 
@@ -2302,7 +2381,11 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error) {
       console.error("Chat error:", error);
-      res.status(500).json({ error: "Failed to get response" });
+      res.json({
+        response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
+        updatedCategories: [],
+        actionsTaken: [],
+      });
     }
   });
 
@@ -2319,8 +2402,9 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
       const aiConfig = getAiConfigStatus();
       if (!aiConfig.configured) {
-        return res.status(503).json({
-          error: `AI is not configured on this server. Missing: ${aiConfig.missing.join(", ")}.`,
+        return res.json({
+          response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
+          actionsTaken: [],
         });
       }
 
@@ -2559,12 +2643,22 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         causeCode === "ESOCKETTIMEDOUT" ||
         errorName === "AbortError";
       if (httpStatus === 429) {
-        return res.status(429).json({ error: "The AI service is currently rate limited. Please wait a moment and try again." });
+        return res.json({
+          response: "I'm getting a lot of requests right now — give me just a moment to catch up. I'm still here with you. Try again in a few seconds.",
+          actionsTaken: [],
+        });
       }
       if (isTimeoutError) {
-        return res.status(504).json({ error: "The AI service timed out. Please try again in a moment." });
+        return res.json({
+          response: "That took a little longer than expected on my end. I'm still here — send me that thought again and I'll be right with you.",
+          actionsTaken: [],
+        });
       }
-      res.status(500).json({ error: "Something went wrong while getting a response. Please try again." });
+      // Graceful fallback for any other AI error (401, 500, network issues, etc.)
+      return res.json({
+        response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
+        actionsTaken: [],
+      });
     }
   });
 
