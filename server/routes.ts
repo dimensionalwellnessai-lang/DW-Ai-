@@ -14,7 +14,8 @@ import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from ".
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
-import { elevationPlans, elevationPlanDays, elevationPlanActions } from "@shared/schema";
+import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, type SearchCategory } from "./openai";
@@ -4470,45 +4471,102 @@ Return ONLY this exact JSON structure, no other text:
     }
   });
 
-  // DW suggests tasks for a calendar event
+  // DW suggests tasks for a calendar event — personalized using user context
   app.post("/api/calendar/:eventId/suggest-tasks", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
       const { title, description, startTime, endTime, dimensionTags, location } = req.body;
-      const timeStr = startTime ? `at ${startTime}` : "";
-      const durationStr = (startTime && endTime) ? ` until ${endTime}` : "";
-      const tagStr = (dimensionTags && dimensionTags.length) ? ` (${dimensionTags.join(", ")})` : "";
-      const locationStr = location ? ` at ${location}` : "";
 
-      const prompt = `You are DW, a wellness AI. A user has a calendar event: "${title}"${timeStr}${durationStr}${tagStr}${locationStr}.${description ? ` Notes: ${description}` : ""}
+      // ── Collect user context in parallel ──────────────────────────────────
+      const [onboarding, userGoals, profile, learningsRows] = await Promise.all([
+        storage.getOnboardingProfile(userId),
+        storage.getGoals(userId),
+        storage.getUserProfile(userId),
+        db.select().from(aiLearnings).where(eq(aiLearnings.userId, userId)).limit(12),
+      ]);
 
-Generate 4-5 specific, actionable tasks that would help this person make the most of this time block. Tasks should be concrete steps, not vague suggestions.
+      const activeGoalTitles = userGoals
+        .filter((g) => g.isActive)
+        .map((g) => g.title)
+        .slice(0, 8);
 
-Return ONLY a JSON array of task objects. Each object must have:
-- "title": short task title (max 60 chars)
-- "linkedRoute": the best app section path (one of: /workout, /insights, /habits, /goals, /talk, /browse, /mood-tracker, /tracking, or null if none fits)
+      const learningsSummary = learningsRows
+        .map((l) => `${l.topic}: ${JSON.stringify(l.details ?? "")}`)
+        .join("; ");
 
-Example: [{"title": "Start with 5 deep breathing cycles","linkedRoute":"/insights"},{"title":"Follow the DW body scan meditation","linkedRoute":"/insights"}]
+      const userCtx = [
+        onboarding?.shortTermGoals ? `Short-term goals: ${onboarding.shortTermGoals}` : "",
+        onboarding?.longTermGoals ? `Long-term goals: ${onboarding.longTermGoals}` : "",
+        onboarding?.wellnessFocus?.length ? `Wellness focus areas: ${onboarding.wellnessFocus.join(", ")}` : "",
+        onboarding?.priorities?.length ? `Priorities: ${onboarding.priorities.join(", ")}` : "",
+        activeGoalTitles.length ? `Active goals: ${activeGoalTitles.join(", ")}` : "",
+        profile?.fitnessGoal ? `Fitness goal: ${profile.fitnessGoal}` : "",
+        profile?.coachingTone ? `Preferred tone: ${profile.coachingTone}` : "",
+        learningsSummary ? `What DW knows about this person: ${learningsSummary}` : "",
+      ].filter(Boolean).join("\n");
 
-Return only valid JSON, no markdown, no extra text.`;
+      // ── Detect free time / leisure event ──────────────────────────────────
+      const freeTimeKeywords = ["free", "relax", "tv", "television", "chill", "leisure", "downtime", "unwind", "rest", "watch", "movie", "read", "hang", "game", "play", "scroll", "browse"];
+      const isFreeTime = !title?.trim() || freeTimeKeywords.some((kw) => title.toLowerCase().includes(kw));
+
+      let prompt: string;
+
+      if (isFreeTime) {
+        prompt = `You are DW, a personal AI companion who knows this person deeply. They have free/leisure time${startTime ? ` at ${startTime}` : ""}${endTime ? ` until ${endTime}` : ""}${location ? ` in/near ${location}` : ""}.
+
+Here is what you know about them:
+${userCtx || "No specific context available — make diverse, inspiring suggestions."}
+
+Generate 5-6 personalized suggestions for how they could spend this time. Each suggestion should feel hand-picked for THIS person — not generic. Mix categories: something to watch, something to read or listen to, somewhere to go, something to do that aligns with who they want to be.
+
+Return ONLY a JSON array. Each object must have:
+- "title": the suggestion itself (max 70 chars, be specific — name actual shows, book genres, activity types)
+- "category": one of "Watch", "Read", "Go", "Do", "Listen", "Create"
+- "why": one short sentence (max 80 chars) on why this fits them personally
+- "linkedRoute": relevant app path or null (options: /browse, /workout, /insights, /goals, /habits, /talk)
+
+Return only valid JSON, no markdown.`;
+      } else {
+        const timeStr = startTime ? ` at ${startTime}` : "";
+        const durationStr = endTime ? ` until ${endTime}` : "";
+        const tagStr = dimensionTags?.length ? ` [${dimensionTags.join(", ")}]` : "";
+        const locationStr = location ? ` at ${location}` : "";
+
+        prompt = `You are DW, a wellness AI who knows this person well. They have a calendar event: "${title}"${timeStr}${durationStr}${tagStr}${locationStr}.${description ? ` Notes: ${description}` : ""}
+
+Here is what you know about them:
+${userCtx || "No specific context — suggest practical, actionable steps."}
+
+Generate 4-5 specific, actionable tasks to help them make the most of this event. Tailor suggestions to their goals and style — not generic steps.
+
+Return ONLY a JSON array. Each object must have:
+- "title": task title (max 65 chars)
+- "category": one of "Prepare", "Do", "Track", "Reflect", "Connect"
+- "why": one short sentence (max 80 chars) tying this to their goals or style
+- "linkedRoute": relevant app path or null (options: /workout, /insights, /habits, /goals, /talk, /browse, /mood-tracker, /tracking)
+
+Return only valid JSON, no markdown.`;
+      }
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        max_tokens: 400,
+        temperature: 0.8,
+        max_tokens: 600,
       });
 
       const raw = completion.choices[0]?.message?.content?.trim() ?? "[]";
-      let suggestions: { title: string; linkedRoute: string | null }[] = [];
+      let suggestions: { title: string; category: string; why: string; linkedRoute: string | null }[] = [];
       try {
-        const cleaned = raw.replace(/^```(?:json)?|```$/g, "").trim();
+        const cleaned = raw.replace(/^```(?:json)?[\s\S]*?\n|```$/gm, "").trim();
         suggestions = JSON.parse(cleaned);
       } catch {
         suggestions = [];
       }
 
-      res.json({ suggestions });
+      res.json({ suggestions, isFreeTime });
     } catch (error) {
+      console.error("suggest-tasks error:", error);
       res.status(500).json({ error: "Failed to generate suggestions" });
     }
   });

@@ -56,7 +56,10 @@ Preferred communication style: Simple, everyday language.
 8. **Cosmic Background**: `cosmic-bg` CSS class provides subtle gradient background (navy/indigo/violet in dark mode).
 9. **Time-of-Day Gradients**: CSS classes `cc-time--dawn/morning/afternoon/evening/night` in index.css for Command Center background. Uses layered CSS `background` gradients over `hsl(var(--background))`.
 10. **Insight Dimension Cards**: Clickable cards on `/insights` page open a dialog with dimension score, assessment questions, and "Talk with DW" CTA. Keyboard accessible (role="button", tabIndex, Enter/Space handlers).
-11. **Event Detail Sheet** (`client/src/components/event-detail-sheet.tsx`): Bottom sheet opens on every calendar event tap. Shows event time, section link (auto-detected from title keywords), tasks list with checkboxes, "Ask DW" button for AI task suggestions, and custom task input. Tasks stored in `calendar_event_tasks` DB table (requires auth). Guest users see sign-in prompt.
+11. **Event Detail Sheet** (`client/src/components/event-detail-sheet.tsx`): Bottom sheet opens on every calendar event tap. Shows event time, section link (auto-detected from title keywords), tasks list with checkboxes, and a merged Add+Suggest flow — tapping "Add" opens the type-your-own input AND auto-loads personalized DW suggestions simultaneously. Tasks stored in `calendar_event_tasks` DB table (requires auth). Guest users see sign-in prompt.
+    - **Free time detection**: Events titled "free", "watch tv", "chill", blank, etc. trigger "Ideas & Plans" mode — suggestions are rich lifestyle cards with category icons (Watch/Read/Go/Do/Listen/Create) and a "why this fits you" sentence.
+    - **Structured event tasks**: Non-free-time events show compact task-style suggestion rows.
+    - **Personalization**: Backend pulls onboarding profile, active goals, user profile preferences, and AI learnings to tailor every suggestion to the specific user.
 
 ### AI Integration
 - AI chat interface as primary interaction point

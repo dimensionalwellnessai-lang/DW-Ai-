@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -13,6 +13,13 @@ import {
   Pencil,
   X,
   Loader2,
+  RefreshCw,
+  Tv,
+  BookOpen,
+  Navigation,
+  Zap,
+  Headphones,
+  Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +28,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { CalendarEventTask } from "@shared/schema";
 
-// ── Keyword → app route mapping ─────────────────────────────────────────────
+// ── Keyword → app section mapping ────────────────────────────────────────────
 const SECTION_MAP: { keywords: string[]; route: string; label: string; color: string }[] = [
   { keywords: ["meditation", "mindful", "spiritual", "breathe", "breath", "sit still", "silence", "prayer"], route: "/insights", label: "Insights", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
   { keywords: ["workout", "exercise", "gym", "lift", "run", "jog", "cardio", "upper body", "lower body", "stretch", "yoga", "movement", "light workout"], route: "/workout", label: "Workout", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
@@ -30,71 +37,124 @@ const SECTION_MAP: { keywords: string[]; route: string; label: string; color: st
   { keywords: ["work", "commute", "meeting", "deep work", "focus", "office", "productive"], route: "/goals", label: "Goals", color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },
   { keywords: ["habit", "routine", "morning", "wind down", "night"], route: "/habits", label: "Habits", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" },
   { keywords: ["mood", "check-in", "checkin", "energy"], route: "/mood-tracker", label: "Mood", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
-  { keywords: ["free", "relax", "unwind", "rest", "chill", "leisure", "downtime"], route: "/browse", label: "For You", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
-  { keywords: ["shower", "hygiene", "get ready", "dress"], route: null as unknown as string, label: "Self-Care", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" },
+  { keywords: ["free", "relax", "unwind", "rest", "chill", "leisure", "downtime", "watch", "tv", "movie"], route: "/browse", label: "For You", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400" },
   { keywords: ["talk", "chat", "dw", "ai"], route: "/talk", label: "Talk to DW", color: "bg-primary/10 text-primary" },
 ];
 
-function detectSection(title: string, tags?: string[]): { route: string | null; label: string; color: string } | null {
+const FREE_TIME_KEYWORDS = ["free", "relax", "tv", "television", "chill", "leisure", "downtime", "unwind", "rest", "watch", "movie", "read", "hang", "game", "play", "scroll", "browse", "free time"];
+
+function detectSection(title: string, tags?: string[]) {
   const haystack = [title, ...(tags ?? [])].join(" ").toLowerCase();
   for (const entry of SECTION_MAP) {
-    if (entry.keywords.some((kw) => haystack.includes(kw))) {
-      return { route: entry.route ?? null, label: entry.label, color: entry.color };
-    }
+    if (entry.keywords.some((kw) => haystack.includes(kw))) return entry;
   }
   return null;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-function fmtTime(d: Date) {
-  return format(d, "h:mm a");
+function isFreeTimeEvent(title: string) {
+  if (!title?.trim()) return true;
+  const lower = title.toLowerCase();
+  return FREE_TIME_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
-interface TaskRowProps {
-  task: CalendarEventTask;
-  onToggle: () => void;
-  onDelete: () => void;
-}
+function fmtTime(d: Date) { return format(d, "h:mm a"); }
 
-function TaskRow({ task, onToggle, onDelete }: TaskRowProps) {
+// ── Category config ──────────────────────────────────────────────────────────
+const CATEGORY_CONFIG: Record<string, { icon: typeof Tv; color: string; bg: string }> = {
+  Watch:   { icon: Tv,         color: "text-violet-500",  bg: "bg-violet-500/10" },
+  Read:    { icon: BookOpen,   color: "text-blue-500",    bg: "bg-blue-500/10" },
+  Go:      { icon: Navigation, color: "text-green-500",   bg: "bg-green-500/10" },
+  Do:      { icon: Zap,        color: "text-orange-500",  bg: "bg-orange-500/10" },
+  Listen:  { icon: Headphones, color: "text-pink-500",    bg: "bg-pink-500/10" },
+  Create:  { icon: Palette,    color: "text-yellow-500",  bg: "bg-yellow-500/10" },
+  Prepare: { icon: Check,      color: "text-teal-500",    bg: "bg-teal-500/10" },
+  Track:   { icon: Zap,        color: "text-indigo-500",  bg: "bg-indigo-500/10" },
+  Reflect: { icon: BookOpen,   color: "text-violet-400",  bg: "bg-violet-400/10" },
+  Connect: { icon: Sparkles,   color: "text-pink-400",    bg: "bg-pink-400/10" },
+};
+
+type Suggestion = { title: string; category: string; why: string; linkedRoute: string | null };
+
+// ── Task row ─────────────────────────────────────────────────────────────────
+function TaskRow({ task, onToggle, onDelete }: { task: CalendarEventTask; onToggle: () => void; onDelete: () => void }) {
   return (
-    <div className="flex items-start gap-2 group py-1" data-testid={`task-row-${task.id}`}>
+    <div className="flex items-start gap-2 group py-1.5" data-testid={`task-row-${task.id}`}>
       <button
         type="button"
         onClick={onToggle}
-        className={`mt-0.5 shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-          task.isCompleted
-            ? "bg-primary border-primary"
-            : "border-muted-foreground/40 hover:border-primary"
-        }`}
+        className={`mt-0.5 shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.isCompleted ? "bg-primary border-primary" : "border-muted-foreground/40 hover:border-primary"}`}
         aria-label={task.isCompleted ? "Mark incomplete" : "Mark complete"}
         data-testid={`checkbox-task-${task.id}`}
       >
         {task.isCompleted && <Check className="h-3 w-3 text-primary-foreground" />}
       </button>
-      <span className={`flex-1 text-sm leading-snug ${task.isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
-        {task.title}
-      </span>
-      {task.linkedRoute && (
-        <a
-          href={task.linkedRoute}
-          className="shrink-0 text-muted-foreground/50 hover:text-primary transition-colors"
-          title="Open in app"
-          data-testid={`link-task-${task.id}`}
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      )}
-      <button
-        type="button"
-        onClick={onDelete}
-        className="shrink-0 text-muted-foreground/30 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-        aria-label="Delete task"
-        data-testid={`delete-task-${task.id}`}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      <div className="flex-1 min-w-0">
+        <span className={`text-sm leading-snug ${task.isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
+          {task.title}
+        </span>
+        {task.dwSuggested && !task.isCompleted && (
+          <span className="ml-1.5 text-[10px] text-primary/60 font-medium">DW</span>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        {task.linkedRoute && (
+          <a href={task.linkedRoute} className="p-1 text-muted-foreground/50 hover:text-primary transition-colors" title="Open in app" data-testid={`link-task-${task.id}`}>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+        <button type="button" onClick={onDelete} className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors" aria-label="Delete task" data-testid={`delete-task-${task.id}`}>
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Suggestion card (free time) ───────────────────────────────────────────────
+function FreeTimeSuggestionCard({ s, onAccept, onDismiss, index }: { s: Suggestion; onAccept: () => void; onDismiss: () => void; index: number }) {
+  const cfg = CATEGORY_CONFIG[s.category] ?? CATEGORY_CONFIG["Do"];
+  const Icon = cfg.icon;
+  return (
+    <div className="rounded-xl border border-border/50 bg-card p-3 flex gap-3 items-start" data-testid={`suggestion-card-${index}`}>
+      <div className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${cfg.bg}`}>
+        <Icon className={`h-4 w-4 ${cfg.color}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className={`text-[10px] font-bold uppercase tracking-wide ${cfg.color}`}>{s.category}</span>
+        </div>
+        <p className="text-sm font-medium text-foreground leading-snug">{s.title}</p>
+        {s.why && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.why}</p>}
+      </div>
+      <div className="flex flex-col gap-1 shrink-0">
+        <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-primary/30 text-primary hover:bg-primary/10" onClick={onAccept} data-testid={`button-accept-suggestion-${index}`}>
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground/50" onClick={onDismiss} data-testid={`button-dismiss-suggestion-${index}`}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Suggestion row (structured event) ────────────────────────────────────────
+function TaskSuggestionRow({ s, onAccept, onDismiss, index }: { s: Suggestion; onAccept: () => void; onDismiss: () => void; index: number }) {
+  return (
+    <div className="flex items-start gap-2 py-1.5 group" data-testid={`suggestion-row-${index}`}>
+      <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-foreground leading-snug">{s.title}</p>
+        {s.why && <p className="text-xs text-muted-foreground">{s.why}</p>}
+      </div>
+      <div className="flex gap-1 shrink-0">
+        <Button size="sm" variant="outline" className="h-6 px-2 border-primary/30 text-primary hover:bg-primary/10" onClick={onAccept} data-testid={`button-accept-suggestion-${index}`}>
+          <Plus className="h-3 w-3" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground/40" onClick={onDismiss} data-testid={`button-dismiss-suggestion-${index}`}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -120,16 +180,25 @@ interface EventDetailSheetProps {
 export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetProps) {
   const [, setLocation] = useLocation();
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [showAddTask, setShowAddTask] = useState(false);
+  const [addMode, setAddMode] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<{ title: string; linkedRoute: string | null }[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isFreeTime, setIsFreeTime] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const isOpen = !!event;
+  const isDbEvent = event?.source === "db";
   const section = event ? detectSection(event.title, event.dimensionTags) : null;
 
-  const isDbEvent = event?.source === "db";
+  // Reset state when event changes
+  useEffect(() => {
+    setAddMode(false);
+    setSuggestions([]);
+    setNewTaskTitle("");
+    setIsFreeTime(event ? isFreeTimeEvent(event.title) : false);
+  }, [event?.id]);
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery<CalendarEventTask[]>({
     queryKey: ["/api/calendar", event?.id, "tasks"],
@@ -143,7 +212,6 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar", event?.id, "tasks"] });
       setNewTaskTitle("");
-      setShowAddTask(false);
     },
     onError: () => toast({ title: "Couldn't add task", variant: "destructive" }),
   });
@@ -159,10 +227,10 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/calendar", event?.id, "tasks"] }),
   });
 
-  const handleAskDW = async () => {
-    if (!event) return;
+  // Fetch DW suggestions — called automatically when Add is tapped (or manually refreshed)
+  const fetchSuggestions = async () => {
+    if (!event || !isDbEvent) return;
     setSuggestLoading(true);
-    setSuggestions([]);
     try {
       const res = await apiRequest("POST", `/api/calendar/${event.id}/suggest-tasks`, {
         title: event.title,
@@ -174,21 +242,19 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
       });
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
+      setIsFreeTime(data.isFreeTime ?? isFreeTimeEvent(event.title));
     } catch {
-      toast({ title: "DW couldn't generate suggestions right now", variant: "destructive" });
+      // silent — user can still type manually
     } finally {
       setSuggestLoading(false);
     }
   };
 
-  const acceptSuggestion = (s: { title: string; linkedRoute: string | null }) => {
-    addTaskMutation.mutate({ title: s.title, dwSuggested: true, linkedRoute: s.linkedRoute });
-    setSuggestions((prev) => prev.filter((x) => x.title !== s.title));
-  };
-
-  const acceptAllSuggestions = () => {
-    suggestions.forEach((s) => addTaskMutation.mutate({ title: s.title, dwSuggested: true, linkedRoute: s.linkedRoute }));
-    setSuggestions([]);
+  // When "Add" is tapped: open input AND auto-load suggestions
+  const handleOpenAdd = () => {
+    setAddMode(true);
+    if (suggestions.length === 0) fetchSuggestions();
+    setTimeout(() => inputRef.current?.focus(), 80);
   };
 
   const handleAddCustomTask = () => {
@@ -196,25 +262,34 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
     addTaskMutation.mutate({ title: newTaskTitle.trim(), dwSuggested: false, linkedRoute: section?.route ?? null });
   };
 
+  const acceptSuggestion = (s: Suggestion) => {
+    addTaskMutation.mutate({ title: s.title, dwSuggested: true, linkedRoute: s.linkedRoute });
+    setSuggestions((prev) => prev.filter((x) => x.title !== s.title));
+  };
+
+  const acceptAll = () => {
+    suggestions.forEach((s) => addTaskMutation.mutate({ title: s.title, dwSuggested: true, linkedRoute: s.linkedRoute }));
+    setSuggestions([]);
+  };
+
   if (!event) return null;
+
+  const completedCount = tasks.filter((t) => t.isCompleted).length;
+  const totalCount = tasks.length;
 
   return (
     <>
       {/* Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
-          onClick={onClose}
-          data-testid="event-sheet-backdrop"
-        />
-      )}
+      <div
+        className={`fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        onClick={onClose}
+        data-testid="event-sheet-backdrop"
+      />
 
       {/* Sheet */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[61] bg-background rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${
-          isOpen ? "translate-y-0" : "translate-y-full"
-        }`}
-        style={{ maxHeight: "88vh", display: "flex", flexDirection: "column" }}
+        className={`fixed bottom-0 left-0 right-0 z-[61] bg-background rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${isOpen ? "translate-y-0" : "translate-y-full"}`}
+        style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}
         data-testid="event-detail-sheet"
       >
         {/* Drag handle */}
@@ -222,54 +297,41 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
           <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
         </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-5 pb-8">
-          {/* Header row */}
-          <div className="flex items-start justify-between gap-2 mb-3">
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 pb-10">
+
+          {/* ── Header ── */}
+          <div className="flex items-start justify-between gap-2 mb-3 pt-1">
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-foreground leading-snug">{event.title}</h2>
+              <h2 className="text-lg font-semibold text-foreground leading-snug">{event.title || "Free Time"}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  {fmtTime(event.startTime)}
-                  {event.endTime && ` – ${fmtTime(event.endTime)}`}
+                  {fmtTime(event.startTime)}{event.endTime && ` – ${fmtTime(event.endTime)}`}
                 </span>
                 {event.location && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    {event.location}
+                    <MapPin className="h-3 w-3" />{event.location}
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={onEdit}
-                className="p-2 rounded-full hover:bg-muted transition-colors"
-                aria-label="Edit event"
-                data-testid="button-edit-event"
-              >
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button type="button" onClick={onEdit} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Edit event" data-testid="button-edit-event">
                 <Pencil className="h-4 w-4 text-muted-foreground" />
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-muted transition-colors"
-                aria-label="Close"
-                data-testid="button-close-sheet"
-              >
+              <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-muted transition-colors" aria-label="Close" data-testid="button-close-sheet">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
           </div>
 
-          {/* Section link */}
+          {/* ── Section shortcut ── */}
           {section && (
             <button
               type="button"
               onClick={() => { if (section.route) setLocation(section.route); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80 mb-4 ${section.color}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium mb-4 transition-opacity hover:opacity-80 ${section.color}`}
               data-testid="button-section-link"
             >
               <ExternalLink className="h-3 w-3" />
@@ -277,12 +339,12 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
             </button>
           )}
 
-          {/* Description */}
+          {/* ── Description ── */}
           {event.description && (
             <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{event.description}</p>
           )}
 
-          {/* Dimension tags */}
+          {/* ── Tags ── */}
           {(event.dimensionTags ?? []).length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               {(event.dimensionTags ?? []).map((tag) => (
@@ -291,56 +353,74 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
             </div>
           )}
 
-          {/* Tasks section */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-foreground">Tasks</h3>
-              <div className="flex gap-1">
-                {isDbEvent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-primary"
-                    onClick={handleAskDW}
-                    disabled={suggestLoading}
-                    data-testid="button-ask-dw"
-                  >
-                    {suggestLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    ) : (
-                      <Sparkles className="h-3 w-3 mr-1" />
-                    )}
-                    Ask DW
-                  </Button>
-                )}
+          {/* ── Guest notice ── */}
+          {!isDbEvent && (
+            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 text-center mb-4">
+              <p className="text-xs text-muted-foreground">Sign in so DW can personalize suggestions and save your tasks.</p>
+            </div>
+          )}
+
+          {/* ── Task list ── */}
+          {isDbEvent && (
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {isFreeTime ? "Ideas & Plans" : "Tasks"}
+                  </h3>
+                  {totalCount > 0 && (
+                    <span className="text-xs text-muted-foreground">{completedCount}/{totalCount}</span>
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setShowAddTask((v) => !v)}
+                  className="h-7 px-2.5 text-xs gap-1"
+                  onClick={handleOpenAdd}
                   data-testid="button-add-task"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className="h-3 w-3" />
                   Add
                 </Button>
               </div>
-            </div>
 
-            {/* Custom task input */}
-            {showAddTask && (
-              <div className="flex gap-2 mb-3">
+              {tasksLoading ? (
+                <div className="flex items-center justify-center py-5">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {tasks.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      onToggle={() => toggleTaskMutation.mutate({ id: task.id, isCompleted: !task.isCompleted })}
+                      onDelete={() => deleteTaskMutation.mutate(task.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Add mode: input + suggestions together ── */}
+          {isDbEvent && addMode && (
+            <div className="mt-3 space-y-4">
+
+              {/* Type your own */}
+              <div className="flex gap-2">
                 <Input
+                  ref={inputRef}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="What needs to happen?"
-                  className="h-8 text-sm"
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCustomTask(); }}
-                  autoFocus
+                  placeholder={isFreeTime ? "Add your own idea..." : "Type exactly what you want..."}
+                  className="h-9 text-sm"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCustomTask(); if (e.key === "Escape") setAddMode(false); }}
                   data-testid="input-new-task"
                 />
                 <Button
                   size="sm"
-                  className="h-8 px-3"
+                  className="h-9 px-3 shrink-0"
                   onClick={handleAddCustomTask}
                   disabled={!newTaskTitle.trim() || addTaskMutation.isPending}
                   data-testid="button-save-task"
@@ -348,100 +428,98 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
                   {addTaskMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                 </Button>
               </div>
-            )}
 
-            {/* Guest mode notice */}
-            {!isDbEvent && (
-              <div className="rounded-xl border border-border/50 bg-muted/30 p-3 text-center">
-                <p className="text-xs text-muted-foreground">Sign in to add tasks and let DW suggest steps for this event.</p>
-              </div>
-            )}
-
-            {/* Task list */}
-            {isDbEvent && (
-              <>
-                {tasksLoading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              {/* DW suggestions */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">
+                      {suggestLoading ? "DW is thinking..." : "DW suggests"}
+                    </span>
                   </div>
-                ) : tasks.length === 0 && suggestions.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border/60 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">No tasks yet. Tap <strong>Ask DW</strong> for suggestions, or add your own.</p>
+                  <div className="flex items-center gap-2">
+                    {suggestions.length > 1 && !suggestLoading && (
+                      <button
+                        type="button"
+                        className="text-xs text-primary underline underline-offset-2"
+                        onClick={acceptAll}
+                        data-testid="button-accept-all-suggestions"
+                      >
+                        Add all
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={fetchSuggestions}
+                      disabled={suggestLoading}
+                      className="p-1 text-muted-foreground/50 hover:text-primary transition-colors"
+                      aria-label="Refresh suggestions"
+                      data-testid="button-refresh-suggestions"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${suggestLoading ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {suggestLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />
+                    ))}
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">No suggestions yet — tap refresh to try again.</p>
+                ) : isFreeTime ? (
+                  <div className="space-y-2">
+                    {suggestions.map((s, i) => (
+                      <FreeTimeSuggestionCard
+                        key={i}
+                        s={s}
+                        index={i}
+                        onAccept={() => acceptSuggestion(s)}
+                        onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
+                      />
+                    ))}
                   </div>
                 ) : (
-                  <div className="space-y-0.5">
-                    {tasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        onToggle={() => toggleTaskMutation.mutate({ id: task.id, isCompleted: !task.isCompleted })}
-                        onDelete={() => deleteTaskMutation.mutate(task.id)}
+                  <div className="rounded-2xl border border-primary/15 bg-primary/5 divide-y divide-primary/10 px-3">
+                    {suggestions.map((s, i) => (
+                      <TaskSuggestionRow
+                        key={i}
+                        s={s}
+                        index={i}
+                        onAccept={() => acceptSuggestion(s)}
+                        onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
                       />
                     ))}
                   </div>
                 )}
-              </>
-            )}
-          </div>
-
-          {/* DW Suggestions */}
-          {suggestions.length > 0 && (
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">DW Suggestions</span>
-                </div>
-                <button
-                  type="button"
-                  className="text-xs text-primary underline underline-offset-2 font-medium"
-                  onClick={acceptAllSuggestions}
-                  data-testid="button-accept-all-suggestions"
-                >
-                  Add all
-                </button>
-              </div>
-              <div className="space-y-2">
-                {suggestions.map((s, i) => (
-                  <div key={i} className="flex items-start gap-2" data-testid={`suggestion-${i}`}>
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground">{s.title}</p>
-                      {s.linkedRoute && (
-                        <span className="text-xs text-muted-foreground capitalize">{s.linkedRoute.replace(/\//g, "").replace(/-/g, " ")}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10"
-                        onClick={() => acceptSuggestion(s)}
-                        data-testid={`button-accept-suggestion-${i}`}
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
-                        data-testid={`button-dismiss-suggestion-${i}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
 
-          {/* Talk to DW CTA */}
+          {/* ── Empty state (no tasks, not in add mode) ── */}
+          {isDbEvent && !addMode && tasks.length === 0 && !tasksLoading && (
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              className="w-full rounded-xl border border-dashed border-border/60 py-5 text-center hover:border-primary/40 hover:bg-primary/5 transition-all group mt-1"
+              data-testid="button-empty-add"
+            >
+              <Sparkles className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary mx-auto mb-1.5 transition-colors" />
+              <p className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                {isFreeTime ? "Tap to get personalized ideas from DW" : "Tap to add tasks — DW will suggest steps"}
+              </p>
+            </button>
+          )}
+
+          {/* ── Talk to DW CTA ── */}
           {isDbEvent && (
             <button
               type="button"
-              className="mt-4 w-full text-center text-xs text-muted-foreground/60 hover:text-primary transition-colors py-1"
-              onClick={() => setLocation(`/talk?topic=${encodeURIComponent(event.title)}`)}
+              className="mt-5 w-full text-center text-xs text-muted-foreground/50 hover:text-primary transition-colors py-1"
+              onClick={() => setLocation(`/talk?topic=${encodeURIComponent(event.title || "free time")}`)}
               data-testid="button-talk-dw-about-event"
             >
               <Sparkles className="h-3 w-3 inline mr-1" />
