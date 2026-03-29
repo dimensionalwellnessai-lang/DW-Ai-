@@ -75,7 +75,17 @@ Preferred communication style: Simple, everyday language.
 - **Markdown rendering**: DW chat messages use `react-markdown` + `remark-gfm`. Headers, bold, bullets, horizontal rules all render visually in `client/src/pages/talk-it-out.tsx`.
 - **Save Plan**: Any substantial DW response (>350 chars) shows a "Save this plan" button. Plans saved to localStorage (`dw_saved_plans`). Accessible via "My Plans" bookmark button in chat header → SwipeableDrawer list → full-content Dialog with markdown rendering.
 
+### Notifications System
+- **Tables**: `notifications` and `evening_check_ins` in DB
+- **API**: `/api/notifications/*` — list, count, mark read, create DW daily affirmation (`POST /api/notifications/dw-daily`)
+- **API**: `/api/accountability/check-in-status` (GET) and `/api/accountability/evening-check-in` (POST)
+- **Components**: `NotificationBell` (bell icon with unread count badge in page header) + `NotificationPanel` (full drawer)
+- **DW daily affirmation**: Auto-called once per session on app open for logged-in users (session-gated via sessionStorage)
+- **Evening check-in**: `AccountabilityCheckIn` component auto-prompts at 9:30 PM if not completed; user rates energy (1-10), adds notes; DW generates reflection via OpenAI
+- **Username setup**: `UsernameSetupModal` prompts logged-in users without a username the first time they navigate to `/browse` or community pages
+
 ### Browse Page (client/src/pages/browse.tsx)
+- **Discover tab filter**: Filter button opens a bottom-sheet with three filter groups: Bucket (All/For You/Explore/Surprise), Content type (All/article/video/quote/fact/spiritual/lesson), Wellness dimension (All/emotional/physical/financial/spiritual/intellectual/social/environmental/purpose). Filters apply client-side to the loaded discover card list. Active filter count badge shows on Filter button. Bucket pills are also clickable to quickly toggle a single bucket filter.
 - **For You tab**: Shows time-aware real content (videos, articles, workouts, meal idea) via `GET /api/browse/for-you` using Perplexity web search. Refreshes when time slot changes. Greeting banner adapts to time of day and user name. Topic suggestions from `/api/explore/suggestions` shown below.
 - **For You — Entertainment**: `GET /api/browse/entertainment` — Perplexity-powered (OpenAI fallback) personalized TV/movie suggestions. Horizontal scroll card rail, links to Google search for each show.
 - **For You — Activities**: `GET /api/browse/activities` — OpenAI-generated time-of-day-aware activity suggestions (indoor/outdoor/social) with "Add to Schedule" button.

@@ -51,6 +51,8 @@ import {
   dailyMoodCheckins,
   activityCompletions,
   trackerSettings,
+  notifications,
+  eveningCheckIns,
   type Conversation,
   type InsertConversation,
   type AiSyncSession,
@@ -267,7 +269,7 @@ import {
   type InsertCommunityOpportunityRecord,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, or, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or, inArray, count } from "drizzle-orm";
 import { createHash } from "crypto";
 
 export interface IStorage {
@@ -720,6 +722,22 @@ export interface IStorage {
   getSavedCommunityOpportunityIds(userId: string): Promise<string[]>;
   saveCommunityOpportunity(userId: string, opportunityId: string): Promise<void>;
   unsaveCommunityOpportunity(userId: string, opportunityId: string): Promise<void>;
+
+  // Notifications
+  createNotification(data: { userId: string; type: string; title: string; body: string; actionUrl?: string; metadata?: any }): Promise<any>;
+  getUserNotifications(userId: string): Promise<any[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(id: string, userId: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  deleteNotification(id: string, userId: string): Promise<void>;
+
+  // Evening Check-Ins
+  getTodayCheckIn(userId: string): Promise<any | undefined>;
+  createEveningCheckIn(data: { userId: string; checkInDate: string; userNotes?: string; completedSummary?: string; dwAnalysis?: string; energyScore?: number }): Promise<any>;
+
+  // Username
+  getUserByUsername(username: string): Promise<any | undefined>;
+  setUsername(userId: string, username: string, systemName?: string): Promise<void>;
 }
 
 export interface AdminAnalytics {
@@ -3667,6 +3685,54 @@ export class DatabaseStorage implements IStorage {
           eq(savedCommunityOpportunities.opportunityId, opportunityId),
         ),
       );
+  }
+
+  async createNotification(data: { userId: string; type: string; title: string; body: string; actionUrl?: string; metadata?: any }): Promise<any> {
+    const [notif] = await db.insert(notifications).values(data as any).returning();
+    return notif;
+  }
+
+  async getUserNotifications(userId: string): Promise<any[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(50);
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: count() }).from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+    return result[0]?.count ?? 0;
+  }
+
+  async markNotificationRead(id: string, userId: string): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: string, userId: string): Promise<void> {
+    await db.delete(notifications).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  }
+
+  async getTodayCheckIn(userId: string): Promise<any | undefined> {
+    const today = new Date().toISOString().split("T")[0];
+    const [row] = await db.select().from(eveningCheckIns).where(and(eq(eveningCheckIns.userId, userId), eq(eveningCheckIns.checkInDate, today)));
+    return row;
+  }
+
+  async createEveningCheckIn(data: { userId: string; checkInDate: string; userNotes?: string; completedSummary?: string; dwAnalysis?: string; energyScore?: number }): Promise<any> {
+    const [row] = await db.insert(eveningCheckIns).values(data).returning();
+    return row;
+  }
+
+  async getUserByUsername(username: string): Promise<any | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async setUsername(userId: string, username: string, systemName?: string): Promise<void> {
+    const updates: any = { username };
+    if (systemName !== undefined) updates.systemName = systemName;
+    await db.update(users).set(updates).where(eq(users.id, userId));
   }
 }
 

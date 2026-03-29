@@ -463,6 +463,11 @@ export default function Browse() {
   const [discoverHasMore, setDiscoverHasMore] = useState(true);
   const [selectedDiscoverCard, setSelectedDiscoverCard] = useState<DiscoverCard | null>(null);
   const discoverSentinelRef = useRef<HTMLDivElement>(null);
+  const [discoverFilterOpen, setDiscoverFilterOpen] = useState(false);
+  const [discoverFilterBucket, setDiscoverFilterBucket] = useState<string>("all");
+  const [discoverFilterType, setDiscoverFilterType] = useState<string>("all");
+  const [discoverFilterDimension, setDiscoverFilterDimension] = useState<string>("all");
+  const [discoverFilteredCards, setDiscoverFilteredCards] = useState<DiscoverCard[] | null>(null);
   const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "engage" | "local">("groups");
   const [engageLocation, setEngageLocation] = useState("");
   const [engageSearchInput, setEngageSearchInput] = useState("");
@@ -1595,26 +1600,111 @@ ${contentList}`,
                 <h2 className="text-base font-semibold">Your AI Feed</h2>
                 <p className="text-xs text-muted-foreground">Live content — personalized, exploratory, and surprising</p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => { setDiscoverCards([]); setDiscoverPage(1); setDiscoverHasMore(true); fetchDiscoverPage(1); }}
-                disabled={discoverLoading}
-                data-testid="button-discover-refresh"
-              >
-                <Shuffle className="h-3.5 w-3.5 mr-1.5" />Refresh
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={discoverFilterBucket !== "all" || discoverFilterType !== "all" || discoverFilterDimension !== "all" ? "default" : "outline"}
+                  onClick={() => setDiscoverFilterOpen(true)}
+                  data-testid="button-discover-filter"
+                >
+                  <Filter className="h-3.5 w-3.5 mr-1.5" />Filter
+                  {(discoverFilterBucket !== "all" || discoverFilterType !== "all" || discoverFilterDimension !== "all") && (
+                    <span className="ml-1 bg-white/20 rounded-full px-1.5 py-0.5 text-xs">
+                      {[discoverFilterBucket, discoverFilterType, discoverFilterDimension].filter(v => v !== "all").length}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setDiscoverCards([]); setDiscoverPage(1); setDiscoverHasMore(true); fetchDiscoverPage(1); }}
+                  disabled={discoverLoading}
+                  data-testid="button-discover-refresh"
+                >
+                  <Shuffle className="h-3.5 w-3.5 mr-1.5" />Refresh
+                </Button>
+              </div>
             </div>
 
-            {/* Bucket legend */}
+            {/* Filter drawer */}
+            {discoverFilterOpen && (
+              <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setDiscoverFilterOpen(false)}>
+                <div className="bg-background border-t rounded-t-2xl p-5 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-base">Filter discover</h3>
+                    <Button size="sm" variant="ghost" onClick={() => { setDiscoverFilterBucket("all"); setDiscoverFilterType("all"); setDiscoverFilterDimension("all"); }} data-testid="button-filter-clear">Clear all</Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Bucket</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {(["all", "for_you", "explore", "random"] as const).map(b => (
+                        <button
+                          key={b}
+                          onClick={() => setDiscoverFilterBucket(b)}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${discoverFilterBucket === b ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"}`}
+                          data-testid={`button-filter-bucket-${b}`}
+                        >
+                          {b === "all" ? "All" : b === "for_you" ? "For You" : b === "explore" ? "Explore" : "Surprise"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Content type</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {(["all", "article", "video", "quote", "fact", "spiritual", "lesson"] as const).map(t => (
+                        <button
+                          key={t}
+                          onClick={() => setDiscoverFilterType(t)}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors capitalize ${discoverFilterType === t ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"}`}
+                          data-testid={`button-filter-type-${t}`}
+                        >
+                          {t === "all" ? "All types" : t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Wellness dimension</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {(["all", "emotional", "physical", "financial", "spiritual", "intellectual", "social", "environmental", "purpose"] as const).map(d => (
+                        <button
+                          key={d}
+                          onClick={() => setDiscoverFilterDimension(d)}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-colors capitalize ${discoverFilterDimension === d ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"}`}
+                          data-testid={`button-filter-dim-${d}`}
+                        >
+                          {d === "all" ? "All dimensions" : d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button className="w-full" onClick={() => setDiscoverFilterOpen(false)} data-testid="button-filter-apply">
+                    Apply filters
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Bucket pills — active filter indicator */}
             <div className="flex gap-2 flex-wrap">
               {(["for_you", "explore", "random"] as const).map(b => {
                 const m = bucketMeta[b];
+                const isActive = discoverFilterBucket === b;
                 return (
-                  <div key={b} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${m.bg}`}>
+                  <button
+                    key={b}
+                    onClick={() => setDiscoverFilterBucket(discoverFilterBucket === b ? "all" : b)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors ${isActive ? m.bg + " ring-1 ring-offset-1 ring-primary" : m.bg}`}
+                    data-testid={`button-bucket-pill-${b}`}
+                  >
                     <m.Icon className={`h-3 w-3 ${m.color}`} />
                     <span className={`text-xs font-medium ${m.color}`}>{m.label}</span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -1636,7 +1726,12 @@ ${contentList}`,
 
             {/* Card list */}
             <div className="space-y-3">
-              {discoverCards.map((card) => {
+              {(discoverCards.filter(card => {
+                if (discoverFilterBucket !== "all" && card.bucket !== discoverFilterBucket) return false;
+                if (discoverFilterType !== "all" && card.type !== discoverFilterType) return false;
+                if (discoverFilterDimension !== "all" && card.dimension !== discoverFilterDimension) return false;
+                return true;
+              })).map((card) => {
                 const bm = bucketMeta[card.bucket] ?? bucketMeta.random;
                 const tm = typeMeta[card.type as keyof typeof typeMeta] ?? typeMeta.article;
                 const TypeIcon = tm.Icon;

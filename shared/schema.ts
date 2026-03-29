@@ -2910,3 +2910,58 @@ export type CommunityGroup = typeof communityGroups.$inferSelect;
 export type CommunityGroupMember = typeof communityGroupMembers.$inferSelect;
 export type InsertCommunityPost = z.infer<typeof insertCommunityPostSchema>;
 export type InsertCommunityGroup = z.infer<typeof insertCommunityGroupSchema>;
+
+// ── In-App Notifications ──────────────────────────────────────────────────────
+export const notificationTypeEnum = [
+  "dw_affirmation",
+  "dw_insight",
+  "accountability",
+  "friend_request",
+  "community_reply",
+  "system",
+] as const;
+export type NotificationType = typeof notificationTypeEnum[number];
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull().$type<NotificationType>(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  read: boolean("read").default(false),
+  actionUrl: text("action_url"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// ── Evening Check-Ins ─────────────────────────────────────────────────────────
+export const eveningCheckIns = pgTable("evening_check_ins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  checkInDate: text("check_in_date").notNull(),
+  userNotes: text("user_notes"),
+  completedSummary: text("completed_summary"),
+  dwAnalysis: text("dw_analysis"),
+  energyScore: integer("energy_score"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [uniqueIndex("check_in_date_user_idx").on(t.userId, t.checkInDate)]);
+
+export const insertEveningCheckInSchema = createInsertSchema(eveningCheckIns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type EveningCheckIn = typeof eveningCheckIns.$inferSelect;
+export type InsertEveningCheckIn = z.infer<typeof insertEveningCheckInSchema>;

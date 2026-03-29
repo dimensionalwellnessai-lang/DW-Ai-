@@ -11707,6 +11707,200 @@ Response:`;
     }
   });
 
+  // ── Notifications ─────────────────────────────────────────────────────────
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const notifs = await storage.getUserNotifications(req.session.userId!);
+      res.json(notifs);
+    } catch (err) {
+      console.error("GET /api/notifications error:", err);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get("/api/notifications/count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.session.userId!);
+      res.json({ count });
+    } catch (err) {
+      res.json({ count: 0 });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      await storage.markNotificationRead(req.params.id, req.session.userId!);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  });
+
+  app.put("/api/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.session.userId!);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteNotification(req.params.id, req.session.userId!);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed" });
+    }
+  });
+
+  // Generate DW daily affirmation notification (called on app open, max once per day)
+  app.post("/api/notifications/dw-daily", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = new Date().toISOString().split("T")[0];
+      // Check if we already sent one today
+      const existing = await storage.getUserNotifications(userId);
+      const alreadySent = existing.some((n: any) => n.type === "dw_affirmation" && n.created_at?.toISOString?.()?.startsWith(today));
+      if (alreadySent) return res.json({ sent: false });
+
+      const user = await storage.getUser(userId);
+      const name = (user as any)?.systemName || (user as any)?.firstName || "friend";
+      const hour = new Date().getHours();
+      const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+
+      let affirmation = `Good ${timeOfDay}, ${name}. Today is a fresh opportunity to move toward who you're becoming. You don't have to do it all — just one step.`;
+      try {
+        const { generateAffirmation } = await import("./openai");
+        affirmation = await generateAffirmation(name, timeOfDay);
+      } catch (_) {}
+
+      const notif = await storage.createNotification({
+        userId,
+        type: "dw_affirmation",
+        title: `Good ${timeOfDay}, ${name} ✨`,
+        body: affirmation,
+        actionUrl: "/talk",
+      });
+      res.json({ sent: true, notification: notif });
+    } catch (err) {
+      console.error("DW daily affirmation error:", err);
+      res.status(500).json({ sent: false });
+    }
+  });
+
+  // ── Evening Check-In ───────────────────────────────────────────────────────
+  app.get("/api/accountability/check-in-status", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const today = new Date().toISOString().split("T")[0];
+      const existing = await storage.getTodayCheckIn(userId);
+      const hour = new Date().getHours();
+      const needsCheckIn = !existing && hour >= 21;
+      // Also check if yesterday's was missed
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      res.json({ needsCheckIn, completed: !!existing, today, yesterday, hour });
+    } catch (err) {
+      res.json({ needsCheckIn: false, completed: false });
+    }
+  });
+
+  app.post("/api/accountability/evening-check-in", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { userNotes, energyScore, completedSummary } = req.body;
+      const today = new Date().toISOString().split("T")[0];
+
+      let dwAnalysis = "Thank you for checking in. Every day you show up for yourself counts — even the imperfect ones.";
+      try {
+        const { generateCheckInAnalysis } = await import("./openai");
+        const user = await storage.getUser(userId);
+        const name = (user as any)?.systemName || (user as any)?.firstName || "friend";
+        const goals = await storage.getGoals(userId);
+        dwAnalysis = await generateCheckInAnalysis(name, userNotes || "", energyScore || 5, goals.map((g: any) => g.title));
+      } catch (_) {}
+
+      const checkIn = await storage.createEveningCheckIn({ userId, checkInDate: today, userNotes, completedSummary, dwAnalysis, energyScore });
+
+      // Create an accountability notification
+      await storage.createNotification({
+        userId,
+        type: "accountability",
+        title: "Evening check-in complete ✓",
+        body: dwAnalysis.slice(0, 120) + (dwAnalysis.length > 120 ? "…" : ""),
+        actionUrl: "/talk",
+      });
+
+      res.json({ checkIn, dwAnalysis });
+    } catch (err) {
+      console.error("Evening check-in error:", err);
+      res.status(500).json({ error: "Failed to save check-in" });
+    }
+  });
+
+  // ── Username Setup ─────────────────────────────────────────────────────────
+  app.get("/api/users/check-username", async (req, res) => {
+    const { username } = req.query as { username: string };
+    if (!username || username.length < 3) return res.json({ available: false, reason: "Too short" });
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) return res.json({ available: false, reason: "Only letters, numbers, _ . -" });
+    try {
+      const existing = await storage.getUserByUsername(username);
+      res.json({ available: !existing });
+    } catch (err) {
+      res.status(500).json({ available: false });
+    }
+  });
+
+  app.post("/api/users/set-username", requireAuth, async (req, res) => {
+    try {
+      const { username, systemName } = req.body;
+      if (!username || username.length < 3) return res.status(400).json({ error: "Username too short" });
+      if (!/^[a-zA-Z0-9_.-]+$/.test(username)) return res.status(400).json({ error: "Invalid characters" });
+      const existing = await storage.getUserByUsername(username);
+      if (existing && existing.id !== req.session.userId) return res.status(409).json({ error: "Username taken" });
+      await storage.setUsername(req.session.userId!, username, systemName);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("Set username error:", err);
+      res.status(500).json({ error: "Failed" });
+    }
+  });
+
+  // ── Discover Filter (AI-tailored) ──────────────────────────────────────────
+  app.get("/api/discover/filter", async (req, res) => {
+    try {
+      const { bucket, type: contentType, dimension } = req.query as Record<string, string>;
+      const userId = req.session?.userId;
+      let profileCtx = "";
+      if (userId) {
+        try {
+          const profile = await storage.getUserProfile(userId);
+          const goals = (await storage.getGoals(userId)).filter((g: any) => g.status === "active");
+          const lp = (profile as any)?.lifestylePreferences;
+          profileCtx = [
+            profile?.interests?.length && `Interests: ${(profile.interests as string[]).join(", ")}`,
+            lp?.identityVision && `Identity: ${lp.identityVision}`,
+            goals.length && `Goals: ${goals.map((g: any) => g.title).join(", ")}`,
+          ].filter(Boolean).join(". ");
+        } catch (_) {}
+      }
+
+      // Import the static library from discover feed logic and filter it
+      const { DISCOVER_STATIC_LIBRARY } = await import("./discover-static");
+      let filtered: any[] = [...DISCOVER_STATIC_LIBRARY];
+      if (bucket && bucket !== "all") filtered = filtered.filter((c: any) => c.bucket === bucket);
+      if (contentType && contentType !== "all") filtered = filtered.filter((c: any) => c.type === contentType);
+      if (dimension && dimension !== "all") filtered = filtered.filter((c: any) => c.dimension?.toLowerCase() === dimension.toLowerCase());
+
+      // Shuffle
+      filtered = filtered.sort(() => Math.random() - 0.5);
+      res.json({ cards: filtered, filtered: true });
+    } catch (err) {
+      console.error("Discover filter error:", err);
+      res.status(500).json({ cards: [] });
+    }
+  });
+
   return httpServer;
 }
 

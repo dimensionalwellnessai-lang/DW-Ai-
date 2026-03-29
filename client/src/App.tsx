@@ -20,6 +20,9 @@ import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
 import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
 import { InteractiveTour } from "@/components/interactive-tour";
 import { ReminderBanner } from "@/components/reminder-banner";
+import { UsernameSetupModal } from "@/components/username-setup-modal";
+import { useAuth } from "@/hooks/use-auth";
+import { AccountabilityCheckIn } from "@/components/accountability-check-in";
 
 // ── Lazy-loaded page components ───────────────────────────────────────────────
 // All page-level components are loaded on demand to minimize the initial JS
@@ -348,6 +351,33 @@ function AppContent() {
   const [demoActive, setDemoActive] = useState(() => isDemoMode());
   const showBottomNav = !AUTH_ONBOARDING_PAGES.some(path => location.startsWith(path));
   const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
+  const { user } = useAuth();
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false);
+
+  // Trigger DW daily affirmation once per session
+  useEffect(() => {
+    if (!user) return;
+    const key = "dw_daily_affirmation_" + new Date().toISOString().split("T")[0];
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    fetch("/api/notifications/dw-daily", { method: "POST", credentials: "include" }).catch(() => {});
+  }, [user]);
+
+  // Prompt username setup for logged-in users without a username
+  // Show when they navigate to community-related pages
+  useEffect(() => {
+    if (!user) return;
+    const hasUsername = !!(user as any).username;
+    if (hasUsername) return;
+    const communityPaths = ["/browse", "/community"];
+    const isCommunityPage = communityPaths.some(p => location.startsWith(p));
+    if (!isCommunityPage) return;
+    const shownKey = "dw_username_prompt_shown";
+    if (sessionStorage.getItem(shownKey)) return;
+    sessionStorage.setItem(shownKey, "1");
+    const timer = setTimeout(() => setUsernameModalOpen(true), 800);
+    return () => clearTimeout(timer);
+  }, [user, location]);
 
   // Keep demoActive in sync on every navigation. The banner needs to appear when demo
   // is activated from the Login page or Settings (same-document localStorage writes),
@@ -392,6 +422,11 @@ function AppContent() {
       <SyncTray />
       <FloatingAIWidget />
       <ReminderBanner />
+      <AccountabilityCheckIn />
+      <UsernameSetupModal
+        open={usernameModalOpen}
+        onClose={() => setUsernameModalOpen(false)}
+      />
       <Suspense fallback={null}>
         <InteractiveTour
           open={isOpen}

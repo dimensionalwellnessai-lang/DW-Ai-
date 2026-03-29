@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Menu, GraduationCap, Clock, History } from "lucide-react";
+import { NotificationBell } from "@/components/notification-panel";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
@@ -145,6 +146,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         <h1 className="font-display text-xl font-medium flex-1 text-foreground" data-testid="text-page-title">
           {title}
         </h1>
+        <NotificationBell />
         {rightContent}
       </header>
 

@@ -3624,3 +3624,35 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
     return [];
   }
 }
+
+export async function generateAffirmation(name: string, timeOfDay: string): Promise<string> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are DW, a calm, wise personal wellness AI. Write a single warm affirmation sentence (2-3 sentences max) for the user. Do not start with Hi or Hello. Make it specific to their moment." },
+        { role: "user", content: `Write a ${timeOfDay} affirmation for ${name}. Make it warm, grounding, and focused on their potential.` },
+      ],
+      max_tokens: 150,
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch {
+    return "";
+  }
+}
+
+export async function generateCheckInAnalysis(name: string, userNotes: string, energyScore: number, goals: string[]): Promise<string> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are DW, a calm, supportive wellness AI. Give a brief, warm evening analysis (3-4 sentences max). Acknowledge effort, not just outcomes. Suggest one small optimization if warranted. Never be judgmental." },
+        { role: "user", content: `Name: ${name}. Energy today: ${energyScore}/10. Goals: ${goals.join(", ")}. Notes: ${userNotes || "No notes"}. Give a brief, warm end-of-day reflection and one suggestion for tomorrow.` },
+      ],
+      max_tokens: 200,
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch {
+    return "";
+  }
+}

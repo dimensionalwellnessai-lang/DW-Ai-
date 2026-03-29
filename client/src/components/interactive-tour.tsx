@@ -351,16 +351,23 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
   return (
     <>
       {/* Overlay - blocks all background interactions */}
-      <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: "auto" }}>
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-
-        {/* Spotlight on target element */}
-        {!isCenter && targetRect && (
-          <div
-            className="absolute border-4 border-primary rounded-lg pointer-events-none transition-all duration-300"
-            style={getSpotlightStyle()}
-          />
+      <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: "none" }}>
+        {/* Spotlight: 4-panel surround so the highlighted element is crisp and unblurred */}
+        {isCenter || !targetRect ? (
+          <div className="absolute inset-0 bg-black/60" style={{ pointerEvents: "auto" }} />
+        ) : (
+          <>
+            {/* Top */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: Math.max(0, targetRect.top - 8), background: "rgba(0,0,0,0.72)", pointerEvents: "auto" }} />
+            {/* Bottom */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, top: targetRect.bottom + 8, background: "rgba(0,0,0,0.72)", pointerEvents: "auto" }} />
+            {/* Left */}
+            <div style={{ position: "absolute", top: Math.max(0, targetRect.top - 8), left: 0, width: Math.max(0, targetRect.left - 8), height: targetRect.height + 16, background: "rgba(0,0,0,0.72)", pointerEvents: "auto" }} />
+            {/* Right */}
+            <div style={{ position: "absolute", top: Math.max(0, targetRect.top - 8), left: targetRect.right + 8, right: 0, height: targetRect.height + 16, background: "rgba(0,0,0,0.72)", pointerEvents: "auto" }} />
+            {/* Ring around the spotlight */}
+            <div style={{ position: "absolute", top: targetRect.top - 8, left: targetRect.left - 8, width: targetRect.width + 16, height: targetRect.height + 16, border: "2px solid hsl(var(--primary))", borderRadius: "10px", pointerEvents: "none", boxShadow: "0 0 0 1px hsl(var(--primary)/0.3), inset 0 0 0 1px hsl(var(--primary)/0.2)" }} />
+          </>
         )}
 
         {/* Tour Card */}
@@ -377,7 +384,7 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
                 ? "top-1/2 left-[50%] -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md"
                 : ""
             }`}
-            style={isCenter ? undefined : getCardStyle()}
+            style={isCenter ? { pointerEvents: "auto" } : { ...getCardStyle(), pointerEvents: "auto" }}
           >
             {/* Close button */}
             <button
