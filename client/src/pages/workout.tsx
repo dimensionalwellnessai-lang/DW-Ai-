@@ -1533,7 +1533,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
 
         {/* Workout Plan Details Dialog */}
         <Dialog open={showPlanDetails} onOpenChange={setShowPlanDetails}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedPlan?.title}</DialogTitle>
               <DialogDescription>{selectedPlan?.summary}</DialogDescription>

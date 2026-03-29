@@ -81,7 +81,9 @@ Preferred communication style: Simple, everyday language.
 - **API**: `/api/accountability/check-in-status` (GET) and `/api/accountability/evening-check-in` (POST)
 - **Components**: `NotificationBell` (bell icon with unread count badge in page header) + `NotificationPanel` (full drawer)
 - **DW daily affirmation**: Auto-called once per session on app open for logged-in users (session-gated via sessionStorage)
-- **Evening check-in**: `AccountabilityCheckIn` component auto-prompts at 9:30 PM if not completed; user rates energy (1-10), adds notes; DW generates reflection via OpenAI
+- **Smart check-in timing**: `/api/accountability/check-in-status` computes the optimal check-in hour from `preferredSleepTime` in user system prefs (90 min before sleep, default 9:30 PM). Returns rich context: `timeContext`, `contextTitle`, `contextBody`, `optimalHour`, `missedYesterday`, `todayTaskCount`.
+- **Time-aware check-in**: 6 scenarios — `prime_evening`, `late_night`, `very_late`, `missed_morning`, `missed_day_start`, `missed_afternoon`. Each has unique icon, color, title, body message, dismiss duration, and DW reflection tone. DW response adapts (late-night = brief/restful; missed = forward-looking; prime = warm full reflection).
+- **Missed check-in context**: Shows `todayTaskCount` events on agenda so DW can reflect on them. Dismiss is time-context-keyed so different contexts can re-prompt even same day.
 - **Username setup**: `UsernameSetupModal` prompts logged-in users without a username the first time they navigate to `/browse` or community pages
 
 ### Browse Page (client/src/pages/browse.tsx)

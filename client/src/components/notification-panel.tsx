@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, X, Sparkles, CheckCheck, Trash2, ChevronRight, AlertCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SwipeableDrawer } from "@/components/swipeable-drawer";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -84,25 +84,33 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   }
 
   return (
-    <SwipeableDrawer open={open} onClose={onClose} title="Notifications">
-      <div className="flex flex-col h-full min-h-0">
-        {unread > 0 && (
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
-            <span className="text-sm text-muted-foreground">{unread} unread</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => markAllReadMutation.mutate()}
-              data-testid="button-mark-all-read"
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
-            </Button>
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="right" className="w-full max-w-sm p-0 flex flex-col" data-testid="panel-notifications">
+        <SheetHeader className="px-4 py-3 border-b border-border/40 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-semibold flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              Notifications
+            </SheetTitle>
+            {unread > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 text-muted-foreground"
+                onClick={() => markAllReadMutation.mutate()}
+                data-testid="button-mark-all-read"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
           </div>
-        )}
+          {unread > 0 && (
+            <p className="text-xs text-muted-foreground">{unread} unread</p>
+          )}
+        </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
@@ -126,10 +134,10 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
                     data-testid={`notif-item-${notif.id}`}
                   >
                     {!notif.read && (
-                      <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-primary" />
+                      <span className="absolute top-4 right-10 w-2 h-2 rounded-full bg-primary" />
                     )}
                     <div className={cn("mt-0.5 shrink-0", meta.color)}>{meta.icon}</div>
-                    <div className="flex-1 min-w-0 pr-4">
+                    <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs font-medium text-muted-foreground">{meta.label}</span>
                         <span className="text-xs text-muted-foreground/60">{formatTime(notif.created_at)}</span>
@@ -152,8 +160,8 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
             </div>
           )}
         </div>
-      </div>
-    </SwipeableDrawer>
+      </SheetContent>
+    </Sheet>
   );
 }
 

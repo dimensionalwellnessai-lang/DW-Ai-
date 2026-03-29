@@ -3641,15 +3641,41 @@ export async function generateAffirmation(name: string, timeOfDay: string): Prom
   }
 }
 
-export async function generateCheckInAnalysis(name: string, userNotes: string, energyScore: number, goals: string[]): Promise<string> {
+export async function generateCheckInAnalysis(
+  name: string,
+  userNotes: string,
+  energyScore: number,
+  goals: string[],
+  ctx?: { timeContext?: string; hour?: number; missedTaskCount?: number }
+): Promise<string> {
   try {
+    const { timeContext = "prime_evening", hour = 21, missedTaskCount = 0 } = ctx || {};
+
+    // Build a time-sensitive tone guide for DW
+    let toneNote = "";
+    if (timeContext === "late_night" || timeContext === "very_late") {
+      toneNote = "The user is checking in very late at night. Keep the reflection extra brief (2-3 sentences), acknowledge the late hour gently, and encourage good rest. Don't pile on tasks.";
+    } else if (timeContext === "missed_morning") {
+      toneNote = `The user missed yesterday's check-in. They're reflecting in the morning before a new day. Be warm and forward-looking. If missedTaskCount > 0, briefly acknowledge that ${missedTaskCount} things were on the agenda.`;
+    } else if (timeContext === "missed_day_start" || timeContext === "missed_afternoon") {
+      toneNote = `The user is catching up on a missed check-in. They're now in the middle of a new day. Keep it brief and pivot quickly to what's possible today. Don't dwell on yesterday.`;
+    } else {
+      toneNote = "The user is checking in at a good evening time. Give a warm 3-4 sentence reflection and one small, encouraging suggestion for tomorrow.";
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are DW, a calm, supportive wellness AI. Give a brief, warm evening analysis (3-4 sentences max). Acknowledge effort, not just outcomes. Suggest one small optimization if warranted. Never be judgmental." },
-        { role: "user", content: `Name: ${name}. Energy today: ${energyScore}/10. Goals: ${goals.join(", ")}. Notes: ${userNotes || "No notes"}. Give a brief, warm end-of-day reflection and one suggestion for tomorrow.` },
+        {
+          role: "system",
+          content: `You are DW, a calm, supportive wellness AI. ${toneNote} Never be judgmental. Acknowledge effort over outcomes. Speak directly to the user by name.`
+        },
+        {
+          role: "user",
+          content: `Name: ${name}. Energy today: ${energyScore}/10. Active goals: ${goals.length ? goals.join(", ") : "none listed"}. Notes: ${userNotes || "No notes shared"}. Current hour: ${hour}. Give a warm, personal check-in reflection.`
+        },
       ],
-      max_tokens: 200,
+      max_tokens: 220,
     });
     return completion.choices[0]?.message?.content?.trim() || "";
   } catch {

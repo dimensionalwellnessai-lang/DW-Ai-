@@ -733,6 +733,7 @@ export interface IStorage {
 
   // Evening Check-Ins
   getTodayCheckIn(userId: string): Promise<any | undefined>;
+  getCheckInByDate(userId: string, date: string): Promise<any | undefined>;
   createEveningCheckIn(data: { userId: string; checkInDate: string; userNotes?: string; completedSummary?: string; dwAnalysis?: string; energyScore?: number }): Promise<any>;
 
   // Username
@@ -3716,6 +3717,11 @@ export class DatabaseStorage implements IStorage {
   async getTodayCheckIn(userId: string): Promise<any | undefined> {
     const today = new Date().toISOString().split("T")[0];
     const [row] = await db.select().from(eveningCheckIns).where(and(eq(eveningCheckIns.userId, userId), eq(eveningCheckIns.checkInDate, today)));
+    return row;
+  }
+
+  async getCheckInByDate(userId: string, date: string): Promise<any | undefined> {
+    const [row] = await db.select().from(eveningCheckIns).where(and(eq(eveningCheckIns.userId, userId), eq(eveningCheckIns.checkInDate, date)));
     return row;
   }
 

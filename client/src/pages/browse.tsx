@@ -1628,8 +1628,8 @@ ${contentList}`,
 
             {/* Filter drawer */}
             {discoverFilterOpen && (
-              <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setDiscoverFilterOpen(false)}>
-                <div className="bg-background border-t rounded-t-2xl p-5 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-sm" onClick={() => setDiscoverFilterOpen(false)}>
+                <div className="bg-background border-t rounded-t-2xl p-5 space-y-5 shadow-2xl w-full max-w-2xl mx-auto" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-base">Filter discover</h3>
                     <Button size="sm" variant="ghost" onClick={() => { setDiscoverFilterBucket("all"); setDiscoverFilterType("all"); setDiscoverFilterDimension("all"); }} data-testid="button-filter-clear">Clear all</Button>
@@ -3538,7 +3538,7 @@ ${contentList}`,
       </Dialog>
 
       <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {searchDialogType === "youtube" && <Youtube className="h-5 w-5" />}
@@ -3618,7 +3618,7 @@ ${contentList}`,
       </Dialog>
 
       <Dialog open={contentDetailOpen} onOpenChange={setContentDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-2xl">
           {selectedContent && (
             <>
               <DialogHeader>
