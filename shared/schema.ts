@@ -2853,3 +2853,57 @@ export const savedCommunityOpportunitiesRelations = relations(savedCommunityOppo
 }));
 
 export type SavedCommunityOpportunity = typeof savedCommunityOpportunities.$inferSelect;
+
+// ── Community Posts (in-app forum) ───────────────────────────────────────────
+export const communityPostCategoryEnum = ["wins", "questions", "support", "accountability", "resources", "general"] as const;
+
+export const communityPosts = pgTable("community_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  category: text("category").notNull().default("general"),
+  isAnonymous: boolean("is_anonymous").default(false),
+  likesCount: integer("likes_count").default(0),
+  commentsCount: integer("comments_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const communityPostLikes = pgTable("community_post_likes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postId: varchar("post_id").notNull().references(() => communityPosts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [uniqueIndex("post_like_unique_idx").on(t.postId, t.userId)]);
+
+// ── Community Groups ─────────────────────────────────────────────────────────
+export const communityGroups = pgTable("community_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull().default("online_chat"), // "online_chat" | "online_video" | "physical"
+  location: text("location"),
+  meetingUrl: text("meeting_url"),
+  meetingSchedule: text("meeting_schedule"),
+  tags: text("tags").array(),
+  membersCount: integer("members_count").default(1),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const communityGroupMembers = pgTable("community_group_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => communityGroups.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  joinedAt: timestamp("joined_at").defaultNow(),
+}, (t) => [uniqueIndex("group_member_unique_idx").on(t.groupId, t.userId)]);
+
+export const insertCommunityPostSchema = createInsertSchema(communityPosts).omit({ id: true, likesCount: true, commentsCount: true, createdAt: true });
+export const insertCommunityGroupSchema = createInsertSchema(communityGroups).omit({ id: true, membersCount: true, createdAt: true });
+
+export type CommunityPost = typeof communityPosts.$inferSelect;
+export type CommunityGroup = typeof communityGroups.$inferSelect;
+export type CommunityGroupMember = typeof communityGroupMembers.$inferSelect;
+export type InsertCommunityPost = z.infer<typeof insertCommunityPostSchema>;
+export type InsertCommunityGroup = z.infer<typeof insertCommunityGroupSchema>;

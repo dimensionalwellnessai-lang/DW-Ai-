@@ -14,7 +14,7 @@ import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from ".
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
-import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings } from "@shared/schema";
+import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, communityPosts, communityPostLikes, communityGroups, communityGroupMembers } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
@@ -11005,6 +11005,415 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
     } catch (error) {
       console.error("DELETE /api/community/opportunities/saved error:", error);
       res.status(500).json({ error: "Failed to unsave opportunity" });
+    }
+  });
+
+  // ── Browse: Entertainment (TV/Movies) ──────────────────────────────────────
+  app.get("/api/browse/entertainment", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      let personalCtx = "";
+      if (userId) {
+        try {
+          const [profile, onboarding, goals] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getOnboardingProfile(userId),
+            storage.getGoals(userId),
+          ]);
+          const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+          const parts = [
+            lp.identityVision ? `Becoming: ${lp.identityVision}` : "",
+            lp.watchLikes ? `Likes to watch: ${lp.watchLikes}` : "",
+            lp.styleLikes ? `Style/vibe: ${lp.styleLikes}` : "",
+            lp.musicLikes ? `Music/audio: ${lp.musicLikes}` : "",
+            onboarding?.wellnessFocus?.length ? `Wellness focus: ${onboarding.wellnessFocus.join(", ")}` : "",
+            goals.filter((g: any) => g.isActive).slice(0, 3).map((g: any) => g.title).join(", "),
+          ].filter(Boolean).join(". ");
+          personalCtx = parts;
+        } catch { /* non-fatal */ }
+      }
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      const prompt = `${personalCtx ? `User context: ${personalCtx}.` : ""}
+
+Search the web for 6 specific TV shows or movies worth watching right now. Mix streaming platforms (Netflix, Hulu, HBO Max, Disney+, Amazon Prime, Apple TV+, YouTube). Pick shows/movies that fit the user's vibe and goals if context is given.
+
+Return ONLY this JSON, no other text:
+{"shows":[{"id":"s1","title":"Show or Movie Name","synopsis":"2 sentences about what it is","platform":"Netflix","type":"show or movie","genre":"Drama/Crime/etc","whyPicked":"1 sentence why this fits this person","searchUrl":"https://www.google.com/search?q=Show+Name+watch+online"}]}`;
+
+      let shows: any[] = [];
+      if (perplexityApiKey) {
+        try {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-large-128k-online",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.3, max_tokens: 1500,
+            }),
+          });
+          if (pxRes.ok) {
+            const pxData = await pxRes.json();
+            let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+            if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+            const startIdx = raw.indexOf("{"); const endIdx = raw.lastIndexOf("}");
+            if (startIdx !== -1 && endIdx !== -1) {
+              const parsed = JSON.parse(raw.substring(startIdx, endIdx + 1));
+              shows = parsed.shows || [];
+            }
+          }
+        } catch { /* fall through to OpenAI */ }
+      }
+      if (!shows.length) {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7, max_tokens: 1000,
+        });
+        const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+        try {
+          const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+          shows = JSON.parse(cleaned).shows || [];
+        } catch { shows = []; }
+      }
+      res.json({ shows });
+    } catch (error) {
+      console.error("browse/entertainment error:", error);
+      res.status(500).json({ shows: [] });
+    }
+  });
+
+  // ── Browse: Activities ──────────────────────────────────────────────────────
+  app.get("/api/browse/activities", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      let personalCtx = "";
+      if (userId) {
+        try {
+          const [profile, onboarding, goals] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getOnboardingProfile(userId),
+            storage.getGoals(userId),
+          ]);
+          const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+          personalCtx = [
+            lp.identityVision ? `Becoming: ${lp.identityVision}` : "",
+            lp.doLikes ? `Enjoys: ${lp.doLikes}` : "",
+            lp.goLikes ? `Likes going to: ${lp.goLikes}` : "",
+            lp.styleLikes ? `Vibe/aesthetic: ${lp.styleLikes}` : "",
+            onboarding?.shortTermGoals ? `Working on: ${onboarding.shortTermGoals}` : "",
+            goals.filter((g: any) => g.isActive).slice(0, 2).map((g: any) => g.title).join(", "),
+          ].filter(Boolean).join(". ");
+        } catch { /* non-fatal */ }
+      }
+      const hour = new Date().getHours();
+      const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.` : ""} It is ${timeOfDay}.
+
+Suggest 6 specific activities they could do today. Mix indoor, outdoor, and social options. Each should feel like it was picked for THIS person — serve their goals and vibe. Some should be quick (15-30 min), some longer.
+
+Return ONLY this JSON:
+{"activities":[{"id":"a1","title":"Specific activity","description":"1-2 sentences — what to do exactly","type":"indoor or outdoor or social","duration":"30 min","whyPicked":"1 sentence why this fits them","canAddToSchedule":true,"suggestedTime":"${timeOfDay}"}]}` }],
+        temperature: 0.8, max_tokens: 900,
+      });
+      const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+      let activities: any[] = [];
+      try {
+        const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+        activities = JSON.parse(cleaned).activities || [];
+      } catch { activities = []; }
+      res.json({ activities });
+    } catch (error) {
+      console.error("browse/activities error:", error);
+      res.status(500).json({ activities: [] });
+    }
+  });
+
+  // ── Browse: Learning ────────────────────────────────────────────────────────
+  app.get("/api/browse/learning", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      let personalCtx = "";
+      if (userId) {
+        try {
+          const [profile, onboarding, goals] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getOnboardingProfile(userId),
+            storage.getGoals(userId),
+          ]);
+          const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+          personalCtx = [
+            lp.identityVision ? `Becoming: ${lp.identityVision}` : "",
+            lp.readLikes ? `Likes reading about: ${lp.readLikes}` : "",
+            lp.doLikes ? `Enjoys: ${lp.doLikes}` : "",
+            onboarding?.longTermGoals ? `Long-term vision: ${onboarding.longTermGoals}` : "",
+            onboarding?.wellnessFocus?.length ? `Focus areas: ${onboarding.wellnessFocus.join(", ")}` : "",
+            goals.filter((g: any) => g.isActive).slice(0, 3).map((g: any) => g.title).join(", "),
+          ].filter(Boolean).join(". ");
+        } catch { /* non-fatal */ }
+      }
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      const prompt = `${personalCtx ? `About this person: ${personalCtx}.` : ""}
+
+Search the web and find 5 real learning resources — YouTube videos, online courses, articles, or podcasts — that would help this person grow in areas that match their goals and interests. Use real URLs.
+
+Return ONLY this JSON:
+{"resources":[{"id":"r1","title":"Resource title","description":"1-2 sentences about what you'll learn","source":"YouTube / Coursera / etc","url":"https://real.url","duration":"20 min / 4 hours / etc","type":"video or course or article or podcast","whyPicked":"1 sentence why this matters for their goals","canAddToSchedule":true}]}`;
+
+      let resources: any[] = [];
+      if (perplexityApiKey) {
+        try {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-large-128k-online",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2, max_tokens: 1500,
+            }),
+          });
+          if (pxRes.ok) {
+            const pxData = await pxRes.json();
+            let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+            if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+            const si = raw.indexOf("{"); const ei = raw.lastIndexOf("}");
+            if (si !== -1 && ei !== -1) resources = JSON.parse(raw.substring(si, ei + 1)).resources || [];
+          }
+        } catch { /* fall through */ }
+      }
+      if (!resources.length) {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+          temperature: 0.7, max_tokens: 900,
+        });
+        const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+        try {
+          const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+          resources = JSON.parse(cleaned).resources || [];
+        } catch { resources = []; }
+      }
+      res.json({ resources });
+    } catch (error) {
+      console.error("browse/learning error:", error);
+      res.status(500).json({ resources: [] });
+    }
+  });
+
+  // ── Community: Engage (volunteering, events, resources by location) ─────────
+  app.get("/api/community/engage", async (req, res) => {
+    try {
+      const location = (req.query.location as string) || "my area";
+      const type = (req.query.type as string) || "all";
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      const typeFilter = type === "volunteering" ? "volunteering opportunities" :
+        type === "events" ? "community events" :
+        type === "service" ? "community service" :
+        "volunteering, community events, and service opportunities";
+      const prompt = `Search the web and find 6-8 real ${typeFilter} in or near ${location}. Include real organizations, events, or programs with actual websites where possible.
+
+Return ONLY this JSON:
+{"opportunities":[{"id":"e1","title":"Opportunity name","organization":"Org name","description":"2 sentences about what it is and who can participate","type":"volunteering or event or service or resource","location":"${location}","schedule":"When/how often (e.g. Saturdays 9am, ongoing, one-time)","url":"https://real.url.if.available or null","tags":["wellness","community","etc"],"isVirtual":false}]}`;
+
+      let opportunities: any[] = [];
+      if (perplexityApiKey) {
+        try {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-large-128k-online",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2, max_tokens: 2000,
+            }),
+          });
+          if (pxRes.ok) {
+            const pxData = await pxRes.json();
+            let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+            if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+            const si = raw.indexOf("{"); const ei = raw.lastIndexOf("}");
+            if (si !== -1 && ei !== -1) opportunities = JSON.parse(raw.substring(si, ei + 1)).opportunities || [];
+          }
+        } catch { /* non-fatal */ }
+      }
+      res.json({ opportunities, location });
+    } catch (error) {
+      console.error("community/engage error:", error);
+      res.status(500).json({ opportunities: [], location: "" });
+    }
+  });
+
+  // ── Community: Local groups/meetups by location ─────────────────────────────
+  app.get("/api/community/groups/local", async (req, res) => {
+    try {
+      const location = (req.query.location as string) || "my area";
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      const prompt = `Search for real physical community groups, clubs, or meetups in or near ${location}. Look for wellness, fitness, social, hobby, book clubs, running clubs, yoga groups, mental health support groups, etc. Find real groups with actual websites.
+
+Return ONLY this JSON:
+{"groups":[{"id":"g1","name":"Group name","description":"What the group is about and who it's for","category":"fitness or wellness or social or learning or support","location":"${location}","schedule":"Meeting frequency/time","url":"https://real.url.if.known or null","membersEstimate":"e.g. 50+ members or unknown"}]}`;
+
+      let groups: any[] = [];
+      if (perplexityApiKey) {
+        try {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-large-128k-online",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.2, max_tokens: 1800,
+            }),
+          });
+          if (pxRes.ok) {
+            const pxData = await pxRes.json();
+            let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+            if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+            const si = raw.indexOf("{"); const ei = raw.lastIndexOf("}");
+            if (si !== -1 && ei !== -1) groups = JSON.parse(raw.substring(si, ei + 1)).groups || [];
+          }
+        } catch { /* non-fatal */ }
+      }
+      res.json({ groups, location });
+    } catch (error) {
+      console.error("community/groups/local error:", error);
+      res.status(500).json({ groups: [], location: "" });
+    }
+  });
+
+  // ── Community: In-app groups (CRUD) ─────────────────────────────────────────
+  app.get("/api/community/groups/online", async (req, res) => {
+    try {
+      const rows = await db.select().from(communityGroups).orderBy(communityGroups.createdAt);
+      const userId = req.session?.userId;
+      let memberGroupIds: Set<string> = new Set();
+      if (userId) {
+        const memberships = await db.select().from(communityGroupMembers).where(eq(communityGroupMembers.userId, userId));
+        memberGroupIds = new Set(memberships.map((m) => m.groupId));
+      }
+      const result = rows.map((g) => ({ ...g, isMember: memberGroupIds.has(g.id) }));
+      res.json({ groups: result });
+    } catch (error) {
+      console.error("community/groups/online GET error:", error);
+      res.status(500).json({ groups: [] });
+    }
+  });
+
+  app.post("/api/community/groups", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { name, description, type, location, meetingUrl, meetingSchedule, tags } = req.body;
+      if (!name?.trim()) return res.status(400).json({ error: "Group name is required" });
+      const [group] = await db.insert(communityGroups).values({
+        createdByUserId: userId,
+        name: name.trim(),
+        description: description?.trim() || null,
+        type: type || "online_chat",
+        location: location?.trim() || null,
+        meetingUrl: meetingUrl?.trim() || null,
+        meetingSchedule: meetingSchedule?.trim() || null,
+        tags: tags || [],
+        membersCount: 1,
+        isPublic: true,
+      }).returning();
+      await db.insert(communityGroupMembers).values({ groupId: group.id, userId }).onConflictDoNothing();
+      res.json(group);
+    } catch (error) {
+      console.error("POST /api/community/groups error:", error);
+      res.status(500).json({ error: "Failed to create group" });
+    }
+  });
+
+  app.post("/api/community/groups/:id/join", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const groupId = req.params.id;
+      await pool.query(
+        "INSERT INTO community_group_members (id, group_id, user_id) VALUES (gen_random_uuid(), $1, $2) ON CONFLICT (group_id, user_id) DO NOTHING",
+        [groupId, userId]
+      );
+      await pool.query("UPDATE community_groups SET members_count = (SELECT COUNT(*) FROM community_group_members WHERE group_id = $1) WHERE id = $1", [groupId]);
+      res.json({ joined: true });
+    } catch (error) {
+      console.error("POST /api/community/groups/:id/join error:", error);
+      res.status(500).json({ error: "Failed to join group" });
+    }
+  });
+
+  app.delete("/api/community/groups/:id/leave", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const groupId = req.params.id;
+      await pool.query("DELETE FROM community_group_members WHERE group_id = $1 AND user_id = $2", [groupId, userId]);
+      await pool.query("UPDATE community_groups SET members_count = GREATEST(members_count - 1, 0) WHERE id = $1", [groupId]);
+      res.json({ left: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to leave group" });
+    }
+  });
+
+  // ── Community: Posts / Forum ─────────────────────────────────────────────────
+  app.get("/api/community/posts", async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const userId = req.session?.userId;
+      const rows = await db.select().from(communityPosts).orderBy(communityPosts.createdAt);
+      const filtered = category && category !== "all" ? rows.filter((p) => p.category === category) : rows;
+      let likedPostIds: Set<string> = new Set();
+      if (userId) {
+        const likes = await db.select().from(communityPostLikes).where(eq(communityPostLikes.userId, userId));
+        likedPostIds = new Set(likes.map((l) => l.postId));
+      }
+      const result = filtered.map((p) => ({
+        ...p,
+        isLiked: likedPostIds.has(p.id),
+        displayName: p.isAnonymous ? "Anonymous" : "Community Member",
+      }));
+      res.json({ posts: result.reverse() });
+    } catch (error) {
+      console.error("GET /api/community/posts error:", error);
+      res.status(500).json({ posts: [] });
+    }
+  });
+
+  app.post("/api/community/posts", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { title, body, category, isAnonymous } = req.body;
+      if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "Title and body are required" });
+      const [post] = await db.insert(communityPosts).values({
+        userId,
+        title: title.trim(),
+        body: body.trim(),
+        category: category || "general",
+        isAnonymous: isAnonymous ?? false,
+      }).returning();
+      res.json(post);
+    } catch (error) {
+      console.error("POST /api/community/posts error:", error);
+      res.status(500).json({ error: "Failed to create post" });
+    }
+  });
+
+  app.post("/api/community/posts/:id/like", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const postId = req.params.id;
+      const existing = await db.select().from(communityPostLikes).where(eq(communityPostLikes.postId, postId));
+      const alreadyLiked = existing.some((l) => l.userId === userId);
+      if (alreadyLiked) {
+        await db.delete(communityPostLikes).where(eq(communityPostLikes.postId, postId));
+        await pool.query("UPDATE community_posts SET likes_count = GREATEST(likes_count - 1, 0) WHERE id = $1", [postId]);
+        res.json({ liked: false });
+      } else {
+        await db.insert(communityPostLikes).values({ postId, userId }).onConflictDoNothing();
+        await pool.query("UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = $1", [postId]);
+        res.json({ liked: true });
+      }
+    } catch (error) {
+      console.error("POST /api/community/posts/:id/like error:", error);
+      res.status(500).json({ error: "Failed to like post" });
     }
   });
 

@@ -431,7 +431,21 @@ export default function Browse() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community">("for-you");
-  const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "local">("groups");
+  const [communityCategory, setCommunityCategory] = useState<"groups" | "feed" | "engage" | "local">("groups");
+  const [engageLocation, setEngageLocation] = useState("");
+  const [engageSearchInput, setEngageSearchInput] = useState("");
+  const [engageType, setEngageType] = useState<"all" | "volunteering" | "events" | "service">("all");
+  const [createPostOpen, setCreatePostOpen] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState("");
+  const [newPostBody, setNewPostBody] = useState("");
+  const [newPostCategory, setNewPostCategory] = useState("general");
+  const [newPostAnonymous, setNewPostAnonymous] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDescription, setNewGroupDescription] = useState("");
+  const [newGroupType, setNewGroupType] = useState("online_chat");
+  const [newGroupUrl, setNewGroupUrl] = useState("");
+  const [newGroupSchedule, setNewGroupSchedule] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lengthFilter, setLengthFilter] = useState<"short" | "medium" | "long" | null>(null);
   const [topicFilter, setTopicFilter] = useState("");
@@ -510,6 +524,46 @@ export default function Browse() {
     queryKey: ["/api/browse/for-you", timeSlotNow, dayNameNow],
     staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
     enabled: activeTab === "for-you" || activeTab === "video",
+  });
+
+  // For You: Entertainment (TV/movies)
+  const { data: entertainmentData, isLoading: entertainmentLoading } = useQuery<{ shows: any[] }>({
+    queryKey: ["/api/browse/entertainment"],
+    staleTime: 60 * 60 * 1000,
+    enabled: activeTab === "for-you",
+  });
+
+  // For You: Activities
+  const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: any[] }>({
+    queryKey: ["/api/browse/activities"],
+    staleTime: 60 * 60 * 1000,
+    enabled: activeTab === "for-you",
+  });
+
+  // For You: Learning resources
+  const { data: learningData, isLoading: learningLoading } = useQuery<{ resources: any[] }>({
+    queryKey: ["/api/browse/learning"],
+    staleTime: 60 * 60 * 1000,
+    enabled: activeTab === "for-you",
+  });
+
+  // Community: Online groups
+  const { data: communityGroupsData, isLoading: groupsLoading } = useQuery<{ groups: any[] }>({
+    queryKey: ["/api/community/groups/online"],
+    enabled: activeTab === "community" && communityCategory === "groups",
+  });
+
+  // Community: Posts / Forum
+  const { data: communityPostsData, isLoading: postsLoading } = useQuery<{ posts: any[] }>({
+    queryKey: ["/api/community/posts"],
+    enabled: activeTab === "community" && communityCategory === "feed",
+  });
+
+  // Community: Engage (volunteering/events by location)
+  const { data: engageData, isLoading: engageLoading } = useQuery<{ opportunities: any[]; location: string }>({
+    queryKey: ["/api/community/engage", engageLocation, engageType],
+    enabled: activeTab === "community" && communityCategory === "engage" && engageLocation.length > 2,
+    staleTime: 10 * 60 * 1000,
   });
 
   // Saved tab: Saved content
@@ -663,6 +717,71 @@ ${contentList}`,
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to add to schedule", variant: "destructive" });
+    },
+  });
+
+  // Community mutations
+  const createPostMutation = useMutation({
+    mutationFn: async (data: { title: string; body: string; category: string; isAnonymous: boolean }) => {
+      const response = await apiRequest("POST", "/api/community/posts", data);
+      if (!response.ok) throw new Error("Failed to post");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/posts"] });
+      setCreatePostOpen(false);
+      setNewPostTitle(""); setNewPostBody(""); setNewPostCategory("general"); setNewPostAnonymous(false);
+      toast({ title: "Post shared!", description: "Your post is now visible to the community." });
+    },
+    onError: () => toast({ title: "Error", description: "Failed to share post", variant: "destructive" }),
+  });
+
+  const likePostMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      const response = await apiRequest("POST", `/api/community/posts/${postId}/like`, {});
+      if (!response.ok) throw new Error("Failed to like");
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/community/posts"] }),
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; type: string; meetingUrl: string; meetingSchedule: string }) => {
+      const response = await apiRequest("POST", "/api/community/groups", data);
+      if (!response.ok) throw new Error("Failed to create group");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/groups/online"] });
+      setCreateGroupOpen(false);
+      setNewGroupName(""); setNewGroupDescription(""); setNewGroupType("online_chat"); setNewGroupUrl(""); setNewGroupSchedule("");
+      toast({ title: "Group created!", description: "Your group is live." });
+    },
+    onError: () => toast({ title: "Error", description: "Failed to create group", variant: "destructive" }),
+  });
+
+  const joinGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      const response = await apiRequest("POST", `/api/community/groups/${groupId}/join`, {});
+      if (!response.ok) throw new Error("Failed to join");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/groups/online"] });
+      toast({ title: "Joined!", description: "You've joined the group." });
+    },
+    onError: () => toast({ title: "Error", description: "Failed to join group", variant: "destructive" }),
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      const response = await apiRequest("DELETE", `/api/community/groups/${groupId}/leave`, {});
+      if (!response.ok) throw new Error("Failed to leave");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/groups/online"] });
+      toast({ title: "Left group" });
     },
   });
 
@@ -1107,6 +1226,134 @@ ${contentList}`,
               )}
             </div>
           ) : null}
+
+          {/* Entertainment: TV/Movies */}
+          {(entertainmentLoading || (entertainmentData?.shows && entertainmentData.shows.length > 0)) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Video className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Worth Watching</h2>
+                {entertainmentLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+              {entertainmentData?.shows && (
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory">
+                  {entertainmentData.shows.map((show: any, idx: number) => (
+                    <Card
+                      key={show.id || idx}
+                      className="card-modern shrink-0 w-44 snap-start cursor-pointer hover-lift"
+                      onClick={() => isSafeExternalUrl(show.searchUrl) && window.open(show.searchUrl, "_blank", "noopener,noreferrer")}
+                      data-testid={`card-entertainment-${idx}`}
+                    >
+                      <div className="aspect-[3/4] bg-gradient-to-br from-violet-500/20 to-indigo-500/10 rounded-t-lg flex items-center justify-center">
+                        <Video className="h-10 w-10 text-primary/40" />
+                      </div>
+                      <CardContent className="p-2.5">
+                        <Badge variant="outline" className="text-xs mb-1">{show.platform}</Badge>
+                        <p className="text-xs font-semibold leading-snug line-clamp-2">{show.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{show.whyPicked}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Activities */}
+          {(activitiesLoading || (activitiesData?.activities && activitiesData.activities.length > 0)) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Things To Do Today</h2>
+                {activitiesLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+              {activitiesData?.activities && (
+                <div className="space-y-2">
+                  {activitiesData.activities.map((activity: any, idx: number) => (
+                    <Card key={activity.id || idx} className="card-modern hover-lift" data-testid={`card-activity-${idx}`}>
+                      <CardContent className="p-3 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Compass className="h-5 w-5 text-primary/70" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium">{activity.title}</p>
+                            <Badge variant="outline" className="text-xs capitalize">{activity.type}</Badge>
+                            {activity.duration && <Badge variant="secondary" className="text-xs"><Clock className="h-3 w-3 mr-1" />{activity.duration}</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{activity.description}</p>
+                          {activity.whyPicked && <p className="text-xs text-primary mt-1 italic">"{activity.whyPicked}"</p>}
+                        </div>
+                        {activity.canAddToSchedule && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => handleAddToSchedule({ title: activity.title, url: "", type: "activity" })}
+                            data-testid={`button-activity-schedule-${idx}`}
+                          >
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Learning */}
+          {(learningLoading || (learningData?.resources && learningData.resources.length > 0)) && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Learn Something</h2>
+                {learningLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+              {learningData?.resources && (
+                <div className="space-y-2">
+                  {learningData.resources.map((resource: any, idx: number) => (
+                    <Card
+                      key={resource.id || idx}
+                      className="card-modern hover-lift cursor-pointer"
+                      onClick={() => isSafeExternalUrl(resource.url) && window.open(resource.url, "_blank", "noopener,noreferrer")}
+                      data-testid={`card-learning-${idx}`}
+                    >
+                      <CardContent className="p-3 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          {resource.type === "video" ? <Play className="h-5 w-5 text-primary/70" /> :
+                           resource.type === "podcast" ? <MessageCircle className="h-5 w-5 text-primary/70" /> :
+                           <FileText className="h-5 w-5 text-primary/70" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <p className="text-sm font-medium line-clamp-1">{resource.title}</p>
+                          </div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-xs capitalize">{resource.source}</Badge>
+                            {resource.duration && <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{resource.duration}</span>}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{resource.description}</p>
+                          {resource.whyPicked && <p className="text-xs text-primary mt-1 italic">"{resource.whyPicked}"</p>}
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); isSafeExternalUrl(resource.url) && window.open(resource.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-learning-open-${idx}`}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                          {resource.canAddToSchedule && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleAddToSchedule({ title: resource.title, url: resource.url || "", type: "learning" }); }} data-testid={`button-learning-schedule-${idx}`}>
+                              <Calendar className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* DW topic suggestions */}
           {suggestionsData?.suggestions && suggestionsData.suggestions.length > 0 && (
@@ -2086,60 +2333,250 @@ ${contentList}`,
       {activeTab === "community" && (
         <div className="flex flex-col">
           <div className="sticky z-30 bg-background border-b" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
-            <div className="flex gap-2 px-4 py-3">
-              <Button
-                variant={communityCategory === "groups" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCommunityCategory("groups")}
-                data-testid="button-community-groups"
-              >
-                <Users className="h-4 w-4 mr-1" />
-                Groups
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto">
+              <Button variant={communityCategory === "groups" ? "default" : "outline"} size="sm" onClick={() => setCommunityCategory("groups")} data-testid="button-community-groups" className="shrink-0">
+                <Users className="h-4 w-4 mr-1" />Groups
               </Button>
-              <Button
-                variant={communityCategory === "feed" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCommunityCategory("feed")}
-                data-testid="button-community-feed"
-              >
-                <MessageCircle className="h-4 w-4 mr-1" />
-                Feed
+              <Button variant={communityCategory === "feed" ? "default" : "outline"} size="sm" onClick={() => setCommunityCategory("feed")} data-testid="button-community-feed" className="shrink-0">
+                <MessageCircle className="h-4 w-4 mr-1" />Feed
               </Button>
-              <Button
-                variant={communityCategory === "local" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCommunityCategory("local")}
-                data-testid="button-community-local"
-              >
-                <MapPin className="h-4 w-4 mr-1" />
-                Local Resources
+              <Button variant={communityCategory === "engage" ? "default" : "outline"} size="sm" onClick={() => setCommunityCategory("engage")} data-testid="button-community-engage" className="shrink-0">
+                <Heart className="h-4 w-4 mr-1" />Engage
+              </Button>
+              <Button variant={communityCategory === "local" ? "default" : "outline"} size="sm" onClick={() => setCommunityCategory("local")} data-testid="button-community-local" className="shrink-0">
+                <MapPin className="h-4 w-4 mr-1" />Local
               </Button>
             </div>
           </div>
 
+          {/* GROUPS */}
           {communityCategory === "groups" && (
-            <main className="p-4">
-              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 px-8">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-8 w-8 text-primary/60" />
+            <main className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Online Groups</h2>
+                  <p className="text-xs text-muted-foreground">Connect with people on the same journey</p>
                 </div>
-                <h3 className="text-lg font-semibold">Community Groups Coming Soon</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">We're building a warm, supportive community where you can connect with others on the same wellness journey. Stay tuned.</p>
-                <Badge variant="secondary" className="text-xs">Coming in a future update</Badge>
+                <Button size="sm" onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group">
+                  <Plus className="h-4 w-4 mr-1" />New Group
+                </Button>
               </div>
+              {groupsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+              {!groupsLoading && (!communityGroupsData?.groups || communityGroupsData.groups.length === 0) && (
+                <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-7 w-7 text-primary/60" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">No groups yet</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">Be the first to create a group. Connect with others on similar paths.</p>
+                  </div>
+                  <Button onClick={() => setCreateGroupOpen(true)} data-testid="button-create-group-empty">
+                    <Plus className="h-4 w-4 mr-2" />Create First Group
+                  </Button>
+                </div>
+              )}
+              {communityGroupsData?.groups && communityGroupsData.groups.length > 0 && (
+                <div className="space-y-3">
+                  {communityGroupsData.groups.map((group: any) => (
+                    <Card key={group.id} className="card-modern" data-testid={`card-group-${group.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-medium text-sm">{group.name}</h3>
+                              <Badge variant="outline" className="text-xs capitalize">{group.type?.replace("_", " ")}</Badge>
+                              {group.isMember && <Badge variant="secondary" className="text-xs"><Check className="h-3 w-3 mr-1" />Joined</Badge>}
+                            </div>
+                            {group.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{group.description}</p>}
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <span><Users className="h-3 w-3 inline mr-1" />{group.membersCount} members</span>
+                              {group.meetingSchedule && <span><Calendar className="h-3 w-3 inline mr-1" />{group.meetingSchedule}</span>}
+                              {group.meetingUrl && <a href={group.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}><Globe className="h-3 w-3" />Join link</a>}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={group.isMember ? "outline" : "default"}
+                            onClick={() => group.isMember ? leaveGroupMutation.mutate(group.id) : joinGroupMutation.mutate(group.id)}
+                            disabled={joinGroupMutation.isPending || leaveGroupMutation.isPending}
+                            data-testid={`button-group-join-${group.id}`}
+                          >
+                            {group.isMember ? "Leave" : "Join"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </main>
           )}
 
+          {/* FEED */}
           {communityCategory === "feed" && (
-            <main className="p-4">
-              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 px-8">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageCircle className="h-8 w-8 text-primary/60" />
+            <main className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold">Community Feed</h2>
+                  <p className="text-xs text-muted-foreground">Share wins, ask questions, support each other</p>
                 </div>
-                <h3 className="text-lg font-semibold">Community Feed Coming Soon</h3>
-                <p className="text-sm text-muted-foreground max-w-xs">Share your wins, ask questions, and cheer each other on. A real feed is on the way — built around kindness, not competition.</p>
-                <Badge variant="secondary" className="text-xs">Coming in a future update</Badge>
+                <Button size="sm" onClick={() => setCreatePostOpen(true)} data-testid="button-create-post">
+                  <Plus className="h-4 w-4 mr-1" />Post
+                </Button>
               </div>
+              {postsLoading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
+              {!postsLoading && (!communityPostsData?.posts || communityPostsData.posts.length === 0) && (
+                <div className="flex flex-col items-center py-16 text-center space-y-4 px-8">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <MessageCircle className="h-7 w-7 text-primary/60" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">No posts yet</h3>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-xs">Start the conversation. Share a win, ask a question, or offer encouragement.</p>
+                  </div>
+                  <Button onClick={() => setCreatePostOpen(true)} data-testid="button-create-post-empty">
+                    <Plus className="h-4 w-4 mr-2" />Share Something
+                  </Button>
+                </div>
+              )}
+              {communityPostsData?.posts && communityPostsData.posts.length > 0 && (
+                <div className="space-y-3">
+                  {communityPostsData.posts.map((post: any) => (
+                    <Card key={post.id} className="card-modern" data-testid={`card-post-${post.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div>
+                            <h3 className="font-medium text-sm">{post.title}</h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-muted-foreground">{post.displayName}</span>
+                              {post.category && post.category !== "general" && <Badge variant="outline" className="text-xs capitalize">{post.category}</Badge>}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-3">{post.body}</p>
+                        <div className="flex items-center gap-3 mt-3 pt-3 border-t">
+                          <Button
+                            size="sm"
+                            variant={post.isLiked ? "default" : "ghost"}
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => likePostMutation.mutate(post.id)}
+                            disabled={likePostMutation.isPending}
+                            data-testid={`button-post-like-${post.id}`}
+                          >
+                            <ThumbsUp className="h-3.5 w-3.5" />
+                            {post.likesCount > 0 && <span>{post.likesCount}</span>}
+                          </Button>
+                          <span className="text-xs text-muted-foreground ml-auto">{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </main>
+          )}
+
+          {/* ENGAGE — Volunteering, Events, Community Service */}
+          {communityCategory === "engage" && (
+            <main className="p-4 space-y-4">
+              <div>
+                <h2 className="text-base font-semibold">Get Involved</h2>
+                <p className="text-xs text-muted-foreground">Find volunteering, events, and ways to give back near you</p>
+              </div>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Your city or zip code..."
+                      value={engageSearchInput}
+                      onChange={(e) => setEngageSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") setEngageLocation(engageSearchInput); }}
+                      className="pl-9"
+                      data-testid="input-engage-location"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => setEngageLocation(engageSearchInput)}
+                    disabled={!engageSearchInput.trim() || engageLoading}
+                    data-testid="button-engage-search"
+                  >
+                    {engageLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {(["all", "volunteering", "events", "service"] as const).map((t) => (
+                    <Button
+                      key={t}
+                      size="sm"
+                      variant={engageType === t ? "default" : "outline"}
+                      onClick={() => setEngageType(t)}
+                      className="capitalize text-xs h-7"
+                      data-testid={`button-engage-type-${t}`}
+                    >
+                      {t === "all" ? "All" : t}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {!engageLocation && (
+                <div className="flex flex-col items-center py-14 text-center space-y-3 px-8">
+                  <Heart className="h-12 w-12 text-muted-foreground/40" />
+                  <h3 className="font-medium">Where are you located?</h3>
+                  <p className="text-sm text-muted-foreground max-w-xs">Enter your city or zip above to find real volunteering opportunities and community events near you.</p>
+                </div>
+              )}
+              {engageLoading && engageLocation && (
+                <div className="flex flex-col items-center py-10">
+                  <Loader2 className="h-7 w-7 animate-spin text-primary mb-3" />
+                  <p className="text-sm text-muted-foreground">Finding opportunities near {engageLocation}...</p>
+                </div>
+              )}
+              {engageData?.opportunities && engageData.opportunities.length > 0 && (
+                <div className="space-y-3">
+                  {engageData.opportunities.map((opp: any, idx: number) => (
+                    <Card key={opp.id || idx} className="card-modern" data-testid={`card-engage-${idx}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Heart className="h-5 w-5 text-primary/70" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h3 className="font-medium text-sm">{opp.title}</h3>
+                                <p className="text-xs text-muted-foreground">{opp.organization}</p>
+                              </div>
+                              <div className="flex gap-1 flex-wrap justify-end">
+                                <Badge variant="outline" className="text-xs capitalize">{opp.type}</Badge>
+                                {opp.isVirtual && <Badge variant="secondary" className="text-xs">Virtual</Badge>}
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{opp.description}</p>
+                            {opp.schedule && <p className="text-xs text-primary mt-1"><Calendar className="h-3 w-3 inline mr-1" />{opp.schedule}</p>}
+                            {opp.tags?.length > 0 && (
+                              <div className="flex gap-1 mt-2 flex-wrap">
+                                {opp.tags.slice(0, 3).map((tag: string) => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
+                              </div>
+                            )}
+                          </div>
+                          {isSafeExternalUrl(opp.url) && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => window.open(opp.url, "_blank", "noopener,noreferrer")} data-testid={`button-engage-open-${idx}`}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              {engageData && engageData.opportunities.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No opportunities found for "{engageLocation}". Try a nearby city or adjust the filter.</p>
+                </div>
+              )}
             </main>
           )}
 
@@ -2270,6 +2707,134 @@ ${contentList}`,
           )}
         </div>
       )}
+
+      {/* Create Post Dialog */}
+      <Dialog open={createPostOpen} onOpenChange={setCreatePostOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Share with the Community
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="Title (e.g. My biggest win this week...)"
+              value={newPostTitle}
+              onChange={(e) => setNewPostTitle(e.target.value)}
+              data-testid="input-post-title"
+            />
+            <Textarea
+              placeholder="What's on your mind? Share a win, ask a question, or offer encouragement..."
+              value={newPostBody}
+              onChange={(e) => setNewPostBody(e.target.value)}
+              className="min-h-[100px]"
+              data-testid="input-post-body"
+            />
+            <div className="flex gap-2 flex-wrap">
+              {["general", "wins", "questions", "support", "wellness", "goals"].map((cat) => (
+                <Button
+                  key={cat}
+                  size="sm"
+                  variant={newPostCategory === cat ? "default" : "outline"}
+                  onClick={() => setNewPostCategory(cat)}
+                  className="text-xs h-7 capitalize"
+                  data-testid={`button-post-cat-${cat}`}
+                >
+                  {cat}
+                </Button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newPostAnonymous}
+                onChange={(e) => setNewPostAnonymous(e.target.checked)}
+                data-testid="checkbox-post-anonymous"
+              />
+              Post anonymously
+            </label>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCreatePostOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!newPostTitle.trim() || !newPostBody.trim() || createPostMutation.isPending}
+              onClick={() => createPostMutation.mutate({ title: newPostTitle, body: newPostBody, category: newPostCategory, isAnonymous: newPostAnonymous })}
+              data-testid="button-post-submit"
+            >
+              {createPostMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Share
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Group Dialog */}
+      <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Create a Group
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder="Group name"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              data-testid="input-group-name"
+            />
+            <Textarea
+              placeholder="What is this group about? Who is it for?"
+              value={newGroupDescription}
+              onChange={(e) => setNewGroupDescription(e.target.value)}
+              className="min-h-[80px]"
+              data-testid="input-group-description"
+            />
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Group type</label>
+              <div className="flex gap-2 flex-wrap">
+                {[{ id: "online_chat", label: "Chat" }, { id: "online_video", label: "Video calls" }, { id: "physical", label: "In-person" }].map((t) => (
+                  <Button
+                    key={t.id}
+                    size="sm"
+                    variant={newGroupType === t.id ? "default" : "outline"}
+                    onClick={() => setNewGroupType(t.id)}
+                    className="text-xs h-7"
+                    data-testid={`button-group-type-${t.id}`}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Input
+              placeholder="Meeting link (Zoom, Discord, etc.) — optional"
+              value={newGroupUrl}
+              onChange={(e) => setNewGroupUrl(e.target.value)}
+              data-testid="input-group-url"
+            />
+            <Input
+              placeholder="Schedule (e.g. Sundays 7pm) — optional"
+              value={newGroupSchedule}
+              onChange={(e) => setNewGroupSchedule(e.target.value)}
+              data-testid="input-group-schedule"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCreateGroupOpen(false)}>Cancel</Button>
+            <Button
+              disabled={!newGroupName.trim() || createGroupMutation.isPending}
+              onClick={() => createGroupMutation.mutate({ name: newGroupName, description: newGroupDescription, type: newGroupType, meetingUrl: newGroupUrl, meetingSchedule: newGroupSchedule })}
+              data-testid="button-group-submit"
+            >
+              {createGroupMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Create Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add to Schedule Dialog */}
       <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>

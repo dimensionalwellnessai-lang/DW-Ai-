@@ -77,10 +77,18 @@ Preferred communication style: Simple, everyday language.
 
 ### Browse Page (client/src/pages/browse.tsx)
 - **For You tab**: Shows time-aware real content (videos, articles, workouts, meal idea) via `GET /api/browse/for-you` using Perplexity web search. Refreshes when time slot changes. Greeting banner adapts to time of day and user name. Topic suggestions from `/api/explore/suggestions` shown below.
+- **For You — Entertainment**: `GET /api/browse/entertainment` — Perplexity-powered (OpenAI fallback) personalized TV/movie suggestions. Horizontal scroll card rail, links to Google search for each show.
+- **For You — Activities**: `GET /api/browse/activities` — OpenAI-generated time-of-day-aware activity suggestions (indoor/outdoor/social) with "Add to Schedule" button.
+- **For You — Learning**: `GET /api/browse/learning` — Perplexity-powered real learning resources (YouTube videos, courses, articles, podcasts) with real URLs. Add-to-schedule support.
 - **Video tab**: Auto-loads recommended videos from `forYouData` at the top; Search YouTube section below.
 - **Articles tab**: Curated via `GET /api/browse/ai-articles` — uses Perplexity first (real URLs), falls back to OpenAI. Time-slot and day-of-week aware.
-- **Community tab**: Groups and Feed tabs show "Coming Soon" empty states (no mock data). Local Resources tab remains functional with Perplexity-powered local search.
+- **Community tab** — 4 sub-tabs:
+  - **Groups**: Online community groups stored in DB (`community_groups`). Create group dialog (name, description, type, meeting URL/schedule), join/leave buttons. `GET /api/community/groups/online`, `POST /api/community/groups`, `POST/DELETE /api/community/groups/:id/join|leave`
+  - **Feed**: In-app community forum posts (`community_posts`). Create post dialog (title, body, category, anonymous toggle), like/unlike. `GET/POST /api/community/posts`, `POST /api/community/posts/:id/like`
+  - **Engage**: Location-aware Perplexity search for volunteering, community events, and service. Filter by type (volunteering/events/service). `GET /api/community/engage?location=&type=`
+  - **Local**: Original Perplexity-powered local resource search (gyms, therapists, yoga studios, etc.)
 - **Server endpoint** `GET /api/browse/for-you`: Perplexity-powered, returns `{ videos, articles, workouts, meal, timeSlot, dayName, timeLabel }`. Falls back to curated static content.
+- **Community DB tables**: `community_posts`, `community_post_likes`, `community_groups`, `community_group_members`
 
 ## External Dependencies
 
