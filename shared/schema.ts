@@ -63,6 +63,7 @@ export const userProfiles = pgTable("user_profiles", {
   meditationDurationMax: integer("meditation_duration_max"),
   reminderPreference: text("reminder_preference"),
   profileCompleteness: integer("profile_completeness").default(0),
+  lifestylePreferences: jsonb("lifestyle_preferences"),
   lastUpdated: timestamp("last_updated").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });

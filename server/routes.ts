@@ -4494,6 +4494,16 @@ Return ONLY this exact JSON structure, no other text:
         .map((l) => `${l.topic}: ${JSON.stringify(l.details ?? "")}`)
         .join("; ");
 
+      const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+      const lifestyleCtx = [
+        lp.watchLikes ? `TV/Movies they enjoy: ${lp.watchLikes}` : "",
+        lp.readLikes ? `Reading/Listening interests: ${lp.readLikes}` : "",
+        lp.doLikes ? `Activities they love: ${lp.doLikes}` : "",
+        lp.musicLikes ? `Music/Podcasts they like: ${lp.musicLikes}` : "",
+        lp.goLikes ? `Places/experiences they enjoy: ${lp.goLikes}` : "",
+        lp.createLikes ? `Creative interests: ${lp.createLikes}` : "",
+      ].filter(Boolean).join("\n");
+
       const userCtx = [
         onboarding?.shortTermGoals ? `Short-term goals: ${onboarding.shortTermGoals}` : "",
         onboarding?.longTermGoals ? `Long-term goals: ${onboarding.longTermGoals}` : "",
@@ -4502,7 +4512,8 @@ Return ONLY this exact JSON structure, no other text:
         activeGoalTitles.length ? `Active goals: ${activeGoalTitles.join(", ")}` : "",
         profile?.fitnessGoal ? `Fitness goal: ${profile.fitnessGoal}` : "",
         profile?.coachingTone ? `Preferred tone: ${profile.coachingTone}` : "",
-        learningsSummary ? `What DW knows about this person: ${learningsSummary}` : "",
+        lifestyleCtx ? `LIFESTYLE PREFERENCES (use these to be specific):\n${lifestyleCtx}` : "",
+        learningsSummary ? `What DW has learned about this person: ${learningsSummary}` : "",
       ].filter(Boolean).join("\n");
 
       // ── Detect free time / leisure event ──────────────────────────────────
@@ -4511,18 +4522,22 @@ Return ONLY this exact JSON structure, no other text:
 
       let prompt: string;
 
+      const hasLifestylePrefs = lifestyleCtx.length > 0;
+
       if (isFreeTime) {
         prompt = `You are DW, a personal AI companion who knows this person deeply. They have free/leisure time${startTime ? ` at ${startTime}` : ""}${endTime ? ` until ${endTime}` : ""}${location ? ` in/near ${location}` : ""}.
 
 Here is what you know about them:
 ${userCtx || "No specific context available — make diverse, inspiring suggestions."}
 
-Generate 5-6 personalized suggestions for how they could spend this time. Each suggestion should feel hand-picked for THIS person — not generic. Mix categories: something to watch, something to read or listen to, somewhere to go, something to do that aligns with who they want to be.
+${hasLifestylePrefs ? `IMPORTANT: Their lifestyle preferences are listed above. Use them to be VERY SPECIFIC — if they like thrillers, name a specific thriller show or movie. If they like hiking, suggest an actual type of hike or trail activity. If they like jazz, name a specific artist or playlist genre. Do NOT be generic.` : `Since we don't have their specific preferences yet, give diverse options across categories that would appeal to someone building a healthier, more intentional life.`}
+
+Generate 5-6 personalized suggestions for how they could spend this time. Each suggestion should feel hand-picked for THIS person — not generic. Vary the categories.
 
 Return ONLY a JSON array. Each object must have:
-- "title": the suggestion itself (max 70 chars, be specific — name actual shows, book genres, activity types)
+- "title": the suggestion itself (max 70 chars, be specific — name actual shows, books, activities, genres, artists when preferences are known)
 - "category": one of "Watch", "Read", "Go", "Do", "Listen", "Create"
-- "why": one short sentence (max 80 chars) on why this fits them personally
+- "why": one short sentence (max 80 chars) tying this to their goals or preferences — make it personal, not generic
 - "linkedRoute": relevant app path or null (options: /browse, /workout, /insights, /goals, /habits, /talk)
 
 Return only valid JSON, no markdown.`;
@@ -4564,10 +4579,37 @@ Return only valid JSON, no markdown.`;
         suggestions = [];
       }
 
-      res.json({ suggestions, isFreeTime });
+      res.json({ suggestions, isFreeTime, hasLifestylePrefs });
     } catch (error) {
       console.error("suggest-tasks error:", error);
       res.status(500).json({ error: "Failed to generate suggestions" });
+    }
+  });
+
+  // ── Lifestyle preferences ────────────────────────────────────────────────────
+  app.get("/api/profile/lifestyle-preferences", requireAuth, async (req, res) => {
+    try {
+      const profile = await storage.getUserProfile(req.session.userId!);
+      res.json((profile?.lifestylePreferences as Record<string, string>) ?? {});
+    } catch {
+      res.status(500).json({ error: "Failed to load lifestyle preferences" });
+    }
+  });
+
+  app.post("/api/profile/lifestyle-preferences", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const prefs = req.body as Record<string, string>;
+      const existing = await storage.getUserProfile(userId);
+      if (existing) {
+        const updated = await storage.updateUserProfile(userId, { lifestylePreferences: prefs });
+        res.json(updated?.lifestylePreferences ?? prefs);
+      } else {
+        const created = await storage.createUserProfile({ userId, lifestylePreferences: prefs });
+        res.json(created?.lifestylePreferences ?? prefs);
+      }
+    } catch {
+      res.status(500).json({ error: "Failed to save lifestyle preferences" });
     }
   });
 

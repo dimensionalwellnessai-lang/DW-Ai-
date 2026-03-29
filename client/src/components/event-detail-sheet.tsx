@@ -6,7 +6,6 @@ import {
   Check,
   Plus,
   Sparkles,
-  Trash2,
   ExternalLink,
   Clock,
   MapPin,
@@ -20,6 +19,7 @@ import {
   Zap,
   Headphones,
   Palette,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,6 +184,10 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isFreeTime, setIsFreeTime] = useState(false);
+  const [hasLifestylePrefs, setHasLifestylePrefs] = useState(true);
+  const [showPrefsForm, setShowPrefsForm] = useState(false);
+  const [prefsForm, setPrefsForm] = useState({ watchLikes: "", doLikes: "", musicLikes: "", readLikes: "" });
+  const [savingPrefs, setSavingPrefs] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -243,10 +247,28 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
       setIsFreeTime(data.isFreeTime ?? isFreeTimeEvent(event.title));
+      setHasLifestylePrefs(!!data.hasLifestylePrefs);
     } catch {
       // silent — user can still type manually
     } finally {
       setSuggestLoading(false);
+    }
+  };
+
+  // Save lifestyle preferences then refresh suggestions
+  const saveLifestylePrefs = async () => {
+    if (!prefsForm.watchLikes && !prefsForm.doLikes && !prefsForm.musicLikes && !prefsForm.readLikes) return;
+    setSavingPrefs(true);
+    try {
+      await apiRequest("POST", "/api/profile/lifestyle-preferences", prefsForm);
+      setHasLifestylePrefs(true);
+      setShowPrefsForm(false);
+      await fetchSuggestions();
+      toast({ title: "DW now knows your style", description: "Suggestions will be tailored to you." });
+    } catch {
+      toast({ title: "Couldn't save preferences", variant: "destructive" });
+    } finally {
+      setSavingPrefs(false);
     }
   };
 
@@ -470,30 +492,126 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
                   </div>
                 ) : suggestions.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-3">No suggestions yet — tap refresh to try again.</p>
-                ) : isFreeTime ? (
-                  <div className="space-y-2">
-                    {suggestions.map((s, i) => (
-                      <FreeTimeSuggestionCard
-                        key={i}
-                        s={s}
-                        index={i}
-                        onAccept={() => acceptSuggestion(s)}
-                        onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
-                      />
-                    ))}
-                  </div>
                 ) : (
-                  <div className="rounded-2xl border border-primary/15 bg-primary/5 divide-y divide-primary/10 px-3">
-                    {suggestions.map((s, i) => (
-                      <TaskSuggestionRow
-                        key={i}
-                        s={s}
-                        index={i}
-                        onAccept={() => acceptSuggestion(s)}
-                        onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    {/* "Tell DW what you like" nudge for free-time without prefs */}
+                    {isFreeTime && !hasLifestylePrefs && !showPrefsForm && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPrefsForm(true)}
+                        className="w-full flex items-center gap-2 rounded-xl bg-primary/8 border border-primary/15 px-3 py-2.5 mb-3 text-left hover:bg-primary/12 transition-colors group"
+                        data-testid="button-tell-dw-preferences"
+                      >
+                        <Heart className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-primary">Make these more personal</p>
+                          <p className="text-[11px] text-muted-foreground">Tell DW what you actually like — once, and it remembers</p>
+                        </div>
+                        <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                      </button>
+                    )}
+
+                    {/* Quick preferences capture */}
+                    {showPrefsForm && (
+                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 mb-3 space-y-2.5" data-testid="prefs-form">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                            <Heart className="h-3 w-3" />
+                            What are you into?
+                          </p>
+                          <button type="button" onClick={() => setShowPrefsForm(false)} className="text-muted-foreground/40 hover:text-foreground">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Tv className="h-2.5 w-2.5" /> Watch
+                            </label>
+                            <Input
+                              value={prefsForm.watchLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, watchLikes: e.target.value }))}
+                              placeholder="e.g. crime dramas, anime, documentaries"
+                              className="h-8 text-xs"
+                              data-testid="input-watch-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Zap className="h-2.5 w-2.5" /> Do
+                            </label>
+                            <Input
+                              value={prefsForm.doLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, doLikes: e.target.value }))}
+                              placeholder="e.g. hiking, cooking, journaling"
+                              className="h-8 text-xs"
+                              data-testid="input-do-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <Headphones className="h-2.5 w-2.5" /> Listen
+                            </label>
+                            <Input
+                              value={prefsForm.musicLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, musicLikes: e.target.value }))}
+                              placeholder="e.g. R&B, true crime pods, lo-fi beats"
+                              className="h-8 text-xs"
+                              data-testid="input-music-likes"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium flex items-center gap-1 mb-1">
+                              <BookOpen className="h-2.5 w-2.5" /> Read
+                            </label>
+                            <Input
+                              value={prefsForm.readLikes}
+                              onChange={(e) => setPrefsForm((p) => ({ ...p, readLikes: e.target.value }))}
+                              placeholder="e.g. self-help, sci-fi, business books"
+                              className="h-8 text-xs"
+                              data-testid="input-read-likes"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs mt-1"
+                          onClick={saveLifestylePrefs}
+                          disabled={savingPrefs || (!prefsForm.watchLikes && !prefsForm.doLikes && !prefsForm.musicLikes && !prefsForm.readLikes)}
+                          data-testid="button-save-lifestyle-prefs"
+                        >
+                          {savingPrefs ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                          {savingPrefs ? "Saving..." : "Save & refresh suggestions"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {isFreeTime ? (
+                      <div className="space-y-2">
+                        {suggestions.map((s, i) => (
+                          <FreeTimeSuggestionCard
+                            key={i}
+                            s={s}
+                            index={i}
+                            onAccept={() => acceptSuggestion(s)}
+                            onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-primary/15 bg-primary/5 divide-y divide-primary/10 px-3">
+                        {suggestions.map((s, i) => (
+                          <TaskSuggestionRow
+                            key={i}
+                            s={s}
+                            index={i}
+                            onAccept={() => acceptSuggestion(s)}
+                            onDismiss={() => setSuggestions((prev) => prev.filter((_, j) => j !== i))}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
