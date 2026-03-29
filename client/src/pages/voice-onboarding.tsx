@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, parseApiError } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { VOICE_SCRIPTS } from "@/config/voiceScripts";
@@ -308,12 +308,13 @@ export default function VoiceOnboardingPage() {
       setThread((prev) => [...prev, reply]);
       setIsReplying(false);
     },
-    onError: (error) => {
-      toast({
-        title: "Connection issue",
-        description: parseApiError(error),
-        variant: "destructive",
-      });
+    onError: () => {
+      const fallback: ThreadMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: "I'm having a small moment on my end — nothing to worry about. Take a breath and share that again whenever you're ready.",
+      };
+      setThread((prev) => [...prev, fallback]);
       setIsReplying(false);
     },
   });

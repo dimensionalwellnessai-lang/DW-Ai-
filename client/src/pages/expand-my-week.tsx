@@ -230,12 +230,14 @@ export default function ExpandMyWeekPage() {
       }
       setIsTyping(false);
     },
-    onError: (error) => {
-      toast({
-        title: "Connection issue",
-        description: parseApiError(error),
-        variant: "destructive",
-      });
+    onError: () => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "I'm having a small moment on my end — give me a second and try again. I'm still here with you.",
+        },
+      ]);
       setIsTyping(false);
     },
   });
