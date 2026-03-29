@@ -65,6 +65,9 @@ Preferred communication style: Simple, everyday language.
 - Context-aware wellness guidance
 - Proactive nudges based on user history and energy state
 - System prompts enforce calm, consent-based tone
+- **Life System Planning Mode**: When user shares comprehensive personal context or requests a "full reset", DW builds phased structured plans (daily system → body/nutrition → spiritual → weekly schedule → money → lifestyle). Activated via `server/openai.ts`.
+- **Markdown rendering**: DW chat messages use `react-markdown` + `remark-gfm`. Headers, bold, bullets, horizontal rules all render visually in `client/src/pages/talk-it-out.tsx`.
+- **Save Plan**: Any substantial DW response (>350 chars) shows a "Save this plan" button. Plans saved to localStorage (`dw_saved_plans`). Accessible via "My Plans" bookmark button in chat header → SwipeableDrawer list → full-content Dialog with markdown rendering.
 
 ### Browse Page (client/src/pages/browse.tsx)
 - **For You tab**: Shows time-aware real content (videos, articles, workouts, meal idea) via `GET /api/browse/for-you` using Perplexity web search. Refreshes when time slot changes. Greeting banner adapts to time of day and user name. Topic suggestions from `/api/explore/suggestions` shown below.

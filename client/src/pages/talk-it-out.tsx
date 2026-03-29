@@ -20,7 +20,7 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Sparkles, ClipboardCheck, X, RefreshCw, History, Plus, MessageSquare } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, RefreshCw, History, Plus, MessageSquare, BookmarkPlus, Check } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
@@ -28,6 +28,8 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMessage {
   role: "assistant" | "user" | "insight";
@@ -213,7 +215,39 @@ export function TalkItOutPage() {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [checkinModalOpen, setCheckinModalOpen] = useState(false);
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
+  const [savedPlanIds, setSavedPlanIds] = useState<Set<number>>(new Set());
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [viewingPlan, setViewingPlan] = useState<{ id: string; content: string; savedAt: number } | null>(null);
+  const [savedPlansList, setSavedPlansList] = useState<Array<{ id: string; preview: string; content: string; savedAt: number }>>(() => {
+    try { return JSON.parse(localStorage.getItem("dw_saved_plans") || "[]"); } catch { return []; }
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleSavePlan = (index: number, content: string) => {
+    try {
+      const existing = JSON.parse(localStorage.getItem("dw_saved_plans") || "[]");
+      const plan = {
+        id: `plan-${Date.now()}`,
+        savedAt: Date.now(),
+        preview: content.slice(0, 120).replace(/[#*\n]/g, " ").trim(),
+        content,
+      };
+      const updated = [plan, ...existing].slice(0, 50);
+      localStorage.setItem("dw_saved_plans", JSON.stringify(updated));
+      setSavedPlanIds((prev) => new Set([...prev, index]));
+      setSavedPlansList(updated);
+      toast({ title: "Plan saved", description: "Tap My Plans to view it anytime." });
+    } catch {
+      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleDeletePlan = (id: string) => {
+    const updated = savedPlansList.filter((p) => p.id !== id);
+    setSavedPlansList(updated);
+    localStorage.setItem("dw_saved_plans", JSON.stringify(updated));
+    if (viewingPlan?.id === id) setViewingPlan(null);
+  };
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Staged insight payload: populated inside setMessages updater (where prev.length is
   // accurate), then flushed in a useEffect so the save runs after React commits the update.
@@ -637,15 +671,29 @@ export function TalkItOutPage() {
         }
         backPath="/"
         rightContent={
-          <button
-            type="button"
-            onClick={() => setHistoryOpen(true)}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-            aria-label="View conversation history"
-            data-testid="button-history"
-          >
-            <History className="h-4 w-4 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPlansOpen(true)}
+              className="p-2 rounded-full hover:bg-muted transition-colors relative"
+              aria-label="View saved plans"
+              data-testid="button-my-plans"
+            >
+              <BookmarkPlus className="h-4 w-4 text-muted-foreground" />
+              {savedPlansList.length > 0 && (
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="View conversation history"
+              data-testid="button-history"
+            >
+              <History className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
         }
       />
 
@@ -771,6 +819,89 @@ export function TalkItOutPage() {
         </ScrollArea>
       </SwipeableDrawer>
 
+      {/* ── My Plans Drawer ── */}
+      <SwipeableDrawer
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
+        title="My Plans"
+        width="w-80"
+      >
+        {savedPlansList.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <BookmarkPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No saved plans yet</p>
+            <p className="text-xs mt-1 opacity-70">Tap "Save this plan" below any DW plan to save it here</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {savedPlansList.map((plan) => (
+              <div key={plan.id} className="group rounded-xl border border-border hover:border-primary/30 bg-card transition-colors">
+                <button
+                  type="button"
+                  className="w-full text-left p-3"
+                  onClick={() => { setViewingPlan(plan); setPlansOpen(false); }}
+                  data-testid={`plan-item-${plan.id}`}
+                >
+                  <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug">{plan.preview}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(plan.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+                </button>
+                <div className="px-3 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePlan(plan.id)}
+                    className="text-xs text-muted-foreground/60 hover:text-destructive transition-colors"
+                    data-testid={`delete-plan-${plan.id}`}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SwipeableDrawer>
+
+      {/* ── Full Plan View Dialog ── */}
+      <Dialog open={!!viewingPlan} onOpenChange={(o) => { if (!o) setViewingPlan(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <DWOrb size={20} state="chat" />
+              DW Plan
+            </DialogTitle>
+          </DialogHeader>
+          <div className="dw-chat-response prose prose-sm dark:prose-invert max-w-none mt-2">
+            {viewingPlan && (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h1: ({ children }) => <h1 className="text-lg font-bold mt-3 mb-1.5 text-foreground">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-semibold mt-3 mb-1 text-foreground border-b border-border/40 pb-1">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">{children}</h3>,
+                  p: ({ children }) => <p className="text-sm leading-relaxed text-foreground mb-2">{children}</p>,
+                  ul: ({ children }) => <ul className="space-y-1 my-1.5 ml-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="space-y-1 my-1.5 ml-4 list-decimal">{children}</ol>,
+                  li: ({ children }) => <li className="text-sm leading-relaxed text-foreground flex gap-2 items-start"><span className="text-primary mt-1.5 shrink-0">•</span><span>{children}</span></li>,
+                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                  em: ({ children }) => <em className="italic text-foreground/80">{children}</em>,
+                  hr: () => <hr className="my-3 border-border/40" />,
+                }}
+              >
+                {viewingPlan.content}
+              </ReactMarkdown>
+            )}
+          </div>
+          <div className="pt-2 flex justify-between items-center border-t border-border/50">
+            <p className="text-xs text-muted-foreground">
+              Saved {viewingPlan ? new Date(viewingPlan.savedAt).toLocaleDateString("en-US", { month: "long", day: "numeric" }) : ""}
+            </p>
+            <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => { if (viewingPlan) handleDeletePlan(viewingPlan.id); }}>
+              Remove plan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
           <div className="flex flex-col items-center gap-2 pb-2" data-testid="chat-orb-header">
@@ -837,9 +968,45 @@ export function TalkItOutPage() {
                       <DWOrb size={28} state="chat" />
                       <p className="text-sm font-medium text-foreground">DW</p>
                     </div>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="font-body text-base leading-relaxed text-foreground whitespace-pre-line">{message.content}</p>
+                    <div className="dw-chat-response prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-base font-semibold mt-4 mb-1.5 text-foreground border-b border-border/50 pb-1">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-1 text-foreground">{children}</h3>,
+                          p: ({ children }) => <p className="font-body text-base leading-relaxed text-foreground mb-2">{children}</p>,
+                          ul: ({ children }) => <ul className="space-y-1 my-2 ml-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="space-y-1 my-2 ml-4 list-decimal">{children}</ol>,
+                          li: ({ children }) => <li className="text-base leading-relaxed text-foreground flex gap-2 items-start"><span className="text-primary mt-1.5 shrink-0">•</span><span>{children}</span></li>,
+                          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                          em: ({ children }) => <em className="italic text-foreground/80">{children}</em>,
+                          hr: () => <hr className="my-4 border-border/40" />,
+                          blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/40 pl-3 my-2 italic text-muted-foreground">{children}</blockquote>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
+                    {/* Save Plan button — appears on substantial DW responses */}
+                    {message.content.length > 350 && (
+                      <div className="pt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 text-xs gap-1.5 ${savedPlanIds.has(index) ? "text-primary" : "text-muted-foreground"}`}
+                          onClick={() => handleSavePlan(index, message.content)}
+                          disabled={savedPlanIds.has(index)}
+                          data-testid={`button-save-plan-${index}`}
+                        >
+                          {savedPlanIds.has(index) ? (
+                            <><Check className="h-3 w-3" />Saved</>
+                          ) : (
+                            <><BookmarkPlus className="h-3 w-3" />Save this plan</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                       <MessageActions
                         messageIndex={index}
