@@ -1167,7 +1167,9 @@ ${contentList}`,
           </TabsList>
         </Tabs>
       </div>
-      
+
+      <div className="flex-1 overflow-y-auto overflow-x-hidden -webkit-overflow-scrolling-touch">
+
       {activeTab === "for-you" && (
         <main className="p-4 space-y-6">
           {/* Time-aware greeting */}
@@ -3754,6 +3756,8 @@ ${contentList}`,
           )}
         </DialogContent>
       </Dialog>
+
+      </div>
     </div>
   );
 }

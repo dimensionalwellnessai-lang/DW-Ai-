@@ -113,12 +113,12 @@ html, body {
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   /* Ensure background color consistency */
   background-color: hsl(var(--background));
-  /* Allow content to scroll independently */
+  /* Must be flex column so child pages can stretch to h-full and manage their own scroll */
+  display: flex;
+  flex-direction: column;
   position: relative;
 }
 

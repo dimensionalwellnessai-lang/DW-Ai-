@@ -20,7 +20,7 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check, RefreshCw } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
@@ -36,6 +36,7 @@ interface ChatMessage {
   content: string;
   insightCategory?: string;
   insightTitle?: string;
+  isError?: boolean;
 }
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
@@ -209,6 +210,7 @@ export function TalkItOutPage() {
     return [getContextualWelcomeMessage()];
   });
   const [isTyping, setIsTyping] = useState(false);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -558,15 +560,15 @@ export function TalkItOutPage() {
       });
       setIsTyping(false);
     },
-    onError: (_error, _variables) => {
-      // Never show an error state — DW always responds, even when the network
-      // has a hiccup. Insert a calm, in-character message directly in the chat.
+    onError: (_error, variables) => {
+      setLastFailedMessage(variables as string);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content:
             "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
+          isError: true,
         },
       ]);
       setIsTyping(false);
@@ -587,6 +589,7 @@ export function TalkItOutPage() {
     
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setInput("");
+    setLastFailedMessage(null);
     setIsTyping(true);
     chatMutation.mutate(userMessage);
   };
@@ -1009,6 +1012,25 @@ export function TalkItOutPage() {
                         </Button>
                       </div>
                     )}
+                    {message.isError && lastFailedMessage && (
+                      <div className="pt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            setLastFailedMessage(null);
+                            setMessages((prev) => prev.slice(0, -1));
+                            setIsTyping(true);
+                            chatMutation.mutate(lastFailedMessage);
+                          }}
+                          data-testid="button-retry-message"
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          Tap to retry
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                       <MessageActions
                         messageIndex={index}
@@ -1076,7 +1098,7 @@ export function TalkItOutPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Share what's on your mind..."
-              className="min-h-[48px] max-h-[200px] resize-none rounded-2xl bg-card border font-body"
+              className="min-h-[48px] max-h-[200px] resize-none rounded-2xl bg-card border font-body text-base"
               rows={1}
               data-testid="input-talk-message"
             />
