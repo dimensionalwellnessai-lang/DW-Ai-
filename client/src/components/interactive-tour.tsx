@@ -375,13 +375,13 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
           <motion.div
             ref={cardRef}
             key={currentStep}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.95, x: isCenter ? "-50%" : 0, y: isCenter ? "-50%" : 0 }}
+            animate={{ opacity: 1, scale: 1, x: isCenter ? "-50%" : 0, y: isCenter ? "-50%" : 0 }}
+            exit={{ opacity: 0, scale: 0.95, x: isCenter ? "-50%" : 0, y: isCenter ? "-50%" : 0 }}
             transition={{ duration: 0.2 }}
             className={`absolute glass-strong rounded-2xl p-6 shadow-2xl ${
               isCenter
-                ? "top-1/2 left-[50%] -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-md"
+                ? "top-1/2 left-1/2 w-[calc(100%-2rem)] max-w-md"
                 : ""
             }`}
             style={isCenter ? { pointerEvents: "auto" } : { ...getCardStyle(), pointerEvents: "auto" }}
