@@ -60,7 +60,7 @@ function generateICSContent(planName: string, items: any[]): string {
 
     icsContent.push(
       'BEGIN:VEVENT',
-      `UID:fts-${Date.now()}-${index}@fliptheswitch.app`,
+      `UID:dw-${Date.now()}-${index}@dimensionalwellnessai.com`,
       `DTSTAMP:${formatDate(now)}`,
       `DTSTART:${formatDate(eventStart)}`,
       `DTEND:${formatDate(eventEnd)}`,

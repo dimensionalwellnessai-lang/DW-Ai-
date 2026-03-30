@@ -161,7 +161,7 @@ export default function AcceptInvitePage() {
           <CardTitle>Accountability Partner Invite</CardTitle>
           <CardDescription>
             <strong>{requesterDisplay}</strong> has invited you to be their accountability
-            partner on Flip the Switch.
+            partner on DW - Dimensional Wellness AI.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
