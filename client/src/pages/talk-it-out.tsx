@@ -212,6 +212,8 @@ export function TalkItOutPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
+  const [lifeSystemDialogOpen, setLifeSystemDialogOpen] = useState(false);
+  const [pendingLifeSystemText, setPendingLifeSystemText] = useState("");
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [checkinModalOpen, setCheckinModalOpen] = useState(false);
@@ -579,7 +581,19 @@ export function TalkItOutPage() {
     if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
-    
+
+    // Detect life system pastes — look for 3+ of the life-system keywords and minimum length
+    const lsKeywords = ["workout", "breakfast", "lunch", "dinner", "core rules", "meal prep", "grocery", "morning routine", "life system", "wake up", "pushups", "sets", "reps", "weekly schedule", "snack", "wind down", "app work", "clean reset"];
+    if (userMessage.length > 300) {
+      const lower = userMessage.toLowerCase();
+      const hits = lsKeywords.filter((kw) => lower.includes(kw)).length;
+      if (hits >= 3) {
+        setPendingLifeSystemText(userMessage);
+        setLifeSystemDialogOpen(true);
+        return;
+      }
+    }
+
     const crisisAnalysis = analyzeCrisisRisk(userMessage);
     if (crisisAnalysis.isPotentialCrisis) {
       setPendingCrisisMessage(userMessage);
@@ -1140,6 +1154,50 @@ export function TalkItOutPage() {
         onResume={handleCrisisResume}
         userMessage={pendingCrisisMessage}
       />
+
+      {/* Life System paste detection dialog */}
+      <Dialog open={lifeSystemDialogOpen} onOpenChange={setLifeSystemDialogOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              That looks like a life system
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            DW can build this out automatically — creating your goals, workouts, meals, routines, calendar events, and grocery list all at once. Or you can just keep chatting.
+          </p>
+          <div className="flex flex-col gap-2 pt-1">
+            <Button
+              data-testid="button-ls-builder"
+              className="w-full"
+              onClick={() => {
+                setLifeSystemDialogOpen(false);
+                // Store the text in sessionStorage so the import page can pre-fill it
+                try { sessionStorage.setItem("dw_ls_prepaste", pendingLifeSystemText); } catch {}
+                navigate("/life-system-import");
+              }}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Build my life system
+            </Button>
+            <Button
+              variant="ghost"
+              data-testid="button-ls-chat-anyway"
+              onClick={() => {
+                setLifeSystemDialogOpen(false);
+                setMessages((prev) => [...prev, { role: "user", content: pendingLifeSystemText }]);
+                setInput("");
+                setIsTyping(true);
+                chatMutation.mutate(pendingLifeSystemText);
+                setPendingLifeSystemText("");
+              }}
+            >
+              Just chat with DW about it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Daily check-in modal */}
       {dailyCheckinEnabled && (

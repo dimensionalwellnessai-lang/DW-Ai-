@@ -12146,6 +12146,321 @@ Response:`;
     }
   });
 
+  // ── Life System Import ────────────────────────────────────────────────────
+  // Parse a pasted life system document into structured preview data
+  app.post("/api/life-system/import/parse", requireAuth, async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== "string" || text.trim().length < 50) {
+        return res.status(400).json({ error: "Please paste your full life system text." });
+      }
+      const { parseLifeSystemText } = await import("./life-system-parser.js");
+      const parsed = await parseLifeSystemText(text);
+      res.json({ parsed });
+    } catch (err) {
+      console.error("Life system parse error:", err);
+      res.status(500).json({ error: "Could not parse your life system. Please try again." });
+    }
+  });
+
+  // Apply parsed life system to the user's account
+  app.post("/api/life-system/import/apply", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { parsed, scheduleFrequency, startDate, conflictResolutions } = req.body as {
+        parsed: import("./life-system-parser.js").ParsedLifeSystem;
+        scheduleFrequency: "weekly" | "biweekly" | "every3weeks" | "monthly";
+        startDate: string;
+        conflictResolutions: Record<string, "keep_existing" | "use_new">;
+      };
+
+      const { getScheduleDates, getDayDate, formatDateStr, getWeekMondayStart } =
+        await import("./life-system-parser.js");
+
+      const results: Record<string, number> = {
+        goals: 0, habits: 0, routines: 0, calendarEvents: 0, groceryItems: 0,
+      };
+
+      // 1. Goals — merge/replace based on conflict resolutions
+      const existingGoals = await storage.getGoals(userId);
+      for (const g of (parsed.goals ?? [])) {
+        const existing = existingGoals.find(
+          (e) => e.title.toLowerCase().trim() === g.title.toLowerCase().trim()
+        );
+        if (existing) {
+          const resolution = conflictResolutions?.[g.title];
+          if (resolution === "use_new") {
+            await storage.updateGoal(existing.id, {
+              description: g.description,
+              wellnessDimension: g.wellnessDimension,
+            });
+            results.goals++;
+          }
+          // if "keep_existing" or undefined, skip
+        } else {
+          await storage.createGoal({
+            userId,
+            title: g.title,
+            description: g.description,
+            wellnessDimension: g.wellnessDimension,
+            isActive: true,
+            dataSource: "life_system_import",
+          });
+          results.goals++;
+        }
+      }
+
+      // 2. Core rules → habits
+      for (const rule of (parsed.coreRules ?? [])) {
+        if (!rule?.trim()) continue;
+        const freq = rule.toLowerCase().includes("sunday") ? "weekly" : "daily";
+        await storage.createHabit({
+          userId,
+          title: rule.trim(),
+          frequency: freq,
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.habits++;
+      }
+
+      // 3. Morning routine
+      if (parsed.morningRoutine?.steps?.length) {
+        await storage.createRoutine({
+          userId,
+          name: parsed.morningRoutine.name || "Morning Routine",
+          steps: parsed.morningRoutine.steps,
+          totalDurationMinutes: parsed.morningRoutine.steps.reduce((acc, s) => {
+            const m = parseInt(s.duration) || 0;
+            return acc + m;
+          }, 0),
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.routines++;
+      }
+
+      // 4. Wind Down routine
+      if (parsed.windDownRoutine?.steps?.length) {
+        await storage.createRoutine({
+          userId,
+          name: parsed.windDownRoutine.name || "Wind Down",
+          steps: parsed.windDownRoutine.steps,
+          totalDurationMinutes: parsed.windDownRoutine.steps.reduce((acc, s) => {
+            const m = parseInt(s.duration) || 0;
+            return acc + m;
+          }, 0),
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.routines++;
+      }
+
+      // 5. Calendar events — create for each week based on frequency
+      const refDate = startDate ? new Date(startDate) : new Date();
+      const baseMonday = getWeekMondayStart(refDate);
+      const weekStarts = getScheduleDates(scheduleFrequency || "weekly", baseMonday);
+      const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+      for (const weekStart of weekStarts) {
+        for (const dayName of DAYS) {
+          const dayData = parsed.weeklySchedule?.[dayName];
+          if (!dayData) continue;
+          const dayDate = getDayDate(weekStart, dayName);
+
+          // Workout event
+          if (dayData.workout?.title) {
+            const wTime = dayData.workout.time || "18:00";
+            const [wH, wM] = wTime.split(":").map(Number);
+            const endH = String(wH + 1).padStart(2, "0");
+            const wStart = formatDateStr(dayDate, `${String(wH).padStart(2, "0")}:${String(wM || 0).padStart(2, "0")}`);
+            const wEnd = formatDateStr(dayDate, `${endH}:${String(wM || 0).padStart(2, "0")}`);
+
+            const evt = await storage.createCalendarEvent({
+              userId,
+              title: dayData.workout.title,
+              description: `Workout: ${dayData.workout.exercises?.map(e => e.name).join(", ") || ""}`,
+              startTime: wStart,
+              endTime: wEnd,
+              eventType: "workout",
+              dimensionTags: ["physical"],
+              linkedType: "workout",
+              linkedRoute: "/workout",
+              linkedMeta: { exercises: dayData.workout.exercises },
+            });
+
+            // Add exercises as tasks
+            if (dayData.workout.exercises?.length) {
+              for (const ex of dayData.workout.exercises) {
+                const label = [ex.name, ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : "", ex.notes].filter(Boolean).join(" — ");
+                await storage.createEventTask({
+                  calendarEventId: evt.id,
+                  userId,
+                  title: label,
+                  isCompleted: false,
+                  dwSuggested: false,
+                  linkedRoute: "/workout",
+                });
+              }
+            }
+            results.calendarEvents++;
+          }
+
+          // Meal events (one event for each meal)
+          const mealSlots = [
+            { key: "breakfast", label: "Breakfast", time: "07:00", endTime: "07:30" },
+            { key: "lunch", label: "Lunch", time: "12:00", endTime: "13:00" },
+            { key: "dinner", label: "Dinner", time: "19:00", endTime: "19:45" },
+            { key: "snack", label: "Snack", time: "21:00", endTime: "21:15" },
+          ] as const;
+          for (const slot of mealSlots) {
+            const items = dayData.meals?.[slot.key];
+            if (!items?.length) continue;
+            const sStart = formatDateStr(dayDate, slot.time);
+            const sEnd = formatDateStr(dayDate, slot.endTime);
+            const mEvt = await storage.createCalendarEvent({
+              userId,
+              title: `${slot.label}: ${items.slice(0, 2).join(", ")}${items.length > 2 ? "…" : ""}`,
+              description: items.join(", "),
+              startTime: sStart,
+              endTime: sEnd,
+              eventType: "meal",
+              dimensionTags: ["physical"],
+              linkedType: "meal",
+              linkedRoute: "/meal-prep",
+              linkedMeta: { items, mealType: slot.key },
+            });
+            // Add each food item as a task
+            for (const item of items) {
+              await storage.createEventTask({
+                calendarEventId: mEvt.id,
+                userId,
+                title: item,
+                isCompleted: false,
+                dwSuggested: false,
+                linkedRoute: "/meal-prep",
+              });
+            }
+            results.calendarEvents++;
+          }
+
+          // App work event
+          if (dayData.appWork?.title) {
+            const aTime = dayData.appWork.time || "19:45";
+            const [aH, aM] = aTime.split(":").map(Number);
+            const dur = dayData.appWork.durationMinutes || 45;
+            const totalMin = (aH * 60 + (aM || 0)) + dur;
+            const endH = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
+            const endM = String(totalMin % 60).padStart(2, "0");
+            const aStart = formatDateStr(dayDate, `${String(aH).padStart(2, "0")}:${String(aM || 0).padStart(2, "0")}`);
+            const aEnd = formatDateStr(dayDate, `${endH}:${endM}`);
+
+            const aEvt = await storage.createCalendarEvent({
+              userId,
+              title: `App Work: ${dayData.appWork.title}`,
+              description: dayData.appWork.tasks?.join(", ") || "",
+              startTime: aStart,
+              endTime: aEnd,
+              eventType: "work",
+              dimensionTags: ["intellectual"],
+              linkedType: "none",
+              linkedRoute: "/plan",
+              linkedMeta: { tasks: dayData.appWork.tasks },
+            });
+
+            for (const task of (dayData.appWork.tasks ?? [])) {
+              await storage.createEventTask({
+                calendarEventId: aEvt.id,
+                userId,
+                title: task,
+                isCompleted: false,
+                dwSuggested: false,
+              });
+            }
+            results.calendarEvents++;
+          }
+
+          // Other events (cleaning, grooming, admin, etc.)
+          for (const other of (dayData.otherEvents ?? [])) {
+            if (!other?.title) continue;
+            const oStart = formatDateStr(dayDate, other.time || "12:00");
+            const oEnd = formatDateStr(dayDate, other.endTime || "12:30");
+            await storage.createCalendarEvent({
+              userId,
+              title: other.title,
+              description: other.notes || "",
+              startTime: oStart,
+              endTime: oEnd,
+              eventType: "event",
+              dimensionTags: ["environmental"],
+            });
+            results.calendarEvents++;
+          }
+        }
+      }
+
+      // 6. Grocery list → shopping list
+      const allItems = [
+        ...(parsed.groceryList?.protein ?? []).map((i) => ({ ingredient: i, category: "protein" })),
+        ...(parsed.groceryList?.carbs ?? []).map((i) => ({ ingredient: i, category: "carbs" })),
+        ...(parsed.groceryList?.produce ?? []).map((i) => ({ ingredient: i, category: "produce" })),
+        ...(parsed.groceryList?.extras ?? []).map((i) => ({ ingredient: i, category: "dairy" })),
+        ...(parsed.mealPrepItems ?? []).map((i) => ({ ingredient: i, category: "other" })),
+      ];
+
+      if (allItems.length) {
+        const list = await storage.createShoppingList({
+          userId,
+          title: "Weekly Grocery List (Life System)",
+          weekLabel: new Date().toISOString().slice(0, 10),
+          status: "active",
+        });
+        await storage.createShoppingListItems(
+          allItems.map((item) => ({
+            shoppingListId: list.id,
+            ingredient: item.ingredient,
+            category: item.category,
+            isChecked: false,
+          }))
+        );
+        results.groceryItems = allItems.length;
+      }
+
+      res.json({ success: true, results });
+    } catch (err) {
+      console.error("Life system apply error:", err);
+      res.status(500).json({ error: "Failed to apply life system. Please try again." });
+    }
+  });
+
+  // Check for goal conflicts with existing goals
+  app.post("/api/life-system/import/check-conflicts", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).userId;
+      const { goals } = req.body as { goals: Array<{ title: string; description: string }> };
+      const existing = await storage.getGoals(userId);
+
+      const conflicts: Array<{
+        newGoal: { title: string; description: string };
+        existingGoal: { id: string; title: string; description?: string | null };
+      }> = [];
+
+      for (const g of goals) {
+        const match = existing.find(
+          (e) => e.title.toLowerCase().trim() === g.title.toLowerCase().trim()
+        );
+        if (match) {
+          conflicts.push({ newGoal: g, existingGoal: match });
+        }
+      }
+
+      res.json({ conflicts });
+    } catch (err) {
+      console.error("Conflict check error:", err);
+      res.status(500).json({ conflicts: [] });
+    }
+  });
+
   return httpServer;
 }
 

@@ -63,6 +63,16 @@ Preferred communication style: Simple, everyday language.
     - **Lifestyle Preferences form**: First-time free-time event shows "Make these more personal" nudge → 7-field form: Who I'm becoming, My style/aesthetic, What I watch, Music/podcasts, Activities I enjoy, Places I like to go, What I read. Saved once to `user_profiles.lifestyle_preferences` (jsonb), used forever.
     - **Identity/style lens**: Both free-time and structured event prompts filter suggestions through `identityVision` and `styleLikes` — every suggestion serves who the user is becoming, not just what's convenient.
 
+### Life System Import
+- **Route**: `/life-system-import` — 5-step wizard to paste and build a complete life system
+- **Entry points**: Command Center carousel card ("Build My Life System") + Hamburger menu button + Chat detection (paste detection auto-offers builder when 3+ life-system keywords detected in long input)
+- **Backend parser**: `server/life-system-parser.ts` — uses GPT-4o to extract structured JSON from freeform life system text
+- **API routes**: `POST /api/life-system/import/parse` (parse text → preview), `POST /api/life-system/import/apply` (write to DB), `POST /api/life-system/import/check-conflicts` (goal conflict check)
+- **What it creates**: Goals, daily habits (core rules), morning/wind-down routines, calendar events (with tasks), grocery shopping list, meal events linked to `/meal-prep`, workout events linked to `/workout`
+- **Schedule frequency**: User chooses weekly/biweekly/every 3 weeks/monthly — creates recurring weeks of events
+- **Goal conflict handling**: Compares extracted goals against existing goals, shows side-by-side if conflict, user decides keep/replace
+- **Chat pre-fill**: Text stored in `sessionStorage("dw_ls_prepaste")` so import page auto-populates when redirected from chat
+
 ### AI Integration
 - AI chat interface as primary interaction point
 - DW Orb centered in Command Center orbital layout — tap orb to navigate to /talk

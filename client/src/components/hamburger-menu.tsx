@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Grid3x3, Home, MessageCircle } from 'lucide-react';
+import { Grid3x3, Home, MessageCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SwipeableDrawer } from '@/components/swipeable-drawer';
@@ -101,6 +101,19 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
         </div>
 
         <Separator className="my-4" />
+
+        {/* Build My Life System */}
+        <Link href="/life-system-import">
+          <Button
+            variant="default"
+            className="w-full justify-start mb-3"
+            onClick={onClose}
+            data-testid="button-build-life-system"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Build My Life System
+          </Button>
+        </Link>
 
         {/* All Features button */}
         <Button

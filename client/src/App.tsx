@@ -80,6 +80,7 @@ import PlanHistoryPage from "@/pages/plan-history";
 import WeeklyReviewPage from "@/pages/weekly-review";
 import ScheduleReviewPage from "@/pages/schedule-review";
 import ImportPage from "@/pages/import";
+import LifeSystemImportPage from "@/pages/life-system-import";
 import ExportPage from "@/pages/export";
 import CalendarMonthPage from "@/pages/calendar-month";
 import CalendarSchedulePage from "@/pages/calendar-schedule";
@@ -229,6 +230,7 @@ function Router() {
       <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home" component={DWHomePage} />
       <Route path="/command-center" component={HomeCommandCenter} />
+      <Route path="/life-system-import" component={LifeSystemImportPage} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />
       <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
       <Route path="/insights" component={InsightsDashboard} />
