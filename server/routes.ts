@@ -12154,8 +12154,78 @@ Response:`;
       if (!text || typeof text !== "string" || text.trim().length < 50) {
         return res.status(400).json({ error: "Please paste your full life system text." });
       }
-      const { parseLifeSystemText } = await import("./life-system-parser.js");
-      const parsed = await parseLifeSystemText(text);
+
+      const systemPrompt = `You are a life system parser. Extract structured data from a life system / daily schedule document.
+
+Return ONLY valid JSON matching this exact structure (no markdown, no explanation):
+{
+  "rawTitle": "title of the life system if present",
+  "goals": [
+    { "title": "short goal title", "description": "detail", "wellnessDimension": "physical|emotional|financial|social|spiritual|intellectual|environmental|purpose" }
+  ],
+  "coreRules": ["rule text as-is"],
+  "morningRoutine": {
+    "name": "Morning Routine",
+    "steps": [{ "title": "step name", "duration": "10 min", "time": "6:05 AM" }]
+  },
+  "windDownRoutine": {
+    "name": "Wind Down",
+    "steps": [{ "title": "step name", "duration": "10 min", "time": "" }]
+  },
+  "weeklySchedule": {
+    "monday": {
+      "meals": {
+        "breakfast": ["item 1", "item 2"],
+        "lunch": ["item 1"],
+        "dinner": ["item 1"],
+        "snack": ["item 1"]
+      },
+      "workout": {
+        "title": "Push Day",
+        "time": "18:00",
+        "exercises": [{ "name": "Band Chest Press", "sets": "4", "reps": "12", "notes": "" }]
+      },
+      "appWork": { "title": "System Review", "time": "19:45", "durationMinutes": 45, "tasks": ["task 1"] },
+      "otherEvents": [{ "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "" }]
+    }
+  },
+  "groceryList": { "protein": ["chicken"], "carbs": ["rice"], "produce": ["broccoli"], "extras": ["yogurt"] },
+  "mealPrepItems": ["chicken (seasoned, 3-4 meals)", "rice (4 cups cooked)"]
+}
+
+Rules:
+- If a day has no workout, set workout to null
+- If a day has no app work block, set appWork to null
+- If a day has no meal info, use empty arrays for meals
+- Keep exercise names exactly as written
+- Wellness dimensions: physical, emotional, financial, social, spiritual, intellectual, environmental, purpose
+- Goals = specific measurable targets (weight loss, visible muscle, etc.)
+- Core rules = non-negotiable daily rules
+- Include ALL 7 days (monday through sunday) in weeklySchedule`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: text },
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0]?.message?.content ?? "{}";
+      let parsed: any;
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        parsed = {};
+      }
+      if (!parsed.weeklySchedule) parsed.weeklySchedule = {};
+      if (!parsed.goals) parsed.goals = [];
+      if (!parsed.coreRules) parsed.coreRules = [];
+      if (!parsed.groceryList) parsed.groceryList = { protein: [], carbs: [], produce: [], extras: [] };
+      if (!parsed.mealPrepItems) parsed.mealPrepItems = [];
+
       res.json({ parsed });
     } catch (err) {
       console.error("Life system parse error:", err);
