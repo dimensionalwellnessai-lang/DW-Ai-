@@ -12155,6 +12155,11 @@ Response:`;
         return res.status(400).json({ error: "Please paste your full life system text." });
       }
 
+      const aiStatus = getAiConfigStatus();
+      if (!aiStatus.configured) {
+        return res.status(503).json({ error: "AI service is temporarily unavailable. Please try again later." });
+      }
+
       const systemPrompt = `You are a life system parser. Extract structured data from a life system / daily schedule document.
 
 Return ONLY valid JSON matching this exact structure (no markdown, no explanation):
