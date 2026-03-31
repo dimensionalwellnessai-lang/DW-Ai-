@@ -131,7 +131,7 @@ Rules:
     ],
     temperature: 0.2,
     response_format: { type: "json_object" },
-  });
+  }, { timeout: 55_000 });
 
   const content = response.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(content) as ParsedLifeSystem;
