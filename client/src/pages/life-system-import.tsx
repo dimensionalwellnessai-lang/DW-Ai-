@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +110,8 @@ export default function LifeSystemImportPage() {
   }, []);
 
   const parseMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/life-system/import/parse", { text: pastedText }),
+    mutationFn: () =>
+      apiRequest("POST", "/api/life-system/import/parse", { text: pastedText }).then((res) => res.json()),
     onSuccess: async (data: any) => {
       const p: ParsedLifeSystem = data.parsed;
       setParsed(p);
@@ -124,7 +125,7 @@ export default function LifeSystemImportPage() {
 
   const conflictMutation = useMutation({
     mutationFn: (goals: ParsedGoal[]) =>
-      apiRequest("POST", "/api/life-system/import/check-conflicts", { goals }),
+      apiRequest("POST", "/api/life-system/import/check-conflicts", { goals }).then((res) => res.json()),
     onSuccess: (data: any) => {
       setConflicts(data.conflicts ?? []);
       const defaultRes: Record<string, ConflictResolution> = {};
@@ -142,7 +143,7 @@ export default function LifeSystemImportPage() {
         scheduleFrequency: frequency,
         startDate,
         conflictResolutions: resolutions,
-      }),
+      }).then((res) => res.json()),
     onSuccess: (data: any) => {
       setApplyResults(data.results);
       setStep("done");
@@ -215,7 +216,7 @@ export default function LifeSystemImportPage() {
 
             {parseMutation.isError && (
               <p className="text-sm text-destructive text-center">
-                Something went wrong — please try again.
+                {parseApiError(parseMutation.error)}
               </p>
             )}
 
@@ -555,7 +556,7 @@ export default function LifeSystemImportPage() {
             </div>
 
             {applyMutation.isError && (
-              <p className="text-sm text-destructive text-center">Something went wrong — please try again.</p>
+              <p className="text-sm text-destructive text-center">{parseApiError(applyMutation.error)}</p>
             )}
 
             <div className="flex gap-2 pt-2 pb-6">

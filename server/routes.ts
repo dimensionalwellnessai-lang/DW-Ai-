@@ -12155,6 +12155,17 @@ Response:`;
         return res.status(400).json({ error: "Please paste your full life system text." });
       }
 
+      const aiStatus = getAiConfigStatus();
+      if (!aiStatus.configured) {
+        const body: { error: string; missing?: string[] } = {
+          error: "AI is not configured on this server.",
+        };
+        if (process.env.NODE_ENV !== "production" && aiStatus.missing) {
+          body.missing = aiStatus.missing;
+        }
+        return res.status(503).json(body);
+      }
+
       const systemPrompt = `You are a life system parser. Extract structured data from a life system / daily schedule document.
 
 Return ONLY valid JSON matching this exact structure (no markdown, no explanation):
