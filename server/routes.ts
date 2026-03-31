@@ -12157,7 +12157,13 @@ Response:`;
 
       const aiStatus = getAiConfigStatus();
       if (!aiStatus.configured) {
-        return res.status(503).json({ error: "AI service is temporarily unavailable. Please try again later." });
+        const body: { error: string; missing?: string[] } = {
+          error: "AI is not configured on this server.",
+        };
+        if (process.env.NODE_ENV !== "production" && aiStatus.missing) {
+          body.missing = aiStatus.missing;
+        }
+        return res.status(503).json(body);
       }
 
       const systemPrompt = `You are a life system parser. Extract structured data from a life system / daily schedule document.
