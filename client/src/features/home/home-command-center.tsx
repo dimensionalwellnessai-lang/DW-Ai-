@@ -421,8 +421,8 @@ export default function HomeCommandCenter() {
                     <Sparkles className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold leading-snug">Build My Life System</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Paste your plan — DW builds it all out</p>
+                    <p className="text-sm font-semibold leading-snug">DW Smart Import</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Paste anything — DW reads and saves it</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>

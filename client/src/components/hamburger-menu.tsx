@@ -102,7 +102,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
 
         <Separator className="my-4" />
 
-        {/* Build My Life System */}
+        {/* DW Smart Import */}
         <Link href="/life-system-import">
           <Button
             variant="default"
@@ -111,7 +111,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
             data-testid="button-build-life-system"
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            Build My Life System
+            DW Smart Import
           </Button>
         </Link>
 

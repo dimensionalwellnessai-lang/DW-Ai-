@@ -12146,27 +12146,21 @@ Response:`;
     }
   });
 
-  // ── Life System Import ────────────────────────────────────────────────────
-  // Parse a pasted life system document into structured preview data
+  // ── DW Smart Import ───────────────────────────────────────────────────────
+  // Auto-detects content type and extracts structured data from any pasted text
   app.post("/api/life-system/import/parse", requireAuth, async (req, res) => {
     try {
       const { text } = req.body;
-      if (!text || typeof text !== "string" || text.trim().length < 50) {
-        return res.status(400).json({ error: "Please paste your full life system text." });
+      if (!text || typeof text !== "string" || text.trim().length < 20) {
+        return res.status(400).json({ error: "Please paste some content for DW to read." });
       }
 
       const aiStatus = getAiConfigStatus();
       if (!aiStatus.configured) {
-        const body: { error: string; missing?: string[] } = {
-          error: "AI is not configured on this server.",
-        };
-        if (process.env.NODE_ENV !== "production" && aiStatus.missing) {
-          body.missing = aiStatus.missing;
-        }
-        return res.status(503).json(body);
+        return res.status(503).json({ error: "AI is not configured on this server." });
       }
 
-      // Helper: call AI with a focused prompt and parse JSON from response
+      // Helper: call AI, return parsed JSON
       async function callAI(prompt: string, userContent: string): Promise<any> {
         const resp = await openai.chat.completions.create({
           model: "gpt-4o-mini",
@@ -12185,11 +12179,10 @@ Response:`;
         }
       }
 
-      // Split text into ≤ 2800-char chunks at natural day-header or paragraph boundaries
+      // Split text into ≤ 2800-char chunks at natural boundaries
       const CHUNK_MAX = 2800;
       function toChunks(t: string): string[] {
         if (t.length <= CHUNK_MAX) return [t];
-        // Find all natural split points (day headers first, then blank lines)
         const splitPoints: number[] = [];
         const dayRe = /\n(?=(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY|WEEKLY GROCERY)\b)/g;
         const paraRe = /\n\n/g;
@@ -12199,59 +12192,160 @@ Response:`;
           while ((dm = paraRe.exec(t)) !== null) splitPoints.push(dm.index);
         }
         if (splitPoints.length === 0) {
-          // Hard split if no natural boundaries
           const parts: string[] = [];
           for (let i = 0; i < t.length; i += CHUNK_MAX) parts.push(t.slice(i, i + CHUNK_MAX));
           return parts;
         }
-        // Group split points so each chunk ≤ CHUNK_MAX
         const parts: string[] = [];
         let start = 0;
         for (const sp of splitPoints) {
-          if (sp - start >= CHUNK_MAX) {
-            parts.push(t.slice(start, sp).trim());
-            start = sp;
-          }
+          if (sp - start >= CHUNK_MAX) { parts.push(t.slice(start, sp).trim()); start = sp; }
         }
         if (start < t.length) parts.push(t.slice(start).trim());
         return parts.filter(p => p.length > 0);
       }
 
-      const chunks = toChunks(text.trim());
-      console.log(`[life-system] text=${text.length} chars → ${chunks.length} chunk(s): ${chunks.map(c => c.length).join(", ")} chars`);
+      const trimmed = text.trim();
+      const chunks = toChunks(trimmed);
+      console.log(`[dw-import] text=${trimmed.length} chars → ${chunks.length} chunk(s): ${chunks.map(c => c.length).join(", ")} chars`);
 
-      const metaPrompt = `Extract from this life system document. Return ONLY valid JSON with these keys:
-rawTitle (string), goals ([{title,description,wellnessDimension}]), coreRules ([string]),
+      // Step 1: Fast content-type detection on first 700 chars
+      const detection = await callAI(
+        `Classify what type(s) of content this text contains. Return ONLY valid JSON: {"types": string[], "title": string}
+Types can be ANY of: life_system, journal_entry, workout_plan, meal_plan, grocery_list, goals, affirmations, reading_list, financial_plan, project_plan, notes.
+Pick all that apply. life_system = full weekly schedule. journal_entry = personal diary/reflection.
+title = a short descriptive title for the content (e.g. "My Weekly Routine", "March Journal", "Reading List 2024").`,
+        trimmed.slice(0, 700)
+      );
+
+      const detectedTypes: string[] = Array.isArray(detection?.types) ? detection.types : ["notes"];
+      const rawTitle: string = detection?.title || "";
+      console.log(`[dw-import] detected types: ${detectedTypes.join(", ")}`);
+
+      // Step 2: Run extractors in parallel based on detected types
+      const isLifeSystem = detectedTypes.some(t => ["life_system", "workout_plan", "meal_plan", "grocery_list"].includes(t));
+      const hasGoals = detectedTypes.some(t => ["life_system", "goals", "financial_plan", "project_plan"].includes(t));
+      const isJournal = detectedTypes.includes("journal_entry");
+      const isAffirmations = detectedTypes.includes("affirmations");
+      const isReading = detectedTypes.includes("reading_list");
+      const isFinancial = detectedTypes.includes("financial_plan");
+      const isProject = detectedTypes.includes("project_plan");
+      const isNotes = detectedTypes.includes("notes") && detectedTypes.length === 1;
+
+      const extractionCalls: Promise<any>[] = [];
+      const callLabels: string[] = [];
+
+      if (isLifeSystem || hasGoals) {
+        extractionCalls.push(callAI(
+          `Extract from this document. Return ONLY valid JSON with keys:
+goals ([{title,description,wellnessDimension}]), coreRules ([string]),
 morningRoutine ({name,steps:[{title,duration,time}]} or null), windDownRoutine (same or null),
 groceryList ({protein:[],carbs:[],produce:[],extras:[]}), mealPrepItems ([string]).
-Dimensions: physical,emotional,financial,social,spiritual,intellectual,environmental,purpose.`;
-
-      const schedulePrompt = `Extract the weekly schedule. Return ONLY valid JSON with key weeklySchedule.
-Days: monday through sunday. Each day: {meals:{breakfast:[],lunch:[],dinner:[],snack:[]}, workout:{title,time,exercises:[{name,sets,reps,notes}]} or null, appWork:{title,time,durationMinutes,tasks:[]} or null, otherEvents:[{title,time,endTime,notes}]}.
-24h time (e.g. "18:00"). Missing = null or [].`;
-
-      // Run meta on first chunk + schedule on every chunk, all in parallel
-      const allCalls: Promise<any>[] = [
-        callAI(metaPrompt, chunks[0]),
-        ...chunks.map(chunk => callAI(schedulePrompt, chunk)),
-      ];
-      const allResults = await Promise.all(allCalls);
-
-      const metaData: any = allResults[0];
-      const scheduleResults = allResults.slice(1);
-
-      // Merge weekly schedules from all chunk results
-      const mergedSchedule: Record<string, any> = {};
-      for (const r of scheduleResults) {
-        if (r?.weeklySchedule && typeof r.weeklySchedule === "object") {
-          Object.assign(mergedSchedule, r.weeklySchedule);
-        }
-        // Pick up grocery list if found in a schedule chunk
-        if (r?.groceryList && !metaData.groceryList) metaData.groceryList = r.groceryList;
+Dimensions: physical,emotional,financial,social,spiritual,intellectual,environmental,purpose.`,
+          chunks[0]
+        ));
+        callLabels.push("meta");
       }
 
+      if (isLifeSystem) {
+        for (const chunk of chunks) {
+          extractionCalls.push(callAI(
+            `Extract weekly schedule. Return ONLY valid JSON with key weeklySchedule.
+Days: monday–sunday. Each day: {meals:{breakfast:[],lunch:[],dinner:[],snack:[]}, workout:{title,time,exercises:[{name,sets,reps,notes}]} or null, appWork:{title,time,durationMinutes,tasks:[]} or null, otherEvents:[{title,time,endTime,notes}]}.
+24h time (e.g. "18:00"). Missing=null or [].`,
+            chunk
+          ));
+          callLabels.push("schedule");
+        }
+      }
+
+      if (isJournal) {
+        extractionCalls.push(callAI(
+          `Extract journal entries from this text. Return ONLY valid JSON: {"journalEntries": [{title, date, mood, content, tags}]}.
+title = short descriptive title. date = date if mentioned (YYYY-MM-DD) or "". mood = emotion word if detectable or "".
+content = the full journal text (preserve the writing). tags = 1-4 theme tags (e.g. ["gratitude","growth"]).
+If there is only one journal entry, return an array with one item.`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("journal");
+      }
+
+      if (isAffirmations) {
+        extractionCalls.push(callAI(
+          `Extract affirmations/mantras from this text. Return ONLY valid JSON: {"affirmations": [string]}.
+Each item is one affirmation statement. Keep exact wording.`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("affirmations");
+      }
+
+      if (isReading) {
+        extractionCalls.push(callAI(
+          `Extract reading/watch/listen list items. Return ONLY valid JSON: {"readingList": [{title, author, type, notes}]}.
+type is one of: book, article, video, podcast, course. notes = any extra context.`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("reading");
+      }
+
+      if (isFinancial) {
+        extractionCalls.push(callAI(
+          `Extract financial goals or budget items. Return ONLY valid JSON: {"financialGoals": [{title, description, target, timeline}]}.
+target = dollar amount or metric if present. timeline = timeframe if mentioned.`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("financial");
+      }
+
+      if (isProject) {
+        extractionCalls.push(callAI(
+          `Extract project tasks or milestones. Return ONLY valid JSON: {"projectTasks": [{title, description, dueDate, priority}]}.
+priority is "high", "medium", or "low". dueDate = YYYY-MM-DD or "".`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("project");
+      }
+
+      if (isNotes) {
+        extractionCalls.push(callAI(
+          `Summarize this text. Return ONLY valid JSON: {"notes": string, "title": string, "tags": [string]}.
+notes = the full text content preserved. title = a short title. tags = 1-3 theme tags.`,
+          trimmed.slice(0, CHUNK_MAX)
+        ));
+        callLabels.push("notes");
+      }
+
+      const results = await Promise.all(extractionCalls);
+
+      // Assemble parsed output
+      let metaData: any = {};
+      let journalData: any = {};
+      let affirmationsData: any = {};
+      let readingData: any = {};
+      let financialData: any = {};
+      let projectData: any = {};
+      let notesData: any = {};
+      const mergedSchedule: Record<string, any> = {};
+
+      results.forEach((r, i) => {
+        const label = callLabels[i];
+        if (label === "meta") metaData = r;
+        else if (label === "schedule") {
+          if (r?.weeklySchedule) Object.assign(mergedSchedule, r.weeklySchedule);
+          if (r?.groceryList && !metaData.groceryList) metaData.groceryList = r.groceryList;
+        }
+        else if (label === "journal") journalData = r;
+        else if (label === "affirmations") affirmationsData = r;
+        else if (label === "reading") readingData = r;
+        else if (label === "financial") financialData = r;
+        else if (label === "project") projectData = r;
+        else if (label === "notes") notesData = r;
+      });
+
       const parsed: any = {
-        rawTitle: metaData.rawTitle || "",
+        rawTitle: rawTitle || metaData.rawTitle || notesData.title || "",
+        detectedTypes,
+        // Life system fields
         goals: metaData.goals || [],
         coreRules: metaData.coreRules || [],
         morningRoutine: metaData.morningRoutine || null,
@@ -12259,13 +12353,21 @@ Days: monday through sunday. Each day: {meals:{breakfast:[],lunch:[],dinner:[],s
         weeklySchedule: mergedSchedule,
         groceryList: metaData.groceryList || { protein: [], carbs: [], produce: [], extras: [] },
         mealPrepItems: metaData.mealPrepItems || [],
+        // New content type fields
+        journalEntries: journalData.journalEntries || [],
+        affirmations: affirmationsData.affirmations || [],
+        readingList: readingData.readingList || [],
+        financialGoals: financialData.financialGoals || [],
+        projectTasks: projectData.projectTasks || [],
+        notes: notesData.notes || "",
+        notesTags: notesData.tags || [],
       };
 
       res.json({ parsed });
     } catch (err: any) {
-      console.error("Life system parse error:", err?.status, err?.message, JSON.stringify(err?.headers));
+      console.error("DW import parse error:", err?.status, err?.message, JSON.stringify(err?.headers));
       res.status(500).json({
-        error: err?.message || "Could not parse your life system. Please try again.",
+        error: err?.message || "Could not read your content. Please try again.",
         code: err?.status,
       });
     }
@@ -12532,6 +12634,95 @@ Days: monday through sunday. Each day: {meals:{breakfast:[],lunch:[],dinner:[],s
           }))
         );
         results.groceryItems = allItems.length;
+      }
+
+      // 7. Journal entries + freeform notes
+      const journalEntries = (parsed as any).journalEntries ?? [];
+      for (const je of journalEntries) {
+        if (!je?.content?.trim()) continue;
+        await storage.createDwJournalEntry({
+          userId,
+          title: je.title || "Imported Journal Entry",
+          story: je.content,
+          quotes: [],
+          tags: je.tags ?? [],
+          sourceConversationId: null,
+        });
+        (results as any).journalEntries = ((results as any).journalEntries || 0) + 1;
+      }
+
+      // 8. Affirmations → goals with spiritual dimension
+      const affirmations = (parsed as any).affirmations ?? [];
+      for (const a of affirmations) {
+        if (!a?.trim()) continue;
+        await storage.createGoal({
+          userId,
+          title: a.trim(),
+          description: "Affirmation",
+          wellnessDimension: "spiritual",
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.goals++;
+      }
+
+      // 9. Reading list → goals with intellectual dimension
+      const readingList = (parsed as any).readingList ?? [];
+      for (const item of readingList) {
+        if (!item?.title?.trim()) continue;
+        await storage.createGoal({
+          userId,
+          title: item.title.trim(),
+          description: [item.author ? `by ${item.author}` : "", item.type ?? "", item.notes ?? ""].filter(Boolean).join(" · "),
+          wellnessDimension: "intellectual",
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.goals++;
+      }
+
+      // 10. Financial goals → goals with financial dimension
+      const financialGoals = (parsed as any).financialGoals ?? [];
+      for (const fg of financialGoals) {
+        if (!fg?.title?.trim()) continue;
+        await storage.createGoal({
+          userId,
+          title: fg.title.trim(),
+          description: [fg.description, fg.target ? `Target: ${fg.target}` : "", fg.timeline ?? ""].filter(Boolean).join(" · "),
+          wellnessDimension: "financial",
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.goals++;
+      }
+
+      // 11. Project tasks → goals with purpose dimension
+      const projectTasks = (parsed as any).projectTasks ?? [];
+      for (const pt of projectTasks) {
+        if (!pt?.title?.trim()) continue;
+        await storage.createGoal({
+          userId,
+          title: pt.title.trim(),
+          description: [pt.description, pt.dueDate ? `Due: ${pt.dueDate}` : "", pt.priority ? `Priority: ${pt.priority}` : ""].filter(Boolean).join(" · "),
+          wellnessDimension: "purpose",
+          isActive: true,
+          dataSource: "life_system_import",
+        });
+        results.goals++;
+      }
+
+      // 12. Freeform notes → saved as a journal entry
+      const notes = (parsed as any).notes as string | undefined;
+      if (notes?.trim()) {
+        await storage.createDwJournalEntry({
+          userId,
+          title: (parsed as any).rawTitle || "Imported Notes",
+          story: notes.trim(),
+          quotes: [],
+          tags: (parsed as any).notesTags ?? [],
+          sourceConversationId: null,
+        });
+        (results as any).journalEntries = ((results as any).journalEntries || 0) + 1;
       }
 
       res.json({ success: true, results });
