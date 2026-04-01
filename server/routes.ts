@@ -12163,7 +12163,7 @@ Response:`;
       // Helper: call AI, return parsed JSON
       async function callAI(prompt: string, userContent: string): Promise<any> {
         const resp = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [
             { role: "system", content: prompt },
             { role: "user", content: userContent },
