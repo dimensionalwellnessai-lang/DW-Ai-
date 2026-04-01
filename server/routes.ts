@@ -12221,15 +12221,18 @@ Rules:
           { role: "user", content: text },
         ],
         temperature: 0.2,
-        response_format: { type: "json_object" },
       });
 
-      const content = response.choices[0]?.message?.content ?? "{}";
+      const rawContent = response.choices[0]?.message?.content ?? "{}";
+      // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
+      const jsonStr = rawContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
       let parsed: any;
       try {
-        parsed = JSON.parse(content);
+        parsed = JSON.parse(jsonStr);
       } catch {
-        parsed = {};
+        // Try extracting JSON object from response if direct parse fails
+        const match = rawContent.match(/\{[\s\S]*\}/);
+        try { parsed = match ? JSON.parse(match[0]) : {}; } catch { parsed = {}; }
       }
       if (!parsed.weeklySchedule) parsed.weeklySchedule = {};
       if (!parsed.goals) parsed.goals = [];
