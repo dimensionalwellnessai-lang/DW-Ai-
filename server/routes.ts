@@ -12215,7 +12215,7 @@ Rules:
 - Include ALL 7 days (monday through sunday) in weeklySchedule`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: text },
@@ -12238,9 +12238,12 @@ Rules:
       if (!parsed.mealPrepItems) parsed.mealPrepItems = [];
 
       res.json({ parsed });
-    } catch (err) {
-      console.error("Life system parse error:", err);
-      res.status(500).json({ error: "Could not parse your life system. Please try again." });
+    } catch (err: any) {
+      console.error("Life system parse error:", err?.status, err?.message, JSON.stringify(err?.headers));
+      res.status(500).json({
+        error: err?.message || "Could not parse your life system. Please try again.",
+        code: err?.status,
+      });
     }
   });
 

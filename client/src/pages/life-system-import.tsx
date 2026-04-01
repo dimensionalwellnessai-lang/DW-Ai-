@@ -116,10 +116,12 @@ export default function LifeSystemImportPage() {
       const p: ParsedLifeSystem = data.parsed;
       setParsed(p);
       setStep("preview");
-      // immediately check conflicts
       if (p.goals?.length) {
         conflictMutation.mutate(p.goals);
       }
+    },
+    onError: (err) => {
+      console.error("Parse error:", err);
     },
   });
 
