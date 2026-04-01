@@ -12185,62 +12185,69 @@ Response:`;
         }
       }
 
-      // Split text into chunks ≤ 3500 chars at natural boundaries (blank lines / day headers)
-      const MAX = 3500;
-      function splitChunks(t: string): string[] {
-        if (t.length <= MAX) return [t];
-        // Try to split at a day header or blank line near the midpoint
-        const mid = Math.floor(t.length / 2);
-        const dayPattern = /\n(?=(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\b)/g;
-        const blankLine = /\n\n/g;
-        let best = mid;
-        for (const re of [dayPattern, blankLine]) {
-          let m; re.lastIndex = 0;
-          while ((m = re.exec(t)) !== null) {
-            if (Math.abs(m.index - mid) < Math.abs(best - mid)) best = m.index;
+      // Split text into ≤ 2800-char chunks at natural day-header or paragraph boundaries
+      const CHUNK_MAX = 2800;
+      function toChunks(t: string): string[] {
+        if (t.length <= CHUNK_MAX) return [t];
+        // Find all natural split points (day headers first, then blank lines)
+        const splitPoints: number[] = [];
+        const dayRe = /\n(?=(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY|WEEKLY GROCERY)\b)/g;
+        const paraRe = /\n\n/g;
+        let dm: RegExpExecArray | null;
+        while ((dm = dayRe.exec(t)) !== null) splitPoints.push(dm.index);
+        if (splitPoints.length === 0) {
+          while ((dm = paraRe.exec(t)) !== null) splitPoints.push(dm.index);
+        }
+        if (splitPoints.length === 0) {
+          // Hard split if no natural boundaries
+          const parts: string[] = [];
+          for (let i = 0; i < t.length; i += CHUNK_MAX) parts.push(t.slice(i, i + CHUNK_MAX));
+          return parts;
+        }
+        // Group split points so each chunk ≤ CHUNK_MAX
+        const parts: string[] = [];
+        let start = 0;
+        for (const sp of splitPoints) {
+          if (sp - start >= CHUNK_MAX) {
+            parts.push(t.slice(start, sp).trim());
+            start = sp;
           }
         }
-        return [t.slice(0, best).trim(), t.slice(best).trim()];
+        if (start < t.length) parts.push(t.slice(start).trim());
+        return parts.filter(p => p.length > 0);
       }
 
-      const chunks = splitChunks(text.trim());
+      const chunks = toChunks(text.trim());
+      console.log(`[life-system] text=${text.length} chars → ${chunks.length} chunk(s): ${chunks.map(c => c.length).join(", ")} chars`);
 
-      // Prompt 1: extract goals, rules, routines, and grocery list
-      const metaPrompt = `Extract from this life system text. Return ONLY JSON with keys: rawTitle, goals, coreRules, morningRoutine, windDownRoutine, groceryList, mealPrepItems.
-goals: [{title, description, wellnessDimension}] where dimension is one of: physical,emotional,financial,social,spiritual,intellectual,environmental,purpose
-coreRules: [string]
-morningRoutine: {name, steps:[{title,duration,time}]} or null
-windDownRoutine: {name, steps:[{title,duration,time}]} or null
-groceryList: {protein:[],carbs:[],produce:[],extras:[]}
-mealPrepItems: [string]`;
+      const metaPrompt = `Extract from this life system document. Return ONLY valid JSON with these keys:
+rawTitle (string), goals ([{title,description,wellnessDimension}]), coreRules ([string]),
+morningRoutine ({name,steps:[{title,duration,time}]} or null), windDownRoutine (same or null),
+groceryList ({protein:[],carbs:[],produce:[],extras:[]}), mealPrepItems ([string]).
+Dimensions: physical,emotional,financial,social,spiritual,intellectual,environmental,purpose.`;
 
-      // Prompt 2: extract weekly schedule days
-      const schedulePrompt = `Extract the weekly schedule from this life system text. Return ONLY JSON with key: weeklySchedule.
-weeklySchedule is an object with day keys (monday,tuesday,wednesday,thursday,friday,saturday,sunday). Each day:
-{
-  meals:{breakfast:[],lunch:[],dinner:[],snack:[]},
-  workout:{title,time,exercises:[{name,sets,reps,notes}]} or null,
-  appWork:{title,time,durationMinutes,tasks:[]} or null,
-  otherEvents:[{title,time,endTime,notes}]
-}
-Use 24h time format (e.g. "18:00"). If a field is missing use null or empty arrays.`;
+      const schedulePrompt = `Extract the weekly schedule. Return ONLY valid JSON with key weeklySchedule.
+Days: monday through sunday. Each day: {meals:{breakfast:[],lunch:[],dinner:[],snack:[]}, workout:{title,time,exercises:[{name,sets,reps,notes}]} or null, appWork:{title,time,durationMinutes,tasks:[]} or null, otherEvents:[{title,time,endTime,notes}]}.
+24h time (e.g. "18:00"). Missing = null or [].`;
 
-      let metaData: any = {};
-      let scheduleData: any = { weeklySchedule: {} };
+      // Run meta on first chunk + schedule on every chunk, all in parallel
+      const allCalls: Promise<any>[] = [
+        callAI(metaPrompt, chunks[0]),
+        ...chunks.map(chunk => callAI(schedulePrompt, chunk)),
+      ];
+      const allResults = await Promise.all(allCalls);
 
-      if (chunks.length === 1) {
-        // Short enough — run both extractions in parallel on the same text
-        [metaData, scheduleData] = await Promise.all([
-          callAI(metaPrompt, chunks[0]),
-          callAI(schedulePrompt, chunks[0]),
-        ]);
-      } else {
-        // Long text — split work: meta from first chunk, schedule from all chunks combined
-        const scheduleText = chunks.join("\n\n---\n\n");
-        [metaData, scheduleData] = await Promise.all([
-          callAI(metaPrompt, chunks[0]),
-          callAI(schedulePrompt, scheduleText.slice(0, MAX * 2)),
-        ]);
+      const metaData: any = allResults[0];
+      const scheduleResults = allResults.slice(1);
+
+      // Merge weekly schedules from all chunk results
+      const mergedSchedule: Record<string, any> = {};
+      for (const r of scheduleResults) {
+        if (r?.weeklySchedule && typeof r.weeklySchedule === "object") {
+          Object.assign(mergedSchedule, r.weeklySchedule);
+        }
+        // Pick up grocery list if found in a schedule chunk
+        if (r?.groceryList && !metaData.groceryList) metaData.groceryList = r.groceryList;
       }
 
       const parsed: any = {
@@ -12249,7 +12256,7 @@ Use 24h time format (e.g. "18:00"). If a field is missing use null or empty arra
         coreRules: metaData.coreRules || [],
         morningRoutine: metaData.morningRoutine || null,
         windDownRoutine: metaData.windDownRoutine || null,
-        weeklySchedule: scheduleData.weeklySchedule || {},
+        weeklySchedule: mergedSchedule,
         groceryList: metaData.groceryList || { protein: [], carbs: [], produce: [], extras: [] },
         mealPrepItems: metaData.mealPrepItems || [],
       };
