@@ -12166,79 +12166,93 @@ Response:`;
         return res.status(503).json(body);
       }
 
-      const systemPrompt = `You are a life system parser. Extract structured data from a life system / daily schedule document.
-
-Return ONLY valid JSON matching this exact structure (no markdown, no explanation):
-{
-  "rawTitle": "title of the life system if present",
-  "goals": [
-    { "title": "short goal title", "description": "detail", "wellnessDimension": "physical|emotional|financial|social|spiritual|intellectual|environmental|purpose" }
-  ],
-  "coreRules": ["rule text as-is"],
-  "morningRoutine": {
-    "name": "Morning Routine",
-    "steps": [{ "title": "step name", "duration": "10 min", "time": "6:05 AM" }]
-  },
-  "windDownRoutine": {
-    "name": "Wind Down",
-    "steps": [{ "title": "step name", "duration": "10 min", "time": "" }]
-  },
-  "weeklySchedule": {
-    "monday": {
-      "meals": {
-        "breakfast": ["item 1", "item 2"],
-        "lunch": ["item 1"],
-        "dinner": ["item 1"],
-        "snack": ["item 1"]
-      },
-      "workout": {
-        "title": "Push Day",
-        "time": "18:00",
-        "exercises": [{ "name": "Band Chest Press", "sets": "4", "reps": "12", "notes": "" }]
-      },
-      "appWork": { "title": "System Review", "time": "19:45", "durationMinutes": 45, "tasks": ["task 1"] },
-      "otherEvents": [{ "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "" }]
-    }
-  },
-  "groceryList": { "protein": ["chicken"], "carbs": ["rice"], "produce": ["broccoli"], "extras": ["yogurt"] },
-  "mealPrepItems": ["chicken (seasoned, 3-4 meals)", "rice (4 cups cooked)"]
-}
-
-Rules:
-- If a day has no workout, set workout to null
-- If a day has no app work block, set appWork to null
-- If a day has no meal info, use empty arrays for meals
-- Keep exercise names exactly as written
-- Wellness dimensions: physical, emotional, financial, social, spiritual, intellectual, environmental, purpose
-- Goals = specific measurable targets (weight loss, visible muscle, etc.)
-- Core rules = non-negotiable daily rules
-- Include ALL 7 days (monday through sunday) in weeklySchedule`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ],
-        temperature: 0.2,
-      });
-
-      const rawContent = response.choices[0]?.message?.content ?? "{}";
-      // Strip markdown code blocks if present (```json ... ``` or ``` ... ```)
-      const jsonStr = rawContent.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-      let parsed: any;
-      try {
-        parsed = JSON.parse(jsonStr);
-      } catch {
-        // Try extracting JSON object from response if direct parse fails
-        const match = rawContent.match(/\{[\s\S]*\}/);
-        try { parsed = match ? JSON.parse(match[0]) : {}; } catch { parsed = {}; }
+      // Helper: call AI with a focused prompt and parse JSON from response
+      async function callAI(prompt: string, userContent: string): Promise<any> {
+        const resp = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: prompt },
+            { role: "user", content: userContent },
+          ],
+          max_tokens: 2000,
+          temperature: 0.1,
+        });
+        const raw = resp.choices[0]?.message?.content ?? "{}";
+        const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+        try { return JSON.parse(clean); } catch {
+          const m = raw.match(/\{[\s\S]*\}/);
+          try { return m ? JSON.parse(m[0]) : {}; } catch { return {}; }
+        }
       }
-      if (!parsed.weeklySchedule) parsed.weeklySchedule = {};
-      if (!parsed.goals) parsed.goals = [];
-      if (!parsed.coreRules) parsed.coreRules = [];
-      if (!parsed.groceryList) parsed.groceryList = { protein: [], carbs: [], produce: [], extras: [] };
-      if (!parsed.mealPrepItems) parsed.mealPrepItems = [];
+
+      // Split text into chunks ≤ 3500 chars at natural boundaries (blank lines / day headers)
+      const MAX = 3500;
+      function splitChunks(t: string): string[] {
+        if (t.length <= MAX) return [t];
+        // Try to split at a day header or blank line near the midpoint
+        const mid = Math.floor(t.length / 2);
+        const dayPattern = /\n(?=(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\b)/g;
+        const blankLine = /\n\n/g;
+        let best = mid;
+        for (const re of [dayPattern, blankLine]) {
+          let m; re.lastIndex = 0;
+          while ((m = re.exec(t)) !== null) {
+            if (Math.abs(m.index - mid) < Math.abs(best - mid)) best = m.index;
+          }
+        }
+        return [t.slice(0, best).trim(), t.slice(best).trim()];
+      }
+
+      const chunks = splitChunks(text.trim());
+
+      // Prompt 1: extract goals, rules, routines, and grocery list
+      const metaPrompt = `Extract from this life system text. Return ONLY JSON with keys: rawTitle, goals, coreRules, morningRoutine, windDownRoutine, groceryList, mealPrepItems.
+goals: [{title, description, wellnessDimension}] where dimension is one of: physical,emotional,financial,social,spiritual,intellectual,environmental,purpose
+coreRules: [string]
+morningRoutine: {name, steps:[{title,duration,time}]} or null
+windDownRoutine: {name, steps:[{title,duration,time}]} or null
+groceryList: {protein:[],carbs:[],produce:[],extras:[]}
+mealPrepItems: [string]`;
+
+      // Prompt 2: extract weekly schedule days
+      const schedulePrompt = `Extract the weekly schedule from this life system text. Return ONLY JSON with key: weeklySchedule.
+weeklySchedule is an object with day keys (monday,tuesday,wednesday,thursday,friday,saturday,sunday). Each day:
+{
+  meals:{breakfast:[],lunch:[],dinner:[],snack:[]},
+  workout:{title,time,exercises:[{name,sets,reps,notes}]} or null,
+  appWork:{title,time,durationMinutes,tasks:[]} or null,
+  otherEvents:[{title,time,endTime,notes}]
+}
+Use 24h time format (e.g. "18:00"). If a field is missing use null or empty arrays.`;
+
+      let metaData: any = {};
+      let scheduleData: any = { weeklySchedule: {} };
+
+      if (chunks.length === 1) {
+        // Short enough — run both extractions in parallel on the same text
+        [metaData, scheduleData] = await Promise.all([
+          callAI(metaPrompt, chunks[0]),
+          callAI(schedulePrompt, chunks[0]),
+        ]);
+      } else {
+        // Long text — split work: meta from first chunk, schedule from all chunks combined
+        const scheduleText = chunks.join("\n\n---\n\n");
+        [metaData, scheduleData] = await Promise.all([
+          callAI(metaPrompt, chunks[0]),
+          callAI(schedulePrompt, scheduleText.slice(0, MAX * 2)),
+        ]);
+      }
+
+      const parsed: any = {
+        rawTitle: metaData.rawTitle || "",
+        goals: metaData.goals || [],
+        coreRules: metaData.coreRules || [],
+        morningRoutine: metaData.morningRoutine || null,
+        windDownRoutine: metaData.windDownRoutine || null,
+        weeklySchedule: scheduleData.weeklySchedule || {},
+        groceryList: metaData.groceryList || { protein: [], carbs: [], produce: [], extras: [] },
+        mealPrepItems: metaData.mealPrepItems || [],
+      };
 
       res.json({ parsed });
     } catch (err: any) {
