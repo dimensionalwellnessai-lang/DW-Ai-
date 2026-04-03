@@ -286,7 +286,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
           {user ? (
             <div className="space-y-2">
               <div className="px-2 py-1 text-sm font-medium text-foreground border-t pt-3">
-                Hello, {user.firstName || user.email?.split('@')[0] || 'there'}
+                Hello, {user.firstName || user.systemName || user.username || 'there'}
               </div>
               <Button 
                 variant="outline" 

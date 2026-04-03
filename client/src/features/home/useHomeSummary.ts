@@ -361,7 +361,7 @@ export function useHomeSummary(): HomeSummary {
 
   return {
     isLoading,
-    userName: user?.firstName ?? user?.systemName ?? null,
+    userName: user?.firstName ?? user?.systemName ?? user?.username ?? null,
     nextEvent,
     activeGoals,
     activeHabits,

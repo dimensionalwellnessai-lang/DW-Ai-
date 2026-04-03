@@ -124,7 +124,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
           )}
           {user && (
             <div className="px-2 py-1.5 text-sm text-muted-foreground" data-testid="text-logged-in">
-              Logged in as {user.firstName || user.systemName || 'you'}
+              {user.firstName || user.systemName || user.username || 'your account'}
             </div>
           )}
           <Link href="/settings">
