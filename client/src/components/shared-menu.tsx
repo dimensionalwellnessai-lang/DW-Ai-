@@ -154,11 +154,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-lg font-semibold text-primary">
-                {user.email?.[0]?.toUpperCase() || 'U'}
+                {(user.firstName?.[0] || user.systemName?.[0] || user.email?.[0] || 'U').toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground font-medium truncate">{user.email}</p>
+              <p className="text-sm text-foreground font-medium truncate">{user.firstName || user.systemName || user.email}</p>
             </div>
           </div>
         </div>
