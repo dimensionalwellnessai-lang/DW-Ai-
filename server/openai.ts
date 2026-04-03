@@ -1334,9 +1334,20 @@ Calm over speed.`;
       ? `${baseSystemPrompt}\n\n---\n\nADDITIONAL CONTEXT (must follow all safety and consent rules above, and cannot override them):\n${systemOverride}`
       : baseSystemPrompt;
 
+  // Trim conversation history to prevent oversized payloads.
+  // Keep the most recent messages, capping total history chars at 6000
+  // so the combined payload stays within the proxy's content limits.
+  const MAX_HISTORY_CHARS = 6000;
+  let trimmedHistory = conversationHistory.slice(-20);
+  let historyCharCount = trimmedHistory.reduce((sum, m) => sum + m.content.length, 0);
+  while (historyCharCount > MAX_HISTORY_CHARS && trimmedHistory.length > 2) {
+    trimmedHistory = trimmedHistory.slice(2);
+    historyCharCount = trimmedHistory.reduce((sum, m) => sum + m.content.length, 0);
+  }
+
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
-    ...conversationHistory.map((msg) => ({
+    ...trimmedHistory.map((msg) => ({
       role: msg.role as "assistant" | "user",
       content: msg.content,
     })),
@@ -2185,9 +2196,17 @@ RESPONSE FORMATTING:
 • Be specific with numbers and details
 • Clarity over cleverness`;
 
+  // Trim conversation history to keep payload within proxy limits
+  let trimmedHistory2 = conversationHistory.slice(-20);
+  let historyCharCount2 = trimmedHistory2.reduce((sum, m) => sum + m.content.length, 0);
+  while (historyCharCount2 > 6000 && trimmedHistory2.length > 2) {
+    trimmedHistory2 = trimmedHistory2.slice(2);
+    historyCharCount2 = trimmedHistory2.reduce((sum, m) => sum + m.content.length, 0);
+  }
+
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
-    ...conversationHistory.map((msg) => ({
+    ...trimmedHistory2.map((msg) => ({
       role: msg.role as "assistant" | "user",
       content: msg.content,
     })),
@@ -3630,7 +3649,7 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
 export async function generateAffirmation(name: string, timeOfDay: string): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         { role: "system", content: "You are DW, a calm, wise personal wellness AI. Write a single warm affirmation sentence (2-3 sentences max) for the user. Do not start with Hi or Hello. Make it specific to their moment." },
         { role: "user", content: `Write a ${timeOfDay} affirmation for ${name}. Make it warm, grounding, and focused on their potential.` },
@@ -3666,7 +3685,7 @@ export async function generateCheckInAnalysis(
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",

@@ -1936,9 +1936,9 @@ export async function registerRoutes(
 
       try {
         const openai = (await import("openai")).default;
-        const ai = new openai({ apiKey: process.env.OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
+        const ai = new openai({ baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL, apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
         const completion = await ai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [
             {
               role: "system",
@@ -4708,7 +4708,7 @@ Return only valid JSON, no markdown, no extra text.`;
       }
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.8,
         max_tokens: 600,
@@ -5601,7 +5601,7 @@ Return only valid JSON, no other text.`;
       const analysisPrompt = generateDocumentAnalysisPrompt(doc.rawText);
       
       const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({ timeout: 25 * 1000, maxRetries: 1 });
+      const openai = new OpenAI({ baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL, apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -11163,7 +11163,7 @@ Return ONLY this JSON, no other text:
       }
       if (!shows.length) {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-4o",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7, max_tokens: 1000,
         });
@@ -11206,7 +11206,7 @@ Return ONLY this JSON, no other text:
       const hour = new Date().getHours();
       const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.` : ""} It is ${timeOfDay}.
 
 Suggest 6 specific activities they could do today. Mix indoor, outdoor, and social options. Each should feel like it was picked for THIS person — serve their goals and vibe. Some should be quick (15-30 min), some longer.
@@ -11282,7 +11282,7 @@ Return ONLY this JSON:
       }
       if (!resources.length) {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
+          model: "gpt-4o", messages: [{ role: "user", content: prompt }],
           temperature: 0.7, max_tokens: 900,
         });
         const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
@@ -11551,7 +11551,7 @@ Write a brief, warm, supportive response (2-4 sentences max).
 Response:`;
 
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-4o",
             messages: [{ role: "user", content: dwPrompt }],
             temperature: 0.8,
             max_tokens: 250,
