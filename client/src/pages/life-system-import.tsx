@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,7 @@ import {
   Target, Dumbbell, UtensilsCrossed, ShoppingCart, BookOpen,
   ChevronRight, ChevronLeft, Zap, RotateCcw, ListChecks,
   BookMarked, DollarSign, FolderKanban, StickyNote, Star,
-  FileText, Scan,
+  Lock, Scan,
 } from "lucide-react";
 
 type Frequency = "weekly" | "biweekly" | "every3weeks" | "monthly";
@@ -173,6 +174,7 @@ function buildFilteredParsed(
 
 export default function DWSmartImportPage() {
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>("paste");
   const [pastedText, setPastedText] = useState("");
   const [parsed, setParsed] = useState<ParsedImport | null>(null);
@@ -355,6 +357,47 @@ export default function DWSmartImportPage() {
 
   const isReviewStep = (s: Step): s is ReviewStep => s.startsWith("review-");
   const currentReviewStep = isReviewStep(step) ? step : null;
+
+  // Auth gate — must be signed in to use import
+  if (authLoading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden bg-background">
+        <PageHeader title="DW Smart Import" showBack />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden bg-background">
+        <PageHeader title="DW Smart Import" showBack />
+        <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
+          <div className="text-center space-y-5 max-w-xs mx-auto">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Lock className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="font-bold text-xl">Sign in to use DW Smart Import</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                DW Smart Import saves your content directly to your account. Sign in first so nothing gets lost.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Button className="w-full" onClick={() => setLocation("/login")} data-testid="button-signin-import">
+                Sign In
+              </Button>
+              <Button variant="ghost" className="w-full text-sm" onClick={() => setLocation("/")}>
+                Back to home
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
