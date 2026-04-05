@@ -185,7 +185,7 @@ export default function HomeCommandCenter() {
       icon: CalendarDays,
       color: "text-blue-400",
       bgClass: "bg-blue-500/15",
-      path: "/today",
+      path: "/calendar",
       dwTopic: "Talk about my day",
       badge: summary.nextEvent ? "1" : undefined,
       snippet: summary.nextEvent ? truncate(summary.nextEvent.title, 30) : "No events",
@@ -218,7 +218,7 @@ export default function HomeCommandCenter() {
       icon: UtensilsCrossed,
       color: "text-emerald-400",
       bgClass: "bg-emerald-500/15",
-      path: "/tracking",
+      path: "/meal-prep",
       dwTopic: "Adjust my nutrition plan",
       snippet: calRemaining != null ? `${calRemaining} cal left` : "Log a meal",
     },
@@ -411,23 +411,6 @@ export default function HomeCommandCenter() {
         <div className="shrink-0 px-4 pb-1 pt-0 w-full max-w-lg mx-auto" data-testid="section-cards">
           <Carousel opts={{ align: "start", dragFree: true }}>
             <CarouselContent className="-ml-2 items-stretch">
-              <CarouselItem className="pl-2 basis-[85%] h-full">
-                <button
-                  onClick={() => navigate("/life-system-import")}
-                  data-testid="card-build-life-system"
-                  className="w-full h-full text-left rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 px-4 py-3.5 flex items-center gap-3 hover:border-primary/50 transition-colors"
-                >
-                  <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold leading-snug">DW Smart Import</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Paste anything — DW reads and saves it</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </button>
-              </CarouselItem>
-
               {isFeatureEnabled("DW_READING_CARD") && (
                 <CarouselItem className="pl-2 basis-[85%] h-full">
                   <DWReadingCard energyLevel={summary.energyLevel} className="h-full" />
@@ -453,6 +436,23 @@ export default function HomeCommandCenter() {
                   />
                 </CarouselItem>
               ))}
+
+              <CarouselItem className="pl-2 basis-[85%] h-full">
+                <button
+                  onClick={() => navigate("/life-system-import")}
+                  data-testid="card-build-life-system"
+                  className="w-full h-full text-left rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 px-4 py-3.5 flex items-center gap-3 hover:border-primary/50 transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold leading-snug">DW Smart Import</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Paste anything — DW reads and saves it</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+              </CarouselItem>
             </CarouselContent>
           </Carousel>
         </div>

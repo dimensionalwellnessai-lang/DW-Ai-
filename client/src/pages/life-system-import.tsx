@@ -440,7 +440,7 @@ export default function DWSmartImportPage() {
               )}
             </div>
 
-            <Button className="w-full" size="lg" onClick={() => navigate("/")} data-testid="btn-done">
+            <Button className="w-full" size="lg" onClick={() => navigate("/command-center")} data-testid="btn-done">
               Go to Command Center
             </Button>
 
