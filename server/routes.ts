@@ -10,7 +10,6 @@ import multer from "multer";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
-import appleSignin from "apple-signin-auth";
 import rateLimit from "express-rate-limit";
 import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
 import { storage } from "./storage";
@@ -642,158 +641,6 @@ export async function registerRoutes(
     );
   }
 
-  // ─── Apple OAuth ────────────────────────────────────────────────────────────
-  // Apple Sign In uses a server-side OAuth 2.0 authorization-code flow.
-  // The callback is a POST (Apple requirement) and Apple returns an id_token JWT.
-
-  const appleClientId = process.env.APPLE_CLIENT_ID;
-  const appleTeamId = process.env.APPLE_TEAM_ID;
-  const appleKeyId = process.env.APPLE_KEY_ID;
-  // The private key may be stored as a multi-line PEM in the env var.
-  const applePrivateKey = process.env.APPLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  const appleConfigured = !!(appleClientId && appleTeamId && appleKeyId && applePrivateKey);
-
-  if (appleConfigured) {
-    // Initiate Apple OAuth – generate CSRF state, save to session, then redirect
-    app.get("/api/auth/apple", (req, res, next) => {
-      const state = crypto.randomBytes(16).toString("hex");
-      const stateHash = crypto.createHash("sha256").update(state + sessionSecret).digest("hex");
-      req.session.oauthState = stateHash;
-      req.session.save((err) => {
-        if (err) return next(err);
-        const combinedState = `${state}.${stateHash}`;
-        const params = new URLSearchParams({
-          response_type: "code id_token",
-          response_mode: "form_post",
-          client_id: appleClientId!,
-          redirect_uri: `${oauthRedirectBase}/api/auth/apple/callback`,
-          scope: "name email",
-          state: combinedState,
-        });
-        res.redirect(`https://appleid.apple.com/auth/authorize?${params.toString()}`);
-      });
-    });
-
-    // Apple OAuth callback (Apple POSTs to this endpoint)
-    // Uses express.urlencoded to parse Apple's form_post body (consistent with
-    // the global extended:false setting in server/index.ts).
-    app.post(
-      "/api/auth/apple/callback",
-      oauthCallbackLimiter,
-      express.urlencoded({ extended: false }),
-      async (req, res) => {
-        try {
-          // Validate CSRF state before processing any credentials
-          const returnedState = typeof req.body.state === "string" ? req.body.state : undefined;
-          if (!returnedState) {
-            return res.redirect("/login?error=invalid_state");
-          }
-          const [rawState, stateHash] = returnedState.split(".");
-          if (!rawState || !stateHash) {
-            return res.redirect("/login?error=invalid_state");
-          }
-          const expectedHash = crypto.createHash("sha256").update(rawState + sessionSecret).digest("hex");
-          if (expectedHash !== stateHash) {
-            return res.redirect("/login?error=invalid_state");
-          }
-          const sessionState = req.session.oauthState;
-          delete req.session.oauthState;
-          if (sessionState && sessionState !== stateHash) {
-            return res.redirect("/login?error=invalid_state");
-          }
-
-          const { code, id_token, user: userJson } = req.body as {
-            code?: string;
-            id_token?: string;
-            user?: string;
-          };
-
-          if (!id_token && !code) {
-            return res.redirect("/login?error=apple_failed");
-          }
-
-          let email: string | undefined;
-          let appleUserId: string | undefined;
-          let firstName: string | undefined;
-
-          // When Apple sends both code and id_token (response_type: "code id_token"),
-          // prefer id_token for direct verification – the code path is a fallback
-          // for clients that only receive an authorization code.
-          if (id_token) {
-            // Verify the id_token directly against Apple's JWKS
-            const appleIdToken = await appleSignin.verifyIdToken(id_token, {
-              audience: appleClientId!,
-              ignoreExpiration: false,
-            });
-            email = appleIdToken.email;
-            appleUserId = appleIdToken.sub;
-          } else if (code) {
-            // Exchange code for tokens to obtain the id_token
-            const clientSecret = appleSignin.getClientSecret({
-              clientID: appleClientId!,
-              teamID: appleTeamId!,
-              privateKey: applePrivateKey!,
-              keyIdentifier: appleKeyId!,
-            });
-            const tokens = await appleSignin.getAuthorizationToken(code, {
-              clientID: appleClientId!,
-              redirectUri: `${oauthRedirectBase}/api/auth/apple/callback`,
-              clientSecret,
-            });
-            if (tokens.id_token) {
-              const decoded = await appleSignin.verifyIdToken(tokens.id_token, {
-                audience: appleClientId!,
-                ignoreExpiration: false,
-              });
-              email = decoded.email;
-              appleUserId = decoded.sub;
-            }
-          }
-
-          if (!email || !appleUserId) {
-            return res.redirect("/login?error=apple_no_email");
-          }
-
-          // Apple only sends user name on the first authorization
-          if (userJson) {
-            try {
-              const parsed = JSON.parse(userJson) as { name?: { firstName?: string } };
-              firstName = parsed.name?.firstName;
-            } catch {
-              // ignore parse errors
-            }
-          }
-
-          await handleOAuthUser(req, res, {
-            provider: "apple",
-            oauthId: appleUserId,
-            email,
-            firstName,
-          });
-          res.redirect("/");
-        } catch (err) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("[auth] Apple callback error:", err);
-          }
-          const errorCode =
-            err instanceof Error && err.message === "account_exists_use_password"
-              ? "account_exists_use_password"
-              : "apple_failed";
-          res.redirect(`/login?error=${errorCode}`);
-        }
-      }
-    );
-  } else {
-    // Stub routes so the frontend can detect when Apple OAuth is not configured
-    app.get("/api/auth/apple", (_req, res) =>
-      res.status(503).json({ error: "Apple OAuth not configured" })
-    );
-    app.post("/api/auth/apple/callback", (_req, res) =>
-      res.status(503).json({ error: "Apple OAuth not configured" })
-    );
-  }
-
   // ─── Facebook OAuth ─────────────────────────────────────────────────────────
   const facebookAppId = process.env.FACEBOOK_APP_ID;
   const facebookAppSecret = process.env.FACEBOOK_APP_SECRET;
@@ -879,7 +726,6 @@ export async function registerRoutes(
   app.get("/api/auth/providers", (_req, res) => {
     res.json({
       google: !!googleClientId && !!googleClientSecret,
-      apple: appleConfigured,
       facebook: !!facebookAppId && !!facebookAppSecret,
     });
   });
@@ -1043,7 +889,6 @@ export async function registerRoutes(
         const provider = user.oauthProvider || "social provider";
         const providerLabels: Record<string, string> = {
           google: "Continue with Google",
-          apple: "Continue with Apple",
         };
         const buttonLabel = providerLabels[provider] ?? `Sign in with ${provider}`;
         return res.status(401).json({
