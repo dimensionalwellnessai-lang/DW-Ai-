@@ -406,7 +406,6 @@ async function seedDemoAccount() {
     console.log("Demo Account Credentials:");
     console.log("═══════════════════════════════════════");
     console.log(`Email: ${DEMO_EMAIL}`);
-    console.log(`Password: ${DEMO_PASSWORD}`);
     console.log("═══════════════════════════════════════\n");
     console.log("✨ The demo account is ready for Apple App Store review!\n");
 
