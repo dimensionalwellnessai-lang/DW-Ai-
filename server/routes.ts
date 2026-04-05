@@ -366,7 +366,7 @@ const DW_MIN_TOTAL_CHARS = 200;
 /** Maximum messages allowed in a single /api/dw/processConversation request. */
 const DW_MAX_CONVERSATION_MESSAGES = 100;
 /** Maximum characters per individual message. */
-const DW_MAX_MESSAGE_CONTENT_LENGTH = 10_000;
+const DW_MAX_MESSAGE_CONTENT_LENGTH = 100_000;
 /** Maximum total characters across all messages in a single request. */
 const DW_MAX_TOTAL_CONTENT_LENGTH = 100_000;
 

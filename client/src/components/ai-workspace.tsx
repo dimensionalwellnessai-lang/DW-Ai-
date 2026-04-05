@@ -2354,10 +2354,10 @@ export function AIWorkspace() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={messageLimitReached ? "Daily limit reached — upgrade to continue" : "Type a message..."}
+                placeholder="Type a message..."
                 className="resize-none [min-height:36px] max-h-16 rounded-xl py-2 px-3 text-sm"
                 rows={1}
-                disabled={isTyping || isUploading || messageLimitReached}
+                disabled={isTyping || isUploading}
                 aria-label="Message input"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {

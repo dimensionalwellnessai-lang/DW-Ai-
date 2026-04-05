@@ -104,8 +104,7 @@ export function incrementMessageCount(): number {
 }
 
 export function canSendMessage(): boolean {
-  if (isDWPlus()) return true;
-  return getMessageCount() < FREE_LIMITS.messagesPerDay;
+  return true;
 }
 
 // ─── Daily session counter ────────────────────────────────────────────────────
@@ -130,8 +129,7 @@ export function incrementSessionCount(): number {
 }
 
 export function canStartNewSession(): boolean {
-  if (isDWPlus()) return true;
-  return getSessionCount() < FREE_LIMITS.sessionsPerDay;
+  return true;
 }
 
 // ─── Bonus mechanics ──────────────────────────────────────────────────────────
