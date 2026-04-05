@@ -91,13 +91,26 @@ export function SettingsPage() {
   const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
   const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
 
-  // ── Life system reset ────────────────────────────────────────────────────
+  // ── Full account reset ───────────────────────────────────────────────────
   const [showResetDialog, setShowResetDialog] = useState(false);
   const resetMutation = useMutation({
     mutationFn: () => apiRequest("DELETE", "/api/user/life-system/reset"),
     onSuccess: () => {
       setShowResetDialog(false);
-      toast({ title: "Life system cleared", description: "Your goals, schedule, routines, and grocery list have been wiped. You can now import a fresh one." });
+      // Clear onboarding flags so the welcome/onboarding flow runs again
+      try {
+        localStorage.removeItem("dw_onboarding_completed");
+        const guestData = localStorage.getItem("dw_guest_data");
+        if (guestData) {
+          const parsed = JSON.parse(guestData);
+          if (parsed.profileSetup) {
+            delete parsed.profileSetup;
+            localStorage.setItem("dw_guest_data", JSON.stringify(parsed));
+          }
+        }
+      } catch { /* ignore */ }
+      // Navigate to welcome to restart onboarding
+      window.location.href = "/welcome";
     },
     onError: () => {
       toast({ title: "Reset failed", description: "Something went wrong. Please try again.", variant: "destructive" });
@@ -723,7 +736,7 @@ export function SettingsPage() {
                 data-testid="button-reset-life-system"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Reset life system
+                Start over
               </Button>
               <Link href="/account/delete">
                 <Button variant="destructive" size="sm" data-testid="button-delete-account" className="w-full sm:w-auto">
@@ -739,9 +752,28 @@ export function SettingsPage() {
         <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Reset your life system?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete your <strong>goals</strong>, <strong>habits</strong>, <strong>daily schedule</strong>, <strong>routines</strong>, <strong>calendar events</strong>, and <strong>grocery list</strong>. Your account, profile, and chat history will stay. This cannot be undone.
+              <AlertDialogTitle>Start completely over?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>This will wipe your entire life system and let DW relearn who you are from scratch. Here's exactly what gets cleared:</p>
+                  <ul className="space-y-1 pl-1">
+                    {[
+                      "Goals & targets",
+                      "Daily habits & core rules",
+                      "Schedule & calendar events",
+                      "Morning & wind-down routines",
+                      "Grocery list",
+                      "Everything DW has learned about you",
+                      "Your onboarding profile",
+                    ].map(item => (
+                      <li key={item} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p>Your <strong>account</strong>, <strong>login</strong>, and <strong>chat history</strong> stay. After resetting you'll go through onboarding again so DW can start fresh. This cannot be undone.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -752,7 +784,7 @@ export function SettingsPage() {
                 disabled={resetMutation.isPending}
                 data-testid="btn-reset-confirm"
               >
-                {resetMutation.isPending ? "Clearing…" : "Yes, reset everything"}
+                {resetMutation.isPending ? "Clearing everything…" : "Yes, start over"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

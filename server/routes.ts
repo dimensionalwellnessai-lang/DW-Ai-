@@ -16,7 +16,7 @@ import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from ".
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
-import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, communityPosts, communityPostLikes, communityGroups, communityGroupMembers, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable } from "@shared/schema";
+import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, communityPosts, communityPostLikes, communityGroups, communityGroupMembers, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable, onboardingProfiles as onboardingProfilesTable, aiSyncSessions as aiSyncSessionsTable, aiSyncItems as aiSyncItemsTable, interactionEvents as interactionEventsTable, aiPatternSnapshots as aiPatternSnapshotsTable, userLearningProfile as userLearningProfileTable } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
@@ -1116,10 +1116,17 @@ export async function registerRoutes(
     }
   });
 
-  // Reset life system — wipes goals, habits, schedule, routines, calendar events, shopping lists
+  // Full account reset — wipes life system data, AI learnings, and resets onboarding
   app.delete("/api/user/life-system/reset", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+
+      // 1. Delete AI sync items first (FK dependency on sessions)
+      await db.delete(aiSyncItemsTable).where(eq(aiSyncItemsTable.sessionId,
+        db.select({ id: aiSyncSessionsTable.id }).from(aiSyncSessionsTable).where(eq(aiSyncSessionsTable.userId, userId)) as any
+      )).catch(() => {/* ignore if FK cascade handles it */});
+
+      // 2. Wipe everything in parallel
       await Promise.all([
         db.delete(goalsTable).where(eq(goalsTable.userId, userId)),
         db.delete(habitsTable).where(eq(habitsTable.userId, userId)),
@@ -1127,13 +1134,24 @@ export async function registerRoutes(
         db.delete(routinesTable).where(eq(routinesTable.userId, userId)),
         db.delete(calendarEventsTable).where(eq(calendarEventsTable.userId, userId)),
         db.delete(lifeSystemsTable).where(eq(lifeSystemsTable.userId, userId)),
+        db.delete(aiLearnings).where(eq(aiLearnings.userId, userId)),
+        db.delete(aiSyncSessionsTable).where(eq(aiSyncSessionsTable.userId, userId)),
+        db.delete(interactionEventsTable).where(eq(interactionEventsTable.userId, userId)),
+        db.delete(aiPatternSnapshotsTable).where(eq(aiPatternSnapshotsTable.userId, userId)),
+        db.delete(userLearningProfileTable).where(eq(userLearningProfileTable.userId, userId)),
+        db.delete(onboardingProfilesTable).where(eq(onboardingProfilesTable.userId, userId)),
       ]);
-      // Shopping lists cascade to items via FK
+
+      // 3. Shopping lists cascade to items via FK
       await db.delete(shoppingListsTable).where(eq(shoppingListsTable.userId, userId));
+
+      // 4. Mark onboarding as not completed so user goes through it again
+      await storage.updateUser(userId, { onboardingCompleted: false });
+
       res.json({ success: true });
     } catch (error) {
-      console.error("Life system reset error:", error);
-      res.status(500).json({ error: "Failed to reset life system" });
+      console.error("Full reset error:", error);
+      res.status(500).json({ error: "Failed to reset account" });
     }
   });
 
