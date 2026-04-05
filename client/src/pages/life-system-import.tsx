@@ -202,19 +202,6 @@ export default function DWSmartImportPage() {
   const [projectSel, setProjectSel] = useState<boolean[]>([]);
   const [loadingStage, setLoadingStage] = useState(0);
 
-  const LOADING_STAGES = [
-    "Reading your content...",
-    "Identifying content types...",
-    "Extracting key details...",
-    "Building your personalized plan...",
-  ];
-
-  useEffect(() => {
-    if (!parseMutation.isPending) { setLoadingStage(0); return; }
-    const iv = setInterval(() => setLoadingStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 1900);
-    return () => clearInterval(iv);
-  }, [parseMutation.isPending]);
-
   useEffect(() => {
     try {
       const prepaste = sessionStorage.getItem("dw_ls_prepaste");
@@ -316,6 +303,19 @@ export default function DWSmartImportPage() {
       if (p.goals?.length) conflictMutation.mutate(p.goals);
     },
   });
+
+  const LOADING_STAGES = [
+    "Reading your content...",
+    "Identifying content types...",
+    "Extracting key details...",
+    "Building your personalized plan...",
+  ];
+
+  useEffect(() => {
+    if (!parseMutation.isPending) { setLoadingStage(0); return; }
+    const iv = setInterval(() => setLoadingStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 1900);
+    return () => clearInterval(iv);
+  }, [parseMutation.isPending]);
 
   const conflictMutation = useMutation({
     mutationFn: (goals: ParsedGoal[]) =>
