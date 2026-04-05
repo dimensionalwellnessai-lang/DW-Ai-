@@ -755,24 +755,41 @@ export function SettingsPage() {
               <AlertDialogTitle>Start completely over?</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 text-sm text-muted-foreground">
-                  <p>This will wipe your entire life system and let DW relearn who you are from scratch. Here's exactly what gets cleared:</p>
-                  <ul className="space-y-1 pl-1">
-                    {[
-                      "Goals & targets",
-                      "Daily habits & core rules",
-                      "Schedule & calendar events",
-                      "Morning & wind-down routines",
-                      "Grocery list",
-                      "Everything DW has learned about you",
-                      "Your onboarding profile",
-                    ].map(item => (
-                      <li key={item} className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <p>Your <strong>account</strong>, <strong>login</strong>, and <strong>chat history</strong> stay. After resetting you'll go through onboarding again so DW can start fresh. This cannot be undone.</p>
+                  <p>DW will wipe your life system data and relearn you from scratch through onboarding.</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-1.5">
+                      <p className="font-medium text-destructive text-xs uppercase tracking-wide">Gets cleared</p>
+                      {[
+                        "Goals & targets",
+                        "Habits & core rules",
+                        "Schedule & events",
+                        "Routines",
+                        "Grocery list",
+                        "DW's memory of you",
+                        "Onboarding answers",
+                      ].map(item => (
+                        <p key={item} className="text-xs flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-destructive shrink-0" />{item}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3 space-y-1.5">
+                      <p className="font-medium text-green-600 dark:text-green-400 text-xs uppercase tracking-wide">Always kept</p>
+                      {[
+                        "Your email & password",
+                        "Login credentials",
+                        "Chat history",
+                        "Account & profile",
+                      ].map(item => (
+                        <p key={item} className="text-xs flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-green-500 shrink-0" />{item}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs">After confirming you'll go through onboarding again. This cannot be undone.</p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
