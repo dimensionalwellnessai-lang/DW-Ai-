@@ -565,11 +565,14 @@ export function TalkItOutPage() {
     onError: (error: any, variables) => {
       setLastFailedMessage(variables as string);
       const errDetail = parseApiError(error);
+      const isAuthErr = errDetail.includes("401") || errDetail.toLowerCase().includes("unauthorized") || errDetail.toLowerCase().includes("no body");
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `**AI error:** ${errDetail}`,
+          content: isAuthErr
+            ? "I'm having trouble connecting right now. This is usually a temporary issue — please try again in a moment."
+            : `Something went wrong: ${errDetail}`,
           isError: true,
         },
       ]);

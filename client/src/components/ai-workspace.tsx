@@ -1216,9 +1216,12 @@ export function AIWorkspace() {
         return m ? parseInt(m[1], 10) : null;
       })();
       
+      const isConnErr = statusCode === 401 || statusCode === 403 || displayMsg.toLowerCase().includes("no body") || displayMsg.toLowerCase().includes("unauthorized");
       toast({
-        title: statusCode ? `AI error ${statusCode}` : "AI error",
-        description: displayMsg || "Something went wrong. Please try again.",
+        title: isConnErr ? "DW is offline" : (statusCode ? `Error ${statusCode}` : "Something went wrong"),
+        description: isConnErr
+          ? "Having trouble reaching DW right now. This is usually temporary — try again in a moment."
+          : (displayMsg || "Please try again."),
         variant: "destructive",
       });
       setIsTyping(false);
