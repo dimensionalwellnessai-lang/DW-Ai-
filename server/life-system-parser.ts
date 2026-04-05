@@ -62,6 +62,7 @@ export interface ParsedDaySchedule {
     time: string;
     endTime: string;
     notes: string;
+    dimension?: string;
   }>;
 }
 
@@ -123,7 +124,8 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
         "tasks": ["go screen by screen", "write down bugs", "note awkward flows"]
       },
       "otherEvents": [
-        { "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "dishes, trash, quick pickup, wipe counter" }
+        { "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "dishes, trash, quick pickup, wipe counter", "dimension": "environmental" },
+        { "title": "Wake Up", "time": "06:00", "endTime": "06:05", "notes": "drink water", "dimension": "physical" }
       ]
     },
     "tuesday": {},
@@ -150,7 +152,9 @@ CRITICAL RULES:
 - mealPrepItems: Only put FOOD PREP instructions here (cook chicken, prep rice, etc.). Do NOT put app work tasks or weekly planning tasks here.
 - If a day has no workout, set workout to null.
 - If a day has no app work block, set appWork to null.
-- Keep exact food items for each meal — list every item separately in the array.`;
+- Keep exact food items for each meal — list every item separately in the array.
+- For EVERY otherEvent, assign a "dimension" field: physical (wake up, water, shower, grooming, walk, movement, meal prep), environmental (clean reset, laundry, dishes, trash), spiritual (meditation, breathwork, reflection, spiritual learning), financial (money block, finances), intellectual (app work, planning, study), social (going out, social time, friends). Never leave dimension empty.
+- otherEvents should include ALL non-workout, non-meal, non-appWork events: wake up, meditation, activation, shower, grooming, clean reset, walk, money block, spiritual learning, grocery run, deep clean, social blocks, etc.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",

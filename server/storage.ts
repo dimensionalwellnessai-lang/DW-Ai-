@@ -383,6 +383,7 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEventForUser(id: string, userId: string): Promise<boolean>;
+  clearLifeSystemImportData(userId: string): Promise<{ calendarEvents: number; mealPlans: number; workoutPlans: number }>;
 
   getEventTasks(calendarEventId: string, userId: string): Promise<CalendarEventTask[]>;
   createEventTask(task: InsertCalendarEventTask): Promise<CalendarEventTask>;
@@ -1451,6 +1452,57 @@ export class DatabaseStorage implements IStorage {
     await db.delete(calendarEvents)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId)));
     return true;
+  }
+
+  async clearLifeSystemImportData(userId: string): Promise<{ calendarEvents: number; mealPlans: number; workoutPlans: number }> {
+    let calEvtCount = 0;
+    let mealPlanCount = 0;
+    let workoutPlanCount = 0;
+
+    // Delete calendar events created by life system import:
+    // (a) new events with source marker in linkedMeta
+    // (b) old events (pre-marker) identifiable by eventType + linkedRoute combinations only set by imports
+    const importedEvts = await db.select({ id: calendarEvents.id })
+      .from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, userId),
+        or(
+          sql`${calendarEvents.linkedMeta} @> '{"source":"life_system_import"}'::jsonb`,
+          and(eq(calendarEvents.eventType, "workout"), eq(calendarEvents.linkedRoute, "/workout")),
+          and(eq(calendarEvents.eventType, "meal"), eq(calendarEvents.linkedRoute, "/meal-prep")),
+          and(eq(calendarEvents.eventType, "work"), eq(calendarEvents.linkedRoute, "/plan")),
+          // Old "other" events from imports: eventType=event with null linkedMeta (no source marker yet)
+          and(eq(calendarEvents.eventType, "event"), sql`${calendarEvents.linkedMeta} IS NULL`)
+        )
+      ));
+    if (importedEvts.length) {
+      const ids = importedEvts.map((e) => e.id);
+      await db.delete(calendarEventTasks).where(inArray(calendarEventTasks.calendarEventId, ids));
+      await db.delete(calendarEvents).where(inArray(calendarEvents.id, ids));
+      calEvtCount = ids.length;
+    }
+
+    // Delete meal plans created by life system import
+    const importedMealPlans = await db.select({ id: mealPlans.id })
+      .from(mealPlans)
+      .where(and(eq(mealPlans.userId, userId), eq(mealPlans.source, "life_system_import")));
+    for (const plan of importedMealPlans) {
+      await db.delete(meals).where(eq(meals.mealPlanId, plan.id));
+      await db.delete(mealPlans).where(eq(mealPlans.id, plan.id));
+      mealPlanCount++;
+    }
+
+    // Delete workout plans created by life system import
+    const importedWorkoutPlans = await db.select({ id: workoutPlans.id })
+      .from(workoutPlans)
+      .where(and(eq(workoutPlans.userId, userId), eq(workoutPlans.source, "life_system_import")));
+    for (const plan of importedWorkoutPlans) {
+      await db.delete(exercises).where(eq(exercises.workoutPlanId, plan.id));
+      await db.delete(workoutPlans).where(eq(workoutPlans.id, plan.id));
+      workoutPlanCount++;
+    }
+
+    return { calendarEvents: calEvtCount, mealPlans: mealPlanCount, workoutPlans: workoutPlanCount };
   }
 
   async getEventTasks(calendarEventId: string, userId: string): Promise<CalendarEventTask[]> {

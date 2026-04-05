@@ -12037,6 +12037,27 @@ Response:`;
         goals: 0, habits: 0, insights: 0, routines: 0, calendarEvents: 0, groceryItems: 0, meals: 0, workouts: 0,
       };
 
+      // 0. Clear previous life-system import data so re-imports don't double-book
+      await storage.clearLifeSystemImportData(userId);
+
+      // Helper: get current user calendar events for dedup (catches old imports without source marker)
+      const existingCalEvents = await storage.getCalendarEvents(userId);
+      const calEventKey = (title: string, startTime: string) =>
+        `${title.toLowerCase().trim()}|${startTime}`;
+      const existingCalKeys = new Set(existingCalEvents.map((e) => calEventKey(e.title, e.startTime)));
+
+      // Wrap calendar event creation with dedup + source marker
+      const createCalEvent = async (eventData: Parameters<typeof storage.createCalendarEvent>[0]) => {
+        const key = calEventKey(eventData.title, eventData.startTime);
+        if (existingCalKeys.has(key)) return null;
+        existingCalKeys.add(key);
+        const enriched = {
+          ...eventData,
+          linkedMeta: { ...(eventData.linkedMeta ?? {}), source: "life_system_import" },
+        };
+        return storage.createCalendarEvent(enriched);
+      };
+
       // 1. Goals — merge/replace based on conflict resolutions
       const existingGoals = await storage.getGoals(userId);
       for (const g of (parsed.goals ?? [])) {
@@ -12066,36 +12087,49 @@ Response:`;
         }
       }
 
-      // 2. Core rules → habits + insights
+      // 2. Core rules → habits + insights (deduplicated)
+      const existingHabits = await storage.getHabits(userId);
+      const existingInsights = await storage.getDwInsights(userId);
+      const existingHabitTitles = new Set(existingHabits.map((h) => h.title.toLowerCase().trim()));
+      const existingInsightLines = new Set(
+        existingInsights.map((i) => (i.insightLine ?? "").toLowerCase().trim())
+      );
+
       for (const rule of (parsed.coreRules ?? [])) {
         const ruleText = typeof rule === "string" ? rule : (rule as any).text;
         const ruleDimension = typeof rule === "string" ? "purpose" : ((rule as any).wellnessDimension ?? "purpose");
         const ruleContext = typeof rule === "string" ? ruleText : ((rule as any).context ?? ruleText);
         if (!ruleText?.trim()) continue;
 
-        // Save as habit
-        const freq = ruleText.toLowerCase().includes("sunday") ? "weekly" : "daily";
-        await storage.createHabit({
-          userId,
-          title: ruleText.trim(),
-          frequency: freq,
-          isActive: true,
-          dataSource: "life_system_import",
-        });
-        results.habits++;
+        // Save as habit (skip if already exists)
+        if (!existingHabitTitles.has(ruleText.trim().toLowerCase())) {
+          const freq = ruleText.toLowerCase().includes("sunday") ? "weekly" : "daily";
+          await storage.createHabit({
+            userId,
+            title: ruleText.trim(),
+            frequency: freq,
+            isActive: true,
+            dataSource: "life_system_import",
+          });
+          existingHabitTitles.add(ruleText.trim().toLowerCase());
+          results.habits++;
+        }
 
-        // Also save as a DwInsight so it surfaces contextually in conversations
-        await storage.createDwInsight({
-          userId,
-          title: `Life Rule: ${ruleText.trim()}`,
-          summary: ruleContext,
-          insightLine: ruleText.trim(),
-          theme: ruleDimension,
-          tags: ["core_rule", "life_system", ruleDimension],
-          switchTag: ruleDimension,
-          sourceConversationId: null,
-        });
-        results.insights++;
+        // Save as insight (skip if already exists)
+        if (!existingInsightLines.has(ruleText.trim().toLowerCase())) {
+          await storage.createDwInsight({
+            userId,
+            title: `Life Rule: ${ruleText.trim()}`,
+            summary: ruleContext,
+            insightLine: ruleText.trim(),
+            theme: ruleDimension,
+            tags: ["core_rule", "life_system", ruleDimension],
+            switchTag: ruleDimension,
+            sourceConversationId: null,
+          });
+          existingInsightLines.add(ruleText.trim().toLowerCase());
+          results.insights++;
+        }
       }
 
       // 3. Morning routine
@@ -12150,7 +12184,7 @@ Response:`;
             const wStart = formatDateStr(dayDate, `${String(wH).padStart(2, "0")}:${String(wM || 0).padStart(2, "0")}`);
             const wEnd = formatDateStr(dayDate, `${endH}:${String(wM || 0).padStart(2, "0")}`);
 
-            const evt = await storage.createCalendarEvent({
+            const evt = await createCalEvent({
               userId,
               title: dayData.workout.title,
               description: `Workout: ${dayData.workout.exercises?.map(e => e.name).join(", ") || ""}`,
@@ -12163,24 +12197,26 @@ Response:`;
               linkedMeta: { exercises: dayData.workout.exercises },
             });
 
-            // Add exercises as tasks
-            if (dayData.workout.exercises?.length) {
-              for (const ex of dayData.workout.exercises) {
-                const label = [ex.name, ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : "", ex.notes].filter(Boolean).join(" — ");
-                await storage.createEventTask({
-                  calendarEventId: evt.id,
-                  userId,
-                  title: label,
-                  isCompleted: false,
-                  dwSuggested: false,
-                  linkedRoute: "/workout",
-                });
+            if (evt) {
+              // Add exercises as tasks
+              if (dayData.workout.exercises?.length) {
+                for (const ex of dayData.workout.exercises) {
+                  const label = [ex.name, ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : "", ex.notes].filter(Boolean).join(" — ");
+                  await storage.createEventTask({
+                    calendarEventId: evt.id,
+                    userId,
+                    title: label,
+                    isCompleted: false,
+                    dwSuggested: false,
+                    linkedRoute: "/workout",
+                  });
+                }
               }
+              results.calendarEvents++;
             }
-            results.calendarEvents++;
           }
 
-          // Meal events (one event for each meal)
+          // Meal events — use the exact meal times from the parsed document
           const mealSlots = [
             { key: "breakfast", label: "Breakfast", time: "07:00", endTime: "07:30" },
             { key: "lunch", label: "Lunch", time: "12:00", endTime: "13:00" },
@@ -12192,7 +12228,7 @@ Response:`;
             if (!items?.length) continue;
             const sStart = formatDateStr(dayDate, slot.time);
             const sEnd = formatDateStr(dayDate, slot.endTime);
-            const mEvt = await storage.createCalendarEvent({
+            const mEvt = await createCalEvent({
               userId,
               title: `${slot.label}: ${items.slice(0, 2).join(", ")}${items.length > 2 ? "…" : ""}`,
               description: items.join(", "),
@@ -12204,18 +12240,19 @@ Response:`;
               linkedRoute: "/meal-prep",
               linkedMeta: { items, mealType: slot.key },
             });
-            // Add each food item as a task
-            for (const item of items) {
-              await storage.createEventTask({
-                calendarEventId: mEvt.id,
-                userId,
-                title: item,
-                isCompleted: false,
-                dwSuggested: false,
-                linkedRoute: "/meal-prep",
-              });
+            if (mEvt) {
+              for (const item of items) {
+                await storage.createEventTask({
+                  calendarEventId: mEvt.id,
+                  userId,
+                  title: item,
+                  isCompleted: false,
+                  dwSuggested: false,
+                  linkedRoute: "/meal-prep",
+                });
+              }
+              results.calendarEvents++;
             }
-            results.calendarEvents++;
           }
 
           // App work event
@@ -12229,7 +12266,7 @@ Response:`;
             const aStart = formatDateStr(dayDate, `${String(aH).padStart(2, "0")}:${String(aM || 0).padStart(2, "0")}`);
             const aEnd = formatDateStr(dayDate, `${endH}:${endM}`);
 
-            const aEvt = await storage.createCalendarEvent({
+            const aEvt = await createCalEvent({
               userId,
               title: `App Work: ${dayData.appWork.title}`,
               description: dayData.appWork.tasks?.join(", ") || "",
@@ -12242,33 +12279,37 @@ Response:`;
               linkedMeta: { tasks: dayData.appWork.tasks },
             });
 
-            for (const task of (dayData.appWork.tasks ?? [])) {
-              await storage.createEventTask({
-                calendarEventId: aEvt.id,
-                userId,
-                title: task,
-                isCompleted: false,
-                dwSuggested: false,
-              });
+            if (aEvt) {
+              for (const task of (dayData.appWork.tasks ?? [])) {
+                await storage.createEventTask({
+                  calendarEventId: aEvt.id,
+                  userId,
+                  title: task,
+                  isCompleted: false,
+                  dwSuggested: false,
+                });
+              }
+              results.calendarEvents++;
             }
-            results.calendarEvents++;
           }
 
-          // Other events (cleaning, grooming, admin, etc.)
+          // Other events (cleaning, grooming, admin, morning routine items, etc.)
+          // Use dimension from parser if provided; fall back to inferring from keywords
           for (const other of (dayData.otherEvents ?? [])) {
             if (!other?.title) continue;
             const oStart = formatDateStr(dayDate, other.time || "12:00");
             const oEnd = formatDateStr(dayDate, other.endTime || "12:30");
-            await storage.createCalendarEvent({
+            const inferredDimension = other.dimension ?? inferDimensionFromTitle(other.title);
+            const oEvt = await createCalEvent({
               userId,
               title: other.title,
               description: other.notes || "",
               startTime: oStart,
               endTime: oEnd,
               eventType: "event",
-              dimensionTags: ["environmental"],
+              dimensionTags: [inferredDimension],
             });
-            results.calendarEvents++;
+            if (oEvt) results.calendarEvents++;
           }
         }
       }
@@ -12516,6 +12557,19 @@ Response:`;
   });
 
   return httpServer;
+}
+
+// Infer wellness dimension from event title for "other" calendar events
+function inferDimensionFromTitle(title: string): string {
+  const t = title.toLowerCase();
+  if (/wake|sleep|water|shower|hygiene|dressed|hair|wrap|groom|breathe|stretch|mobility|activation|pushup|squat|plank|walk|hike|movement/.test(t)) return "physical";
+  if (/meditat|spiritual|reflect|pray|journal|learning|study/.test(t)) return "spiritual";
+  if (/clean|reset|laundry|dishes|trash|pickup|wipe|bathroom|floor|bedding|kitchen|tidy/.test(t)) return "environmental";
+  if (/money|finance|account|debt|savings|budget|spending|pay|transport/.test(t)) return "financial";
+  if (/app|plan|review|task|work|build|fix|test|code|dev|deploy/.test(t)) return "intellectual";
+  if (/social|friend|date|out|explore|park|museum|dinner|lunch|restaurant/.test(t)) return "social";
+  if (/meal prep|cook|prep/.test(t)) return "physical";
+  return "environmental";
 }
 
 // Mood detection thresholds
