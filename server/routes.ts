@@ -16,7 +16,7 @@ import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from ".
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
-import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, communityPosts, communityPostLikes, communityGroups, communityGroupMembers } from "@shared/schema";
+import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, communityPosts, communityPostLikes, communityGroups, communityGroupMembers, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail } from "./email";
@@ -1113,6 +1113,27 @@ export async function registerRoutes(
     } catch (error) {
       console.error('Error deleting account:', error);
       res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
+  // Reset life system — wipes goals, habits, schedule, routines, calendar events, shopping lists
+  app.delete("/api/user/life-system/reset", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      await Promise.all([
+        db.delete(goalsTable).where(eq(goalsTable.userId, userId)),
+        db.delete(habitsTable).where(eq(habitsTable.userId, userId)),
+        db.delete(scheduleBlocksTable).where(eq(scheduleBlocksTable.userId, userId)),
+        db.delete(routinesTable).where(eq(routinesTable.userId, userId)),
+        db.delete(calendarEventsTable).where(eq(calendarEventsTable.userId, userId)),
+        db.delete(lifeSystemsTable).where(eq(lifeSystemsTable.userId, userId)),
+      ]);
+      // Shopping lists cascade to items via FK
+      await db.delete(shoppingListsTable).where(eq(shoppingListsTable.userId, userId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Life system reset error:", error);
+      res.status(500).json({ error: "Failed to reset life system" });
     }
   });
 

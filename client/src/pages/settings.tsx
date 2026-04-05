@@ -1,5 +1,17 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -46,6 +58,7 @@ import {
   MessageSquare,
   Star,
   BookHeart,
+  RefreshCw,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -77,6 +90,19 @@ export function SettingsPage() {
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
   const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
   const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
+
+  // ── Life system reset ────────────────────────────────────────────────────
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const resetMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/user/life-system/reset"),
+    onSuccess: () => {
+      setShowResetDialog(false);
+      toast({ title: "Life system cleared", description: "Your goals, schedule, routines, and grocery list have been wiped. You can now import a fresh one." });
+    },
+    onError: () => {
+      toast({ title: "Reset failed", description: "Something went wrong. Please try again.", variant: "destructive" });
+    },
+  });
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
     try { return localStorage.getItem(CHECKIN_REMINDER_TIME_KEY) ?? "18:00"; } catch { return "18:00"; }
   });
@@ -688,14 +714,49 @@ export function SettingsPage() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
-            <Link href="/account/delete">
-              <Button variant="destructive" size="sm" data-testid="button-delete-account" className="w-full sm:w-auto">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete my data
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-500/50 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 w-full sm:w-auto"
+                onClick={() => setShowResetDialog(true)}
+                data-testid="button-reset-life-system"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reset life system
               </Button>
-            </Link>
+              <Link href="/account/delete">
+                <Button variant="destructive" size="sm" data-testid="button-delete-account" className="w-full sm:w-auto">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete my data
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
+
+        {/* ── Reset Life System confirmation dialog ─────────────────────── */}
+        <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset your life system?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete your <strong>goals</strong>, <strong>habits</strong>, <strong>daily schedule</strong>, <strong>routines</strong>, <strong>calendar events</strong>, and <strong>grocery list</strong>. Your account, profile, and chat history will stay. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="btn-reset-cancel">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => resetMutation.mutate()}
+                disabled={resetMutation.isPending}
+                data-testid="btn-reset-confirm"
+              >
+                {resetMutation.isPending ? "Clearing…" : "Yes, reset everything"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {import.meta.env.DEV && (
           <Card>
