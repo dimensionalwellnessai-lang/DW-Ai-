@@ -1,14 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, CheckCircle2, Loader2, Target, Repeat2, CalendarDays, UtensilsCrossed, ShoppingCart, Sunrise, Moon } from "lucide-react";
+import {
+  ArrowLeft, CheckCircle2, Loader2,
+  Target, Repeat2, CalendarDays, UtensilsCrossed,
+  ShoppingCart, Sunrise, Moon, Dumbbell, Laptop2,
+  ChefHat,
+} from "lucide-react";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 type Frequency = "weekly" | "biweekly" | "every3weeks" | "monthly";
 type Step = "paste" | "review" | "done";
 
@@ -39,108 +43,108 @@ interface ParsedData {
 }
 
 const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+const DAY_LABEL = (d: string) => d[0].toUpperCase() + d.slice(1);
+
 const FREQ_OPTS: { value: Frequency; label: string }[] = [
-  { value: "weekly",      label: "1 week"  },
-  { value: "biweekly",   label: "2 weeks" },
+  { value: "weekly",       label: "1 week"  },
+  { value: "biweekly",    label: "2 weeks" },
   { value: "every3weeks", label: "3 weeks" },
-  { value: "monthly",    label: "4 weeks" },
+  { value: "monthly",     label: "4 weeks" },
 ];
 
-function countMeals(schedule: Record<string, ParsedDay>): number {
-  let n = 0;
-  for (const d of DAYS) {
-    const m = schedule[d]?.meals;
-    if (!m) continue;
-    if (m.breakfast?.length) n++;
-    if (m.lunch?.length) n++;
-    if (m.dinner?.length) n++;
-    if (m.snack?.length) n++;
-  }
-  return n;
-}
+// ── Per-category counts ───────────────────────────────────────────────────────
+const countWorkouts    = (s: Record<string, ParsedDay>) => DAYS.filter(d => s[d]?.workout?.title).length;
+const countMeals       = (s: Record<string, ParsedDay>) => DAYS.reduce((n, d) => {
+  const m = s[d]?.meals; if (!m) return n;
+  return n + (m.breakfast?.length?1:0) + (m.lunch?.length?1:0) + (m.dinner?.length?1:0) + (m.snack?.length?1:0);
+}, 0);
+const countAppWork     = (s: Record<string, ParsedDay>) => DAYS.filter(d => s[d]?.appWork?.title).length;
+const countOtherEvents = (s: Record<string, ParsedDay>) => DAYS.reduce((n, d) => n + (s[d]?.otherEvents?.length ?? 0), 0);
+const countGrocery     = (g: ParsedData["groceryList"]) =>
+  (g?.protein?.length??0) + (g?.carbs?.length??0) + (g?.produce?.length??0) + (g?.extras?.length??0);
 
-function countScheduleEvents(schedule: Record<string, ParsedDay>): number {
-  let n = 0;
-  for (const d of DAYS) {
-    const day = schedule[d];
-    if (!day) continue;
-    if (day.workout?.title) n++;
-    if (day.appWork?.title) n++;
-    n += day.otherEvents?.length ?? 0;
-  }
-  return n;
-}
-
-function countGrocery(g: ParsedData["groceryList"]): number {
-  return (g?.protein?.length ?? 0) + (g?.carbs?.length ?? 0) + (g?.produce?.length ?? 0) + (g?.extras?.length ?? 0);
-}
+const hasSchedule = (p: ParsedData) =>
+  countWorkouts(p.weeklySchedule) > 0 || countMeals(p.weeklySchedule) > 0 ||
+  countAppWork(p.weeklySchedule) > 0 || countOtherEvents(p.weeklySchedule) > 0;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DWSmartImportPage() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>("paste");
+
+  // Pre-fill from chat detection
   const [text, setText] = useState(() => {
-    try { const pre = sessionStorage.getItem("dw_ls_prepaste"); if (pre) { sessionStorage.removeItem("dw_ls_prepaste"); return pre; } } catch { /* ignore */ }
+    try {
+      const pre = sessionStorage.getItem("dw_ls_prepaste");
+      if (pre) { sessionStorage.removeItem("dw_ls_prepaste"); return pre; }
+    } catch { /* ignore */ }
     return "";
   });
+
   const [parsed, setParsed] = useState<ParsedData | null>(null);
   const [frequency, setFrequency] = useState<Frequency>("weekly");
-  const [include, setInclude] = useState({
-    goals: true, habits: true, schedule: true,
-    meals: true, grocery: true,
-    morningRoutine: true, windDown: true,
-  });
-  const [applyResult, setApplyResult] = useState<Record<string, number> | null>(null);
   const [parseError, setParseError] = useState("");
 
-  // ── Parse mutation ─────────────────────────────────────────────────────────
+  // One toggle per category
+  const [include, setInclude] = useState({
+    goals:          true,
+    habits:         true,
+    morningRoutine: true,
+    windDown:       true,
+    workouts:       true,
+    meals:          true,
+    appWork:        true,
+    events:         true,
+    grocery:        true,
+    mealPrep:       true,
+  });
+  const toggle = (k: keyof typeof include) => setInclude(p => ({ ...p, [k]: !p[k] }));
+
+  const [applyResult, setApplyResult] = useState<Record<string, number> | null>(null);
+
+  // ── Parse ─────────────────────────────────────────────────────────────────
   const parseMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/life-system/import/parse", { text });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Error ${res.status}`);
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || `Error ${res.status}`);
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      setParsed(data.parsed);
-      setParseError("");
-      setStep("review");
-    },
-    onError: (err: any) => {
-      setParseError(err.message || "Could not read your document. Please try again.");
-    },
+    onSuccess: (data) => { setParsed(data.parsed); setParseError(""); setStep("review"); },
+    onError: (err: any) => setParseError(err.message || "Could not read your document."),
   });
 
-  // ── Apply mutation ─────────────────────────────────────────────────────────
+  // ── Apply ─────────────────────────────────────────────────────────────────
   const applyMutation = useMutation({
     mutationFn: async () => {
       if (!parsed) throw new Error("No parsed data");
 
-      // Filter parsed data based on toggles before sending
+      // Build a filtered copy respecting toggles
       const filtered: ParsedData = {
         ...parsed,
-        goals:           include.goals   ? parsed.goals           : [],
-        coreRules:       include.habits  ? parsed.coreRules        : [],
+        goals:           include.goals    ? parsed.goals           : [],
+        coreRules:       include.habits   ? parsed.coreRules       : [],
         morningRoutine:  include.morningRoutine ? parsed.morningRoutine : null,
         windDownRoutine: include.windDown       ? parsed.windDownRoutine : null,
-        groceryList:     include.grocery ? parsed.groceryList : { protein: [], carbs: [], produce: [], extras: [] },
-        mealPrepItems:   include.grocery ? parsed.mealPrepItems : [],
-        weeklySchedule:  {} as Record<string, ParsedDay>,
+        groceryList:     include.grocery
+          ? parsed.groceryList
+          : { protein: [], carbs: [], produce: [], extras: [] },
+        mealPrepItems: include.mealPrep ? parsed.mealPrepItems : [],
+        weeklySchedule: Object.fromEntries(
+          DAYS.map(day => {
+            const d = parsed.weeklySchedule?.[day];
+            if (!d) return [day, { meals: { breakfast:[], lunch:[], dinner:[], snack:[] }, workout: null, appWork: null, otherEvents:[] }];
+            return [day, {
+              meals:       include.meals    ? d.meals       : { breakfast:[], lunch:[], dinner:[], snack:[] },
+              workout:     include.workouts ? d.workout     : null,
+              appWork:     include.appWork  ? d.appWork     : null,
+              otherEvents: include.events   ? d.otherEvents : [],
+            }];
+          })
+        ),
       };
-
-      // Build filtered schedule
-      for (const day of DAYS) {
-        const d = parsed.weeklySchedule?.[day];
-        if (!d) { filtered.weeklySchedule[day] = { meals: { breakfast: [], lunch: [], dinner: [], snack: [] }, workout: null, appWork: null, otherEvents: [] }; continue; }
-        filtered.weeklySchedule[day] = {
-          meals: include.meals ? d.meals : { breakfast: [], lunch: [], dinner: [], snack: [] },
-          workout:     include.schedule ? d.workout     : null,
-          appWork:     include.schedule ? d.appWork     : null,
-          otherEvents: include.schedule ? d.otherEvents : [],
-        };
-      }
 
       const res = await apiRequest("POST", "/api/life-system/import/apply", {
         parsed: filtered,
@@ -149,54 +153,48 @@ export default function DWSmartImportPage() {
         conflictResolutions: {},
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Error ${res.status}`);
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || `Error ${res.status}`);
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      setApplyResult(data.results);
-      setStep("done");
-    },
-    onError: (err: any) => {
-      setParseError(err.message || "Failed to import. Please try again.");
-    },
+    onSuccess: (data) => { setApplyResult(data.results); setStep("done"); },
+    onError: (err: any) => setParseError(err.message || "Failed to import. Please try again."),
   });
 
-  const toggle = (key: keyof typeof include) =>
-    setInclude(prev => ({ ...prev, [key]: !prev[key] }));
-
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-full bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 border-b border-border/40">
+      <div className="flex items-center gap-3 px-4 pt-safe-top pt-4 pb-3 border-b border-border/40 shrink-0">
         <button onClick={() => navigate("/")} className="p-1 -ml-1 text-muted-foreground" data-testid="btn-back">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
           <h1 className="text-base font-semibold">DW Smart Import</h1>
-          {step === "paste" && <p className="text-xs text-muted-foreground">Paste any document and DW reads it</p>}
-          {step === "review" && <p className="text-xs text-muted-foreground">Choose what to bring in</p>}
-          {step === "done" && <p className="text-xs text-muted-foreground">All done</p>}
+          <p className="text-xs text-muted-foreground">
+            {step === "paste" && "Paste any document and DW reads it"}
+            {step === "review" && "Choose what to bring in"}
+            {step === "done" && "Successfully imported"}
+          </p>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
 
-        {/* ── STEP 1: PASTE ─────────────────────────────────────────────── */}
+        {/* ── STEP 1: PASTE ───────────────────────────────────────────────── */}
         {step === "paste" && (
           <div className="p-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Paste your life system, meal plan, weekly schedule, grocery list, journal entry, or anything else. DW will read it and pull out the important parts.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Paste your full life system — goals, schedule, workouts, meals, grocery list, routines. DW will read it and pull every piece into your account.
             </p>
 
             <Textarea
               data-testid="textarea-import"
-              placeholder="Paste your document here…"
+              placeholder="Paste your full life system document here…"
               value={text}
               onChange={e => { setText(e.target.value); setParseError(""); }}
-              rows={14}
+              rows={15}
               className="resize-none font-mono text-xs"
             />
 
@@ -212,127 +210,170 @@ export default function DWSmartImportPage() {
               onClick={() => parseMutation.mutate()}
             >
               {parseMutation.isPending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Reading…</>
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reading your document…</>
                 : "Read My Document"}
             </Button>
           </div>
         )}
 
-        {/* ── STEP 2: REVIEW ─────────────────────────────────────────────── */}
+        {/* ── STEP 2: REVIEW ──────────────────────────────────────────────── */}
         {step === "review" && parsed && (
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-2.5">
             {parsed.rawTitle && (
-              <p className="text-sm font-medium text-foreground/70 truncate">{parsed.rawTitle}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pb-1 truncate">
+                {parsed.rawTitle}
+              </p>
             )}
 
-            {/* Category rows */}
-            <CategoryRow
+            {/* 1. Goals */}
+            <CatRow
               icon={<Target className="w-4 h-4 text-violet-400" />}
               label="Goals"
               count={parsed.goals.length}
               enabled={include.goals}
               onToggle={() => toggle("goals")}
-              items={parsed.goals.map(g => g.title)}
+              items={parsed.goals.map(g => `${g.title} (${g.wellnessDimension})`)}
+              testId="goals"
             />
 
-            <CategoryRow
+            {/* 2. Daily Habits */}
+            <CatRow
               icon={<Repeat2 className="w-4 h-4 text-blue-400" />}
               label="Daily Habits"
               count={parsed.coreRules.length}
               enabled={include.habits}
               onToggle={() => toggle("habits")}
               items={parsed.coreRules}
+              testId="habits"
             />
 
-            {parsed.morningRoutine?.steps?.length ? (
-              <CategoryRow
-                icon={<Sunrise className="w-4 h-4 text-amber-400" />}
-                label="Morning Routine"
-                count={parsed.morningRoutine.steps.length}
-                enabled={include.morningRoutine}
-                onToggle={() => toggle("morningRoutine")}
-                items={parsed.morningRoutine.steps.map(s => s.title)}
-              />
-            ) : null}
+            {/* 3. Morning Routine */}
+            <CatRow
+              icon={<Sunrise className="w-4 h-4 text-amber-400" />}
+              label="Morning Routine"
+              count={parsed.morningRoutine?.steps?.length ?? 0}
+              enabled={include.morningRoutine}
+              onToggle={() => toggle("morningRoutine")}
+              items={parsed.morningRoutine?.steps?.map(s => s.title) ?? []}
+              testId="morning-routine"
+            />
 
-            {parsed.windDownRoutine?.steps?.length ? (
-              <CategoryRow
-                icon={<Moon className="w-4 h-4 text-indigo-400" />}
-                label="Wind Down Routine"
-                count={parsed.windDownRoutine.steps.length}
-                enabled={include.windDown}
-                onToggle={() => toggle("windDown")}
-                items={parsed.windDownRoutine.steps.map(s => s.title)}
-              />
-            ) : null}
+            {/* 4. Wind Down Routine */}
+            <CatRow
+              icon={<Moon className="w-4 h-4 text-indigo-400" />}
+              label="Wind Down Routine"
+              count={parsed.windDownRoutine?.steps?.length ?? 0}
+              enabled={include.windDown}
+              onToggle={() => toggle("windDown")}
+              items={parsed.windDownRoutine?.steps?.map(s => s.title) ?? []}
+              testId="wind-down"
+            />
 
-            {countScheduleEvents(parsed.weeklySchedule) > 0 && (
-              <CategoryRow
-                icon={<CalendarDays className="w-4 h-4 text-green-400" />}
-                label="Schedule Events"
-                count={countScheduleEvents(parsed.weeklySchedule)}
-                enabled={include.schedule}
-                onToggle={() => toggle("schedule")}
-                items={DAYS.flatMap(d => {
-                  const day = parsed.weeklySchedule[d];
-                  if (!day) return [];
-                  const items: string[] = [];
-                  if (day.workout?.title) items.push(`${d[0].toUpperCase()}${d.slice(1)}: ${day.workout.title}`);
-                  if (day.appWork?.title) items.push(`${d[0].toUpperCase()}${d.slice(1)}: ${day.appWork.title}`);
-                  return items;
-                })}
-              />
-            )}
+            {/* 5. Workouts */}
+            <CatRow
+              icon={<Dumbbell className="w-4 h-4 text-rose-400" />}
+              label="Workouts"
+              count={countWorkouts(parsed.weeklySchedule)}
+              enabled={include.workouts}
+              onToggle={() => toggle("workouts")}
+              items={DAYS.flatMap(d => {
+                const w = parsed.weeklySchedule[d]?.workout;
+                if (!w?.title) return [];
+                const exs = w.exercises?.map(e =>
+                  `  • ${e.name}${e.sets && e.reps ? ` ${e.sets}×${e.reps}` : ""}`
+                ) ?? [];
+                return [`${DAY_LABEL(d)}: ${w.title}`, ...exs];
+              })}
+              testId="workouts"
+            />
 
-            {countMeals(parsed.weeklySchedule) > 0 && (
-              <CategoryRow
-                icon={<UtensilsCrossed className="w-4 h-4 text-orange-400" />}
-                label="Meal Plan"
-                count={countMeals(parsed.weeklySchedule)}
-                enabled={include.meals}
-                onToggle={() => toggle("meals")}
-                items={DAYS.flatMap(d => {
-                  const m = parsed.weeklySchedule[d]?.meals;
-                  if (!m) return [];
-                  const items: string[] = [];
-                  if (m.breakfast?.length) items.push(`${d[0].toUpperCase()}${d.slice(1)} Breakfast: ${m.breakfast[0]}`);
-                  if (m.lunch?.length) items.push(`${d[0].toUpperCase()}${d.slice(1)} Lunch: ${m.lunch[0]}`);
-                  if (m.dinner?.length) items.push(`${d[0].toUpperCase()}${d.slice(1)} Dinner: ${m.dinner[0]}`);
-                  return items;
-                })}
-              />
-            )}
+            {/* 6. Meal Plan */}
+            <CatRow
+              icon={<UtensilsCrossed className="w-4 h-4 text-orange-400" />}
+              label="Meal Plan"
+              count={countMeals(parsed.weeklySchedule)}
+              enabled={include.meals}
+              onToggle={() => toggle("meals")}
+              items={DAYS.flatMap(d => {
+                const m = parsed.weeklySchedule[d]?.meals;
+                if (!m) return [];
+                const out: string[] = [];
+                if (m.breakfast?.length) out.push(`${DAY_LABEL(d)} Breakfast: ${m.breakfast.join(", ")}`);
+                if (m.lunch?.length)     out.push(`${DAY_LABEL(d)} Lunch: ${m.lunch.join(", ")}`);
+                if (m.dinner?.length)    out.push(`${DAY_LABEL(d)} Dinner: ${m.dinner.join(", ")}`);
+                if (m.snack?.length)     out.push(`${DAY_LABEL(d)} Snack: ${m.snack.join(", ")}`);
+                return out;
+              })}
+              testId="meals"
+            />
 
-            {countGrocery(parsed.groceryList) > 0 && (
-              <CategoryRow
-                icon={<ShoppingCart className="w-4 h-4 text-teal-400" />}
-                label="Grocery List"
-                count={countGrocery(parsed.groceryList)}
-                enabled={include.grocery}
-                onToggle={() => toggle("grocery")}
-                items={[
-                  ...parsed.groceryList.protein.map(i => `Protein: ${i}`),
-                  ...parsed.groceryList.carbs.map(i => `Carbs: ${i}`),
-                  ...parsed.groceryList.produce.map(i => `Produce: ${i}`),
-                  ...parsed.groceryList.extras.map(i => `Other: ${i}`),
-                ]}
-              />
-            )}
+            {/* 7. App Work */}
+            <CatRow
+              icon={<Laptop2 className="w-4 h-4 text-cyan-400" />}
+              label="App Work Sessions"
+              count={countAppWork(parsed.weeklySchedule)}
+              enabled={include.appWork}
+              onToggle={() => toggle("appWork")}
+              items={DAYS.flatMap(d => {
+                const a = parsed.weeklySchedule[d]?.appWork;
+                if (!a?.title) return [];
+                return [`${DAY_LABEL(d)}: ${a.title} (${a.durationMinutes}min)`, ...(a.tasks?.map(t => `  • ${t}`) ?? [])];
+              })}
+              testId="app-work"
+            />
+
+            {/* 8. Other Schedule Events */}
+            <CatRow
+              icon={<CalendarDays className="w-4 h-4 text-green-400" />}
+              label="Other Schedule Events"
+              count={countOtherEvents(parsed.weeklySchedule)}
+              enabled={include.events}
+              onToggle={() => toggle("events")}
+              items={DAYS.flatMap(d =>
+                (parsed.weeklySchedule[d]?.otherEvents ?? []).map(e => `${DAY_LABEL(d)}: ${e.title} @ ${e.time}`)
+              )}
+              testId="events"
+            />
+
+            {/* 9. Grocery List */}
+            <CatRow
+              icon={<ShoppingCart className="w-4 h-4 text-teal-400" />}
+              label="Grocery List"
+              count={countGrocery(parsed.groceryList)}
+              enabled={include.grocery}
+              onToggle={() => toggle("grocery")}
+              items={[
+                ...( parsed.groceryList?.protein ?? []).map(i => `Protein: ${i}`),
+                ...( parsed.groceryList?.carbs   ?? []).map(i => `Carbs: ${i}`),
+                ...( parsed.groceryList?.produce ?? []).map(i => `Produce: ${i}`),
+                ...( parsed.groceryList?.extras  ?? []).map(i => `Other: ${i}`),
+              ]}
+              testId="grocery"
+            />
+
+            {/* 10. Meal Prep */}
+            <CatRow
+              icon={<ChefHat className="w-4 h-4 text-yellow-400" />}
+              label="Meal Prep"
+              count={parsed.mealPrepItems?.length ?? 0}
+              enabled={include.mealPrep}
+              onToggle={() => toggle("mealPrep")}
+              items={parsed.mealPrepItems ?? []}
+              testId="meal-prep"
+            />
 
             {/* Nothing found notice */}
             {parsed.goals.length === 0 && parsed.coreRules.length === 0 &&
-              countScheduleEvents(parsed.weeklySchedule) === 0 &&
-              countMeals(parsed.weeklySchedule) === 0 &&
-              countGrocery(parsed.groceryList) === 0 && (
-              <div className="rounded-xl border border-border/40 p-4 text-center text-sm text-muted-foreground">
-                DW couldn't find any structured data to import. Try pasting a document with goals, a weekly schedule, or a grocery list.
+              !hasSchedule(parsed) && countGrocery(parsed.groceryList) === 0 && (
+              <div className="rounded-xl border border-border/40 p-5 text-center space-y-1">
+                <p className="text-sm font-medium">Nothing structured found</p>
+                <p className="text-xs text-muted-foreground">Try pasting your full life system — it should include things like "YOUR TARGET", "CORE RULES", day headers (MONDAY, TUESDAY…), and "WEEKLY GROCERY SYSTEM".</p>
               </div>
             )}
 
-            {/* Frequency selector — only shown if schedule or meals exist */}
-            {(countScheduleEvents(parsed.weeklySchedule) > 0 || countMeals(parsed.weeklySchedule) > 0) &&
-              (include.schedule || include.meals) && (
-              <div className="rounded-xl border border-border/40 p-4 space-y-2">
+            {/* Frequency selector — shown when any schedule/meal content enabled */}
+            {hasSchedule(parsed) && (include.workouts || include.meals || include.appWork || include.events) && (
+              <div className="rounded-xl border border-border/40 p-4 space-y-2 mt-1">
                 <p className="text-sm font-medium">How many weeks to schedule?</p>
                 <div className="flex gap-2 flex-wrap">
                   {FREQ_OPTS.map(opt => (
@@ -354,33 +395,32 @@ export default function DWSmartImportPage() {
             )}
 
             {parseError && (
-              <p className="text-sm text-destructive" data-testid="text-apply-error">{parseError}</p>
+              <p className="text-sm text-destructive pt-1" data-testid="text-apply-error">{parseError}</p>
             )}
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-2 pb-4">
               <Button
                 variant="outline"
-                className="flex-1"
                 onClick={() => { setStep("paste"); setParseError(""); }}
                 data-testid="btn-back-paste"
               >
                 Back
               </Button>
               <Button
-                className="flex-2 flex-1"
+                className="flex-1"
                 disabled={applyMutation.isPending}
                 onClick={() => applyMutation.mutate()}
                 data-testid="btn-import"
               >
                 {applyMutation.isPending
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importing…</>
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing…</>
                   : "Import into DW"}
               </Button>
             </div>
           </div>
         )}
 
-        {/* ── STEP 3: DONE ──────────────────────────────────────────────── */}
+        {/* ── STEP 3: DONE ────────────────────────────────────────────────── */}
         {step === "done" && applyResult && (
           <div className="p-6 flex flex-col items-center gap-5 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mt-4" />
@@ -419,8 +459,8 @@ export default function DWSmartImportPage() {
 }
 
 // ── Category row ──────────────────────────────────────────────────────────────
-function CategoryRow({
-  icon, label, count, enabled, onToggle, items,
+function CatRow({
+  icon, label, count, enabled, onToggle, items, testId,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -428,6 +468,7 @@ function CategoryRow({
   enabled: boolean;
   onToggle: () => void;
   items: string[];
+  testId: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (count === 0) return null;
@@ -435,29 +476,32 @@ function CategoryRow({
   return (
     <div className="rounded-xl border border-border/40 overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3">
-        {icon}
+        <div className="shrink-0">{icon}</div>
         <button
-          className="flex-1 flex items-center gap-2 text-left"
+          className="flex-1 flex items-center gap-2 text-left min-w-0"
           onClick={() => setExpanded(e => !e)}
-          data-testid={`btn-expand-${label.toLowerCase().replace(/\s/g, "-")}`}
+          data-testid={`btn-expand-${testId}`}
         >
-          <span className="text-sm font-medium">{label}</span>
-          <span className="text-xs text-muted-foreground">({count})</span>
-          <span className="text-xs text-muted-foreground ml-auto">{expanded ? "▲" : "▼"}</span>
+          <span className="text-sm font-medium truncate">{label}</span>
+          <span className="text-xs text-muted-foreground shrink-0">({count})</span>
+          <span className="text-xs text-muted-foreground ml-auto shrink-0">{expanded ? "▲" : "▼"}</span>
         </button>
         <Switch
           checked={enabled}
           onCheckedChange={onToggle}
-          data-testid={`switch-${label.toLowerCase().replace(/\s/g, "-")}`}
+          data-testid={`switch-${testId}`}
         />
       </div>
+
       {expanded && (
-        <div className="border-t border-border/30 px-4 py-2 space-y-1 bg-muted/20">
-          {items.slice(0, 20).map((item, i) => (
-            <p key={i} className="text-xs text-muted-foreground py-0.5">• {item}</p>
+        <div className="border-t border-border/30 px-4 py-2 space-y-0.5 bg-muted/20 max-h-48 overflow-y-auto">
+          {items.slice(0, 50).map((item, i) => (
+            <p key={i} className={`text-xs py-0.5 ${item.startsWith("  •") ? "text-muted-foreground pl-2" : "text-foreground/80"}`}>
+              {item.startsWith("  •") ? item : `• ${item}`}
+            </p>
           ))}
-          {items.length > 20 && (
-            <p className="text-xs text-muted-foreground pt-1">…and {items.length - 20} more</p>
+          {items.length > 50 && (
+            <p className="text-xs text-muted-foreground pt-1">…and {items.length - 50} more</p>
           )}
         </div>
       )}

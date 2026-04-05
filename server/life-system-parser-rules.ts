@@ -110,7 +110,7 @@ export function parseLifeSystemRuleBased(text: string): RulesParseResult {
     // ── Special section headers ───────────────────────────────────
     if (/YOUR TARGET/i.test(line)) { zone = "targets"; currentMeal = null; continue; }
     if (/CORE RULES/i.test(line)) { zone = "coreRules"; currentMeal = null; continue; }
-    if (/WEEKLY GROCERY SYSTEM/i.test(line)) { zone = "grocery"; currentGroceryCat = null; continue; }
+    if (/WEEKLY GROCERY|GROCERY SYSTEM|GROCERY LIST|SHOPPING LIST/i.test(line)) { zone = "grocery"; currentGroceryCat = null; continue; }
     if (/MEAL PREP/i.test(line) && zone !== "day") { zone = "mealPrep"; continue; }
     if (/APP WORK SYSTEM/i.test(line)) { zone = "other"; continue; }
     if (/MONTHLY GROOMING|MONTHLY SHOPPING/i.test(line)) { zone = "other"; continue; }
@@ -148,12 +148,22 @@ export function parseLifeSystemRuleBased(text: string): RulesParseResult {
 
     // ── Grocery list ──────────────────────────────────────────────
     if (zone === "grocery") {
-      if (/^Protein:/i.test(line)) { currentGroceryCat = "protein"; continue; }
-      if (/^Carbs?:/i.test(line)) { currentGroceryCat = "carbs"; continue; }
-      if (/^Produce:/i.test(line)) { currentGroceryCat = "produce"; continue; }
-      if (/^(Flavor|Condiment|Other|Misc|Spice|Seasoning)s?:/i.test(line)) { currentGroceryCat = "extras"; continue; }
+      // Category headers — flexible detection (may or may not have colon)
+      if (/\bprotein\b/i.test(line) && line.length < 30) { currentGroceryCat = "protein"; continue; }
+      if (/\bcarb/i.test(line) && line.length < 30) { currentGroceryCat = "carbs"; continue; }
+      if (/\bproduce\b|\bveget|\bfruit/i.test(line) && line.length < 30) { currentGroceryCat = "produce"; continue; }
+      if (/\bflavor|\bcondiment|\bsauce|\bspice|\bother|\bmisc|\bseasoning|\bdairy|\bfat/i.test(line) && line.length < 30) { currentGroceryCat = "extras"; continue; }
+      // Bullet item
       const b = line.match(BULLET_RE);
-      if (b && currentGroceryCat) { groceryList[currentGroceryCat].push(b[1]); }
+      if (b) {
+        const cat = currentGroceryCat ?? "extras";
+        groceryList[cat].push(b[1]);
+        continue;
+      }
+      // Plain text lines that look like items (no category set yet, short lines)
+      if (currentGroceryCat && line.length > 1 && line.length < 60 && !line.includes(":")) {
+        groceryList[currentGroceryCat].push(line);
+      }
       continue;
     }
 
