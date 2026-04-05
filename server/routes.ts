@@ -12034,7 +12034,7 @@ Response:`;
         await import("./life-system-parser.js");
 
       const results: Record<string, number> = {
-        goals: 0, habits: 0, routines: 0, calendarEvents: 0, groceryItems: 0,
+        goals: 0, habits: 0, insights: 0, routines: 0, calendarEvents: 0, groceryItems: 0, meals: 0, workouts: 0,
       };
 
       // 1. Goals — merge/replace based on conflict resolutions
@@ -12066,18 +12066,36 @@ Response:`;
         }
       }
 
-      // 2. Core rules → habits
+      // 2. Core rules → habits + insights
       for (const rule of (parsed.coreRules ?? [])) {
-        if (!rule?.trim()) continue;
-        const freq = rule.toLowerCase().includes("sunday") ? "weekly" : "daily";
+        const ruleText = typeof rule === "string" ? rule : (rule as any).text;
+        const ruleDimension = typeof rule === "string" ? "purpose" : ((rule as any).wellnessDimension ?? "purpose");
+        const ruleContext = typeof rule === "string" ? ruleText : ((rule as any).context ?? ruleText);
+        if (!ruleText?.trim()) continue;
+
+        // Save as habit
+        const freq = ruleText.toLowerCase().includes("sunday") ? "weekly" : "daily";
         await storage.createHabit({
           userId,
-          title: rule.trim(),
+          title: ruleText.trim(),
           frequency: freq,
           isActive: true,
           dataSource: "life_system_import",
         });
         results.habits++;
+
+        // Also save as a DwInsight so it surfaces contextually in conversations
+        await storage.createDwInsight({
+          userId,
+          title: `Life Rule: ${ruleText.trim()}`,
+          summary: ruleContext,
+          insightLine: ruleText.trim(),
+          theme: ruleDimension,
+          tags: ["core_rule", "life_system", ruleDimension],
+          switchTag: ruleDimension,
+          sourceConversationId: null,
+        });
+        results.insights++;
       }
 
       // 3. Morning routine
@@ -12255,16 +12273,15 @@ Response:`;
         }
       }
 
-      // 6. Grocery list → shopping list
-      const allItems = [
+      // 6. Grocery list → shopping list (fixed: extras maps to "other" not "dairy")
+      const groceryItems = [
         ...(parsed.groceryList?.protein ?? []).map((i) => ({ ingredient: i, category: "protein" })),
         ...(parsed.groceryList?.carbs ?? []).map((i) => ({ ingredient: i, category: "carbs" })),
         ...(parsed.groceryList?.produce ?? []).map((i) => ({ ingredient: i, category: "produce" })),
-        ...(parsed.groceryList?.extras ?? []).map((i) => ({ ingredient: i, category: "dairy" })),
-        ...(parsed.mealPrepItems ?? []).map((i) => ({ ingredient: i, category: "other" })),
+        ...(parsed.groceryList?.extras ?? []).map((i) => ({ ingredient: i, category: "other" })),
       ];
 
-      if (allItems.length) {
+      if (groceryItems.length) {
         const list = await storage.createShoppingList({
           userId,
           title: "Weekly Grocery List (Life System)",
@@ -12272,14 +12289,106 @@ Response:`;
           status: "active",
         });
         await storage.createShoppingListItems(
-          allItems.map((item) => ({
+          groceryItems.map((item) => ({
             shoppingListId: list.id,
             ingredient: item.ingredient,
             category: item.category,
             isChecked: false,
           }))
         );
-        results.groceryItems = allItems.length;
+        results.groceryItems = groceryItems.length;
+      }
+
+      // 6b. Meal plan → Nutrition hub (one plan per week, one Meal entry per meal slot per day)
+      const DAYS_ORDERED = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+      const weekLabel = (startDate ?? new Date().toISOString()).slice(0, 10);
+
+      const mealSlotsConfig = [
+        { key: "breakfast" as const, label: "Breakfast", macrosKey: "breakfastMacros" as const },
+        { key: "lunch" as const, label: "Lunch", macrosKey: "lunchMacros" as const },
+        { key: "dinner" as const, label: "Dinner", macrosKey: "dinnerMacros" as const },
+        { key: "snack" as const, label: "Snack", macrosKey: "snackMacros" as const },
+      ];
+
+      // Collect all meals across the schedule
+      const mealsToCreate: any[] = [];
+      for (const dayName of DAYS_ORDERED) {
+        const dayData = parsed.weeklySchedule?.[dayName];
+        if (!dayData) continue;
+        for (const slot of mealSlotsConfig) {
+          const items = dayData.meals?.[slot.key];
+          if (!items?.length) continue;
+          const macros = (dayData.meals as any)?.[slot.macrosKey] as import("./life-system-parser.js").ParsedMacros | undefined;
+          const macroNote = macros
+            ? `Est. macros: ${macros.calories} cal · ${macros.protein}g protein · ${macros.carbs}g carbs · ${macros.fat}g fat`
+            : undefined;
+
+          mealsToCreate.push({
+            userId,
+            title: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${slot.label}`,
+            mealType: slot.key,
+            weekLabel,
+            tags: ["life_system_import", dayName, slot.key],
+            ingredients: items,
+            notes: macroNote ?? null,
+            mealPlanId: null as string | null,
+          });
+        }
+      }
+
+      if (mealsToCreate.length > 0) {
+        const mealPlan = await storage.createMealPlan({
+          userId,
+          title: `Life System Meal Plan — Week of ${weekLabel}`,
+          summary: `Imported from life system. ${mealsToCreate.length} meals across the week.`,
+          source: "life_system_import",
+          isActive: true,
+        });
+        for (const m of mealsToCreate) {
+          m.mealPlanId = mealPlan.id;
+          await storage.createMeal(m);
+          results.meals++;
+        }
+      }
+
+      // 6c. Workout plan → Workout hub (one plan, exercises grouped by day)
+      type ParsedExercise = { name: string; sets: string; reps: string; notes: string };
+      const workoutDays: Array<{ dayName: string; workout: { title: string; exercises: ParsedExercise[] } }> = [];
+      for (const dayName of DAYS_ORDERED) {
+        const dayData = parsed.weeklySchedule?.[dayName];
+        if (dayData?.workout?.exercises?.length) {
+          workoutDays.push({ dayName, workout: dayData.workout });
+        }
+      }
+
+      if (workoutDays.length > 0) {
+        const workoutPlan = await storage.createWorkoutPlan({
+          userId,
+          title: `Life System Workout Plan — Week of ${weekLabel}`,
+          summary: `Band-based workout plan imported from life system. ${workoutDays.length} training days.`,
+          source: "life_system_import",
+          isActive: true,
+        });
+
+        let exerciseOrder = 0;
+        for (const { dayName, workout } of workoutDays) {
+          for (const ex of workout.exercises) {
+            await storage.createExercise({
+              userId,
+              workoutPlanId: workoutPlan.id,
+              title: ex.name,
+              exerciseType: "strength",
+              dayLabel: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} — ${workout.title}`,
+              sets: ex.sets || null,
+              reps: ex.reps || null,
+              notes: ex.notes || null,
+              equipment: ["resistance bands"],
+              tags: ["life_system_import", dayName],
+            });
+            exerciseOrder++;
+            results.workouts++;
+          }
+        }
       }
 
       // 7. Journal entries + freeform notes

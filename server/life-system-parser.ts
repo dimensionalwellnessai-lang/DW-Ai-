@@ -2,7 +2,7 @@ import { openai } from "./openai";
 
 export interface ParsedLifeSystem {
   goals: ParsedGoal[];
-  coreRules: string[];
+  coreRules: ParsedCoreRule[];
   morningRoutine: ParsedRoutine | null;
   windDownRoutine: ParsedRoutine | null;
   weeklySchedule: Record<string, ParsedDaySchedule>;
@@ -17,6 +17,19 @@ export interface ParsedGoal {
   wellnessDimension: string;
 }
 
+export interface ParsedCoreRule {
+  text: string;
+  wellnessDimension: string;
+  context: string;
+}
+
+export interface ParsedMacros {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export interface ParsedRoutine {
   name: string;
   steps: Array<{ title: string; duration: string; time?: string }>;
@@ -25,9 +38,13 @@ export interface ParsedRoutine {
 export interface ParsedDaySchedule {
   meals: {
     breakfast: string[];
+    breakfastMacros?: ParsedMacros;
     lunch: string[];
+    lunchMacros?: ParsedMacros;
     dinner: string[];
+    dinnerMacros?: ParsedMacros;
     snack: string[];
+    snackMacros?: ParsedMacros;
   };
   workout: {
     title: string;
@@ -64,7 +81,13 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
   "goals": [
     { "title": "short goal title", "description": "detail", "wellnessDimension": "physical|emotional|financial|social|spiritual|intellectual|environmental|purpose" }
   ],
-  "coreRules": ["rule text as-is"],
+  "coreRules": [
+    {
+      "text": "rule text exactly as written",
+      "wellnessDimension": "physical|emotional|financial|social|spiritual|intellectual|environmental|purpose",
+      "context": "one sentence explaining which part of life this rule governs and why it matters"
+    }
+  ],
   "morningRoutine": {
     "name": "Morning Routine",
     "steps": [{ "title": "step name", "duration": "10 min", "time": "6:05 AM" }]
@@ -76,52 +99,58 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
   "weeklySchedule": {
     "monday": {
       "meals": {
-        "breakfast": ["item 1", "item 2"],
-        "lunch": ["item 1"],
-        "dinner": ["item 1"],
-        "snack": ["item 1"]
+        "breakfast": ["4 eggs with paprika", "2 slices toast", "1 banana"],
+        "breakfastMacros": { "calories": 480, "protein": 30, "carbs": 55, "fat": 15 },
+        "lunch": ["7 oz chicken", "1 cup rice", "broccoli"],
+        "lunchMacros": { "calories": 520, "protein": 50, "carbs": 45, "fat": 8 },
+        "dinner": ["ground turkey with taco seasoning", "roasted potatoes", "mixed veggies"],
+        "dinnerMacros": { "calories": 540, "protein": 45, "carbs": 40, "fat": 16 },
+        "snack": ["Greek yogurt", "honey"],
+        "snackMacros": { "calories": 150, "protein": 12, "carbs": 18, "fat": 3 }
       },
       "workout": {
-        "title": "Push Day — Bands",
+        "title": "Upper Push — Bands",
         "time": "18:00",
         "exercises": [
-          { "name": "Band Chest Press", "sets": "4", "reps": "12", "notes": "anchor behind" }
+          { "name": "Band Chest Press", "sets": "4", "reps": "12", "notes": "anchor at chest height" },
+          { "name": "Pushups", "sets": "4", "reps": "10-15", "notes": "" }
         ]
       },
       "appWork": {
         "title": "System Review",
         "time": "19:45",
         "durationMinutes": 45,
-        "tasks": ["open app", "go screen by screen", "write down what feels off"]
+        "tasks": ["go screen by screen", "write down bugs", "note awkward flows"]
       },
       "otherEvents": [
-        { "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "" }
+        { "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "dishes, trash, quick pickup, wipe counter" }
       ]
     },
-    "tuesday": { ... },
-    "wednesday": { ... },
-    "thursday": { ... },
-    "friday": { ... },
-    "saturday": { ... },
-    "sunday": { ... }
+    "tuesday": {},
+    "wednesday": {},
+    "thursday": {},
+    "friday": {},
+    "saturday": {},
+    "sunday": {}
   },
   "groceryList": {
-    "protein": ["2-3 lbs chicken"],
-    "carbs": ["rice"],
-    "produce": ["broccoli"],
-    "extras": ["yogurt"]
+    "protein": ["2-3 lbs chicken", "1-2 lbs ground turkey", "2 salmon portions", "12 eggs", "Greek yogurt", "protein powder"],
+    "carbs": ["rice", "potatoes", "oats", "bread"],
+    "produce": ["broccoli", "mixed veggies", "bananas", "fruit"],
+    "extras": ["honey", "soy sauce", "garlic powder", "onion powder", "paprika", "taco seasoning"]
   },
-  "mealPrepItems": ["chicken (seasoned, 3-4 meals)", "rice (4 cups cooked)"]
+  "mealPrepItems": ["chicken (3-4 meals, seasoned)", "ground turkey (2-3 meals)", "4 cups cooked rice", "roasted potatoes", "broccoli or mixed veggies"]
 }
 
-Rules:
-- If a day has no workout, set workout to null
-- If a day has no app work block, set appWork to null
-- If a day has no meal info, use empty arrays for meals
-- Keep exercise names exactly as written
-- Wellness dimensions: physical (fitness/body/health), emotional (mood/stress/feelings), financial (money/spending), social (community/relationships), spiritual (cosmic/meditation/faith), intellectual (learning/app/work), environmental (home/clean/space), purpose (goals/meaning)
-- Goals should map to specific, measurable things mentioned (weight loss, visible muscle, clean space consistently, etc.)
-- Core rules are the non-negotiable daily rules (no phone first 30 min, 3 meals + 1 snack, etc.)`;
+CRITICAL RULES:
+- For coreRules: assign each rule a wellnessDimension. physical=body/fitness/food, intellectual=app/work/learning, environmental=home/clean, emotional=stress/mind, financial=money, social=people, spiritual=meditation/faith.
+- For macros: estimate realistic macros for every meal based on the specific food items and amounts listed. Use actual nutrition knowledge — do not guess randomly.
+- For exercises: capture every exercise listed including warm-up and finisher movements. Always include sets and reps exactly as written.
+- GROCERY LIST: Look for a section titled "WEEKLY GROCERY SYSTEM", "Buy", or "Grocery". Extract every single item listed under Protein, Carbs, Produce, and any other category. These are NOT meal items — they are shopping items to buy weekly. Put condiments/seasonings/extras in "extras". Put fruit/vegetables in "produce".
+- mealPrepItems: Only put FOOD PREP instructions here (cook chicken, prep rice, etc.). Do NOT put app work tasks or weekly planning tasks here.
+- If a day has no workout, set workout to null.
+- If a day has no app work block, set appWork to null.
+- Keep exact food items for each meal — list every item separately in the array.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -129,7 +158,7 @@ Rules:
       { role: "system", content: systemPrompt },
       { role: "user", content: text },
     ],
-    temperature: 0.2,
+    temperature: 0.1,
     response_format: { type: "json_object" },
   }, { timeout: 55_000 });
 
@@ -141,6 +170,14 @@ Rules:
   if (!parsed.coreRules) parsed.coreRules = [];
   if (!parsed.groceryList) parsed.groceryList = { protein: [], carbs: [], produce: [], extras: [] };
   if (!parsed.mealPrepItems) parsed.mealPrepItems = [];
+
+  // Back-compat: if coreRules came back as plain strings, convert them
+  parsed.coreRules = (parsed.coreRules as any[]).map((r) => {
+    if (typeof r === "string") {
+      return { text: r, wellnessDimension: "purpose", context: r };
+    }
+    return r;
+  });
 
   return parsed;
 }
