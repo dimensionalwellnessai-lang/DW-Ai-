@@ -13,3 +13,6 @@ vite.config.ts.*
 # Test coverage output
 coverage/
 client/coverage/
+
+# Apple Sign In private keys
+*.p8
