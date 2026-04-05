@@ -25,7 +25,7 @@ import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import ReactMarkdown from "react-markdown";
@@ -562,14 +562,14 @@ export function TalkItOutPage() {
       });
       setIsTyping(false);
     },
-    onError: (_error, variables) => {
+    onError: (error: any, variables) => {
       setLastFailedMessage(variables as string);
+      const errDetail = parseApiError(error);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content:
-            "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
+          content: `**AI error:** ${errDetail}`,
           isError: true,
         },
       ]);

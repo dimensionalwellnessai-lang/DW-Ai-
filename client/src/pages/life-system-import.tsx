@@ -200,6 +200,20 @@ export default function DWSmartImportPage() {
   const [readingSel, setReadingSel] = useState<boolean[]>([]);
   const [financialSel, setFinancialSel] = useState<boolean[]>([]);
   const [projectSel, setProjectSel] = useState<boolean[]>([]);
+  const [loadingStage, setLoadingStage] = useState(0);
+
+  const LOADING_STAGES = [
+    "Reading your content...",
+    "Identifying content types...",
+    "Extracting key details...",
+    "Building your personalized plan...",
+  ];
+
+  useEffect(() => {
+    if (!parseMutation.isPending) { setLoadingStage(0); return; }
+    const iv = setInterval(() => setLoadingStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 1900);
+    return () => clearInterval(iv);
+  }, [parseMutation.isPending]);
 
   useEffect(() => {
     try {
@@ -404,8 +418,54 @@ export default function DWSmartImportPage() {
       <PageHeader title="DW Smart Import" showBack />
       <div className="flex-1 overflow-y-auto">
 
+        {/* ── LOADING OVERLAY ── */}
+        {parseMutation.isPending && step === "paste" && (
+          <div className="flex flex-col items-center justify-center min-h-[75vh] p-8 space-y-8 max-w-sm mx-auto">
+            <div className="relative flex items-center justify-center">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-9 w-9 text-primary animate-pulse" />
+              </div>
+              <div className="absolute inset-0 rounded-full border border-primary/25 animate-ping" style={{ animationDuration: "2s" }} />
+            </div>
+
+            <div className="text-center space-y-1 w-full">
+              <p className="font-semibold text-foreground text-base transition-all duration-500">
+                {LOADING_STAGES[loadingStage]}
+              </p>
+              <p className="text-sm text-muted-foreground">DW is analyzing your content</p>
+            </div>
+
+            <div className="w-full space-y-3">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700 ease-in-out"
+                  style={{ width: `${Math.round(((loadingStage + 1) / LOADING_STAGES.length) * 100)}%` }}
+                />
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {LOADING_STAGES.map((label, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-3 transition-all duration-300 ${i <= loadingStage ? "opacity-100" : "opacity-25"}`}
+                  >
+                    {i < loadingStage
+                      ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      : i === loadingStage
+                        ? <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+                        : <div className="h-4 w-4 rounded-full border border-muted-foreground/40 shrink-0" />}
+                    <span className={`text-sm ${i === loadingStage ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── PASTE ── */}
-        {step === "paste" && (
+        {step === "paste" && !parseMutation.isPending && (
           <div className="p-4 space-y-6 max-w-lg mx-auto">
             <div className="space-y-2 pt-2">
               <div className="flex items-center gap-2">
@@ -435,12 +495,10 @@ export default function DWSmartImportPage() {
             <Button
               data-testid="button-parse-life-system"
               className="w-full" size="lg"
-              disabled={pastedText.trim().length < 20 || parseMutation.isPending}
+              disabled={pastedText.trim().length < 20}
               onClick={() => parseMutation.mutate()}
             >
-              {parseMutation.isPending
-                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />DW is reading…</>
-                : <><Sparkles className="h-4 w-4 mr-2" />Let DW Read This</>}
+              <Sparkles className="h-4 w-4 mr-2" />Let DW Read This
             </Button>
 
             {parseMutation.isError && (

@@ -2379,12 +2379,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
-    } catch (error) {
-      console.error("Chat error:", error);
-      res.json({
-        response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
-        updatedCategories: [],
-        actionsTaken: [],
+    } catch (error: any) {
+      const errMsg: string = error?.message || String(error);
+      const errStatus: number = typeof error?.status === "number" ? error.status : 500;
+      console.error("Chat error:", errStatus, errMsg);
+      res.status(errStatus >= 400 && errStatus < 600 ? errStatus : 500).json({
+        error: errMsg,
+        status: errStatus,
       });
     }
   });
@@ -2615,49 +2616,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       res.json({ ...result, syncSessionId, actionsTaken });
-    } catch (error) {
-      console.error("Smart chat error:", error);
-      const errAny = error as Record<string, unknown>;
-      const httpStatus = typeof errAny?.status === "number" ? errAny.status : 0;
-      const errMsg = typeof errAny?.message === "string" ? (errAny.message as string).toLowerCase() : "";
-      const errorCode =
-        typeof (errAny as { code?: unknown })?.code === "string"
-          ? ((errAny as { code?: unknown }).code as string)
-          : "";
-      const cause = (errAny as { cause?: unknown })?.cause as Record<string, unknown> | undefined;
-      const causeCode =
-        cause && typeof cause.code === "string"
-          ? (cause.code as string)
-          : "";
-      const errorName =
-        typeof errAny?.name === "string"
-          ? (errAny.name as string)
-          : "";
-      const isTimeoutError =
-        errMsg.includes("timeout") ||
-        errMsg.includes("timed out") ||
-        httpStatus === 504 ||
-        errorCode === "ETIMEDOUT" ||
-        errorCode === "ESOCKETTIMEDOUT" ||
-        causeCode === "ETIMEDOUT" ||
-        causeCode === "ESOCKETTIMEDOUT" ||
-        errorName === "AbortError";
-      if (httpStatus === 429) {
-        return res.json({
-          response: "I'm getting a lot of requests right now — give me just a moment to catch up. I'm still here with you. Try again in a few seconds.",
-          actionsTaken: [],
-        });
-      }
-      if (isTimeoutError) {
-        return res.json({
-          response: "That took a little longer than expected on my end. I'm still here — send me that thought again and I'll be right with you.",
-          actionsTaken: [],
-        });
-      }
-      // Graceful fallback for any other AI error (401, 500, network issues, etc.)
-      return res.json({
-        response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
-        actionsTaken: [],
+    } catch (error: any) {
+      const errMsg: string = error?.message || String(error);
+      const errStatus: number = typeof error?.status === "number" ? error.status : 500;
+      console.error("Smart chat error:", errStatus, errMsg);
+      return res.status(errStatus >= 400 && errStatus < 600 ? errStatus : 500).json({
+        error: errMsg,
+        status: errStatus,
       });
     }
   });
@@ -2940,9 +2905,12 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       
       res.write('data: [DONE]\n\n');
       res.end();
-    } catch (error) {
-      console.error("Streaming chat error:", error);
-      res.write(`data: ${JSON.stringify({ error: "Failed to get response" })}\n\n`);
+    } catch (error: any) {
+      const errMsg: string = error?.message || String(error);
+      const errStatus: number = typeof error?.status === "number" ? error.status : 500;
+      console.error("Streaming chat error:", errStatus, errMsg);
+      res.write(`data: ${JSON.stringify({ error: errMsg, status: errStatus })}\n\n`);
+      res.write('data: [DONE]\n\n');
       res.end();
     }
   });

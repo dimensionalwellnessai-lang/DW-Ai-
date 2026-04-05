@@ -1197,9 +1197,28 @@ export function AIWorkspace() {
       
       // Clear optimistic messages on error
       setOptimisticMessages([]);
+      
+      // Extract real error details to show the user
+      const rawMsg: string = error?.message || String(error);
+      // Strip the leading "NNN: " prefix that throwIfResNotOk adds
+      const colonIdx = rawMsg.indexOf(": ");
+      let body = colonIdx !== -1 ? rawMsg.slice(colonIdx + 2).trim() : rawMsg;
+      let displayMsg = body;
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        if (typeof parsed?.error === "string") displayMsg = parsed.error;
+        else if (typeof parsed?.message === "string") displayMsg = parsed.message;
+      } catch { /* not JSON, use raw */ }
+      
+      const statusCode: number | null = (() => {
+        if (typeof error?.status === "number") return error.status;
+        const m = rawMsg.match(/^(\d{3}):/);
+        return m ? parseInt(m[1], 10) : null;
+      })();
+      
       toast({
-        title: "That didn't save.",
-        description: "You can try again, or come back later.",
+        title: statusCode ? `AI error ${statusCode}` : "AI error",
+        description: displayMsg || "Something went wrong. Please try again.",
         variant: "destructive",
       });
       setIsTyping(false);
