@@ -47,4 +47,3 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 [userenv.shared]
 APP_BASE_URL = "https://dimensionalwellnessai.com"
 OAUTH_REDIRECT_BASE_URL = "https://dimensionalwellnessai.com"
-GOOGLE_VISION_API_KEY = "AIzaSyB0JGl4RvcRQtFKPbMQkbLTtYAetVc8_zU"
