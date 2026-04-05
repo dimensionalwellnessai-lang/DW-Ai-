@@ -122,7 +122,6 @@ async function seedQaAccount() {
     console.log("QA Account Credentials:");
     console.log("══════════════════════════════════════════");
     console.log(`  Email:    ${QA_EMAIL}`);
-    console.log(`  Password: ${QA_PASSWORD}`);
     console.log("══════════════════════════════════════════\n");
     console.log("Scenarios covered:");
     console.log("  ✓ MomentumCard     – 2 habits (7-day + 3-day streak)");
