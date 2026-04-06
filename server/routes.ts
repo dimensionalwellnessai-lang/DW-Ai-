@@ -4357,6 +4357,97 @@ Return ONLY this exact JSON structure, no other text:
     }
   });
 
+  // ─── iCal Feed ────────────────────────────────────────────────────────────────
+  // Helpers for signing/verifying tokens so we can give Apple/Google a public URL
+  function makeIcalToken(userId: string): string {
+    const payload = Buffer.from(userId).toString("base64url");
+    const sig = crypto
+      .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
+      .update(payload)
+      .digest("base64url")
+      .slice(0, 24);
+    return `${payload}.${sig}`;
+  }
+
+  function verifyIcalToken(token: string): string | null {
+    try {
+      const [payload, sig] = token.split(".");
+      if (!payload || !sig) return null;
+      const expected = crypto
+        .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
+        .update(payload)
+        .digest("base64url")
+        .slice(0, 24);
+      if (sig !== expected) return null;
+      return Buffer.from(payload, "base64url").toString("utf8");
+    } catch {
+      return null;
+    }
+  }
+
+  function escapeIcal(str: string): string {
+    return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  }
+
+  function toIcalDate(iso: string): string {
+    // Returns UTC date-time string YYYYMMDDTHHMMSSZ
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  }
+
+  // Authenticated endpoint: returns the subscription URL for the current user
+  app.get("/api/calendar/ical-token", requireAuth, (req, res) => {
+    const token = makeIcalToken(req.session.userId!);
+    const base = process.env.APP_BASE_URL || `https://${req.hostname}`;
+    res.json({ url: `${base}/api/ical/${token}.ics` });
+  });
+
+  // Public endpoint: Apple/Google Calendar subscribes to this URL
+  app.get("/api/ical/:token", async (req, res) => {
+    const rawToken = req.params.token.replace(/\.ics$/, "");
+    const userId = verifyIcalToken(rawToken);
+    if (!userId) return res.status(401).send("Invalid or expired calendar token.");
+
+    try {
+      const events = await storage.getCalendarEvents(userId);
+      const lines: string[] = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Dimensional Wellness AI//Calendar//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Dimensional Wellness",
+        "X-WR-TIMEZONE:UTC",
+      ];
+
+      for (const ev of events) {
+        const dtStart = toIcalDate(ev.startTime);
+        const dtEnd   = toIcalDate(ev.endTime || ev.startTime);
+        if (!dtStart) continue;
+        lines.push("BEGIN:VEVENT");
+        lines.push(`UID:${ev.id}@dimensionalwellnessai.com`);
+        lines.push(`DTSTAMP:${toIcalDate(new Date().toISOString())}`);
+        lines.push(`DTSTART:${dtStart}`);
+        lines.push(`DTEND:${dtEnd}`);
+        lines.push(`SUMMARY:${escapeIcal(ev.title)}`);
+        if (ev.description) lines.push(`DESCRIPTION:${escapeIcal(ev.description)}`);
+        if (ev.eventType)   lines.push(`CATEGORIES:${escapeIcal(ev.eventType)}`);
+        lines.push("END:VEVENT");
+      }
+
+      lines.push("END:VCALENDAR");
+
+      res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+      res.setHeader("Content-Disposition", 'attachment; filename="dw-calendar.ics"');
+      res.setHeader("Cache-Control", "no-cache, no-store");
+      res.send(lines.join("\r\n"));
+    } catch (error) {
+      res.status(500).send("Failed to generate calendar feed.");
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────────────
+
   app.get("/api/calendar/:id", requireAuth, async (req, res) => {
     try {
       const event = await storage.getCalendarEventForUser(req.params.id, req.session.userId!);

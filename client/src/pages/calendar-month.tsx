@@ -13,10 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft, ChevronRight, ChevronDown, Plus, Dumbbell, Utensils,
-  Brain, Clock, Calendar, Sparkles, Check, Loader2,
+  Brain, Clock, Calendar, Sparkles, Check, Loader2, Link2, Copy, ExternalLink,
 } from "lucide-react";
+import { SiApple, SiGooglecalendar } from "react-icons/si";
 
 type CalendarView = "day" | "week" | "month";
 
@@ -362,10 +364,17 @@ function DaySheet({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function CalendarMonthPage() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [view, setView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+
+  const { data: icalData } = useQuery<{ url: string }>({
+    queryKey: ["/api/calendar/ical-token"],
+    enabled: subscribeOpen,
+  });
 
   // Auto-switch to day view if ?view=day is in the URL (e.g. from Today card "More")
   useEffect(() => {
@@ -410,16 +419,94 @@ export default function CalendarMonthPage() {
       <PageHeader
         title="Calendar"
         rightContent={
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => navigate("/calendar/manage")}
-            data-testid="button-manage-calendar"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setSubscribeOpen(true)}
+              data-testid="button-subscribe-calendar"
+              title="Subscribe / Sync"
+            >
+              <Link2 className="w-5 h-5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate("/calendar/manage")}
+              data-testid="button-manage-calendar"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </div>
         }
       />
+
+      {/* ── Subscribe / Sync Sheet ── */}
+      <Sheet open={subscribeOpen} onOpenChange={setSubscribeOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2">
+              <Link2 className="w-4 h-4" /> Sync with Your Calendar
+            </SheetTitle>
+            <SheetDescription>
+              Subscribe to a live feed so Apple Calendar or Google Calendar automatically syncs your DW events.
+            </SheetDescription>
+          </SheetHeader>
+
+          {icalData?.url ? (
+            <div className="space-y-4">
+              {/* URL display */}
+              <div className="bg-muted rounded-xl px-3 py-2.5 flex items-center gap-2">
+                <p className="flex-1 text-xs text-muted-foreground font-mono truncate" data-testid="text-ical-url">
+                  {icalData.url}
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 h-7 px-2"
+                  data-testid="button-copy-ical-url"
+                  onClick={() => {
+                    navigator.clipboard.writeText(icalData.url);
+                    toast({ title: "Copied!", description: "Paste this URL into Apple or Google Calendar." });
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              {/* Quick-action buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <a
+                  href={`webcal://${icalData.url.replace(/^https?:\/\//, "")}`}
+                  className="flex items-center gap-2 justify-center px-4 py-3 rounded-xl bg-card border border-border/60 hover:border-border transition-all"
+                  data-testid="link-apple-calendar"
+                >
+                  <SiApple className="w-4 h-4" />
+                  <span className="text-sm font-medium">Apple Calendar</span>
+                </a>
+                <a
+                  href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(icalData.url)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 justify-center px-4 py-3 rounded-xl bg-card border border-border/60 hover:border-border transition-all"
+                  data-testid="link-google-calendar"
+                >
+                  <SiGooglecalendar className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-medium">Google Calendar</span>
+                </a>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground text-center px-2">
+                Your calendar link is private — only you can see it. Events update automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* View toggle + nav */}
       <div className="px-4 py-2 flex items-center justify-between gap-2 border-b border-border/40">
