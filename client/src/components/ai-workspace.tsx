@@ -214,21 +214,7 @@ export function AIWorkspace() {
   const [isUploading, setIsUploading] = useState(false);
   const [pendingDocumentIds, setPendingDocumentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [input, setInput] = useState(() => {
-    // Seed input from onboarding intent (do NOT remove here; welcome-message effect cleans it up)
-    const intent = localStorage.getItem("dw_first_intent");
-    if (intent) {
-      const seeded: Record<string, string> = {
-        stress: "I'm stressed and overwhelmed. Help me work through what's going on.",
-        plan: "I need help making a plan and getting organized.",
-        move: "I want to get moving. Help me with a workout or movement plan.",
-        eat: "I need help with eating better. Let's talk nutrition and meal planning.",
-        talk: "I just need to talk. I have a lot on my mind.",
-      };
-      if (seeded[intent]) return seeded[intent];
-    }
-    return getChatDraft() || "";
-  });
+  const [input, setInput] = useState(() => getChatDraft() || "");
   const [conversationVersion, setConversationVersion] = useState(0);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [pendingCrisisMessage, setPendingCrisisMessage] = useState("");
@@ -695,19 +681,21 @@ export function AIWorkspace() {
     
     welcomeMessageSentRef.current = true; // Mark as sent before async operations
 
-    // Intent-based seeding for users coming from the simple welcome.tsx onboarding
-    // (those users have dw_first_intent but no scheduleType/focusArea)
+    // Intent-based welcome for users coming from the simple welcome.tsx onboarding
     const firstIntent = localStorage.getItem("dw_first_intent");
     if (!profile.scheduleType && firstIntent) {
       localStorage.removeItem("dw_first_intent");
+      const userName = localStorage.getItem("dw_user_name");
+      const greeting = userName ? `Hey ${userName}` : "Hey";
+
       const intentMessages: Record<string, string> = {
-        stress: "I'm here. Let's slow down and look at what's weighing on you.\n\nWhat's going on?",
-        plan: "Good. Let's get clear on what needs to happen and build from there.\n\nWhat needs sorting first?",
-        move: "Ready when you are. Let's find movement that fits where you're at today.\n\nWhat does your body feel like right now?",
-        eat: "Let's work on this. Eating well doesn't have to be complicated.\n\nTell me where you're starting from.",
-        talk: "This is a space for you. No agenda, no rush.\n\nWhat's on your mind?",
+        stress: `${greeting} — glad you're here. This is DW, your wellness companion.\n\nYou said you want to work through some stress. Let's do that.\n\nTell me what's been weighing on you most — we'll start there and figure out what to move, drop, or shift.`,
+        plan: `${greeting} — welcome. This is DW.\n\nYou said you want to make a plan. Good call. Let's build something real.\n\nWhat area of your life needs the most structure right now — work, health, finances, or something else?`,
+        move: `${greeting} — welcome to DW.\n\nYou're here to get moving. I can help with that.\n\nWhat does your current activity look like, and what are you working toward? I'll put together something that actually fits your life.`,
+        eat: `${greeting} — good to meet you. I'm DW.\n\nYou want to eat better — let's make that concrete.\n\nWhat's the biggest challenge for you right now: meal planning, knowing what to eat, staying consistent, or something else?`,
+        talk: `${greeting} — welcome. I'm DW, and this is your space.\n\nNo agenda, no checklist. Just talk.\n\nWhat's on your mind?`,
       };
-      const welcomeMsg = intentMessages[firstIntent] ?? "I'm here. What's on your mind?";
+      const welcomeMsg = intentMessages[firstIntent] ?? `${greeting} — I'm DW. What's on your mind?`;
       const convo = createNewConversation();
       addMessageToConversation("assistant", welcomeMsg);
       setActiveConversation(convo.id);

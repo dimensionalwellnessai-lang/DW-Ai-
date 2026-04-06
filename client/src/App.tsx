@@ -404,9 +404,11 @@ function AppContent() {
     }
   }, [location]);
 
-  // Start interactive tour if triggered from another page (e.g. app-tour page)
+  // Start interactive tour only when the user first arrives at home after onboarding
   useEffect(() => {
-    startTourIfPending();
+    if (location === "/command-center") {
+      startTourIfPending();
+    }
   }, [location]);
 
   const handleExitDemo = () => {
