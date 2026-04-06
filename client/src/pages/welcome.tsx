@@ -3,17 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check, Zap, Wind, Target } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Target } from "lucide-react";
 import { saveProfileSetup } from "@/lib/guest-storage";
 
-type VoiceVibe = "calm" | "motivating" | "direct";
 type FirstIntent = "stress" | "plan" | "move" | "eat" | "talk";
-
-const VOICE_VIBES: { id: VoiceVibe; label: string; desc: string; icon: typeof Zap; recommended?: boolean }[] = [
-  { id: "calm", label: "Calm", desc: "Steady, grounding presence", icon: Wind },
-  { id: "motivating", label: "Motivating", desc: "Energetic push when you need it", icon: Zap },
-  { id: "direct", label: "Direct", desc: "No fluff — let's get things done", icon: Target, recommended: true },
-];
 
 const INTENT_OPTIONS: { id: FirstIntent; label: string; emoji: string }[] = [
   { id: "stress", label: "Work through stress", emoji: "😮‍💨" },
@@ -27,12 +20,12 @@ export default function Welcome() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
-  const [vibe, setVibe] = useState<VoiceVibe>("direct");
   const [intent, setIntent] = useState<FirstIntent | null>(null);
 
   const handleSkipAll = () => {
     saveProfileSetup({ skipped: true });
     localStorage.setItem("dw_onboarding_completed", "1");
+    localStorage.setItem("dw_voice_vibe", "direct");
     localStorage.setItem("dw:tour_pending_start", "true");
     setLocation("/command-center");
   };
@@ -50,16 +43,18 @@ export default function Welcome() {
     saveProfileSetup({ completedAt: Date.now() });
     localStorage.setItem("dw_onboarding_completed", "1");
     if (name.trim()) localStorage.setItem("dw_user_name", name.trim());
-    localStorage.setItem("dw_voice_vibe", vibe);
+    // Vibe is inferred from interaction — default to direct for now
+    localStorage.setItem("dw_voice_vibe", "direct");
     localStorage.setItem("dw_first_intent", intent);
     localStorage.setItem("dw:tour_pending_start", "true");
     setLocation(INTENT_ROUTES[intent]);
   };
 
-  const canAdvance = step < 5 || (step === 5 && intent !== null);
+  // Steps: 1 = hero, 2 = name, 3 = personality card, 4 = first intent
+  const canAdvance = step < 4 || (step === 4 && intent !== null);
 
   const handleNext = () => {
-    if (step < 5) setStep(step + 1);
+    if (step < 4) setStep(step + 1);
     else handleComplete();
   };
 
@@ -134,24 +129,21 @@ export default function Welcome() {
             </Button>
           </header>
 
-          {/* Progress dots: 4 dots representing steps 2-5 (the setup portion) */}
+          {/* Progress dots: 3 dots representing steps 2–4 */}
           <div className="flex gap-1.5 justify-center mb-6">
-            {[1, 2, 3, 4].map((i) => {
-              const dotStep = i + 1; // dot 1 → step 2, dot 4 → step 5
-              return (
-                <div
-                  key={i}
-                  className={`h-1 w-8 rounded-full transition-colors ${
-                    dotStep === step
-                      ? "bg-primary"
-                      : dotStep < step
-                      ? "bg-primary/50"
-                      : "bg-muted"
-                  }`}
-                  data-testid={`progress-step-${dotStep}`}
-                />
-              );
-            })}
+            {[2, 3, 4].map((dotStep) => (
+              <div
+                key={dotStep}
+                className={`h-1 w-8 rounded-full transition-colors ${
+                  dotStep === step
+                    ? "bg-primary"
+                    : dotStep < step
+                    ? "bg-primary/50"
+                    : "bg-muted"
+                }`}
+                data-testid={`progress-step-${dotStep}`}
+              />
+            ))}
           </div>
 
           <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
@@ -185,72 +177,10 @@ export default function Welcome() {
                   </motion.div>
                 )}
 
-                {/* Step 3: Voice vibe */}
+                {/* Step 3: DW personality card */}
                 {step === 3 && (
                   <motion.div
                     key="step3"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-6"
-                  >
-                    <div className="text-center space-y-2">
-                      <h2 className="text-xl font-display font-semibold">
-                        Pick DW's vibe
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        How should I communicate with you?
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      {VOICE_VIBES.map((opt) => {
-                        const Icon = opt.icon;
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => setVibe(opt.id)}
-                            className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                              vibe === opt.id
-                                ? "border-primary bg-primary/5"
-                                : "border-border hover:bg-muted/40"
-                            }`}
-                            data-testid={`vibe-${opt.id}`}
-                            aria-pressed={vibe === opt.id}
-                          >
-                            <Icon
-                              className={`w-5 h-5 shrink-0 ${
-                                vibe === opt.id
-                                  ? "text-primary"
-                                  : "text-muted-foreground"
-                              }`}
-                            />
-                            <div className="flex-1">
-                              <span className="font-medium text-sm">
-                                {opt.label}
-                              </span>
-                              {opt.recommended && (
-                                <span className="ml-2 text-xs text-primary font-medium">
-                                  recommended
-                                </span>
-                              )}
-                              <p className="text-xs text-muted-foreground">
-                                {opt.desc}
-                              </p>
-                            </div>
-                            {vibe === opt.id && (
-                              <Check className="w-4 h-4 text-primary shrink-0" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Step 4: DW personality card */}
-                {step === 4 && (
-                  <motion.div
-                    key="step4"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -296,10 +226,10 @@ export default function Welcome() {
                   </motion.div>
                 )}
 
-                {/* Step 5: First intent */}
-                {step === 5 && (
+                {/* Step 4: First intent */}
+                {step === 4 && (
                   <motion.div
-                    key="step5"
+                    key="step4"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
@@ -346,7 +276,7 @@ export default function Welcome() {
                   className="w-full"
                   data-testid="button-continue"
                 >
-                  {step === 5 ? "Let's go" : "Continue"}
+                  {step === 4 ? "Let's go" : "Continue"}
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
