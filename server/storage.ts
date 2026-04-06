@@ -715,7 +715,6 @@ export interface IStorage {
   getWeeklyPlanReview(planId: string, userId: string): Promise<WeeklyPlanReview | undefined>;
   createWeeklyPlanReview(data: InsertWeeklyPlanReview): Promise<WeeklyPlanReview>;
   updateWeeklyPlanReview(planId: string, userId: string, data: UpdateWeeklyPlanReview): Promise<WeeklyPlanReview | undefined>;
-  getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]>;
 
   // Community Opportunities
   getCommunityOpportunities(): Promise<CommunityOpportunityRecord[]>;
@@ -3600,14 +3599,6 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(weeklyPlanReviews.planId, planId), eq(weeklyPlanReviews.userId, userId)))
       .returning();
     return updated;
-  }
-
-  async getArchivedElevationPlans(userId: string): Promise<ElevationPlan[]> {
-    return db
-      .select()
-      .from(elevationPlans)
-      .where(and(eq(elevationPlans.userId, userId), eq(elevationPlans.status, "archived")))
-      .orderBy(desc(elevationPlans.createdAt));
   }
 
   async getCommunityOpportunities(): Promise<CommunityOpportunityRecord[]> {
