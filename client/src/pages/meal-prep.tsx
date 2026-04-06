@@ -820,7 +820,7 @@ const VIDEO_CATEGORIES = [
   "Budget",
 ];
 
-function DbPlanMeals({ planId }: { planId: string }) {
+function DbPlanMeals({ planId, onCook }: { planId: string; onCook: (meal: Meal) => void }) {
   const { data: meals = [], isLoading } = useQuery<Meal[]>({
     queryKey: ["/api/meal-plans", planId, "meals"],
     queryFn: async () => {
@@ -849,25 +849,53 @@ function DbPlanMeals({ planId }: { planId: string }) {
     );
   }
 
+  // Group meals by day (extract day from title like "Monday Breakfast")
+  const mealsByDay: Record<string, Meal[]> = {};
+  for (const meal of meals) {
+    const day = meal.title?.split(" ")[0] || "Other";
+    if (!mealsByDay[day]) mealsByDay[day] = [];
+    mealsByDay[day].push(meal);
+  }
+  const dayOrder = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday","Other"];
+  const sortedDays = Object.keys(mealsByDay).sort((a,b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+
   return (
-    <div className="mt-3 pt-3 border-t space-y-2">
+    <div className="mt-3 pt-3 border-t space-y-3">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meals in this plan</h4>
-      {meals.map(meal => (
-        <div key={meal.id} className="flex items-start gap-2 py-1.5">
-          <Utensils className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">{meal.title}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              {meal.mealType && meal.mealType !== "other" && (
-                <Badge variant="outline" className="text-[10px] capitalize">{meal.mealType}</Badge>
-              )}
-              {meal.weekLabel && (
-                <span className="text-xs text-muted-foreground">{meal.weekLabel}</span>
-              )}
-            </div>
-            {meal.notes && (
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{meal.notes}</p>
-            )}
+      {sortedDays.map(day => (
+        <div key={day}>
+          <p className="text-xs font-semibold text-foreground/60 mb-1.5">{day}</p>
+          <div className="space-y-1.5">
+            {mealsByDay[day].map(meal => {
+              const mealSlot = meal.title?.split(" ").slice(1).join(" ") || meal.mealType || "";
+              const foodItems = meal.notes
+                ? meal.notes.replace(/Est\. macros:.*/i, "").trim()
+                : "";
+              return (
+                <div key={meal.id} className="flex items-start gap-2.5 bg-background/50 rounded-lg px-3 py-2.5">
+                  <Utensils className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-foreground">{mealSlot}</p>
+                      {meal.mealType && meal.mealType !== "other" && (
+                        <Badge variant="outline" className="text-[9px] capitalize py-0">{meal.mealType}</Badge>
+                      )}
+                    </div>
+                    {foodItems && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{foodItems}</p>
+                    )}
+                  </div>
+                  <button
+                    className="shrink-0 flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-lg px-2.5 py-1.5 active:scale-95 transition-transform"
+                    onClick={(e) => { e.stopPropagation(); onCook(meal); }}
+                    data-testid={`button-cook-meal-${meal.id}`}
+                  >
+                    <ChefHat className="w-3 h-3" />
+                    Cook
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -889,6 +917,7 @@ export default function MealPrepPage() {
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
   const [expandedDbPlan, setExpandedDbPlan] = useState<string | null>(null);
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
+  const [cookingMeal, setCookingMeal] = useState<Meal | null>(null);
   const [videoCategory, setVideoCategory] = useState("All");
   const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
   const [savedVideos, setSavedVideos] = useState<string[]>(() => {
@@ -1331,12 +1360,181 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
   const checkedCount = groceryList?.items.filter(i => i.isChecked).length || 0;
   const pantryCount = groceryList?.items.filter(i => i.isInPantry).length || 0;
 
+  // Build proactive suggestion pool — rotates based on context
+  const hour = new Date().getHours();
+  const proactiveSuggestions = [
+    ...(dbMealPlans.length > 0 ? [{
+      icon: Sparkles,
+      color: "text-violet-500",
+      bg: "bg-violet-500/10",
+      title: "Ready to set body goals?",
+      body: "You have a full life system — DW can help you build goals around your body, energy, and nutrition.",
+      action: "Talk about it",
+      path: "/talk?topic=Help+me+plan+body+goals+based+on+my+life+system",
+    }] : []),
+    {
+      icon: Wand2,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      title: "Bored with your meals?",
+      body: "Tell DW what you're feeling like and get fresh meal ideas that match your energy and macros.",
+      action: "Get ideas",
+      path: "/talk?topic=Suggest+fresh+meal+ideas+based+on+my+life+system",
+    },
+    {
+      icon: Zap,
+      color: "text-orange-500",
+      bg: "bg-orange-500/10",
+      title: hour >= 16 ? "Evening workout swap?" : "Quick workout idea?",
+      body: hour >= 16
+        ? "Not feeling your planned workout? DW can suggest a shorter session that still hits your goals."
+        : "Want to work in some movement today? Get a quick workout suggestion.",
+      action: "Show me",
+      path: "/workout",
+    },
+  ].filter(Boolean);
+  const proactiveIdx = Math.floor(Date.now() / (1000 * 60 * 60 * 8)) % proactiveSuggestions.length;
+  const visibleSuggestions = [
+    proactiveSuggestions[proactiveIdx],
+    proactiveSuggestions[(proactiveIdx + 1) % proactiveSuggestions.length],
+  ];
+
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Meal Plans" />
+
+      {/* Cook Session Dialog */}
+      {cookingMeal && (
+        <Dialog open={!!cookingMeal} onOpenChange={(open) => { if (!open) setCookingMeal(null); }}>
+          <DialogContent className="max-w-sm mx-auto rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ChefHat className="w-5 h-5 text-primary" />
+                {cookingMeal.title}
+              </DialogTitle>
+              <DialogDescription>
+                {cookingMeal.mealType && <span className="capitalize">{cookingMeal.mealType}</span>}
+                {cookingMeal.weekLabel && ` · ${cookingMeal.weekLabel}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {cookingMeal.notes && (
+                <div className="bg-muted/50 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">What to eat</p>
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {cookingMeal.notes.replace(/Est\. macros:.*/i, "").trim()}
+                  </p>
+                  {/Est\. macros:/i.test(cookingMeal.notes) && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {cookingMeal.notes.match(/Est\. macros:.*/i)?.[0]}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setCookingMeal(null);
+                    setLocation(`/talk?topic=${encodeURIComponent(`Help me cook ${cookingMeal.title} — give me step-by-step cooking instructions for this meal from my life system`)}`);
+                  }}
+                  data-testid="button-get-cooking-help"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Get step-by-step help from DW
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setCookingMeal(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
       
       <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
+
+          {/* ── MY PLANS — top of page, always visible if imported plans exist ── */}
+          {dbMealPlans.length > 0 && (
+            <section data-testid="section-my-plans-top">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                    <Sparkles className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <h2 className="font-semibold text-foreground">My Plans</h2>
+                  <Badge variant="secondary" className="text-xs">{dbMealPlans.length} imported</Badge>
+                </div>
+              </div>
+              {/* Horizontal scroll of plan chips */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+                {dbMealPlans.map(plan => (
+                  <button
+                    key={plan.id}
+                    onClick={() => setExpandedDbPlan(expandedDbPlan === plan.id ? null : plan.id)}
+                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all active:scale-95 ${
+                      expandedDbPlan === plan.id
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                        : "bg-card border-border text-foreground"
+                    }`}
+                    data-testid={`chip-plan-${plan.id}`}
+                  >
+                    <Utensils className="w-3.5 h-3.5 opacity-60" />
+                    <span className="max-w-[120px] truncate">{plan.title}</span>
+                    {plan.isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* Expanded plan — show inline below chips */}
+              {expandedDbPlan && (() => {
+                const plan = dbMealPlans.find(p => p.id === expandedDbPlan);
+                if (!plan) return null;
+                return (
+                  <div className="mt-3 border rounded-xl overflow-hidden" data-testid={`expanded-plan-${plan.id}`}>
+                    <div className="px-4 py-3 bg-muted/30 flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-foreground">{plan.title}</h3>
+                        {plan.summary && <p className="text-xs text-muted-foreground mt-0.5">{plan.summary}</p>}
+                      </div>
+                      {plan.isActive && <Badge variant="default" className="text-xs shrink-0">Active</Badge>}
+                    </div>
+                    <div className="px-4">
+                      <DbPlanMeals planId={plan.id} onCook={setCookingMeal} />
+                    </div>
+                  </div>
+                );
+              })()}
+            </section>
+          )}
+
+          {/* ── PROACTIVE SUGGESTIONS — contextual, rotating ── */}
+          <section data-testid="section-proactive-suggestions">
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+              {visibleSuggestions.map((s, i) => {
+                const SIcon = s!.icon;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setLocation(s!.path)}
+                    className="flex-shrink-0 w-[240px] text-left bg-card border border-border rounded-2xl p-4 space-y-2 active:scale-[0.97] transition-transform"
+                    data-testid={`proactive-suggestion-${i}`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl ${s!.bg} flex items-center justify-center`}>
+                      <SIcon className={`w-4 h-4 ${s!.color}`} />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{s!.title}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{s!.body}</p>
+                    <p className={`text-xs font-medium ${s!.color} flex items-center gap-1`}>
+                      {s!.action} <ChevronRight className="w-3 h-3" />
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
           {/* Planning Horizon & Energy Shift */}
           <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
             <div className="flex items-center gap-3">
@@ -1992,49 +2190,20 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
               </div>
             )}
 
-            {/* Imported Meal Plans from Life System */}
+            {/* My Plans shortcut — scroll back to top for the interactive plan selector */}
             {dbMealPlans.length > 0 && (
-              <div className="space-y-3" data-testid="section-imported-meal-plans">
+              <div className="flex items-center justify-between py-2 px-4 bg-emerald-500/5 rounded-xl border border-emerald-500/15" data-testid="section-imported-meal-plans">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-                    <Sparkles className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <h2 className="font-semibold text-foreground">Your Meal Plans</h2>
-                  <Badge variant="secondary" className="text-xs">{dbMealPlans.length} imported</Badge>
+                  <Sparkles className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm font-medium text-foreground">{dbMealPlans.length} imported plan{dbMealPlans.length > 1 ? "s" : ""} — see top</span>
                 </div>
-                <div className="space-y-2">
-                  {dbMealPlans.map(plan => (
-                    <Card
-                      key={plan.id}
-                      className="hover-elevate cursor-pointer"
-                      data-testid={`card-db-meal-plan-${plan.id}`}
-                      onClick={() => setExpandedDbPlan(expandedDbPlan === plan.id ? null : plan.id)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium text-foreground truncate">{plan.title}</h3>
-                              {expandedDbPlan === plan.id
-                                ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-                                : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-                              }
-                            </div>
-                            {plan.summary && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">{plan.summary}</p>
-                            )}
-                          </div>
-                          {plan.isActive && (
-                            <Badge variant="default" className="text-xs shrink-0">Active</Badge>
-                          )}
-                        </div>
-                        {expandedDbPlan === plan.id && (
-                          <DbPlanMeals planId={plan.id} />
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <button
+                  className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1"
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  data-testid="button-scroll-to-plans"
+                >
+                  Back to top <ChevronRight className="w-3 h-3" />
+                </button>
               </div>
             )}
 

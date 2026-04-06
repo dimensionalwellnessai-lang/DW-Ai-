@@ -61,6 +61,7 @@ export interface ParsedDaySchedule {
     title: string;
     time: string;
     endTime: string;
+    steps: string[];
     notes: string;
     dimension?: string;
   }>;
@@ -124,8 +125,8 @@ Return ONLY valid JSON matching this exact structure (no markdown, no explanatio
         "tasks": ["go screen by screen", "write down bugs", "note awkward flows"]
       },
       "otherEvents": [
-        { "title": "Clean Reset", "time": "17:30", "endTime": "17:45", "notes": "dishes, trash, quick pickup, wipe counter", "dimension": "environmental" },
-        { "title": "Wake Up", "time": "06:00", "endTime": "06:05", "notes": "drink water", "dimension": "physical" }
+        { "title": "Clean Reset Routine", "time": "17:30", "endTime": "17:45", "steps": ["wash dishes or load dishes", "take out trash if full", "wipe counters", "pick up anything left out"], "notes": "dishes, trash, quick pickup, wipe counter", "dimension": "environmental" },
+        { "title": "Wake Up Reset", "time": "06:00", "endTime": "06:05", "steps": ["get out of bed immediately", "drink water", "do not open phone", "open blinds or turn on light"], "notes": "drink water, no phone", "dimension": "physical" }
       ]
     },
     "tuesday": {},
@@ -154,6 +155,7 @@ CRITICAL RULES:
 - If a day has no app work block, set appWork to null.
 - Keep exact food items for each meal — list every item separately in the array.
 - For EVERY otherEvent, assign a "dimension" field: physical (wake up, water, shower, grooming, walk, movement, meal prep), environmental (clean reset, laundry, dishes, trash), spiritual (meditation, breathwork, reflection, spiritual learning), financial (money block, finances), intellectual (app work, planning, study), social (going out, social time, friends). Never leave dimension empty.
+- For EVERY otherEvent, extract ALL bullet points and action items into the "steps" array as individual strings — exactly as written in the document. If a routine has 4 bullet points, steps should have 4 items. Never leave steps empty; if no bullets are listed, include at least one step summarizing the block.
 - otherEvents should include ALL non-workout, non-meal, non-appWork events: wake up, meditation, activation, shower, grooming, clean reset, walk, money block, spiritual learning, grocery run, deep clean, social blocks, etc.`;
 
   const response = await openai.chat.completions.create({

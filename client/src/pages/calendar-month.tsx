@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentType } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -6,20 +7,19 @@ import {
   isSameDay, addMonths, subMonths, addDays, startOfWeek, endOfWeek,
   addWeeks, subWeeks, isToday, getHours,
 } from "date-fns";
-import type { CalendarEvent } from "@shared/schema";
+import type { CalendarEvent, CalendarEventTask } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
-  ChevronLeft, ChevronRight, Plus, Dumbbell, Utensils,
-  Brain, Clock, Calendar, Sparkles,
+  ChevronLeft, ChevronRight, ChevronDown, Plus, Dumbbell, Utensils,
+  Brain, Clock, Calendar, Sparkles, Check, Loader2,
 } from "lucide-react";
 
 type CalendarView = "day" | "week" | "month";
 
-const EVENT_CONFIG: Record<string, { dot: string; pill: string; icon: React.ComponentType<{ className?: string }> }> = {
+const EVENT_CONFIG: Record<string, { dot: string; pill: string; icon: ComponentType<{ className?: string }> }> = {
   workout:  { dot: "bg-green-500",  pill: "bg-green-500/15 border border-green-500/30 text-green-700 dark:text-green-300",  icon: Dumbbell },
   meal:     { dot: "bg-orange-500", pill: "bg-orange-500/15 border border-orange-500/30 text-orange-700 dark:text-orange-300", icon: Utensils },
   work:     { dot: "bg-violet-500", pill: "bg-violet-500/15 border border-violet-500/30 text-violet-700 dark:text-violet-300", icon: Brain },
@@ -222,42 +222,92 @@ function DayView({ currentDate, events }: { currentDate: Date; events: CalendarE
   );
 }
 
+// ─── Event Tasks (loaded lazily when an event is expanded) ───────────────────
+function EventTasksSection({ eventId }: { eventId: string }) {
+  const { data: tasks = [], isLoading } = useQuery<CalendarEventTask[]>({
+    queryKey: ["/api/calendar", eventId, "tasks"],
+    queryFn: async () => {
+      const res = await fetch(`/api/calendar/${eventId}/tasks`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2 opacity-50">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span className="text-xs">Loading steps…</span>
+      </div>
+    );
+  }
+  if (tasks.length === 0) {
+    return <p className="text-xs opacity-50 py-2">No steps recorded for this block.</p>;
+  }
+  return (
+    <ul className="mt-2 space-y-1.5">
+      {tasks.map((task, i) => (
+        <li key={task.id} className="flex items-start gap-2">
+          <div className="mt-0.5 w-4 h-4 rounded-full border border-current/25 flex items-center justify-center shrink-0">
+            {task.isCompleted
+              ? <Check className="w-2.5 h-2.5 opacity-70" />
+              : <span className="text-[9px] font-bold opacity-40">{i + 1}</span>
+            }
+          </div>
+          <span className="text-xs opacity-80 leading-snug">{task.title}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // ─── Day Sheet ───────────────────────────────────────────────────────────────
 function DaySheet({
   date, events, navigate, onClose,
 }: { date: Date; events: CalendarEvent[]; navigate: (path: string) => void; onClose: () => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <>
-      <SheetHeader className="px-4 pt-2 pb-3 border-b">
+      <SheetHeader className="px-4 pt-2 pb-3 border-b shrink-0">
         <SheetTitle className="text-left">{format(date, "EEEE, MMMM d")}</SheetTitle>
         <SheetDescription className="text-left text-xs text-muted-foreground">
-          {events.length === 0 ? "No events scheduled" : `${events.length} event${events.length === 1 ? "" : "s"}`}
+          {events.length === 0 ? "No events scheduled" : `${events.length} event${events.length === 1 ? "" : "s"} · Tap any to see steps`}
         </SheetDescription>
       </SheetHeader>
-      <ScrollArea className="max-h-[55vh]">
-        <div className="px-4 py-3 space-y-2">
-          {events.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Nothing scheduled for this day.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Re-import your life system to populate your schedule.</p>
-            </div>
-          ) : (
-            events.map(evt => {
-              const cfg = eventConfig(evt.eventType);
-              const Icon = cfg.icon;
-              const dim = evt.dimensionTags?.[0];
-              const hasLink = !!evt.linkedRoute;
-              return (
+
+      {/* iOS-compatible scroll: native overflow-y-auto with -webkit touch */}
+      <div
+        className="px-4 py-3 space-y-2"
+        style={{
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          maxHeight: "calc(75vh - 72px)",
+        }}
+      >
+        {events.length === 0 ? (
+          <div className="py-10 text-center">
+            <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Nothing scheduled for this day.</p>
+            <p className="text-xs text-muted-foreground/50 mt-1">Re-import your life system to populate your schedule.</p>
+          </div>
+        ) : (
+          events.map(evt => {
+            const cfg = eventConfig(evt.eventType);
+            const Icon = cfg.icon;
+            const dim = evt.dimensionTags?.[0];
+            const hasLink = !!evt.linkedRoute;
+            const isExpanded = expandedId === String(evt.id);
+            return (
+              <div
+                key={evt.id}
+                className={`${cfg.pill} rounded-xl overflow-hidden transition-all`}
+                data-testid={`event-card-${evt.id}`}
+              >
+                {/* Tap row — toggles expanded steps */}
                 <button
-                  key={evt.id}
-                  className={`w-full text-left ${cfg.pill} rounded-xl px-4 py-3 flex items-start gap-3 transition-all active:scale-[0.98]`}
-                  onClick={() => {
-                    if (hasLink) {
-                      onClose();
-                      navigate(evt.linkedRoute!);
-                    }
-                  }}
-                  data-testid={`event-card-${evt.id}`}
+                  className="w-full text-left px-4 py-3 flex items-start gap-3"
+                  onClick={() => setExpandedId(isExpanded ? null : String(evt.id))}
                 >
                   <div className="mt-0.5 shrink-0">
                     <Icon className="w-4 h-4 opacity-70" />
@@ -270,9 +320,6 @@ function DaySheet({
                         {formatTime(evt.startTime)}{evt.endTime ? ` – ${formatTime(evt.endTime)}` : ""}
                       </span>
                     </div>
-                    {evt.description && (
-                      <p className="text-xs opacity-60 mt-1 line-clamp-2">{evt.description}</p>
-                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {dim && (
@@ -280,14 +327,33 @@ function DaySheet({
                         {dim}
                       </Badge>
                     )}
-                    {hasLink && <ChevronRight className="w-3.5 h-3.5 opacity-40" />}
+                    <ChevronDown className={`w-3.5 h-3.5 opacity-40 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                   </div>
                 </button>
-              );
-            })
-          )}
-        </div>
-      </ScrollArea>
+
+                {/* Expanded: show bullet-point steps + optional nav link */}
+                {isExpanded && (
+                  <div className="px-4 pb-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+                    <EventTasksSection eventId={String(evt.id)} />
+                    {hasLink && (
+                      <button
+                        className="mt-3 flex items-center gap-1 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity"
+                        onClick={() => { onClose(); navigate(evt.linkedRoute!); }}
+                        data-testid={`event-nav-${evt.id}`}
+                      >
+                        Open in section
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+        {/* Bottom padding so last item clears the rounded sheet edge */}
+        <div className="h-4" />
+      </div>
     </>
   );
 }

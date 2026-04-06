@@ -12326,7 +12326,23 @@ Response:`;
               dimensionTags: [inferredDimension],
               linkedRoute: oLinkedRoute,
             });
-            if (oEvt) results.calendarEvents++;
+            if (oEvt) {
+              // Create event tasks from steps (bullet-point actions in this block)
+              const steps: string[] = Array.isArray((other as any).steps) && (other as any).steps.length > 0
+                ? (other as any).steps
+                : (other.notes || "").split(/[•·,\n]/).map((s: string) => s.trim()).filter(Boolean);
+              for (let si = 0; si < steps.length; si++) {
+                await storage.createEventTask({
+                  calendarEventId: oEvt.id,
+                  userId,
+                  title: steps[si],
+                  isCompleted: false,
+                  dwSuggested: false,
+                  linkedRoute: oLinkedRoute,
+                });
+              }
+              results.calendarEvents++;
+            }
           }
         }
       }

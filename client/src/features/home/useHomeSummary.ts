@@ -308,6 +308,7 @@ export function useHomeSummary(): HomeSummary {
   const proactiveCards: ProactiveCardData[] = useMemo(() => {
     const cards: ProactiveCardData[] = [];
     const hour = new Date().getHours();
+    const hasLifeSystem = allEvents.length > 5;
 
     if (hour >= 5 && hour < 12 && !moodData) {
       cards.push({
@@ -332,6 +333,60 @@ export function useHomeSummary(): HomeSummary {
       });
     }
 
+    // Life-system aware: if user has imported their schedule, offer to discuss body goals
+    if (hasLifeSystem && activeGoals.length === 0) {
+      cards.push({
+        type: "goal-reminder",
+        title: "Your life system is ready",
+        message: "You have a full week imported — ready to set some goals around your body, workouts, or nutrition?",
+        why: "Having clear goals connected to your schedule makes them much easier to stick to.",
+        actionLabel: "Talk about body goals",
+        actionPath: "/talk?topic=Help+me+set+goals+based+on+my+life+system",
+        priority: "medium",
+      });
+    } else if (activeGoals.length > 0 && todayScheduleBlocks.length === 0 && todayCalendarEvents.length === 0) {
+      cards.push({
+        type: "goal-reminder",
+        title: COPY.proactiveCards.goalTitle,
+        message: COPY.proactiveCards.goalMessage,
+        why: COPY.proactiveCards.goalWhy,
+        actionLabel: "Get suggestions",
+        actionPath: "/talk",
+      });
+    }
+
+    // Meal time suggestions
+    if (hour >= 6 && hour < 9) {
+      cards.push({
+        type: "meal-suggestion",
+        title: "Breakfast time",
+        message: hasLifeSystem
+          ? "Your life system has breakfast planned — check your calendar for today's meal."
+          : "Start your day right. Get a quick breakfast idea that fits your goals.",
+        actionLabel: hasLifeSystem ? "View calendar" : "Get breakfast idea",
+        actionPath: hasLifeSystem ? "/calendar" : "/meal-prep",
+      });
+    } else if (hour >= 11 && hour < 13) {
+      cards.push({
+        type: "meal-suggestion",
+        title: "Almost lunch",
+        message: "See what you have planned for lunch today, or get a quick idea from DW.",
+        actionLabel: "View meal plans",
+        actionPath: "/meal-prep",
+      });
+    }
+
+    // Workout reminder based on time of day
+    if (hour >= 17 && hour < 19 && hasLifeSystem) {
+      cards.push({
+        type: "workout-suggestion",
+        title: "Workout window",
+        message: "Your life system puts your workout around this time. Ready to get started?",
+        actionLabel: "Open Workout Hub",
+        actionPath: "/workout",
+      });
+    }
+
     if (hour >= 18 && hour < 22) {
       cards.push({
         type: "wind-down",
@@ -343,19 +398,8 @@ export function useHomeSummary(): HomeSummary {
       });
     }
 
-    if (activeGoals.length > 0 && todayScheduleBlocks.length === 0 && todayCalendarEvents.length === 0) {
-      cards.push({
-        type: "goal-reminder",
-        title: COPY.proactiveCards.goalTitle,
-        message: COPY.proactiveCards.goalMessage,
-        why: COPY.proactiveCards.goalWhy,
-        actionLabel: "Get suggestions",
-        actionPath: "/talk",
-      });
-    }
-
     return cards;
-  }, [moodData, energyLevel, activeGoals.length, todayScheduleBlocks.length, todayCalendarEvents.length]);
+  }, [moodData, energyLevel, activeGoals.length, todayScheduleBlocks.length, todayCalendarEvents.length, allEvents.length]);
 
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
