@@ -254,16 +254,16 @@ export function useHomeSummary(): HomeSummary {
   }, [scheduleBlocks]);
 
   const todayCalendarEvents: CalendarEventItem[] = useMemo(() => {
-    const now = new Date();
-    const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    // Use the stored date prefix directly (events are stored as "YYYY-MM-DDThh:mm:ss"
+    // with no timezone suffix, matching the server's UTC date). Compare the first
+    // 10 chars of startTime against today's UTC date so timezone differences in the
+    // browser don't cause mismatches.
+    const utcTodayStr = new Date().toISOString().slice(0, 10);
     return allEvents
       .filter((e) => {
         const st = String(e.startTime ?? "");
-        if (st.includes("T") || st.includes("-")) {
-          const d = new Date(st);
-          if (isNaN(d.getTime())) return false;
-          const localStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-          return localStr === localTodayStr;
+        if (st.length >= 10) {
+          return st.slice(0, 10) === utcTodayStr;
         }
         return true;
       })

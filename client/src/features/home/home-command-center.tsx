@@ -193,8 +193,22 @@ export default function HomeCommandCenter() {
       bgClass: "bg-blue-500/15",
       path: "/calendar",
       dwTopic: "Talk about my day",
-      badge: summary.nextEvent ? "1" : undefined,
-      snippet: summary.nextEvent ? truncate(summary.nextEvent.title, 30) : "No events",
+      badge: summary.todayEvents.length > 0 ? `${summary.todayEvents.length}` : undefined,
+      snippet: (() => {
+        const nowMs = Date.now();
+        const current = summary.todayEvents.find(e => {
+          const s = parseEventTime(e.startTime, new Date());
+          const end = e.endTime ? parseEventTime(e.endTime, new Date()) : null;
+          return s && end && s.getTime() <= nowMs && end.getTime() >= nowMs;
+        });
+        if (current) return `Now: ${truncate(current.title, 22)}`;
+        const next = summary.todayEvents
+          .map(e => ({ e, t: parseEventTime(e.startTime, new Date()) }))
+          .filter(x => x.t && x.t.getTime() > nowMs)
+          .sort((a, b) => a.t!.getTime() - b.t!.getTime())[0];
+        if (next) return `Next: ${truncate(next.e.title, 22)}`;
+        return summary.nextEvent ? truncate(summary.nextEvent.title, 30) : "No events";
+      })(),
     },
     {
       id: "insight",
@@ -690,11 +704,11 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
     later:    "Later",
     fallback: "",
   };
-  const slotColor: Record<TodayCard["slot"], string> = {
-    now:      "text-emerald-600 dark:text-emerald-400",
-    next:     "text-blue-600 dark:text-blue-400",
-    later:    "text-muted-foreground",
-    fallback: "text-muted-foreground",
+  const slotPill: Record<TodayCard["slot"], string> = {
+    now:      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
+    next:     "bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30",
+    later:    "bg-muted/60 text-muted-foreground border border-border/60",
+    fallback: "bg-muted/60 text-muted-foreground border border-border/60",
   };
   const dotColor: Record<TodayCard["slot"], string> = {
     now:      "bg-emerald-500 animate-pulse",
@@ -703,36 +717,45 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
     fallback: "bg-muted-foreground/20",
   };
 
+  const nowLabel = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
   return (
-    <Carousel opts={{ align: "start", dragFree: true }}>
-      <CarouselContent className="-ml-2">
-        {cards.map((card, i) => (
-          <CarouselItem key={i} className="pl-2 basis-[85%]">
-            <button
-              className="cc-card w-full text-left"
-              onClick={() => card.path && setLocation(card.path)}
-              data-testid={`today-card-${card.slot}-${i}`}
-            >
-              {card.slot !== "fallback" && (
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor[card.slot]}`} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${slotColor[card.slot]}`}>
-                    {slotLabel[card.slot]}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-start gap-2">
-                <card.Icon className={`w-4 h-4 mt-0.5 shrink-0 ${card.slot === "now" ? "text-emerald-500" : "text-muted-foreground"}`} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{card.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{card.sub}</p>
-                </div>
-              </div>
-            </button>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
+    <div className="space-y-1.5" data-testid="today-timeline">
+      <p className="text-[11px] text-muted-foreground px-1 mb-2">
+        Now {nowLabel} · {cards.length} {cards[0]?.slot === "fallback" ? "item" : "event"}{cards.length !== 1 ? "s" : ""} ahead
+      </p>
+      {cards.map((card, i) => (
+        <button
+          key={i}
+          className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-card border border-border/50 hover:border-border active:scale-[0.98] transition-all"
+          onClick={() => card.path && setLocation(card.path)}
+          data-testid={`today-card-${card.slot}-${i}`}
+        >
+          {/* time slot indicator */}
+          {card.slot !== "fallback" ? (
+            <div className="flex flex-col items-center gap-0.5 shrink-0 w-12">
+              <span className={`w-1.5 h-1.5 rounded-full ${dotColor[card.slot]}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${slotPill[card.slot]}`}>
+                {slotLabel[card.slot]}
+              </span>
+            </div>
+          ) : (
+            <div className="w-12 shrink-0" />
+          )}
+
+          {/* icon */}
+          <card.Icon className={`w-4 h-4 shrink-0 ${card.slot === "now" ? "text-emerald-500" : "text-muted-foreground"}`} />
+
+          {/* text */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate leading-tight">{card.title}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
+          </div>
+
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+        </button>
+      ))}
+    </div>
   );
 }
 
