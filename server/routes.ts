@@ -12300,6 +12300,22 @@ Response:`;
             const oStart = formatDateStr(dayDate, other.time || "12:00");
             const oEnd = formatDateStr(dayDate, other.endTime || "12:30");
             const inferredDimension = other.dimension ?? inferDimensionFromTitle(other.title);
+
+            // Map dimension/keywords to a relevant app route
+            const titleLower = other.title.toLowerCase();
+            let oLinkedRoute: string | null = null;
+            if (inferredDimension === "spiritual" || titleLower.includes("meditat") || titleLower.includes("breath")) {
+              oLinkedRoute = "/spiritual";
+            } else if (inferredDimension === "physical" || titleLower.includes("activation") || titleLower.includes("stretch") || titleLower.includes("walk")) {
+              oLinkedRoute = "/workout";
+            } else if (titleLower.includes("wind-down") || titleLower.includes("wind down") || titleLower.includes("morning") || titleLower.includes("routin")) {
+              oLinkedRoute = "/routines";
+            } else if (inferredDimension === "environmental" || titleLower.includes("clean") || titleLower.includes("reset")) {
+              oLinkedRoute = "/habits";
+            } else if (inferredDimension === "financial" || titleLower.includes("admin") || titleLower.includes("finance")) {
+              oLinkedRoute = "/goals";
+            }
+
             const oEvt = await createCalEvent({
               userId,
               title: other.title,
@@ -12308,6 +12324,7 @@ Response:`;
               endTime: oEnd,
               eventType: "event",
               dimensionTags: [inferredDimension],
+              linkedRoute: oLinkedRoute,
             });
             if (oEvt) results.calendarEvents++;
           }

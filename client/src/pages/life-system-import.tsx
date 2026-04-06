@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentType } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -6,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  ArrowLeft, CheckCircle2, Loader2,
+  ArrowLeft, CheckCircle2, Loader2, ChevronRight,
   Target, Repeat2, CalendarDays, UtensilsCrossed,
   ShoppingCart, Sunrise, Moon, Dumbbell, Laptop2,
-  ChefHat,
+  ChefHat, Lightbulb, TrendingUp, Sparkles,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -66,6 +67,90 @@ const countGrocery     = (g: ParsedData["groceryList"]) =>
 const hasSchedule = (p: ParsedData) =>
   countWorkouts(p.weeklySchedule) > 0 || countMeals(p.weeklySchedule) > 0 ||
   countAppWork(p.weeklySchedule) > 0 || countOtherEvents(p.weeklySchedule) > 0;
+
+// ── Saved-to destination map ───────────────────────────────────────────────
+const RESULT_DESTINATIONS: {
+  key: string;
+  label: string;
+  unit: string;
+  route: string;
+  icon: ComponentType<{ className?: string }>;
+  color: string;
+  bgClass: string;
+}[] = [
+  {
+    key: "calendarEvents",
+    label: "Calendar",
+    unit: "events",
+    route: "/calendar",
+    icon: CalendarDays,
+    color: "text-blue-500",
+    bgClass: "bg-blue-500/10",
+  },
+  {
+    key: "workouts",
+    label: "Workout Hub",
+    unit: "workout days",
+    route: "/workout",
+    icon: Dumbbell,
+    color: "text-green-500",
+    bgClass: "bg-green-500/10",
+  },
+  {
+    key: "meals",
+    label: "Nutrition Hub",
+    unit: "meal plans",
+    route: "/meal-prep",
+    icon: UtensilsCrossed,
+    color: "text-orange-500",
+    bgClass: "bg-orange-500/10",
+  },
+  {
+    key: "habits",
+    label: "Habits & Momentum",
+    unit: "habits",
+    route: "/habits",
+    icon: TrendingUp,
+    color: "text-rose-500",
+    bgClass: "bg-rose-500/10",
+  },
+  {
+    key: "goals",
+    label: "Goals",
+    unit: "goals",
+    route: "/goals",
+    icon: Target,
+    color: "text-violet-500",
+    bgClass: "bg-violet-500/10",
+  },
+  {
+    key: "insights",
+    label: "Insights",
+    unit: "insights",
+    route: "/insights",
+    icon: Lightbulb,
+    color: "text-amber-500",
+    bgClass: "bg-amber-500/10",
+  },
+  {
+    key: "routines",
+    label: "Routines",
+    unit: "routines",
+    route: "/routines",
+    icon: Repeat2,
+    color: "text-purple-500",
+    bgClass: "bg-purple-500/10",
+  },
+  {
+    key: "groceryItems",
+    label: "Grocery List",
+    unit: "items",
+    route: "/shopping-list",
+    icon: ShoppingCart,
+    color: "text-teal-500",
+    bgClass: "bg-teal-500/10",
+  },
+];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DWSmartImportPage() {
@@ -422,35 +507,78 @@ export default function DWSmartImportPage() {
 
         {/* ── STEP 3: DONE ────────────────────────────────────────────────── */}
         {step === "done" && applyResult && (
-          <div className="p-6 flex flex-col items-center gap-5 text-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mt-4" />
-            <div>
-              <h2 className="text-xl font-semibold mb-1">All done!</h2>
-              <p className="text-sm text-muted-foreground">Your life system is now in DW.</p>
+          <div className="p-5 flex flex-col gap-5">
+            {/* Hero */}
+            <div className="flex flex-col items-center gap-3 text-center pt-4">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                <CheckCircle2 className="w-9 h-9 text-green-500" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Your life system is live!</h2>
+                <p className="text-sm text-muted-foreground mt-1">Everything's been organized into the right sections below.</p>
+              </div>
             </div>
 
-            <div className="w-full rounded-xl border border-border/40 divide-y divide-border/40 text-sm">
-              {Object.entries(applyResult).map(([key, count]) =>
-                (count as number) > 0 ? (
-                  <div key={key} className="flex items-center justify-between px-4 py-3">
-                    <span className="capitalize text-foreground/80">{key.replace(/([A-Z])/g, " $1")}</span>
-                    <span className="font-semibold text-primary">{count as number} added</span>
-                  </div>
-                ) : null
+            {/* Destination cards */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Saved to</p>
+              {RESULT_DESTINATIONS.filter(d => (applyResult[d.key] ?? 0) > 0).map(dest => {
+                const Icon = dest.icon;
+                const count = applyResult[dest.key] as number;
+                return (
+                  <button
+                    key={dest.key}
+                    onClick={() => navigate(dest.route)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border/50 bg-card hover:bg-muted/50 active:scale-[0.98] transition-all text-left"
+                    data-testid={`btn-dest-${dest.key}`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl ${dest.bgClass} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-5 h-5 ${dest.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{dest.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{count} {dest.unit} added</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-primary font-medium shrink-0">
+                      View <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
+                  </button>
+                );
+              })}
+              {RESULT_DESTINATIONS.every(d => (applyResult[d.key] ?? 0) === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nothing was saved — try pasting a different document.
+                </p>
               )}
             </div>
 
-            <Button className="w-full" size="lg" onClick={() => navigate("/command-center")} data-testid="btn-done">
-              Go to Command Center
-            </Button>
-
-            <button
-              className="text-sm text-muted-foreground underline"
-              onClick={() => { setStep("paste"); setText(""); setParsed(null); setApplyResult(null); setParseError(""); }}
-              data-testid="btn-import-another"
-            >
-              Import another document
-            </button>
+            {/* CTAs */}
+            <div className="flex flex-col gap-2 pb-4">
+              <Button
+                className="w-full gap-2"
+                size="lg"
+                onClick={() => navigate("/calendar")}
+                data-testid="btn-view-calendar"
+              >
+                <CalendarDays className="w-4 h-4" />
+                Open My Calendar
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate("/command-center")}
+                data-testid="btn-done"
+              >
+                Go to Command Center
+              </Button>
+              <button
+                className="text-sm text-muted-foreground underline mt-1"
+                onClick={() => { setStep("paste"); setText(""); setParsed(null); setApplyResult(null); setParseError(""); }}
+                data-testid="btn-import-another"
+              >
+                Import another document
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -246,7 +246,7 @@ function DaySheet({
               const cfg = eventConfig(evt.eventType);
               const Icon = cfg.icon;
               const dim = evt.dimensionTags?.[0];
-              const hasLink = evt.linkedRoute && evt.linkedRoute !== "/plan";
+              const hasLink = !!evt.linkedRoute;
               return (
                 <button
                   key={evt.id}
