@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check, Target } from "lucide-react";
 import { saveProfileSetup } from "@/lib/guest-storage";
 
-type FirstIntent = "stress" | "plan" | "move" | "eat" | "talk";
+type FirstIntent = "lifesystem" | "stress" | "plan" | "move" | "eat" | "talk";
 
 const INTENT_OPTIONS: { id: FirstIntent; label: string; emoji: string }[] = [
+  { id: "lifesystem", label: "Create my life system", emoji: "🗂️" },
   { id: "stress", label: "Work through stress", emoji: "😮‍💨" },
   { id: "plan", label: "Make a plan", emoji: "🗓️" },
   { id: "move", label: "Get moving", emoji: "💪" },
@@ -31,6 +32,7 @@ export default function Welcome() {
   };
 
   const INTENT_ROUTES: Record<FirstIntent, string> = {
+    lifesystem: "/life-switchboard",
     stress: "/talk",
     plan: "/talk",
     move: "/talk",
