@@ -46,6 +46,12 @@ import {
   Pencil,
   Check,
   X,
+  Clock,
+  Play,
+  Dumbbell,
+  Utensils,
+  Brain,
+  Heart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -540,29 +546,189 @@ function CardPreview({
   );
 }
 
-function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
-  const items = [
-    summary.nextEvent && { label: summary.nextEvent.title, sub: summary.nextEvent.isAllDay ? "All day" : summary.nextEvent.startTime?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) },
-    summary.activeGoals[0] && { label: `Priority: ${summary.activeGoals[0].title}`, sub: summary.activeGoals[0].progress != null ? `${summary.activeGoals[0].progress}% done` : undefined },
-    summary.momentumData?.suggestedFocus && { label: summary.momentumData.suggestedFocus, sub: "Suggested focus" },
-  ].filter(Boolean) as { label: string; sub?: string }[];
-
-  if (items.length === 0) {
-    items.push(
-      { label: "No events or priorities today", sub: "Enjoy the space" },
-      { label: "Start a conversation with DW", sub: "Get personalized guidance for your day" },
-    );
+// Helper: parse a stored startTime string into a Date for today
+function parseEventTime(timeStr: string, today: Date): Date | null {
+  if (!timeStr) return null;
+  // Full ISO datetime
+  if (timeStr.includes("T")) {
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) return d;
   }
+  // HH:MM or HH:MM:SS (24-hr)
+  const hhmm = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hhmm) {
+    const d = new Date(today);
+    d.setHours(parseInt(hhmm[1]), parseInt(hhmm[2]), parseInt(hhmm[3] ?? "0"), 0);
+    return d;
+  }
+  // "6:05 AM" / "10:30 PM"
+  const ampm = timeStr.match(/^(\d{1,2}):(\d{2})\s*(am|pm)/i);
+  if (ampm) {
+    let h = parseInt(ampm[1]);
+    const m = parseInt(ampm[2]);
+    const isPm = ampm[3].toLowerCase() === "pm";
+    if (isPm && h !== 12) h += 12;
+    if (!isPm && h === 12) h = 0;
+    const d = new Date(today);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  return null;
+}
+
+const EVENT_TYPE_ICON: Record<string, LucideIcon> = {
+  workout: Dumbbell,
+  meal:    Utensils,
+  work:    Brain,
+  health:  Heart,
+  event:   CalendarDays,
+};
+
+function formatTimeRange(start: Date, end: Date | null): string {
+  const fmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return end ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
+}
+
+function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, setLocation] = useLocation();
+  const now = new Date();
+
+  // Build timed event list sorted by start
+  const timedEvents = summary.todayEvents
+    .filter(e => !e.isAllDay && e.startTime)
+    .map(e => {
+      const startDate = parseEventTime(e.startTime, now);
+      const endDate   = e.endTime ? parseEventTime(e.endTime, now) : (startDate ? new Date(startDate.getTime() + 60 * 60 * 1000) : null);
+      return { ...e, startDate, endDate };
+    })
+    .filter(e => e.startDate != null)
+    .sort((a, b) => a.startDate!.getTime() - b.startDate!.getTime());
+
+  // Classify by time
+  const nowEvent  = timedEvents.find(e => e.startDate! <= now && e.endDate! >= now) ?? null;
+  const upcoming  = timedEvents.filter(e => e.startDate! > now);
+  const nextEvent = upcoming[0] ?? null;
+  const laterList = upcoming.slice(1, 3);
+
+  // Build card rows
+  type TodayCard = { slot: "now" | "next" | "later" | "fallback"; title: string; sub: string; Icon: LucideIcon; path?: string; };
+  const cards: TodayCard[] = [];
+
+  if (nowEvent) {
+    const Icon = EVENT_TYPE_ICON[nowEvent.eventType ?? ""] ?? Clock;
+    cards.push({
+      slot: "now",
+      title: nowEvent.title,
+      sub: formatTimeRange(nowEvent.startDate!, nowEvent.endDate),
+      Icon,
+      path: "/calendar",
+    });
+  }
+
+  if (nextEvent) {
+    const Icon = EVENT_TYPE_ICON[nextEvent.eventType ?? ""] ?? CalendarDays;
+    cards.push({
+      slot: "next",
+      title: nextEvent.title,
+      sub: formatTimeRange(nextEvent.startDate!, nextEvent.endDate),
+      Icon,
+      path: "/calendar",
+    });
+  }
+
+  for (const e of laterList) {
+    const Icon = EVENT_TYPE_ICON[e.eventType ?? ""] ?? CalendarDays;
+    cards.push({
+      slot: "later",
+      title: e.title,
+      sub: formatTimeRange(e.startDate!, e.endDate),
+      Icon,
+      path: "/calendar",
+    });
+  }
+
+  // Fallbacks when no timed events
+  if (cards.length === 0) {
+    if (summary.nextEvent) {
+      cards.push({
+        slot: "fallback",
+        title: summary.nextEvent.title,
+        sub: summary.nextEvent.isAllDay ? "All day" : (summary.nextEvent.startTime?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) ?? ""),
+        Icon: CalendarDays,
+        path: "/calendar",
+      });
+    }
+    if (summary.activeGoals[0]) {
+      cards.push({
+        slot: "fallback",
+        title: `Priority: ${summary.activeGoals[0].title}`,
+        sub: summary.activeGoals[0].progress != null ? `${summary.activeGoals[0].progress}% done` : "Active goal",
+        Icon: Target,
+        path: "/goals",
+      });
+    }
+    if (summary.momentumData?.suggestedFocus) {
+      cards.push({
+        slot: "fallback",
+        title: summary.momentumData.suggestedFocus,
+        sub: "Suggested focus",
+        Icon: Sparkles,
+        path: "/talk",
+      });
+    }
+    if (cards.length === 0) {
+      cards.push(
+        { slot: "fallback", title: "Nothing scheduled yet today", sub: "Enjoy the open space", Icon: Moon },
+        { slot: "fallback", title: "Talk with DW", sub: "Get personalized guidance for your day", Icon: MessageCircle, path: "/talk" },
+      );
+    }
+  }
+
+  const slotLabel: Record<TodayCard["slot"], string> = {
+    now:      "Now",
+    next:     "Up Next",
+    later:    "Later",
+    fallback: "",
+  };
+  const slotColor: Record<TodayCard["slot"], string> = {
+    now:      "text-emerald-600 dark:text-emerald-400",
+    next:     "text-blue-600 dark:text-blue-400",
+    later:    "text-muted-foreground",
+    fallback: "text-muted-foreground",
+  };
+  const dotColor: Record<TodayCard["slot"], string> = {
+    now:      "bg-emerald-500 animate-pulse",
+    next:     "bg-blue-500",
+    later:    "bg-muted-foreground/40",
+    fallback: "bg-muted-foreground/20",
+  };
 
   return (
     <Carousel opts={{ align: "start", dragFree: true }}>
       <CarouselContent className="-ml-2">
-        {items.map((item, i) => (
+        {cards.map((card, i) => (
           <CarouselItem key={i} className="pl-2 basis-[85%]">
-            <div className="cc-card">
-              <p className="text-sm font-medium text-foreground">{item.label}</p>
-              {item.sub && <p className="text-xs text-muted-foreground mt-0.5">{item.sub}</p>}
-            </div>
+            <button
+              className="cc-card w-full text-left"
+              onClick={() => card.path && setLocation(card.path)}
+              data-testid={`today-card-${card.slot}-${i}`}
+            >
+              {card.slot !== "fallback" && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor[card.slot]}`} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${slotColor[card.slot]}`}>
+                    {slotLabel[card.slot]}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-start gap-2">
+                <card.Icon className={`w-4 h-4 mt-0.5 shrink-0 ${card.slot === "now" ? "text-emerald-500" : "text-muted-foreground"}`} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{card.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{card.sub}</p>
+                </div>
+              </div>
+            </button>
           </CarouselItem>
         ))}
       </CarouselContent>

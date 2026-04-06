@@ -63,7 +63,9 @@ export interface CalendarEventItem {
   id: number | string;
   title: string;
   startTime: string;
+  endTime?: string;
   isAllDay?: boolean;
+  eventType?: string;
 }
 
 export interface RoutineItem {

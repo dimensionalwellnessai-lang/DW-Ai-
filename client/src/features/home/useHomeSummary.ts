@@ -271,7 +271,9 @@ export function useHomeSummary(): HomeSummary {
         id: e.id as number | string ?? "",
         title: String(e.title ?? ""),
         startTime: String(e.startTime ?? ""),
+        endTime: e.endTime ? String(e.endTime) : undefined,
         isAllDay: Boolean(e.isAllDay),
+        eventType: e.eventType ? String(e.eventType) : undefined,
       }));
   }, [allEvents]);
 
