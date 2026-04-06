@@ -248,11 +248,11 @@ function Router() {
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
       <Route path="/mood-tracker" component={MoodTrackerPage} />
 
-      {/* Put specific calendar routes BEFORE /calendar so they actually render */}
-      {isRouteEnabled("/calendar/month") && <Route path="/calendar/month" component={CalendarMonthPage} />}
+      {/* Calendar routes — specific paths before the catch-all */}
+      {isRouteEnabled("/calendar") && <Route path="/calendar/manage" component={CalendarPlansPage} />}
       {isRouteEnabled("/calendar/schedule") && <Route path="/calendar/schedule" component={CalendarSchedulePage} />}
 
-      {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarPlansPage} />}
+      {isRouteEnabled("/calendar") && <Route path="/calendar" component={CalendarMonthPage} />}
       {isRouteEnabled("/daily-schedule") && <Route path="/daily-schedule" component={DailySchedulePage} />}
       {isRouteEnabled("/week-schedule") && <Route path="/week-schedule" component={WeekSchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}

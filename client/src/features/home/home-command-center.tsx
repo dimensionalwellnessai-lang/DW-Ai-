@@ -218,7 +218,7 @@ export default function HomeCommandCenter() {
       icon: UtensilsCrossed,
       color: "text-emerald-400",
       bgClass: "bg-emerald-500/15",
-      path: "/meal-prep",
+      path: "/meal-prep?category=meal-plans",
       dwTopic: "Adjust my nutrition plan",
       snippet: calRemaining != null ? `${calRemaining} cal left` : "Log a meal",
     },

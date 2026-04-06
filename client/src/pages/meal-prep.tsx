@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { MealPlan, Meal } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -819,8 +820,65 @@ const VIDEO_CATEGORIES = [
   "Budget",
 ];
 
+function DbPlanMeals({ planId }: { planId: string }) {
+  const { data: meals = [], isLoading } = useQuery<Meal[]>({
+    queryKey: ["/api/meal-plans", planId, "meals"],
+    queryFn: async () => {
+      const res = await fetch(`/api/meal-plans/${planId}/meals`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch meals");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 pt-3 border-t">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Loading meals...
+        </div>
+      </div>
+    );
+  }
+
+  if (meals.length === 0) {
+    return (
+      <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+        No meals found in this plan.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t space-y-2">
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meals in this plan</h4>
+      {meals.map(meal => (
+        <div key={meal.id} className="flex items-start gap-2 py-1.5">
+          <Utensils className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">{meal.title}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              {meal.mealType && meal.mealType !== "other" && (
+                <Badge variant="outline" className="text-[10px] capitalize">{meal.mealType}</Badge>
+              )}
+              {meal.weekLabel && (
+                <span className="text-xs text-muted-foreground">{meal.weekLabel}</span>
+              )}
+            </div>
+            {meal.notes && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{meal.notes}</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MealPrepPage() {
   const [, setLocation] = useLocation();
+  const searchParams = useSearch();
+  const urlCategory = new URLSearchParams(searchParams).get("category");
   useTutorialStart("meal-prep", 1000);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
@@ -829,6 +887,7 @@ export default function MealPrepPage() {
   const [selectedIngredient, setSelectedIngredient] = useState<IngredientAlternative | null>(null);
   const [filterType, setFilterType] = useState<"all" | "homemade" | "store">("all");
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
+  const [expandedDbPlan, setExpandedDbPlan] = useState<string | null>(null);
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
   const [videoCategory, setVideoCategory] = useState("All");
   const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
@@ -849,7 +908,12 @@ export default function MealPrepPage() {
   const [dietFilter, setDietFilter] = useState<DietFilter>("any");
   const [prepTimeFilter, setPrepTimeFilter] = useState<PrepTimeFilter>("any");
   const [focusFilter, setFocusFilter] = useState<FocusFilter>("any");
-  const [selectedNutritionCategory, setSelectedNutritionCategory] = useState<string | null>(null);
+  const [selectedNutritionCategory, setSelectedNutritionCategory] = useState<string | null>(urlCategory);
+
+  // DB meal plans from life system import
+  const { data: dbMealPlans = [] } = useQuery<MealPlan[]>({
+    queryKey: ["/api/meal-plans"],
+  });
   
   const energyContext = getCurrentEnergyContext();
   const currentEnergy = energyContext?.energy || "medium";
@@ -1925,6 +1989,52 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* Imported Meal Plans from Life System */}
+            {dbMealPlans.length > 0 && (
+              <div className="space-y-3" data-testid="section-imported-meal-plans">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                    <Sparkles className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <h2 className="font-semibold text-foreground">Your Meal Plans</h2>
+                  <Badge variant="secondary" className="text-xs">{dbMealPlans.length} imported</Badge>
+                </div>
+                <div className="space-y-2">
+                  {dbMealPlans.map(plan => (
+                    <Card
+                      key={plan.id}
+                      className="hover-elevate cursor-pointer"
+                      data-testid={`card-db-meal-plan-${plan.id}`}
+                      onClick={() => setExpandedDbPlan(expandedDbPlan === plan.id ? null : plan.id)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-foreground truncate">{plan.title}</h3>
+                              {expandedDbPlan === plan.id
+                                ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                                : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                              }
+                            </div>
+                            {plan.summary && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{plan.summary}</p>
+                            )}
+                          </div>
+                          {plan.isActive && (
+                            <Badge variant="default" className="text-xs shrink-0">Active</Badge>
+                          )}
+                        </div>
+                        {expandedDbPlan === plan.id && (
+                          <DbPlanMeals planId={plan.id} />
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
 
