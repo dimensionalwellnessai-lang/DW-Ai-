@@ -191,7 +191,7 @@ export default function HomeCommandCenter() {
       icon: CalendarDays,
       color: "text-blue-400",
       bgClass: "bg-blue-500/15",
-      path: "/calendar",
+      path: "/calendar?view=day",
       dwTopic: "Talk about my day",
       badge: summary.todayEvents.length > 0 ? `${summary.todayEvents.length}` : undefined,
       snippet: (() => {
@@ -618,48 +618,25 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
     .filter(e => e.startDate != null)
     .sort((a, b) => a.startDate!.getTime() - b.startDate!.getTime());
 
-  // Classify by time
-  const nowEvent  = timedEvents.find(e => e.startDate! <= now && e.endDate! >= now) ?? null;
-  const upcoming  = timedEvents.filter(e => e.startDate! > now);
-  const nextEvent = upcoming[0] ?? null;
-  const laterList = upcoming.slice(1, 3);
-
-  // Build card rows
-  type TodayCard = { slot: "now" | "next" | "later" | "fallback"; title: string; sub: string; Icon: LucideIcon; path?: string; };
-  const cards: TodayCard[] = [];
-
-  if (nowEvent) {
-    const Icon = EVENT_TYPE_ICON[nowEvent.eventType ?? ""] ?? Clock;
-    cards.push({
-      slot: "now",
-      title: nowEvent.title,
-      sub: formatTimeRange(nowEvent.startDate!, nowEvent.endDate),
-      Icon,
-      path: "/calendar",
-    });
-  }
-
-  if (nextEvent) {
-    const Icon = EVENT_TYPE_ICON[nextEvent.eventType ?? ""] ?? CalendarDays;
-    cards.push({
-      slot: "next",
-      title: nextEvent.title,
-      sub: formatTimeRange(nextEvent.startDate!, nextEvent.endDate),
-      Icon,
-      path: "/calendar",
-    });
-  }
-
-  for (const e of laterList) {
+  // Classify every event by its time relation to now
+  type TodayCard = { slot: "now" | "next" | "later" | "past" | "fallback"; title: string; sub: string; Icon: LucideIcon; path?: string; };
+  const cards: TodayCard[] = timedEvents.map((e) => {
     const Icon = EVENT_TYPE_ICON[e.eventType ?? ""] ?? CalendarDays;
-    cards.push({
-      slot: "later",
+    const isPast   = e.endDate! < now;
+    const isNow    = e.startDate! <= now && e.endDate! >= now;
+    const upcomingIdx = timedEvents.filter(x => x.startDate! > now).indexOf(e);
+    const slot: TodayCard["slot"] =
+      isNow              ? "now"  :
+      isPast             ? "past" :
+      upcomingIdx === 0  ? "next" : "later";
+    return {
+      slot,
       title: e.title,
-      sub: formatTimeRange(e.startDate!, e.endDate),
+      sub:   formatTimeRange(e.startDate!, e.endDate),
       Icon,
-      path: "/calendar",
-    });
-  }
+      path: "/calendar?view=day",
+    };
+  });
 
   // Fallbacks when no timed events
   if (cards.length === 0) {
@@ -700,61 +677,73 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
 
   const slotLabel: Record<TodayCard["slot"], string> = {
     now:      "Now",
-    next:     "Up Next",
+    next:     "Next",
     later:    "Later",
+    past:     "Done",
     fallback: "",
   };
   const slotPill: Record<TodayCard["slot"], string> = {
     now:      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
     next:     "bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30",
     later:    "bg-muted/60 text-muted-foreground border border-border/60",
+    past:     "bg-muted/40 text-muted-foreground/60 border border-border/40",
     fallback: "bg-muted/60 text-muted-foreground border border-border/60",
   };
   const dotColor: Record<TodayCard["slot"], string> = {
     now:      "bg-emerald-500 animate-pulse",
     next:     "bg-blue-500",
     later:    "bg-muted-foreground/40",
+    past:     "bg-muted-foreground/20",
     fallback: "bg-muted-foreground/20",
   };
 
+  const aheadCount = cards.filter(c => c.slot !== "past").length;
   const nowLabel = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   return (
-    <div className="space-y-1.5" data-testid="today-timeline">
-      <p className="text-[11px] text-muted-foreground px-1 mb-2">
-        Now {nowLabel} · {cards.length} {cards[0]?.slot === "fallback" ? "item" : "event"}{cards.length !== 1 ? "s" : ""} ahead
+    <div className="flex flex-col" data-testid="today-timeline">
+      <p className="text-[11px] text-muted-foreground px-1 pb-2">
+        {nowLabel} · {aheadCount > 0 ? `${aheadCount} event${aheadCount !== 1 ? "s" : ""} ahead` : "All done for today"}
       </p>
-      {cards.map((card, i) => (
-        <button
-          key={i}
-          className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-card border border-border/50 hover:border-border active:scale-[0.98] transition-all"
-          onClick={() => card.path && setLocation(card.path)}
-          data-testid={`today-card-${card.slot}-${i}`}
-        >
-          {/* time slot indicator */}
-          {card.slot !== "fallback" ? (
-            <div className="flex flex-col items-center gap-0.5 shrink-0 w-12">
-              <span className={`w-1.5 h-1.5 rounded-full ${dotColor[card.slot]}`} />
-              <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${slotPill[card.slot]}`}>
-                {slotLabel[card.slot]}
-              </span>
+
+      {/* Scrollable full-day event list */}
+      <div className="overflow-y-auto max-h-[52vh] space-y-1.5 pr-0.5" style={{ WebkitOverflowScrolling: "touch" }}>
+        {cards.map((card, i) => (
+          <button
+            key={i}
+            className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border active:scale-[0.98] transition-all ${
+              card.slot === "past"
+                ? "bg-muted/20 border-border/30 opacity-50"
+                : "bg-card border-border/50 hover:border-border"
+            }`}
+            onClick={() => card.path && setLocation(card.path)}
+            data-testid={`today-card-${card.slot}-${i}`}
+          >
+            {/* slot badge */}
+            {card.slot !== "fallback" ? (
+              <div className="flex flex-col items-center gap-0.5 shrink-0 w-12">
+                <span className={`w-1.5 h-1.5 rounded-full ${dotColor[card.slot]}`} />
+                <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${slotPill[card.slot]}`}>
+                  {slotLabel[card.slot]}
+                </span>
+              </div>
+            ) : (
+              <div className="w-12 shrink-0" />
+            )}
+
+            <card.Icon className={`w-4 h-4 shrink-0 ${card.slot === "now" ? "text-emerald-500" : "text-muted-foreground"}`} />
+
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium truncate leading-tight ${card.slot === "past" ? "text-muted-foreground" : "text-foreground"}`}>
+                {card.title}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
             </div>
-          ) : (
-            <div className="w-12 shrink-0" />
-          )}
 
-          {/* icon */}
-          <card.Icon className={`w-4 h-4 shrink-0 ${card.slot === "now" ? "text-emerald-500" : "text-muted-foreground"}`} />
-
-          {/* text */}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate leading-tight">{card.title}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
-          </div>
-
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-        </button>
-      ))}
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

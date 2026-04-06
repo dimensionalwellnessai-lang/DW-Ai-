@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ComponentType } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ChevronLeft, ChevronRight, ChevronDown, Plus, Dumbbell, Utensils,
   Brain, Clock, Calendar, Sparkles, Check, Loader2,
@@ -365,6 +366,15 @@ export default function CalendarMonthPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Auto-switch to day view if ?view=day is in the URL (e.g. from Today card "More")
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "day") {
+      setView("day");
+      setCurrentDate(new Date());
+    }
+  }, []);
 
   const { data: events = [] } = useQuery<CalendarEvent[]>({ queryKey: ["/api/calendar"] });
 
