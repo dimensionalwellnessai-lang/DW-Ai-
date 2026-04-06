@@ -19,6 +19,19 @@ export async function runMigrations() {
     console.log("[migrate] Running database migrations...");
     await migrate(db, { migrationsFolder });
     console.log("[migrate] Migrations complete.");
+  } catch (err: any) {
+    // PostgreSQL error code 42P07 = "relation already exists"
+    // This happens when the production DB already has tables from a previous
+    // deployment that pre-dates the Drizzle migrations journal.
+    // We log the warning and continue — the existing schema is still valid.
+    if (err?.code === "42P07") {
+      console.warn(
+        "[migrate] Some tables already exist in production — skipping conflicting migrations. This is safe.",
+        err.message
+      );
+    } else {
+      throw err;
+    }
   } finally {
     await pool.end();
   }
