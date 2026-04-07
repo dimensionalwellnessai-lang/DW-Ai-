@@ -354,7 +354,7 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
       <div className="fixed inset-0 z-[10003]" style={{ pointerEvents: "none" }}>
         {/* Spotlight: 4-panel surround so the highlighted element is crisp and unblurred */}
         {isCenter || !targetRect ? (
-          <div className="absolute inset-0 bg-black/60" style={{ pointerEvents: "auto" }} />
+          <div className="absolute inset-0 bg-black/80" style={{ pointerEvents: "auto" }} />
         ) : (
           <>
             {/* Top */}
@@ -379,7 +379,7 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
             animate={{ opacity: 1, scale: 1, x: isCenter ? "-50%" : 0, y: isCenter ? "-50%" : 0 }}
             exit={{ opacity: 0, scale: 0.95, x: isCenter ? "-50%" : 0, y: isCenter ? "-50%" : 0 }}
             transition={{ duration: 0.2 }}
-            className={`absolute glass-strong rounded-2xl p-6 shadow-2xl ${
+            className={`absolute bg-background border border-border rounded-2xl p-6 shadow-2xl ${
               isCenter
                 ? "top-1/2 left-1/2 w-[calc(100%-2rem)] max-w-md"
                 : ""

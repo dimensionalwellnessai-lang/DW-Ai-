@@ -2431,16 +2431,17 @@ export function AIWorkspace() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message..."
-                className="resize-none [min-height:36px] max-h-16 rounded-xl py-2 px-3 text-sm"
+                placeholder="Type a message… tap ↑ to send"
+                className="resize-none [min-height:36px] max-h-40 rounded-xl py-2 px-3 text-sm"
                 rows={1}
                 disabled={isTyping || isUploading}
                 aria-label="Message input"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault();
                     handleSend();
                   }
+                  // Plain Enter = new line (default textarea behavior — do not intercept)
                 }}
                 data-testid="input-message"
               />
