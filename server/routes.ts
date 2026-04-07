@@ -2366,9 +2366,14 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         } : undefined,
       };
       
+      // Strip any non-standard roles (e.g. 'insight') that OpenAI rejects
+      const safeHistory = (conversationHistory || []).filter(
+        (m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role)
+      );
+
       const result = await detectIntentAndRespond(
         enhancedMessage,
-        conversationHistory || [],
+        safeHistory,
         userContext,
         typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
           ? CONTEXT_SYSTEM_OVERRIDES[context]
@@ -2645,10 +2650,15 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         } : undefined,
       };
       
+      // Strip any non-standard roles (e.g. 'insight') that OpenAI rejects
+      const safeStreamHistory = (conversationHistory || []).filter(
+        (m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role)
+      );
+
       // Use detectIntentAndRespond to get the AI response with streaming support
       const result = await detectIntentAndRespondStreaming(
         enhancedMessage,
-        conversationHistory || [],
+        safeStreamHistory,
         userContext,
         res
       );

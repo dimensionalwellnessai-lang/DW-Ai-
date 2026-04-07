@@ -98,6 +98,7 @@ import {
   Paperclip,
   X,
   BookOpen,
+  Pencil,
 } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -2104,7 +2105,21 @@ export function AIWorkspace() {
                   >
                     {message.role === "user" ? (
                       <div className="space-y-1">
-                        <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
+                        <div className="flex items-center gap-2 group/usermsg">
+                          <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
+                          <button
+                            data-testid={`button-edit-message-${index}`}
+                            className="opacity-0 group-hover/usermsg:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-0.5 rounded"
+                            title="Edit message"
+                            onClick={() => {
+                              setEditingMessageIndex(index);
+                              setInput(message.content);
+                              inputRef.current?.focus();
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
                         <div
                           className="cursor-pointer select-none"
                           onTouchStart={handleLongPressStart}
