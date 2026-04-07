@@ -527,30 +527,19 @@ export function AIWorkspace() {
     }
   }, [activeDbConversationId]);
 
-  // Initialize or validate activeDbConversationId from server data when conversations load
+  // Validate activeDbConversationId when conversations load — clear stale IDs but never auto-resume
   useEffect(() => {
-    if (!isUserAuthenticated) return;
+    if (!isUserAuthenticated || !activeDbConversationId) return;
 
     if (dbConversations.length > 0) {
-      if (activeDbConversationId) {
-        // Validate current ID exists in loaded conversations
-        const idExists = dbConversations.some(c => c.id === activeDbConversationId);
-        if (!idExists) {
-          // Stale ID — auto-resume the most recent conversation instead
-          const mostRecent = [...dbConversations].sort(
-            (a, b) => new Date(b.lastMessageAt ?? b.createdAt ?? 0).getTime() - new Date(a.lastMessageAt ?? a.createdAt ?? 0).getTime()
-          )[0];
-          setActiveDbConversationId(mostRecent.id);
-        }
-      } else {
-        // No active ID set — auto-resume the most recent conversation on sign-in
-        const mostRecent = [...dbConversations].sort(
-          (a, b) => new Date(b.lastMessageAt ?? b.createdAt ?? 0).getTime() - new Date(a.lastMessageAt ?? a.createdAt ?? 0).getTime()
-        )[0];
-        setActiveDbConversationId(mostRecent.id);
+      const idExists = dbConversations.some(c => c.id === activeDbConversationId);
+      if (!idExists) {
+        // Stale ID — clear it, show fresh start (user can pick from history)
+        localStorage.removeItem("dw_active_conversation_id");
+        setActiveDbConversationId(null);
       }
-    } else if (activeDbConversationId) {
-      // No conversations exist — clear stale ID
+    } else {
+      // No conversations at all — clear stale ID
       localStorage.removeItem("dw_active_conversation_id");
       setActiveDbConversationId(null);
     }
@@ -1879,6 +1868,65 @@ export function AIWorkspace() {
                   {subGreeting}
                 </p>
               </div>
+              {/* Recent conversations — shown when user has history */}
+              {(() => {
+                const recentConvos = isUserAuthenticated
+                  ? [...dbConversations]
+                      .filter(c => (c.messages as ChatMessage[])?.length > 0)
+                      .sort((a, b) => new Date(b.lastMessageAt ?? b.createdAt ?? 0).getTime() - new Date(a.lastMessageAt ?? a.createdAt ?? 0).getTime())
+                      .slice(0, 5)
+                  : getAllConversations()
+                      .filter(c => c.messages.length > 0)
+                      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+                      .slice(0, 5);
+
+                if (recentConvos.length === 0) return null;
+
+                const formatConvoTime = (convo: GuestConversation | Conversation) => {
+                  const ts = isUserAuthenticated
+                    ? new Date((convo as Conversation).lastMessageAt ?? (convo as Conversation).createdAt ?? 0).getTime()
+                    : ((convo as GuestConversation).updatedAt ?? 0);
+                  const now = Date.now();
+                  const diff = now - ts;
+                  if (diff < 24 * 60 * 60 * 1000) return "Today";
+                  if (diff < 48 * 60 * 60 * 1000) return "Yesterday";
+                  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+                  if (days < 7) return `${days}d ago`;
+                  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                };
+
+                return (
+                  <div className="w-full max-w-xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent</p>
+                      <button
+                        onClick={() => setHistoryOpen(true)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="button-view-all-history"
+                      >
+                        See all
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {recentConvos.map((convo) => (
+                        <button
+                          key={convo.id}
+                          onClick={() => handleSelectConversation(convo)}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-left group"
+                          data-testid={`button-recent-convo-${convo.id}`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                            <span className="text-sm text-foreground/80 truncate">{convo.title || "Untitled"}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground/60 shrink-0">{formatConvoTime(convo)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
                 {FIRST_TIME_ACTIONS.map((action) => {
                   const Icon = action.icon;
@@ -1904,14 +1952,6 @@ export function AIWorkspace() {
                 Build my life system
               </button>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setHistoryOpen(true)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
-                  data-testid="button-view-history"
-                >
-                  <History className="h-3 w-3" aria-hidden="true" />
-                  History
-                </button>
                 <Link href="/daily-schedule">
                   <button className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded" data-testid="link-today">
                     Today's schedule
