@@ -1820,9 +1820,7 @@ export async function registerRoutes(
       } = {};
 
       try {
-        const openai = (await import("openai")).default;
-        const ai = new openai({ baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL, apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
-        const completion = await ai.chat.completions.create({
+        const completion = await openai.chat.completions.create({
           model: "gpt-4o",
           messages: [
             {
@@ -5544,9 +5542,6 @@ Return only valid JSON, no other text.`;
       // Generate analysis prompt and call AI
       const analysisPrompt = generateDocumentAnalysisPrompt(doc.rawText);
       
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({ baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL, apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY, timeout: 25 * 1000, maxRetries: 1 });
-      
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -6734,14 +6729,6 @@ Return only valid JSON, no other text.`;
       if (!content || typeof content !== "string") {
         return res.status(400).json({ error: "Content is required" });
       }
-
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        timeout: 25 * 1000,
-        maxRetries: 1,
-      });
 
       const systemPrompt = `You are an AI that extracts actionable life system items from conversation content.
 Analyze the message and extract any:

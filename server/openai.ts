@@ -1,22 +1,34 @@
 import OpenAI from "openai";
 import type { CoachingMode } from "@shared/schema";
 
-// This is using Replit's AI Integrations service, which provides OpenAI-compatible API access without requiring your own API key.
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  timeout: 25 * 1000, // 25 second hard timeout — prevents the server from hanging on slow/unresponsive AI calls
-  maxRetries: 1,      // one retry max so a failed call doesn't double the wait time
-});
+// Prefer a direct OPENAI_API_KEY (works reliably in production deployments).
+// Fall back to Replit AI Integrations proxy credentials when available.
+const useDirectKey = !!process.env.OPENAI_API_KEY;
+
+const openai = new OpenAI(
+  useDirectKey
+    ? {
+        apiKey: process.env.OPENAI_API_KEY,
+        timeout: 25 * 1000,
+        maxRetries: 2,
+      }
+    : {
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        timeout: 25 * 1000,
+        maxRetries: 1,
+      }
+);
 
 // Export the openai instance for direct use in routes
 export { openai };
 
 /**
- * Returns which AI integration env vars are present/missing.
+ * Returns which AI credentials are present/missing.
  * Never includes secret values — safe to surface in API responses.
  */
 export function getAiConfigStatus(): { configured: boolean; missing: string[] } {
+  if (process.env.OPENAI_API_KEY) return { configured: true, missing: [] };
   const missing: string[] = [];
   if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) missing.push("AI_INTEGRATIONS_OPENAI_BASE_URL");
   if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) missing.push("AI_INTEGRATIONS_OPENAI_API_KEY");
