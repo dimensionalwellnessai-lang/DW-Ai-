@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fts-cache-v1';
+const CACHE_NAME = 'dw-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html'
@@ -43,7 +43,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Flip the Switch', body: 'Time for a wellness check-in' };
+  let data = { title: 'Dimensional Wellness AI', body: 'Time for a wellness check-in' };
   
   if (event.data) {
     try {
