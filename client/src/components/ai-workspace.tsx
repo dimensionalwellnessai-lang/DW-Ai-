@@ -529,16 +529,28 @@ export function AIWorkspace() {
 
   // Initialize or validate activeDbConversationId from server data when conversations load
   useEffect(() => {
-    if (isUserAuthenticated && dbConversations.length > 0 && activeDbConversationId) {
-      // Check if current ID is valid (exists in loaded conversations)
-      const idExists = dbConversations.some(c => c.id === activeDbConversationId);
-      if (!idExists) {
-        // Clear stale ID - don't auto-select (let user see empty state)
-        localStorage.removeItem("dw_active_conversation_id");
-        setActiveDbConversationId(null);
+    if (!isUserAuthenticated) return;
+
+    if (dbConversations.length > 0) {
+      if (activeDbConversationId) {
+        // Validate current ID exists in loaded conversations
+        const idExists = dbConversations.some(c => c.id === activeDbConversationId);
+        if (!idExists) {
+          // Stale ID — auto-resume the most recent conversation instead
+          const mostRecent = [...dbConversations].sort(
+            (a, b) => new Date(b.lastMessageAt ?? b.createdAt ?? 0).getTime() - new Date(a.lastMessageAt ?? a.createdAt ?? 0).getTime()
+          )[0];
+          setActiveDbConversationId(mostRecent.id);
+        }
+      } else {
+        // No active ID set — auto-resume the most recent conversation on sign-in
+        const mostRecent = [...dbConversations].sort(
+          (a, b) => new Date(b.lastMessageAt ?? b.createdAt ?? 0).getTime() - new Date(a.lastMessageAt ?? a.createdAt ?? 0).getTime()
+        )[0];
+        setActiveDbConversationId(mostRecent.id);
       }
-    } else if (isUserAuthenticated && dbConversations.length === 0 && activeDbConversationId) {
-      // Clear stale ID if no conversations exist
+    } else if (activeDbConversationId) {
+      // No conversations exist — clear stale ID
       localStorage.removeItem("dw_active_conversation_id");
       setActiveDbConversationId(null);
     }
@@ -1776,6 +1788,7 @@ export function AIWorkspace() {
                 className="w-full" 
                 size="sm" 
                 onClick={async () => {
+                  localStorage.removeItem("dw_active_conversation_id");
                   await logout();
                   setMenuOpen(false);
                 }}
