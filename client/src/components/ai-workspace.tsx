@@ -222,6 +222,8 @@ export function AIWorkspace() {
   const [longPressMenuIndex, setLongPressMenuIndex] = useState<number | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const welcomeMessageSentRef = useRef(false);
+  const [quickChips, setQuickChips] = useState<string[]>([]);
+  const proactiveOpenerSentRef = useRef(false);
   
   // Starter Block Spotlight state - tracks dismissal, re-read profile on render for visibility
   const [spotlightDismissed, setSpotlightDismissed] = useState(() => {
@@ -751,6 +753,51 @@ export function AIWorkspace() {
     saveProfileSetup({ metDW: true });
   }, []);
 
+  // Proactive DW opener for returning users — fires once per session when chat is empty
+  useEffect(() => {
+    if (proactiveOpenerSentRef.current) return;
+    const profile = getProfileSetup();
+    if (!profile?.metDW) return; // only for users who have already met DW
+    if (!user) return; // only for authenticated users (needs the API)
+    if (messages.length > 0 || optimisticMessages.length > 0) return; // skip if chat has content
+    if (!startedFresh) return; // skip if resuming an existing conversation
+
+    proactiveOpenerSentRef.current = true;
+    fetch("/api/ai/proactive-opener", { credentials: "include" })
+      .then(r => r.json())
+      .then(({ message }: { message: string | null }) => {
+        if (!message) return;
+        // Only show if the conversation is still empty
+        const conv = getActiveConversation();
+        if (conv && conv.messages.length > 0) return;
+        const newConv = createNewConversation();
+        addMessageToConversation("assistant", message);
+        setActiveConversation(newConv.id);
+        setActiveConversationState(getActiveConversation());
+        setStartedFresh(false);
+        setConversationVersion(v => v + 1);
+        // Chips for the opener
+        fetchChips(message);
+      })
+      .catch(() => { /* silently ignore */ });
+  }, [user, startedFresh]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch quick-reply chip suggestions for a given DW message
+  function fetchChips(dwMessage: string) {
+    if (!user) return; // chips require auth
+    fetch("/api/ai/chips", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: dwMessage }),
+    })
+      .then(r => r.json())
+      .then(({ chips }: { chips: string[] }) => {
+        if (Array.isArray(chips) && chips.length > 0) setQuickChips(chips);
+      })
+      .catch(() => { /* silently ignore */ });
+  }
+
   // Check for fresh session when user returns after being away
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1174,6 +1221,8 @@ export function AIWorkspace() {
       
       setIsTyping(false);
       setPendingDocumentIds([]);
+      // Fetch quick-reply chips for the completed response (fire-and-forget)
+      if (data.response) fetchChips(data.response);
     },
     onError: (error: any) => {
       // If the request was aborted (user switched conversations), don't show error toast
@@ -1370,7 +1419,7 @@ export function AIWorkspace() {
 
   const handleSendMessage = async (message: string, messagesOverride?: ChatMessage[]) => {
     if (isTyping) return;
-    
+    setQuickChips([]); // clear chips whenever the user sends a message
     const userMsg: ChatMessage = { role: "user", content: message, timestamp: Date.now() };
     let conversationId = activeDbConversationId || undefined;
     
@@ -2256,6 +2305,24 @@ export function AIWorkspace() {
                   </article>
                   );
                 })}
+                {/* Quick-reply chips — shown after the last DW message, hidden while typing */}
+                {!isTyping && quickChips.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                    {quickChips.map((chip, i) => (
+                      <button
+                        key={i}
+                        data-testid={`chip-reply-${i}`}
+                        onClick={() => {
+                          setInput("");
+                          handleSendMessage(chip);
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-full border border-border/70 bg-background hover:bg-muted/60 active:scale-95 transition-all text-foreground/80 hover:text-foreground"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {isTyping && (
                   <article className="flex items-center gap-3 py-3">
                     <Loader2 className="w-5 h-5 animate-spin text-primary" />

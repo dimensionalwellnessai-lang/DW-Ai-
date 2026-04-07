@@ -2897,6 +2897,72 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
+  // Quick-reply chip suggestions — given a DW message, return 2-3 short user replies
+  app.post("/api/ai/chips", requireAuth, async (req, res) => {
+    try {
+      const { message } = req.body as { message?: string };
+      if (!message || message.length < 10) return res.json({ chips: [] });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You generate short quick-reply button text for a wellness AI chat.
+Given the assistant's last message, produce 2–3 short replies a user might tap.
+Rules:
+- Each reply must be 2–7 words max
+- Only produce chips if the message asks a question or invites a response
+- If the message is purely informational with no question, return []
+- Make chips feel natural and personal, not robotic
+- Return ONLY a valid JSON array of strings. No explanation, no markdown.
+Example: ["Work stress mostly", "It's been everything", "Just need a plan"]`,
+          },
+          { role: "user", content: message },
+        ],
+        max_tokens: 80,
+        temperature: 0.8,
+      });
+
+      const raw = completion.choices[0]?.message?.content?.trim() || "[]";
+      let chips: string[] = [];
+      try { chips = JSON.parse(raw); } catch { chips = []; }
+      res.json({ chips: Array.isArray(chips) ? chips.slice(0, 3) : [] });
+    } catch {
+      res.json({ chips: [] });
+    }
+  });
+
+  // Proactive DW opener for returning users — based on today's schedule/habits context
+  app.get("/api/ai/proactive-opener", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const nudges = await generateProactiveNudges(userId);
+      const top = nudges.find(n => n.priority === "high") || nudges.find(n => n.priority === "medium");
+      if (!top) return res.json({ message: null });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are DW, a grounded wellness AI companion. A returning user just opened their chat. 
+Convert the nudge context below into a single warm, natural opening message — like a thoughtful concierge who notices what's going on. 
+Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start with "Hello" or "Hi".`,
+          },
+          { role: "user", content: `Context: ${top.message}` },
+        ],
+        max_tokens: 80,
+        temperature: 0.85,
+      });
+
+      const message = completion.choices[0]?.message?.content?.trim() || null;
+      res.json({ message });
+    } catch {
+      res.json({ message: null });
+    }
+  });
+
   // Wellness Summary Endpoint - aggregates mood, completions, and energy logs
   app.get("/api/summary", requireAuth, async (req, res) => {
     try {
