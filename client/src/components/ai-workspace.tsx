@@ -1011,7 +1011,9 @@ export function AIWorkspace() {
         },
         body: JSON.stringify({
           message,
-          conversationHistory: currentMessages.slice(-10),
+          conversationHistory: currentMessages.slice(-10).filter(
+            (m) => m.role === "user" || m.role === "assistant"
+          ),
           userProfile: userProfile || undefined,
           lifeSystemContext: lifeContext,
           energyContext,

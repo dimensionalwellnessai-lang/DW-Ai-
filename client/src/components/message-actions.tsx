@@ -38,13 +38,18 @@ import {
   Send,
   Volume2,
   VolumeX,
+  Calendar,
+  Dumbbell,
+  Utensils,
+  Repeat,
+  LayoutGrid,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ttsService } from "@/lib/tts-service";
 
-export type LifeSystemItemType = "goal" | "habit" | "schedule";
+export type LifeSystemItemType = "goal" | "habit" | "schedule" | "calendar" | "workout" | "meal" | "routine";
 
 export interface ExtractedItem {
   type: LifeSystemItemType;
@@ -54,8 +59,14 @@ export interface ExtractedItem {
   dayOfWeek?: number;
   startTime?: string;
   endTime?: string;
+  date?: string;
   category?: string;
   wellnessDimension?: string;
+  exerciseType?: string;
+  durationMinutes?: number;
+  mealType?: string;
+  isRecurring?: boolean;
+  steps?: { title: string; durationMinutes: number }[];
 }
 
 interface MessageActionsProps {
@@ -259,28 +270,67 @@ Can you tell me more about this?`);
 
   const getItemIcon = (type: LifeSystemItemType) => {
     switch (type) {
-      case "goal":
-        return Target;
-      case "habit":
-        return Check;
-      case "schedule":
-        return Bookmark;
-      default:
-        return Target;
+      case "goal": return Target;
+      case "habit": return Repeat;
+      case "schedule": return Bookmark;
+      case "calendar": return Calendar;
+      case "workout": return Dumbbell;
+      case "meal": return Utensils;
+      case "routine": return LayoutGrid;
+      default: return Target;
     }
   };
 
   const getItemLabel = (type: LifeSystemItemType) => {
     switch (type) {
-      case "goal":
-        return "Goal";
-      case "habit":
-        return "Habit";
-      case "schedule":
-        return "Schedule";
-      default:
-        return "Item";
+      case "goal": return "Goal";
+      case "habit": return "Habit";
+      case "schedule": return "Schedule Block";
+      case "calendar": return "Calendar Event";
+      case "workout": return "Workout";
+      case "meal": return "Meal / Recipe";
+      case "routine": return "Routine";
+      default: return "Item";
     }
+  };
+
+  const getItemDestination = (type: LifeSystemItemType) => {
+    switch (type) {
+      case "goal": return "→ Goals";
+      case "habit": return "→ Habits";
+      case "schedule": return "→ Daily Schedule";
+      case "calendar": return "→ Calendar";
+      case "workout": return "→ Workouts";
+      case "meal": return "→ Meal Prep";
+      case "routine": return "→ Routines";
+      default: return "";
+    }
+  };
+
+  const getItemColor = (type: LifeSystemItemType) => {
+    switch (type) {
+      case "goal": return "text-violet-500";
+      case "habit": return "text-green-500";
+      case "schedule": return "text-blue-400";
+      case "calendar": return "text-blue-500";
+      case "workout": return "text-orange-500";
+      case "meal": return "text-amber-500";
+      case "routine": return "text-teal-500";
+      default: return "text-muted-foreground";
+    }
+  };
+
+  const getItemSubtext = (item: ExtractedItem) => {
+    const parts: string[] = [];
+    if (item.type === "workout" && item.exerciseType) parts.push(item.exerciseType);
+    if (item.durationMinutes) parts.push(`${item.durationMinutes} min`);
+    if (item.type === "meal" && item.mealType) parts.push(item.mealType);
+    if (item.type === "habit" && item.frequency) parts.push(item.frequency);
+    if (item.type === "goal" && item.wellnessDimension) parts.push(item.wellnessDimension);
+    if (item.startTime) parts.push(item.startTime + (item.endTime ? `–${item.endTime}` : ""));
+    if (item.date) parts.push(item.date);
+    if (item.isRecurring) parts.push("recurring");
+    return parts.join(" · ");
   };
 
   return (
@@ -406,10 +456,12 @@ Can you tell me more about this?`);
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[300px] pr-4">
+          <ScrollArea className="max-h-[360px] pr-4">
             <div className="space-y-3">
               {extractedItems.map((item, index) => {
                 const Icon = getItemIcon(item.type);
+                const subtext = getItemSubtext(item);
+                const colorClass = getItemColor(item.type);
                 return (
                   <div
                     key={index}
@@ -423,28 +475,31 @@ Can you tell me more about this?`);
                       className="mt-0.5"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground uppercase">
-                          {getItemLabel(item.type)}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className={`h-3.5 w-3.5 ${colorClass}`} />
+                          <span className={`text-xs font-medium uppercase tracking-wide ${colorClass}`}>
+                            {getItemLabel(item.type)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground/60 shrink-0">
+                          {getItemDestination(item.type)}
                         </span>
                       </div>
-                      <Label className="font-medium text-sm cursor-pointer">
+                      <Label className="font-medium text-sm cursor-pointer leading-snug">
                         {item.title}
                       </Label>
+                      {subtext && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>
+                      )}
                       {item.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground/70 mt-1 line-clamp-2">
                           {item.description}
                         </p>
                       )}
-                      {item.frequency && (
+                      {item.steps && item.steps.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Frequency: {item.frequency}
-                        </p>
-                      )}
-                      {item.startTime && item.endTime && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {item.startTime} - {item.endTime}
+                          {item.steps.length} steps
                         </p>
                       )}
                     </div>

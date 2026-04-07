@@ -6806,43 +6806,66 @@ Return only valid JSON, no other text.`;
         return res.status(400).json({ error: "Content is required" });
       }
 
-      const systemPrompt = `You are an AI that extracts actionable life system items from conversation content.
-Analyze the message and extract any:
-- Goals (things to achieve, targets, objectives)
-- Habits (recurring activities to build or maintain)
-- Routines (multi-step flows like morning routine, evening routine, workout routine)
-- Schedule items (specific time-bound activities)
+      const systemPrompt = `You are an AI that extracts specific, actionable items from wellness conversation content and routes them to the correct destination.
 
-Return a JSON array of items with this structure:
+DESTINATION TYPES — choose the most precise one:
+- "calendar": A specific one-time or recurring event (meetings, appointments, classes, date-specific plans). Goes to the Calendar.
+- "workout": An exercise session, training plan, or physical activity. Goes to Workouts.
+- "meal": A specific meal, recipe, or nutrition plan item. Goes to Meal Prep / Nutrition.
+- "habit": A recurring behavior to build or maintain (no specific time required). Goes to Habits.
+- "goal": A target, achievement, or milestone across any life dimension. Goes to Goals.
+- "routine": A multi-step daily flow (morning routine, bedtime routine, wind-down, etc.). Goes to Routines.
+
+Return a JSON object with this structure:
 {
   "items": [
     {
-      "type": "goal" | "habit" | "routine" | "schedule",
-      "title": "Brief title (max 50 chars)",
-      "description": "Optional description",
-      "frequency": "daily" | "weekly" | "monthly" (for habits only),
-      "dayOfWeek": 0-6 (for schedule/routine, 0=Sunday),
-      "startTime": "HH:MM" (for schedule),
-      "endTime": "HH:MM" (for schedule),
-      "scheduleTime": "HH:MM" (for routines - when routine starts),
-      "durationMinutes": number (for routines - total duration),
-      "steps": [{"title": "Step name", "durationMinutes": 5}] (for routines only),
-      "category": "wellness" | "fitness" | "nutrition" | "mindfulness" | "productivity" | "relationships" | "finance" | "morning" | "evening" | "workout" | "other",
-      "wellnessDimension": "physical" | "mental" | "emotional" | "spiritual" | "social" | "financial" (for goals)
+      "type": "calendar" | "workout" | "meal" | "habit" | "goal" | "routine",
+      "title": "Concise action-oriented title (max 50 chars)",
+      "description": "1-2 sentence description (optional)",
+
+      // For calendar events:
+      "date": "YYYY-MM-DD" (if specific date mentioned, otherwise omit),
+      "startTime": "HH:MM",
+      "endTime": "HH:MM",
+      "isRecurring": true/false,
+      "dayOfWeek": 0-6 (0=Sunday, if recurring),
+
+      // For workouts:
+      "exerciseType": "strength" | "cardio" | "flexibility" | "hiit" | "other",
+      "durationMinutes": number,
+      "dayOfWeek": 0-6 (if specific day mentioned),
+      "scheduleTime": "HH:MM" (if specific time mentioned),
+
+      // For meals:
+      "mealType": "breakfast" | "lunch" | "dinner" | "snack",
+      "ingredients": ["ingredient1", "ingredient2"],
+      "dayOfWeek": 0-6 (if specific day mentioned),
+      "scheduleTime": "HH:MM" (if specific time mentioned),
+
+      // For habits:
+      "frequency": "daily" | "weekly" | "monthly",
+      "category": "physical" | "mental" | "emotional" | "spiritual" | "social" | "financial" | "productivity",
+
+      // For goals:
+      "wellnessDimension": "physical" | "mental" | "emotional" | "spiritual" | "social" | "financial",
+      "targetValue": number (if measurable),
+
+      // For routines:
+      "scheduleTime": "HH:MM",
+      "durationMinutes": number,
+      "steps": [{"title": "Step name", "durationMinutes": 5}]
     }
   ]
 }
 
 Rules:
-- Only extract concrete, actionable items
-- Keep titles concise and action-oriented
-- If no actionable items found, return { "items": [] }
-- Be conservative - only extract clear commitments or plans
-- Use "routine" for multi-step flows (morning routine, evening wind-down, etc.)
-- Use "schedule" for single time-block events
-- Use "habit" for recurring activities without specific time
-- Use "goal" for achievements or targets
-- For routines, include the steps array with individual steps and their durations`;
+- Be specific and contextual: if the message discusses a chest workout, title it "Chest & Triceps Session" not "Workout"
+- Match the type precisely to the content — don't use "goal" for something that belongs in "calendar" or "workout"
+- If no concrete actionable items are found, return { "items": [] }
+- Only extract clear commitments, plans, or things the user said they want to do
+- For workouts, capture exercise type and duration if mentioned
+- For meals, capture the meal type (breakfast/lunch/dinner) from context`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -7156,6 +7179,75 @@ Rules:
                 linkedRoute: "/meal-prep",
               });
             }
+            saved++;
+          } else if (item.type === "calendar") {
+            // Direct calendar event
+            const now = new Date();
+            let startDateTime: Date;
+            let endDateTime: Date;
+
+            if (item.date) {
+              // Specific date event
+              const [year, month, day] = (item.date as string).split("-").map(Number);
+              startDateTime = new Date(year, month - 1, day);
+              if (item.startTime) {
+                const [h, m] = (item.startTime as string).split(":").map(Number);
+                startDateTime.setHours(h, m, 0, 0);
+              } else {
+                startDateTime.setHours(9, 0, 0, 0);
+              }
+              endDateTime = new Date(startDateTime);
+              if (item.endTime) {
+                const [h, m] = (item.endTime as string).split(":").map(Number);
+                endDateTime.setHours(h, m, 0, 0);
+              } else {
+                endDateTime.setMinutes(endDateTime.getMinutes() + 60);
+              }
+            } else if (item.dayOfWeek !== undefined) {
+              // Recurring weekly event — find next occurrence
+              const currentDayOfWeek = now.getDay();
+              const targetDayOfWeek = item.dayOfWeek;
+              let daysUntil = targetDayOfWeek - currentDayOfWeek;
+              if (daysUntil < 0) daysUntil += 7;
+              if (daysUntil === 0 && item.startTime) {
+                const [h, m] = (item.startTime as string).split(":").map(Number);
+                if (h * 60 + m <= now.getHours() * 60 + now.getMinutes()) daysUntil = 7;
+              }
+              startDateTime = new Date(now);
+              startDateTime.setDate(now.getDate() + daysUntil);
+              const [h, m] = ((item.startTime as string) || "09:00").split(":").map(Number);
+              startDateTime.setHours(h, m, 0, 0);
+              endDateTime = new Date(startDateTime);
+              if (item.endTime) {
+                const [eh, em] = (item.endTime as string).split(":").map(Number);
+                endDateTime.setHours(eh, em, 0, 0);
+              } else {
+                endDateTime.setMinutes(endDateTime.getMinutes() + 60);
+              }
+            } else {
+              // No date info — schedule for tomorrow at 9am
+              startDateTime = new Date(now);
+              startDateTime.setDate(now.getDate() + 1);
+              startDateTime.setHours(9, 0, 0, 0);
+              endDateTime = new Date(startDateTime);
+              endDateTime.setHours(10, 0, 0, 0);
+            }
+
+            await storage.createCalendarEvent({
+              userId,
+              title: item.title,
+              description: item.description || null,
+              startTime: startDateTime.toISOString(),
+              endTime: endDateTime.toISOString(),
+              eventType: "event",
+              isRecurring: !!(item.isRecurring || item.dayOfWeek !== undefined),
+              recurrenceRule: (item.isRecurring || item.dayOfWeek !== undefined)
+                ? `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][item.dayOfWeek ?? now.getDay()]}`
+                : null,
+              linkedType: null,
+              linkedId: null,
+              linkedRoute: "/calendar",
+            });
             saved++;
           } else if (item.type === "spiritual" || item.type === "practice") {
             // Create a spiritual practice routine
