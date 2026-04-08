@@ -11,6 +11,9 @@ import {
   TrendingUp,
   Heart,
   Sparkles,
+  History,
+  Zap,
+  BookmarkPlus,
 } from "lucide-react";
 
 // ─── Re-export context, provider, and hook from the lightweight context module ─
@@ -38,65 +41,72 @@ interface TourStep {
 const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Your Wellness Journey",
+    title: "Welcome to Dimensional Wellness AI",
     description:
-      "Let's take a quick tour of the key features that will help you track, understand, and improve your wellness across all dimensions of life.",
+      "DW is your personal AI life-system companion — not just a chatbot. It helps you build and manage your goals, habits, schedule, meals, workouts, and all eight dimensions of wellness in one place. Let's walk through the key features.",
     icon: Sparkles,
     position: "center",
   },
   {
-    id: "home",
-    title: "Your Home Base",
+    id: "chat",
+    title: "Talk to DW",
     description:
-      "This is your Life Command Center. See everything at a glance - water intake, calories, goals, habits, and all 8 wellness dimensions. Tap any card to dive deeper.",
+      "Start any conversation here. DW greets you with context-aware suggestions, and after each response you'll see quick-reply chips so you can keep the flow going with one tap. You can also edit any message you've sent by hovering over it and tapping the pencil icon.",
+    icon: MessageCircle,
+    targetSelector: "[data-tour='chat']",
+    position: "top",
+    action: "Tap DW in the bottom nav to open the chat",
+  },
+  {
+    id: "save-to-plan",
+    title: "Save Anything to Your Plan",
+    description:
+      "After DW responds, tap the ··· menu on any message and choose \"Save to Life System.\" DW reads the message and automatically routes it to the right place — a calendar event, workout, meal, habit, goal, or routine — so nothing falls through the cracks.",
+    icon: BookmarkPlus,
+    position: "center",
+  },
+  {
+    id: "history",
+    title: "Your Conversation History",
+    description:
+      "Every conversation is saved to your account. Your five most recent chats appear right on the home screen for quick access. Tap the chat bubble icon in the top bar to open the full history panel with all your past conversations, organized by category.",
+    icon: History,
+    position: "center",
+  },
+  {
+    id: "home",
+    title: "Life Command Center",
+    description:
+      "Your dashboard tracks everything at a glance — goals, habits, mood, water, calories, and your eight wellness dimensions. Tap any card to go deeper into that area. The Command Center updates as DW learns more about your system.",
     icon: TrendingUp,
     targetSelector: "[data-tour='home']",
     position: "bottom",
   },
   {
     id: "calendar",
-    title: "Life Calendar",
+    title: "Calendar & Schedule",
     description:
-      "Plan your days and weeks. Schedule events, import your work schedule, and see everything organized by wellness dimension. Tap the Calendar tab below to explore.",
+      "Your calendar syncs everything DW creates — workouts, meals, routines, and events — all in one view. You can also connect it to Apple Calendar or Google Calendar via the iCal feed in Settings, so DW lives alongside your existing schedule.",
     icon: Calendar,
     targetSelector: "[data-tour='calendar']",
     position: "top",
     action: "Tap Calendar in the bottom nav to explore",
   },
   {
-    id: "chat",
-    title: "Talk to DW",
-    description:
-      "Chat with your AI wellness companion anytime. Ask questions, get advice, create plans, or just talk through what's on your mind. DW adapts to your energy and communication style.",
-    icon: MessageCircle,
-    targetSelector: "[data-tour='chat']",
-    position: "top",
-    action: "Tap DW in the bottom nav to start a conversation",
-  },
-  {
     id: "browse",
-    title: "Browse Features",
+    title: "Explore All Features",
     description:
-      "Explore all of DW's features: mood tracking, meal prep, workout planning, finances, cosmic insights, and more. Use Browse to find and access any feature quickly.",
+      "Browse gives you access to every DW feature: meal prep, workout planning, mood tracking, journal, finances, sleep, spiritual practices, and more. Everything you need to manage every dimension of your life is one tap away.",
     icon: Star,
     targetSelector: "[data-tour='browse']",
     position: "top",
   },
   {
-    id: "journal",
-    title: "Your Journal",
-    description:
-      "Reflect on your journey with private journal entries. Track your thoughts, feelings, and progress over time. Writing helps process emotions and build self-awareness.",
-    icon: Heart,
-    targetSelector: "[data-tour='journal']",
-    position: "top",
-  },
-  {
     id: "complete",
-    title: "You're All Set!",
+    title: "You're Ready to Go",
     description:
-      "You can access this tour anytime from Settings. Explore at your own pace and remember: your wellness journey is uniquely yours. No pressure, just support.",
-    icon: Sparkles,
+      "This tour is available anytime from Settings → Tour. Start a conversation with DW to build your life system, or explore the Command Center to see where you stand. Your wellness journey is uniquely yours — DW is here to support it.",
+    icon: Zap,
     position: "center",
   },
 ];
