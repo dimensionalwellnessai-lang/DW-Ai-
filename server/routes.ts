@@ -13089,6 +13089,49 @@ Response:`;
     }
   });
 
+  // ── OpenAI Text-to-Speech (Alloy voice for onboarding & voice mode) ────
+  const ttsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 40,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many TTS requests. Please slow down." },
+  });
+
+  app.post("/api/tts", ttsLimiter, async (req, res) => {
+    try {
+      const { text, voice = "alloy", speed = 1.0 } = req.body as {
+        text?: string;
+        voice?: string;
+        speed?: number;
+      };
+
+      if (!text || typeof text !== "string" || text.trim().length === 0) {
+        return res.status(400).json({ error: "text is required" });
+      }
+
+      const trimmedText = text.trim().slice(0, 1000); // cap at 1000 chars
+
+      const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
+        input: trimmedText,
+        speed: Math.max(0.25, Math.min(4.0, speed)),
+      });
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      res.set({
+        "Content-Type": "audio/mpeg",
+        "Content-Length": buffer.length.toString(),
+        "Cache-Control": "public, max-age=300",
+      });
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("[TTS] Error:", err?.message ?? err);
+      res.status(500).json({ error: "TTS generation failed" });
+    }
+  });
+
   // ── Assistant action analytics ──────────────────────────────────────────
   app.post("/api/assistant/log", async (req, res) => {
     try {
