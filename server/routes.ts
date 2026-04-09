@@ -19,7 +19,7 @@ import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, c
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
-import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, type SearchCategory } from "./openai";
+import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import { googleVisionService } from "./google-vision";
@@ -2276,7 +2276,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         }
       }
       
-      res.json({ response, updatedCategories, syncSessionId, actionsTaken });
+      res.json({ response: enforceOneQuestion(response), updatedCategories, syncSessionId, actionsTaken });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       // Graceful degradation: show a human-readable message instead of crashing
@@ -2526,7 +2526,8 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         }
       }
       
-      res.json({ ...result, syncSessionId, actionsTaken });
+      const safeResult = { ...result, response: enforceOneQuestion(result.response) };
+      res.json({ ...safeResult, syncSessionId, actionsTaken });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       const errStatus: number = typeof error?.status === "number" ? error.status : 500;
