@@ -5,14 +5,27 @@ import path from "path";
 
 const { Pool } = pg;
 
+// PostgreSQL error codes that are safe to ignore when the schema already exists
+const SAFE_MIGRATION_ERROR_CODES = new Set([
+  "42P07", // duplicate_table — relation already exists
+  "42701", // duplicate_column — column already exists
+  "42710", // duplicate_object — object (index, constraint, etc.) already exists
+  "42P16", // invalid_table_definition — e.g. constraint already defined
+]);
+
 export async function runMigrations() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL must be set to run migrations");
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle(pool);
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes("localhost")
+      ? false
+      : { rejectUnauthorized: false },
+  });
 
+  const db = drizzle(pool);
   const migrationsFolder = path.resolve(process.cwd(), "migrations");
 
   try {
@@ -20,16 +33,18 @@ export async function runMigrations() {
     await migrate(db, { migrationsFolder });
     console.log("[migrate] Migrations complete.");
   } catch (err: any) {
-    // PostgreSQL error code 42P07 = "relation already exists"
-    // This happens when the production DB already has tables from a previous
-    // deployment that pre-dates the Drizzle migrations journal.
-    // We log the warning and continue — the existing schema is still valid.
-    if (err?.code === "42P07") {
+    const code = err?.code ?? "unknown";
+    const message = err?.message ?? String(err);
+
+    if (SAFE_MIGRATION_ERROR_CODES.has(code)) {
       console.warn(
-        "[migrate] Some tables already exist in production — skipping conflicting migrations. This is safe.",
-        err.message
+        `[migrate] Skipping migration conflict (${code}): ${message}. ` +
+          "The existing schema is still valid — continuing startup."
       );
     } else {
+      console.error(
+        `[migrate] Migration failed with error code "${code}": ${message}`
+      );
       throw err;
     }
   } finally {
