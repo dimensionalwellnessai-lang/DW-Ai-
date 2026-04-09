@@ -765,6 +765,7 @@ function TodayPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> 
 }
 
 function InsightPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   const insights = [
     summary.latestInsight && { title: summary.latestInsight.title, body: summary.latestInsight.summary, cat: summary.latestInsight.category },
     summary.latestJournalEntry && { title: summary.latestJournalEntry.title, body: summary.latestJournalEntry.story.slice(0, 120), cat: "Journal" },
@@ -782,7 +783,11 @@ function InsightPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
       <CarouselContent className="-ml-2">
         {insights.map((ins, i) => (
           <CarouselItem key={i} className="pl-2 basis-[85%]">
-            <div className="cc-card">
+            <div
+              className="cc-card cursor-pointer hover:ring-1 hover:ring-amber-400/40 transition-all"
+              onClick={() => nav("/insights")}
+              data-testid={`insight-card-${i}`}
+            >
               <Badge variant="secondary" className="text-[10px] mb-1">{ins.cat}</Badge>
               <p className="text-sm font-medium text-foreground">{ins.title}</p>
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ins.body}</p>
@@ -795,14 +800,19 @@ function InsightPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
 }
 
 function PlanPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   if (summary.activeGoals.length === 0) {
     return (
       <Carousel opts={{ align: "start", dragFree: true }}>
         <CarouselContent className="-ml-2">
           <CarouselItem className="pl-2 basis-[85%]">
-            <div className="cc-card">
+            <div
+              className="cc-card cursor-pointer hover:ring-1 hover:ring-violet-400/40 transition-all"
+              onClick={() => nav("/goals")}
+              data-testid="plan-card-empty"
+            >
               <p className="text-sm font-medium text-foreground">No active plan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Tap "More" to create one</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tap to set your first goal</p>
             </div>
           </CarouselItem>
           <CarouselItem className="pl-2 basis-[85%]">
@@ -821,7 +831,11 @@ function PlanPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }
       <CarouselContent className="-ml-2">
         {summary.activeGoals.slice(0, 3).map((goal) => (
           <CarouselItem key={goal.id} className="pl-2 basis-[85%]">
-            <div className="cc-card">
+            <div
+              className="cc-card cursor-pointer hover:ring-1 hover:ring-violet-400/40 transition-all"
+              onClick={() => nav("/goals")}
+              data-testid={`plan-card-goal-${goal.id}`}
+            >
               <p className="text-sm font-medium text-foreground">{goal.title}</p>
               {goal.progress != null && (
                 <div className="mt-2">
@@ -841,19 +855,28 @@ function PlanPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }
 }
 
 function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   const snap = summary.nutritionSnapshot;
   if (!snap) {
     return (
       <Carousel opts={{ align: "start", dragFree: true }}>
         <CarouselContent className="-ml-2">
           <CarouselItem className="pl-2 basis-[85%]">
-            <div className="cc-card">
+            <div
+              className="cc-card cursor-pointer hover:ring-1 hover:ring-emerald-400/40 transition-all"
+              onClick={() => nav("/meal-prep")}
+              data-testid="nutrition-card-empty"
+            >
               <p className="text-sm font-medium text-foreground">No meals logged today</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Tap "More" to start tracking</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tap to log your first meal</p>
             </div>
           </CarouselItem>
           <CarouselItem className="pl-2 basis-[85%]">
-            <div className="cc-card">
+            <div
+              className="cc-card cursor-pointer hover:ring-1 hover:ring-emerald-400/40 transition-all"
+              onClick={() => nav("/meal-prep")}
+              data-testid="nutrition-card-track"
+            >
               <p className="text-sm font-medium text-foreground">Track calories & protein</p>
               <p className="text-xs text-muted-foreground mt-0.5">Stay on top of your nutrition goals</p>
             </div>
@@ -871,7 +894,11 @@ function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSumma
     <Carousel opts={{ align: "start", dragFree: true }}>
       <CarouselContent className="-ml-2">
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-emerald-400/40 transition-all"
+            onClick={() => nav("/meal-prep")}
+            data-testid="nutrition-card-calories"
+          >
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium text-foreground">Calories</span>
               <span className="text-xs text-muted-foreground">{snap.caloriesConsumed} / {snap.caloriesTarget}</span>
@@ -881,7 +908,11 @@ function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSumma
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-emerald-400/40 transition-all"
+            onClick={() => nav("/meal-prep")}
+            data-testid="nutrition-card-protein"
+          >
             <div className="flex justify-between items-center mb-1">
               <span className="text-sm font-medium text-foreground">Protein</span>
               <span className="text-xs text-muted-foreground">{snap.proteinConsumed}g / {snap.proteinTarget}g</span>
@@ -892,10 +923,14 @@ function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSumma
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-emerald-400/40 transition-all"
+            onClick={() => nav("/meal-prep")}
+            data-testid="nutrition-card-summary"
+          >
             <p className="text-sm font-medium text-foreground">Daily Summary</p>
             <p className="text-xs text-muted-foreground mt-1">{calPct}% of calories, {proPct}% of protein consumed</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Swipe for details or tap "More"</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Tap to log or adjust meals</p>
           </div>
         </CarouselItem>
       </CarouselContent>
@@ -904,6 +939,7 @@ function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSumma
 }
 
 function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   const streakHabits = summary.activeHabits.filter((h) => (h.streak ?? 0) > 0);
 
   const slides: { content: JSX.Element }[] = [];
@@ -911,7 +947,11 @@ function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
   if (summary.momentumData) {
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-rose-400/40 transition-all"
+          onClick={() => nav("/habits")}
+          data-testid="momentum-card-status"
+        >
           <div className="flex items-center gap-2 mb-1">
             <div className={`h-2 w-2 rounded-full ${
               summary.momentumData.status === "green" ? "bg-emerald-500" :
@@ -930,7 +970,11 @@ function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
   streakHabits.forEach((h) => {
     slides.push({
       content: (
-        <div className="cc-card flex items-center justify-between">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-rose-400/40 transition-all flex items-center justify-between"
+          onClick={() => nav("/habits")}
+          data-testid={`momentum-card-habit-${h.id}`}
+        >
           <span className="text-sm font-medium text-foreground">{h.title}</span>
           <Badge variant="secondary">{h.streak} day streak</Badge>
         </div>
@@ -941,9 +985,13 @@ function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
   if (slides.length === 0) {
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-rose-400/40 transition-all"
+          onClick={() => nav("/habits")}
+          data-testid="momentum-card-empty"
+        >
           <p className="text-sm font-medium text-foreground">No active streaks yet</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Build momentum one day at a time</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Tap to start building momentum</p>
         </div>
       ),
     });
@@ -963,14 +1011,20 @@ function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
 }
 
 function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   const slides: { content: JSX.Element }[] = [];
 
   if (summary.activeFollowUp) {
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-indigo-400/40 transition-all"
+          onClick={() => nav("/talk")}
+          data-testid="followup-card-active"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">DW wants to know</p>
           <p className="text-sm font-medium text-foreground">{summary.activeFollowUp.prompt}</p>
+          <p className="text-xs text-muted-foreground mt-1">Tap to respond</p>
         </div>
       ),
     });
@@ -979,10 +1033,14 @@ function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
   if (summary.lastConversationTopic) {
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-indigo-400/40 transition-all"
+          onClick={() => nav("/talk")}
+          data-testid="followup-card-last-convo"
+        >
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Last conversation</p>
           <p className="text-sm font-medium text-foreground">{summary.lastConversationTopic}</p>
-          <p className="text-xs text-muted-foreground mt-1">Tap "Chat with DW" to continue</p>
+          <p className="text-xs text-muted-foreground mt-1">Tap to continue</p>
         </div>
       ),
     });
@@ -991,9 +1049,13 @@ function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
   if (slides.length === 0) {
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-indigo-400/40 transition-all"
+          onClick={() => nav("/talk")}
+          data-testid="followup-card-empty"
+        >
           <p className="text-sm font-medium text-foreground">No follow-ups yet</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Start talking with DW to get personalized follow-ups</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Tap to start talking with DW</p>
         </div>
       ),
     });
@@ -1001,7 +1063,11 @@ function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
 
   slides.push({
     content: (
-      <div className="cc-card">
+      <div
+        className="cc-card cursor-pointer hover:ring-1 hover:ring-indigo-400/40 transition-all"
+        onClick={() => nav("/talk")}
+        data-testid="followup-card-stay-connected"
+      >
         <p className="text-sm font-medium text-foreground">Stay connected</p>
         <p className="text-xs text-muted-foreground mt-0.5">DW checks in based on your conversations and energy</p>
       </div>
@@ -1022,13 +1088,18 @@ function FollowUpPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
 }
 
 function JournalPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
+  const [, nav] = useLocation();
   const slides: { content: JSX.Element }[] = [];
 
   if (summary.latestJournalEntry) {
     const entry = summary.latestJournalEntry;
     slides.push({
       content: (
-        <div className="cc-card">
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-teal-400/40 transition-all"
+          onClick={() => nav("/journal")}
+          data-testid="journal-card-latest"
+        >
           <p className="text-sm font-semibold text-foreground">{entry.title}</p>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{entry.story}</p>
           {entry.tags.length > 0 && (
@@ -1045,9 +1116,13 @@ function JournalPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
 
   slides.push({
     content: (
-      <div className="cc-card">
+      <div
+        className="cc-card cursor-pointer hover:ring-1 hover:ring-teal-400/40 transition-all"
+        onClick={() => nav("/journal")}
+        data-testid="journal-card-info"
+      >
         <p className="text-sm font-medium text-foreground">{summary.latestJournalEntry ? "Your journal grows with you" : "No journal entries yet"}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">DW creates journal entries from your conversations</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{summary.latestJournalEntry ? "Tap to read your entries" : "Tap to start writing"}</p>
       </div>
     ),
   });
@@ -1119,11 +1194,16 @@ function CosmicPreview({ onNavigate }: { onNavigate?: (path: string) => void }) 
 }
 
 function ForYouPreview() {
+  const [, nav] = useLocation();
   return (
     <Carousel opts={{ align: "start", dragFree: true }}>
       <CarouselContent className="-ml-2">
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-sky-400/40 transition-all"
+            onClick={() => nav("/browse")}
+            data-testid="foryou-card-wellness"
+          >
             <div className="flex items-center gap-2 mb-1">
               <Compass className="h-4 w-4 text-teal-400" />
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Wellness</span>
@@ -1133,7 +1213,11 @@ function ForYouPreview() {
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-sky-400/40 transition-all"
+            onClick={() => nav("/browse")}
+            data-testid="foryou-card-community"
+          >
             <div className="flex items-center gap-2 mb-1">
               <MessageCircle className="h-4 w-4 text-blue-400" />
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Community</span>
@@ -1143,7 +1227,11 @@ function ForYouPreview() {
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-sky-400/40 transition-all"
+            onClick={() => nav("/browse")}
+            data-testid="foryou-card-resources"
+          >
             <div className="flex items-center gap-2 mb-1">
               <BookOpen className="h-4 w-4 text-amber-400" />
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Resources</span>
