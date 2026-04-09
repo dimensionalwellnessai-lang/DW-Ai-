@@ -287,7 +287,7 @@ export default function HomeCommandCenter() {
       icon: Moon,
       color: "text-violet-400",
       bgClass: "bg-violet-500/15",
-      path: "/cosmic-insights",
+      path: "/cosmic",
       dwTopic: "What does the cosmos say today",
       snippet: "Moon & transits",
     },

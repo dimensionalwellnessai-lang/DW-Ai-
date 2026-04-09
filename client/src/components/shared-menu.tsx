@@ -24,7 +24,6 @@ import {
   Search,
   Award,
   RefreshCw,
-  Activity,
   BarChart3,
   FileText,
   Settings,
@@ -73,7 +72,6 @@ const MENU_SECTIONS: Array<{
   {
     title: "LIFE DIMENSIONS",
     items: [
-      { id: "astrology", name: "✨ Cosmic Insights", path: "/cosmic-insights", icon: Sparkles, dimension: "mind" },
       { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "mind" },
       { id: "finances", name: "💰 Finances", path: "/finances", icon: Wallet, dimension: "money" },
       { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "community" },
@@ -92,7 +90,6 @@ const MENU_SECTIONS: Array<{
     title: "SYSTEMS",
     collapsible: true,
     items: [
-      { id: "switchboard", name: "⚡ Switch Training", path: "/switchboard", icon: Activity },
       { id: "progress", name: "📊 My Progress", path: "/profile/progress", icon: BarChart3 },
       { id: "routines", name: "📝 Routines", path: "/routines", icon: FileText },
       { id: "tasks", name: "✅ Tasks", path: "/tasks", icon: CheckSquare },

@@ -24,7 +24,7 @@ const FEATURE_CATEGORIES = {
   planning: {
     icon: Calendar,
     title: 'Planning & Organizing',
-    features: ['today-hub', 'tasks', 'calendar-root', 'routines'],
+    features: ['command-center', 'tasks', 'calendar-root', 'routines'],
   },
   health: {
     icon: Dumbbell,
@@ -34,7 +34,7 @@ const FEATURE_CATEGORIES = {
   wellness: {
     icon: Heart,
     title: 'Wellness',
-    features: ['meditation', 'astrology'],
+    features: ['meditation', 'cosmic'],
   },
   household: {
     icon: HomeIcon,
