@@ -1,0 +1,73 @@
+Enumerating objects: 197, done.
+Counting objects: 100% (197/197), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (170/170), done.
+Writing objects: 100% (170/170), 38.82 MiB | 5.63 MiB/s, done.
+Total 170 (delta 142), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (142/142), completed with 25 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:      (?) This repository does not have Secret Scanning enabled, but is eligible. Enable Secret Scanning to view and manage detected secrets.
+remote:      Visit the repository settings page, https://github.com/dimensionalwellnessai-lang/DW-Ai-/settings/security_analysis
+remote:     
+remote:     
+remote:       —— OpenAI API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: e84c22a4f60b3547288b58367ad3e9e0679fac43
+remote:            path: .replit:53
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/dimensionalwellnessai-lang/DW-Ai-/security/secret-scanning/unblock-secret/3C69I0p93urHVnJKDRNmIDrDv24
+remote:     
+remote: 
+remote: 
+To https://github.com/dimensionalwellnessai-lang/DW-Ai-.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/dimensionalwellnessai-lang/DW-Ai-.git'
+~/workspace$ git push origin main --force
+Enumerating objects: 205, done.
+Counting objects: 100% (205/205), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (176/176), done.
+Writing objects: 100% (176/176), 38.82 MiB | 5.61 MiB/s, done.
+Total 176 (delta 144), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (144/144), completed with 27 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:      (?) This repository does not have Secret Scanning enabled, but is eligible. Enable Secret Scanning to view and manage detected secrets.
+remote:      Visit the repository settings page, https://github.com/dimensionalwellnessai-lang/DW-Ai-/settings/security_analysis
+remote:     
+remote:     
+remote:       —— OpenAI API Key ————————————————————————————————————
+remote:        locations:
+remote:          - commit: e84c22a4f60b3547288b58367ad3e9e0679fac43
+remote:            path: .replit:53
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/dimensionalwellnessai-lang/DW-Ai-/security/secret-scanning/unblock-secret/3C69I0p93urHVnJKDRNmIDrDv24
+remote:     
+remote: 
+remote: 
+To https://github.com/dimensionalwellnessai-lang/DW-Ai-.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/dimensionalwellnessai-lang/DW-Ai-.git'
