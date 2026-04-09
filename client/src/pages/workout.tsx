@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
@@ -626,6 +627,17 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
   const recommendation = getPersonalizedRecommendation();
   const recommendedWorkout = recommendation?.workout || null;
   const recommendedWhy = recommendation?.why || "";
+
+  const userName = (() => {
+    try { return JSON.parse(localStorage.getItem("dw_onboarding_data") || "{}").name || ""; } catch { return ""; }
+  })();
+
+  const heroGreeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Morning movement";
+    if (h < 17) return "Afternoon session";
+    return "Evening workout";
+  })();
 
   return (
     <div className="flex flex-col h-full bg-background">

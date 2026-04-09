@@ -37,6 +37,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ExerciseAnimation } from "@/components/exercise-animation";
+import { speakOpenAI, stop as stopTTS } from "@/lib/openai-tts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,12 +85,8 @@ interface LoggedStep {
 
 function speak(text: string, enabled: boolean) {
   if (!enabled) return;
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 0.95;
-  utter.pitch = 1;
-  window.speechSynthesis.speak(utter);
+  stopTTS();
+  speakOpenAI(text).catch(() => {});
 }
 
 // ─── Step type icon map ───────────────────────────────────────────────────────
@@ -756,7 +753,7 @@ export function WorkoutSessionEngine({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) { stopTTS(); onClose(); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
