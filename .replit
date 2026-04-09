@@ -50,4 +50,3 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 [userenv.shared]
 APP_BASE_URL = "https://dimensionalwellnessai.com"
 OAUTH_REDIRECT_BASE_URL = "https://dimensionalwellnessai.com"
-OPENAI_API_KEY = "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"
