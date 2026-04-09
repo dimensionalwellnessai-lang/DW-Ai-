@@ -1518,6 +1518,16 @@ export async function registerRoutes(
     }
   });
 
+  // AI engine health status — shows which providers are active/circuit-open
+  app.get("/api/ai/status", async (_req, res) => {
+    try {
+      const { getAIEngineStatus } = await import("./ai-engine");
+      res.json(getAIEngineStatus());
+    } catch {
+      res.json({ status: "unknown" });
+    }
+  });
+
   app.get("/api/ai/insights", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
@@ -2269,6 +2279,14 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       res.json({ response, updatedCategories, syncSessionId, actionsTaken });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
+      // Graceful degradation: show a human-readable message instead of crashing
+      if (errMsg.includes("DW_AI_UNAVAILABLE")) {
+        return res.json({
+          response: "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.",
+          updatedCategories: [],
+          actionsTaken: [],
+        });
+      }
       const errStatus: number = typeof error?.status === "number" ? error.status : 500;
       console.error("Chat error:", errStatus, errMsg);
       res.status(errStatus >= 400 && errStatus < 600 ? errStatus : 500).json({

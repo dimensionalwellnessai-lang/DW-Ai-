@@ -5,22 +5,131 @@ import type { CoachingMode } from "@shared/schema";
 // Fall back to Replit AI Integrations proxy credentials when available.
 const useDirectKey = !!process.env.OPENAI_API_KEY;
 
-const openai = new OpenAI(
+const _openai = new OpenAI(
   useDirectKey
     ? {
         apiKey: process.env.OPENAI_API_KEY,
-        timeout: 25 * 1000,
-        maxRetries: 2,
+        timeout: 30 * 1000,
+        maxRetries: 0, // We handle retries ourselves
       }
     : {
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        timeout: 25 * 1000,
-        maxRetries: 1,
+        timeout: 30 * 1000,
+        maxRetries: 0,
       }
 );
 
-// Export the openai instance for direct use in routes
+// ─── Perplexity fallback client ────────────────────────────────────────────────
+function _buildPerplexityClient(): OpenAI | null {
+  const apiKey = process.env.PERPLEXITY_API_KEY || process.env.AI_INTEGRATIONS_PERPLEXITY_API_KEY;
+  const baseURL = process.env.AI_INTEGRATIONS_PERPLEXITY_BASE_URL || "https://api.perplexity.ai";
+  if (!apiKey) return null;
+  return new OpenAI({ baseURL, apiKey, timeout: 30_000, maxRetries: 0 });
+}
+
+// ─── Resilience state ──────────────────────────────────────────────────────────
+const _resilience = {
+  openaiFailures: 0,
+  openaiCircuitOpenUntil: 0,
+  perplexityFailures: 0,
+  perplexityCircuitOpenUntil: 0,
+};
+
+const _CIRCUIT_THRESHOLD = 3;
+const _CIRCUIT_RESET_MS = 2 * 60 * 1000;
+
+function _isCircuitOpen(provider: "openai" | "perplexity"): boolean {
+  const until = provider === "openai" ? _resilience.openaiCircuitOpenUntil : _resilience.perplexityCircuitOpenUntil;
+  if (until > Date.now()) return true;
+  if (until > 0) {
+    if (provider === "openai") { _resilience.openaiFailures = 0; _resilience.openaiCircuitOpenUntil = 0; }
+    else { _resilience.perplexityFailures = 0; _resilience.perplexityCircuitOpenUntil = 0; }
+  }
+  return false;
+}
+
+function _recordSuccess(provider: "openai" | "perplexity") {
+  if (provider === "openai") { _resilience.openaiFailures = 0; _resilience.openaiCircuitOpenUntil = 0; }
+  else { _resilience.perplexityFailures = 0; _resilience.perplexityCircuitOpenUntil = 0; }
+}
+
+function _recordFailure(provider: "openai" | "perplexity") {
+  if (provider === "openai") {
+    _resilience.openaiFailures++;
+    if (_resilience.openaiFailures >= _CIRCUIT_THRESHOLD) {
+      _resilience.openaiCircuitOpenUntil = Date.now() + _CIRCUIT_RESET_MS;
+      console.warn("[openai] Circuit OPEN for openai — pausing for 2 min");
+    }
+  } else {
+    _resilience.perplexityFailures++;
+    if (_resilience.perplexityFailures >= _CIRCUIT_THRESHOLD) {
+      _resilience.perplexityCircuitOpenUntil = Date.now() + _CIRCUIT_RESET_MS;
+      console.warn("[openai] Circuit OPEN for perplexity — pausing for 2 min");
+    }
+  }
+}
+
+async function _withRetry<T>(fn: () => Promise<T>, attempts = 2, delay = 600): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try { return await fn(); }
+    catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+    }
+  }
+  throw lastErr;
+}
+
+// ─── Wrap chat.completions.create with resilience ─────────────────────────────
+const _originalCreate = _openai.chat.completions.create.bind(_openai.chat.completions);
+
+(_openai.chat.completions as { create: typeof _openai.chat.completions.create }).create = async function resilientCreate(
+  params: Parameters<typeof _openai.chat.completions.create>[0],
+  options?: Parameters<typeof _openai.chat.completions.create>[1],
+): Promise<ReturnType<typeof _openai.chat.completions.create>> {
+  // ── OpenAI attempt ──────────────────────────────────────────────────────────
+  if (!_isCircuitOpen("openai")) {
+    try {
+      const result = await _withRetry(() => _originalCreate(params as Parameters<typeof _originalCreate>[0], options as Parameters<typeof _originalCreate>[1]), 2, 600);
+      _recordSuccess("openai");
+      return result as ReturnType<typeof _openai.chat.completions.create>;
+    } catch (err) {
+      _recordFailure("openai");
+      console.warn("[openai] Primary failed, trying Perplexity fallback:", (err as Error).message);
+    }
+  } else {
+    console.warn("[openai] Circuit open — skipping primary, trying Perplexity");
+  }
+
+  // ── Perplexity fallback ─────────────────────────────────────────────────────
+  if (!_isCircuitOpen("perplexity")) {
+    const perp = _buildPerplexityClient();
+    if (perp) {
+      try {
+        const perpParams = { ...params, model: "sonar" };
+        const result = await _withRetry(
+          () => perp.chat.completions.create(perpParams as Parameters<typeof perp.chat.completions.create>[0], options as Parameters<typeof perp.chat.completions.create>[1]),
+          2,
+          600,
+        );
+        _recordSuccess("perplexity");
+        console.log("[openai] Perplexity fallback succeeded");
+        return result as ReturnType<typeof _openai.chat.completions.create>;
+      } catch (err) {
+        _recordFailure("perplexity");
+        console.error("[openai] Perplexity fallback also failed:", (err as Error).message);
+      }
+    }
+  }
+
+  // ── Last resort: throw a clean error that callers can handle ────────────────
+  throw new Error("DW_AI_UNAVAILABLE: All AI providers temporarily unavailable. Please try again in a moment.");
+} as typeof _openai.chat.completions.create;
+
+// Export the resilient openai instance for direct use in routes
+const openai = _openai;
 export { openai };
 
 /**
@@ -1641,7 +1750,12 @@ Calm over speed.`;
     }
 
     return message?.content || "I'm here with you. Take your time - there's no rush.";
-  } catch (error) {
+  } catch (error: any) {
+    const msg: string = error?.message || String(error);
+    if (msg.includes("DW_AI_UNAVAILABLE")) {
+      console.warn("[generateChatResponse] All providers unavailable — returning graceful message");
+      return "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.";
+    }
     console.error("OpenAI API error:", error);
     throw error;
   }
