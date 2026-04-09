@@ -24,7 +24,7 @@ Last updated: January 2026
 
 1. Purpose of Service
 
-DW.ai ("A Dimensional Wellness AI") is a wellness support tool designed to help users reflect on their wellbeing, organize their daily routines, and explore personal growth. The service provides AI-assisted guidance, tracking features, and educational content.
+DW.ai ("Dimensional Wellness AI") is a wellness support tool designed to help users reflect on their wellbeing, organize their daily routines, and explore personal growth. The service provides AI-assisted guidance, tracking features, and educational content.
 
 2. Not a Medical Service
 
