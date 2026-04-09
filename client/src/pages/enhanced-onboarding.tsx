@@ -27,6 +27,27 @@ export default function EnhancedOnboardingPage() {
     // Save onboarding data
     saveEnhancedOnboarding(data);
 
+    // Bridge birth data → Cosmic page so users don't have to re-enter it
+    if (data.birthDate) {
+      const existingBirthChart = JSON.parse(localStorage.getItem("dw_birth_chart") || "null");
+      if (!existingBirthChart?.birthDate) {
+        localStorage.setItem("dw_birth_chart", JSON.stringify({
+          birthDate: data.birthDate,
+          birthTime: data.birthTime ?? "",
+          birthPlace: data.birthLocation ?? "",
+          houseSystem: "whole-sign",
+          zodiacSystem: "tropical",
+        }));
+      }
+      const existingNumerology = JSON.parse(localStorage.getItem("dw_cosmic_numerology") || "null");
+      if (!existingNumerology?.birthDate) {
+        localStorage.setItem("dw_cosmic_numerology", JSON.stringify({
+          fullName: data.name ?? "",
+          birthDate: data.birthDate,
+        }));
+      }
+    }
+
     // Track completion - simplified event without mismatched payload
     trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {
       completedAt: Date.now(),

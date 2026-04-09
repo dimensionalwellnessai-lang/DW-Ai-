@@ -441,7 +441,7 @@ export default function Browse() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "all" | "saved" | "community" | "discover">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "saved">("for-you");
 
   // ── Discover feed state ──
   interface DiscoverCard {
@@ -1130,8 +1130,7 @@ ${contentList}`,
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v as "for-you" | "video" | "articles" | "all" | "saved" | "community" | "discover");
-          // Reset per-tab filters when switching tabs
+          setActiveTab(v as "for-you" | "video" | "articles" | "saved");
           setTopicFilter("");
           setLengthFilter(null);
         }} className="w-full">
@@ -1139,10 +1138,6 @@ ${contentList}`,
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
               For You
-            </TabsTrigger>
-            <TabsTrigger value="discover" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-discover">
-              <Telescope className="h-4 w-4 mr-1" />
-              Discover
             </TabsTrigger>
             <TabsTrigger value="video" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-video">
               <Video className="h-4 w-4 mr-1" />
@@ -1152,17 +1147,9 @@ ${contentList}`,
               <FileText className="h-4 w-4 mr-1" />
               Articles
             </TabsTrigger>
-            <TabsTrigger value="all" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-all">
-              <Compass className="h-4 w-4 mr-1" />
-              All
-            </TabsTrigger>
             <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-saved">
               <Bookmark className="h-4 w-4 mr-1" />
               Saved
-            </TabsTrigger>
-            <TabsTrigger value="community" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-community">
-              <Users className="h-4 w-4 mr-1" />
-              Community
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1578,8 +1565,7 @@ ${contentList}`,
         </main>
       )}
 
-      {/* ── DISCOVER FEED ───────────────────────────────────────────── */}
-      {activeTab === "discover" && (() => {
+      {false && activeTab === "discover" && (() => {
         const bucketMeta = {
           for_you:  { label: "For You",         Icon: Sparkles,      color: "text-primary",     bg: "bg-primary/10"     },
           explore:  { label: "Explore",          Icon: Telescope,     color: "text-blue-500",    bg: "bg-blue-500/10"    },
@@ -1898,7 +1884,7 @@ ${contentList}`,
         );
       })()}
 
-      {activeTab === "all" && (
+      {false && activeTab === "all" && (
         <>
           <div className="sticky z-30 bg-background border-b px-4 py-3" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
             <div className="relative">
@@ -1997,7 +1983,7 @@ ${contentList}`,
         </>
       )}
 
-      {activeTab === "all" && userProfile && (
+      {false && activeTab === "all" && userProfile && (
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -2023,7 +2009,7 @@ ${contentList}`,
         </div>
       )}
 
-      {activeTab === "all" && (
+      {false && activeTab === "all" && (
         <main className="p-4">
           {/* Apply this? guardrail */}
           {showApplyPrompt && (
@@ -2328,83 +2314,7 @@ ${contentList}`,
             </div>
           </div>
 
-          <h2 className="text-lg font-semibold mb-3">Video Content</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContent.filter(c =>
-              !notInterestedUrls.has((c as any).url || "") &&
-              ["workout", "recovery", "video"].includes(
-                (c as any).contentType || c.category || ""
-              )
-            ).map((item) => {
-              const CategoryIcon = getCategoryIcon(item.category);
-              return (
-                <Card
-                  key={item.id}
-                  className="card-modern hover-lift cursor-pointer transition-all"
-                  onClick={() => handleContentClick(item)}
-                  data-testid={`card-video-${item.id}`}
-                >
-                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
-                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
-                    <Button
-                      size="icon"
-                      className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
-                      onClick={(e) => { e.stopPropagation(); handleContentClick(item); }}
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base font-medium">{item.title}</CardTitle>
-                      <Badge variant="secondary">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {item.duration}m
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
-                    <div className="flex gap-2 pt-2 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: item.category });
-                          handleFeedItemSeen();
-                        }}
-                        data-testid={`button-video-schedule-${item.id}`}
-                      >
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Schedule
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="px-2 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: item.category });
-                        }}
-                        title="Not interested"
-                        data-testid={`button-video-notinterested-${item.id}`}
-                      >
-                        <ThumbsDown className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          {filteredContent.filter(c =>
-              !notInterestedUrls.has((c as any).url || "") &&
-              ["workout", "recovery", "video"].includes(
-                (c as any).contentType || c.category || ""
-              )
-            ).length === 0 && (
+          {!forYouLoading && !forYouData?.videos?.length && (
             <div className="text-center py-12">
               <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">{COPY.emptyStates.browse.title}</p>
@@ -2594,76 +2504,7 @@ ${contentList}`,
             </div>
           ) : null}
 
-          <h2 className="text-lg font-semibold mb-3">Wellness Articles</h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredContent.filter(c =>
-              !notInterestedUrls.has((c as any).url || "") &&
-              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
-                (c as any).contentType || c.category || ""
-              )
-            ).map((item) => {
-              const CategoryIcon = getCategoryIcon(item.category);
-              return (
-                <Card
-                  key={item.id}
-                  className="card-modern hover-lift cursor-pointer transition-all"
-                  onClick={() => handleContentClick(item)}
-                  data-testid={`card-article-${item.id}`}
-                >
-                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
-                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
-                  </div>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base font-medium">{item.title}</CardTitle>
-                      <Badge variant="secondary">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {item.duration}m
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
-                    <div className="flex gap-2 pt-2 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToSchedule({ title: item.title, url: (item as any).url || "", type: "article" });
-                          handleFeedItemSeen();
-                        }}
-                        data-testid={`button-article-schedule-${item.id}`}
-                      >
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Schedule
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="px-2 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNotInterested({ title: item.title, url: (item as any).url || item.id, type: "article" });
-                        }}
-                        title="Not interested"
-                        data-testid={`button-article-notinterested-${item.id}`}
-                      >
-                        <ThumbsDown className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          {filteredContent.filter(c =>
-              !notInterestedUrls.has((c as any).url || "") &&
-              ["article", "blog", "meditation", "mindfulness", "nutrition"].includes(
-                (c as any).contentType || c.category || ""
-              )
-            ).length === 0 && !aiArticlesLoading && !(aiArticlesData?.articles?.length) && (
+          {!aiArticlesLoading && !(aiArticlesData?.articles?.length) && (
             <div className="text-center py-12 space-y-3">
               <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
               <p className="font-medium">No articles match your current filters</p>
@@ -2745,7 +2586,7 @@ ${contentList}`,
         </main>
       )}
 
-      {activeTab === "community" && (
+      {false && activeTab === "community" && (
         <div className="flex flex-col">
           <div className="sticky z-30 bg-background border-b" style={{ top: 'calc(var(--header-total-height, 80px) + var(--tabs-height, 48px))' }}>
             <div className="flex gap-2 px-4 py-3 overflow-x-auto">
