@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Google Assistant App Actions configuration for DW (Dimensional Wellness AI)
+  See: https://developers.google.com/assistant/app/app-actions
+-->
+<actions>
+
+  <!-- Talk to DW / voice mode -->
+  <action intentName="actions.intent.OPEN_APP_FEATURE">
+    <parameter name="feature" value="voice_mode" />
+    <fulfillment urlTemplate="dwai://action?type=voice&amp;source=android_assistant&amp;autoVoice=1" />
+    <fulfillment urlTemplate="https://app.dw.ai/voice?action=voice&amp;source=android_assistant&amp;autoVoice=1" />
+  </action>
+
+  <!-- Start day briefing -->
+  <action intentName="actions.intent.OPEN_APP_FEATURE">
+    <parameter name="feature" value="start_day" />
+    <fulfillment urlTemplate="dwai://action?type=day_start&amp;source=android_assistant&amp;autoVoice=1" />
+    <fulfillment urlTemplate="https://app.dw.ai/day/start?action=day_start&amp;source=android_assistant" />
+  </action>
+
+  <!-- Log mood -->
+  <action intentName="actions.intent.LOG_HEALTH_OBSERVATION">
+    <fulfillment urlTemplate="dwai://action?type=mood_log&amp;source=android_assistant" />
+  </action>
+
+  <!-- Add task -->
+  <action intentName="actions.intent.CREATE_REMINDER">
+    <parameter name="title" value="{task}" />
+    <fulfillment urlTemplate="dwai://action?type=task_add&amp;source=android_assistant&amp;title={task}" />
+  </action>
+
+  <!-- Start workout -->
+  <action intentName="actions.intent.START_EXERCISE">
+    <parameter name="exercise" value="{exercise}" />
+    <fulfillment urlTemplate="dwai://action?type=workout_start&amp;source=android_assistant&amp;workoutType={exercise}" />
+  </action>
+
+</actions>

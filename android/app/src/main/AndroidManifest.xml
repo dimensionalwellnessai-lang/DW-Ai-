@@ -38,6 +38,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
+            <!-- Static app shortcuts (long-press launcher icon) -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
+            <!-- Google Assistant App Actions -->
+            <meta-data
+                android:name="com.google.android.actions"
+                android:resource="@xml/app_actions" />
+
         </activity>
 
         <provider

@@ -13089,6 +13089,24 @@ Response:`;
     }
   });
 
+  // ── Assistant action analytics ──────────────────────────────────────────
+  app.post("/api/assistant/log", async (req, res) => {
+    try {
+      const { platform, source, action, parametersJson, success, durationMs } = req.body as {
+        platform?: string;
+        source?: string;
+        action?: string;
+        parametersJson?: string;
+        success?: boolean;
+        durationMs?: number;
+      };
+      console.log("[AssistantAction]", { platform, source, action, success, durationMs });
+      res.json({ ok: true });
+    } catch {
+      res.json({ ok: false });
+    }
+  });
+
   return httpServer;
 }
 

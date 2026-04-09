@@ -16,6 +16,7 @@ import { FloatingAIWidget } from "@/components/floating-ai-widget";
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
+import { deepLinkService } from "@/lib/deep-link-service";
 import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
 import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
 import { InteractiveTour } from "@/components/interactive-tour";
@@ -119,6 +120,8 @@ import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
 import ActionCenterPage from "@/pages/action-center";
 import { AIWorkspace } from "@/components/ai-workspace";
+import VoiceModePage from "@/pages/voice-mode";
+import DayStartPage from "@/pages/day-start";
 
 function isReturningUser(): boolean {
   try {
@@ -246,6 +249,8 @@ function Router() {
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
       <Route path="/mood-tracker" component={MoodTrackerPage} />
+      <Route path="/voice" component={VoiceModePage} />
+      <Route path="/day/start" component={DayStartPage} />
 
       {/* Calendar routes — specific paths before the catch-all */}
       {isRouteEnabled("/calendar") && <Route path="/calendar/manage" component={CalendarPlansPage} />}
@@ -354,6 +359,12 @@ function AppContent() {
   const { isOpen, completeTour, skipTour, startTourIfPending } = useInteractiveTour();
   const { user } = useAuth();
   const [usernameModalOpen, setUsernameModalOpen] = useState(false);
+
+  // Initialize deep link service and connect it to wouter navigation
+  useEffect(() => {
+    deepLinkService.setNavigator(setLocation);
+    deepLinkService.initialize();
+  }, [setLocation]);
 
   // Trigger DW daily affirmation once per session
   useEffect(() => {

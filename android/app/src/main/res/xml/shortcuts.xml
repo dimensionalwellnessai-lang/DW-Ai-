@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Static app shortcuts for DW (Dimensional Wellness AI)
+  These appear when the user long-presses the DW app icon.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <shortcut
+    android:shortcutId="voice_mode"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/shortcut_voice_short"
+    android:shortcutLongLabel="@string/shortcut_voice_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="dwai://action?type=voice&amp;source=shortcut&amp;autoVoice=1"
+      android:targetPackage="com.reilbrown.fliptheswitch"
+      android:targetClass="com.reilbrown.fliptheswitch.MainActivity" />
+    <categories android:name="android.shortcut.conversation" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="start_day"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/shortcut_start_day_short"
+    android:shortcutLongLabel="@string/shortcut_start_day_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="dwai://action?type=day_start&amp;source=shortcut"
+      android:targetPackage="com.reilbrown.fliptheswitch"
+      android:targetClass="com.reilbrown.fliptheswitch.MainActivity" />
+    <categories android:name="android.shortcut.conversation" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="log_mood"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/shortcut_mood_short"
+    android:shortcutLongLabel="@string/shortcut_mood_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="dwai://action?type=mood_log&amp;source=shortcut"
+      android:targetPackage="com.reilbrown.fliptheswitch"
+      android:targetClass="com.reilbrown.fliptheswitch.MainActivity" />
+    <categories android:name="android.shortcut.conversation" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="add_task"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/shortcut_task_short"
+    android:shortcutLongLabel="@string/shortcut_task_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="dwai://action?type=task_add&amp;source=shortcut"
+      android:targetPackage="com.reilbrown.fliptheswitch"
+      android:targetClass="com.reilbrown.fliptheswitch.MainActivity" />
+    <categories android:name="android.shortcut.conversation" />
+  </shortcut>
+
+  <shortcut
+    android:shortcutId="start_workout"
+    android:enabled="true"
+    android:icon="@mipmap/ic_launcher"
+    android:shortcutShortLabel="@string/shortcut_workout_short"
+    android:shortcutLongLabel="@string/shortcut_workout_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:data="dwai://action?type=workout_start&amp;source=shortcut"
+      android:targetPackage="com.reilbrown.fliptheswitch"
+      android:targetClass="com.reilbrown.fliptheswitch.MainActivity" />
+    <categories android:name="android.shortcut.conversation" />
+  </shortcut>
+
+</shortcuts>

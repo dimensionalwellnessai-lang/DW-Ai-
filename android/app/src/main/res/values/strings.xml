@@ -4,4 +4,16 @@
     <string name="title_activity_main">DW</string>
     <string name="package_name">com.dimensionalwellness.app</string>
     <string name="custom_url_scheme">com.dimensionalwellness.app</string>
+
+    <!-- App shortcut labels -->
+    <string name="shortcut_voice_short">Talk to DW</string>
+    <string name="shortcut_voice_long">Open DW voice conversation mode</string>
+    <string name="shortcut_start_day_short">Start My Day</string>
+    <string name="shortcut_start_day_long">Open DW daily briefing and planning</string>
+    <string name="shortcut_mood_short">Log Mood</string>
+    <string name="shortcut_mood_long">Log how you are feeling in DW</string>
+    <string name="shortcut_task_short">Add Task</string>
+    <string name="shortcut_task_long">Quickly add a task or reminder in DW</string>
+    <string name="shortcut_workout_short">Start Workout</string>
+    <string name="shortcut_workout_long">Open DW to browse and start a workout</string>
 </resources>
