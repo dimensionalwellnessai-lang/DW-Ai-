@@ -502,6 +502,7 @@ export default function HomeCommandCenter() {
                 navigate(activeCard.path);
               }}
               onDW={(topic) => { setActiveCard(null); navigate(`/talk?topic=${encodeURIComponent(topic)}`); }}
+              onNavTo={(path) => { setActiveCard(null); navigate(path); }}
             />
           )}
         </DrawerContent>
@@ -518,11 +519,13 @@ function CardPreview({
   summary,
   onMore,
   onDW,
+  onNavTo,
 }: {
   module: OrbitModule;
   summary: ReturnType<typeof useHomeSummary>;
   onMore: () => void;
   onDW: (topic: string) => void;
+  onNavTo?: (path: string) => void;
 }) {
   const Icon = module.icon;
 
@@ -546,7 +549,7 @@ function CardPreview({
         {module.id === "momentum" && <MomentumPreview summary={summary} />}
         {module.id === "followup" && <FollowUpPreview summary={summary} />}
         {module.id === "journal" && <JournalPreview summary={summary} />}
-        {module.id === "cosmic" && <CosmicPreview />}
+        {module.id === "cosmic" && <CosmicPreview onNavigate={onNavTo} />}
         {module.id === "foryou" && <ForYouPreview />}
       </div>
 
@@ -1062,12 +1065,18 @@ function JournalPreview({ summary }: { summary: ReturnType<typeof useHomeSummary
   );
 }
 
-function CosmicPreview() {
+function CosmicPreview({ onNavigate }: { onNavigate?: (path: string) => void }) {
+  const [, nav] = useLocation();
+  const go = (path: string) => (onNavigate ? onNavigate(path) : nav(path));
   return (
     <Carousel opts={{ align: "start", dragFree: true }}>
       <CarouselContent className="-ml-2">
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-violet-400/40 transition-all"
+            onClick={() => go("/cosmic?tab=calendar")}
+            data-testid="cosmic-card-moon-phase"
+          >
             <div className="flex items-center gap-2 mb-1">
               <Moon className="h-4 w-4 text-violet-400" />
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Moon Phase</span>
@@ -1077,17 +1086,25 @@ function CosmicPreview() {
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-amber-400/40 transition-all"
+            onClick={() => go("/cosmic?tab=readings")}
+            data-testid="cosmic-card-transits"
+          >
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-4 w-4 text-amber-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Transits</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Readings</span>
             </div>
             <p className="text-sm font-medium text-foreground">Today's cosmic energy</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Alignments & retrogrades</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Deep readings & insights</p>
           </div>
         </CarouselItem>
         <CarouselItem className="pl-2 basis-[85%]">
-          <div className="cc-card">
+          <div
+            className="cc-card cursor-pointer hover:ring-1 hover:ring-indigo-400/40 transition-all"
+            onClick={() => go("/cosmic?tab=numerology")}
+            data-testid="cosmic-card-numerology"
+          >
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Numerology</span>

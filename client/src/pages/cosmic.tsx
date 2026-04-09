@@ -1560,15 +1560,15 @@ function buildReadingPrompt(
 
   const ctx = cosmic.join(" | ");
 
-  const style = `You are a thoughtful, grounded cosmic guide. Your tone is warm, direct, and poetic without being vague. Max 120 words. No bullet points. Never say "you should" — speak in invitations. Avoid "optimize", "maximize", "fix", "broken".`;
+  const style = `You are a thoughtful, grounded cosmic guide. Your tone is warm, direct, and poetic without being vague. Max 150 words. No bullet points. Never say "you should" — speak in invitations. Avoid "optimize", "maximize", "fix", "broken". If you know the person's active goals, habits, or life situation from context, weave one or two specific references into the reading to make it feel genuinely personal — not generic cosmic advice.`;
 
   const frames: Record<ReadingTimeframe, string> = {
-    today: `${style} Context: ${ctx}. Give a personal reading for TODAY. Name the energy at play today, one specific invitation for this person, and one thing to notice or let go of. Be personal and specific.`,
-    month: `${style} Context: ${ctx}. Give a reading for ${monthName} ${year}. Describe the dominant energetic theme this month, what it's asking of this person, and one way to work with it rather than against it.`,
-    year: `${style} Context: ${ctx}. Give a reading for Personal Year ${personalYear ?? "(unknown)"}. What is the overarching invitation and challenge of this year in their life? What is this year's purpose? End with one orienting question.`,
-    moon: `${style} Context: ${ctx}. Give a deep reading for the current ${moonPhase} phase and what it specifically means for this person's inner life right now. Go deeper than general moon wisdom — make it feel personal to their chart and cycles.`,
-    lifePhase: `${style} Context: ${ctx}. Speak to where this person is in their larger life journey. Consider their numerological cycles and sun sign together to describe the chapter they are in — its gifts, its tests, and its underlying invitation.`,
-    lifePattern: `${style} Context: ${ctx}. Describe this person's core energetic patterns — what they carry naturally, what tends to trip them up, and what their recurring life themes are trying to teach them. Ground it in their specific cosmic profile.`,
+    today: `${style} Context: ${ctx}. Give a personal reading for TODAY. Name the energy at play today, one specific invitation for this person grounded in their actual goals or habits if visible, and one thing to notice or let go of. Be personal and specific — this should feel like it was written for them, not for everyone.`,
+    month: `${style} Context: ${ctx}. Give a reading for ${monthName} ${year}. Describe the dominant energetic theme this month, what it's asking of this person given where they are in their life right now, and one way to work with it rather than against it. If their goals or current habits are visible, show how this month's energy relates to what they're building.`,
+    year: `${style} Context: ${ctx}. Give a reading for Personal Year ${personalYear ?? "(unknown)"}. What is the overarching invitation and challenge of this year? What is this year's purpose for this specific person given what you know about their goals and direction? End with one orienting question.`,
+    moon: `${style} Context: ${ctx}. Give a deep reading for the current ${moonPhase} phase and what it specifically means for this person's inner life right now. Connect the lunar energy to something specific in their current reality — a goal they're working toward, a habit they're building, or an area of their life that's in motion. Go deeper than general moon wisdom.`,
+    lifePhase: `${style} Context: ${ctx}. Speak to where this person is in their larger life journey. Consider their numerological cycles and sun sign together to describe the chapter they are in — its gifts, its tests, and its underlying invitation. If their goals or habits reveal what they're currently building or healing, name how this life phase supports or challenges that.`,
+    lifePattern: `${style} Context: ${ctx}. Describe this person's core energetic patterns — what they carry naturally, what tends to trip them up, and what their recurring life themes are trying to teach them. Ground it in their specific cosmic profile. If you can see patterns in their goals, habits, or life choices that reflect these themes, reflect that back to them.`,
   };
 
   return frames[timeframe];
@@ -1585,6 +1585,8 @@ function ReadingsTab({
   const [readings, setReadings] = useState<Partial<Record<ReadingTimeframe, string>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [correspondenceText, setCorrespondenceText] = useState<string | null>(null);
+  const [correspondenceLoading, setCorrespondenceLoading] = useState(false);
 
   const { consent } = useCosmicConsent();
 
@@ -1618,14 +1620,88 @@ function ReadingsTab({
     [birthData, numerologyData, consent, readings],
   );
 
+  const fetchCorrespondence = useCallback(async () => {
+    if (correspondenceText) return;
+    setCorrespondenceLoading(true);
+    try {
+      const moonPhase = getCurrentMoonPhase();
+      const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
+      const sunSign = (() => {
+        if (!birthData?.birthDate) return null;
+        const d = parseLocalDate(birthData.birthDate);
+        if (!d) return null;
+        const doy = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 0).getTime()) / 86400000);
+        return getSign(((doy / 365.25) * 360 + 280) % 360, birthData.zodiacSystem);
+      })();
+      const cosmicCtx = [
+        `Moon phase: ${moonPhase}`,
+        sunSign && consent?.useAstrologyInGuidance ? `Sun sign: ${sunSign}` : null,
+        personalDay !== null && consent?.useNumerologyInGuidance ? `Personal Day: ${personalDay}` : null,
+      ].filter(Boolean).join(" | ");
+      const prompt = `You are a cosmic guide who understands the full picture of a person's life. Cosmic context today: ${cosmicCtx}. Using the person's active goals, habits, and any life situation you know about, write 2–3 short sentences showing how today's cosmic energy corresponds specifically to something happening in THEIR life right now. Name the life areas (body, work, relationships, creativity, money, spirit, mind, heart) that are most activated. Speak directly and personally — not as a generic horoscope, but as someone who sees their specific reality. Max 80 words. No bullet points.`;
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: prompt,
+        conversationHistory: [],
+        cosmicConsent: consent,
+      });
+      const json = (await response.json()) as { response?: string };
+      if (typeof json.response === "string") {
+        setCorrespondenceText(json.response);
+      }
+    } catch {
+      // fail silently — this is supplemental
+    } finally {
+      setCorrespondenceLoading(false);
+    }
+  }, [birthData, numerologyData, consent, correspondenceText]);
+
   useEffect(() => {
     fetchReading(activeFrame);
   }, [activeFrame]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchCorrespondence();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const frame = READING_TIMEFRAMES.find((f) => f.id === activeFrame)!;
 
   return (
     <div className="space-y-4">
+      {/* Cosmic Correspondence — today's energy mapped to this person's reality */}
+      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 overflow-hidden" data-testid="section-cosmic-correspondence">
+        <div className="px-4 pt-3 pb-2 flex items-center gap-2 border-b border-violet-500/10">
+          <span className="text-base" aria-hidden="true">✦</span>
+          <div>
+            <p className="text-xs font-semibold text-foreground">Today's Cosmic Correspondence</p>
+            <p className="text-[10px] text-muted-foreground">How today's energy maps to your life</p>
+          </div>
+          {correspondenceText && (
+            <button
+              className="ml-auto text-[10px] text-muted-foreground/60 hover:text-muted-foreground"
+              onClick={() => { setCorrespondenceText(null); fetchCorrespondence(); }}
+              data-testid="button-refresh-correspondence"
+            >
+              ↺
+            </button>
+          )}
+        </div>
+        <div className="px-4 py-3">
+          {correspondenceLoading ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-2.5 bg-muted/60 rounded w-full" />
+              <div className="h-2.5 bg-muted/60 rounded w-[85%]" />
+              <div className="h-2.5 bg-muted/60 rounded w-[70%]" />
+            </div>
+          ) : correspondenceText ? (
+            <p className="text-xs text-foreground/80 leading-relaxed">{correspondenceText}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Add birth data or goals to see your personal cosmic correspondence.
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Timeframe selector */}
       <div className="grid grid-cols-3 gap-2">
         {READING_TIMEFRAMES.map((f) => (
@@ -1899,7 +1975,7 @@ export default function CosmicHubPage() {
               </TabsTrigger>
               <TabsTrigger value="numerology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-numerology">
                 <Hash className="h-4 w-4" />
-                <span className="text-[10px]">Numbers</span>
+                <span className="text-[10px]">Numerology</span>
               </TabsTrigger>
             </TabsList>
 
