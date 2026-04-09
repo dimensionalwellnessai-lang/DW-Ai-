@@ -1263,6 +1263,31 @@ export function deleteRoutine(routineId: string): void {
   saveGuestData(data);
 }
 
+export function updateSavedRoutineSteps(routineId: string, steps: string[]): void {
+  const data = getGuestData();
+  if (!data || !data.savedRoutines) return;
+  const routine = data.savedRoutines.find(r => r.id === routineId);
+  if (!routine) return;
+  routine.data = { ...(routine.data as Record<string, unknown>), steps };
+  saveGuestData(data);
+}
+
+export interface GuestTask {
+  id: string;
+  title: string;
+  source: string;
+  createdAt: number;
+  isCompleted: boolean;
+}
+
+export function addGuestTask(title: string, source = "routine"): GuestTask {
+  const tasks: GuestTask[] = JSON.parse(localStorage.getItem("dw_guest_tasks") || "[]");
+  const task: GuestTask = { id: generateId(), title, source, createdAt: Date.now(), isCompleted: false };
+  tasks.unshift(task);
+  localStorage.setItem("dw_guest_tasks", JSON.stringify(tasks));
+  return task;
+}
+
 export function getFinanceProfile(): FinanceProfile | null {
   const data = getGuestData();
   return data?.financeProfile || null;

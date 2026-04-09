@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -12,9 +13,11 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
+  ListTodo,
+  X,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
-import { saveRoutine } from "@/lib/guest-storage";
+import { saveRoutine, addGuestTask } from "@/lib/guest-storage";
 import { apiRequest } from "@/lib/queryClient";
 import { SUGGESTED_ROUTINES } from "@/lib/routine-templates";
 
@@ -27,18 +30,21 @@ export default function RoutineTemplateDetailPage() {
   const template = SUGGESTED_ROUTINES.find((r) => r.id === templateId);
 
   const [steps, setSteps] = useState<string[]>(template?.defaultSteps ?? []);
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
   const [whySuggested, setWhySuggested] = useState<string | null>(null);
   const [aiGenerated, setAiGenerated] = useState(false);
   const [loadingSteps, setLoadingSteps] = useState(false);
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [addingTaskIdx, setAddingTaskIdx] = useState<number | null>(null);
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [newStepText, setNewStepText] = useState("");
+  const newStepInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset all derived state and re-fetch whenever the template changes so that
-  // navigating between /routines/templates/:id paths never shows stale data.
   useEffect(() => {
     if (!template) return;
 
-    // Reset to defaults immediately so the UI is never in a stale state
     setSteps(template.defaultSteps);
     setWhySuggested(null);
     setAiGenerated(false);
@@ -74,6 +80,12 @@ export default function RoutineTemplateDetailPage() {
     fetchAiSteps();
     return () => { cancelled = true; };
   }, [templateId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (showAddStep) {
+      setTimeout(() => newStepInputRef.current?.focus(), 50);
+    }
+  }, [showAddStep]);
 
   if (!template) {
     return (
@@ -131,14 +143,45 @@ export default function RoutineTemplateDetailPage() {
     }
   };
 
+  const handleAddStepAsTask = async (step: string, idx: number) => {
+    setAddingTaskIdx(idx);
+    try {
+      const res = await apiRequest("POST", "/api/tasks", {
+        title: step,
+        dwSuggested: false,
+        linkedRoute: "/routines",
+      });
+      if (res.ok) {
+        toast({ title: "Added to tasks", description: `"${step}" is now in your task list.` });
+      } else {
+        throw new Error("api_failed");
+      }
+    } catch {
+      addGuestTask(step, "routine-template");
+      toast({ title: "Added to tasks", description: `"${step}" saved to your tasks.` });
+    } finally {
+      setAddingTaskIdx(null);
+    }
+  };
+
+  const handleAddCustomStep = () => {
+    const text = newStepText.trim();
+    if (!text) return;
+    setSteps((prev) => [...prev, text]);
+    setNewStepText("");
+    setShowAddStep(false);
+    toast({ title: "Step added", description: "It will be included when you save this routine." });
+  };
+
   const handleAddToRoutines = () => {
     setAdding(true);
     try {
+      const latestSteps = stepsRef.current;
       const saved = saveRoutine({
         type: template.routineType,
         title: template.title,
         description: whySuggested ?? template.description,
-        data: { steps, templateId, aiGenerated },
+        data: { steps: latestSteps, templateId, aiGenerated },
         tags: template.tags,
         dimensionSignals: template.tags,
       });
@@ -238,39 +281,90 @@ export default function RoutineTemplateDetailPage() {
                 {steps.map((step, idx) => (
                   <Card
                     key={idx}
-                    className={`hover-elevate cursor-pointer transition-all ${
-                      checkedSteps.has(idx) ? "opacity-60 bg-muted/50" : ""
+                    className={`transition-all ${
+                      checkedSteps.has(idx) ? "opacity-60 bg-muted/50" : "hover-elevate"
                     }`}
-                    onClick={() => toggleStep(idx)}
                     data-testid={`step-${idx}`}
                   >
                     <CardContent className="p-4 flex items-center gap-3">
                       <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
                           checkedSteps.has(idx)
                             ? "bg-primary border-primary"
                             : "border-muted-foreground"
                         }`}
+                        onClick={() => toggleStep(idx)}
                       >
                         {checkedSteps.has(idx) && (
                           <Check className="w-3.5 h-3.5 text-primary-foreground" />
                         )}
                       </div>
                       <p
-                        className={`text-sm flex-1 ${
+                        className={`text-sm flex-1 cursor-pointer ${
                           checkedSteps.has(idx)
                             ? "line-through text-muted-foreground"
                             : ""
                         }`}
+                        onClick={() => toggleStep(idx)}
                       >
                         {step}
                       </p>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        Step {idx + 1}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">Step {idx + 1}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          disabled={addingTaskIdx === idx}
+                          onClick={(e) => { e.stopPropagation(); handleAddStepAsTask(step, idx); }}
+                          title="Add this step as a task"
+                          data-testid={`button-add-task-${idx}`}
+                        >
+                          {addingTaskIdx === idx
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <ListTodo className="w-3.5 h-3.5" />
+                          }
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
+
+                {/* Add custom step */}
+                {showAddStep ? (
+                  <Card className="border-dashed border-primary/40">
+                    <CardContent className="p-3 flex items-center gap-2">
+                      <Input
+                        ref={newStepInputRef}
+                        placeholder="Describe the step…"
+                        value={newStepText}
+                        onChange={(e) => setNewStepText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAddCustomStep();
+                          if (e.key === "Escape") { setShowAddStep(false); setNewStepText(""); }
+                        }}
+                        className="flex-1 h-8 text-sm"
+                        data-testid="input-new-step"
+                      />
+                      <Button size="sm" className="h-8 px-3" onClick={handleAddCustomStep} disabled={!newStepText.trim()} data-testid="button-confirm-new-step">
+                        Add
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => { setShowAddStep(false); setNewStepText(""); }}>
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="w-full h-9 text-sm text-muted-foreground border border-dashed"
+                    onClick={() => setShowAddStep(true)}
+                    data-testid="button-add-step"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add a step
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -281,9 +375,9 @@ export default function RoutineTemplateDetailPage() {
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">Tip: </span>
-                  Tap any step to mark it complete. Hit "Refresh" to get a new
-                  AI-generated variation, or "Add to My Routines" to save this
-                  version.
+                  Tap the circle to mark a step done. Tap{" "}
+                  <ListTodo className="inline w-3.5 h-3.5 mx-0.5" /> to add any step as a standalone task.
+                  Hit "Refresh" for a new AI variation, or "Add to My Routines" to save everything.
                 </p>
               </CardContent>
             </Card>

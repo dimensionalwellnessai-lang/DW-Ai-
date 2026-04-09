@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -11,13 +12,20 @@ import {
   BookOpen,
   ChevronRight,
   Clock,
+  ListTodo,
+  Plus,
+  Loader2,
+  X,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import {
   getSavedRoutines,
   deleteRoutine,
   updateRoutineLastUsed,
+  updateSavedRoutineSteps,
+  addGuestTask,
 } from "@/lib/guest-storage";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function RoutineDetailPage() {
   const params = useParams<{ id: string }>();
@@ -30,6 +38,16 @@ export default function RoutineDetailPage() {
   );
 
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+  const [addingTaskIdx, setAddingTaskIdx] = useState<number | null>(null);
+  const [showAddStep, setShowAddStep] = useState(false);
+  const [newStepText, setNewStepText] = useState("");
+  const newStepInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showAddStep) {
+      setTimeout(() => newStepInputRef.current?.focus(), 50);
+    }
+  }, [showAddStep]);
 
   if (!routine) {
     return (
@@ -74,7 +92,7 @@ export default function RoutineDetailPage() {
     setCheckedSteps(new Set());
     toast({
       title: "Routine started",
-      description: "Tap each step as you complete it.",
+      description: "Tap the circle next to each step as you complete it.",
     });
   };
 
@@ -85,6 +103,42 @@ export default function RoutineDetailPage() {
       description: `${routine.title} has been removed.`,
     });
     setLocation("/routines");
+  };
+
+  const handleAddStepAsTask = async (step: string, idx: number) => {
+    setAddingTaskIdx(idx);
+    try {
+      const res = await apiRequest("POST", "/api/tasks", {
+        title: step,
+        dwSuggested: false,
+        linkedRoute: "/routines",
+      });
+      if (res.ok) {
+        toast({ title: "Added to tasks", description: `"${step}" is now in your task list.` });
+      } else {
+        throw new Error("api_failed");
+      }
+    } catch {
+      addGuestTask(step, "saved-routine");
+      toast({ title: "Added to tasks", description: `"${step}" saved to your tasks.` });
+    } finally {
+      setAddingTaskIdx(null);
+    }
+  };
+
+  const handleAddCustomStep = () => {
+    const text = newStepText.trim();
+    if (!text) return;
+    const updatedSteps = [...steps, text];
+    updateSavedRoutineSteps(routine.id, updatedSteps);
+    setRoutine((prev) =>
+      prev
+        ? { ...prev, data: { ...(prev.data as Record<string, unknown>), steps: updatedSteps } }
+        : prev
+    );
+    setNewStepText("");
+    setShowAddStep(false);
+    toast({ title: "Step added", description: `"${text}" added to ${routine.title}.` });
   };
 
   const completedCount = checkedSteps.size;
@@ -129,14 +183,12 @@ export default function RoutineDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Progress bar (only shown if steps exist) */}
+          {/* Progress bar */}
           {steps.length > 0 && checkedSteps.size > 0 && (
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Progress</span>
-                <span>
-                  {completedCount}/{steps.length} steps
-                </span>
+                <span>{completedCount}/{steps.length} steps</span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                 <div
@@ -148,52 +200,110 @@ export default function RoutineDetailPage() {
           )}
 
           {/* Steps list */}
-          {steps.length > 0 ? (
-            <div className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Steps ({steps.length})
-              </h2>
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Steps ({steps.length})
+            </h2>
+
+            {steps.length > 0 ? (
               <div className="space-y-2">
                 {steps.map((step, idx) => (
                   <Card
                     key={idx}
-                    className={`hover-elevate cursor-pointer transition-all ${
-                      checkedSteps.has(idx) ? "opacity-60 bg-muted/50" : ""
+                    className={`transition-all ${
+                      checkedSteps.has(idx) ? "opacity-60 bg-muted/50" : "hover-elevate"
                     }`}
-                    onClick={() => toggleStep(idx)}
                     data-testid={`step-${idx}`}
                   >
                     <CardContent className="p-4 flex items-center gap-3">
                       <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
                           checkedSteps.has(idx)
                             ? "bg-primary border-primary"
                             : "border-muted-foreground"
                         }`}
+                        onClick={() => toggleStep(idx)}
                       >
                         {checkedSteps.has(idx) && (
                           <Check className="w-3.5 h-3.5 text-primary-foreground" />
                         )}
                       </div>
                       <p
-                        className={`text-sm flex-1 ${
+                        className={`text-sm flex-1 cursor-pointer ${
                           checkedSteps.has(idx)
                             ? "line-through text-muted-foreground"
                             : ""
                         }`}
+                        onClick={() => toggleStep(idx)}
                       >
                         {step}
                       </p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary"
+                        disabled={addingTaskIdx === idx}
+                        onClick={(e) => { e.stopPropagation(); handleAddStepAsTask(step, idx); }}
+                        title="Add this step as a task"
+                        data-testid={`button-add-task-${idx}`}
+                      >
+                        {addingTaskIdx === idx
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <ListTodo className="w-3.5 h-3.5" />
+                        }
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No steps recorded for this routine.
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No steps yet — add one below.
+              </div>
+            )}
+
+            {/* Add custom step */}
+            {showAddStep ? (
+              <Card className="border-dashed border-primary/40">
+                <CardContent className="p-3 flex items-center gap-2">
+                  <Input
+                    ref={newStepInputRef}
+                    placeholder="Describe the step…"
+                    value={newStepText}
+                    onChange={(e) => setNewStepText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddCustomStep();
+                      if (e.key === "Escape") { setShowAddStep(false); setNewStepText(""); }
+                    }}
+                    className="flex-1 h-8 text-sm"
+                    data-testid="input-new-step"
+                  />
+                  <Button size="sm" className="h-8 px-3" onClick={handleAddCustomStep} disabled={!newStepText.trim()} data-testid="button-confirm-new-step">
+                    Add
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => { setShowAddStep(false); setNewStepText(""); }}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full h-9 text-sm text-muted-foreground border border-dashed"
+                onClick={() => setShowAddStep(true)}
+                data-testid="button-add-step"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add a step
+              </Button>
+            )}
+
+            {steps.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center pt-1">
+                Tap the circle to mark done · Tap <ListTodo className="inline w-3 h-3 mx-0.5" /> to add a step as a task
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
