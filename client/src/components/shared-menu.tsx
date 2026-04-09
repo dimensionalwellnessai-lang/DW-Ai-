@@ -24,6 +24,7 @@ import {
   Search,
   Award,
   RefreshCw,
+  Layers,
   BarChart3,
   FileText,
   Settings,
@@ -72,6 +73,7 @@ const MENU_SECTIONS: Array<{
   {
     title: "LIFE DIMENSIONS",
     items: [
+      { id: "life-dimensions", name: "🧩 Life Dimensions", path: "/life-dimensions", icon: Layers, dimension: "mind" },
       { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "mind" },
       { id: "finances", name: "💰 Finances", path: "/finances", icon: Wallet, dimension: "money" },
       { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "community" },

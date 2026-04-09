@@ -49,7 +49,7 @@ const FEATURE_CATEGORIES = {
   insights: {
     icon: BarChart3,
     title: 'Insights & Tracking',
-    features: ['tracking', 'my-progress', 'life-dashboard'],
+    features: ['tracking', 'my-progress', 'life-dimensions'],
   },
   settings: {
     icon: Settings,

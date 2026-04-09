@@ -41,6 +41,7 @@ const SubscriptionPage = lazy(() => import("@/pages/subscription"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
 const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
+const LifeDimensionsPage = lazy(() => import("@/pages/life-dimensions"));
 const CalendarPlansPage = lazy(() =>
   import("@/pages/calendar-plans").then((m) => ({ default: m.CalendarPlansPage })),
 );
@@ -220,6 +221,7 @@ function Router() {
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
       
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
+      <Route path="/life-dimensions" component={LifeDimensionsPage} />
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
