@@ -29,7 +29,7 @@ async function getCredentials() {
     {
       headers: {
         'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+        'X-Replit-Token': xReplitToken
       }
     }
   ).then(res => res.json()).then(data => data.items?.[0]);
@@ -478,6 +478,89 @@ export async function sendPartnerInviteEmail(
   } catch (error: any) {
     console.error('[email] Failed to send partner invite email to:', toEmail, '- error:', error?.message || error);
     if (error?.statusCode) console.error('[email] Resend status code:', error.statusCode);
+    return false;
+  }
+}
+
+export async function sendWelcomeEmail(toEmail: string, firstName?: string): Promise<boolean> {
+  try {
+    const { client, resolvedFrom } = await getResendClient();
+    const name = firstName ? escapeHtml(firstName) : 'there';
+    const baseUrl = getBaseUrl();
+
+    await client.emails.send({
+      from: resolvedFrom,
+      to: toEmail,
+      subject: 'Welcome to DW.ai — Your journey starts now',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #6366f1; margin: 0; font-size: 28px;">DW.ai</h1>
+            <p style="color: #888; margin: 5px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Dimensional Wellness AI</p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px; padding: 30px; margin-bottom: 20px; text-align: center;">
+            <h2 style="margin: 0 0 10px; color: #fff; font-size: 24px;">Welcome, ${name}!</h2>
+            <p style="margin: 0; color: rgba(255,255,255,0.85); font-size: 16px;">
+              The operating system for your life is ready.
+            </p>
+          </div>
+
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+            <p style="margin: 0 0 16px; color: #555;">Here's what's waiting for you inside DW.ai:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
+                  <strong style="color: #6366f1;">🧠 AI Coach</strong>
+                  <p style="margin: 4px 0 0; color: #666; font-size: 14px;">Your personal guide for goals, habits, and daily reflection</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
+                  <strong style="color: #6366f1;">🌟 Cosmic Hub</strong>
+                  <p style="margin: 4px 0 0; color: #666; font-size: 14px;">Astrology, numerology, and deep readings tailored to you</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; border-bottom: 1px solid #eee;">
+                  <strong style="color: #6366f1;">📓 Journal & Habits</strong>
+                  <p style="margin: 4px 0 0; color: #666; font-size: 14px;">Track your day, build routines, and stay accountable</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0;">
+                  <strong style="color: #6366f1;">🍽️ Meals & Workouts</strong>
+                  <p style="margin: 4px 0 0; color: #666; font-size: 14px;">AI-powered plans built around your body and goals</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${baseUrl}/command-center" style="display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 14px 36px; border-radius: 50px; font-weight: 600; font-size: 16px;">
+              Enter DW.ai
+            </a>
+          </div>
+
+          <div style="text-align: center; color: #aaa; font-size: 12px; margin-top: 24px;">
+            <p style="margin: 0;">DW.ai &mdash; Your Life Intelligence System</p>
+            <p style="margin: 4px 0 0;">You're receiving this because you created an account at DW.ai.</p>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    console.log('[email] Welcome email sent to:', toEmail);
+    return true;
+  } catch (error) {
+    console.error('[email] Failed to send welcome email to:', toEmail, error);
     return false;
   }
 }
