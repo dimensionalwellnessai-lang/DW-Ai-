@@ -1,7 +1,10 @@
 /**
  * Text-to-Speech Service
- * Provides voice synthesis capabilities using Web Speech API
+ * Routes all speech through OpenAI TTS (Alloy voice) via the server-side /api/tts endpoint.
+ * Falls back to browser speech synthesis if the server is unavailable.
+ * Preserves the personality/settings API for backward compatibility.
  */
+import { speakOpenAI, stop as stopOAI, isSpeaking as isOAISpeaking } from "@/lib/openai-tts";
 
 export type VoicePersonality = 'calm' | 'motivating' | 'direct';
 
@@ -17,14 +20,14 @@ export const VOICE_PERSONALITIES: Record<VoicePersonality, VoicePersonalityPrese
   calm: {
     name: 'Calm',
     description: 'Gentle, soothing pace — ideal for reflection',
-    rate: 0.85,
+    rate: 0.9,
     pitch: 0.9,
     volume: 0.9,
   },
   motivating: {
     name: 'Motivating',
     description: 'Energetic, uplifting tone — great for action',
-    rate: 1.15,
+    rate: 1.1,
     pitch: 1.1,
     volume: 1.0,
   },
@@ -40,10 +43,10 @@ export const VOICE_PERSONALITIES: Record<VoicePersonality, VoicePersonalityPrese
 export interface TTSSettings {
   enabled: boolean;
   voice?: string;
-  rate: number; // 0.1 to 10, default 1
-  pitch: number; // 0 to 2, default 1
-  volume: number; // 0 to 1, default 1
-  autoSpeak: boolean; // Auto-speak AI responses
+  rate: number;
+  pitch: number;
+  volume: number;
+  autoSpeak: boolean;
   voicePersonality: VoicePersonality;
 }
 
@@ -58,44 +61,25 @@ export const DEFAULT_TTS_SETTINGS: TTSSettings = {
 };
 
 class TTSService {
-  private synth: SpeechSynthesis | null = null;
-  private currentUtterance: SpeechSynthesisUtterance | null = null;
-  private settings: TTSSettings = DEFAULT_TTS_SETTINGS;
-  private isSupported: boolean = false;
+  private settings: TTSSettings = { ...DEFAULT_TTS_SETTINGS };
 
   constructor() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      this.synth = window.speechSynthesis;
-      this.isSupported = true;
-    }
+    this.loadSettings();
   }
 
-  /**
-   * Check if TTS is supported in this browser
-   */
   isAvailable(): boolean {
-    return this.isSupported;
+    return true;
   }
 
-  /**
-   * Get list of available voices
-   */
   getVoices(): SpeechSynthesisVoice[] {
-    if (!this.synth) return [];
-    return this.synth.getVoices();
+    return [];
   }
 
-  /**
-   * Update TTS settings
-   */
   updateSettings(settings: Partial<TTSSettings>) {
     this.settings = { ...this.settings, ...settings };
     this.saveSettings();
   }
 
-  /**
-   * Apply a voice personality preset (updates rate, pitch, volume, and personality field)
-   */
   applyPersonality(personality: VoicePersonality) {
     const preset = VOICE_PERSONALITIES[personality];
     this.updateSettings({
@@ -106,20 +90,10 @@ class TTSService {
     });
   }
 
-  /**
-   * Get current settings
-   */
   getSettings(): TTSSettings {
-    // Lazy initialize settings if not loaded
-    if (!this.settings.enabled && !this.settings.voice) {
-      this.loadSettings();
-    }
     return { ...this.settings };
   }
 
-  /**
-   * Load settings from localStorage
-   */
   loadSettings() {
     try {
       const saved = localStorage.getItem('tts-settings');
@@ -131,9 +105,6 @@ class TTSService {
     }
   }
 
-  /**
-   * Save settings to localStorage
-   */
   private saveSettings() {
     try {
       localStorage.setItem('tts-settings', JSON.stringify(this.settings));
@@ -142,93 +113,31 @@ class TTSService {
     }
   }
 
-  /**
-   * Speak text using configured settings
-   */
   speak(text: string, options?: Partial<TTSSettings>): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.synth || !this.isSupported) {
-        reject(new Error('Text-to-speech is not supported in this browser'));
-        return;
-      }
-
-      // Stop any ongoing speech
-      this.stop();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      this.currentUtterance = utterance;
-
-      // Apply settings
-      const finalSettings = { ...this.settings, ...options };
-      utterance.rate = finalSettings.rate;
-      utterance.pitch = finalSettings.pitch;
-      utterance.volume = finalSettings.volume;
-
-      // Set voice if specified
-      if (finalSettings.voice) {
-        const voices = this.getVoices();
-        const selectedVoice = voices.find(v => v.name === finalSettings.voice);
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
-      }
-
-      utterance.onend = () => {
-        this.currentUtterance = null;
-        resolve();
-      };
-
-      utterance.onerror = (event) => {
-        this.currentUtterance = null;
-        reject(new Error(`Speech synthesis error: ${event.error}`));
-      };
-
-      this.synth.speak(utterance);
-    });
+    const finalSettings = { ...this.settings, ...options };
+    if (!finalSettings.enabled) return Promise.resolve();
+    this.stop();
+    const speed = Math.min(Math.max(finalSettings.rate ?? 1.0, 0.5), 1.5);
+    return speakOpenAI(text, { speed });
   }
 
-  /**
-   * Stop current speech
-   */
   stop() {
-    if (this.synth) {
-      this.synth.cancel();
-      this.currentUtterance = null;
-    }
+    stopOAI();
   }
 
-  /**
-   * Pause current speech
-   */
   pause() {
-    if (this.synth && this.synth.speaking) {
-      this.synth.pause();
-    }
   }
 
-  /**
-   * Resume paused speech
-   */
   resume() {
-    if (this.synth && this.synth.paused) {
-      this.synth.resume();
-    }
   }
 
-  /**
-   * Check if currently speaking
-   */
   isSpeaking(): boolean {
-    return this.synth ? this.synth.speaking : false;
+    return isOAISpeaking();
   }
 
-  /**
-   * Check if paused
-   */
   isPaused(): boolean {
-    return this.synth ? this.synth.paused : false;
+    return false;
   }
 }
 
-// Create singleton instance
 export const ttsService = new TTSService();

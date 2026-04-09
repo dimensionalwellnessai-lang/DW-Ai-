@@ -642,642 +642,567 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Workout" />
-      
+
       <ScrollArea className="flex-1 overflow-auto">
-        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
-          {/* Planning Horizon & Energy Shift */}
-          <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Calendar className="h-5 w-5 text-primary" />
+        {/* Atmospheric hero */}
+        <div className="relative overflow-hidden bg-gradient-to-b from-primary/8 via-background to-background">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 pointer-events-none" />
+          <div className="p-6 max-w-2xl mx-auto flex flex-col items-center text-center gap-4 pt-8">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shadow-lg">
+                <Dumbbell className="w-9 h-9 text-primary" />
               </div>
-              <div>
-                <h2 className="text-sm font-medium">Planning Horizon: {planningHorizon === "today" ? "Just Today" : planningHorizon === "week" ? "This Week" : "This Month"}</h2>
-                <p className="text-xs text-muted-foreground">Focusing your training scope supports steady progress.</p>
-              </div>
+              <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping opacity-20" />
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={rotateWorkouts} data-testid="button-rotate-workouts">
-                <Sparkles className="h-3 w-3 mr-1.5" />
-                Shift Energy
-              </Button>
-              <Button size="sm" className="h-8 text-xs" onClick={showScopeDialog} data-testid="button-change-horizon">
-                Change Horizon
-              </Button>
+            <div>
+              <h1 className="text-xl font-display font-semibold text-foreground">
+                {heroGreeting}{userName ? `, ${userName}` : ""}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {hasBodyScan
+                  ? (bodyProfile?.bodyGoal ? `Goal: ${GOAL_LABELS[bodyProfile.bodyGoal]}` : "Move with intention today.")
+                  : "Tell DW about your body to get personalized workouts."}
+              </p>
             </div>
-          </section>
-
-          {seeksCalmOrMindfulness && (
-          <Card className="bg-violet-500/5 border-violet-500/20">
-            <CardContent className="p-4 flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-sm mb-1">Mindfulness mode active</h4>
-                <p className="text-sm text-muted-foreground">
-                  Based on your spiritual practices, we're suggesting calming, grounding workouts.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!hasBodyScan ? (
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Start with a Body Scan</h3>
-                <p className="text-sm text-muted-foreground">
-                  Tell us about your body and goals so we can personalize your workouts
-                </p>
-              </div>
-              <Button onClick={() => setBodyScanOpen(true)} data-testid="button-start-body-scan">
-                <Target className="w-4 h-4 mr-2" />
-                Begin Body Scan
+            <div className="flex gap-3 flex-wrap justify-center">
+              <Button size="sm" onClick={() => setPickWorkoutOpen(true)} data-testid="button-find-workout">
+                <Sparkles className="w-4 h-4 mr-1.5" />
+                Find My Workout
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base">Your Profile</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setBodyScanOpen(true)}
-                  data-testid="button-update-body-scan"
-                >
-                  <RefreshCw className="w-4 h-4 mr-1" />
-                  Update
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {bodyProfile?.bodyGoal && (
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Goal: {GOAL_LABELS[bodyProfile.bodyGoal]}</span>
-                </div>
-              )}
-              {bodyProfile?.focusAreas && bodyProfile.focusAreas.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {bodyProfile.focusAreas.map((area) => (
-                    <Badge key={area} variant="secondary" className="text-xs">
-                      {area}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              {bodyProfile?.energyLevel && (
-                <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm capitalize">Energy: {bodyProfile.energyLevel.replace("_", " ")}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* AI Generated Workout Plans */}
-        {savedWorkoutPlans.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wand2 className="w-4 h-4" />
-                My Workout Plans
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {savedWorkoutPlans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    setSelectedPlan(plan);
-                    setShowPlanDetails(true);
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm mb-1">{plan.title}</h4>
-                      <p className="text-xs text-muted-foreground mb-2">{plan.summary}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          {plan.daysPerWeek} days/week
-                        </Badge>
-                        {plan.equipment.map((eq) => (
-                          <Badge key={eq} variant="secondary" className="text-xs">
-                            {eq.replace('-', ' ')}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {(hasBodyScan || seeksCalmOrMindfulness) && recommendedWorkout && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground">Picked for You</h2>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {selectedPickedWorkout ? "Tap Save to add this workout" : "Pick 1 option to save."}
-            </p>
-            <Card 
-              className={`cursor-pointer transition-all ${selectedPickedWorkout?.title === recommendedWorkout.title ? "ring-2 ring-primary bg-primary/5" : "hover-elevate"}`}
-              data-testid="card-recommended-workout"
-              onClick={() => setSelectedPickedWorkout(selectedPickedWorkout?.title === recommendedWorkout.title ? null : recommendedWorkout)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  {selectedPickedWorkout?.title === recommendedWorkout.title && (
-                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-medium mb-1 text-foreground">{recommendedWorkout.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {recommendedWorkout.description}
-                    </p>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {recommendedWorkout.duration} min
-                      </span>
-                      <span className="capitalize">{recommendedWorkout.intensity}</span>
-                    </div>
-                    {recommendedWhy && (
-                      <p className="text-xs text-primary mt-2 italic">{recommendedWhy}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                disabled={!selectedPickedWorkout}
-                onClick={() => {
-                  if (selectedPickedWorkout) {
-                    handleSaveWorkout(selectedPickedWorkout);
-                    toast({
-                      title: "Added to your system.",
-                      description: `"${selectedPickedWorkout.title}" added. Notice how this matches your current energy.`,
-                    });
-                    setSelectedPickedWorkout(null);
-                  }
-                }}
-                data-testid="button-save-picked-workout"
-              >
-                <Check className="w-4 h-4 mr-1" />
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                disabled={!selectedPickedWorkout}
-                onClick={() => {
-                  if (selectedPickedWorkout) {
-                    promptAddToCalendar(selectedPickedWorkout);
-                  }
-                }}
-                data-testid="button-calendar-picked-workout"
-              >
-                <Calendar className="w-4 h-4 mr-1" />
-                Add to Calendar
+              <Button size="sm" variant="outline" onClick={() => setBodyScanOpen(true)} data-testid="button-body-scan">
+                <User className="w-4 h-4 mr-1.5" />
+                {hasBodyScan ? "Update Profile" : "Body Scan"}
               </Button>
             </div>
-          </section>
-        )}
-
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-foreground">Pick my workout</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Let me suggest something based on how you feel
-                  </p>
-                </div>
-              </div>
-              <Button 
-                onClick={() => {
-                  setPickStep("energy");
-                  setEnergyLevel(null);
-                  setTimeAvailable(null);
-                  setPickWorkoutOpen(true);
-                }}
-                data-testid="button-pick-workout"
-              >
-                Start
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" />
-              Browse Workouts
-            </h2>
-            <div className="flex gap-2">
-              <ExclusionsButton domain="workouts" />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                data-testid="button-toggle-filters"
-              >
-                <Filter className="w-4 h-4 mr-1" />
-                Filters
-              </Button>
-            </div>
-          </div>
-
-          {/* AI-Powered Workout Search */}
-          <InAppSearch 
-            category="workouts"
-            placeholder="Search workouts (yoga, strength, cardio...)"
-            onResultSave={(result: SearchResult) => {
-              const workout: WorkoutData = {
-                title: result.title,
-                description: result.description,
-                duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 20,
-                intensity: result.tags.find(t => ['gentle', 'moderate', 'intense'].includes(t.toLowerCase())) || 'moderate',
-                tags: result.tags,
-                youtubeSearch: result.title + " workout",
-                steps: result.details || [],
-              };
-              handleSaveWorkout(workout);
-              toast({ title: "Workout saved", description: `${result.title} added to your routines` });
-            }}
-          />
-          
-          {showFilters && (
-            <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Time:</span>
-                {(["any", "10", "20", "30"] as TimeFilter[]).map((t) => (
-                  <Button
-                    key={t}
-                    variant={timeFilter === t ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTimeFilter(t)}
-                    data-testid={`button-time-${t}`}
-                  >
-                    {t === "any" ? "Any" : `${t}min`}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Goal:</span>
-                {(["any", "calm", "strength", "cardio"] as GoalFilter[]).map((g) => (
-                  <Button
-                    key={g}
-                    variant={goalFilter === g ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setGoalFilter(g)}
-                    data-testid={`button-goal-${g}`}
-                  >
-                    {g === "any" ? "Any" : g.charAt(0).toUpperCase() + g.slice(1)}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Equipment:</span>
-                {(["any", "none", "dumbbells"] as EquipmentFilter[]).map((e) => (
-                  <Button
-                    key={e}
-                    variant={equipmentFilter === e ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setEquipmentFilter(e)}
-                    data-testid={`button-equip-${e}`}
-                  >
-                    {e === "any" ? "Any" : e === "none" ? "No Equipment" : "Dumbbells"}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Workout Suggestions - inline help */}
-          {workoutAiMutation.isPending && (
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                <span className="text-sm">Finding workout ideas...</span>
-              </CardContent>
-            </Card>
-          )}
-          
-          {aiWorkoutSuggestion && !workoutAiMutation.isPending && (
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Wand2 className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">Ideas for "{workoutSearch}"</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
-                  {aiWorkoutSuggestion}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setAiWorkoutSuggestion(null);
-                    workoutAiMutation.reset();
-                  }}
-                  data-testid="button-dismiss-workout-ai"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Dismiss
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* No results prompt */}
-          {workoutSearch.trim() && filteredWorkouts.length === 0 && !aiWorkoutSuggestion && !workoutAiMutation.isPending && (
-            <Card className="border-dashed">
-              <CardContent className="p-6 text-center space-y-3">
-                <Search className="w-8 h-8 mx-auto text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  No matches for "{workoutSearch}"
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    workoutAiMutation.reset();
-                    workoutAiMutation.mutate(workoutSearch.trim());
-                  }}
-                  data-testid="button-ask-ai-workout"
-                >
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Get suggestions
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-          
-          <div className="space-y-2">
-            {filteredWorkouts.map((workout, index) => (
-              <Card 
-                key={index}
-                ref={(el) => { workoutRefs.current[workout.title] = el; }}
-                className={`hover-elevate cursor-pointer transition-all duration-300 ${highlightedWorkout === workout.title ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                data-testid={`card-workout-${index}`}
-                onClick={() => setExpandedWorkout(expandedWorkout === index ? null : index)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-foreground">{workout.title}</h3>
-                        {expandedWorkout === index ? (
-                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {workout.description}
-                      </p>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {workout.duration} min
-                        </span>
-                        <span className="capitalize">{workout.intensity}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          promptAddToCalendar(workout);
-                        }}
-                        data-testid={`button-add-today-${index}`}
-                      >
-                        <Calendar className="w-3.5 h-3.5 mr-1" />
-                        Add to Orbit
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        data-testid={`button-play-workout-${index}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openYouTubeSearch(workout);
-                        }}
-                      >
-                        <Play className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {expandedWorkout === index && (
-                    <div className="mt-4 pt-4 border-t space-y-4">
-                      <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          Workout Steps
-                          <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
-                        </h4>
-                        <ol className="space-y-1">
-                          {workout.steps.map((step, stepIdx) => (
-                            <li 
-                              key={stepIdx} 
-                              className="text-sm text-muted-foreground flex items-start gap-2 p-1.5 -ml-1.5 rounded hover-elevate cursor-pointer group"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleFindAlternatives(step, workout.title);
-                              }}
-                              data-testid={`step-${index}-${stepIdx}`}
-                            >
-                              <span className="shrink-0 w-5 text-right">{stepIdx + 1}.</span>
-                              <span className="flex-1">{step}</span>
-                              <ArrowRightLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-70 shrink-0 mt-0.5" />
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                      
-                      {workout.equipment && workout.equipment.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">Equipment Needed</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {workout.equipment.map((item, eqIdx) => (
-                              <Badge key={eqIdx} variant="secondary" className="text-xs">
-                                {item}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {workout.tips && workout.tips.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">Tips</h4>
-                          <ul className="space-y-1">
-                            {workout.tips.map((tip, tipIdx) => (
-                              <li key={tipIdx} className="text-sm text-muted-foreground flex items-start gap-2">
-                                <Sparkles className="w-3 h-3 text-primary mt-1 shrink-0" />
-                                {tip}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-2 pt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openYouTubeSearch(workout);
-                          }}
-                          data-testid={`button-youtube-${index}`}
-                        >
-                          <ExternalLink className="w-4 h-4 mr-1" />
-                          Find on YouTube
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartSession(workout);
-                          }}
-                          data-testid={`button-start-session-${index}`}
-                        >
-                          <Play className="w-4 h-4 mr-1" />
-                          Start Session
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
 
-        {/* Your Resources Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Your Resources
-            </h2>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setDocumentImportOpen(true)}
-                data-testid="button-import-document"
-              >
-                <Sparkles className="w-4 h-4 mr-1" />
-                Import
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setResourceDialogOpen(true)}
-                data-testid="button-add-resource"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add
-              </Button>
-            </div>
-          </div>
-          
-          {userResources.length === 0 ? (
-            <Card>
-              <CardContent className="p-4 text-center text-muted-foreground">
-                <p className="text-sm">Save your own workout plans, links, or documents here.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {userResources.map((resource) => (
-                <Card key={resource.id} className="hover-elevate" data-testid={`card-resource-${resource.id}`}>
+        {/* Tabs */}
+        <Tabs defaultValue="today" className="max-w-2xl mx-auto w-full px-4 pb-24">
+          <TabsList className="w-full grid grid-cols-3 my-4">
+            <TabsTrigger value="today" data-testid="tab-today">Today</TabsTrigger>
+            <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
+            <TabsTrigger value="plans" data-testid="tab-plans">My Plans</TabsTrigger>
+          </TabsList>
+
+          {/* ── Today Tab ───────────────────────────────────── */}
+          <TabsContent value="today" className="space-y-4">
+            {seeksCalmOrMindfulness && (
+              <Card className="bg-violet-500/5 border-violet-500/20">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Mindfulness mode active</h4>
+                    <p className="text-sm text-muted-foreground">
+                      We're prioritizing calming, grounding workouts based on your practices.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {(hasBodyScan || seeksCalmOrMindfulness) && recommendedWorkout ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <h2 className="font-semibold text-foreground text-sm">Picked for You</h2>
+                </div>
+                <Card
+                  className={`cursor-pointer transition-all ${selectedPickedWorkout?.title === recommendedWorkout.title ? "ring-2 ring-primary bg-primary/5" : "hover-elevate"}`}
+                  data-testid="card-recommended-workout"
+                  onClick={() => setSelectedPickedWorkout(
+                    selectedPickedWorkout?.title === recommendedWorkout.title ? null : recommendedWorkout
+                  )}
+                >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-                          {resource.variant === "link" ? (
-                            <Link2 className="w-4 h-4 text-muted-foreground" />
-                          ) : (
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-medium truncate">{resource.title}</h4>
-                          {resource.description && (
-                            <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
-                          )}
-                          {resource.variant === "link" && resource.url && (
-                            <a 
-                              href={resource.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline truncate block"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {resource.url}
-                            </a>
-                          )}
-                          {resource.variant === "file" && resource.fileData && (
-                            <p className="text-xs text-muted-foreground">
-                              {resource.fileData.fileName}
-                            </p>
-                          )}
+                    <div className="flex items-start gap-3">
+                      {selectedPickedWorkout?.title === recommendedWorkout.title && (
+                        <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <h3 className="font-medium mb-1 text-foreground">{recommendedWorkout.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-2">{recommendedWorkout.description}</p>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />{recommendedWorkout.duration} min
+                          </span>
+                          <Badge variant="secondary" className="text-xs capitalize">{recommendedWorkout.intensity}</Badge>
                         </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        {resource.variant === "link" && resource.url && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => window.open(resource.url, "_blank")}
-                            data-testid={`button-open-resource-${resource.id}`}
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                        )}
+                    </div>
+                    {recommendedWhy && (
+                      <p className="text-xs text-primary/70 mt-2 border-t border-primary/10 pt-2">{recommendedWhy}</p>
+                    )}
+                  </CardContent>
+                </Card>
+                {selectedPickedWorkout && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleStartSession(selectedPickedWorkout)}
+                      data-testid="button-start-picked"
+                    >
+                      <Play className="w-4 h-4 mr-1.5" />Start Session
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { handleSaveWorkout(selectedPickedWorkout); setSelectedPickedWorkout(null); }}
+                      data-testid="button-save-picked"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">Start with a Body Scan</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Tell DW your fitness goal, energy level, and focus areas to get personalized recommendations.
+                    </p>
+                  </div>
+                  <Button onClick={() => setBodyScanOpen(true)} data-testid="button-body-scan-cta">
+                    <User className="w-4 h-4 mr-2" />Start Body Scan
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasBodyScan && bodyProfile && (
+              <Card className="bg-primary/5 border-primary/10">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">Your Profile</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setBodyScanOpen(true)} data-testid="button-update-profile">
+                      <RefreshCw className="w-3 h-3 mr-1" />Update
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {bodyProfile.bodyGoal && (
+                      <span className="flex items-center gap-1"><Target className="w-3 h-3" />{GOAL_LABELS[bodyProfile.bodyGoal]}</span>
+                    )}
+                    {bodyProfile.energyLevel && (
+                      <span className="flex items-center gap-1"><Flame className="w-3 h-3" />Energy: {bodyProfile.energyLevel.replace("_", " ")}</span>
+                    )}
+                    {bodyProfile.focusAreas?.map((a) => (
+                      <Badge key={a} variant="secondary" className="text-xs">{a}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex items-center justify-between gap-4 bg-muted/40 p-3 rounded-lg text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">
+                  Focus: <strong className="text-foreground">
+                    {planningHorizon === "today" ? "Today" : planningHorizon === "week" ? "This Week" : "This Month"}
+                  </strong>
+                </span>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={rotateWorkouts} data-testid="button-rotate-workouts">
+                  <Sparkles className="h-3 w-3 mr-1" />Shift
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={showScopeDialog} data-testid="button-change-horizon">
+                  Change
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Library Tab ─────────────────────────────────── */}
+          <TabsContent value="library" className="space-y-4">
+            <InAppSearch
+              category="workouts"
+              placeholder="Search workouts (yoga, strength, cardio...)"
+              onResultSave={(result: SearchResult) => {
+                const workout: WorkoutData = {
+                  title: result.title,
+                  description: result.description,
+                  duration: parseInt(result.duration?.replace(/\D/g, '') || '0') || 20,
+                  intensity: result.tags.find(t => ['gentle', 'moderate', 'intense'].includes(t.toLowerCase())) || 'moderate',
+                  tags: result.tags,
+                  youtubeSearch: result.title + " workout",
+                  steps: result.details || [],
+                };
+                handleSaveWorkout(workout);
+                toast({ title: "Workout saved", description: `${result.title} added to your routines` });
+              }}
+            />
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setShowFilters((f) => !f)}
+                data-testid="button-toggle-filters"
+              >
+                <Filter className="w-3.5 h-3.5 mr-1.5" />Filters
+              </Button>
+              <ExclusionsButton domain="workouts" className="h-8" />
+            </div>
+
+            {showFilters && (
+              <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Time:</span>
+                  {(["any", "10", "20", "30"] as TimeFilter[]).map((t) => (
+                    <Button key={t} variant={timeFilter === t ? "default" : "outline"} size="sm" onClick={() => setTimeFilter(t)} data-testid={`button-time-${t}`}>
+                      {t === "any" ? "Any" : `${t}min`}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Goal:</span>
+                  {(["any", "calm", "strength", "cardio"] as GoalFilter[]).map((g) => (
+                    <Button key={g} variant={goalFilter === g ? "default" : "outline"} size="sm" onClick={() => setGoalFilter(g)} data-testid={`button-goal-${g}`}>
+                      {g === "any" ? "Any" : g.charAt(0).toUpperCase() + g.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-muted-foreground">Equipment:</span>
+                  {(["any", "none", "dumbbells"] as EquipmentFilter[]).map((e) => (
+                    <Button key={e} variant={equipmentFilter === e ? "default" : "outline"} size="sm" onClick={() => setEquipmentFilter(e)} data-testid={`button-equip-${e}`}>
+                      {e === "any" ? "Any" : e === "none" ? "No Equipment" : "Dumbbells"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {workoutAiMutation.isPending && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                  <span className="text-sm">Finding workout ideas...</span>
+                </CardContent>
+              </Card>
+            )}
+
+            {aiWorkoutSuggestion && !workoutAiMutation.isPending && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">Ideas for "{workoutSearch}"</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+                    {aiWorkoutSuggestion}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setAiWorkoutSuggestion(null); workoutAiMutation.reset(); }}
+                    data-testid="button-dismiss-workout-ai"
+                  >
+                    <X className="w-3 h-3 mr-1" />Dismiss
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {filteredWorkouts.length === 0 && !workoutAiMutation.isPending && (
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center space-y-3">
+                  <Dumbbell className="w-8 h-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    No workouts match those filters. Try different options or ask DW for ideas.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setTimeFilter("any"); setGoalFilter("any"); setEquipmentFilter("any"); }}
+                  >
+                    Clear Filters
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-3">
+              {filteredWorkouts.map((workout, index) => (
+                <Card
+                  key={index}
+                  ref={(el) => { workoutRefs.current[workout.title] = el; }}
+                  className={`transition-all ${highlightedWorkout === workout.title ? "ring-2 ring-primary shadow-md" : "hover-elevate"}`}
+                  data-testid={`card-workout-${index}`}
+                >
+                  <CardContent className="p-4">
+                    <div
+                      className="flex items-start justify-between gap-3 cursor-pointer"
+                      onClick={() => setExpandedWorkout(expandedWorkout === index ? null : index)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground truncate">{workout.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{workout.description}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{workout.duration} min
+                          </span>
+                          <span className="capitalize">{workout.intensity}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {workout.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
                         <Button
                           size="icon"
-                          variant="ghost"
-                          onClick={() => {
-                            deleteUserResource(resource.id);
-                            setUserResources(getUserResourcesByType("workout"));
-                            toast({ title: "Resource removed" });
-                          }}
-                          data-testid={`button-delete-resource-${resource.id}`}
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); handleStartSession(workout); }}
+                          data-testid={`button-start-session-${index}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Play className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); promptAddToCalendar(workout); }}
+                          data-testid={`button-add-today-${index}`}
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </div>
+
+                    {expandedWorkout === index && (
+                      <div className="mt-4 pt-4 border-t space-y-4">
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            Workout Steps
+                            <span className="text-xs font-normal text-muted-foreground">(tap for alternatives)</span>
+                          </h4>
+                          <ol className="space-y-1">
+                            {workout.steps.map((step, stepIdx) => (
+                              <li
+                                key={stepIdx}
+                                className="text-sm text-muted-foreground flex items-start gap-2 p-1.5 -ml-1.5 rounded hover-elevate cursor-pointer group"
+                                onClick={(e) => { e.stopPropagation(); handleFindAlternatives(step, workout.title); }}
+                                data-testid={`step-${index}-${stepIdx}`}
+                              >
+                                <span className="shrink-0 w-5 text-right">{stepIdx + 1}.</span>
+                                <span className="flex-1">{step}</span>
+                                <ArrowRightLeft className="w-3.5 h-3.5 opacity-0 group-hover:opacity-70 shrink-0 mt-0.5" />
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                        {workout.equipment && workout.equipment.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Equipment</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {workout.equipment.map((item, eqIdx) => (
+                                <Badge key={eqIdx} variant="secondary" className="text-xs">{item}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); openYouTubeSearch(workout); }}
+                            data-testid={`button-youtube-${index}`}
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />Find on YouTube
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleStartSession(workout); }}
+                            data-testid={`button-start-session-expanded-${index}`}
+                          >
+                            <Play className="w-4 h-4 mr-1" />Start Session
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          {/* ── My Plans Tab ────────────────────────────────── */}
+          <TabsContent value="plans" className="space-y-4">
+            {savedWorkoutPlans.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  <Wand2 className="w-4 h-4 text-primary" />AI Plans
+                </h2>
+                {savedWorkoutPlans.map((plan) => (
+                  <Card
+                    key={plan.id}
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => { setSelectedPlan(plan); setShowPlanDetails(true); }}
+                  >
+                    <CardContent className="p-4">
+                      <h4 className="font-medium text-sm mb-1">{plan.title}</h4>
+                      <p className="text-xs text-muted-foreground mb-2">{plan.summary}</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs">{plan.daysPerWeek} days/week</Badge>
+                        {plan.equipment.map((eq) => (
+                          <Badge key={eq} variant="secondary" className="text-xs">{eq.replace('-', ' ')}</Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {savedWorkouts.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  <Check className="w-4 h-4 text-primary" />Saved Workouts
+                </h2>
+                {savedWorkouts.map((workout, index) => (
+                  <Card key={workout.id || index} className="hover-elevate">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium text-sm">{workout.title}</h4>
+                          <p className="text-xs text-muted-foreground">{workout.description}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartSession({ title: workout.title, description: workout.description, duration: (workout.data as any)?.duration || 20, intensity: (workout.data as any)?.intensity || "moderate", tags: workout.tags || [], youtubeSearch: workout.title + " workout", steps: (workout.data as any)?.steps || [] })}
+                          data-testid={`button-start-saved-${index}`}
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />My Resources
+                </h2>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => setResourceDialogOpen(true)} data-testid="button-add-resource">
+                    <Plus className="w-3.5 h-3.5 mr-1" />Add
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8" onClick={() => setDocumentImportOpen(true)} data-testid="button-import-document">
+                    <FileText className="w-3.5 h-3.5 mr-1" />Import
+                  </Button>
+                </div>
+              </div>
+              {userResources.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-6 text-center space-y-2">
+                    <FileText className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">No resources yet. Add links or import a plan.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {userResources.map((resource) => (
+                    <Card key={resource.id} className="hover-elevate" data-testid={`card-resource-${resource.id}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                              {resource.variant === "link"
+                                ? <Link2 className="w-4 h-4 text-muted-foreground" />
+                                : <FileText className="w-4 h-4 text-muted-foreground" />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-medium truncate">{resource.title}</h4>
+                              {resource.description && (
+                                <p className="text-sm text-muted-foreground truncate">{resource.description}</p>
+                              )}
+                              {resource.variant === "link" && resource.url && (
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline truncate block"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {resource.url}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {resource.variant === "link" && resource.url && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => window.open(resource.url, "_blank")}
+                                data-testid={`button-open-resource-${resource.id}`}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                deleteUserResource(resource.id);
+                                setUserResources(getUserResourcesByType("workout"));
+                                toast({ title: "Resource removed" });
+                              }}
+                              data-testid={`button-delete-resource-${resource.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {savedWorkoutPlans.length === 0 && savedWorkouts.length === 0 && userResources.length === 0 && (
+              <Card className="border-dashed bg-primary/5 border-primary/20">
+                <CardContent className="p-6 text-center space-y-3">
+                  <Wand2 className="w-10 h-10 mx-auto text-primary/50" />
+                  <div>
+                    <h3 className="font-semibold text-sm">No plans yet</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Ask DW to create a personalized workout plan, or save workouts from the Library tab.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* ── Dialogs ─────────────────────────────────────── */}
+        <PlanningScopeDialog {...PlanningScopeDialogProps} />
+
+        <AlternativesDialog
+          open={alternativesOpen}
+          onOpenChange={setAlternativesOpen}
+          domain="workouts"
+          item={selectedExercise}
+          context={selectedExerciseContext}
+        />
 
         <ResourceFormDialog
           open={resourceDialogOpen}
@@ -1299,12 +1224,28 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           }}
         />
 
-        <BodyScanDialog
-          open={bodyScanOpen}
-          onClose={() => setBodyScanOpen(false)}
-          onComplete={handleBodyScanComplete}
-        />
-        
+        <BodyScanDialog open={bodyScanOpen} onClose={() => setBodyScanOpen(false)} onComplete={handleBodyScanComplete} />
+
+        <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Add to Today?</DialogTitle>
+              <DialogDescription>Schedule "{pendingWorkout?.title}" on your calendar for today.</DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setConfirmAddOpen(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                onClick={confirmAddToCalendar}
+                disabled={addToCalendarMutation.isPending}
+                data-testid="button-confirm-add"
+              >
+                {addToCalendarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add to Orbit"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
           <DialogContent className="max-w-md">
             {selectedWorkout && (
@@ -1314,15 +1255,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 </DialogHeader>
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">{selectedWorkout.description}</p>
-                  
                   <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {selectedWorkout.duration} min
-                    </span>
+                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{selectedWorkout.duration} min</span>
                     <Badge variant="secondary">{selectedWorkout.intensity}</Badge>
                   </div>
-                  
                   <div>
                     <h4 className="font-medium mb-2">Steps</h4>
                     <ol className="space-y-1 list-decimal list-inside">
@@ -1331,21 +1267,12 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                       ))}
                     </ol>
                   </div>
-                  
                   <div className="flex gap-2">
                     <Button onClick={() => openYouTubeSearch(selectedWorkout)} className="flex-1">
-                      <Play className="w-4 h-4 mr-2" />
-                      Find Videos
+                      <Play className="w-4 h-4 mr-2" />Find Videos
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        promptAddToCalendar(selectedWorkout);
-                        setSelectedWorkout(null);
-                      }}
-                    >
-                      <Calendar className="w-4 h-4 mr-1" />
-                      Add to Orbit
+                    <Button variant="outline" onClick={() => { promptAddToCalendar(selectedWorkout); setSelectedWorkout(null); }}>
+                      <Calendar className="w-4 h-4 mr-1" />Add to Orbit
                     </Button>
                   </div>
                 </div>
@@ -1364,11 +1291,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
               </DialogTitle>
               <DialogDescription>
                 {pickStep === "energy" && "This helps me suggest the right intensity"}
-                {pickStep === "time" && "No pressure - even 10 minutes counts"}
-                {pickStep === "results" && "Pick one that feels right, or ask for different options"}
+                {pickStep === "time" && "No pressure — even 10 minutes counts"}
+                {pickStep === "results" && "Pick one that feels right"}
               </DialogDescription>
             </DialogHeader>
-            
             {pickStep === "energy" && (
               <div className="grid grid-cols-3 gap-3 py-4">
                 {([
@@ -1380,10 +1306,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                     key={option.level}
                     variant={energyLevel === option.level ? "default" : "outline"}
                     className="h-auto py-4 flex flex-col gap-1"
-                    onClick={() => {
-                      setEnergyLevel(option.level);
-                      setPickStep("time");
-                    }}
+                    onClick={() => { setEnergyLevel(option.level); setPickStep("time"); }}
                     data-testid={`button-energy-${option.level}`}
                   >
                     <span className="font-medium text-foreground">{option.label}</span>
@@ -1392,7 +1315,6 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 ))}
               </div>
             )}
-            
             {pickStep === "time" && (
               <div className="grid grid-cols-3 gap-3 py-4">
                 {([
@@ -1404,10 +1326,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                     key={option.time}
                     variant={timeAvailable === option.time ? "default" : "outline"}
                     className="h-auto py-4"
-                    onClick={() => {
-                      setTimeAvailable(option.time);
-                      setPickStep("results");
-                    }}
+                    onClick={() => { setTimeAvailable(option.time); setPickStep("results"); }}
                     data-testid={`button-time-pick-${option.time}`}
                   >
                     {option.label}
@@ -1415,168 +1334,52 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 ))}
               </div>
             )}
-            
             {pickStep === "results" && (
               <div className="space-y-3 py-4">
                 {getAISuggestions().map((workout, idx) => (
-                  <Card 
-                    key={idx} 
+                  <Card
+                    key={idx}
                     className="hover-elevate cursor-pointer"
-                    onClick={() => {
-                      setSelectedWorkout(workout);
-                      setPickWorkoutOpen(false);
-                    }}
+                    onClick={() => { setSelectedWorkout(workout); setPickWorkoutOpen(false); }}
                     data-testid={`card-ai-suggestion-${idx}`}
                   >
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h4 className="font-medium text-foreground">{workout.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {workout.duration} min - {workout.intensity}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              promptAddToCalendar(workout);
-                            }}
-                            data-testid={`button-add-suggestion-${idx}`}
-                          >
-                            Add to Orbit
-                          </Button>
-                          <Button
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openYouTubeSearch(workout);
-                            }}
-                            data-testid={`button-start-suggestion-${idx}`}
-                          >
-                            <Play className="w-4 h-4" />
-                          </Button>
-                        </div>
+                      <h4 className="font-medium text-sm">{workout.title}</h4>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">{workout.duration} min</span>
+                        <Badge variant="secondary" className="text-xs capitalize">{workout.intensity}</Badge>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-                
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => {
-                    setPickStep("energy");
-                    setEnergyLevel(null);
-                    setTimeAvailable(null);
-                  }}
-                  data-testid="button-different-options"
-                >
-                  Different options
-                </Button>
               </div>
             )}
           </DialogContent>
         </Dialog>
 
-        <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Add to schedule</DialogTitle>
-              <DialogDescription>
-                {pendingWorkout?.title} - {pendingWorkout?.duration} minutes
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-4">
-              <p className="text-sm text-muted-foreground">
-                Choose where to add this workout:
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button onClick={confirmAddToCalendar} data-testid="button-add-today">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Add to Orbit
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmAddOpen(false);
-                    setLocation("/calendar");
-                  }}
-                  data-testid="button-add-week"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Add to Week
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmAddOpen(false);
-                    setLocation("/routines");
-                  }}
-                  data-testid="button-add-routine"
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  Add to Routine
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => {
-                    setConfirmAddOpen(false);
-                    setPendingWorkout(null);
-                  }}
-                  data-testid="button-not-now"
-                >
-                  Not Now
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-        <PlanningScopeDialog {...PlanningScopeDialogProps} />
-        
-        <AlternativesDialog
-          open={alternativesOpen}
-          onOpenChange={setAlternativesOpen}
-          domain="workouts"
-          item={selectedExercise}
-          context={selectedExerciseContext}
-          excludedItems={getDomainExclusions("workouts")}
-        />
-
-        {/* Workout Plan Details Dialog */}
         <Dialog open={showPlanDetails} onOpenChange={setShowPlanDetails}>
-          <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{selectedPlan?.title}</DialogTitle>
               <DialogDescription>{selectedPlan?.summary}</DialogDescription>
             </DialogHeader>
-            
             {selectedPlan && (
               <div className="space-y-4">
-                {/* Plan Overview */}
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant="outline">{selectedPlan.daysPerWeek} days/week</Badge>
                   <Badge variant="secondary">{selectedPlan.goal}</Badge>
                   {selectedPlan.equipment.map((eq) => (
-                    <Badge key={eq} variant="outline" className="text-xs">
-                      {eq.replace('-', ' ')}
-                    </Badge>
+                    <Badge key={eq} variant="outline" className="text-xs">{eq.replace('-', ' ')}</Badge>
                   ))}
                 </div>
-
-                {/* Days */}
                 {selectedPlan.days.map((day, idx) => (
                   <Card key={idx}>
                     <CardHeader>
-                      <CardTitle className="text-sm">
-                        {day.dayOfWeek} - {day.focus}
-                      </CardTitle>
+                      <CardTitle className="text-sm">{day.dayOfWeek} — {day.focus}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {day.isRestDay ? (
-                        <p className="text-sm text-muted-foreground">Rest Day - Recovery</p>
+                        <p className="text-sm text-muted-foreground">Rest Day — Recovery</p>
                       ) : (
                         day.exercises.map((exercise, exIdx) => (
                           <div
@@ -1593,9 +1396,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                                   {exercise.restSeconds && ` • ${exercise.restSeconds}s rest`}
                                 </p>
                               </div>
-                              <Button variant="ghost" size="sm">
-                                <Play className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="sm"><Play className="h-4 w-4" /></Button>
                             </div>
                           </div>
                         ))
@@ -1608,19 +1409,14 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
           </DialogContent>
         </Dialog>
 
-        {/* Exercise Animation Dialog */}
         <Dialog open={!!selectedExerciseAnimation} onOpenChange={() => setSelectedExerciseAnimation(null)}>
           <DialogContent className="max-w-lg">
             {selectedExerciseAnimation && (
-              <ExerciseAnimation 
-                exerciseId={selectedExerciseAnimation} 
-                onClose={() => setSelectedExerciseAnimation(null)}
-              />
+              <ExerciseAnimation exerciseId={selectedExerciseAnimation} onClose={() => setSelectedExerciseAnimation(null)} />
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Workout Session Engine */}
         {activeSessionConfig && (
           <WorkoutSessionEngine
             config={activeSessionConfig}
@@ -1629,8 +1425,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             isAuthenticated={isAuthenticated}
           />
         )}
-      </div>
-    </ScrollArea>
+      </ScrollArea>
     </div>
   );
 }

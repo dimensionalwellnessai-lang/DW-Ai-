@@ -27,6 +27,7 @@ import { PLAN_LIBRARY, type PlanTemplate, type TimeBand } from "@/config/plan-li
 import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { PageHeader } from "@/components/page-header";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -131,7 +132,9 @@ export default function PlanPage() {
 
   if (!hasIntake) {
     return (
-      <ScrollArea className="h-[calc(100vh-4rem)]">
+      <div className="flex flex-col h-full">
+        <PageHeader title="My Plan" />
+        <ScrollArea className="flex-1">
         <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -159,12 +162,15 @@ export default function PlanPage() {
             </Button>
           </Link>
         </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-full">
+      <PageHeader title="My Plan" />
+      <ScrollArea className="flex-1">
       <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <div className="flex items-center justify-between">
           <div>
@@ -341,6 +347,7 @@ export default function PlanPage() {
           </Card>
         </motion.div>
       </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }

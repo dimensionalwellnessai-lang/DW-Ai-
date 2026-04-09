@@ -102,7 +102,6 @@ import MyProgressPage from "@/pages/my-progress";
 import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import HomeCommandCenter from "@/features/home/home-command-center";
-import LifeBlueprintPage from "@/pages/life-blueprint";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
@@ -233,7 +232,7 @@ function Router() {
       <Route path="/home"><Redirect to="/command-center" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
-      <Route path="/life-blueprint" component={LifeBlueprintPage} />
+      <Route path="/life-blueprint" component={LifeBlueprintV2Page} />
       <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
       <Route path="/insights" component={InsightsDashboard} />
       <Route path="/wellness-preferences" component={WellnessPreferencesPage} />

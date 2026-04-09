@@ -4,44 +4,21 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { ttsService, type TTSSettings, type VoicePersonality, VOICE_PERSONALITIES } from "@/lib/tts-service";
-import { Mic, Volume2, Gauge, Music, Play, Square, Sparkles } from "lucide-react";
+import { Mic, Volume2, Gauge, Play, Square, Sparkles, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function VoiceSettings() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<TTSSettings>(ttsService.getSettings());
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isTesting, setIsTesting] = useState(false);
-  const [isSupported, setIsSupported] = useState(ttsService.isAvailable());
 
   useEffect(() => {
-    // Load available voices
-    const loadVoices = () => {
-      const availableVoices = ttsService.getVoices();
-      setVoices(availableVoices);
-    };
-
-    loadVoices();
-
-    // Voices might load asynchronously
-    if (window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    return () => {
-      ttsService.stop();
-    };
+    return () => { ttsService.stop(); };
   }, []);
 
-  const handleSettingChange = (key: keyof TTSSettings, value: any) => {
+  const handleSettingChange = (key: keyof TTSSettings, value: unknown) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     ttsService.updateSettings({ [key]: value });
@@ -58,11 +35,10 @@ export function VoiceSettings() {
       setIsTesting(false);
       return;
     }
-
     setIsTesting(true);
     try {
       await ttsService.speak(
-        "Hello! I'm your DW-Ai assistant. This is how I sound with your current voice settings."
+        "Hello. I'm DW — your personal intelligence system. This is how I sound right now."
       );
       setIsTesting(false);
     } catch (error) {
@@ -75,58 +51,45 @@ export function VoiceSettings() {
     }
   };
 
-  if (!isSupported) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            Voice Settings
-          </CardTitle>
-          <CardDescription>
-            Voice features are not supported in this browser. Try using a modern browser like Chrome, Safari, or Edge.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5" />
-            Text-to-Speech Settings
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Volume2 className="h-5 w-5" />
+              DW Voice Settings
+            </CardTitle>
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Zap className="h-3 w-3" />
+              OpenAI Alloy
+            </Badge>
+          </div>
           <CardDescription>
-            Configure voice responses from your AI assistant
+            DW speaks using OpenAI's Alloy voice — natural, clear, and consistent across the entire app.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Enable TTS */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="tts-enabled">Enable Voice Responses</Label>
               <p className="text-sm text-muted-foreground">
-                AI assistant will speak its responses aloud
+                DW will speak aloud when you use voice features
               </p>
             </div>
             <Switch
               id="tts-enabled"
               checked={settings.enabled}
               onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
+              data-testid="switch-tts-enabled"
             />
           </div>
 
-          {/* Auto-speak AI responses */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="auto-speak">Auto-Speak Responses</Label>
+              <Label htmlFor="auto-speak">Auto-Speak AI Responses</Label>
               <p className="text-sm text-muted-foreground">
-                Automatically speak AI responses without clicking
+                DW automatically reads responses without needing a tap
               </p>
             </div>
             <Switch
@@ -134,17 +97,17 @@ export function VoiceSettings() {
               checked={settings.autoSpeak}
               onCheckedChange={(checked) => handleSettingChange('autoSpeak', checked)}
               disabled={!settings.enabled}
+              data-testid="switch-auto-speak"
             />
           </div>
 
-          {/* Voice Personality */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Voice Personality
+              Speaking Style
             </Label>
             <p className="text-sm text-muted-foreground">
-              Choose a vibe that fits how you want DW to sound
+              Adjusts DW's speaking speed to match how you want to be coached
             </p>
             <div className="grid grid-cols-3 gap-2">
               {(Object.entries(VOICE_PERSONALITIES) as [VoicePersonality, typeof VOICE_PERSONALITIES[VoicePersonality]][]).map(([key, preset]) => (
@@ -167,143 +130,65 @@ export function VoiceSettings() {
             </div>
           </div>
 
-          {/* Voice selection */}
-          {voices.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="voice-select">Voice</Label>
-              <Select
-                value={settings.voice || ''}
-                onValueChange={(value) => handleSettingChange('voice', value)}
-                disabled={!settings.enabled}
-              >
-                <SelectTrigger id="voice-select">
-                  <SelectValue placeholder="Select a voice" />
-                </SelectTrigger>
-                <SelectContent>
-                  {englishVoices.length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-sm font-semibold">English Voices</div>
-                      {englishVoices.map((voice) => (
-                        <SelectItem key={voice.name} value={voice.name}>
-                          {voice.name} {voice.localService ? '(Local)' : '(Online)'}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                  {voices.filter(v => !v.lang.startsWith('en')).length > 0 && (
-                    <>
-                      <div className="px-2 py-1.5 text-sm font-semibold">Other Languages</div>
-                      {voices.filter(v => !v.lang.startsWith('en')).map((voice) => (
-                        <SelectItem key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Speaking rate */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="rate-slider" className="flex items-center gap-2">
                 <Gauge className="h-4 w-4" />
-                Speaking Rate: {settings.rate.toFixed(1)}x
+                Speaking Speed: {settings.rate.toFixed(1)}x
               </Label>
             </div>
             <Slider
               id="rate-slider"
               min={0.5}
-              max={2}
+              max={1.5}
               step={0.1}
               value={[settings.rate]}
               onValueChange={([value]) => handleSettingChange('rate', value)}
               disabled={!settings.enabled}
+              data-testid="slider-speaking-rate"
             />
-            <p className="text-xs text-muted-foreground">
-              Adjust how fast the voice speaks (0.5x to 2x)
-            </p>
-          </div>
-
-          {/* Pitch */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="pitch-slider" className="flex items-center gap-2">
-                <Music className="h-4 w-4" />
-                Voice Pitch: {settings.pitch.toFixed(1)}
-              </Label>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Slower</span>
+              <span>Normal</span>
+              <span>Faster</span>
             </div>
-            <Slider
-              id="pitch-slider"
-              min={0.5}
-              max={2}
-              step={0.1}
-              value={[settings.pitch]}
-              onValueChange={([value]) => handleSettingChange('pitch', value)}
-              disabled={!settings.enabled}
-            />
-            <p className="text-xs text-muted-foreground">
-              Adjust voice pitch (0.5 to 2.0)
-            </p>
           </div>
 
-          {/* Volume */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="volume-slider" className="flex items-center gap-2">
-                <Volume2 className="h-4 w-4" />
-                Volume: {Math.round(settings.volume * 100)}%
-              </Label>
-            </div>
-            <Slider
-              id="volume-slider"
-              min={0}
-              max={1}
-              step={0.1}
-              value={[settings.volume]}
-              onValueChange={([value]) => handleSettingChange('volume', value)}
-              disabled={!settings.enabled}
-            />
-          </div>
-
-          {/* Test voice button */}
           <Button
             onClick={handleTestVoice}
             disabled={!settings.enabled}
             variant="outline"
             className="w-full"
+            data-testid="button-test-voice"
           >
             {isTesting ? (
               <>
                 <Square className="mr-2 h-4 w-4" />
-                Stop Test
+                Stop
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Test Voice
+                Hear DW
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Speech-to-Text Info Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mic className="h-5 w-5" />
-            Speech-to-Text
+            Voice Input
           </CardTitle>
           <CardDescription>
-            Voice input is available in chat interfaces using the microphone button
+            Speak to DW anywhere you see the microphone icon
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Click the microphone icon in any chat interface to start speaking. Your browser will convert your speech to text automatically.
+            Tap the mic in any chat, the onboarding wizard, or the Voice Mode screen to speak instead of type. Your browser converts speech to text in real time.
           </p>
         </CardContent>
       </Card>

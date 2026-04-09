@@ -24,6 +24,7 @@ import { useLocation } from "wouter";
 import { useSystemPreferences } from "@/hooks/use-systems-data";
 import { type SystemType, type SystemPreferences } from "@/lib/guest-storage";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { PageHeader } from "@/components/page-header";
 
 interface SystemInfo {
   type: SystemType;
@@ -111,39 +112,39 @@ export default function SystemsHubPage() {
 
   if (isLoading) {
     return (
-      <ScrollArea className="h-full">
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-20 w-full" />
-          <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-24 w-full" />
-            ))}
+      <div className="flex flex-col h-full">
+        <PageHeader title="Life Systems" />
+        <ScrollArea className="flex-1">
+          <div className="p-6 max-w-2xl mx-auto space-y-6">
+            <Skeleton className="h-20 w-full" />
+            <div className="space-y-2">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-display font-bold">Life Systems</h1>
-            <p className="text-muted-foreground">
-              Your personal operating system for daily wellness
-            </p>
-          </div>
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Life Systems"
+        rightContent={
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={() => setSettingsOpen(true)}
             data-testid="button-system-settings"
           >
             <Settings2 className="w-4 h-4" />
           </Button>
-        </div>
+        }
+      />
+      <ScrollArea className="flex-1">
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
 
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="p-4">
@@ -309,6 +310,7 @@ export default function SystemsHubPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }
