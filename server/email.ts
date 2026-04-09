@@ -120,7 +120,7 @@ export async function sendFeedbackEmail(
     
     await client.emails.send({
       from: resolvedFrom,
-      to: 'dimensionalwellnessai@gmail.com',
+      to: 'admin@dimensionalwellness.com',
       subject: 'Feedback',
       html: `
         <!DOCTYPE html>
@@ -175,7 +175,7 @@ export async function sendMismatchReportEmail(
 
     await client.emails.send({
       from: resolvedFrom,
-      to: 'dimensionalwellnessai@gmail.com',
+      to: 'admin@dimensionalwellness.com',
       subject: `[Mismatch Report] ${eventLabel}`,
       html: `
         <!DOCTYPE html>
@@ -373,7 +373,7 @@ export async function sendSupportReportEmail(
 
     await client.emails.send({
       from: resolvedFrom,
-      to: 'dimensionalwellnessai@gmail.com',
+      to: 'admin@dimensionalwellness.com',
       subject: `Support Report [${report.category}]${report.eventType ? ` – ${report.eventType}` : ''}`,
       html: `
         <!DOCTYPE html>
