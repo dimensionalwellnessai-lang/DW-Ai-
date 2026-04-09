@@ -2329,13 +2329,41 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, profile, wellnessPrefs] = await Promise.all([
+      const [user, goals, habits, profile, wellnessPrefs, todayHabitLogs, moodLogs, scheduleBlocks, calendarEvents, recentJournal, pendingReminders, routines] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getUserProfile(userId),
         storage.getWellnessPreferences(userId),
+        storage.getTodayHabitLogsByUser(userId),
+        storage.getMoodLogs(userId),
+        storage.getScheduleBlocks(userId),
+        storage.getCalendarEvents(userId),
+        storage.getDwJournalEntries(userId, 3),
+        storage.getReminders(userId, 'scheduled'),
+        storage.getRoutines(userId),
       ]);
+      
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const dayOfWeek = today.getDay();
+
+      // Compute which active habits are done today
+      const completedHabitIds = new Set(todayHabitLogs.map((l: any) => l.habitId));
+      const activeHabits = habits.filter((h: any) => h.isActive);
+
+      // Today's schedule blocks (matching today's day of week)
+      const todayScheduleBlocks = scheduleBlocks.filter((b: any) => b.dayOfWeek === dayOfWeek);
+
+      // Today's calendar events
+      const todayCalEvents = calendarEvents.filter((e: any) => {
+        if (!e.startTime) return false;
+        const evDate = new Date(e.startTime).toISOString().split('T')[0];
+        return evDate === todayStr;
+      });
+
+      // Most recent mood log
+      const latestMood = moodLogs.length > 0 ? moodLogs[0] : null;
       
       let documentContext = "";
       if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
@@ -2357,13 +2385,48 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       const userContext = {
         category: context,
         systemName: user?.systemName || undefined,
-        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
+        activeGoals: goals.filter((g: any) => g.isActive).map((g: any) => ({ 
+          id: g.id,
           title: g.title, 
           progress: g.progress || 0 
         })),
-        habits: habits.filter(h => h.isActive).map(h => ({ 
+        habits: activeHabits.map((h: any) => ({ 
+          id: h.id,
           title: h.title, 
-          streak: h.streak || 0 
+          streak: h.streak || 0,
+          frequency: h.frequency,
+          completedToday: completedHabitIds.has(h.id),
+        })),
+        todaySchedule: todayScheduleBlocks.map((b: any) => ({
+          title: b.title,
+          startTime: b.startTime,
+          endTime: b.endTime,
+          category: b.category,
+        })),
+        todayCalendarEvents: todayCalEvents.map((e: any) => ({
+          title: e.title,
+          startTime: e.startTime,
+          description: e.description,
+        })),
+        currentMood: latestMood ? {
+          energyLevel: latestMood.energyLevel,
+          moodLevel: latestMood.moodLevel,
+          clarityLevel: latestMood.clarityLevel,
+          loggedAt: latestMood.createdAt,
+        } : null,
+        recentJournalEntries: recentJournal.map((j: any) => ({
+          content: j.content?.slice(0, 200),
+          mood: j.mood,
+          createdAt: j.createdAt,
+        })),
+        pendingReminders: pendingReminders.slice(0, 5).map((r: any) => ({
+          title: r.title,
+          reminderTime: r.reminderTime,
+        })),
+        activeRoutines: routines.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          mode: r.mode,
         })),
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
@@ -2405,6 +2468,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       
       // Execute tool calls if any
       const actionsTaken: string[] = [];
+      let navigationAction: { path: string; reason: string } | null = null;
       if (result.toolCalls && result.toolCalls.length > 0) {
         for (const toolCall of result.toolCalls) {
           try {
@@ -2470,10 +2534,70 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
                 }
                 break;
               case 'create_workout_plan':
-                // This tool creates a workout plan - the AI will present it in the response
-                // The plan data is embedded in the conversation, not saved to database yet
-                // User will approve/save it through the workout page UI
                 actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
+              case 'navigate_to':
+                if (args.path) {
+                  navigationAction = { path: args.path, reason: args.reason || '' };
+                  actionsTaken.push(`Opening ${args.path}${args.reason ? ': ' + args.reason : ''}`);
+                }
+                break;
+              case 'create_journal_entry':
+                if (args.content) {
+                  const entryTitle = args.content.slice(0, 60) + (args.content.length > 60 ? '…' : '');
+                  await storage.createDwJournalEntry({
+                    userId,
+                    title: entryTitle,
+                    story: args.content,
+                    tags: args.tags || [],
+                  });
+                  actionsTaken.push(`Saved journal entry`);
+                }
+                break;
+              case 'log_habit_completion':
+                if (args.habitId && args.habitTitle) {
+                  const existingLog = await storage.getTodaysHabitLog(args.habitId);
+                  if (!existingLog) {
+                    await storage.createHabitLog({
+                      habitId: args.habitId,
+                      userId,
+                      notes: args.notes,
+                    });
+                  }
+                  actionsTaken.push(`Marked "${args.habitTitle}" as complete for today`);
+                }
+                break;
+              case 'create_reminder':
+                if (args.title && args.reminderTime) {
+                  await storage.createReminder({
+                    userId,
+                    type: 'custom',
+                    title: args.title,
+                    body: args.notes,
+                    scheduledAt: new Date(args.reminderTime),
+                    status: 'scheduled',
+                  });
+                  actionsTaken.push(`Set reminder: "${args.title}"`);
+                }
+                break;
+              case 'create_routine':
+                if (args.name) {
+                  await storage.createRoutine({
+                    userId,
+                    name: args.name,
+                    mode: args.mode || 'custom',
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created routine: "${args.name}"`);
+                }
+                break;
+              case 'update_goal_progress':
+                if (args.goalId && typeof args.progress === 'number') {
+                  await storage.updateGoal(args.goalId, {
+                    progress: args.progress,
+                  });
+                  actionsTaken.push(`Updated progress on "${args.goalTitle}" to ${args.progress}%`);
+                }
                 break;
             }
           } catch (err) {
@@ -2527,7 +2651,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       const safeResult = { ...result, response: enforceOneQuestion(result.response) };
-      res.json({ ...safeResult, syncSessionId, actionsTaken });
+      res.json({ ...safeResult, syncSessionId, actionsTaken, navigation: navigationAction });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       const errStatus: number = typeof error?.status === "number" ? error.status : 500;
@@ -2612,14 +2736,33 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Fetch user context (same as smart endpoint)
-      const [user, goals, habits, profile, wellnessPrefs] = await Promise.all([
+      // Fetch enriched user context (same as smart endpoint)
+      const [user, goals, habits, profile, wellnessPrefs, todayHabitLogsS, moodLogsS, scheduleBlocksS, calendarEventsS, recentJournalS, pendingRemindersS, routinesS] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getUserProfile(userId),
         storage.getWellnessPreferences(userId),
+        storage.getTodayHabitLogsByUser(userId),
+        storage.getMoodLogs(userId),
+        storage.getScheduleBlocks(userId),
+        storage.getCalendarEvents(userId),
+        storage.getDwJournalEntries(userId, 3),
+        storage.getReminders(userId, 'scheduled'),
+        storage.getRoutines(userId),
       ]);
+
+      const todayS = new Date();
+      const todayStrS = todayS.toISOString().split('T')[0];
+      const dayOfWeekS = todayS.getDay();
+      const completedHabitIdsS = new Set(todayHabitLogsS.map((l: any) => l.habitId));
+      const activeHabitsS = habits.filter((h: any) => h.isActive);
+      const todayScheduleBlocksS = scheduleBlocksS.filter((b: any) => b.dayOfWeek === dayOfWeekS);
+      const todayCalEventsS = calendarEventsS.filter((e: any) => {
+        if (!e.startTime) return false;
+        return new Date(e.startTime).toISOString().split('T')[0] === todayStrS;
+      });
+      const latestMoodS = moodLogsS.length > 0 ? moodLogsS[0] : null;
       
       // Handle document attachments
       let documentContext = "";
@@ -2642,13 +2785,38 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       const userContext = {
         category: context,
         systemName: user?.systemName || undefined,
-        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
+        activeGoals: goals.filter((g: any) => g.isActive).map((g: any) => ({ 
+          id: g.id,
           title: g.title, 
           progress: g.progress || 0 
         })),
-        habits: habits.filter(h => h.isActive).map(h => ({ 
+        habits: activeHabitsS.map((h: any) => ({ 
+          id: h.id,
           title: h.title, 
-          streak: h.streak || 0 
+          streak: h.streak || 0,
+          frequency: h.frequency,
+          completedToday: completedHabitIdsS.has(h.id),
+        })),
+        todaySchedule: todayScheduleBlocksS.map((b: any) => ({
+          title: b.title, startTime: b.startTime, endTime: b.endTime, category: b.category,
+        })),
+        todayCalendarEvents: todayCalEventsS.map((e: any) => ({
+          title: e.title, startTime: e.startTime, description: e.description,
+        })),
+        currentMood: latestMoodS ? {
+          energyLevel: latestMoodS.energyLevel,
+          moodLevel: latestMoodS.moodLevel,
+          clarityLevel: latestMoodS.clarityLevel,
+          loggedAt: latestMoodS.createdAt,
+        } : null,
+        recentJournalEntries: recentJournalS.map((j: any) => ({
+          content: j.content?.slice(0, 200), mood: j.mood, createdAt: j.createdAt,
+        })),
+        pendingReminders: pendingRemindersS.slice(0, 5).map((r: any) => ({
+          title: r.title, reminderTime: r.reminderTime,
+        })),
+        activeRoutines: routinesS.map((r: any) => ({
+          id: r.id, name: r.name, mode: r.mode,
         })),
         profile: profile || clientProfile || null,
         lifeSystem: lifeSystemContext || null,
@@ -2689,6 +2857,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       
       // Execute tool calls if any (same as smart endpoint)
       const actionsTaken: string[] = [];
+      let navigationActionS: { path: string; reason: string } | null = null;
       if (result.toolCalls && result.toolCalls.length > 0) {
         for (const toolCall of result.toolCalls) {
           try {
@@ -2753,10 +2922,70 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
                 }
                 break;
               case 'create_workout_plan':
-                // This tool creates a workout plan - the AI will present it in the response
-                // The plan data is embedded in the conversation, not saved to database yet
-                // User will approve/save it through the workout page UI
                 actionsTaken.push(`Generated workout plan based on your preferences`);
+                break;
+              case 'navigate_to':
+                if (args.path) {
+                  navigationActionS = { path: args.path, reason: args.reason || '' };
+                  actionsTaken.push(`Opening ${args.path}${args.reason ? ': ' + args.reason : ''}`);
+                }
+                break;
+              case 'create_journal_entry':
+                if (args.content) {
+                  const sEntryTitle = args.content.slice(0, 60) + (args.content.length > 60 ? '…' : '');
+                  await storage.createDwJournalEntry({
+                    userId,
+                    title: sEntryTitle,
+                    story: args.content,
+                    tags: args.tags || [],
+                  });
+                  actionsTaken.push(`Saved journal entry`);
+                }
+                break;
+              case 'log_habit_completion':
+                if (args.habitId && args.habitTitle) {
+                  const existingLog = await storage.getTodaysHabitLog(args.habitId);
+                  if (!existingLog) {
+                    await storage.createHabitLog({
+                      habitId: args.habitId,
+                      userId,
+                      notes: args.notes,
+                    });
+                  }
+                  actionsTaken.push(`Marked "${args.habitTitle}" as complete for today`);
+                }
+                break;
+              case 'create_reminder':
+                if (args.title && args.reminderTime) {
+                  await storage.createReminder({
+                    userId,
+                    type: 'custom',
+                    title: args.title,
+                    body: args.notes,
+                    scheduledAt: new Date(args.reminderTime),
+                    status: 'scheduled',
+                  });
+                  actionsTaken.push(`Set reminder: "${args.title}"`);
+                }
+                break;
+              case 'create_routine':
+                if (args.name) {
+                  await storage.createRoutine({
+                    userId,
+                    name: args.name,
+                    mode: args.mode || 'custom',
+                    isActive: true,
+                  });
+                  actionsTaken.push(`Created routine: "${args.name}"`);
+                }
+                break;
+              case 'update_goal_progress':
+                if (args.goalId && typeof args.progress === 'number') {
+                  await storage.updateGoal(args.goalId, {
+                    progress: args.progress,
+                  });
+                  actionsTaken.push(`Updated progress on "${args.goalTitle}" to ${args.progress}%`);
+                }
                 break;
             }
           } catch (err) {
@@ -2811,11 +3040,12 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       // Send actions taken and metadata at the end
-      if (actionsTaken.length > 0 || syncSessionId) {
+      if (actionsTaken.length > 0 || syncSessionId || navigationActionS) {
         res.write(`data: ${JSON.stringify({ 
           metadata: { 
             actionsTaken, 
-            syncSessionId 
+            syncSessionId,
+            navigation: navigationActionS,
           } 
         })}\n\n`);
       }

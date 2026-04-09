@@ -562,6 +562,10 @@ export function TalkItOutPage() {
         }
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
+      // Handle DW navigation — take user to the relevant feature
+      if (data.navigation?.path) {
+        setTimeout(() => navigate(data.navigation.path), 1200);
+      }
       setIsTyping(false);
     },
     onError: (error: any, variables) => {

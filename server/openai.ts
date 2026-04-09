@@ -211,11 +211,15 @@ interface UserLifeContext {
   }[];
   upcomingEvents?: { title: string; date: string }[];
   recentMoods?: { energy: number; mood: number; clarity?: number; date: string }[];
-  activeGoals?: { title: string; progress: number; wellnessDimension?: string }[];
-  habits?: { title: string; streak: number; frequency?: string }[];
+  activeGoals?: { id?: string; title: string; progress: number; wellnessDimension?: string }[];
+  habits?: { id?: string; title: string; streak: number; frequency?: string; completedToday?: boolean }[];
   todaySchedule?: { title: string; startTime: string; endTime: string; category?: string }[];
   routines?: { title: string; type: string; isActive: boolean }[];
-  todayCalendarEvents?: { title: string; time?: string; allDay: boolean }[];
+  todayCalendarEvents?: { title: string; startTime?: string; time?: string; allDay?: boolean; description?: string }[];
+  currentMood?: { energyLevel: number; moodLevel: number; clarityLevel?: number; loggedAt?: string } | null;
+  recentJournalEntries?: { content: string; mood?: string; createdAt?: string }[];
+  pendingReminders?: { title: string; reminderTime?: string }[];
+  activeRoutines?: { id: string; name: string; mode: string }[];
   lifeSystem?: {
     preferences?: {
       enabledSystems?: string[];
@@ -397,6 +401,7 @@ TODAY: ${today} at ${currentTime}
 1. ONE QUESTION PER RESPONSE — MAXIMUM. Never end with two or more questions. If you have multiple questions, pick the single most important one and delete the rest. A response ending in "Is there a time you feel more energetic? What would feel like a small win? How does that sound?" violates this rule. End with ONE or ZERO questions.
 2. OWN YOUR RECOMMENDATIONS — When you make a suggestion, state it directly. "Here's the move:" not "Here are some options you might consider."
 3. REASON BEFORE YOU SPEAK — Complete the 5-step reasoning protocol silently before writing any response.
+4. YOU ARE WIRED INTO THE APP — You can read the user's live data AND take direct actions. Use this. Don't just talk about features — use them. If a user says "I just meditated", log it. If they say "add this to my schedule", do it. If they ask to see their habits, navigate them there.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 DW SYSTEM IDENTITY:
@@ -869,11 +874,15 @@ ${userContext?.wellnessFocus?.length ? `WELLNESS FOCUS: ${userContext.wellnessFo
 ${userContext?.peakMotivationTime ? `PEAK ENERGY TIME: ${userContext.peakMotivationTime}` : ""}
 ${userContext?.category ? `CURRENT CONTEXT: They're exploring ${userContext.category}` : ""}
 ${userContext?.recentMoods?.length ? `RECENT ENERGY: ${userContext.recentMoods.slice(0, 3).map(m => `energy ${m.energy}/5, mood ${m.mood}/5${m.clarity ? `, clarity ${m.clarity}/5` : ''}`).join("; ")}` : ""}
-${userContext?.activeGoals?.length ? `ACTIVE GOALS: ${userContext.activeGoals.map(g => `${g.title} (${g.progress}% complete${g.wellnessDimension ? `, ${g.wellnessDimension}` : ''})`).join("; ")}` : ""}
-${userContext?.habits?.length ? `ACTIVE HABITS: ${userContext.habits.map(h => `${h.title} (${h.streak} day streak, ${h.frequency})`).join("; ")}` : ""}
-${userContext?.todaySchedule?.length ? `TODAY'S SCHEDULE BLOCKS: ${userContext.todaySchedule.map(b => `${b.startTime}-${b.endTime}: ${b.title}${b.category ? ` [${b.category}]` : ''}`).join("; ")}` : "NO SCHEDULE BLOCKS TODAY - offer to help create a schedule"}
+${userContext?.currentMood ? `CURRENT MOOD (LIVE): Energy ${userContext.currentMood.energyLevel}/5, Mood ${userContext.currentMood.moodLevel}/5${userContext.currentMood.clarityLevel ? `, Clarity ${userContext.currentMood.clarityLevel}/5` : ""}` : ""}
+${userContext?.activeGoals?.length ? `ACTIVE GOALS:\n${userContext.activeGoals.map(g => `  • [ID:${g.id}] ${g.title} — ${g.progress}% complete${g.wellnessDimension ? ` (${g.wellnessDimension})` : ''}`).join('\n')}` : ""}
+${userContext?.habits?.length ? `ACTIVE HABITS (today's completion status):\n${userContext.habits.map(h => `  • [ID:${h.id}] ${h.title} — ${h.streak} day streak — ${h.completedToday ? '✅ DONE TODAY' : '⬜ NOT YET'} (${h.frequency})`).join('\n')}` : ""}
+${userContext?.todaySchedule?.length ? `TODAY'S SCHEDULE:\n${userContext.todaySchedule.map(b => `  • ${b.startTime}–${b.endTime}: ${b.title}${b.category ? ` [${b.category}]` : ''}`).join('\n')}` : "NO SCHEDULE BLOCKS TODAY — offer to help create one"}
+${userContext?.todayCalendarEvents?.length ? `TODAY'S CALENDAR EVENTS:\n${userContext.todayCalendarEvents.map(e => `  • ${e.startTime ? new Date(e.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'all day'}: ${e.title}`).join('\n')}` : ""}
+${userContext?.recentJournalEntries?.length ? `RECENT JOURNAL:\n${userContext.recentJournalEntries.map(j => `  • "${j.content}"`).join('\n')}` : ""}
+${userContext?.pendingReminders?.length ? `UPCOMING REMINDERS: ${userContext.pendingReminders.map(r => `${r.title} at ${r.reminderTime}`).join("; ")}` : ""}
+${userContext?.activeRoutines?.length ? `ACTIVE ROUTINES: ${userContext.activeRoutines.map(r => `${r.name} (${r.mode})`).join("; ")}` : ""}
 ${userContext?.routines?.length ? `SAVED ROUTINES: ${userContext.routines.filter(r => r.isActive).map(r => `${r.title} (${r.type})`).join("; ")}` : ""}
-${userContext?.todayCalendarEvents?.length ? `TODAY'S CALENDAR: ${userContext.todayCalendarEvents.map(e => `${e.time || 'all day'}: ${e.title}`).join("; ")}` : ""}
 ${userContext?.lifeSystem?.preferences?.enabledSystems?.length ? `ENABLED SYSTEMS: ${userContext.lifeSystem.preferences.enabledSystems.join(", ")}` : ""}
 ${userContext?.lifeSystem?.preferences?.preferredWakeTime ? `WAKE TIME: ${userContext.lifeSystem.preferences.preferredWakeTime}` : ""}
 ${userContext?.lifeSystem?.preferences?.preferredSleepTime ? `SLEEP TIME: ${userContext.lifeSystem.preferences.preferredSleepTime}` : ""}
@@ -1875,6 +1884,106 @@ Calm over speed.`;
           }
         }
       }
+    },
+    {
+      type: "function",
+      function: {
+        name: "navigate_to",
+        description: "Navigate the user to a specific feature or page in the app. Use when user asks to go somewhere, wants to see something, or when completing a task would be best done inside a specific feature. Always tell the user what you're opening.",
+        parameters: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-dimensions", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
+              description: "The app path to navigate to"
+            },
+            reason: { type: "string", description: "Brief reason for navigating here — shown to user as 'Taking you to...'" }
+          },
+          required: ["path", "reason"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_journal_entry",
+        description: "Create a journal entry for the user. Use when user wants to capture a reflection, thought, win, challenge, or gratitude. Always confirm what you captured.",
+        parameters: {
+          type: "object",
+          properties: {
+            content: { type: "string", description: "The journal entry content — can be a reflection, thought, or summary of what the user shared" },
+            mood: { type: "string", enum: ["great", "good", "okay", "low", "difficult"], description: "Emotional tone of the entry" },
+            tags: { type: "array", items: { type: "string" }, description: "Optional tags like 'gratitude', 'win', 'challenge', 'insight'" }
+          },
+          required: ["content"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "log_habit_completion",
+        description: "Mark a habit as completed for today. Use when user says they did a habit, completed a practice, or checked something off. Match to their existing habits.",
+        parameters: {
+          type: "object",
+          properties: {
+            habitId: { type: "string", description: "ID of the habit from the user's active habits list" },
+            habitTitle: { type: "string", description: "Name of the habit being completed (for confirmation message)" },
+            notes: { type: "string", description: "Optional note about the completion" }
+          },
+          required: ["habitId", "habitTitle"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_reminder",
+        description: "Set a reminder for the user. Use when user wants to be reminded about something at a specific time.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "What to remind them about" },
+            reminderTime: { type: "string", description: "When to remind them — ISO datetime string (YYYY-MM-DDTHH:MM:SS)" },
+            notes: { type: "string", description: "Optional extra context" }
+          },
+          required: ["title", "reminderTime"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_routine",
+        description: "Create a new routine (morning, evening, workout, or custom). Use when user wants to establish a repeating sequence of activities.",
+        parameters: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Name of the routine" },
+            mode: { type: "string", enum: ["morning", "evening", "workout", "custom"], description: "Type of routine" },
+            description: { type: "string", description: "What this routine involves" }
+          },
+          required: ["name", "mode"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "update_goal_progress",
+        description: "Update progress on an existing goal. Use when user reports making progress, completing milestones, or finishing a goal.",
+        parameters: {
+          type: "object",
+          properties: {
+            goalId: { type: "string", description: "ID of the goal to update" },
+            goalTitle: { type: "string", description: "Title of the goal (for confirmation)" },
+            progress: { type: "integer", minimum: 0, maximum: 100, description: "New progress percentage (0-100)" },
+            notes: { type: "string", description: "What changed or was accomplished" }
+          },
+          required: ["goalId", "goalTitle", "progress"]
+        }
+      }
     }
   ];
 
@@ -1884,7 +1993,7 @@ Calm over speed.`;
       messages,
       tools,
       tool_choice: "auto",
-      max_completion_tokens: 800,
+      max_completion_tokens: 1200,
       temperature: 0.7,
     });
 
@@ -2427,6 +2536,7 @@ TODAY: ${today} at ${currentTime}
 1. ONE QUESTION PER RESPONSE — MAXIMUM. Never end with two or more questions. If you have multiple questions, pick the single most important one and delete the rest. A response ending in "Is there a time you feel more energetic? What would feel like a small win? How does that sound?" violates this rule. End with ONE or ZERO questions.
 2. OWN YOUR RECOMMENDATIONS — When you make a suggestion, state it directly. "Here's the move:" not "Here are some options you might consider."
 3. REASON BEFORE YOU SPEAK — Complete the 5-step reasoning protocol silently before writing any response.
+4. YOU ARE WIRED INTO THE APP — You can read the user's live data AND take direct actions. Use this. Don't just talk about features — use them. If a user says "I just meditated", log it. If they say "add this to my schedule", do it. If they ask to see their habits, navigate them there.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 DW SYSTEM IDENTITY:
@@ -2468,11 +2578,17 @@ ${userContext.wellnessPreferences.tarotEnabled ? `• Tarot: enabled — may ref
 ${userContext.wellnessPreferences.energyWorkEnabled ? `• Energy Work: enabled — may suggest Reiki, chakra work, or similar practices` : `• Energy Work: disabled — do not suggest Reiki, chakra work, or similar practices`}
 ` : ""}
 
-USER CONTEXT:
+USER CONTEXT (LIVE — TODAY):
 ${userContext?.systemName ? `Life System Name: ${userContext.systemName}` : ""}
 ${userContext?.category ? `Current Category: ${userContext.category}` : ""}
-${userContext?.activeGoals?.length ? `Active Goals:\n${userContext.activeGoals.map(g => `• ${g.title} (${g.progress}% complete)`).join('\n')}` : ""}
-${userContext?.habits?.length ? `Active Habits:\n${userContext.habits.map(h => `• ${h.title} (${h.streak} day streak)`).join('\n')}` : ""}
+${userContext?.currentMood ? `Current Mood: Energy ${userContext.currentMood.energyLevel}/5, Mood ${userContext.currentMood.moodLevel}/5${userContext.currentMood.clarityLevel ? `, Clarity ${userContext.currentMood.clarityLevel}/5` : ""}` : ""}
+${userContext?.activeGoals?.length ? `Active Goals:\n${(userContext.activeGoals as any[]).map(g => `• [ID:${g.id}] ${g.title} (${g.progress}% complete)`).join('\n')}` : ""}
+${userContext?.habits?.length ? `Active Habits:\n${(userContext.habits as any[]).map(h => `• [ID:${h.id}] ${h.title} — ${h.streak} day streak — ${h.completedToday ? '✅ DONE TODAY' : '⬜ not done today'} (${h.frequency})`).join('\n')}` : ""}
+${(userContext as any)?.todaySchedule?.length ? `Today's Schedule:\n${(userContext as any).todaySchedule.map((b: any) => `• ${b.startTime}–${b.endTime}: ${b.title} (${b.category})`).join('\n')}` : "No scheduled blocks today."}
+${(userContext as any)?.todayCalendarEvents?.length ? `Today's Calendar Events:\n${(userContext as any).todayCalendarEvents.map((e: any) => `• ${e.startTime ? new Date(e.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}: ${e.title}`).join('\n')}` : ""}
+${(userContext as any)?.recentJournalEntries?.length ? `Recent Journal:\n${(userContext as any).recentJournalEntries.map((j: any) => `• "${j.content}" (${j.mood || 'no mood'})`).join('\n')}` : ""}
+${(userContext as any)?.pendingReminders?.length ? `Upcoming Reminders:\n${(userContext as any).pendingReminders.map((r: any) => `• ${r.title} at ${r.reminderTime}`).join('\n')}` : ""}
+${(userContext as any)?.activeRoutines?.length ? `Active Routines:\n${(userContext as any).activeRoutines.map((r: any) => `• ${r.name} (${r.mode})`).join('\n')}` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CORE INTELLIGENCE PROTOCOLS (execute before every response)
@@ -2666,6 +2782,105 @@ RESPONSE FORMATTING:
         }
       }
     },
+    {
+      type: "function",
+      function: {
+        name: "navigate_to",
+        description: "Navigate the user to a specific feature or page in the app. Use when user asks to go somewhere, wants to see something, or when completing a task would be best done inside a specific feature.",
+        parameters: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-dimensions", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
+              description: "The app path to navigate to"
+            },
+            reason: { type: "string", description: "Brief reason for navigating here" }
+          },
+          required: ["path", "reason"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_journal_entry",
+        description: "Create a journal entry for the user. Use when user wants to capture a reflection, thought, win, challenge, or gratitude.",
+        parameters: {
+          type: "object",
+          properties: {
+            content: { type: "string", description: "The journal entry content" },
+            mood: { type: "string", enum: ["great", "good", "okay", "low", "difficult"], description: "Emotional tone of the entry" },
+            tags: { type: "array", items: { type: "string" }, description: "Optional tags" }
+          },
+          required: ["content"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "log_habit_completion",
+        description: "Mark a habit as completed for today. Use when user says they did a habit or completed a practice.",
+        parameters: {
+          type: "object",
+          properties: {
+            habitId: { type: "string", description: "ID of the habit" },
+            habitTitle: { type: "string", description: "Name of the habit" },
+            notes: { type: "string", description: "Optional note about the completion" }
+          },
+          required: ["habitId", "habitTitle"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_reminder",
+        description: "Set a reminder for the user at a specific time.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "What to remind them about" },
+            reminderTime: { type: "string", description: "When to remind them — ISO datetime string" },
+            notes: { type: "string", description: "Optional extra context" }
+          },
+          required: ["title", "reminderTime"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "create_routine",
+        description: "Create a new routine (morning, evening, workout, or custom).",
+        parameters: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Name of the routine" },
+            mode: { type: "string", enum: ["morning", "evening", "workout", "custom"], description: "Type of routine" }
+          },
+          required: ["name", "mode"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "update_goal_progress",
+        description: "Update progress on an existing goal.",
+        parameters: {
+          type: "object",
+          properties: {
+            goalId: { type: "string", description: "ID of the goal to update" },
+            goalTitle: { type: "string", description: "Title of the goal" },
+            progress: { type: "integer", minimum: 0, maximum: 100, description: "New progress percentage" },
+            notes: { type: "string", description: "What changed or was accomplished" }
+          },
+          required: ["goalId", "goalTitle", "progress"]
+        }
+      }
+    },
   ];
 
   try {
@@ -2675,7 +2890,7 @@ RESPONSE FORMATTING:
       tools,
       tool_choice: "auto",
       stream: true,
-      max_completion_tokens: 800,
+      max_completion_tokens: 1200,
       temperature: 0.7,
     });
 

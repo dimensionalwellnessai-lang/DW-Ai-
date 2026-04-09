@@ -1034,7 +1034,7 @@ export function AIWorkspace() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamedResponse = "";
-      let metadata: { actionsTaken?: string[]; syncSessionId?: string } = {};
+      let metadata: { actionsTaken?: string[]; syncSessionId?: string; navigation?: { path: string; reason: string } | null } = {};
       let updateCounter = 0;
       const UPDATE_FREQUENCY = 3; // Update UI every 3 chunks to reduce re-renders
 
@@ -1172,7 +1172,8 @@ export function AIWorkspace() {
         data: { 
           response: streamedResponse, 
           actionsTaken: metadata.actionsTaken || [],
-          syncSessionId: metadata.syncSessionId 
+          syncSessionId: metadata.syncSessionId,
+          navigation: metadata.navigation || null,
         }, 
         userMsg, 
         conversationId, 
@@ -1212,12 +1213,23 @@ export function AIWorkspace() {
           title: "Done",
           description: data.actionsTaken.join(". "),
         });
-        // Invalidate relevant queries to refresh data
+        // Invalidate all relevant queries to refresh data across the app
         queryClient.invalidateQueries({ queryKey: ["/api/schedule-blocks"] });
         queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
         queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
         queryClient.invalidateQueries({ queryKey: ["/api/mood-logs"] });
         queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/journal"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/routines"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/habit-logs"] });
+      }
+      
+      // Handle navigation action — DW navigating user to a feature
+      if (data.navigation?.path) {
+        setTimeout(() => {
+          setLocation(data.navigation!.path);
+        }, 1200);
       }
       
       // Refresh sync session if items were created
