@@ -1168,142 +1168,148 @@ ${contentList}`,
             </span>
           </div>
 
-          {/* Real time-aware content from Perplexity */}
+          {/* Real time-aware content from Perplexity — X/Facebook-style unified feed */}
           {forYouLoading ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Loading your picks...</h2>
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-              {[...Array(3)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                    <div className="h-3 bg-muted rounded w-full" />
-                  </CardContent>
-                </Card>
+            <div className="space-y-0 divide-y divide-border/20">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="py-5 space-y-3 animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-16 bg-muted rounded" />
+                    <div className="h-3 w-24 bg-muted rounded" />
+                  </div>
+                  <div className="aspect-video bg-muted rounded-xl" />
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-full" />
+                  <div className="h-3 bg-muted rounded w-2/3" />
+                </div>
               ))}
             </div>
           ) : forYouData ? (
-            <div className="space-y-6">
-              {/* Videos */}
-              {forYouData.videos.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Play className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Videos for {forYouData.timeLabel ?? timeSlotNow}</h2>
+            <div className="divide-y divide-border/20">
+              {/* Videos — X/Facebook post style */}
+              {forYouData.videos.slice(0, 4).filter(v => !notInterestedUrls.has(v.url)).map((video) => (
+                <div key={video.id} className="py-5 space-y-3" data-testid={`card-foryou-video-${video.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Play className="h-3 w-3 text-red-500 fill-red-500" />
+                      <span className="font-medium">{video.channel || "YouTube"}</span>
+                      {video.duration && <><span>·</span><span>{video.duration}</span></>}
+                    </div>
+                    <Badge className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">VIDEO</Badge>
                   </div>
-                  <div className="space-y-2">
-                    {forYouData.videos.slice(0, 4).filter(v => !notInterestedUrls.has(v.url)).map((video) => (
-                      <Card key={video.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-video-${video.id}`}>
-                        <CardContent className="p-3 flex items-start gap-3">
-                          <div className={`w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)}`}>
-                            {video.category === "yoga" || video.category === "meditation" ? <Brain className="h-6 w-6 text-primary/60" /> : <Dumbbell className="h-6 w-6 text-primary/60" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{video.channel}{video.duration ? ` · ${video.duration}` : ""}</p>
-                            <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">{video.description}</p>
-                          </div>
-                          <div className="flex flex-col gap-1 shrink-0">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-video-open-${video.id}`}>
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground/50" onClick={(e) => { e.stopPropagation(); handleNotInterested({ title: video.title, url: video.url, type: "video" }); }} data-testid={`button-foryou-video-notinterested-${video.id}`}>
-                              <ThumbsDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <button
+                    className={`w-full aspect-video rounded-xl bg-gradient-to-br ${getCategoryGradient(video.category)} flex items-center justify-center group overflow-hidden border border-border/20`}
+                    onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }}
+                    data-testid={`button-foryou-video-thumb-${video.id}`}
+                  >
+                    <Play className="h-14 w-14 text-primary/25 group-hover:text-primary/40 transition-colors" />
+                  </button>
+                  <h3 className="font-semibold text-base leading-snug">{video.title}</h3>
+                  {video.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{video.description}</p>}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-video-open-${video.id}`}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Watch
+                    </Button>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: video.title, url: video.url, type: "video" })} data-testid={`button-foryou-video-notinterested-${video.id}`} title="Not interested">
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
+              ))}
 
-              {/* Articles */}
-              {forYouData.articles.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Reads for Today</h2>
+              {/* Articles — X/Facebook post style */}
+              {forYouData.articles.slice(0, 3).filter(a => !notInterestedUrls.has(a.url)).map((article) => (
+                <div key={article.id} className="py-5 space-y-3" data-testid={`card-foryou-article-${article.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3 text-blue-500" />
+                      <span className="font-medium">{article.source || "Article"}</span>
+                      {article.readTimeMinutes && <><span>·</span><span>{article.readTimeMinutes} min read</span></>}
+                    </div>
+                    <Badge className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">ARTICLE</Badge>
                   </div>
-                  <div className="space-y-2">
-                    {forYouData.articles.slice(0, 3).filter(a => !notInterestedUrls.has(a.url)).map((article) => (
-                      <Card key={article.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-article-${article.id}`}>
-                        <CardContent className="p-3 flex items-start gap-3">
-                          <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-500/20 to-violet-500/5">
-                            <FileText className="h-6 w-6 text-primary/60" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm leading-snug line-clamp-2">{article.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{article.source}{article.readTimeMinutes ? ` · ${article.readTimeMinutes} min read` : ""}</p>
-                            {article.whySuggested && <p className="text-xs text-primary/70 mt-1 line-clamp-1 italic">{article.whySuggested}</p>}
-                          </div>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-article-open-${article.id}`}>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <div className="flex items-center justify-center aspect-[3/1] rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-border/20">
+                    <FileText className="h-10 w-10 text-primary/20" />
+                  </div>
+                  <h3 className="font-semibold text-base leading-snug">{article.title}</h3>
+                  {article.whySuggested && (
+                    <div className="flex items-start gap-2 rounded-lg bg-primary/5 px-3 py-2 text-xs text-muted-foreground border border-primary/10">
+                      <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                      <span>{article.whySuggested}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-article-open-${article.id}`}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Read
+                    </Button>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: article.title, url: article.url, type: "article" })} title="Not interested">
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
+              ))}
 
-              {/* Workouts */}
-              {forYouData.workouts && forYouData.workouts.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Dumbbell className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Workouts</h2>
+              {/* Workouts — X/Facebook post style */}
+              {forYouData.workouts && forYouData.workouts.filter(w => !notInterestedUrls.has(w.url)).map((workout) => (
+                <div key={workout.id} className="py-5 space-y-3" data-testid={`card-foryou-workout-${workout.id}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Dumbbell className="h-3 w-3 text-orange-500" />
+                      <span className="font-medium">{workout.channel || "Workout"}</span>
+                      {workout.duration && <><span>·</span><span>{workout.duration}</span></>}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {workout.difficulty && <Badge variant="outline" className="text-[10px] capitalize">{workout.difficulty}</Badge>}
+                      <Badge className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">WORKOUT</Badge>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {forYouData.workouts.filter(w => !notInterestedUrls.has(w.url)).map((workout) => (
-                      <Card key={workout.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-foryou-workout-${workout.id}`}>
-                        <CardContent className="p-3 flex items-start gap-3">
-                          <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-500/20 to-red-500/5">
-                            <Dumbbell className="h-6 w-6 text-primary/60" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm leading-snug line-clamp-2">{workout.title}</p>
-                            <div className="flex gap-2 mt-1">
-                              {workout.duration && <Badge variant="secondary" className="text-xs"><Clock className="h-2.5 w-2.5 mr-1" />{workout.duration}</Badge>}
-                              {workout.difficulty && <Badge variant="outline" className="text-xs capitalize">{workout.difficulty}</Badge>}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{workout.description}</p>
-                          </div>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-workout-open-${workout.id}`}>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <button
+                    className="w-full aspect-video rounded-xl bg-gradient-to-br from-orange-500/15 to-red-500/5 flex items-center justify-center border border-border/20 group"
+                    onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }}
+                    data-testid={`button-foryou-workout-thumb-${workout.id}`}
+                  >
+                    <Dumbbell className="h-14 w-14 text-orange-500/20 group-hover:text-orange-500/30 transition-colors" />
+                  </button>
+                  <h3 className="font-semibold text-base leading-snug">{workout.title}</h3>
+                  {workout.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{workout.description}</p>}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-workout-open-${workout.id}`}>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
+                    </Button>
+                    <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => handleAddToSchedule({ title: workout.title, url: workout.url || "", type: "workout" })} data-testid={`button-foryou-workout-schedule-${workout.id}`}>
+                      <Calendar className="h-3.5 w-3.5" /> Schedule
+                    </Button>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: workout.title, url: workout.url, type: "workout" })} title="Not interested">
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
+              ))}
 
-              {/* Meal */}
+              {/* Meal — X/Facebook post style */}
               {forYouData.meal && !notInterestedUrls.has(forYouData.meal.url) && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Utensils className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Meal Idea</h2>
+                <div className="py-5 space-y-3" data-testid="card-foryou-meal">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Utensils className="h-3 w-3 text-yellow-500" />
+                      <span className="font-medium">Meal Idea</span>
+                      {forYouData.meal.prepTime && <><span>·</span><span>{forYouData.meal.prepTime}</span></>}
+                    </div>
+                    <Badge className="text-[10px] bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20">RECIPE</Badge>
                   </div>
-                  <Card className="card-modern hover-lift cursor-pointer" onClick={() => { if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="card-foryou-meal">
-                    <CardContent className="p-3 flex items-start gap-3">
-                      <div className="w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br from-yellow-500/20 to-orange-500/5">
-                        <Utensils className="h-6 w-6 text-primary/60" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm leading-snug line-clamp-2">{forYouData.meal.title}</p>
-                        {forYouData.meal.prepTime && <p className="text-xs text-muted-foreground mt-0.5"><Clock className="h-3 w-3 inline mr-1" />{forYouData.meal.prepTime}</p>}
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{forYouData.meal.description}</p>
-                      </div>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="button-foryou-meal-open">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <div className="flex items-center justify-center aspect-[3/1] rounded-xl bg-gradient-to-br from-yellow-500/15 to-orange-500/5 border border-border/20">
+                    <Utensils className="h-10 w-10 text-yellow-500/25" />
+                  </div>
+                  <h3 className="font-semibold text-base leading-snug">{forYouData.meal.title}</h3>
+                  {forYouData.meal.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{forYouData.meal.description}</p>}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="button-foryou-meal-open">
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View Recipe
+                    </Button>
+                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => forYouData.meal && handleNotInterested({ title: forYouData.meal.title, url: forYouData.meal.url, type: "meal" })} title="Not interested">
+                      <ThumbsDown className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

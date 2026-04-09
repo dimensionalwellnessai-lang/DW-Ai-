@@ -1,19 +1,14 @@
 import { OnboardingWizard, type OnboardingData } from "@/components/onboarding-wizard";
-import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
-import { useInteractiveTour } from "@/components/interactive-tour";
 import { useLocation } from "wouter";
 import { saveEnhancedOnboarding, isEnhancedOnboardingComplete } from "@/lib/guest-storage";
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
-import { isFeatureEnabled } from "@/config/featureFlags";
 import { useState, useLayoutEffect } from "react";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function EnhancedOnboardingPage() {
   const [, setLocation] = useLocation();
-  const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
-  const [showPreview, setShowPreview] = useState(isFeatureEnabled("ONBOARDING_VALUE_PREVIEW"));
   const [redirecting, setRedirecting] = useState(false);
 
-  // If already completed, redirect to main app before any paint to avoid a flash
   useLayoutEffect(() => {
     if (isEnhancedOnboardingComplete()) {
       setRedirecting(true);
@@ -23,11 +18,10 @@ export default function EnhancedOnboardingPage() {
 
   if (redirecting) return null;
 
-  const handleOnboardingComplete = (data: OnboardingData, takeTour: boolean) => {
-    // Save onboarding data
+  const handleOnboardingComplete = async (data: OnboardingData, _takeTour: boolean) => {
     saveEnhancedOnboarding(data);
 
-    // Bridge birth data → Cosmic page so users don't have to re-enter it
+    // Bridge birth data → Cosmic page
     if (data.birthDate) {
       const existingBirthChart = JSON.parse(localStorage.getItem("dw_birth_chart") || "null");
       if (!existingBirthChart?.birthDate) {
@@ -48,75 +42,69 @@ export default function EnhancedOnboardingPage() {
       }
     }
 
-    // Track completion - simplified event without mismatched payload
+    // Update name on user record
+    if (data.name) {
+      try {
+        await apiRequest("PATCH", "/api/users/me", { firstName: data.name.trim().slice(0, 50) });
+      } catch { /* non-fatal */ }
+    }
+
+    // Map new fields to onboarding profile schema
+    const responsibilities = data.profession ? [data.profession] : [];
+    const priorities = data.lifeGoals ?? [];
+    const wellnessFocus: string[] = [];
+    if (data.lifeGoals?.includes("health") || data.lifeGoals?.includes("habits")) wellnessFocus.push("physical");
+    if (data.lifeGoals?.includes("stress") || data.lifeGoals?.includes("mindset")) wellnessFocus.push("emotional");
+    if (data.lifeGoals?.includes("purpose") || data.lifeGoals?.includes("spiritual")) wellnessFocus.push("spiritual");
+    if (data.lifeGoals?.includes("career")) wellnessFocus.push("occupational");
+    if (data.lifeGoals?.includes("relationships")) wellnessFocus.push("social");
+    if (data.lifeGoals?.includes("finances")) wellnessFocus.push("financial");
+
+    // Submit to backend
+    try {
+      await apiRequest("POST", "/api/onboarding/complete", {
+        responsibilities,
+        priorities,
+        wellnessFocus: wellnessFocus.length > 0 ? wellnessFocus : ["physical"],
+        shortTermGoals: data.lifeGoals?.slice(0, 3).join(", ") ?? "",
+        longTermGoals: data.lifeGoals?.slice(3).join(", ") ?? "",
+        lifeAreaDetails: {
+          birthDate: data.birthDate,
+          birthTime: data.birthTime,
+          birthLocation: data.birthLocation,
+          profession: data.profession,
+        },
+        systemName: `${data.name ?? "My"} Life System`,
+      });
+    } catch { /* non-fatal — onboarding still completes locally */ }
+
     trackEvent(EVENTS.QUICK_SETUP_COMPLETED, {
       completedAt: Date.now(),
-      takesTour: takeTour,
-    } as any); // Using 'any' to avoid payload mismatch - this is a new onboarding flow
+      takesTour: false,
+    } as any);
 
-    // Mark as activated
     markActivated({
       actionType: "starter_object_created",
       source: "welcome",
       tsLocal: new Date().toISOString(),
     });
 
-    // Mark as returning user
     localStorage.setItem("dw:isReturning", "1");
-
-    if (takeTour) {
-      // Start tour
-      startTour();
-    } else {
-      // Skip to main app
-      setLocation("/");
-    }
+    localStorage.setItem("dw_onboarding_completed", "1");
+    setLocation("/");
   };
 
   const handleSkip = () => {
-    // Save as skipped
-    saveEnhancedOnboarding({
-      completedAt: Date.now(),
-    });
-
-    // Mark as skipped to prevent re-showing
+    saveEnhancedOnboarding({ completedAt: Date.now() });
     localStorage.setItem("dw:onboarding_skipped", "true");
-
-    // Navigate to app
+    localStorage.setItem("dw_onboarding_completed", "1");
     setLocation("/");
   };
-
-  const handleTourComplete = () => {
-    // Mark tour as completed
-    saveEnhancedOnboarding({ tourCompleted: true });
-    completeTour();
-
-    // Navigate to main app
-    setLocation("/");
-  };
-
-  const handleTourSkip = () => {
-    skipTour();
-    // Navigate to main app
-    setLocation("/");
-  };
-
-  // Show value preview layer before the wizard when the feature flag is on
-  if (showPreview) {
-    return (
-      <OnboardingValuePreview
-        onBegin={() => setShowPreview(false)}
-        onSkip={handleSkip}
-      />
-    );
-  }
 
   return (
-    <>
-      <OnboardingWizard
-        onComplete={handleOnboardingComplete}
-        onSkip={handleSkip}
-      />
-    </>
+    <OnboardingWizard
+      onComplete={handleOnboardingComplete}
+      onSkip={handleSkip}
+    />
   );
 }

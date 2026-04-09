@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1479,19 +1479,383 @@ function ConsentSection() {
   );
 }
 
+// ─── Deep Readings Tab ─────────────────────────────────────────────────────────
+
+const READING_TIMEFRAMES = [
+  {
+    id: "today",
+    label: "Today",
+    emoji: "☀️",
+    desc: "What today's energy means for you",
+  },
+  {
+    id: "month",
+    label: "This Month",
+    emoji: "🌙",
+    desc: "The energetic themes shaping your month",
+  },
+  {
+    id: "year",
+    label: "This Year",
+    emoji: "🌀",
+    desc: "Your personal year and what it asks of you",
+  },
+  {
+    id: "moon",
+    label: "Moon Phase",
+    emoji: "🌕",
+    desc: "What the current moon phase means for you specifically",
+  },
+  {
+    id: "lifePhase",
+    label: "Life Phase",
+    emoji: "🌱",
+    desc: "Where you are in your larger life journey",
+  },
+  {
+    id: "lifePattern",
+    label: "Life Pattern",
+    emoji: "♾️",
+    desc: "Your core patterns, gifts, and recurring themes",
+  },
+] as const;
+
+type ReadingTimeframe = (typeof READING_TIMEFRAMES)[number]["id"];
+
+function buildReadingPrompt(
+  timeframe: ReadingTimeframe,
+  birthData: BirthData | null,
+  numerologyData: NumerologyData | null,
+  consent: CosmicConsent,
+): string {
+  const moonPhase = getCurrentMoonPhase();
+  const now = new Date();
+  const monthName = now.toLocaleString("en-US", { month: "long" });
+  const year = now.getFullYear();
+
+  const sunSign = (() => {
+    if (!birthData?.birthDate) return null;
+    const localDate = parseLocalDate(birthData.birthDate);
+    if (!localDate) return null;
+    const dayOfYear = Math.floor(
+      (localDate.getTime() - new Date(localDate.getFullYear(), 0, 0).getTime()) / 86400000,
+    );
+    return getSign(((dayOfYear / 365.25) * 360 + 280) % 360, birthData.zodiacSystem);
+  })();
+
+  const lifePath = numerologyData?.birthDate ? calcLifePath(numerologyData.birthDate) : null;
+  const personalYear = numerologyData?.birthDate ? calcPersonalYear(numerologyData.birthDate) : null;
+  const personalMonth = numerologyData?.birthDate ? calcPersonalMonth(numerologyData.birthDate) : null;
+  const personalDay = numerologyData?.birthDate ? calcPersonalDay(numerologyData.birthDate) : null;
+
+  // Build allowed context parts
+  const cosmic: string[] = [];
+  cosmic.push(`Current moon phase: ${moonPhase}`);
+  if (consent.useAstrologyInGuidance && sunSign) cosmic.push(`Sun sign: ${sunSign}`);
+  if (consent.useNumerologyInGuidance && lifePath !== null) cosmic.push(`Life Path: ${lifePath}`);
+  if (consent.useNumerologyInGuidance && personalYear !== null) cosmic.push(`Personal Year: ${personalYear}`);
+  if (consent.useNumerologyInGuidance && personalMonth !== null) cosmic.push(`Personal Month: ${personalMonth}`);
+  if (consent.useNumerologyInGuidance && personalDay !== null) cosmic.push(`Personal Day: ${personalDay}`);
+
+  const ctx = cosmic.join(" | ");
+
+  const style = `You are a thoughtful, grounded cosmic guide. Your tone is warm, direct, and poetic without being vague. Max 120 words. No bullet points. Never say "you should" — speak in invitations. Avoid "optimize", "maximize", "fix", "broken".`;
+
+  const frames: Record<ReadingTimeframe, string> = {
+    today: `${style} Context: ${ctx}. Give a personal reading for TODAY. Name the energy at play today, one specific invitation for this person, and one thing to notice or let go of. Be personal and specific.`,
+    month: `${style} Context: ${ctx}. Give a reading for ${monthName} ${year}. Describe the dominant energetic theme this month, what it's asking of this person, and one way to work with it rather than against it.`,
+    year: `${style} Context: ${ctx}. Give a reading for Personal Year ${personalYear ?? "(unknown)"}. What is the overarching invitation and challenge of this year in their life? What is this year's purpose? End with one orienting question.`,
+    moon: `${style} Context: ${ctx}. Give a deep reading for the current ${moonPhase} phase and what it specifically means for this person's inner life right now. Go deeper than general moon wisdom — make it feel personal to their chart and cycles.`,
+    lifePhase: `${style} Context: ${ctx}. Speak to where this person is in their larger life journey. Consider their numerological cycles and sun sign together to describe the chapter they are in — its gifts, its tests, and its underlying invitation.`,
+    lifePattern: `${style} Context: ${ctx}. Describe this person's core energetic patterns — what they carry naturally, what tends to trip them up, and what their recurring life themes are trying to teach them. Ground it in their specific cosmic profile.`,
+  };
+
+  return frames[timeframe];
+}
+
+function ReadingsTab({
+  birthData,
+  numerologyData,
+}: {
+  birthData: BirthData | null;
+  numerologyData: NumerologyData | null;
+}) {
+  const [activeFrame, setActiveFrame] = useState<ReadingTimeframe>("today");
+  const [readings, setReadings] = useState<Partial<Record<ReadingTimeframe, string>>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { consent } = useCosmicConsent();
+
+  const hasCosmicData = !!(birthData?.birthDate || numerologyData?.birthDate);
+
+  const fetchReading = useCallback(
+    async (frame: ReadingTimeframe) => {
+      if (readings[frame]) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const prompt = buildReadingPrompt(frame, birthData, numerologyData, consent ?? {
+          useAstrologyInGuidance: false,
+          useNumerologyInGuidance: false,
+        });
+        const response = await apiRequest("POST", "/api/chat/smart", {
+          message: prompt,
+          conversationHistory: [],
+          cosmicConsent: consent,
+        });
+        const json = (await response.json()) as { response?: string };
+        if (typeof json.response === "string") {
+          setReadings((prev) => ({ ...prev, [frame]: json.response }));
+        }
+      } catch {
+        setError("Couldn't load this reading. Tap to try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [birthData, numerologyData, consent, readings],
+  );
+
+  useEffect(() => {
+    fetchReading(activeFrame);
+  }, [activeFrame]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const frame = READING_TIMEFRAMES.find((f) => f.id === activeFrame)!;
+
+  return (
+    <div className="space-y-4">
+      {/* Timeframe selector */}
+      <div className="grid grid-cols-3 gap-2">
+        {READING_TIMEFRAMES.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => {
+              setActiveFrame(f.id);
+            }}
+            className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all gap-1 ${
+              activeFrame === f.id
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border/30 bg-muted/30 text-muted-foreground hover:bg-muted/60"
+            }`}
+            data-testid={`button-reading-${f.id}`}
+          >
+            <span className="text-lg" aria-hidden="true">{f.emoji}</span>
+            <span className="text-[10px] font-semibold leading-tight">{f.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Reading card */}
+      <div className="rounded-2xl border border-border/30 bg-muted/20 overflow-hidden">
+        <div className="px-4 pt-4 pb-2 border-b border-border/20">
+          <div className="flex items-center gap-2">
+            <span className="text-xl" aria-hidden="true">{frame.emoji}</span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{frame.label}</p>
+              <p className="text-xs text-muted-foreground">{frame.desc}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {!hasCosmicData && !consent?.useAstrologyInGuidance && !consent?.useNumerologyInGuidance ? (
+            <div className="text-center py-4 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Add your birth data in the Astrology or Numerology tab to get a personalized reading.
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                Even without birth data, you'll get a reading based on universal cosmic conditions.
+              </p>
+            </div>
+          ) : loading ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-3 bg-muted rounded w-full" />
+              <div className="h-3 bg-muted rounded w-[90%]" />
+              <div className="h-3 bg-muted rounded w-[95%]" />
+              <div className="h-3 bg-muted rounded w-[75%]" />
+            </div>
+          ) : error ? (
+            <div className="text-center space-y-2 py-2">
+              <p className="text-xs text-muted-foreground">{error}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setReadings((prev) => { const next = { ...prev }; delete next[activeFrame]; return next; });
+                  fetchReading(activeFrame);
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : readings[activeFrame] ? (
+            <div className="space-y-3">
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+                {readings[activeFrame]}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  setReadings((prev) => { const next = { ...prev }; delete next[activeFrame]; return next; });
+                  fetchReading(activeFrame);
+                }}
+                data-testid={`button-refresh-reading-${activeFrame}`}
+              >
+                ↺ Refresh reading
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Cosmic Alignment */}
+      <CosmicAlignmentSection birthData={birthData} numerologyData={numerologyData} />
+    </div>
+  );
+}
+
+// ─── Cosmic Alignment ──────────────────────────────────────────────────────────
+
+function CosmicAlignmentSection({
+  birthData,
+  numerologyData,
+}: {
+  birthData: BirthData | null;
+  numerologyData: NumerologyData | null;
+}) {
+  const [otherName, setOtherName] = useState("");
+  const [otherBirthDate, setOtherBirthDate] = useState("");
+  const [alignmentReading, setAlignmentReading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const myLifePath = numerologyData?.birthDate ? calcLifePath(numerologyData.birthDate) : null;
+  const myPersonalYear = numerologyData?.birthDate ? calcPersonalYear(numerologyData.birthDate) : null;
+
+  const canRun = otherName.trim().length > 0 && otherBirthDate.length > 0;
+
+  const runAlignment = async () => {
+    if (!canRun) return;
+    setLoading(true);
+    setError(null);
+    setAlignmentReading(null);
+    try {
+      const otherLifePath = calcLifePath(otherBirthDate);
+      const otherPersonalYear = calcPersonalYear(otherBirthDate);
+      const myCtx = [
+        myLifePath !== null ? `Life Path ${myLifePath}` : null,
+        myPersonalYear !== null ? `Personal Year ${myPersonalYear}` : null,
+        birthData?.birthDate ? `Sun sign data available` : null,
+      ].filter(Boolean).join(", ");
+
+      const prompt = `You are a thoughtful cosmic guide. Compare the energetic alignment between two people for right now. Keep it warm, honest, and direct — max 150 words. No bullet points. Never be vague or generic.
+
+Person A (me): ${myCtx || "Limited data available"}
+Person B (${otherName.trim()}): Life Path ${otherLifePath}, Personal Year ${otherPersonalYear}
+
+Describe: 1) Where their energies naturally complement or support each other right now. 2) Where friction or growth edges may appear. 3) One question they could explore together. Keep it encouraging but honest.`;
+
+      const response = await apiRequest("POST", "/api/chat/smart", {
+        message: prompt,
+        conversationHistory: [],
+      });
+      const json = (await response.json()) as { response?: string };
+      if (typeof json.response === "string") {
+        setAlignmentReading(json.response);
+      }
+    } catch {
+      setError("Couldn't generate alignment reading. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/30 bg-muted/20 overflow-hidden">
+      <div className="px-4 pt-4 pb-2 border-b border-border/20">
+        <div className="flex items-center gap-2">
+          <span className="text-xl" aria-hidden="true">🔗</span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Cosmic Alignment</p>
+            <p className="text-xs text-muted-foreground">See how your energy aligns with someone else right now</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <div className="space-y-2">
+          <Input
+            placeholder="Their name"
+            value={otherName}
+            onChange={(e) => setOtherName(e.target.value)}
+            className="h-10"
+            data-testid="input-alignment-name"
+          />
+          <Input
+            type="date"
+            value={otherBirthDate}
+            onChange={(e) => setOtherBirthDate(e.target.value)}
+            className="h-10"
+            data-testid="input-alignment-birthdate"
+          />
+          <Button
+            className="w-full"
+            size="sm"
+            onClick={runAlignment}
+            disabled={!canRun || loading}
+            data-testid="button-alignment-run"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground animate-spin" />
+                Reading alignment…
+              </span>
+            ) : (
+              "Check Alignment"
+            )}
+          </Button>
+        </div>
+
+        {error && (
+          <p className="text-xs text-muted-foreground text-center">{error}</p>
+        )}
+
+        {alignmentReading && (
+          <div className="pt-2 space-y-2 border-t border-border/20">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {otherName.trim()} × You
+            </p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
+              {alignmentReading}
+            </p>
+          </div>
+        )}
+
+        {!alignmentReading && !loading && !error && (
+          <p className="text-xs text-muted-foreground text-center">
+            Enter their name and birthday — no account needed.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CosmicHubPage() {
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const tabParam = params.get("tab");
 
-  const VALID_TABS = ["calendar", "insights", "astrology", "numerology"] as const;
+  const VALID_TABS = ["calendar", "readings", "astrology", "numerology"] as const;
   type TabId = (typeof VALID_TABS)[number];
 
-  const initialTab: TabId = VALID_TABS.includes(tabParam as TabId) ? (tabParam as TabId) : "insights";
+  const initialTab: TabId = VALID_TABS.includes(tabParam as TabId) ? (tabParam as TabId) : "readings";
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
-  // Keep tab in sync if deep-link changes (e.g. command widget navigates to /cosmic?tab=astrology)
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("tab");
     if (p && VALID_TABS.includes(p as TabId)) {
@@ -1508,12 +1872,11 @@ export default function CosmicHubPage() {
 
       <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto pb-10 space-y-4">
-          {/* Brief intro */}
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-4 flex items-start gap-3">
               <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Cosmic tools are offered as optional lenses for self-reflection — not predictions. Use what resonates, leave the rest.
+                Cosmic tools are optional lenses for self-reflection — not predictions. Use what resonates, leave the rest.
               </p>
             </CardContent>
           </Card>
@@ -1524,17 +1887,17 @@ export default function CosmicHubPage() {
                 <Calendar className="h-4 w-4" />
                 <span className="text-[10px]">Calendar</span>
               </TabsTrigger>
-              <TabsTrigger value="insights" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-insights">
+              <TabsTrigger value="readings" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-readings">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-[10px]">Insights</span>
+                <span className="text-[10px]">Readings</span>
               </TabsTrigger>
               <TabsTrigger value="astrology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-astrology">
                 <Star className="h-4 w-4" />
-                <span className="text-[10px]">Cosmic Insights</span>
+                <span className="text-[10px]">Astrology</span>
               </TabsTrigger>
               <TabsTrigger value="numerology" className="flex flex-col gap-0.5 py-2" data-testid="tab-cosmic-numerology">
                 <Hash className="h-4 w-4" />
-                <span className="text-[10px]">Numerology</span>
+                <span className="text-[10px]">Numbers</span>
               </TabsTrigger>
             </TabsList>
 
@@ -1542,21 +1905,22 @@ export default function CosmicHubPage() {
               <CalendarTab />
             </TabsContent>
 
-            <TabsContent value="insights" className="mt-4">
+            <TabsContent value="readings" className="mt-4">
+              <ReadingsTab birthData={birthData} numerologyData={numerologyData} />
+            </TabsContent>
+
+            <TabsContent value="astrology" className="mt-4 space-y-4">
               <InsightsTab
                 birthData={birthData}
                 numerologyData={numerologyData}
                 onViewNumerologyProfile={() => setActiveTab("numerology")}
               />
-            </TabsContent>
-
-            <TabsContent value="astrology" className="mt-4 space-y-4">
               <AstrologyProfileTab />
               <ConsentSection />
             </TabsContent>
 
             <TabsContent value="numerology" className="mt-4 space-y-4">
-              <NumerologyProfileTab onViewInsights={() => setActiveTab("insights")} />
+              <NumerologyProfileTab onViewInsights={() => setActiveTab("readings")} />
               <ConsentSection />
             </TabsContent>
           </Tabs>

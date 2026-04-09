@@ -168,13 +168,13 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   
-  // Not setup complete and not on welcome page -> go to welcome
-  if (!setupComplete && location !== "/welcome") {
-    return <Redirect to="/welcome" />;
+  // Not setup complete and not on an onboarding page -> go to enhanced-onboarding
+  if (!setupComplete && location !== "/welcome" && location !== "/enhanced-onboarding") {
+    return <Redirect to="/enhanced-onboarding" />;
   }
   
-  // Setup complete, on welcome -> go to /command-center
-  if (setupComplete && location === "/welcome") {
+  // Setup complete, on onboarding pages -> go to /command-center
+  if (setupComplete && (location === "/welcome" || location === "/enhanced-onboarding")) {
     return <Redirect to="/command-center" />;
   }
   
@@ -200,7 +200,7 @@ function getLastRoute(): string | null {
 }
 
 function HomeRedirect() {
-  if (!isOnboardingComplete()) return <Redirect to="/welcome" />;
+  if (!isOnboardingComplete()) return <Redirect to="/enhanced-onboarding" />;
   const last = getLastRoute();
   return <Redirect to={last ?? "/command-center"} />;
 }

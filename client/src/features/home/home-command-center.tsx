@@ -397,9 +397,20 @@ export default function HomeCommandCenter() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 flex flex-col items-center justify-center min-h-0">
           <div className="relative flex items-center justify-center w-full max-w-[420px] mx-auto aspect-square" style={{ maxHeight: "min(340px, 50vh)" }}>
+            {/* Atmospheric background glow layers */}
+            <div className="absolute rounded-full bg-primary/5 blur-3xl" style={{ width: "80%", height: "80%" }} aria-hidden="true" />
+            <div className="absolute rounded-full bg-primary/8 blur-2xl" style={{ width: "54%", height: "54%" }} aria-hidden="true" />
+
+            {/* Outer orbit ring — subtle */}
+            <div className="orbit-ring absolute rounded-full border border-border/10" style={{ width: "80%", height: "80%" }} aria-hidden="true" />
+            {/* Inner orbit ring — main */}
             <div className="orbit-ring absolute rounded-full border border-border/20" style={{ width: "66.7%", height: "66.7%" }} data-testid="orbit-ring" />
+            {/* Innermost ring — tight halo */}
+            <div className="absolute rounded-full border border-primary/10" style={{ width: "28%", height: "28%" }} aria-hidden="true" />
 
             <div className="relative z-10">
+              {/* Orb glow halo */}
+              <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl scale-150 pointer-events-none" aria-hidden="true" />
               <DWOrb
                 size={68}
                 state="idle"

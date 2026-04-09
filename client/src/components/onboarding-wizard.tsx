@@ -1,29 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   ArrowLeft,
-  Check,
   Sparkles,
-  User,
+  MessageCircle,
   Target,
-  Star,
-  Clock,
-  Utensils,
+  BookOpen,
   Dumbbell,
-  Activity,
-  Moon,
-  Sun,
+  Utensils,
   Heart,
-  Calendar,
+  Moon,
+  Compass,
+  Home,
+  X,
+  Check,
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { DWOrb } from "@/components/dw-orb";
 
-// Onboarding data structure
 export interface OnboardingData {
   name: string | null;
   wellnessGoals: string[];
@@ -36,6 +32,8 @@ export interface OnboardingData {
   fitnessGoals: string[];
   wearableDataPermission: boolean;
   completedAt: number | null;
+  profession: string | null;
+  lifeGoals: string[];
 }
 
 interface OnboardingWizardProps {
@@ -43,49 +41,121 @@ interface OnboardingWizardProps {
   onSkip: () => void;
 }
 
-const WELLNESS_GOALS = [
-  { id: "health", label: "Overall Health", icon: Heart },
-  { id: "fitness", label: "Physical Fitness", icon: Dumbbell },
-  { id: "emotional", label: "Emotional Balance", icon: Activity },
-  { id: "nutrition", label: "Better Nutrition", icon: Utensils },
-  { id: "sleep", label: "Quality Sleep", icon: Moon },
-  { id: "stress", label: "Stress Management", icon: Target },
-  { id: "energy", label: "More Energy", icon: Sun },
+const PROFESSIONS = [
+  { id: "student", label: "Student" },
+  { id: "professional", label: "Professional / Employee" },
+  { id: "entrepreneur", label: "Entrepreneur / Business Owner" },
+  { id: "creative", label: "Creative / Artist" },
+  { id: "parent", label: "Parent / Caregiver" },
+  { id: "healthcare", label: "Healthcare Worker" },
+  { id: "educator", label: "Educator" },
+  { id: "other", label: "Something else" },
 ];
 
-const DIETARY_PREFERENCES = [
-  "Omnivore",
-  "Vegetarian",
-  "Vegan",
-  "Pescatarian",
-  "Keto",
-  "Paleo",
-  "Gluten-Free",
-  "Dairy-Free",
+const LIFE_GOALS = [
+  { id: "habits", label: "Build better daily habits" },
+  { id: "health", label: "Improve my health & fitness" },
+  { id: "stress", label: "Manage stress & anxiety" },
+  { id: "career", label: "Grow professionally or in my career" },
+  { id: "relationships", label: "Strengthen my relationships" },
+  { id: "purpose", label: "Find more purpose and direction" },
+  { id: "finances", label: "Improve my financial situation" },
+  { id: "spiritual", label: "Build a spiritual practice" },
+  { id: "sleep", label: "Get better sleep" },
+  { id: "mindset", label: "Shift my mindset and perspective" },
 ];
 
-const FITNESS_GOALS = [
-  "Build Muscle",
-  "Lose Weight",
-  "Tone & Define",
-  "Increase Endurance",
-  "Improve Flexibility",
-  "Maintain Current Fitness",
+const APP_TOUR_SLIDES = [
+  {
+    icon: MessageCircle,
+    color: "text-violet-400",
+    bg: "bg-violet-500/15",
+    name: "Talk with DW",
+    desc: "Your AI coach and companion — available anytime for guidance, clarity, or just to think things through.",
+  },
+  {
+    icon: Home,
+    color: "text-blue-400",
+    bg: "bg-blue-500/15",
+    name: "Command Center",
+    desc: "Your daily orbit — see what's happening now, what's next, and what DW has for you at a glance.",
+  },
+  {
+    icon: Target,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/15",
+    name: "Plan & Goals",
+    desc: "Build real plans around your goals. DW tracks progress and nudges you when you need it most.",
+  },
+  {
+    icon: BookOpen,
+    color: "text-teal-400",
+    bg: "bg-teal-500/15",
+    name: "Journal & Reflect",
+    desc: "Write freely, reflect on patterns, and let DW turn your entries into insight over time.",
+  },
+  {
+    icon: Dumbbell,
+    color: "text-orange-400",
+    bg: "bg-orange-500/15",
+    name: "Workouts",
+    desc: "Personal training tailored to your goals, schedule, and energy — no gym required.",
+  },
+  {
+    icon: Utensils,
+    color: "text-rose-400",
+    bg: "bg-rose-500/15",
+    name: "Meals & Nutrition",
+    desc: "Meal plans, tracking, and recipes built around how you actually live — not a generic diet.",
+  },
+  {
+    icon: Heart,
+    color: "text-pink-400",
+    bg: "bg-pink-500/15",
+    name: "Meditate",
+    desc: "Breathing exercises, guided sessions, and mindfulness practices that fit your schedule.",
+  },
+  {
+    icon: Moon,
+    color: "text-indigo-400",
+    bg: "bg-indigo-500/15",
+    name: "Cosmic",
+    desc: "In-depth astrology and numerology readings — personalized to your birth chart and updated with the cosmos.",
+  },
+  {
+    icon: Compass,
+    color: "text-sky-400",
+    bg: "bg-sky-500/15",
+    name: "Explore",
+    desc: "A live feed of content curated by DW based on your goals, interests, and where you are right now.",
+  },
 ];
 
-const WAKE_TIMES = [
-  "5:00 AM", "5:30 AM", "6:00 AM", "6:30 AM", "7:00 AM",
-  "7:30 AM", "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM",
-];
+const TOTAL_STEPS = 7;
 
-const SLEEP_TIMES = [
-  "9:00 PM", "9:30 PM", "10:00 PM", "10:30 PM", "11:00 PM",
-  "11:30 PM", "12:00 AM", "12:30 AM", "1:00 AM",
-];
+function ProgressBar({ step }: { step: number }) {
+  return (
+    <div className="w-full h-0.5 bg-border/40 rounded-full overflow-hidden">
+      <motion.div
+        className="h-full bg-primary rounded-full"
+        initial={{ width: 0 }}
+        animate={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+      />
+    </div>
+  );
+}
+
+const slideVariants = {
+  enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 32 : -32 }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -32 : 32 }),
+};
 
 export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) {
-  const [, setLocation] = useLocation();
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [tourIndex, setTourIndex] = useState(0);
   const [data, setData] = useState<OnboardingData>({
     name: null,
     wellnessGoals: [],
@@ -98,532 +168,537 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     fitnessGoals: [],
     wearableDataPermission: false,
     completedAt: null,
+    profession: null,
+    lifeGoals: [],
   });
 
-  const totalSteps = 9; // 0-7 are wizard steps, 8 is completion screen
-
-  const updateData = (updates: Partial<OnboardingData>) => {
-    setData((prev) => ({ ...prev, ...updates }));
+  const goNext = () => {
+    setDirection(1);
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
   };
 
-  const toggleArrayItem = (key: keyof OnboardingData, value: string) => {
-    const currentArray = data[key] as string[];
-    if (currentArray.includes(value)) {
-      updateData({ [key]: currentArray.filter((item) => item !== value) });
-    } else {
-      updateData({ [key]: [...currentArray, value] });
-    }
+  const goBack = () => {
+    setDirection(-1);
+    setStep((s) => Math.max(s - 1, 0));
   };
 
-  const handleNext = () => {
-    if (step < 8) { // Steps 0-7, then completion screen is step 8
-      setStep(step + 1);
-    }
+  const toggleGoal = (id: string) => {
+    setData((d) => ({
+      ...d,
+      lifeGoals: d.lifeGoals.includes(id)
+        ? d.lifeGoals.filter((g) => g !== id)
+        : [...d.lifeGoals, id],
+    }));
   };
 
-  const handleBack = () => {
-    if (step > 0) {
-      setStep(step - 1);
-    }
-  };
-
-  const handleComplete = (takeTour: boolean) => {
-    const completedData = { ...data, completedAt: Date.now() };
-    onComplete(completedData, takeTour);
-  };
-
-  const canProceed = () => {
-    switch (step) {
-      case 1:
-        return data.name && data.name.trim().length > 0;
-      case 2:
-        return data.wellnessGoals.length > 0;
-      default:
-        return true;
-    }
-  };
-
-  const renderStep = () => {
-    switch (step) {
-      // Welcome Screen
-      case 0:
-        return (
-          <div className="text-center space-y-6 py-4">
-            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-display font-semibold">
-                Welcome to DW-Ai
-              </h2>
-              <p className="text-muted-foreground leading-relaxed">
-                Your dimensional wellness companion. Let's personalize your
-                experience so we can support you better.
-              </p>
-            </div>
-            <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-left text-foreground">
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="w-4 h-4 text-primary shrink-0" />
-                <span>Track moods and wellness across dimensions</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="w-4 h-4 text-primary shrink-0" />
-                <span>Get personalized cosmic insights</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="w-4 h-4 text-primary shrink-0" />
-                <span>Build routines that fit your life</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="w-4 h-4 text-primary shrink-0" />
-                <span>Plan meals and workouts tailored to you</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Takes about 3-5 minutes · You can skip any step
-            </p>
-          </div>
-        );
-
-      // Name
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <User className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                What should we call you?
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                This helps personalize your assistant's responses
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Your Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Enter your name"
-                value={data.name || ""}
-                onChange={(e) => updateData({ name: e.target.value })}
-                className="text-base"
-                autoFocus
-              />
-            </div>
-          </div>
-        );
-
-      // Wellness Goals
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Target className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                What are your wellness goals?
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Select all that resonate with you
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {WELLNESS_GOALS.map((goal) => {
-                const Icon = goal.icon;
-                const isSelected = data.wellnessGoals.includes(goal.id);
-                return (
-                  <button
-                    key={goal.id}
-                    onClick={() => toggleArrayItem("wellnessGoals", goal.id)}
-                    className={`p-4 rounded-xl border text-left transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover-elevate"
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 mb-2 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className="text-sm font-medium text-foreground">{goal.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-
-      // Astrology Info (Optional)
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Star className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                Birth Chart Details
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Optional - for personalized cosmic insights
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Birth Date</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  value={data.birthDate || ""}
-                  onChange={(e) => updateData({ birthDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="birthTime">Birth Time (if known)</Label>
-                <Input
-                  id="birthTime"
-                  type="time"
-                  value={data.birthTime || ""}
-                  onChange={(e) => updateData({ birthTime: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="birthLocation">Birth Location</Label>
-                <Input
-                  id="birthLocation"
-                  type="text"
-                  placeholder="City, Country"
-                  value={data.birthLocation || ""}
-                  onChange={(e) => updateData({ birthLocation: e.target.value })}
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              This information is used to generate accurate astrological readings
-            </p>
-          </div>
-        );
-
-      // Daily Routine
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Clock className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                Your Daily Routine
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Help us align with your natural rhythm
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="wakeTime">Wake Time</Label>
-                <select
-                  id="wakeTime"
-                  value={data.wakeTime || "7:00 AM"}
-                  onChange={(e) => updateData({ wakeTime: e.target.value })}
-                  className="w-full p-3 rounded-xl border bg-background text-foreground"
-                >
-                  {WAKE_TIMES.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sleepTime">Sleep Time</Label>
-                <select
-                  id="sleepTime"
-                  value={data.sleepTime || "10:00 PM"}
-                  onChange={(e) => updateData({ sleepTime: e.target.value })}
-                  className="w-full p-3 rounded-xl border bg-background text-foreground"
-                >
-                  {SLEEP_TIMES.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              We'll use this to suggest optimal times for activities and reminders
-            </p>
-          </div>
-        );
-
-      // Dietary Preferences
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Utensils className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                Dietary Preferences
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Select all that apply to you
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {DIETARY_PREFERENCES.map((pref) => (
-                <Badge
-                  key={pref}
-                  variant={
-                    data.dietaryPreferences.includes(pref) ? "default" : "outline"
-                  }
-                  className="cursor-pointer text-sm py-2 px-4"
-                  onClick={() => toggleArrayItem("dietaryPreferences", pref)}
-                >
-                  {pref}
-                </Badge>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              This helps us suggest meals that fit your lifestyle
-            </p>
-          </div>
-        );
-
-      // Fitness Goals
-      case 6:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Dumbbell className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                Fitness Goals
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                What would you like to achieve?
-              </p>
-            </div>
-            <div className="space-y-2">
-              {FITNESS_GOALS.map((goal) => (
-                <button
-                  key={goal}
-                  onClick={() => toggleArrayItem("fitnessGoals", goal)}
-                  className={`w-full p-4 rounded-xl border text-left transition-all ${
-                    data.fitnessGoals.includes(goal)
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover-elevate"
-                  }`}
-                >
-                  <span className="font-medium text-foreground">{goal}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-
-      // Wearable Data Permission
-      case 7:
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Activity className="w-10 h-10 mx-auto text-primary" />
-              <h3 className="text-xl font-display font-semibold">
-                Wearable Data Integration
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Connect your fitness tracker for enhanced insights
-              </p>
-            </div>
-            <div className="bg-muted/30 rounded-xl p-4 space-y-3 text-foreground">
-              <h4 className="font-medium text-sm">Benefits:</h4>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  <span>Automatic mood tracking based on activity</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  <span>Personalized wellness recommendations</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  <span>Dynamic themes based on your energy levels</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0" />
-                  <span>Better sleep and recovery insights</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl border">
-              <input
-                type="checkbox"
-                id="wearablePermission"
-                checked={data.wearableDataPermission}
-                onChange={(e) =>
-                  updateData({ wearableDataPermission: e.target.checked })
-                }
-                className="w-5 h-5"
-              />
-              <label htmlFor="wearablePermission" className="text-sm cursor-pointer">
-                I'd like to connect my wearable data (can be set up later)
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Your data is private and secure. You can change this anytime in Settings.
-            </p>
-          </div>
-        );
-
-      // Completion Screen
-      case 8:
-        return (
-          <div className="text-center space-y-6 py-4">
-            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Check className="w-8 h-8 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-display font-semibold">
-                All Set{data.name ? `, ${data.name}` : ""}!
-              </h2>
-              <p className="text-muted-foreground">
-                Your preferences are saved. Here's how we'll optimize your DW-Ai experience:
-              </p>
-            </div>
-            <div className="space-y-2 text-left bg-muted/30 rounded-xl p-4 text-foreground">
-              {data.wellnessGoals.length > 0 && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>
-                    Personalized recommendations for {data.wellnessGoals.length} wellness{" "}
-                    {data.wellnessGoals.length === 1 ? "area" : "areas"}
-                  </span>
-                </div>
-              )}
-              {data.wakeTime && data.sleepTime && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>
-                    Routines aligned with your {data.wakeTime} - {data.sleepTime} schedule
-                  </span>
-                </div>
-              )}
-              {data.dietaryPreferences.length > 0 && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>Meal plans matching your dietary preferences</span>
-                </div>
-              )}
-              {data.fitnessGoals.length > 0 && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>Workouts tailored to your fitness goals</span>
-                </div>
-              )}
-              {(data.birthDate || data.birthTime || data.birthLocation) && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>Personalized cosmic insights and calendar</span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              You can update any of these preferences anytime in Settings
-            </p>
-            <div className="space-y-3 pt-2">
-              <Button
-                size="lg"
-                onClick={() => handleComplete(true)}
-                className="w-full"
-              >
-                Take a Quick Tour
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => handleComplete(false)}
-                className="w-full"
-              >
-                Skip to App
-              </Button>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
+  const handleFinish = () => {
+    onComplete({ ...data, completedAt: Date.now() }, false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)' }}>
-      {/* Header */}
-      <header className="p-4 flex justify-between items-center">
-        {step > 0 && step < totalSteps ? (
-          <Button variant="ghost" size="sm" onClick={handleBack}>
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
-          </Button>
-        ) : (
-          <div />
-        )}
-        {step < totalSteps && (
-          <Button variant="ghost" size="sm" onClick={onSkip}>
-            Skip
-          </Button>
-        )}
-      </header>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+        <div className="w-8" />
+        <ProgressBar step={step} />
+        <button
+          onClick={onSkip}
+          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="button-onboarding-skip"
+          aria-label="Skip onboarding"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-      {/* Progress Indicator */}
-      {step > 0 && step < 8 && (
-        <div className="px-6 pb-4">
-          <div className="flex gap-1.5 justify-center">
-            {Array.from({ length: 8 }, (_, i) => (
-              <div
-                key={i}
-                className={`h-1 flex-1 rounded-full transition-colors ${
-                  i < step ? "bg-primary" : i === step ? "bg-primary/50" : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Slide content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="flex-1 flex flex-col px-6 pb-6"
+          >
+            {/* ── STEP 0: MISSION ─────────────────────────────────────── */}
+            {step === 0 && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.5 }}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150" />
+                    <DWOrb size={80} state="suggestion" />
+                  </div>
+                </motion.div>
 
-      {/* Content */}
-      <main className="flex-1 flex items-center justify-center px-6 pb-12">
-        <div className="w-full max-w-md">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderStep()}
-            </motion.div>
-          </AnimatePresence>
+                <div className="space-y-4 max-w-xs">
+                  <motion.h1
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-3xl font-display font-bold text-foreground leading-tight"
+                  >
+                    Your personal intelligence system.
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-muted-foreground leading-relaxed text-sm"
+                  >
+                    DW combines AI coaching, astrology, numerology, life planning, journaling, accountability, workouts, meals, and meditation — all in one experience that learns who you are and gets sharper the more you use it.
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-xs text-muted-foreground/60 font-medium uppercase tracking-widest"
+                  >
+                    The operating system for your life.
+                  </motion.p>
+                </div>
 
-          {/* Next Button */}
-          {step > 0 && step < 8 && (
-            <div className="mt-8">
-              <Button
-                size="lg"
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="w-full"
-              >
-                {step === 7 ? "Finish" : "Continue"}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          )}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="w-full max-w-xs"
+                >
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={goNext}
+                    data-testid="button-mission-next"
+                  >
+                    Let's begin <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </motion.div>
+              </div>
+            )}
 
-          {/* Start Button for Welcome */}
-          {step === 0 && (
-            <div className="mt-8">
-              <Button size="lg" onClick={handleNext} className="w-full">
-                Get Started
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </main>
+            {/* ── STEP 1: HERE'S WHAT I'M ABOUT ──────────────────────── */}
+            {step === 1 && (
+              <div className="flex-1 flex flex-col justify-center space-y-6 max-w-sm mx-auto w-full">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    So we start on the same page.
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    Here's what I'm about.
+                  </h2>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-primary/5 border border-primary/15 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                      Good at
+                    </p>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      Cutting through noise, building real plans, connecting your goals to your daily life, and keeping you on track without the lecture.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-muted/50 border border-border/40 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <X className="h-3 w-3" /> Not
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      A therapist, a substitute for real human support when it matters most, or a replacement for professional care.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-muted/30 border border-border/30 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                      <ArrowRight className="h-3 w-3" /> Promise
+                    </p>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      I'll be straight with you, adapt to your energy, and never waste your time.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-about-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button className="flex-1" onClick={goNext} data-testid="button-about-next">
+                    That works for me <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 2: NAME + BIRTH ────────────────────────────────── */}
+            {step === 2 && (
+              <div className="flex-1 flex flex-col justify-center space-y-6 max-w-sm mx-auto w-full">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Let's start with you
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    Tell me a little about yourself.
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Your name and birth info power your personalized cosmic readings.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      What should I call you?
+                    </label>
+                    <Input
+                      placeholder="Your preferred name"
+                      value={data.name ?? ""}
+                      onChange={(e) => setData((d) => ({ ...d, name: e.target.value || null }))}
+                      className="h-12"
+                      data-testid="input-name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Date of birth
+                    </label>
+                    <Input
+                      type="date"
+                      value={data.birthDate ?? ""}
+                      onChange={(e) => setData((d) => ({ ...d, birthDate: e.target.value || null }))}
+                      className="h-12"
+                      data-testid="input-birthdate"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Birth time <span className="text-muted-foreground font-normal">(optional, for accuracy)</span>
+                    </label>
+                    <Input
+                      type="time"
+                      value={data.birthTime ?? ""}
+                      onChange={(e) => setData((d) => ({ ...d, birthTime: e.target.value || null }))}
+                      className="h-12"
+                      data-testid="input-birthtime"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Birth location <span className="text-muted-foreground font-normal">(optional)</span>
+                    </label>
+                    <Input
+                      placeholder="City, Country"
+                      value={data.birthLocation ?? ""}
+                      onChange={(e) => setData((d) => ({ ...d, birthLocation: e.target.value || null }))}
+                      className="h-12"
+                      data-testid="input-birthlocation"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-birth-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button className="flex-1" onClick={goNext} data-testid="button-birth-next">
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 3: WHAT YOU DO ─────────────────────────────────── */}
+            {step === 3 && (
+              <div className="flex-1 flex flex-col justify-center space-y-5 max-w-sm mx-auto w-full">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Your context
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    What best describes what you do?
+                  </h2>
+                </div>
+
+                <div className="space-y-2">
+                  {PROFESSIONS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setData((d) => ({ ...d, profession: p.id }))}
+                      className={`w-full p-4 rounded-2xl text-left text-sm font-medium transition-all border ${
+                        data.profession === p.id
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border/40 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                      }`}
+                      data-testid={`button-profession-${p.id}`}
+                    >
+                      <span className="flex items-center justify-between">
+                        {p.label}
+                        {data.profession === p.id && (
+                          <Check className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-profession-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={goNext}
+                    disabled={!data.profession}
+                    data-testid="button-profession-next"
+                  >
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 4: GOALS ───────────────────────────────────────── */}
+            {step === 4 && (
+              <div className="flex-1 flex flex-col justify-center space-y-5 max-w-sm mx-auto w-full">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Your next 90 days
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    What do you most want to work on?
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Pick as many as apply.</p>
+                </div>
+
+                <div className="space-y-2">
+                  {LIFE_GOALS.map((g) => {
+                    const selected = data.lifeGoals.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => toggleGoal(g.id)}
+                        className={`w-full p-4 rounded-2xl text-left text-sm font-medium transition-all border ${
+                          selected
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border/40 bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                        }`}
+                        data-testid={`button-goal-${g.id}`}
+                      >
+                        <span className="flex items-center justify-between">
+                          {g.label}
+                          {selected && (
+                            <Check className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-goals-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={goNext}
+                    disabled={data.lifeGoals.length === 0}
+                    data-testid="button-goals-next"
+                  >
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 5: APP TOUR ────────────────────────────────────── */}
+            {step === 5 && (
+              <div className="flex-1 flex flex-col justify-center space-y-5 max-w-sm mx-auto w-full">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    What's inside
+                  </p>
+                  <h2 className="text-2xl font-display font-bold text-foreground">
+                    Everything in one place.
+                  </h2>
+                </div>
+
+                {/* Tour card */}
+                <div className="relative">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={tourIndex}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {(() => {
+                        const slide = APP_TOUR_SLIDES[tourIndex];
+                        const Icon = slide.icon;
+                        return (
+                          <div className="p-6 rounded-2xl border border-border/40 bg-muted/30 space-y-4">
+                            <div className={`w-12 h-12 rounded-2xl ${slide.bg} flex items-center justify-center`}>
+                              <Icon className={`h-6 w-6 ${slide.color}`} />
+                            </div>
+                            <div className="space-y-1.5">
+                              <p className="font-display font-semibold text-foreground text-lg">
+                                {slide.name}
+                              </p>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {slide.desc}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                {/* Dots */}
+                <div className="flex items-center justify-center gap-1.5">
+                  {APP_TOUR_SLIDES.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setTourIndex(i)}
+                      className={`rounded-full transition-all duration-300 ${
+                        i === tourIndex
+                          ? "w-5 h-1.5 bg-primary"
+                          : "w-1.5 h-1.5 bg-muted-foreground/30"
+                      }`}
+                      data-testid={`button-tour-dot-${i}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Tour nav */}
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setTourIndex((i) => Math.max(i - 1, 0))}
+                    disabled={tourIndex === 0}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+                    data-testid="button-tour-prev"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {tourIndex + 1} of {APP_TOUR_SLIDES.length}
+                  </span>
+                  {tourIndex < APP_TOUR_SLIDES.length - 1 ? (
+                    <button
+                      onClick={() => setTourIndex((i) => i + 1)}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-tour-next"
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </button>
+                  ) : (
+                    <div className="w-9" />
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-tour-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button className="flex-1" onClick={goNext} data-testid="button-tour-continue">
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 6: LAUNCH ──────────────────────────────────────── */}
+            {step === 6 && (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-sm mx-auto w-full">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.5 }}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-primary/15 blur-2xl scale-150" />
+                    <DWOrb size={80} state="idle" />
+                  </div>
+                </motion.div>
+
+                <div className="space-y-3">
+                  <motion.h2
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-2xl font-display font-bold text-foreground"
+                  >
+                    {data.name ? `You're in, ${data.name}.` : "You're in."}
+                  </motion.h2>
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-muted-foreground text-sm leading-relaxed"
+                  >
+                    DW has everything it needs to get started. Your experience will get more personalized the more you use it.
+                  </motion.p>
+                  {data.lifeGoals.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="p-4 rounded-2xl bg-primary/5 border border-primary/15 text-left"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                          Your focus
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {LIFE_GOALS.filter((g) => data.lifeGoals.includes(g.id))
+                          .slice(0, 3)
+                          .map((g) => g.label)
+                          .join(" · ")}
+                        {data.lifeGoals.length > 3 && ` · +${data.lifeGoals.length - 3} more`}
+                      </p>
+                    </motion.div>
+                  )}
+                </div>
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="w-full space-y-3"
+                >
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleFinish}
+                    data-testid="button-launch"
+                  >
+                    Enter DW <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <button
+                    onClick={goBack}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+                    data-testid="button-launch-back"
+                  >
+                    Go back
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -50,9 +50,10 @@ Preferred communication style: Simple, everyday language.
 - **DW Smart Import**: Universal content importer (`/life-system-import`) detecting content types (e.g., `life_system`, `journal_entry`, `workout_plan`, `meal_plan`, `goals`). Uses GPT-4o for parsing and allows users to review and apply extracted items to their system. Handles recurring schedules and goal conflict resolution.
 - **AI Integration**: Primary interaction via an AI chat interface. Context-aware wellness guidance and proactive nudges. System prompts enforce a calm, consent-based tone. Includes a "Life System Planning Mode" for comprehensive plans and markdown rendering for AI messages. Users can "Save Plan" for substantial AI responses.
 - **Notifications System**: Database-backed notifications (`notifications`, `evening_check_ins`). Includes a `NotificationBell` component and a smart check-in system that computes optimal timing and adapts messages based on time context (e.g., `prime_evening`, `late_night`, `missed_morning`).
-- **Browse Page**: Features "Discover," "For You," "Video," "Articles," and "Community" tabs.
-    - **For You**: Provides time-aware, personalized content (videos, articles, workouts, meals, entertainment, activities, learning) using Perplexity web search (with OpenAI fallback).
-    - **Community**: Includes 8 DW AI-created dimension support groups with in-app chat and Jitsi Meet video calls. DW AI provides automated support responses in group chats. Also features a cross-group feed and location-aware searches for volunteering and local resources.
+- **Browse Page**: Features "For You," "Video," "Articles," and "Saved" tabs. Uses X/Facebook-style feed cards — full-width post layout with large thumbnails, engagement rows (watch/read/open, not-interested), and personalized "why suggested" context. Content sourced from Perplexity (with OpenAI fallback). Community and Discover tabs preserved as hidden state.
+- **Onboarding Wizard**: 7-screen flow — Mission → About DW → Name+Birth+Location → Profession → 90-day Goals → App Tour (9-slide carousel) → Launch. New fields: `profession` (8 options) and `lifeGoals` (10 multi-select options). Maps to backend responsibilities/priorities/wellnessFocus. Bridges birth data to cosmic localStorage keys.
+- **Command Center**: Added layered orbit rings (outer/inner/halo), atmospheric radial glow behind DW Orb, and a pulsing halo glow for depth.
+- **Cosmic Hub**: Now has 4 tabs — Calendar, Readings, Astrology, Numbers. Readings tab features 6 timeframe deep readings (Today, Month, Year, Moon Phase, Life Phase, Life Pattern), each generating AI readings from birth+numerology profile. Cosmic Alignment section allows comparing your energy with another person using numerology.
 
 ## External Dependencies
 
