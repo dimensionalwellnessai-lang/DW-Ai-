@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -90,6 +91,7 @@ function CompletionRing({ rate }: { rate: number }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function WeeklyReviewPage() {
+  usePageMeta("Weekly Review", "Reflect on last week and plan your next elevation.");
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();

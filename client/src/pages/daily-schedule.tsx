@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSystemPreferences, useScheduleEvents } from "@/hooks/use-systems-data";
 import { type ScheduleEvent, type SystemType } from "@/lib/guest-storage";
 import type { CalendarEvent } from "@shared/schema";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -98,6 +99,7 @@ const MIN_DAY_INDEX = 0; // Sunday
 const MAX_DAY_INDEX = 6; // Saturday
 
 export default function DailySchedulePage() {
+  usePageMeta("Daily Schedule", "Your full day schedule and plan.");
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);

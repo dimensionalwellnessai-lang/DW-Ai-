@@ -5,8 +5,11 @@ import { ArrowLeft, Plus, MessageSquareText, CheckSquare, Circle, CheckCircle2 }
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Task } from "@shared/schema";
+import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export function TasksPage() {
+  usePageMeta("Tasks", "Track your wellness tasks and to-dos across all life dimensions.");
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
@@ -27,29 +30,9 @@ export function TasksPage() {
   const doneTasks = tasks?.filter((t) => t.isCompleted) || [];
 
   return (
-    <div className="min-h-screen">
-      <div className="fixed inset-0 -z-10 bg-gradient-to-b from-background via-background to-muted/30" />
-      
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <header className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Tasks</h1>
-            <p className="text-muted-foreground font-body mt-1">
-              Track what needs to be done across your wellness journey
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <Button className="gap-2" data-testid="button-new-task">
-              <Plus className="h-4 w-4" />
-              New Task
-            </Button>
-          </div>
-        </header>
+    <div className="bg-background">
+      <PageHeader title="Tasks" />
+      <div className="max-w-4xl mx-auto px-4 py-4 space-y-6">
 
         {isLoading ? (
           <div className="space-y-3">

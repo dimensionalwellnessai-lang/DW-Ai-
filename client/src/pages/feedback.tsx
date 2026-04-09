@@ -8,6 +8,7 @@ import { Send, Heart, CheckCircle, HelpCircle, Frown, Zap, Eye } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/page-header";
 import { apiRequest } from "@/lib/queryClient";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const FEEDBACK_CATEGORIES = [
   { id: "confusion", label: "Confused about something", icon: HelpCircle },
@@ -19,6 +20,7 @@ const FEEDBACK_CATEGORIES = [
 type FeedbackCategory = typeof FEEDBACK_CATEGORIES[number]["id"];
 
 export default function FeedbackPage() {
+  usePageMeta("Feedback", "Share your thoughts to help improve DW.ai.");
   const { toast } = useToast();
   const [feedback, setFeedback] = useState("");
   const [category, setCategory] = useState<FeedbackCategory | null>(null);

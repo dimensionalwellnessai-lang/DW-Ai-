@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 
 export default function RoutineDetailPage() {
+  usePageMeta("Routine", "Follow your personalized wellness routine step by step.");
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();

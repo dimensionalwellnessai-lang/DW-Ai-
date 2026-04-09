@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { SUGGESTED_ROUTINES } from "@/lib/routine-templates";
 
 export default function RoutineTemplateDetailPage() {
+  usePageMeta("Routine Template", "Explore and activate a curated wellness routine template.");
   const params = useParams<{ templateId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();

@@ -32,6 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { scrollToElement, scrollToRef } from "@/lib/scroll-utils";
 import { COPY } from "@/copy/en";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const DIMENSIONS = [
   { id: "body", label: "Body", icon: Zap, color: "text-red-400", bg: "bg-red-500/10" },
@@ -45,6 +46,7 @@ const DIMENSIONS = [
 ];
 
 export default function LifeBlueprintPage() {
+  usePageMeta("Life Blueprint", "Design and visualize your ideal life blueprint.");
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

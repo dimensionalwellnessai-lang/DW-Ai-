@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ function saveLocalPlans(plans: Plan[]) {
 }
 
 export default function PlansPage() {
+  usePageMeta("Plans", "Manage your active, draft, and archived life system plans.");
   useTutorialStart("plans", 1000);
   const [, setLocation] = useLocation();
   const [localPlans, setLocalPlans] = useState<Plan[]>(getLocalPlans);

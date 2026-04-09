@@ -65,6 +65,7 @@ import { cn } from "@/lib/utils";
 import { type SwitchId } from "@/lib/switch-storage";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { COPY } from "@/copy/en";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const MOOD_OPTIONS: { word: MoodWord; icon: typeof Smile; color: string }[] = [
   { word: "calm", icon: Cloud, color: "text-blue-400" },
@@ -808,6 +809,7 @@ function WeeklyCalendarView() {
 }
 
 export default function MoodTrackerPage() {
+  usePageMeta("Mood Tracker", "Log and track your daily mood and emotional patterns.");
   useTutorialStart("mood-tracker", 1000);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useUserRole();

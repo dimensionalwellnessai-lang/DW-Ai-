@@ -34,6 +34,7 @@ import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { useElevationPlan } from "@/hooks/use-elevation-plan";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { isPlanReviewDue } from "@/hooks/use-weekly-review";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -67,6 +68,7 @@ const TIME_OPTIONS: { value: TimeBand; label: string }[] = [
 ];
 
 export default function DWHomePage() {
+  usePageMeta("Home", "Your Dimensional Wellness home dashboard.");
   const [, navigate] = useLocation();
   const [signals, setSignals] = useState(getUserSignals);
   const [switchData, setSwitchData] = useState(getSwitchData);

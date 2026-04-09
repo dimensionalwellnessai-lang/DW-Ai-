@@ -14,6 +14,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, CheckCheck, BellOff, ChevronDown, ChevronUp, Clock, X } from "lucide-react";
@@ -221,6 +222,7 @@ function FollowupItem({ followup, onAccept, onSnooze, onDismiss, onMarkAnswered,
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ActionCenterPage() {
+  usePageMeta("Action Center", "Review and act on DW follow-up prompts — accept, snooze, or dismiss.");
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);

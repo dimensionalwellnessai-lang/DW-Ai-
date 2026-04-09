@@ -1,3 +1,5 @@
+import { isFeatureEnabled, type FeatureFlags } from "@/config/featureFlags";
+
 export const APP_VERSION = "0.1.0-beta";
 
 export type RouteType = "page" | "generator" | "modal" | "dev";
@@ -48,6 +50,8 @@ export interface RouteRegistryItem {
   enabled?: boolean;
   isPublic?: boolean;
   requiresAuth?: boolean;
+  /** If set, this route is only shown/enabled when the named feature flag is on */
+  requiredFlag?: string;
 }
 
 export const ROUTE_REGISTRY: RouteRegistryItem[] = [
@@ -492,6 +496,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     menuSection: "more",
     menuOrder: 57,
     enabled: true,
+    requiredFlag: "ELEVATION_PLAN",
     linkedType: "plan",
     actions: [
       { id: "view-plan", label: "View elevation plan", to: "/elevation-plan", icon: "trending-up" },
@@ -509,6 +514,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     menuSection: "more",
     menuOrder: 58,
     enabled: true,
+    requiredFlag: "WEEKLY_REVIEW",
     linkedType: "plan",
   },
   {
@@ -522,6 +528,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     menuSection: "more",
     menuOrder: 56,
     enabled: true,
+    requiredFlag: "ELEVATION_PLAN",
   },
   {
     id: "schedule-review",
@@ -796,7 +803,6 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     showInMenu: false,
     enabled: true,
   },
-
   {
     id: "not-found",
     path: "/404",
@@ -830,18 +836,24 @@ export function getRouteByPath(path: string): RouteRegistryItem | undefined {
   });
 }
 
+function isRouteFlagEnabled(route: RouteRegistryItem): boolean {
+  if (!route.requiredFlag) return true;
+  return isFeatureEnabled(route.requiredFlag as keyof FeatureFlags);
+}
+
 export function isRouteEnabled(path: string): boolean {
   const route = getRouteByPath(path);
-  return route?.enabled ?? false;
+  if (!route) return false;
+  return (route.enabled ?? false) && isRouteFlagEnabled(route);
 }
 
 export function getEnabledRoutes(): RouteRegistryItem[] {
-  return ROUTE_REGISTRY.filter(r => r.enabled);
+  return ROUTE_REGISTRY.filter(r => r.enabled && isRouteFlagEnabled(r));
 }
 
 export function getMenuRoutes(section?: MenuSection): RouteRegistryItem[] {
   return ROUTE_REGISTRY
-    .filter(r => r.showInMenu && r.enabled !== false)
+    .filter(r => r.showInMenu && r.enabled !== false && isRouteFlagEnabled(r))
     .filter(r => !section || r.menuSection === section)
     .sort((a, b) => (a.menuOrder ?? 99) - (b.menuOrder ?? 99));
 }

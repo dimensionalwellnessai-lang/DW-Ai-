@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ const SAMPLE_SCHEDULE: ScheduleItem[] = [
 const LOCAL_PLANS_KEY = "dw_local_plans";
 
 export default function ScheduleReviewPage() {
+  usePageMeta("Schedule Review", "Review and confirm your AI-suggested weekly schedule.");
   const [, params] = useRoute("/schedule-review/:draftId");
   const [, setLocation] = useLocation();
   const { toast } = useToast();

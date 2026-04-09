@@ -35,6 +35,14 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Capacitor for iOS/Android
 - **Web Directory**: `dist/public`
 
+### Production-Readiness Polish (Task #1)
+- **Routing**: `/home` and `/today` redirect to `/command-center`. `/welcome` and `/voice-onboarding` redirect to `/enhanced-onboarding`. Single canonical entry points for home and onboarding.
+- **SEO Metadata**: `usePageMeta(title, description)` hook applied to all pages — sets `<title>` as "{Title} | DW.ai" and updates the meta description tag.
+- **Feature Flag Guards**: `FeatureFlagGate` component at `client/src/components/feature-flag-gate.tsx`. Route registry has `requiredFlag` field; `AllFeaturesView` filters out routes whose flag is off so they're completely invisible.
+- **Loading States**: Skeleton loaders added to habits and goals pages. Empty states use the centralized `COPY.emptyStates` system.
+- **Typography**: `font-display` (Space Grotesk) and `font-body` (Nunito) are now properly registered in `tailwind.config.ts` so these utility classes actually apply the correct fonts.
+- **Shell Consistency**: Global `app-shell` class in App.tsx wraps all routes for safe-area handling. Pages with `PageHeader` component get sticky header + hamburger nav.
+
 ### Key Design Patterns & Features
 - **Guest Storage**: LocalStorage for unauthenticated users.
 - **Shared Schema**: Database schema shared between client and server.

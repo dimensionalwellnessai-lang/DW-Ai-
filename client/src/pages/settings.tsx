@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
 const BROWSER_NOTIF_ENABLED_KEY = "dw_browser_notif_enabled";
 
 export function SettingsPage() {
+  usePageMeta("Settings", "Customize your DW.ai preferences and account settings.");
   useTutorialStart("settings", 1000);
   const { resetAllTutorials } = useTutorial();
   const { permission, isSupported, requestPermission, sendTestNotification } = usePushNotifications();

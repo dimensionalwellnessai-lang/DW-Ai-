@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -423,6 +424,7 @@ function MyLifeSystemSection() {
 }
 
 export default function LifeDashboardPage() {
+  usePageMeta("Life Dashboard", "Your all-in-one view of wellness across all 8 life dimensions.");
   const [bodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [mealPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
   const [financeProfile] = useState<FinanceProfile | null>(getFinanceProfile());

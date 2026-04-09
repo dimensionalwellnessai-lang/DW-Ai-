@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1846,6 +1847,7 @@ Describe: 1) Where their energies naturally complement or support each other rig
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CosmicHubPage() {
+  usePageMeta("Cosmic Hub", "Explore astrology, numerology, and cosmic cycles all in one place.");
   const searchString = useSearch();
   const params = new URLSearchParams(searchString);
   const tabParam = params.get("tab");

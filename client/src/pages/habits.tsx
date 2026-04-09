@@ -8,14 +8,17 @@ import { PageHeader } from "@/components/page-header";
 import { CheckSquare, Plus, Circle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COPY } from "@/copy/en";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HabitsPage() {
+  usePageMeta("Habits", "Track and build your daily habits for lasting wellness progress.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [habitTitle, setHabitTitle] = useState("");
 
-  const { data: habits = [] } = useQuery<any[]>({
+  const { data: habits = [], isLoading: habitsLoading } = useQuery<any[]>({
     queryKey: ['/api/habits'],
   });
 
@@ -120,7 +123,14 @@ export default function HabitsPage() {
             <CardTitle>Today's Habits</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {habits.length === 0 && !showForm && (
+            {habitsLoading && (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            )}
+            {!habitsLoading && habits.length === 0 && !showForm && (
               <div className="text-center py-8">
                 <CheckSquare className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-foreground font-medium">{COPY.emptyStates.habits.title}</p>

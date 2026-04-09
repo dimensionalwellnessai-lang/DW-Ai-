@@ -61,6 +61,8 @@ import type {
   SupportPreferences as SupportPreferencesType,
   RecoveryReflection,
 } from "@shared/schema";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 const WELLNESS_DIMENSIONS = [
   { 
@@ -131,6 +133,7 @@ interface BlueprintData {
 }
 
 export function BlueprintPage() {
+  usePageMeta("Blueprint", "Your personalized wellness blueprint.");
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("foundations");
 

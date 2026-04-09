@@ -12,6 +12,7 @@ import { useAILearningStore } from '@/stores/useAILearningStore';
 import { ROUTE_REGISTRY } from '@/routes/registry';
 import { getIcon } from '@/lib/icon-mapper';
 import { useAuth } from '@/hooks/use-auth';
+import { isFeatureEnabled, type FeatureFlags } from '@/config/featureFlags';
 
 interface AllFeaturesViewProps {
   open: boolean;
@@ -64,11 +65,14 @@ export function AllFeaturesView({ open, onClose }: AllFeaturesViewProps) {
   
   const mostUsedFeatureIds = getMostUsed(4);
 
-  // Get all enabled routes
+  // Get all enabled routes, respecting feature flags
   const allFeatures = useMemo(() => {
-    return ROUTE_REGISTRY.filter(
-      (route) => route.enabled && route.showInMenu && route.type === 'page'
-    );
+    return ROUTE_REGISTRY.filter((route) => {
+      if (!route.enabled || !route.showInMenu) return false;
+      if (route.type !== 'page' && route.type !== 'generator') return false;
+      if (route.requiredFlag && !isFeatureEnabled(route.requiredFlag as keyof FeatureFlags)) return false;
+      return true;
+    });
   }, []);
 
   // Filter features based on search query

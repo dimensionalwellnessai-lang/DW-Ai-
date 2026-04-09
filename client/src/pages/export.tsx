@@ -6,6 +6,7 @@ import { Download, Calendar, FileText, Share2, Check, Loader2 } from "lucide-rea
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type ExportFormat = "ics" | "pdf" | "share";
 
@@ -75,6 +76,7 @@ function generateICSContent(planName: string, items: any[]): string {
 }
 
 export default function ExportPage() {
+  usePageMeta("Export Data", "Export your wellness data and insights.");
   const [, params] = useRoute("/export/:planId");
   const [, setLocation] = useLocation();
   const { toast } = useToast();

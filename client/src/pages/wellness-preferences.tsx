@@ -14,8 +14,11 @@ import {
   buildSavePayload,
   type WellnessPreferencesData,
 } from "@/lib/wellness-preferences-helpers";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 export default function WellnessPreferencesPage() {
+  usePageMeta("Wellness Preferences", "Customize your wellness preferences and settings.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

@@ -11,6 +11,7 @@
 import { useRoute } from "wouter";
 import { DimensionOverviewTemplate } from "@/components/DimensionOverviewTemplate";
 import type { SwitchId } from "@/lib/switch-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const VALID_DIMENSION_IDS: SwitchId[] = [
   "body",
@@ -28,6 +29,7 @@ function isValidDimensionId(id: string): id is SwitchId {
 }
 
 export default function DimensionOverviewPage() {
+  usePageMeta("Dimension Overview", "Explore and assess your wellness dimensions.");
   const [, params] = useRoute("/dimension/:id");
   const id = params?.id ?? "";
 

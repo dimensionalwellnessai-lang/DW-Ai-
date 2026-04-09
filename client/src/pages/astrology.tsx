@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTutorialStart } from "@/contexts/tutorial-context";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   Moon, 
   Sun, 
@@ -698,6 +699,7 @@ const HOROSCOPE_READINGS: Record<string, { daily: string; weekly: string; monthl
 };
 
 export default function AstrologyPage() {
+  usePageMeta("Cosmic Insights", "Explore your birth chart, lunar cycles, and cosmic transits.");
   useTutorialStart("astrology", 1000);
   const [notes, setNotes] = useState<AstrologyNote[]>(getStoredNotes);
   const [newNote, setNewNote] = useState("");

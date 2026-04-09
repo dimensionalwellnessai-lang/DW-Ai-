@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check, Target } from "lucide-react";
 import { saveProfileSetup } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type FirstIntent = "lifesystem" | "stress" | "plan" | "move" | "eat" | "talk";
 
@@ -18,6 +19,7 @@ const INTENT_OPTIONS: { id: FirstIntent; label: string; emoji: string }[] = [
 ];
 
 export default function Welcome() {
+  usePageMeta("Welcome", "Welcome to DW.ai – your wellness journey begins here.");
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");

@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import { Target, Plus, CheckCircle2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COPY } from "@/copy/en";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function GoalsPage() {
+  usePageMeta("Goals", "Set and track your wellness goals across every dimension of your life.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -22,7 +25,7 @@ export default function GoalsPage() {
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
 
-  const { data: goals = [] } = useQuery<any[]>({
+  const { data: goals = [], isLoading: goalsLoading } = useQuery<any[]>({
     queryKey: ['/api/goals'],
   });
 
@@ -132,7 +135,14 @@ export default function GoalsPage() {
 
         {/* Goals List */}
         <div className="space-y-4">
-          {goals.length === 0 && !showForm && (
+          {goalsLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
+          )}
+          {!goalsLoading && goals.length === 0 && !showForm && (
             <Card>
               <CardContent className="text-center py-12">
                 <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />

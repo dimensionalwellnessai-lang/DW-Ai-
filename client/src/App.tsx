@@ -37,8 +37,6 @@ const TalkItOutPage = lazy(() =>
 );
 const ResetPasswordPage = lazy(() => import("@/pages/reset-password"));
 const AccountDeletePage = lazy(() => import("@/pages/account-delete"));
-const WelcomePage = lazy(() => import("@/pages/welcome"));
-const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
 const SubscriptionPage = lazy(() => import("@/pages/subscription"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
@@ -97,7 +95,6 @@ import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
 const DimensionOverviewPage = lazy(() => import("@/pages/dimension-overview"));
-import DWHomePage from "@/pages/dw-home";
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
 import AdminAnalyticsPage from "@/pages/admin-analytics";
@@ -169,12 +166,12 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   }
   
   // Not setup complete and not on an onboarding page -> go to enhanced-onboarding
-  if (!setupComplete && location !== "/welcome" && location !== "/enhanced-onboarding") {
+  if (!setupComplete && location !== "/enhanced-onboarding") {
     return <Redirect to="/enhanced-onboarding" />;
   }
   
-  // Setup complete, on onboarding pages -> go to /command-center
-  if (setupComplete && (location === "/welcome" || location === "/enhanced-onboarding")) {
+  // Setup complete, on onboarding page -> go to /command-center
+  if (setupComplete && location === "/enhanced-onboarding") {
     return <Redirect to="/command-center" />;
   }
   
@@ -215,8 +212,8 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
-      <Route path="/welcome" component={WelcomePage} />
-      <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
+      <Route path="/welcome"><Redirect to="/enhanced-onboarding" /></Route>
+      <Route path="/voice-onboarding"><Redirect to="/enhanced-onboarding" /></Route>
       <Route path="/paywall" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/checkout" component={CheckoutPage} />
@@ -228,7 +225,7 @@ function Router() {
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
-      <Route path="/home" component={DWHomePage} />
+      <Route path="/home"><Redirect to="/command-center" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
       <Route path="/life-blueprint" component={LifeBlueprintPage} />

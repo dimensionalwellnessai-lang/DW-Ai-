@@ -49,6 +49,8 @@ import {
   type CookMismatchReport,
   type CookSessionIngredient,
 } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -233,6 +235,7 @@ type PageView = "entry" | "session" | "history";
 type EntryTab = "search" | "have" | "ai";
 
 export default function CookSessionPage() {
+  usePageMeta("Cook Session", "Active cooking session with step-by-step guidance.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 

@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Home, MessageCircleHeart, ArrowLeft, MapPin } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function NotFound404Page() {
+  usePageMeta("Page Not Found", "The page you are looking for does not exist.");
   const [location] = useLocation();
 
   return (

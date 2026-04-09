@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -167,6 +168,7 @@ function ProposedBlockCard({
 }
 
 export default function ExpandMyWeekPage() {
+  usePageMeta("Expand My Week", "Build your ideal week through a guided planning conversation.");
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();

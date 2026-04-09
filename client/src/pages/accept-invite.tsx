@@ -12,6 +12,7 @@ import { Loader2, Users, CheckCircle2, XCircle, Link2 } from "lucide-react";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface InviteInfo {
   invitedEmail: string;
@@ -21,6 +22,7 @@ interface InviteInfo {
 }
 
 export default function AcceptInvitePage() {
+  usePageMeta("Accept Invite", "Accept your DW.ai invitation to get started.");
   const [, params] = useRoute("/accountability/accept-invite/:token");
   const token = params?.token ?? "";
   const [, navigate] = useLocation();

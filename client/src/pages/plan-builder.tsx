@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ function saveLocalPlans(plans: Plan[]) {
 }
 
 export default function PlanBuilderPage() {
+  usePageMeta("Plan Builder", "Create a new wellness plan with AI-guided structure and goals.");
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);

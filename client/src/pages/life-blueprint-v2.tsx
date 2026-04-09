@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LIFE_DIMENSIONS, ASSESSMENT_QUESTIONS, getDimensionById, type LifeDimension } from "@/lib/life-dimensions";
 import { motion } from "framer-motion";
 import { COPY } from "@/copy/en";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type ViewMode = "overview" | "dimension-detail" | "assessment";
 
@@ -57,6 +58,7 @@ interface Goal {
 }
 
 export default function LifeBlueprintV2() {
+  usePageMeta("Life Blueprint v2", "Explore your next-generation life blueprint.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>("overview");

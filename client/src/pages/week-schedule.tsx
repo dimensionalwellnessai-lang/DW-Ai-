@@ -26,6 +26,7 @@ import {
   parseISO,
 } from "date-fns";
 import type { CalendarEvent } from "@shared/schema";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const DAY_ABBREV = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -78,6 +79,7 @@ function dateKeyOf(isoOrTime: string): string {
 }
 
 export default function WeekSchedulePage() {
+  usePageMeta("Week View", "View your full weekly schedule.");
   const [, setLocation] = useLocation();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 0 })

@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShareExportSheet } from "@/components/share-export-sheet";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface CheckinState {
   trialStartAt: string | null;
@@ -167,6 +168,7 @@ function formatCheckinSummary(weekNumber: number, answers: Record<string, string
 }
 
 export default function WeeklyCheckinPage() {
+  usePageMeta("Weekly Check-In", "Complete your weekly wellness check-in.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const shareEnabled = isFeatureEnabled("SHARE_EXPORT");

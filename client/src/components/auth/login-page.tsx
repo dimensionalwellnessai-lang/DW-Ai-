@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { getGuestData, clearGuestData, getGuestMessageCount } from "@/lib/guest-storage";
 import { initializeDemoMode, DEMO_CREDENTIALS } from "@/lib/demo-mode";
 import { BRAND } from "@/config/brand";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const TERMS_OF_USE = `
 Terms of Use & Disclaimer
@@ -63,6 +64,7 @@ By creating an account, you confirm that you have read, understood, and agree to
 
 
 export function LoginPage() {
+  usePageMeta("Sign In", "Sign in to your DW.ai account to continue your wellness journey.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [loginData, setLoginData] = useState({ email: "", password: "", rememberMe: false });

@@ -40,6 +40,8 @@ import {
   type GroceryList,
   type GroceryItem,
 } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 type ShoppingListWithItems = ShoppingList & { items: ShoppingListItem[] };
 
@@ -100,6 +102,7 @@ function convertGroceryListToLocal(list: GroceryList): LocalShoppingList {
 }
 
 export default function ShoppingListPage() {
+  usePageMeta("Shopping List", "Your personalized grocery and shopping list.");
   useTutorialStart("shopping-list", 1000);
   const { toast } = useToast();
   const { isAuthenticated, isLoading: userLoading } = useUserRole();

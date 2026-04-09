@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +102,7 @@ const SWITCH_TITLES: Record<string, string> = {
 };
 
 export default function MyProgressPage() {
+  usePageMeta("My Progress", "See your wellness gains and momentum across all 8 life dimensions.");
   const [range] = useState<"7d" | "14d">("14d");
   
   const localSwitchData = getSwitchData();
@@ -222,6 +225,8 @@ export default function MyProgressPage() {
   };
 
   return (
+    <div className="bg-background">
+      <PageHeader title="My Progress" />
     <ScrollArea className="h-[calc(100vh-4rem)]">
       <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <motion.div
@@ -481,5 +486,6 @@ export default function MyProgressPage() {
         )}
       </div>
     </ScrollArea>
+    </div>
   );
 }

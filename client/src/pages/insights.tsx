@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -88,6 +89,7 @@ interface DwInsightItem {
 }
 
 export default function InsightsDashboard() {
+  usePageMeta("Insights", "Track your progress and discover patterns across all wellness dimensions.");
   useTrackFeature("insights");
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();

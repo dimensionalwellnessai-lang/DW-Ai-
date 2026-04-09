@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,6 +186,7 @@ Guidelines:
 Start by simply being present and inviting them to share.`;
 
 export function TalkItOutPage() {
+  usePageMeta("Talk It Out", "Process emotions and find clarity through a guided conversation with DW.");
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();

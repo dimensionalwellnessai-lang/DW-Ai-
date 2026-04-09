@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { CalendarEvent } from "@shared/schema";
 import { format, parseISO, isAfter, isBefore, startOfToday } from "date-fns";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const EVENT_TYPE_CONFIG: Record<string, { icon: typeof Calendar; color: string; label: string }> = {
   workout: { icon: Dumbbell, color: "bg-green-500", label: "Workout" },
@@ -20,6 +21,7 @@ const EVENT_TYPE_CONFIG: Record<string, { icon: typeof Calendar; color: string; 
 };
 
 export default function CalendarSchedulePage() {
+  usePageMeta("Schedule", "View and manage your schedule.");
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);

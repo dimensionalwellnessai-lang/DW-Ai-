@@ -20,6 +20,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getSwitchStatuses, saveSwitchStatus, type SwitchStatus, type SwitchId } from "@/lib/switch-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface LifeSwitch {
   id: SwitchId;
@@ -267,6 +268,7 @@ function SwitchCard({
 }
 
 export default function LifeSwitchboardPage() {
+  usePageMeta("Life Switchboard", "Manage your life dimensions and focus areas.");
   const [expandedId, setExpandedId] = useState<SwitchId | null>(null);
   const [statuses, setStatuses] = useState<Record<SwitchId, SwitchStatus>>(() => getSwitchStatuses());
 

@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import type { CalendarEvent, CalendarEventTask } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -363,6 +364,7 @@ function DaySheet({
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function CalendarMonthPage() {
+  usePageMeta("Calendar", "Plan your month and schedule wellness activities.");
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [view, setView] = useState<CalendarView>("month");

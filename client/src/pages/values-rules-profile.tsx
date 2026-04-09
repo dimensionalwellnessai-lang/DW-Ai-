@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Utensils, Dumbbell, CalendarClock, BookHeart } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface UserValuesRules {
   id: string;
@@ -97,6 +98,7 @@ function ChecklistGroup({
 }
 
 export default function ValuesRulesProfilePage() {
+  usePageMeta("Values & Rules", "Define your core values and personal rules.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

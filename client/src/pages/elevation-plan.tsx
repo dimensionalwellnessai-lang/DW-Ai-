@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -365,6 +366,7 @@ function DayTab({
 }
 
 export default function ElevationPlanPage() {
+  usePageMeta("Elevation Plan", "Your 7-day AI-generated plan to push your wellness to the next level.");
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);

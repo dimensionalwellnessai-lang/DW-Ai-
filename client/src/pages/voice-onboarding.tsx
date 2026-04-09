@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { VOICE_SCRIPTS } from "@/config/voiceScripts";
 import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -197,6 +198,7 @@ function EditableUserMessage({ message, onRegenerate, disabled }: EditableUserMe
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VoiceOnboardingPage() {
+  usePageMeta("Voice Onboarding", "Set up your voice-guided onboarding.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 

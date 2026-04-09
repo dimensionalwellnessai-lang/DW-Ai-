@@ -34,6 +34,8 @@ import {
   statusToMilestoneType, 
   markMilestoneSeen 
 } from "@/lib/milestone-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 interface SwitchInfo {
   id: SwitchId;
@@ -187,6 +189,7 @@ const STATUS_CONFIG: Record<SwitchStatus, { label: string; color: string; bgColo
 };
 
 export default function SwitchTrainingPage() {
+  usePageMeta("Switch Training", "Train your mind to make positive switches.");
   const [, params] = useRoute("/switch/:id");
   const [, navigate] = useLocation();
   const { toast } = useToast();

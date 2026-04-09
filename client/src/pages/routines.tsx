@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   Dumbbell, 
   Utensils, 
@@ -45,6 +46,7 @@ const TYPE_LABELS: Record<RoutineType, string> = {
 
 
 export default function RoutinesPage() {
+  usePageMeta("Routines", "Build and follow structured wellness routines that stick.");
   useTutorialStart("routines", 1000);
   const [, setLocation] = useLocation();
   const { toast } = useToast();

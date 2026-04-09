@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   MessageSquareText, 
   Clock, 
@@ -257,6 +258,7 @@ const getTagIcon = (tag: string) => {
 };
 
 export function RecoveryPage() {
+  usePageMeta("Recovery", "Rest, restore, and optimize your recovery between workouts.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [savedRecovery, setSavedRecovery] = useState<SavedRoutine[]>([]);

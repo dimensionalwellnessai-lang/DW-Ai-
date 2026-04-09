@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
 import {
   Droplets,
@@ -23,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { COPY } from "@/copy/en";
 
 export default function TrackingDashboard() {
+  usePageMeta("Tracking", "Log water, calories, and daily wellness metrics.");
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

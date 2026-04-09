@@ -56,6 +56,8 @@ import {
   type CalendarEvent as LocalCalendarEvent,
   type WellnessDimension,
 } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 interface DisplayEvent {
   id: string;
@@ -89,6 +91,7 @@ const DIMENSION_OPTIONS: { id: WellnessDimension; label: string }[] = [
 ];
 
 export function CalendarPlansPage() {
+  usePageMeta("Calendar Plans", "Manage and organize your calendar plans.");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [addEventOpen, setAddEventOpen] = useState(false);

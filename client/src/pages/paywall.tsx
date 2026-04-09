@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateRestore } from "@/lib/billing";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 /**
  * DW Plus paywall — shown once after onboarding (soft paywall) and also when
@@ -15,6 +16,7 @@ import { simulateRestore } from "@/lib/billing";
  * purchase flow).
  */
 export default function PaywallPage() {
+  usePageMeta("Upgrade", "Unlock premium features to accelerate your wellness journey.");
   const [, setLocation] = useLocation();
   const [showOtherPlans, setShowOtherPlans] = useState(false);
   const [restoring, setRestoring] = useState(false);

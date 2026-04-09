@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { getWorkoutPreferences } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface WorkoutType {
   id: string;
@@ -68,6 +69,7 @@ const WORKOUT_TYPES: WorkoutType[] = [
 ];
 
 export default function TrainingSystemPage() {
+  usePageMeta("Movement Practice", "Your personalized movement and training system.");
   const [, setLocation] = useLocation();
   const workoutPrefs = getWorkoutPreferences();
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutType | null>(null);

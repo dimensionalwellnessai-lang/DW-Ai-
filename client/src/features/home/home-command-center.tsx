@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
@@ -132,6 +133,7 @@ function truncate(str: string, max: number): string {
 }
 
 export default function HomeCommandCenter() {
+  usePageMeta("Home", "Your personal wellness command center — today's overview, habits, goals, and momentum.");
   const summary = useHomeSummary();
   const [, navigate] = useLocation();
   const [activeCard, setActiveCard] = useState<OrbitModule | null>(null);

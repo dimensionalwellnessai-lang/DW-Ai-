@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   Dialog,
   DialogContent,
@@ -254,6 +255,7 @@ const SAMPLE_WORKOUTS: WorkoutData[] = [
 ];
 
 export default function WorkoutPage() {
+  usePageMeta("Workouts", "Access personalized workout programs and training plans.");
   useTutorialStart("workout", 1000);
   const [, setLocation] = useLocation();
   const searchString = useSearch();

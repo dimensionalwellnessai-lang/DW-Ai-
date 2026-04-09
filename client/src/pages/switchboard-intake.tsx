@@ -24,6 +24,8 @@ import {
   type SwitchId, 
   type SwitchStatus 
 } from "@/lib/switch-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 interface IntakeQuestion {
   switchId: SwitchId;
@@ -171,6 +173,7 @@ function scoreToStatus(score: number): SwitchStatus {
 }
 
 export default function SwitchboardIntakePage() {
+  usePageMeta("Life Switchboard Setup", "Configure your life dimensions and priorities.");
   const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<SwitchId, number>>({} as Record<SwitchId, number>);

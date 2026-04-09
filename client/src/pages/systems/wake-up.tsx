@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useSystemPreferences } from "@/hooks/use-systems-data";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface RoutineStep {
   id: string;
@@ -84,6 +85,7 @@ const MORNING_ROUTINE_STEPS: RoutineStep[] = [
 ];
 
 export default function WakeUpSystemPage() {
+  usePageMeta("Morning Anchor", "Your morning wake-up system and routine.");
   const [, setLocation] = useLocation();
   const { prefs, isLoading } = useSystemPreferences();
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);

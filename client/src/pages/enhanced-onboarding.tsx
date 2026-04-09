@@ -4,8 +4,10 @@ import { saveEnhancedOnboarding, isEnhancedOnboardingComplete } from "@/lib/gues
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
 import { useState, useLayoutEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function EnhancedOnboardingPage() {
+  usePageMeta("Getting Started", "Set up your personalized Dimensional Wellness experience.");
   const [, setLocation] = useLocation();
   const [redirecting, setRedirecting] = useState(false);
 

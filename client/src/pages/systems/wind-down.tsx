@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useSystemPreferences } from "@/hooks/use-systems-data";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface WindDownStep {
   id: string;
@@ -81,6 +82,7 @@ const WIND_DOWN_STEPS: WindDownStep[] = [
 ];
 
 export default function WindDownSystemPage() {
+  usePageMeta("Evening Transition", "Your evening wind-down system and routine.");
   const [, setLocation] = useLocation();
   const { prefs, isLoading } = useSystemPreferences();
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);

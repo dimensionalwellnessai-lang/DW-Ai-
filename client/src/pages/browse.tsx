@@ -56,6 +56,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
@@ -437,6 +438,7 @@ interface LocalResource {
 const FOR_YOU_PAGE_SIZE = 9;
 
 export default function Browse() {
+  usePageMeta("Browse", "Explore curated wellness content, workouts, recipes, and more.");
   useTutorialStart("browse", 1000);
   const { toast } = useToast();
   const [, setLocation] = useLocation();

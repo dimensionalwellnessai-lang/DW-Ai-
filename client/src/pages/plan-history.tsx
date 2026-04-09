@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -35,6 +36,7 @@ import {
 } from "@/hooks/use-elevation-plan";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { FeatureFlagGate } from "@/components/feature-flag-gate";
 import { getGuestElevationPlansWithStats } from "@/lib/elevation-plan-storage";
 import { useToast } from "@/hooks/use-toast";
 
@@ -328,6 +330,7 @@ function ComparePanel({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlanHistoryPage() {
+  usePageMeta("Plan History", "Review all your past elevation plans and track your growth over time.");
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
   const { toast } = useToast();
@@ -492,11 +495,13 @@ export default function PlanHistoryPage() {
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
               Generate your first 7-day elevation plan to start tracking your progress.
             </p>
-            <Link href="/elevation-plan">
-              <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white">
-                Create elevation plan
-              </Button>
-            </Link>
+            <FeatureFlagGate flag="ELEVATION_PLAN">
+              <Link href="/elevation-plan">
+                <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white">
+                  Create elevation plan
+                </Button>
+              </Link>
+            </FeatureFlagGate>
           </div>
         )}
 

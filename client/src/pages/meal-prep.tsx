@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { PageHeader } from "@/components/page-header";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   Utensils, 
   Settings2, 
@@ -904,6 +905,7 @@ function DbPlanMeals({ planId, onCook }: { planId: string; onCook: (meal: Meal) 
 }
 
 export default function MealPrepPage() {
+  usePageMeta("Nutrition", "Plan meals, track nutrition, and discover healthy recipes.");
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const urlCategory = new URLSearchParams(searchParams).get("category");

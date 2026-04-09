@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -217,6 +218,7 @@ function getAIPicks(userNeeds: string[], bodyGoal: string | null, financialStres
 }
 
 export function ChallengesPage() {
+  usePageMeta("Challenges", "Push your limits with growth challenges and track your progress.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

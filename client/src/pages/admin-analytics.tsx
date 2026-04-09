@@ -30,6 +30,8 @@ import {
   RefreshCw,
   Flag,
 } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 interface SummaryResponse {
   range: string;
@@ -211,6 +213,7 @@ function FunnelStep({
 }
 
 export default function AdminAnalyticsPage() {
+  usePageMeta("Analytics", "Administrative analytics and usage insights.");
   const [range, setRange] = useState<"7d" | "30d">("7d");
 
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useQuery<SummaryResponse>({

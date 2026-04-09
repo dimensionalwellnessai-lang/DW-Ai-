@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { consumeHighlightNext } from "@/lib/momentum";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -105,6 +106,7 @@ function saveEntries(entries: JournalEntry[]): void {
 }
 
 export default function JournalPage() {
+  usePageMeta("Journal", "Write, reflect, and capture your daily thoughts and insights.");
   useTutorialStart("journal", 1000);
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();

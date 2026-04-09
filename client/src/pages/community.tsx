@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,7 @@ const OPPORTUNITY_STYLES: Record<CommunityFocus, { icon: typeof HandHeart; color
 };
 
 export default function CommunityPage() {
+  usePageMeta("Community", "Connect with others on shared wellness journeys.");
   useTutorialStart("community", 1000);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<CommunityProfile | null>(getCommunityProfile());

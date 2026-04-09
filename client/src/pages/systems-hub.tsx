@@ -23,6 +23,7 @@ import {
 import { useLocation } from "wouter";
 import { useSystemPreferences } from "@/hooks/use-systems-data";
 import { type SystemType, type SystemPreferences } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 interface SystemInfo {
   type: SystemType;
@@ -87,6 +88,7 @@ const OPTIONAL_FEATURES: { name: string; key: keyof SystemPreferences; descripti
 ];
 
 export default function SystemsHubPage() {
+  usePageMeta("Systems Hub", "Manage your morning, training, and wind-down systems.");
   const [, setLocation] = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { 

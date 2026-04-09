@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Loader2, ShieldCheck, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateUpgrade } from "@/lib/billing";
 import type { BillingPlan } from "@/lib/billing";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 /** Inline spinner label used on the confirm button during processing. */
 function ProcessingLabel() {
@@ -99,6 +100,7 @@ const ALLOWED_BACK_PATHS = new Set(["/paywall", "/subscription"]);
  *   from  — optional back-destination ("/paywall" | "/subscription")
  */
 export default function CheckoutPage() {
+  usePageMeta("Checkout", "Complete your DW.ai premium subscription to unlock all features.");
   const [, setLocation] = useLocation();
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);

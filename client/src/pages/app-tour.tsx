@@ -24,6 +24,8 @@ import {
   hasCompletedCommunityProfile,
   getMealPrepPreferences,
 } from "@/lib/guest-storage";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 interface GuideSection {
   id: string;
@@ -194,6 +196,7 @@ const QUICK_TIPS = [
 ];
 
 export default function AppTourPage() {
+  usePageMeta("App Tour", "Explore the key features of DW.ai.");
   const [, setLocation] = useLocation();
   const completionStatus = getCompletionStatus();
   const overallCompletion = getOverallCompletion();

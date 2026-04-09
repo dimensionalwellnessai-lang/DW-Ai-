@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, CheckCircle2, Send } from "lucide-react";
 import { APP_VERSION } from "@/routes/registry";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const CATEGORIES = [
   { value: "bug", label: "Bug / Something broken" },
@@ -65,6 +66,7 @@ async function submitSupportReport(payload: ReportPayload) {
 }
 
 export default function SupportReportPage() {
+  usePageMeta("Support", "Get help and report issues with DW.ai.");
   const { toast } = useToast();
   const [category, setCategory] = useState<Category | "">("");
   const [description, setDescription] = useState("");

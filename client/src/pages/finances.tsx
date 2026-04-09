@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { 
   Wallet, 
   Settings2, 
@@ -67,6 +68,7 @@ const SAMPLE_BUDGET_TIPS = [
 ];
 
 export default function FinancesPage() {
+  usePageMeta("Finances", "Track your budget, manage spending, and build financial wellness.");
   const [profileOpen, setProfileOpen] = useState(false);
   const [financeProfile, setFinanceProfile] = useState<FinanceProfile | null>(getFinanceProfile());
   const [savedBudgetPlans, setSavedBudgetPlans] = useState<SavedRoutine[]>(getSavedRoutinesByType("budget_plan"));

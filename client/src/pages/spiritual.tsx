@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -168,6 +169,7 @@ const SAMPLE_PRACTICES: PracticeData[] = [
 ];
 
 export default function SpiritualPage() {
+  usePageMeta("Meditation & Mindfulness", "Cultivate inner peace through guided meditation and spiritual practices.");
   const [profileOpen, setProfileOpen] = useState(false);
   const [spiritualProfile, setSpiritualProfile] = useState<SpiritualProfile | null>(getSpiritualProfile());
   const [savedPractices, setSavedPractices] = useState<SavedRoutine[]>(getSavedRoutinesByType("spiritual_practice"));

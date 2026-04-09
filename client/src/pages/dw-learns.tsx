@@ -23,6 +23,8 @@ import {
   Info,
   Loader2,
 } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
   movement: "Movement",
@@ -52,6 +54,7 @@ function formatUpdatedAt(val: string | number | null): string {
 }
 
 export function DwLearnsPage() {
+  usePageMeta("DW Learns", "Personalized wellness insights and learning.");
   const { profile, isLoading, updateProfile, isUpdating, resetProfile, isResetting } =
     useLearningProfile();
   const { toast } = useToast();

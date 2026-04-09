@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/page-header";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function PrivacyTermsPage() {
+  usePageMeta("Privacy & Terms", "DW.ai privacy policy and terms of service.");
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Privacy & Terms" backPath="/settings" />

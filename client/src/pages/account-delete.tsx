@@ -18,8 +18,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 export default function AccountDeletePage() {
+  usePageMeta("Delete Account", "Permanently delete your DW.ai account and data.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();

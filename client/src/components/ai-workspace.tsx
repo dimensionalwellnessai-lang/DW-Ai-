@@ -135,6 +135,7 @@ import {
   FREE_LIMITS,
 } from "@/lib/entitlement";
 import type { UserProfile, Conversation } from "@shared/schema";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const FIRST_TIME_ACTIONS = [
   { id: "talk", text: "I want to talk", icon: MessageCircle, action: "talk" },
@@ -174,6 +175,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function AIWorkspace() {
+  usePageMeta("DW Chat", "Talk with your AI wellness coach for guidance, planning, and support.");
   const { toast } = useToast();
   const { logout } = useAuth();
   const [location, setLocation] = useLocation();

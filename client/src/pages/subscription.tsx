@@ -6,10 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Map, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInteractiveTour } from "@/components/interactive-tour";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type PlanType = "free" | "premium" | "lifetime";
 
 export default function SubscriptionPage() {
+  usePageMeta("Subscription", "Manage your DW.ai subscription and billing.");
   const [, setLocation] = useLocation();
   const [showTourPrompt, setShowTourPrompt] = useState(false);
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();

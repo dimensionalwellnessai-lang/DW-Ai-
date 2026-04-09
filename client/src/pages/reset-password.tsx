@@ -9,8 +9,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 export default function ResetPasswordPage() {
+  usePageMeta("Reset Password", "Reset your DW.ai account password.");
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();

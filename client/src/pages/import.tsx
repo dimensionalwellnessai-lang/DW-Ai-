@@ -5,6 +5,7 @@ import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, Arro
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 type ImportType = "schedule" | "meal-plan" | "routine" | "generic";
 
@@ -48,6 +49,7 @@ const IMPORT_OPTIONS: ImportOption[] = [
 ];
 
 export default function ImportPage() {
+  usePageMeta("Import Data", "Import your data into DW.ai.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);

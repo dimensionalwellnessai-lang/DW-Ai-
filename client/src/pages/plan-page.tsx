@@ -26,6 +26,7 @@ import { getUserSignals, deriveRecommendedSwitch, deriveMode } from "@/lib/user-
 import { PLAN_LIBRARY, type PlanTemplate, type TimeBand } from "@/config/plan-library";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { trackEvent, EVENTS } from "@/lib/analytics";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
   body: Zap,
@@ -78,6 +79,7 @@ function generatePlanFromLibrary(switchId: SwitchId, timeBand: TimeBand): PlanIt
 }
 
 export default function PlanPage() {
+  usePageMeta("Weekly Plan", "View and manage your weekly wellness plan.");
   const [, navigate] = useLocation();
   const [plan, setPlan] = useState<PlanItem[]>(getWeeklyPlan);
   const [signals] = useState(getUserSignals);

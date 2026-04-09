@@ -12,6 +12,8 @@ import {
   ShoppingCart, Sunrise, Moon, Dumbbell, Laptop2,
   ChefHat, Lightbulb, TrendingUp, Sparkles,
 } from "lucide-react";
+import { usePageMeta } from "@/hooks/use-page-meta";
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Frequency = "weekly" | "biweekly" | "every3weeks" | "monthly";
@@ -154,6 +156,7 @@ const RESULT_DESTINATIONS: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DWSmartImportPage() {
+  usePageMeta("Import Life System", "Import and parse your life system data.");
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>("paste");
 
