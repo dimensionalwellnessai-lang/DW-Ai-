@@ -1,0 +1,379 @@
+Yes — here’s a copy-paste build spec for Replit/Copilot/Agent.
+
+This approach is the right one for DW: on iPhone, use App Intents + App Shortcuts + WidgetKit so users can trigger DW through Siri, Shortcuts, widgets, Spotlight, and related system surfaces. Apple’s current docs describe App Intents as the framework that exposes app actions to system experiences including Siri and widgets, and Apple’s Siri docs say App Shortcuts in iOS 17+ can be invoked with spoken phrases and phrase variations. On Android, the equivalent is App Actions with Google Assistant, which can launch app functionality by voice and map Assistant requests to Android intents/deep links.  ￼
+
+Your app still will not replace Siri as a system-wide always-listening assistant on iPhone, but it can feel very close by combining a voice entry screen, Siri-triggered actions, and a widget that jumps straight into “talk mode.” Apple also documents a side-button launch path for voice-based conversational apps, which is an advanced path you can evaluate later.  ￼
+
+MASTER SPEC — DW VOICE ASSISTANT + SIRI / GOOGLE ASSISTANT + HANDS-FREE ENTRY
+
+GOAL
+
+Turn DW into a voice-first assistant experience that:
+1. can be triggered by Siri on iPhone
+2. can be triggered by Google Assistant on Android
+3. has a widget for one-tap access
+4. opens directly into a voice conversation screen
+5. supports near-hands-free flows for high-value actions
+6. uses deep links so all voice/system entry points route into the correct DW screen/state
+
+IMPORTANT PRODUCT RULE
+
+Do NOT try to make DW a replacement for Siri.
+Build DW as a voice-first assistant that integrates with system assistants.
+
+PRIMARY USER FLOWS
+
+Flow A: “Siri, start my day in DW”
+- Siri runs DW app shortcut
+- DW opens directly to voice mode or daily briefing mode
+- DW speaks/prints:
+  - today’s next event
+  - top 3 priorities
+  - meal/workout reminder
+  - quick prompt: “Do you want me to guide your morning?”
+
+Flow B: “Siri, ask DW what’s next”
+- Siri launches DW action
+- DW opens voice conversation screen
+- DW immediately answers with the next calendar/task item
+
+Flow C: “Siri, log my mood in DW”
+- Siri passes mood parameter if available
+- If no parameter, DW opens to quick mood logging voice sheet
+- Save entry and confirm
+
+Flow D: “Siri, add this to DW”
+- Siri passes captured text if supported by shortcut phrase
+- DW creates task/note/inbox item
+- Confirm save and ask whether to schedule it
+
+Flow E: Widget tap → Talk to DW
+- Home screen widget includes:
+  - Talk to DW
+  - Start Day
+  - Log Mood
+  - Add Task
+- Each action opens app with a deeplink
+- App lands directly on the proper screen without extra taps
+
+Flow F: Android voice launch
+- “Hey Google, talk to DW”
+- “Hey Google, start my workout in DW”
+- “Hey Google, open today in DW”
+- Assistant opens specific activity/deeplink and passes parameters
+
+ARCHITECTURE REQUIREMENTS
+
+1. Create a unified deeplink router for all assistant and widget entry points.
+
+Required deeplink examples:
+- dw://voice
+- dw://day/start
+- dw://schedule/next
+- dw://mood/log
+- dw://task/add
+- dw://workout/start
+- dw://meal/log
+
+2. Add one central “assistant action resolver” in app logic.
+This resolver should:
+- parse intent source: siri / shortcut / widget / android_assistant / internal
+- parse action name
+- parse parameters
+- route to correct screen
+- optionally preload data
+- optionally auto-start microphone mode if user has granted permission
+
+3. Create a dedicated Voice Mode screen.
+Behavior:
+- full-screen, clean, calm UI
+- starts listening immediately when launched from assistant/widget if permissions exist
+- otherwise shows one-tap “Start speaking”
+- supports TTS response output
+- supports STT input
+- shows transcript and current action state
+- includes fallback buttons if voice fails
+
+4. Add a compact “DW Assistant Session” state model.
+Suggested fields:
+- source
+- action
+- parameters
+- autoStartVoice
+- shouldSpeakResponse
+- contextPayload
+- timestamp
+
+IOS IMPLEMENTATION
+
+Create an iOS native bridge layer for:
+- App Intents
+- App Shortcuts
+- WidgetKit interactive widget support
+- deeplink handoff into Capacitor app
+
+Implement these App Intents:
+1. StartDayIntent
+2. AskWhatsNextIntent
+3. LogMoodIntent
+4. AddTaskIntent
+5. StartWorkoutIntent
+6. OpenVoiceModeIntent
+
+Each intent should:
+- define a clear title
+- define a short description
+- accept parameters where useful
+- call into app via deeplink or app launch payload
+- open the app when needed for conversational handling
+
+Suggested parameters:
+- LogMoodIntent: moodName, energyLevel
+- AddTaskIntent: title, dueDate optional
+- StartWorkoutIntent: workoutType optional, duration optional
+
+Create App Shortcuts for each high-value intent with natural phrases.
+
+Example phrases:
+- “Start my day in DW”
+- “Ask DW what’s next”
+- “Log my mood in DW”
+- “Add a task in DW”
+- “Start my workout in DW”
+- “Talk to DW”
+
+Important:
+- the spoken phrase should explicitly include DW so the system associates the shortcut with the app
+- prioritize 5–6 very strong phrases instead of many weak ones
+
+WIDGETS
+
+Build one small and one medium widget.
+
+Small widget options:
+- Talk to DW
+- Start Day
+
+Medium widget options:
+- Talk to DW
+- Start Day
+- Log Mood
+- Add Task
+
+Widget behavior:
+- tap action launches deeplink directly
+- no dead-end widget states
+- if user taps “Talk to DW,” open directly into voice mode
+- if user taps “Start Day,” open daily briefing view first, then allow voice follow-up
+
+Optional later:
+- Live Activity for active guidance sessions
+- lock screen quick access if useful
+
+ANDROID IMPLEMENTATION
+
+Implement App Actions with deep-link fulfillment.
+Map Assistant requests to app activities/deeplinks.
+
+Primary Android intents/actions to support:
+- open app
+- open voice mode
+- start workout
+- log mood
+- add task
+- open today view
+
+Implementation requirements:
+1. define Android deep links for each assistant entry point
+2. create Assistant/App Actions configuration
+3. ensure exported activity/deeplink handling is correct
+4. route parameters into the same shared assistant resolver used on iOS
+
+Android examples:
+- dw://voice
+- dw://day/start
+- dw://workout/start?type=strength
+- dw://mood/log?value=calm
+- dw://task/add?title=Buy%20groceries
+
+VOICE UX RULES
+
+1. Voice mode must be fast.
+Target: user should be speaking within 1 tap or less if launched from assistant.
+
+2. Always have visual fallback.
+Every voice flow needs visible buttons and text.
+
+3. Use confirmation for destructive or schedule-writing actions.
+Examples:
+- creating calendar event
+- deleting task
+- changing plan
+
+4. Prefer assistant actions that answer quickly.
+Best first actions:
+- what’s next
+- start my day
+- log mood
+- add task
+- start workout
+
+5. Do not build open-ended always-listening behavior.
+Only activate microphone when:
+- user explicitly starts voice mode
+- user invoked DW from Siri/Assistant/widget and has enabled auto-start voice
+
+PERMISSIONS + SETTINGS
+
+Add a DW Voice settings screen with:
+- Auto-start listening when opened from assistant: on/off
+- Speak responses aloud: on/off
+- Default voice entry action: voice mode / daily briefing
+- Siri shortcut onboarding card
+- Android Assistant onboarding card
+
+Add permission handling for:
+- microphone
+- speech recognition
+- notifications if needed for reminders
+
+CAPACITOR / APP BRIDGE PLAN
+
+Because DW is a Capacitor-wrapped app, implement native bridge hooks.
+
+Need:
+1. iOS plugin or bridge to receive App Intent / shortcut launches
+2. widget actions that open app via custom URL or universal link
+3. Android intent/deeplink handling into Capacitor
+4. JS listener that receives launch context and routes instantly
+
+JS API example shape:
+window.DWAssistant.getLaunchContext()
+
+Return object example:
+{
+  source: "siri",
+  action: "start_day",
+  parameters: {},
+  autoStartVoice: true
+}
+
+FRONTEND TASKS
+
+Create these app routes/screens if not present:
+- /voice
+- /day/start
+- /assistant/resolve
+- /mood/log
+- /task/quick-add
+
+Create a shared hook:
+useAssistantLaunch()
+
+Responsibilities:
+- read native launch context
+- map to in-app action
+- prefill form state if parameters exist
+- optionally start microphone
+- clear consumed launch state so it does not repeat
+
+BACKEND / DATA TASKS
+
+Add logging for assistant actions:
+table: assistant_action_events
+fields:
+- id
+- user_id
+- platform
+- source
+- action
+- parameters_json
+- success
+- duration_ms
+- created_at
+
+Track:
+- which voice/system entry points are used most
+- completion rate
+- failures
+- drop-off before action completion
+
+SUCCESS METRICS
+
+Track these:
+- assistant launch count
+- widget tap count
+- voice mode start rate
+- successful action completion rate
+- most used shortcut phrase/action
+- average time to useful response
+- repeat usage within 7 days
+
+PHASED BUILD PLAN
+
+PHASE 1
+- deeplink router
+- voice mode screen
+- iOS App Intents for:
+  - Start Day
+  - Ask What’s Next
+  - Open Voice Mode
+- 1 widget
+- Android deep link support
+- analytics
+
+PHASE 2
+- Log Mood intent
+- Add Task intent
+- Start Workout intent
+- Android App Actions config
+- TTS/STT polish
+- onboarding prompts for Siri and Assistant
+
+PHASE 3
+- richer parameter passing
+- lock screen/live activity enhancements if appropriate
+- proactive shortcut suggestions
+- more personalized voice routines
+
+ACCEPTANCE CRITERIA
+
+1. User can say “Siri, start my day in DW” and DW opens to the correct screen.
+2. User can say “Siri, ask DW what’s next” and DW answers with schedule context.
+3. Widget tap on “Talk to DW” opens directly into voice mode.
+4. Android Assistant can open at least one deep-linked DW action.
+5. All assistant/widget launches use the same shared routing layer.
+6. If voice permissions are missing, DW gracefully falls back to manual mode.
+7. No assistant entry point dumps the user on a generic home screen unless intentionally configured.
+
+NON-GOALS
+
+- building a replacement for Siri
+- continuous background listening
+- custom wake word on iPhone
+- fully autonomous device-level assistant control
+
+RECOMMENDED FIRST DEMO
+
+Ship this exact demo set first:
+- Siri phrase: “Start my day in DW”
+- Siri phrase: “Ask DW what’s next”
+- Widget button: “Talk to DW”
+- Widget button: “Log Mood”
+- Android phrase: “Open DW voice mode”
+- one clean voice screen with immediate response
+
+DELIVERABLES REQUIRED FROM AGENT
+
+1. iOS native integration files for App Intents/App Shortcuts
+2. widget extension scaffolding
+3. Android deep link / assistant config scaffolding
+4. Capacitor bridge for launch context
+5. React routes and assistant resolver hook
+6. analytics event instrumentation
+7. settings screen for voice preferences
+8. basic QA checklist for all launch paths
+
+Best first version for DW is: Siri phrase + widget + direct voice screen, not trying to overbuild a full assistant stack on day one. Apple explicitly recommends defining high-value actions as App Shortcuts, and widget interactivity also runs through App Intents, so those are the highest-leverage pieces to ship first. Android’s App Actions similarly work best when they map clearly to real in-app functionality through intents/deep links.  ￼
+
+Next, I can turn this into a developer task checklist by file/folder for your existing DW Capacitor/Replit project.
