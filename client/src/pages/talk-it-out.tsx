@@ -21,7 +21,7 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check, RefreshCw } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check, RefreshCw, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { MessageActions } from "@/components/message-actions";
@@ -213,6 +213,40 @@ export function TalkItOutPage() {
   });
   const [isTyping, setIsTyping] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoListenTrigger, setAutoListenTrigger] = useState(0);
+  const ttsRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const speakDWResponse = useCallback((text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const stripped = text
+      .replace(/[#*`_~[\]()>]/g, "")
+      .replace(/\n+/g, " ")
+      .trim()
+      .slice(0, 800);
+    const utter = new SpeechSynthesisUtterance(stripped);
+    utter.rate = 0.95;
+    utter.pitch = 1;
+    ttsRef.current = utter;
+    utter.onstart = () => setIsSpeaking(true);
+    utter.onend = () => {
+      setIsSpeaking(false);
+      if (voiceModeActive) {
+        setTimeout(() => setAutoListenTrigger((n) => n + 1), 300);
+      }
+    };
+    utter.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utter);
+  }, [voiceModeActive]);
+
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+  }, []);
   const [crisisDialogOpen, setCrisisDialogOpen] = useState(false);
   const [lifeSystemDialogOpen, setLifeSystemDialogOpen] = useState(false);
   const [pendingLifeSystemText, setPendingLifeSystemText] = useState("");
@@ -567,6 +601,9 @@ export function TalkItOutPage() {
         setTimeout(() => navigate(data.navigation.path), 1200);
       }
       setIsTyping(false);
+      if (voiceModeActive && data.response) {
+        speakDWResponse(data.response);
+      }
     },
     onError: (error: any, variables) => {
       setLastFailedMessage(variables as string);
@@ -933,8 +970,13 @@ export function TalkItOutPage() {
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
           <div className="flex flex-col items-center gap-2 pb-2" data-testid="chat-orb-header">
-            <DWOrb size={56} state="chat" />
-            <p className="text-xs text-muted-foreground">You're talking with DW</p>
+            <DWOrb
+              size={56}
+              state={isSpeaking ? "speaking" : isTyping ? "active" : "chat"}
+            />
+            <p className="text-xs text-muted-foreground">
+              {isSpeaking ? "DW is speaking..." : isTyping ? "DW is thinking..." : "You're talking with DW"}
+            </p>
           </div>
           {messages.map((message, index) => {
             /* ── Inline insight card ── */
@@ -1114,6 +1156,12 @@ export function TalkItOutPage() {
               </div>
             </div>
           )}
+          {voiceModeActive && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pb-1">
+              <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
+              {isSpeaking ? "DW is speaking — tap mic to interrupt" : "Voice mode on — DW will listen after responding"}
+            </div>
+          )}
           <div className="flex gap-2 items-end">
             <Textarea
               ref={inputRef}
@@ -1134,8 +1182,25 @@ export function TalkItOutPage() {
             >
               {isTyping ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant={voiceModeActive ? "default" : "ghost"}
+              onClick={() => {
+                const next = !voiceModeActive;
+                setVoiceModeActive(next);
+                if (!next) stopSpeaking();
+              }}
+              className="rounded-full h-12 w-12 shrink-0"
+              data-testid="button-voice-mode-toggle"
+              aria-label={voiceModeActive ? "Disable voice mode" : "Enable voice mode"}
+              title={voiceModeActive ? "Voice mode on" : "Voice mode off"}
+            >
+              {voiceModeActive ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            </Button>
             <VoiceModeButton
               onTranscript={(text) => {
+                stopSpeaking();
                 setInput(text);
                 setTimeout(() => handleSend(), 100);
               }}
@@ -1147,6 +1212,7 @@ export function TalkItOutPage() {
                 });
               }}
               disabled={isTyping}
+              autoListenTrigger={autoListenTrigger}
               size="icon"
               className="rounded-full h-12 w-12 shrink-0"
             />

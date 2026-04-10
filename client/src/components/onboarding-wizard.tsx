@@ -39,6 +39,7 @@ export interface OnboardingData {
   sleepTime: string | null;
   dietaryPreferences: string[];
   fitnessGoals: string[];
+  preferredWorkoutDays: string[];
   wearableDataPermission: boolean;
   completedAt: number | null;
   profession: string | null;
@@ -143,17 +144,22 @@ const APP_TOUR_SLIDES = [
 ];
 
 // Per-step voice scripts for DW to speak aloud (Alloy voice via OpenAI TTS)
-const STEP_VOICE_SCRIPTS: Record<number, string> = {
+const STEP_VOICE_SCRIPTS: Record<number, string | ((name: string | null) => string)> = {
   0: "Hey — I'm DW. I'm your personal intelligence system. I combine AI coaching, astrology, life planning, journaling, and wellness — all learning who you are over time. Think of me as the operating system for your life. Let's get started.",
   1: "Before we go any further — here's what I'm actually good at. Building real plans, connecting your goals to your daily life, and keeping you on track without the lecture. I'm not a therapist and I won't pretend to be. I'll be straight with you, adapt to your energy, and never waste your time. Sound good?",
   2: "I'd love to know who I'm working with. What should I call you? And if you share your birth date and location, I can unlock your personalized cosmic readings too. That part is optional — totally your call.",
   3: "What best describes what you do? This helps me understand your schedule and context so I can actually fit into your life.",
   4: "What do you most want to work on in the next 90 days? Pick as many as feel right — this shapes everything I build for you.",
-  5: "Here's a quick look at what's inside. Swipe through to see everything DW has for you.",
-  6: data_name => `You're in${data_name ? `, ${data_name}` : ""}. DW has everything it needs to get started. Your experience gets more personalized the more you use it. I'm excited to work with you.`,
+  5: "What does your daily rhythm look like? Knowing when you wake up, wind down, and like to move helps me build plans that actually fit your life.",
+  6: "Here's a quick look at what's inside. Swipe through to see everything DW has for you.",
+  7: (name) => `You're in${name ? `, ${name}` : ""}. DW has everything it needs to get started. Your experience gets more personalized the more you use it. I'm excited to work with you.`,
 };
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
+
+const WAKE_TIMES = ["5:00 AM", "6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "9:00 AM", "10:00 AM+"];
+const SLEEP_TIMES = ["8:00 PM", "9:00 PM", "10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM", "12:00 AM", "1:00 AM+"];
+const WORKOUT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // ─── Speech recognition shims ─────────────────────────────────────────────────
 
@@ -405,6 +411,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     sleepTime: "10:00 PM",
     dietaryPreferences: [],
     fitnessGoals: [],
+    preferredWorkoutDays: [],
     wearableDataPermission: false,
     completedAt: null,
     profession: null,
@@ -854,8 +861,113 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
               </div>
             )}
 
-            {/* ── STEP 5: APP TOUR ────────────────────────────────────── */}
+            {/* ── STEP 5: DAILY RHYTHM ────────────────────────────────── */}
             {step === 5 && (
+              <div className="flex-1 flex flex-col justify-center space-y-4 max-w-sm mx-auto w-full">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Your rhythm
+                    </p>
+                    <h2 className="text-2xl font-display font-bold text-foreground">
+                      When does your day run?
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Helps me schedule workouts, meals, and routines at the right times.</p>
+                  </div>
+                  <DWVoiceOrb
+                    script={currentScript}
+                    voiceEnabled={voiceEnabled}
+                    onToggleVoice={handleToggleVoice}
+                    autoSpeak
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">I usually wake up around</p>
+                    <div className="flex flex-wrap gap-2">
+                      {WAKE_TIMES.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setData((d) => ({ ...d, wakeTime: t }))}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-sm border transition-all",
+                            data.wakeTime === t
+                              ? "border-primary bg-primary/10 text-foreground font-medium"
+                              : "border-border/40 bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                          )}
+                          data-testid={`button-wake-${t.replace(/[: ]/g, '-')}`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">I usually wind down around</p>
+                    <div className="flex flex-wrap gap-2">
+                      {SLEEP_TIMES.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => setData((d) => ({ ...d, sleepTime: t }))}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-sm border transition-all",
+                            data.sleepTime === t
+                              ? "border-primary bg-primary/10 text-foreground font-medium"
+                              : "border-border/40 bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                          )}
+                          data-testid={`button-sleep-${t.replace(/[: ]/g, '-')}`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">I prefer to work out on (optional)</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {WORKOUT_DAYS.map((d) => {
+                        const selected = data.preferredWorkoutDays.includes(d);
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => setData((prev) => ({
+                              ...prev,
+                              preferredWorkoutDays: selected
+                                ? prev.preferredWorkoutDays.filter((x) => x !== d)
+                                : [...prev.preferredWorkoutDays, d],
+                            }))}
+                            className={cn(
+                              "w-12 h-12 rounded-xl text-sm border font-medium transition-all",
+                              selected
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "border-border/40 bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                            )}
+                            data-testid={`button-day-${d.toLowerCase()}`}
+                          >
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={goBack} data-testid="button-schedule-back">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  </Button>
+                  <Button className="flex-1" onClick={goNext} data-testid="button-schedule-next">
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 6: APP TOUR ────────────────────────────────────── */}
+            {step === 6 && (
               <div className="flex-1 flex flex-col justify-center space-y-5 max-w-sm mx-auto w-full">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
@@ -954,8 +1066,8 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
               </div>
             )}
 
-            {/* ── STEP 6: LAUNCH ──────────────────────────────────────── */}
-            {step === 6 && (
+            {/* ── STEP 7: LAUNCH ──────────────────────────────────────── */}
+            {step === 7 && (
               <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 max-w-sm mx-auto w-full">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}

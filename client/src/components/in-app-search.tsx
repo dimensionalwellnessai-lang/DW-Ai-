@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Search, 
   Loader2, 
@@ -153,7 +152,7 @@ export function InAppSearch({
       )}
 
       {results.length > 0 && (
-        <ScrollArea className="max-h-[400px]">
+        <div className="overflow-y-auto max-h-[400px] -mx-1 px-1">
           <div className="space-y-2">
             {results.map((result) => (
               <Card 
@@ -246,7 +245,7 @@ export function InAppSearch({
               </Card>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       )}
 
       {hasSearched && results.length > 0 && (

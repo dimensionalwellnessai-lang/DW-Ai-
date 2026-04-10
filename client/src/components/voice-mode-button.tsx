@@ -13,6 +13,7 @@ interface VoiceModeButtonProps {
   className?: string;
   size?: "default" | "sm" | "lg" | "icon";
   variant?: "default" | "ghost" | "outline";
+  autoListenTrigger?: number;
 }
 
 interface SpeechRecognitionEvent {
@@ -55,11 +56,13 @@ export function VoiceModeButton({
   className,
   size = "icon",
   variant = "ghost",
+  autoListenTrigger,
 }: VoiceModeButtonProps) {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startListeningRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -143,6 +146,16 @@ export function VoiceModeButton({
       }, 2000);
     }
   }, [isSupported, onTranscript, onError, voiceState]);
+
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
+
+  useEffect(() => {
+    if (!autoListenTrigger) return;
+    const fn = startListeningRef.current;
+    if (fn) fn();
+  }, [autoListenTrigger]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {

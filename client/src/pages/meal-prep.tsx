@@ -1819,46 +1819,74 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                     ) : (
                       <div className="space-y-4">
                         {uncheckedCount > 0 && (
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                               To Buy ({uncheckedCount})
                             </h4>
-                            <div className="space-y-1">
-                              {groceryList.items.filter(i => !i.isChecked && !i.isInPantry).map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover-elevate group"
-                                >
-                                  <button
-                                    onClick={() => handleToggleGroceryCheck(item.id)}
-                                    className="w-5 h-5 rounded border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary transition-colors"
-                                    data-testid={`button-check-${item.id}`}
-                                  />
-                                  <span className="flex-1 text-sm">{item.name}</span>
-                                  {item.amount !== "1" && (
-                                    <Badge variant="outline" className="text-xs">{item.amount} {item.unit}</Badge>
+                            {(() => {
+                              const toBuyItems = groceryList.items.filter(i => !i.isChecked && !i.isInPantry);
+                              const grouped: Record<string, typeof toBuyItems> = {};
+                              toBuyItems.forEach(item => {
+                                const cat = item.category || "other";
+                                if (!grouped[cat]) grouped[cat] = [];
+                                grouped[cat].push(item);
+                              });
+                              const categoryOrder = ["produce", "protein", "dairy", "grains", "frozen", "pantry", "snacks", "beverages", "general", "other"];
+                              const sortedCats = Object.keys(grouped).sort((a, b) => {
+                                const ai = categoryOrder.indexOf(a);
+                                const bi = categoryOrder.indexOf(b);
+                                return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                              });
+                              const catEmoji: Record<string, string> = {
+                                produce: "🥦", protein: "🥩", dairy: "🧀", grains: "🌾",
+                                frozen: "🧊", pantry: "🫙", snacks: "🍎", beverages: "🥤",
+                                general: "🛒", other: "📦",
+                              };
+                              return sortedCats.map(cat => (
+                                <div key={cat} className="space-y-1">
+                                  {sortedCats.length > 1 && (
+                                    <p className="text-xs text-muted-foreground/70 capitalize font-medium ml-1">
+                                      {catEmoji[cat] ?? "📦"} {cat === "general" ? "Other" : cat}
+                                    </p>
                                   )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleTogglePantry(item.id)}
-                                    data-testid={`button-pantry-${item.id}`}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
-                                    onClick={() => handleRemoveGroceryItem(item.id)}
-                                    data-testid={`button-remove-${item.id}`}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                                  {grouped[cat].map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover-elevate group"
+                                    >
+                                      <button
+                                        onClick={() => handleToggleGroceryCheck(item.id)}
+                                        className="w-5 h-5 rounded border-2 border-muted-foreground/30 flex items-center justify-center hover:border-primary transition-colors flex-shrink-0"
+                                        data-testid={`button-check-${item.id}`}
+                                      />
+                                      <span className="flex-1 text-sm">{item.name}</span>
+                                      {item.amount && item.amount !== "1" && (
+                                        <Badge variant="outline" className="text-xs">{item.amount} {item.unit}</Badge>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => handleTogglePantry(item.id)}
+                                        data-testid={`button-pantry-${item.id}`}
+                                        title="Already in pantry"
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive"
+                                        onClick={() => handleRemoveGroceryItem(item.id)}
+                                        data-testid={`button-remove-${item.id}`}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
+                              ));
+                            })()}
                           </div>
                         )}
                         
@@ -1931,7 +1959,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             )}
             
             {/* Recipe Box Section */}
-            {selectedNutritionCategory === "meal-prep" && (
+            {(selectedNutritionCategory === "meal-prep" || !selectedNutritionCategory) && (
               <section className="space-y-4" data-testid="section-recipe-box">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -2532,33 +2560,18 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                           ))}
                         </div>
                         <div className="pt-2">
-                          {video.youtubeVideoId ? (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`https://www.youtube.com/watch?v=${video.youtubeVideoId}`, '_blank');
-                              }}
-                              data-testid={`button-watch-video-${video.id}`}
-                            >
-                              <Play className="w-4 h-4 mr-2" />
-                              Watch on YouTube
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(video.youtubeSearch)}`, '_blank');
-                              }}
-                              data-testid={`button-search-video-${video.id}`}
-                            >
-                              <Search className="w-4 h-4 mr-2" />
-                              Find on YouTube
-                            </Button>
-                          )}
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(video.youtubeSearch || video.title)}`, '_blank');
+                            }}
+                            data-testid={`button-watch-video-${video.id}`}
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Find on YouTube
+                          </Button>
                         </div>
                       </div>
                     )}

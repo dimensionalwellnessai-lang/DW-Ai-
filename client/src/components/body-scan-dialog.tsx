@@ -73,7 +73,9 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     updatedAt: Date.now(),
   });
   const [useMetric, setUseMetricLocal] = useState(() => getUseMetricUnits());
-  
+  const [heightFt, setHeightFt] = useState<string>("");
+  const [heightIn, setHeightIn] = useState<string>("");
+
   const handleUnitToggle = (checked: boolean) => {
     setUseMetricLocal(checked);
     setUseMetricUnits(checked);
@@ -85,9 +87,9 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     if (open) {
       const existing = getBodyProfile();
       const draft = getBodyScanDraft();
-      // Prefer draft if it's more recent than saved profile
+      let loadedProfile: BodyProfile | null = null;
       if (draft && draft.savedAt && (!existing?.updatedAt || draft.savedAt > existing.updatedAt)) {
-        setProfile({
+        loadedProfile = {
           currentState: draft.currentState || "",
           bodyGoal: draft.bodyGoal || null,
           focusAreas: draft.focusAreas || [],
@@ -96,9 +98,21 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
           notes: draft.notes || "",
           photos: draft.photos || [],
           updatedAt: draft.savedAt || Date.now(),
-        });
+        };
+        setProfile(loadedProfile);
       } else if (existing) {
+        loadedProfile = existing;
         setProfile(existing);
+      }
+      // Initialize ft/in from stored heightCm (imperial)
+      const heightCm = loadedProfile?.measurements?.heightCm;
+      if (heightCm) {
+        const totalInches = heightCm / 2.54;
+        setHeightFt(String(Math.floor(totalInches / 12)));
+        setHeightIn(String(Math.round(totalInches % 12)));
+      } else {
+        setHeightFt("");
+        setHeightIn("");
       }
       setStep(0);
     }
@@ -169,11 +183,10 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     }
   };
 
-  const getDisplayHeight = (): string => {
+  const getDisplayHeightCm = (): string => {
     const heightCm = profile.measurements?.heightCm;
     if (!heightCm) return "";
-    if (useMetric) return String(heightCm);
-    return String(Math.round(heightCm / 2.54));
+    return String(heightCm);
   };
 
   const getDisplayWeight = (): string => {
@@ -183,36 +196,51 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
     return String(Math.round(weightKg * 2.20462));
   };
 
-  const handleHeightChange = (value: string) => {
+  const handleHeightCmChange = (value: string) => {
     if (!value) {
-      setProfile({
-        ...profile,
-        measurements: { ...profile.measurements, heightCm: undefined }
-      });
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: undefined } });
       return;
     }
     const num = Number(value);
-    const heightCm = useMetric ? num : Math.round(num * 2.54);
-    setProfile({
-      ...profile,
-      measurements: { ...profile.measurements, heightCm }
-    });
+    if (!isNaN(num) && num > 0) {
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: num } });
+    }
+  };
+
+  const handleHeightFtChange = (value: string) => {
+    setHeightFt(value);
+    const ft = Number(value) || 0;
+    const inches = Number(heightIn) || 0;
+    const totalIn = ft * 12 + inches;
+    if (totalIn > 0) {
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: Math.round(totalIn * 2.54) } });
+    } else {
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: undefined } });
+    }
+  };
+
+  const handleHeightInChange = (value: string) => {
+    setHeightIn(value);
+    const ft = Number(heightFt) || 0;
+    const inches = Number(value) || 0;
+    const totalIn = ft * 12 + inches;
+    if (totalIn > 0) {
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: Math.round(totalIn * 2.54) } });
+    } else {
+      setProfile({ ...profile, measurements: { ...profile.measurements, heightCm: undefined } });
+    }
   };
 
   const handleWeightChange = (value: string) => {
     if (!value) {
-      setProfile({
-        ...profile,
-        measurements: { ...profile.measurements, weightKg: undefined }
-      });
+      setProfile({ ...profile, measurements: { ...profile.measurements, weightKg: undefined } });
       return;
     }
     const num = Number(value);
-    const weightKg = useMetric ? num : Math.round(num / 2.20462);
-    setProfile({
-      ...profile,
-      measurements: { ...profile.measurements, weightKg }
-    });
+    if (!isNaN(num) && num > 0) {
+      const weightKg = useMetric ? num : Math.round(num / 2.20462);
+      setProfile({ ...profile, measurements: { ...profile.measurements, weightKg } });
+    }
   };
 
   const showNav = step > 0 && step < 6;
@@ -357,23 +385,54 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
                 />
                 <span className={`text-sm ${useMetric ? "font-medium" : "text-muted-foreground"}`}>Metric</span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="height">Height ({useMetric ? "cm" : "in"})</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    placeholder={useMetric ? "170" : "67"}
-                    value={getDisplayHeight()}
-                    onChange={(e) => handleHeightChange(e.target.value)}
-                    data-testid="input-height"
-                  />
-                </div>
+              <div className={`grid gap-4 ${useMetric ? "grid-cols-2" : "grid-cols-3"}`}>
+                {useMetric ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="height-cm">Height (cm)</Label>
+                    <Input
+                      id="height-cm"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="170"
+                      value={getDisplayHeightCm()}
+                      onChange={(e) => handleHeightCmChange(e.target.value)}
+                      data-testid="input-height-cm"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="height-ft">Height (ft)</Label>
+                      <Input
+                        id="height-ft"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="5"
+                        value={heightFt}
+                        onChange={(e) => handleHeightFtChange(e.target.value)}
+                        data-testid="input-height-ft"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="height-in">Inches (in)</Label>
+                      <Input
+                        id="height-in"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="7"
+                        value={heightIn}
+                        onChange={(e) => handleHeightInChange(e.target.value)}
+                        data-testid="input-height-in"
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="weight">Weight ({useMetric ? "kg" : "lbs"})</Label>
                   <Input
                     id="weight"
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     placeholder={useMetric ? "70" : "154"}
                     value={getDisplayWeight()}
                     onChange={(e) => handleWeightChange(e.target.value)}

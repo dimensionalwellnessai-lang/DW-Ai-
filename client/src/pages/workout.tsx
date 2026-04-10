@@ -687,6 +687,33 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
 
           {/* ── Today Tab ───────────────────────────────────── */}
           <TabsContent value="today" className="space-y-4">
+            {/* Quick energy check-in */}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">How's your energy right now?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { level: "low" as const, label: "Low", emoji: "🌙", desc: "Rest & restore" },
+                  { level: "medium" as const, label: "Medium", emoji: "⚡", desc: "Steady flow" },
+                  { level: "high" as const, label: "High", emoji: "🔥", desc: "Push it" },
+                ]).map(opt => (
+                  <button
+                    key={opt.level}
+                    onClick={() => setEnergyLevel(energyLevel === opt.level ? null : opt.level)}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${
+                      energyLevel === opt.level
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+                    }`}
+                    data-testid={`button-energy-${opt.level}`}
+                  >
+                    <span className="text-xl">{opt.emoji}</span>
+                    <span className="text-xs font-semibold">{opt.label}</span>
+                    <span className="text-[10px] opacity-70">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {seeksCalmOrMindfulness && (
               <Card className="bg-violet-500/5 border-violet-500/20">
                 <CardContent className="p-4 flex items-start gap-3">

@@ -530,7 +530,7 @@ export function SettingsPage() {
                 Take Interactive Tour
               </Button>
               <Button 
-                variant="outline"
+                variant="secondary"
                 onClick={handleReplayMenuTour}
                 data-testid="button-replay-tour"
               >
@@ -538,7 +538,7 @@ export function SettingsPage() {
                 Replay Menu Tour
               </Button>
               <Button 
-                variant="outline"
+                variant="secondary"
                 onClick={handleResetAllTutorials}
                 data-testid="button-reset-all-tutorials"
               >
