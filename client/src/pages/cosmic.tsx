@@ -1118,15 +1118,14 @@ function NatalChartWheel({ placements }: { placements: PlanetPlacement[] }) {
           {/* Planet dots */}
           {planetDots.map(({ planet, symbol, x, y }) => (
             <g key={planet}>
-              <circle cx={x} cy={y} r="8" fill="hsl(var(--primary))" fillOpacity="0.15" />
               <text
                 x={x}
                 y={y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize="7"
+                fontSize="8"
                 fill="hsl(var(--primary))"
-                fontWeight="600"
+                fontWeight="700"
                 aria-label={planet}
               >
                 {symbol}

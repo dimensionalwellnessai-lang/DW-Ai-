@@ -68,6 +68,22 @@ html, body {
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-family: var(--font-body, 'Nunito', system-ui, sans-serif);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display, 'Space Grotesk', system-ui, sans-serif);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .font-display {
+    font-family: var(--font-display, 'Space Grotesk', system-ui, sans-serif);
+    letter-spacing: -0.015em;
+  }
+  .font-body {
+    font-family: var(--font-body, 'Nunito', system-ui, sans-serif);
+  }
+  .font-serif {
+    font-family: var(--font-serif, 'Crimson Pro', Georgia, serif);
   }
 }
 

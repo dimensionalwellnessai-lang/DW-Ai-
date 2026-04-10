@@ -41,6 +41,7 @@ import {
   Search,
   X,
   Check,
+  Heart,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -1217,6 +1218,20 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 </CardContent>
               </Card>
             )}
+
+            {/* Recovery surfacing */}
+            <Card className="bg-purple-500/5 border-purple-500/20 cursor-pointer hover:shadow-md transition-all" onClick={() => setLocation("/recovery")}>
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
+                  <Heart className="w-5 h-5 text-purple-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">Recovery & Rest</p>
+                  <p className="text-xs text-muted-foreground">Stretching, foam rolling, and rest protocols to support your training</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 

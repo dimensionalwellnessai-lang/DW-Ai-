@@ -1,4 +1,4 @@
-# Flip the Switch (DWAI) - Replit Configuration
+# DW Wellness AI (dimensionalwellnessai.com) - Replit Configuration
 
 ## Overview
 
@@ -68,6 +68,81 @@ Preferred communication style: Simple, everyday language.
 - **Workout Page Redesign**: `workout.tsx` now has a 3-tab layout — **Today** (atmospheric hero orb, AI-personalized recommendation, body profile card, planning horizon compact row), **Library** (search + filters + workout cards with expand/steps/YouTube), **My Plans** (AI plans, saved workouts, resources). All dialogs/session engine remain at the bottom.
 - **PageHeader Consistency**: `systems-hub.tsx`, `plan-page.tsx`, and `accountability.tsx` all received `PageHeader` components for consistent page structure across the app.
 - **Life Blueprint Consolidation**: `/life-blueprint` route in App.tsx now renders `LifeBlueprintV2Page` (v2 design) for a single consistent experience.
+
+## Phase Implementations (Latest Updates)
+
+### Phase 1 — Goals Page (Rebuilt)
+- **9 wellness dimensions**: Physical, Mental, Emotional, Financial, Spiritual, Social, Environmental, Occupational, Purpose — each with icon/color
+- **Create form**: Title, dimension selector, "Why does this matter" field, target date picker, notes
+- **Goal cards**: Collapsible with progress bar, dimension badge, target date + days remaining
+- **Progress update**: Quick buttons (25/50/75/100%) + edit mode with slider
+- **Mark complete**: Sets progress to 100% and deactivates goal
+- **Delete**: Removes goal with confirmation toast
+- **DW Thread**: Shows linked supporting habits on expanded goal card (habits created with "Supports goal: [title]" in description)
+- **Habit creation dialog**: Creates a habit directly from a goal with frequency selector
+- **Filter by dimension**: Tab-style filter showing only dimensions that have goals
+
+### Phase 1 — Habits Page (Rebuilt)
+- **Frequency picker**: Every day, Weekdays, 3× per week, Once a week
+- **Reminder time picker**: HTML time input for browser/system reminders
+- **Dimension selector**: 9 wellness dimensions with icons
+- **7-day WeekDots**: Visual M/T/W/T/F/S/S dots showing completion history based on streak
+- **Visual flame streak badge**: Orange 🔥 with streak count
+- **Pause/Resume toggle**: Sets isActive flag to false/true
+- **Delete**: Removes habit
+- **Progress ring summary card**: Circular progress showing X/Y habits completed today
+- **Dimension filter tabs**: Filter habits by wellness dimension
+
+### Phase 1 — Finances Page (Rebuilt)
+- **Removed duplicate**: Eliminated the duplicate "All Budget Tools" section
+- **AI Financial Coach chat**: Full chat interface using /api/chat/smart with financial system prompt
+- **Quick question buttons**: Pre-filled prompts (emergency fund, debt, budget)
+- **Savings Goals tracker**: localStorage-persisted goals with progress rings, monthly savings projection, monthly amount needed calculation
+- **Financial Toolkit**: 8 resource cards (50/30/20, Emergency Fund, etc.) with categories
+- **Financial profile integration**: Uses existing FinanceProfileDialog, shows anxiety alert
+
+### Phase 1 — Spiritual Page (Rebuilt)
+- **30+ practices**: Across 11 categories (Gratitude, Breathwork, Meditation, Mindfulness, Yoga, Nature, Affirmations, Visualization, Prayer, Body Awareness, Journaling)
+- **Practice cards**: Expand to show step-by-step instructions, guidance text, TTS listen button, "Great for" needs badges
+- **Completion tracking**: localStorage (dw:spiritual_history), shows "Done today" / "Xd ago"
+- **Spiritual streak**: Counts consecutive days with at least one practice completed
+- **Personalized section**: Filters practices by user's spiritual profile preferences
+- **Category search + filter**: Text search + category tabs
+- **AI Meditation Generator tab**: Duration selector (3/5/10/15/20 min) + focus input + quick focus buttons + TTS playback
+- **Streak badge**: Orange flame with day count
+
+### Phase 2 — App Tour (Enhanced)
+- **8 milestone tracking**: Body scan, first goal, first habit, meal prefs, spiritual profile, finance profile, journal entry, DW conversation
+- **Real-time completion detection**: Queries /api/goals and /api/habits to detect if items have been created
+- **Progress bar**: Shows X% complete with count of remaining steps
+- **Two-tab layout**: "Getting Started" (milestone checklist) + "Features Guide" (12 feature descriptions)
+- **Clickable milestones**: Each one links directly to the relevant page
+
+### Phase 3 — Calendar Default View
+- Calendar now defaults to **week** view instead of month view
+
+### Phase 3 — Cosmic Planet Fix
+- Removed the `<circle>` background element from planet symbols in NatalChartWheel SVG (was creating unwanted box backgrounds)
+
+### Phase 3 — Recovery Surfacing
+- Added a purple "Recovery & Rest" card at the bottom of the Workout page My Plans tab, linking to /recovery
+
+### Phase 4 — DW Proactive Intelligence (Enhanced)
+- **Low mood outreach**: If user has low energy for 2+ consecutive check-ins, DW reaches out with chat link
+- **Financial goal → habit suggestion**: If user has financial goals but no financial habits, suggests creating one
+- **Habit reminder (evening)**: If habits are incomplete after 5pm, shows reminder with incomplete habit names
+- **Goal → habit nudge**: If user has active goals but no habits at all, suggests creating a supporting habit
+- **Sunday weekly summary**: Shows goals count, habits count, and max streak every Sunday morning
+- **Improved morning briefing**: Now includes active habits count in the "Today's Focus" list
+
+### Phase 5 — DW Thread (Cross-Feature Connections)
+- **Goals ↔ Habits**: Expanded goal cards show linked habits (habits created with "Supports goal: [title]" in description) with real-time completion status
+
+### Phase 7 — Visual Polish & Fonts
+- **Frosted glass bottom nav**: backdrop-filter blur + translucent background + reduced border opacity
+- **Attention dot**: Orange dot on Home nav button when there are incomplete habits for today
+- **Global font application**: body tag now uses Nunito (--font-body), h1–h6 use Space Grotesk (--font-display) with -0.015em letter spacing
+- **Font utilities confirmed**: .font-display, .font-body, .font-serif utility classes work correctly via Tailwind config
 
 ## External Dependencies
 
