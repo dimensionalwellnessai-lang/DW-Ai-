@@ -4411,7 +4411,7 @@ Return ONLY:
       const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
 
       interface VideoItem { id: string; title: string; description: string; url: string; channel: string; duration: string; category: string; }
-      interface ArticleItem { id: string; title: string; synopsis: string; url: string; source: string; readTimeMinutes: number; whySuggested: string; }
+      interface ArticleItem { id: string; title: string; synopsis: string; url: string; source: string; readTimeMinutes: number; whySuggested: string; dimension?: string; }
       interface WorkoutItem { id: string; title: string; description: string; url: string; duration: string; difficulty: string; }
       interface MealItem { id: string; title: string; description: string; url: string; prepTime: string; }
 
@@ -4426,14 +4426,14 @@ Return ONLY:
 Find real wellness content appropriate for this time. Search for ACTUAL existing content with real working URLs.
 
 1. Find 4 real YouTube wellness videos about ${videoFocus[timeSlot]}. Use real YouTube video IDs (e.g. https://www.youtube.com/watch?v=REAL_ID). Try channels like Yoga With Adriene, Heather Robertson, MedBridge, Headspace, Pick Up Limes, Jeff Nippard.
-2. Find 3 real wellness articles from sites like healthline.com, mindbodygreen.com, verywellfit.com, self.com, psychologytoday.com. Use real article URLs.
+2. Find 3 real wellness articles from sites like healthline.com, mindbodygreen.com, verywellfit.com, self.com, psychologytoday.com. Use real article URLs. Include a dimension field: one of emotional, physical, financial, social, spiritual, intellectual, environmental, purpose, or general.
 3. Find 2 real workout videos for ${dayName} ${timeLabel[timeSlot]}.
 4. Find 1 real recipe for a ${mealFocus[timeSlot]} from a real recipe site like allrecipes.com, budgetbytes.com, or minimalistbaker.com.
 
 Return ONLY this exact JSON structure, no other text:
 {
   "videos": [{"id":"v1","title":"...","description":"...","url":"https://www.youtube.com/watch?v=...","channel":"...","duration":"15 min","category":"yoga"}],
-  "articles": [{"id":"a1","title":"...","synopsis":"...","url":"https://...","source":"Healthline","readTimeMinutes":5,"whySuggested":"..."}],
+  "articles": [{"id":"a1","title":"...","synopsis":"...","url":"https://...","source":"Healthline","readTimeMinutes":5,"whySuggested":"...","dimension":"physical"}],
   "workouts": [{"id":"w1","title":"...","description":"...","url":"https://www.youtube.com/watch?v=...","duration":"20 min","difficulty":"beginner"}],
   "meal": {"id":"m1","title":"...","description":"...","url":"https://...","prepTime":"15 min"}
 }`;
@@ -4472,7 +4472,7 @@ Return ONLY this exact JSON structure, no other text:
               articles = parsed.articles
                 .filter((a: any) => a?.title && sanitizeUrl(a?.url))
                 .slice(0, 5)
-                .map((a: any, i: number) => ({ id: `a${i}`, title: String(a.title), synopsis: String(a.synopsis || ""), url: sanitizeUrl(a.url), source: String(a.source || ""), readTimeMinutes: Number(a.readTimeMinutes) || 5, whySuggested: String(a.whySuggested || "") }));
+                .map((a: any, i: number) => ({ id: `a${i}`, title: String(a.title), synopsis: String(a.synopsis || ""), url: sanitizeUrl(a.url), source: String(a.source || ""), readTimeMinutes: Number(a.readTimeMinutes) || 5, whySuggested: String(a.whySuggested || ""), dimension: String(a.dimension || "general") }));
             }
             if (Array.isArray(parsed.workouts)) {
               workouts = parsed.workouts
@@ -4513,9 +4513,9 @@ Return ONLY this exact JSON structure, no other text:
       }
       if (articles.length === 0) {
         articles = [
-          { id: "fa1", title: "How to Build a Sustainable Morning Routine", synopsis: "Science-backed strategies for creating a morning routine that actually sticks and energizes your whole day.", url: "https://www.healthline.com/health/morning-routine", source: "Healthline", readTimeMinutes: 6, whySuggested: "Morning routines are the foundation of a thriving life." },
-          { id: "fa2", title: "The Science of Habit Formation", synopsis: "Understand the habit loop and how to rewire your brain for lasting positive change.", url: "https://www.verywellmind.com/what-is-a-habit-2795023", source: "Verywell Mind", readTimeMinutes: 8, whySuggested: "Habits are how DW helps you build the life you want." },
-          { id: "fa3", title: "Mindful Eating: How to Listen to Your Body", synopsis: "Practical tips for eating mindfully and developing a healthier relationship with food.", url: "https://www.mindbodygreen.com/food", source: "Mindbodygreen", readTimeMinutes: 5, whySuggested: "Nutrition is one of the 8 dimensions of your wellness." },
+          { id: "fa1", title: "How to Build a Sustainable Morning Routine", synopsis: "Science-backed strategies for creating a morning routine that actually sticks and energizes your whole day.", url: "https://www.healthline.com/health/morning-routine", source: "Healthline", readTimeMinutes: 6, whySuggested: "Morning routines are the foundation of a thriving life.", dimension: "emotional" },
+          { id: "fa2", title: "The Science of Habit Formation", synopsis: "Understand the habit loop and how to rewire your brain for lasting positive change.", url: "https://www.verywellmind.com/what-is-a-habit-2795023", source: "Verywell Mind", readTimeMinutes: 8, whySuggested: "Habits are how DW helps you build the life you want.", dimension: "purpose" },
+          { id: "fa3", title: "Mindful Eating: How to Listen to Your Body", synopsis: "Practical tips for eating mindfully and developing a healthier relationship with food.", url: "https://www.mindbodygreen.com/food", source: "Mindbodygreen", readTimeMinutes: 5, whySuggested: "Nutrition is one of the 8 dimensions of your wellness.", dimension: "nutrition" },
         ];
       }
 

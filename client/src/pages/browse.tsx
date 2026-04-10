@@ -87,6 +87,34 @@ function isSafeExternalUrl(url: unknown): url is string {
   }
 }
 
+function getYouTubeThumbnail(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      const id = parsed.searchParams.get("v");
+      if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+    if (parsed.hostname.includes("youtu.be")) {
+      const id = parsed.pathname.slice(1).split("?")[0];
+      if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    }
+  } catch {}
+  return null;
+}
+
+const DIMENSION_IMAGES: Record<string, string> = {
+  physical:      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=600&q=80",
+  emotional:     "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
+  financial:     "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=600&q=80",
+  social:        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=600&q=80",
+  spiritual:     "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=600&q=80",
+  intellectual:  "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80",
+  environmental: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=600&q=80",
+  purpose:       "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80",
+  nutrition:     "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80",
+  general:       "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=600&q=80",
+};
+
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
   { id: "meditation", name: "Meditation", icon: Brain },
@@ -129,7 +157,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["energy", "mobility"],
     moodTags: ["tired", "scattered"],
-    thumbnailUrl: "/api/placeholder/workout-morning",
+    thumbnailUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "2",
@@ -141,7 +169,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "focus"],
     moodTags: ["anxious", "overwhelmed"],
-    thumbnailUrl: "/api/placeholder/meditation-calm",
+    thumbnailUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "3",
@@ -153,7 +181,7 @@ const SAMPLE_CONTENT = [
     difficulty: "intermediate",
     goalTags: ["muscle-gain", "strength"],
     moodTags: ["motivated", "energetic"],
-    thumbnailUrl: "/api/placeholder/workout-strength",
+    thumbnailUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "4",
@@ -165,7 +193,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["sleep", "relaxation"],
     moodTags: ["tired", "restless"],
-    thumbnailUrl: "/api/placeholder/meditation-sleep",
+    thumbnailUrl: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "5",
@@ -177,7 +205,7 @@ const SAMPLE_CONTENT = [
     difficulty: "advanced",
     goalTags: ["fat-loss", "endurance"],
     moodTags: ["energetic", "motivated"],
-    thumbnailUrl: "/api/placeholder/workout-hiit",
+    thumbnailUrl: "https://images.unsplash.com/photo-1549576490-b0b4831ef60a?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "6",
@@ -189,7 +217,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["mental-health", "positivity"],
     moodTags: ["low", "neutral"],
-    thumbnailUrl: "/api/placeholder/mindfulness-gratitude",
+    thumbnailUrl: "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "7",
@@ -201,7 +229,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["flexibility", "stress-relief"],
     moodTags: ["tense", "stressed"],
-    thumbnailUrl: "/api/placeholder/workout-yoga",
+    thumbnailUrl: "https://images.unsplash.com/photo-1536623975707-c4b3b2af565d?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "8",
@@ -213,7 +241,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["focus", "productivity"],
     moodTags: ["scattered", "distracted"],
-    thumbnailUrl: "/api/placeholder/meditation-focus",
+    thumbnailUrl: "https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "9",
@@ -225,7 +253,7 @@ const SAMPLE_CONTENT = [
     difficulty: "intermediate",
     goalTags: ["strength", "core"],
     moodTags: ["motivated", "focused"],
-    thumbnailUrl: "/api/placeholder/workout-core",
+    thumbnailUrl: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "10",
@@ -237,7 +265,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "presence"],
     moodTags: ["restless", "scattered"],
-    thumbnailUrl: "/api/placeholder/mindfulness-walking",
+    thumbnailUrl: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "11",
@@ -249,7 +277,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["sleep", "relaxation"],
     moodTags: ["tired", "tense"],
-    thumbnailUrl: "/api/placeholder/workout-evening",
+    thumbnailUrl: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "12",
@@ -261,7 +289,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "relaxation"],
     moodTags: ["tense", "overwhelmed"],
-    thumbnailUrl: "/api/placeholder/meditation-body-scan",
+    thumbnailUrl: "https://images.unsplash.com/photo-1528715471579-d1bcf0ba5e83?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "13",
@@ -273,7 +301,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "presence"],
     moodTags: ["overwhelmed", "anxious"],
-    thumbnailUrl: "/api/placeholder/mindfulness-breathing",
+    thumbnailUrl: "https://images.unsplash.com/photo-1554244933-d876deb6b2ff?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "14",
@@ -285,7 +313,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["recovery", "mobility"],
     moodTags: ["sore", "tired"],
-    thumbnailUrl: "/api/placeholder/recovery-foam-rolling",
+    thumbnailUrl: "https://images.unsplash.com/photo-1517130038641-a774d04afb3c?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "15",
@@ -297,7 +325,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["recovery", "mobility"],
     moodTags: ["sore", "low-energy"],
-    thumbnailUrl: "/api/placeholder/recovery-active",
+    thumbnailUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "16",
@@ -309,7 +337,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["nutrition", "time-management"],
     moodTags: ["motivated", "organized"],
-    thumbnailUrl: "/api/placeholder/nutrition-meal-prep",
+    thumbnailUrl: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "17",
@@ -321,7 +349,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["nutrition", "habits"],
     moodTags: ["tired", "low-energy"],
-    thumbnailUrl: "/api/placeholder/nutrition-hydration",
+    thumbnailUrl: "https://images.unsplash.com/photo-1559839914-17aae19cec71?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "18",
@@ -333,7 +361,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["recovery", "relaxation"],
     moodTags: ["exhausted", "stressed"],
-    thumbnailUrl: "/api/placeholder/recovery-restorative",
+    thumbnailUrl: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
   },
   // Article-type content – ensures the Articles tab always has content
   {
@@ -346,7 +374,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["habits", "consistency", "mental-health"],
     moodTags: ["motivated", "curious"],
-    thumbnailUrl: "/api/placeholder/article-habits",
+    thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "20",
@@ -358,7 +386,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["nutrition", "mental-health", "energy"],
     moodTags: ["curious", "low-energy"],
-    thumbnailUrl: "/api/placeholder/article-gut-brain",
+    thumbnailUrl: "https://images.unsplash.com/photo-1532153975070-2e9ab71f1b14?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "21",
@@ -370,7 +398,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["recovery", "mental-health", "stress-relief"],
     moodTags: ["overwhelmed", "tired"],
-    thumbnailUrl: "/api/placeholder/article-recovery",
+    thumbnailUrl: "https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "22",
@@ -382,7 +410,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["sleep", "energy", "habits"],
     moodTags: ["tired", "scattered"],
-    thumbnailUrl: "/api/placeholder/article-sunlight",
+    thumbnailUrl: "https://images.unsplash.com/photo-1502082553048-f009b84890f8?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "23",
@@ -394,7 +422,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["stress-relief", "focus", "mindfulness"],
     moodTags: ["anxious", "overwhelmed"],
-    thumbnailUrl: "/api/placeholder/blog-breathing",
+    thumbnailUrl: "https://images.unsplash.com/photo-1510894347713-fc3dc6166bcc?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "24",
@@ -406,7 +434,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["productivity", "energy", "self-awareness"],
     moodTags: ["scattered", "low-energy"],
-    thumbnailUrl: "/api/placeholder/article-energy",
+    thumbnailUrl: "https://images.unsplash.com/photo-1438557068917-ef0a5cd8c2ec?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "25",
@@ -418,7 +446,7 @@ const SAMPLE_CONTENT = [
     difficulty: "beginner",
     goalTags: ["nutrition", "recovery", "habits"],
     moodTags: ["motivated", "sore"],
-    thumbnailUrl: "/api/placeholder/article-nutrition",
+    thumbnailUrl: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80",
   },
 ];
 
@@ -1200,11 +1228,23 @@ ${contentList}`,
                     <Badge className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">VIDEO</Badge>
                   </div>
                   <button
-                    className={`w-full aspect-video rounded-xl bg-gradient-to-br ${getCategoryGradient(video.category)} flex items-center justify-center group overflow-hidden border border-border/20`}
+                    className={`w-full aspect-video rounded-xl bg-gradient-to-br ${getCategoryGradient(video.category)} flex items-center justify-center group overflow-hidden border border-border/20 relative`}
                     onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }}
                     data-testid={`button-foryou-video-thumb-${video.id}`}
                   >
-                    <Play className="h-14 w-14 text-primary/25 group-hover:text-primary/40 transition-colors" />
+                    {(() => {
+                      const yt = getYouTubeThumbnail(video.url);
+                      return yt ? (
+                        <img
+                          src={yt}
+                          alt={video.title}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : null;
+                    })()}
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                    <Play className="relative h-14 w-14 text-white/80 group-hover:text-white transition-colors drop-shadow-lg" />
                   </button>
                   <h3 className="font-semibold text-base leading-snug">{video.title}</h3>
                   {video.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{video.description}</p>}
@@ -1230,8 +1270,17 @@ ${contentList}`,
                     </div>
                     <Badge className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">ARTICLE</Badge>
                   </div>
-                  <div className="flex items-center justify-center aspect-[3/1] rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-border/20">
-                    <FileText className="h-10 w-10 text-primary/20" />
+                  <div className="relative aspect-[2/1] rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-border/20 flex items-center justify-center">
+                    {DIMENSION_IMAGES[article.dimension || "general"] && (
+                      <img
+                        src={DIMENSION_IMAGES[article.dimension || "general"]}
+                        alt={article.title}
+                        className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <FileText className="relative h-8 w-8 text-white/60" />
                   </div>
                   <h3 className="font-semibold text-base leading-snug">{article.title}</h3>
                   {article.whySuggested && (
@@ -2087,9 +2136,18 @@ ${contentList}`,
                   onClick={() => handleContentClick(item)}
                   data-testid={`card-content-${item.id}`}
                 >
-                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
-                    <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-t-md" />
+                  <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group overflow-hidden`}>
+                    {"thumbnailUrl" in item && item.thumbnailUrl && (
+                      <img
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                    <CategoryIcon className="relative h-10 w-10 text-white/40 group-hover:scale-110 transition-transform" />
                     <Button
                       size="icon"
                       className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
@@ -2281,8 +2339,14 @@ ${contentList}`,
                 {forYouData.videos.filter(v => !notInterestedUrls.has(v.url)).map((video) => (
                   <Card key={video.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-video-rec-${video.id}`}>
                     <CardContent className="p-3 flex items-start gap-3">
-                      <div className={`w-14 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)}`}>
-                        {video.category === "yoga" || video.category === "meditation" ? <Brain className="h-6 w-6 text-primary/60" /> : <Dumbbell className="h-6 w-6 text-primary/60" />}
+                      <div className={`w-16 h-12 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)} relative overflow-hidden`}>
+                        {(() => {
+                          const yt = getYouTubeThumbnail(video.url);
+                          return yt ? (
+                            <img src={yt} alt={video.title} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          ) : null;
+                        })()}
+                        <Play className="relative h-5 w-5 text-white/70 drop-shadow" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
