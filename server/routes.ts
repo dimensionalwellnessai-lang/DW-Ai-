@@ -5279,10 +5279,12 @@ Return only valid JSON, no markdown, no extra text.`;
       contentType: z.string().optional(),
       notes: z.string().optional(),
       topic: z.string().optional(),
+      description: z.string().optional(),
+      linkedRoute: z.string().optional(),
     });
     try {
       const body = bodySchema.parse(req.body);
-      const { title, scheduledTime, contentUrl, contentType, notes, topic } = body;
+      const { title, scheduledTime, contentUrl, contentType, notes, topic, description, linkedRoute } = body;
 
       /**
        * Normalize scheduledTime so we always store a UTC ISO 8601 timestamp.
@@ -5322,6 +5324,32 @@ Return only valid JSON, no markdown, no extra text.`;
         systemType: contentType || "feed_content",
         notes: notes || null,
       });
+
+      // Also create a CalendarEvent so it appears in the calendar schedule view with DW deep link
+      try {
+        const startDt = new Date(normalizedTime);
+        const endDt = new Date(startDt.getTime() + 60 * 60 * 1000); // default 1 hour
+        // Infer a sensible eventType from contentType
+        const typeMap: Record<string, string> = {
+          workout: "workout", meal: "meal", meditation: "meditation", routine: "routine",
+          yoga: "routine", spiritual: "spiritual",
+        };
+        const eventType = typeMap[contentType || ""] || "event";
+        await storage.createCalendarEvent({
+          userId: req.session.userId!,
+          title,
+          description: description || null,
+          startTime: startDt.toISOString(),
+          endTime: endDt.toISOString(),
+          eventType,
+          linkedType: contentType || "none",
+          linkedId: null,
+          linkedRoute: linkedRoute || null,
+        });
+      } catch (_e) {
+        // Non-fatal — schedule event was already created
+      }
+
       // Also record a scheduled interaction for personalization
       await storage.createFeedInteraction({
         userId: req.session.userId!,

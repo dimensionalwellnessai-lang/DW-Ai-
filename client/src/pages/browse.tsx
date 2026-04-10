@@ -125,6 +125,19 @@ const CONTENT_CATEGORIES = [
   { id: "blog", name: "Blog", icon: FileText },
 ];
 
+// ── DW route inference for scheduled content ─────────────────────────────────
+function getDwRouteForContent(type: string, title: string): string {
+  const t = (type + " " + title).toLowerCase();
+  if (/meditat|breathwork|breath|mindful|calm|relax|body scan/.test(t)) return "/talk-it-out";
+  if (/workout|hiit|train|exercise|run|strength|lift|cardio|gym|yoga|stretch|mobility/.test(t) || type === "workout") return "/workout";
+  if (/meal|eat|lunch|dinner|breakfast|nutrition|cook|recipe|food/.test(t) || type === "meal") return "/meal-prep";
+  if (/journal|reflect|diary|gratitude|write/.test(t)) return "/journal";
+  if (/spiritual|prayer|manifest|affirmation/.test(t)) return "/spiritual";
+  if (/finance|budget|money|invest/.test(t)) return "/finances";
+  if (/social|friend|family|community/.test(t)) return "/community";
+  return "/browse";
+}
+
 // ── Time helpers ─────────────────────────────────────────────────────────────
 function getTimeSlot(): "morning" | "late-morning" | "afternoon" | "evening" | "night" {
   const h = new Date().getHours();
@@ -595,7 +608,7 @@ export default function Browse() {
   const [notInterestedUrls, setNotInterestedUrls] = useState<Set<string>>(new Set());
   // Add to Schedule dialog state
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [scheduleContent, setScheduleContent] = useState<{ title: string; url: string; type: string } | null>(null);
+  const [scheduleContent, setScheduleContent] = useState<{ title: string; url: string; type: string; description?: string } | null>(null);
   const [scheduleTime, setScheduleTime] = useState("");
   // "Apply this?" guardrail – show prompt after user has seen feedSeenCount items
   const [feedSeenCount, setFeedSeenCount] = useState(0);
@@ -870,14 +883,15 @@ ${contentList}`,
 
   // Add to Schedule mutation
   const addToScheduleMutation = useMutation({
-    mutationFn: async (data: { title: string; scheduledTime: string; contentUrl: string; contentType: string }) => {
+    mutationFn: async (data: { title: string; scheduledTime: string; contentUrl: string; contentType: string; description?: string; linkedRoute?: string }) => {
       const response = await apiRequest("POST", "/api/feed/add-to-schedule", data);
       if (!response.ok) throw new Error("Failed to schedule");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/schedule-events"] });
-      toast({ title: "Added to schedule!", description: "Content has been added to your schedule." });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+      toast({ title: "Added to schedule!", description: "Find it in your calendar with a direct DW link." });
       setScheduleDialogOpen(false);
       setScheduleContent(null);
       setScheduleTime("");
@@ -966,7 +980,7 @@ ${contentList}`,
     });
   };
 
-  const handleAddToSchedule = (item: { title: string; url: string; type: string }) => {
+  const handleAddToSchedule = (item: { title: string; url: string; type: string; description?: string }) => {
     setScheduleContent(item);
     // Default to next hour
     const next = new Date();
@@ -3501,6 +3515,8 @@ ${contentList}`,
                   scheduledTime: scheduleTime,
                   contentUrl: scheduleContent.url,
                   contentType: scheduleContent.type,
+                  description: scheduleContent.description,
+                  linkedRoute: getDwRouteForContent(scheduleContent.type, scheduleContent.title),
                 });
               }}
               data-testid="button-confirm-schedule"
