@@ -220,14 +220,17 @@ const CONTENT_CATEGORIES = [
 // ── DW route inference for scheduled content ─────────────────────────────────
 function getDwRouteForContent(type: string, title: string): string {
   const t = (type + " " + title).toLowerCase();
-  if (/meditat|breathwork|breath|mindful|calm|relax|body scan/.test(t)) return "/talk-it-out";
-  if (/workout|hiit|train|exercise|run|strength|lift|cardio|gym|yoga|stretch|mobility/.test(t) || type === "workout") return "/workout";
-  if (/meal|eat|lunch|dinner|breakfast|nutrition|cook|recipe|food/.test(t) || type === "meal") return "/meal-prep";
-  if (/journal|reflect|diary|gratitude|write/.test(t)) return "/journal";
-  if (/spiritual|prayer|manifest|affirmation/.test(t)) return "/spiritual";
+  if (/meditat|breathwork|breath|mindful|calm|relax|body scan/.test(t)) return "/spiritual";
+  if (/workout|hiit|train|exercise|run|strength|lift|cardio|gym|yoga|stretch|mobility|outdoor|nature|walk|hike|bike|swim|sport|fitness|movement|active/.test(t) || type.toLowerCase() === "workout" || type.toLowerCase() === "outdoor" || type.toLowerCase() === "exercise" || type.toLowerCase() === "fitness") return "/workout";
+  if (/meal|eat|lunch|dinner|breakfast|nutrition|cook|recipe|food/.test(t) || type.toLowerCase() === "meal") return "/meal-prep";
+  if (/journal|reflect|diary|gratitude|write|writing/.test(t) || type.toLowerCase() === "journaling") return "/journal";
+  if (/spiritual|prayer|manifest|affirmation|meditat/.test(t) || type.toLowerCase() === "spiritual" || type.toLowerCase() === "meditation") return "/spiritual";
   if (/finance|budget|money|invest/.test(t)) return "/finances";
-  if (/social|friend|family|community/.test(t)) return "/community";
-  return "/browse";
+  if (/social|friend|family|community|connect|people|group/.test(t) || type.toLowerCase() === "social") return "/community";
+  if (/learn|study|read|book|course|education|skill/.test(t) || type.toLowerCase() === "learning") return "/life-blueprint";
+  if (/sleep|rest|recover|relax|nap/.test(t)) return "/recovery";
+  if (/indoor/.test(t) || type.toLowerCase() === "indoor") return "/workout";
+  return "/workout";
 }
 
 // ── Time helpers ─────────────────────────────────────────────────────────────
@@ -1704,36 +1707,79 @@ ${contentList}`,
                 {activitiesLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
               {activitiesData?.activities && (
-                <div className="space-y-2">
-                  {activitiesData.activities.map((activity: any, idx: number) => (
-                    <Card key={activity.id || idx} className="card-modern hover-lift" data-testid={`card-activity-${idx}`}>
-                      <CardContent className="p-3 flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Compass className="h-5 w-5 text-primary/70" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium">{activity.title}</p>
-                            <Badge variant="outline" className="text-xs capitalize">{activity.type}</Badge>
-                            {activity.duration && <Badge variant="secondary" className="text-xs"><Clock className="h-3 w-3 mr-1" />{activity.duration}</Badge>}
+                <div className="space-y-3">
+                  {activitiesData.activities.map((activity: any, idx: number) => {
+                    const activityType = (activity.type || "general").toLowerCase();
+                    const thumb = getContentThumbnail(
+                      activityType.includes("outdoor") || activityType.includes("nature") ? "environmental"
+                      : activityType.includes("meditat") || activityType.includes("breath") ? "meditation"
+                      : activityType.includes("social") ? "social"
+                      : activityType.includes("exercise") || activityType.includes("fitness") ? "workout"
+                      : activityType.includes("journal") || activityType.includes("write") ? "intellectual"
+                      : activityType.includes("spiritual") || activityType.includes("prayer") ? "spiritual"
+                      : "general",
+                      String(idx)
+                    );
+                    const route = getDwRouteForContent(activity.type || "", activity.title || "");
+                    return (
+                      <Card
+                        key={activity.id || idx}
+                        className="card-modern overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => setLocation(route)}
+                        data-testid={`card-activity-${idx}`}
+                      >
+                        <div className="aspect-[16/7] w-full overflow-hidden relative">
+                          <img
+                            src={thumb}
+                            alt={activity.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                          <div className="absolute bottom-0 left-0 right-0 p-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="text-[10px] bg-white/20 text-white border-white/30 backdrop-blur-sm capitalize">{activity.type}</Badge>
+                              {activity.duration && (
+                                <Badge className="text-[10px] bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                                  <Clock className="h-2.5 w-2.5 mr-1" />{activity.duration}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{activity.description}</p>
-                          {activity.whyPicked && <p className="text-xs text-primary mt-1 italic">"{activity.whyPicked}"</p>}
                         </div>
-                        {activity.canAddToSchedule && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 shrink-0"
-                            onClick={() => handleAddToSchedule({ title: activity.title, url: "", type: "activity" })}
-                            data-testid={`button-activity-schedule-${idx}`}
-                          >
-                            <Calendar className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                        <CardContent className="p-3">
+                          <p className="font-semibold text-sm leading-snug mb-1">{activity.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{activity.description}</p>
+                          {activity.whyPicked && (
+                            <p className="text-xs text-primary italic mb-2 line-clamp-2">"{activity.whyPicked}"</p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-xs h-8"
+                              onClick={(e) => { e.stopPropagation(); setLocation(route); }}
+                              data-testid={`button-activity-open-${idx}`}
+                            >
+                              <Compass className="h-3 w-3 mr-1.5" />
+                              Try This
+                            </Button>
+                            {activity.canAddToSchedule && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs h-8 px-2"
+                                onClick={(e) => { e.stopPropagation(); handleAddToSchedule({ title: activity.title, url: "", type: "activity" }); }}
+                                data-testid={`button-activity-schedule-${idx}`}
+                              >
+                                <Calendar className="h-3 w-3 mr-1" />
+                                Schedule
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1752,34 +1798,65 @@ ${contentList}`,
                   {learningData.resources.map((resource: any, idx: number) => (
                     <Card
                       key={resource.id || idx}
-                      className="card-modern hover-lift cursor-pointer"
+                      className="card-modern overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                       onClick={() => isSafeExternalUrl(resource.url) && window.open(resource.url, "_blank", "noopener,noreferrer")}
                       data-testid={`card-learning-${idx}`}
                     >
-                      <CardContent className="p-3 flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          {resource.type === "video" ? <Play className="h-5 w-5 text-primary/70" /> :
-                           resource.type === "podcast" ? <MessageCircle className="h-5 w-5 text-primary/70" /> :
-                           <FileText className="h-5 w-5 text-primary/70" />}
+                      <div className="aspect-[16/7] w-full overflow-hidden relative">
+                        <img
+                          src={getContentThumbnail(
+                            resource.type === "video" ? "video"
+                            : resource.type === "podcast" ? "intellectual"
+                            : "article",
+                            String(idx)
+                          )}
+                          alt={resource.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                        <div className="absolute top-2 left-2">
+                          <Badge className="text-[10px] bg-black/50 text-white border-white/20 backdrop-blur-sm capitalize">
+                            {resource.type === "video" ? "🎬 Video"
+                             : resource.type === "podcast" ? "🎙️ Podcast"
+                             : "📖 Article"}
+                          </Badge>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                            <p className="text-sm font-medium line-clamp-1">{resource.title}</p>
+                        {resource.duration && (
+                          <div className="absolute bottom-2 right-2 bg-black/60 px-1.5 py-0.5 rounded text-white text-[10px]">
+                            {resource.duration}
                           </div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-xs capitalize">{resource.source}</Badge>
-                            {resource.duration && <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{resource.duration}</span>}
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{resource.description}</p>
-                          {resource.whyPicked && <p className="text-xs text-primary mt-1 italic">"{resource.whyPicked}"</p>}
+                        )}
+                      </div>
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Badge variant="outline" className="text-[10px] capitalize">{resource.source}</Badge>
                         </div>
-                        <div className="flex flex-col gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); isSafeExternalUrl(resource.url) && window.open(resource.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-learning-open-${idx}`}>
-                            <ExternalLink className="h-3.5 w-3.5" />
+                        <p className="font-semibold text-sm leading-snug mb-1 line-clamp-2">{resource.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{resource.description}</p>
+                        {resource.whyPicked && (
+                          <p className="text-xs text-primary italic mb-2 line-clamp-1">"{resource.whyPicked}"</p>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 text-xs h-8"
+                            onClick={(e) => { e.stopPropagation(); isSafeExternalUrl(resource.url) && window.open(resource.url, "_blank", "noopener,noreferrer"); }}
+                            data-testid={`button-learning-open-${idx}`}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1.5" />
+                            {resource.type === "video" ? "Watch" : resource.type === "podcast" ? "Listen" : "Read"}
                           </Button>
                           {resource.canAddToSchedule && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleAddToSchedule({ title: resource.title, url: resource.url || "", type: "learning" }); }} data-testid={`button-learning-schedule-${idx}`}>
-                              <Calendar className="h-3.5 w-3.5" />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs h-8 px-2"
+                              onClick={(e) => { e.stopPropagation(); handleAddToSchedule({ title: resource.title, url: resource.url || "", type: "learning" }); }}
+                              data-testid={`button-learning-schedule-${idx}`}
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Schedule
                             </Button>
                           )}
                         </div>
