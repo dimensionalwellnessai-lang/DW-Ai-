@@ -115,6 +115,98 @@ const DIMENSION_IMAGES: Record<string, string> = {
   general:       "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=600&q=80",
 };
 
+const CONTENT_THUMBNAILS: Record<string, string[]> = {
+  workout: [
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?auto=format&fit=crop&w=700&q=80",
+  ],
+  meditation: [
+    "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=700&q=80",
+  ],
+  mindfulness: [
+    "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=700&q=80",
+  ],
+  nutrition: [
+    "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=700&q=80",
+  ],
+  meal: [
+    "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=700&q=80",
+  ],
+  financial: [
+    "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=700&q=80",
+  ],
+  emotional: [
+    "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=700&q=80",
+  ],
+  spiritual: [
+    "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1536623975707-c4b3b2af565d?auto=format&fit=crop&w=700&q=80",
+  ],
+  social: [
+    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1573497620053-ea5300f94f21?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?auto=format&fit=crop&w=700&q=80",
+  ],
+  environmental: [
+    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?auto=format&fit=crop&w=700&q=80",
+  ],
+  intellectual: [
+    "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&w=700&q=80",
+  ],
+  purpose: [
+    "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=700&q=80",
+  ],
+  entertainment: [
+    "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=700&q=80",
+  ],
+  article: [
+    "https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80",
+  ],
+  video: [
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=700&q=80",
+  ],
+  general: [
+    "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=700&q=80",
+    "https://images.unsplash.com/photo-1517520287167-4bbf64a00d66?auto=format&fit=crop&w=700&q=80",
+  ],
+};
+
+function getContentThumbnail(category: string, id?: string): string {
+  const normalized = (category || "general").toLowerCase().replace(/-/g, "");
+  const pool =
+    CONTENT_THUMBNAILS[normalized] ||
+    CONTENT_THUMBNAILS[normalized.replace("physical", "workout")] ||
+    CONTENT_THUMBNAILS[normalized.replace("finance", "financial")] ||
+    CONTENT_THUMBNAILS[normalized.replace("mind", "mindfulness")] ||
+    CONTENT_THUMBNAILS.general;
+  const key = id || category;
+  const idx = Math.abs(key.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % pool.length;
+  return pool[idx];
+}
+
 const CONTENT_CATEGORIES = [
   { id: "workout", name: "Workouts", icon: Dumbbell },
   { id: "meditation", name: "Meditation", icon: Brain },
@@ -1255,17 +1347,56 @@ ${contentList}`,
       <div className="flex-1 overflow-y-auto overflow-x-hidden -webkit-overflow-scrolling-touch">
 
       {activeTab === "for-you" && (
-        <main className="p-4 space-y-6">
+        <main className="pb-28">
           {/* Time-aware greeting */}
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{getTimeGreeting()}{userProfile?.firstName ? `, ${userProfile.firstName}` : ""}</span>
-              {" — "}{dayNameNow} picks tailored for this time of day
+              <span className="font-semibold text-foreground">{getTimeGreeting()}{userProfile?.firstName ? `, ${userProfile.firstName}` : ""}</span>
+              {" — "}{dayNameNow} picks tailored for you
             </span>
           </div>
 
-          {/* Real time-aware content from Perplexity — X/Facebook-style unified feed */}
+          {/* ── Featured Carousel ── */}
+          <div className="pt-4 pb-2">
+            <div className="flex items-center gap-2 px-4 mb-3">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold">Featured This Week</h2>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 px-4 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+              {CURATED_VIDEO_LIBRARY.slice(0, 10).map((v) => (
+                <button
+                  key={v.id}
+                  className="shrink-0 w-52 snap-start text-left group"
+                  onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
+                  data-testid={`card-carousel-${v.id}`}
+                >
+                  <div className="w-52 h-32 rounded-xl overflow-hidden relative bg-muted mb-2">
+                    <img
+                      src={v.thumb}
+                      alt={v.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                    <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors rounded-xl" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="bg-white/90 rounded-full p-2.5">
+                        <Play className="h-5 w-5 text-gray-900 fill-gray-900" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
+                      <span className="text-white text-[10px] font-semibold bg-black/50 px-1.5 py-0.5 rounded">{v.dimensionLabel}</span>
+                      <span className="text-white text-[10px] bg-black/60 px-1.5 py-0.5 rounded">{v.duration}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs font-semibold leading-snug line-clamp-2 px-0.5">{v.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 px-0.5">{v.channel}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Unified Mixed Feed ── */}
           {forYouLoading ? (
             <div className="space-y-0 divide-y divide-border/20">
               {[...Array(4)].map((_, i) => (
@@ -1281,158 +1412,247 @@ ${contentList}`,
                 </div>
               ))}
             </div>
-          ) : forYouData ? (
+          ) : forYouData ? (() => {
+            // Build a unified mixed feed from all content types
+            type FeedItem =
+              | { kind: "video";   data: typeof forYouData.videos[0] }
+              | { kind: "article"; data: typeof forYouData.articles[0] }
+              | { kind: "workout"; data: NonNullable<typeof forYouData.workouts>[0] }
+              | { kind: "meal";    data: NonNullable<typeof forYouData.meal> };
+
+            const raw: FeedItem[] = [];
+            forYouData.videos.slice(0, 5).forEach(v => raw.push({ kind: "video", data: v }));
+            forYouData.articles.slice(0, 4).forEach(a => raw.push({ kind: "article", data: a }));
+            (forYouData.workouts || []).slice(0, 3).forEach(w => raw.push({ kind: "workout", data: w }));
+            if (forYouData.meal) raw.push({ kind: "meal", data: forYouData.meal });
+
+            // Interleave: rotate through types rather than grouping
+            const byKind: Record<string, FeedItem[]> = {};
+            raw.forEach(item => {
+              if (!byKind[item.kind]) byKind[item.kind] = [];
+              byKind[item.kind].push(item);
+            });
+            const kinds = Object.keys(byKind);
+            const mixed: FeedItem[] = [];
+            let anyLeft = true;
+            let round = 0;
+            while (anyLeft) {
+              anyLeft = false;
+              for (const k of kinds) {
+                if (byKind[k][round]) {
+                  mixed.push(byKind[k][round]);
+                  anyLeft = true;
+                }
+              }
+              round++;
+            }
+
+            const filtered = mixed.filter(item => {
+              const url = item.kind === "video" ? item.data.url
+                : item.kind === "article" ? item.data.url
+                : item.kind === "workout" ? item.data.url
+                : item.kind === "meal" ? item.data.url : "";
+              return !notInterestedUrls.has(url);
+            });
+
+            return (
             <div className="divide-y divide-border/20">
-              {/* Videos — X/Facebook post style */}
-              {forYouData.videos.slice(0, 4).filter(v => !notInterestedUrls.has(v.url)).map((video) => (
-                <div key={video.id} className="py-5 space-y-3" data-testid={`card-foryou-video-${video.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Play className="h-3 w-3 text-red-500 fill-red-500" />
-                      <span className="font-medium">{video.channel || "YouTube"}</span>
-                      {video.duration && <><span>·</span><span>{video.duration}</span></>}
-                    </div>
-                    <Badge className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">VIDEO</Badge>
-                  </div>
-                  <button
-                    className={`w-full aspect-video rounded-xl bg-gradient-to-br ${getCategoryGradient(video.category)} flex items-center justify-center group overflow-hidden border border-border/20 relative`}
-                    onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }}
-                    data-testid={`button-foryou-video-thumb-${video.id}`}
-                  >
-                    {(() => {
-                      const yt = getYouTubeThumbnail(video.url);
-                      return yt ? (
+              {filtered.map((item, idx) => {
+                if (item.kind === "video") {
+                  const video = item.data;
+                  const thumb = getContentThumbnail(video.category || "video", video.id);
+                  return (
+                    <div key={`v-${video.id}`} className="px-4 py-5 space-y-3" data-testid={`card-foryou-video-${video.id}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Play className="h-3 w-3 text-red-500 fill-red-500" />
+                          <span className="font-medium">{video.channel || "YouTube"}</span>
+                          {video.duration && <><span>·</span><span>{video.duration}</span></>}
+                        </div>
+                        <Badge className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">VIDEO</Badge>
+                      </div>
+                      <button
+                        className="w-full aspect-video rounded-xl overflow-hidden relative group block"
+                        onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`button-foryou-video-thumb-${video.id}`}
+                      >
                         <img
-                          src={yt}
+                          src={thumb}
                           alt={video.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                      ) : null;
-                    })()}
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-                    <Play className="relative h-14 w-14 text-white/80 group-hover:text-white transition-colors drop-shadow-lg" />
-                  </button>
-                  <h3 className="font-semibold text-base leading-snug">{video.title}</h3>
-                  {video.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{video.description}</p>}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-video-open-${video.id}`}>
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Watch
-                    </Button>
-                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: video.title, url: video.url, type: "video" })} data-testid={`button-foryou-video-notinterested-${video.id}`} title="Not interested">
-                      <ThumbsDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                            <Play className="h-7 w-7 text-white fill-white ml-1" />
+                          </div>
+                        </div>
+                      </button>
+                      <h3 className="font-semibold text-base leading-snug">{video.title}</h3>
+                      {video.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{video.description}</p>}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-video-open-${video.id}`}>
+                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Watch
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: video.title, url: video.url, type: "video" })} title="Not interested" data-testid={`button-foryou-video-notinterested-${video.id}`}>
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
 
-              {/* Articles — X/Facebook post style */}
-              {forYouData.articles.slice(0, 3).filter(a => !notInterestedUrls.has(a.url)).map((article) => (
-                <div key={article.id} className="py-5 space-y-3" data-testid={`card-foryou-article-${article.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3 text-blue-500" />
-                      <span className="font-medium">{article.source || "Article"}</span>
-                      {article.readTimeMinutes && <><span>·</span><span>{article.readTimeMinutes} min read</span></>}
+                if (item.kind === "article") {
+                  const article = item.data;
+                  const thumb = getContentThumbnail((article as any).dimension || "article", article.id);
+                  return (
+                    <div key={`a-${article.id}`} className="px-4 py-5 space-y-3" data-testid={`card-foryou-article-${article.id}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <FileText className="h-3 w-3 text-blue-500" />
+                          <span className="font-medium">{article.source || "Article"}</span>
+                          {article.readTimeMinutes && <><span>·</span><span>{article.readTimeMinutes} min read</span></>}
+                        </div>
+                        <Badge className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">ARTICLE</Badge>
+                      </div>
+                      <button
+                        className="w-full aspect-video rounded-xl overflow-hidden relative group block"
+                        onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`button-foryou-article-thumb-${article.id}`}
+                      >
+                        <img
+                          src={thumb}
+                          alt={article.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                        <div className="absolute bottom-3 left-3">
+                          <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <FileText className="h-3 w-3 text-white" />
+                            <span className="text-white text-[11px] font-medium">Read Article</span>
+                          </div>
+                        </div>
+                      </button>
+                      <h3 className="font-semibold text-base leading-snug">{article.title}</h3>
+                      {article.synopsis && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{article.synopsis}</p>}
+                      {article.whySuggested && (
+                        <div className="flex items-start gap-2 rounded-lg bg-primary/5 px-3 py-2 text-xs text-muted-foreground border border-primary/10">
+                          <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                          <span>{article.whySuggested}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-article-open-${article.id}`}>
+                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Read
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: article.title, url: article.url, type: "article" })} title="Not interested">
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Badge className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">ARTICLE</Badge>
-                  </div>
-                  <div className="relative aspect-[2/1] rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500/10 to-violet-500/5 border border-border/20 flex items-center justify-center">
-                    {DIMENSION_IMAGES[article.dimension || "general"] && (
-                      <img
-                        src={DIMENSION_IMAGES[article.dimension || "general"]}
-                        alt={article.title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-60"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <FileText className="relative h-8 w-8 text-white/60" />
-                  </div>
-                  <h3 className="font-semibold text-base leading-snug">{article.title}</h3>
-                  {article.whySuggested && (
-                    <div className="flex items-start gap-2 rounded-lg bg-primary/5 px-3 py-2 text-xs text-muted-foreground border border-primary/10">
-                      <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
-                      <span>{article.whySuggested}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-article-open-${article.id}`}>
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Read
-                    </Button>
-                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: article.title, url: article.url, type: "article" })} title="Not interested">
-                      <ThumbsDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  );
+                }
 
-              {/* Workouts — X/Facebook post style */}
-              {forYouData.workouts && forYouData.workouts.filter(w => !notInterestedUrls.has(w.url)).map((workout) => (
-                <div key={workout.id} className="py-5 space-y-3" data-testid={`card-foryou-workout-${workout.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Dumbbell className="h-3 w-3 text-orange-500" />
-                      <span className="font-medium">{workout.channel || "Workout"}</span>
-                      {workout.duration && <><span>·</span><span>{workout.duration}</span></>}
+                if (item.kind === "workout") {
+                  const workout = item.data;
+                  const thumb = getContentThumbnail("workout", workout.id);
+                  return (
+                    <div key={`w-${workout.id}`} className="px-4 py-5 space-y-3" data-testid={`card-foryou-workout-${workout.id}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Dumbbell className="h-3 w-3 text-orange-500" />
+                          <span className="font-medium">{workout.duration || "Workout"}</span>
+                          {workout.difficulty && <><span>·</span><span className="capitalize">{workout.difficulty}</span></>}
+                        </div>
+                        <Badge className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">WORKOUT</Badge>
+                      </div>
+                      <button
+                        className="w-full aspect-video rounded-xl overflow-hidden relative group block"
+                        onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`button-foryou-workout-thumb-${workout.id}`}
+                      >
+                        <img
+                          src={thumb}
+                          alt={workout.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                            <Dumbbell className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </button>
+                      <h3 className="font-semibold text-base leading-snug">{workout.title}</h3>
+                      {workout.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{workout.description}</p>}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-workout-open-${workout.id}`}>
+                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
+                        </Button>
+                        <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => handleAddToSchedule({ title: workout.title, url: workout.url || "", type: "workout" })} data-testid={`button-foryou-workout-schedule-${workout.id}`}>
+                          <Calendar className="h-3.5 w-3.5" /> Schedule
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: workout.title, url: workout.url, type: "workout" })} title="Not interested">
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {workout.difficulty && <Badge variant="outline" className="text-[10px] capitalize">{workout.difficulty}</Badge>}
-                      <Badge className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">WORKOUT</Badge>
-                    </div>
-                  </div>
-                  <button
-                    className="w-full aspect-video rounded-xl bg-gradient-to-br from-orange-500/15 to-red-500/5 flex items-center justify-center border border-border/20 group"
-                    onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }}
-                    data-testid={`button-foryou-workout-thumb-${workout.id}`}
-                  >
-                    <Dumbbell className="h-14 w-14 text-orange-500/20 group-hover:text-orange-500/30 transition-colors" />
-                  </button>
-                  <h3 className="font-semibold text-base leading-snug">{workout.title}</h3>
-                  {workout.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{workout.description}</p>}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(workout.url)) window.open(workout.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-foryou-workout-open-${workout.id}`}>
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
-                    </Button>
-                    <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => handleAddToSchedule({ title: workout.title, url: workout.url || "", type: "workout" })} data-testid={`button-foryou-workout-schedule-${workout.id}`}>
-                      <Calendar className="h-3.5 w-3.5" /> Schedule
-                    </Button>
-                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: workout.title, url: workout.url, type: "workout" })} title="Not interested">
-                      <ThumbsDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  );
+                }
 
-              {/* Meal — X/Facebook post style */}
-              {forYouData.meal && !notInterestedUrls.has(forYouData.meal.url) && (
-                <div className="py-5 space-y-3" data-testid="card-foryou-meal">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Utensils className="h-3 w-3 text-yellow-500" />
-                      <span className="font-medium">Meal Idea</span>
-                      {forYouData.meal.prepTime && <><span>·</span><span>{forYouData.meal.prepTime}</span></>}
+                if (item.kind === "meal") {
+                  const meal = item.data;
+                  const thumb = getContentThumbnail("meal", meal.id);
+                  return (
+                    <div key={`m-${meal.id}`} className="px-4 py-5 space-y-3" data-testid="card-foryou-meal">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Utensils className="h-3 w-3 text-yellow-500" />
+                          <span className="font-medium">Meal Idea</span>
+                          {meal.prepTime && <><span>·</span><span>{meal.prepTime}</span></>}
+                        </div>
+                        <Badge className="text-[10px] bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20">RECIPE</Badge>
+                      </div>
+                      <button
+                        className="w-full aspect-video rounded-xl overflow-hidden relative group block"
+                        onClick={() => { if (isSafeExternalUrl(meal.url)) window.open(meal.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid="button-foryou-meal-thumb"
+                      >
+                        <img
+                          src={thumb}
+                          alt={meal.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                        <div className="absolute bottom-3 left-3">
+                          <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                            <Utensils className="h-3 w-3 text-white" />
+                            <span className="text-white text-[11px] font-medium">View Recipe</span>
+                          </div>
+                        </div>
+                      </button>
+                      <h3 className="font-semibold text-base leading-snug">{meal.title}</h3>
+                      {meal.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{meal.description}</p>}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (isSafeExternalUrl(meal.url)) window.open(meal.url, "_blank", "noopener,noreferrer"); }} data-testid="button-foryou-meal-open">
+                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View Recipe
+                        </Button>
+                        <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => handleNotInterested({ title: meal.title, url: meal.url, type: "meal" })} title="Not interested">
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <Badge className="text-[10px] bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20">RECIPE</Badge>
-                  </div>
-                  <div className="flex items-center justify-center aspect-[3/1] rounded-xl bg-gradient-to-br from-yellow-500/15 to-orange-500/5 border border-border/20">
-                    <Utensils className="h-10 w-10 text-yellow-500/25" />
-                  </div>
-                  <h3 className="font-semibold text-base leading-snug">{forYouData.meal.title}</h3>
-                  {forYouData.meal.description && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{forYouData.meal.description}</p>}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => { if (forYouData.meal && isSafeExternalUrl(forYouData.meal.url)) window.open(forYouData.meal.url, "_blank", "noopener,noreferrer"); }} data-testid="button-foryou-meal-open">
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View Recipe
-                    </Button>
-                    <Button size="icon" variant="ghost" className="text-muted-foreground/50 hover:text-destructive" onClick={() => forYouData.meal && handleNotInterested({ title: forYouData.meal.title, url: forYouData.meal.url, type: "meal" })} title="Not interested">
-                      <ThumbsDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+                  );
+                }
+
+                return null;
+              })}
             </div>
-          ) : null}
+            );
+          })() : null}
 
+          {/* ── Secondary Sections ── */}
+          <div className="px-4 pt-6 space-y-8">
           {/* Entertainment: TV/Movies */}
           {(entertainmentLoading || (entertainmentData?.shows && entertainmentData.shows.length > 0)) && (
             <div className="space-y-3">
@@ -1442,23 +1662,28 @@ ${contentList}`,
                 {entertainmentLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
               {entertainmentData?.shows && (
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory">
+                <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
                   {entertainmentData.shows.map((show: any, idx: number) => (
-                    <Card
+                    <button
                       key={show.id || idx}
-                      className="card-modern shrink-0 w-44 snap-start cursor-pointer hover-lift"
+                      className="shrink-0 w-40 snap-start text-left group"
                       onClick={() => isSafeExternalUrl(show.searchUrl) && window.open(show.searchUrl, "_blank", "noopener,noreferrer")}
                       data-testid={`card-entertainment-${idx}`}
                     >
-                      <div className="aspect-[3/4] bg-gradient-to-br from-violet-500/20 to-indigo-500/10 rounded-t-lg flex items-center justify-center">
-                        <Video className="h-10 w-10 text-primary/40" />
+                      <div className="w-40 h-24 rounded-xl overflow-hidden relative bg-muted mb-2">
+                        <img
+                          src={getContentThumbnail("entertainment", String(idx))}
+                          alt={show.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
+                        <div className="absolute top-2 left-2">
+                          <span className="text-white text-[10px] bg-violet-600/80 px-1.5 py-0.5 rounded font-medium">{show.platform}</span>
+                        </div>
                       </div>
-                      <CardContent className="p-2.5">
-                        <Badge variant="outline" className="text-xs mb-1">{show.platform}</Badge>
-                        <p className="text-xs font-semibold leading-snug line-clamp-2">{show.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{show.whyPicked}</p>
-                      </CardContent>
-                    </Card>
+                      <p className="text-xs font-semibold leading-snug line-clamp-2 px-0.5">{show.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 px-0.5 line-clamp-1">{show.whyPicked}</p>
+                    </button>
                   ))}
                 </div>
               )}
@@ -1610,7 +1835,6 @@ ${contentList}`,
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {forYouContent.filter(c => !notInterestedUrls.has((c as any).url || "")).slice(0, FOR_YOU_PAGE_SIZE).map((item) => {
-                const CategoryIcon = getCategoryIcon(item.category);
                 return (
                   <Card
                     key={item.id}
@@ -1618,8 +1842,13 @@ ${contentList}`,
                     onClick={() => handleContentClick(item)}
                     data-testid={`card-foryou-${item.id}`}
                   >
-                    <div className={`aspect-video bg-gradient-to-br ${getCategoryGradient(item.category)} rounded-t-md flex items-center justify-center relative group`}>
-                      <CategoryIcon className="h-12 w-12 text-primary/40 group-hover:scale-110 transition-transform" />
+                    <div className="aspect-video rounded-t-md overflow-hidden relative group">
+                      <img
+                        src={(item as any).thumbnailUrl || getContentThumbnail(item.category, item.id)}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
                       <Button
                         size="icon"
                         className="absolute bottom-3 right-3 rounded-full shadow-lg opacity-90 hover:opacity-100"
@@ -1690,6 +1919,7 @@ ${contentList}`,
                 </p>
               </div>
             )}
+          </div>
           </div>
         </main>
       )}
@@ -2634,27 +2864,30 @@ ${contentList}`,
                     }}
                     data-testid={`card-ai-article-${article.id}`}
                   >
+                    <div className="aspect-video w-full overflow-hidden rounded-t-lg relative">
+                      <img
+                        src={getContentThumbnail(article.category || "article", article.id)}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="text-[10px] bg-black/60 text-white border-0">
+                          <Clock className="h-2.5 w-2.5 mr-1" />
+                          {article.readTimeMinutes}m
+                        </Badge>
+                      </div>
+                    </div>
                     <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
-                          <FileText className="h-5 w-5 text-indigo-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h3 className="font-medium text-sm leading-snug">{article.title}</h3>
-                            <Badge variant="secondary" className="text-xs shrink-0">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {article.readTimeMinutes}m
-                            </Badge>
+                        <h3 className="font-semibold text-sm leading-snug mb-1.5">{article.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{article.synopsis}</p>
+                        {article.whySuggested && (
+                          <div className="flex items-start gap-1.5 text-xs text-primary bg-primary/5 rounded-md px-2 py-1.5 mb-2">
+                            <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
+                            <span>{article.whySuggested}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">{article.synopsis}</p>
-                          {article.whySuggested && (
-                            <div className="flex items-start gap-1.5 text-xs text-primary bg-primary/5 rounded-md px-2 py-1.5">
-                              <Sparkles className="h-3 w-3 mt-0.5 shrink-0" />
-                              <span>{article.whySuggested}</span>
-                            </div>
-                          )}
-                          <div className="flex gap-2 mt-3">
+                        )}
+                          <div className="flex gap-2">
                             <Button
                               size="sm"
                               variant="outline"
@@ -2708,8 +2941,6 @@ ${contentList}`,
                               <ThumbsDown className="h-3.5 w-3.5" />
                             </Button>
                           </div>
-                        </div>
-                      </div>
                     </CardContent>
                   </Card>
                 ))}
