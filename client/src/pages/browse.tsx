@@ -145,6 +145,55 @@ function getDayName(): string {
   return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
 }
 
+// ── Curated Video Library — diverse topics across all 8 wellness dimensions ──
+const CURATED_VIDEO_LIBRARY = [
+  // PHYSICAL
+  { id: "cv01", dimension: "physical", dimensionLabel: "Physical", title: "Full Body HIIT – No Equipment", channel: "Heather Robertson", duration: "28 min", url: "https://www.youtube.com/results?search_query=full+body+hiit+no+equipment+heather+robertson", thumb: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv02", dimension: "physical", dimensionLabel: "Physical", title: "Morning Yoga for Energy", channel: "Yoga With Adriene", duration: "20 min", url: "https://www.youtube.com/results?search_query=morning+yoga+energy+flow+adriene", thumb: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv03", dimension: "physical", dimensionLabel: "Physical", title: "Strength Training for Beginners", channel: "Jeff Nippard", duration: "35 min", url: "https://www.youtube.com/results?search_query=strength+training+beginners+full+workout", thumb: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv04", dimension: "physical", dimensionLabel: "Physical", title: "5-Min Desk Stretch – Posture Reset", channel: "FitnessBlender", duration: "5 min", url: "https://www.youtube.com/results?search_query=desk+stretch+posture+reset+5+minutes", thumb: "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=400&q=80" },
+  // EMOTIONAL
+  { id: "cv05", dimension: "emotional", dimensionLabel: "Emotional", title: "Guided Breathwork for Anxiety", channel: "Wim Hof", duration: "12 min", url: "https://www.youtube.com/results?search_query=guided+breathwork+anxiety+relief", thumb: "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv06", dimension: "emotional", dimensionLabel: "Emotional", title: "How to Process Difficult Emotions", channel: "Therapy in a Nutshell", duration: "18 min", url: "https://www.youtube.com/results?search_query=how+to+process+difficult+emotions+therapy", thumb: "https://images.unsplash.com/photo-1499346374228-67ad95a1d63d?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv07", dimension: "emotional", dimensionLabel: "Emotional", title: "10-Min Body Scan Meditation", channel: "Headspace", duration: "10 min", url: "https://www.youtube.com/results?search_query=10+minute+body+scan+meditation+headspace", thumb: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=400&q=80" },
+  // FINANCIAL
+  { id: "cv08", dimension: "financial", dimensionLabel: "Financial", title: "Budgeting for Beginners – Zero-Based", channel: "Graham Stephan", duration: "22 min", url: "https://www.youtube.com/results?search_query=budgeting+for+beginners+zero+based+budget", thumb: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv09", dimension: "financial", dimensionLabel: "Financial", title: "Investing in Your 20s & 30s", channel: "Andrei Jikh", duration: "17 min", url: "https://www.youtube.com/results?search_query=investing+20s+30s+beginners+index+funds", thumb: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv10", dimension: "financial", dimensionLabel: "Financial", title: "The Psychology of Money", channel: "Thomas Frank", duration: "25 min", url: "https://www.youtube.com/results?search_query=psychology+of+money+habits+wealth+mindset", thumb: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=400&q=80" },
+  // SOCIAL
+  { id: "cv11", dimension: "social", dimensionLabel: "Social", title: "How to Make Friends as an Adult", channel: "Psych2Go", duration: "8 min", url: "https://www.youtube.com/results?search_query=how+to+make+friends+as+an+adult", thumb: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv12", dimension: "social", dimensionLabel: "Social", title: "Improve Your Communication Skills", channel: "Charisma on Command", duration: "14 min", url: "https://www.youtube.com/results?search_query=improve+communication+skills+charisma", thumb: "https://images.unsplash.com/photo-1573497620053-ea5300f94f21?auto=format&fit=crop&w=400&q=80" },
+  // SPIRITUAL
+  { id: "cv13", dimension: "spiritual", dimensionLabel: "Spiritual", title: "Morning Gratitude Meditation", channel: "Great Meditation", duration: "15 min", url: "https://www.youtube.com/results?search_query=morning+gratitude+meditation+guided", thumb: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv14", dimension: "spiritual", dimensionLabel: "Spiritual", title: "Manifestation & Law of Attraction", channel: "Michael Sealey", duration: "30 min", url: "https://www.youtube.com/results?search_query=manifestation+law+of+attraction+guided+meditation", thumb: "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?auto=format&fit=crop&w=400&q=80" },
+  // INTELLECTUAL
+  { id: "cv15", dimension: "intellectual", dimensionLabel: "Intellectual", title: "How to Learn Anything Faster", channel: "Thomas Frank", duration: "16 min", url: "https://www.youtube.com/results?search_query=how+to+learn+anything+faster+science+study", thumb: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv16", dimension: "intellectual", dimensionLabel: "Intellectual", title: "The Science of Getting Good Sleep", channel: "Andrew Huberman", duration: "20 min", url: "https://www.youtube.com/results?search_query=science+of+sleep+huberman+lab+improve+sleep", thumb: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv17", dimension: "intellectual", dimensionLabel: "Intellectual", title: "Brain Health & Neuroplasticity", channel: "Huberman Lab", duration: "45 min", url: "https://www.youtube.com/results?search_query=brain+health+neuroplasticity+huberman", thumb: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" },
+  // ENVIRONMENTAL
+  { id: "cv18", dimension: "environmental", dimensionLabel: "Environmental", title: "How to Build a Calming Home Space", channel: "Pick Up Limes", duration: "12 min", url: "https://www.youtube.com/results?search_query=how+to+create+calming+home+environment", thumb: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv19", dimension: "environmental", dimensionLabel: "Environmental", title: "Digital Detox – Reclaim Your Mind", channel: "Matt D'Avella", duration: "18 min", url: "https://www.youtube.com/results?search_query=digital+detox+reclaim+attention+phone+addiction", thumb: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?auto=format&fit=crop&w=400&q=80" },
+  // PURPOSE / MINDSET
+  { id: "cv20", dimension: "purpose", dimensionLabel: "Purpose", title: "Finding Your Life's Purpose", channel: "Jay Shetty", duration: "22 min", url: "https://www.youtube.com/results?search_query=finding+life+purpose+how+to+know+your+why", thumb: "https://images.unsplash.com/photo-1474540412665-1cdae210ae6b?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv21", dimension: "purpose", dimensionLabel: "Purpose", title: "Building Habits That Last", channel: "James Clear", duration: "20 min", url: "https://www.youtube.com/results?search_query=building+habits+that+last+atomic+habits+james+clear", thumb: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv22", dimension: "purpose", dimensionLabel: "Purpose", title: "Overcome Fear & Self-Doubt", channel: "Mel Robbins", duration: "16 min", url: "https://www.youtube.com/results?search_query=overcome+fear+self+doubt+confidence+mel+robbins", thumb: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=400&q=80" },
+  // NUTRITION
+  { id: "cv23", dimension: "nutrition", dimensionLabel: "Nutrition", title: "Meal Prep for the Week – Healthy & Easy", channel: "Pick Up Limes", duration: "25 min", url: "https://www.youtube.com/results?search_query=healthy+meal+prep+week+easy+pick+up+limes", thumb: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80" },
+  { id: "cv24", dimension: "nutrition", dimensionLabel: "Nutrition", title: "Anti-Inflammatory Foods Explained", channel: "Dr. Mark Hyman", duration: "18 min", url: "https://www.youtube.com/results?search_query=anti+inflammatory+foods+explained+gut+health", thumb: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80" },
+];
+
+const VIDEO_DIMENSIONS = [
+  { key: "physical",      label: "Physical",      emoji: "💪" },
+  { key: "emotional",     label: "Emotional",     emoji: "🧠" },
+  { key: "financial",     label: "Financial",     emoji: "💰" },
+  { key: "social",        label: "Social",        emoji: "🤝" },
+  { key: "spiritual",     label: "Spiritual",     emoji: "✨" },
+  { key: "intellectual",  label: "Intellectual",  emoji: "📚" },
+  { key: "environmental", label: "Environmental", emoji: "🌿" },
+  { key: "purpose",       label: "Purpose",       emoji: "🎯" },
+  { key: "nutrition",     label: "Nutrition",     emoji: "🥗" },
+];
+
 // Minimal static fallback for the "All" tab (real content comes from APIs)
 const SAMPLE_CONTENT = [
   {
@@ -2312,34 +2361,52 @@ ${contentList}`,
             </div>
           )}
 
-          {/* Auto-loaded time-aware videos */}
+          {/* ── Right now picks (Perplexity / time-aware) ── */}
           {forYouLoading ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Play className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Loading picks...</h2>
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="text-base font-semibold">Finding picks for you…</h2>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
               </div>
-              {[...Array(3)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                    <div className="h-3 bg-muted rounded w-full" />
-                  </CardContent>
-                </Card>
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex gap-3 animate-pulse">
+                  <div className="w-20 h-14 rounded-lg bg-muted shrink-0" />
+                  <div className="flex-1 space-y-1.5 py-1">
+                    <div className="h-3.5 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </div>
+                </div>
               ))}
             </div>
-          ) : forYouData?.videos && forYouData.videos.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Play className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Recommended for {forYouData.timeLabel ?? timeSlotNow}</h2>
+          ) : forYouData?.videos && forYouData.videos.filter(v => !notInterestedUrls.has(v.url)).length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold">Picks for {forYouData.timeLabel ?? timeSlotNow}</h2>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSearchDialogType("youtube");
+                    setSearchDialogOpen(true);
+                    setExternalSearchQuery("");
+                    setExternalSearchResults([]);
+                  }}
+                  className="text-xs h-7"
+                  data-testid="button-video-search-youtube"
+                >
+                  <Youtube className="h-3.5 w-3.5 mr-1" />
+                  Search
+                </Button>
               </div>
               <div className="space-y-2">
                 {forYouData.videos.filter(v => !notInterestedUrls.has(v.url)).map((video) => (
                   <Card key={video.id} className="card-modern hover-lift cursor-pointer" onClick={() => { if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`card-video-rec-${video.id}`}>
                     <CardContent className="p-3 flex items-start gap-3">
-                      <div className={`w-16 h-12 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)} relative overflow-hidden`}>
+                      <div className={`w-20 h-14 rounded-lg shrink-0 flex items-center justify-center bg-gradient-to-br ${getCategoryGradient(video.category)} relative overflow-hidden`}>
                         {(() => {
                           const yt = getYouTubeThumbnail(video.url);
                           return yt ? (
@@ -2350,8 +2417,7 @@ ${contentList}`,
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm leading-snug line-clamp-2">{video.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{video.channel}{video.duration ? ` · ${video.duration}` : ""}</p>
-                        <p className="text-xs text-muted-foreground/80 mt-1 line-clamp-1">{video.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{video.channel}{video.duration ? ` · ${video.duration}` : ""}</p>
                       </div>
                       <div className="flex flex-col gap-1 shrink-0">
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(video.url)) window.open(video.url, "_blank", "noopener,noreferrer"); }} data-testid={`button-video-rec-open-${video.id}`}>
@@ -2366,12 +2432,14 @@ ${contentList}`,
                 ))}
               </div>
             </div>
-          ) : null}
-
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold mb-3">Search YouTube</h2>
-            <div className="flex gap-2">
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Youtube className="h-4 w-4 text-primary" />
+                <h2 className="text-base font-semibold">Explore Videos</h2>
+              </div>
               <Button
+                size="sm"
                 variant="outline"
                 onClick={() => {
                   setSearchDialogType("youtube");
@@ -2379,19 +2447,69 @@ ${contentList}`,
                   setExternalSearchQuery("");
                   setExternalSearchResults([]);
                 }}
+                className="text-xs h-7"
+                data-testid="button-video-search-youtube-main"
               >
-                <Youtube className="h-4 w-4 mr-2" />
+                <Youtube className="h-3.5 w-3.5 mr-1" />
                 Search YouTube
               </Button>
             </div>
-          </div>
-
-          {!forYouLoading && !forYouData?.videos?.length && (
-            <div className="text-center py-12">
-              <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">{COPY.emptyStates.browse.title}</p>
-            </div>
           )}
+
+          {/* ── Curated Library — Explore by Wellness Dimension ── */}
+          <div className="space-y-6 pb-6">
+            <div className="flex items-center gap-2">
+              <Compass className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-semibold">Explore by Dimension</h2>
+            </div>
+            {VIDEO_DIMENSIONS.map(({ key, label, emoji }) => {
+              const videos = CURATED_VIDEO_LIBRARY.filter(v => v.dimension === key);
+              if (videos.length === 0) return null;
+              const isFiltered = topicFilter.trim().length > 0;
+              const shown = isFiltered
+                ? videos.filter(v => v.title.toLowerCase().includes(topicFilter.toLowerCase()) || v.channel.toLowerCase().includes(topicFilter.toLowerCase()))
+                : videos;
+              if (shown.length === 0) return null;
+              return (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{emoji}</span>
+                    <h3 className="text-sm font-semibold">{label}</h3>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
+                    {shown.map((v) => (
+                      <button
+                        key={v.id}
+                        className="shrink-0 w-44 text-left group"
+                        onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`card-curated-video-${v.id}`}
+                      >
+                        <div className="w-44 h-28 rounded-xl overflow-hidden relative bg-muted mb-1.5">
+                          <img
+                            src={v.thumb}
+                            alt={v.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                          <div className="absolute bottom-2 right-2 bg-black/60 rounded px-1.5 py-0.5">
+                            <span className="text-white text-[10px] font-medium">{v.duration}</span>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-white/90 rounded-full p-2">
+                              <Play className="h-4 w-4 text-gray-900 fill-gray-900" />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs font-medium line-clamp-2 leading-snug">{v.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{v.channel}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </main>
       )}
 
