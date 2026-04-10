@@ -665,8 +665,12 @@ export default function Browse() {
 
   // For You: Activities
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: any[] }>({
-    queryKey: ["/api/browse/activities"],
-    staleTime: 60 * 60 * 1000,
+    queryKey: ["/api/browse/activities", timeSlotNow],
+    queryFn: async () => {
+      const res = await fetch(`/api/browse/activities?slot=${timeSlotNow}`, { credentials: "include" });
+      return res.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
     enabled: activeTab === "for-you",
   });
 
@@ -1466,7 +1470,12 @@ ${contentList}`,
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Things To Do Today</h2>
+                <h2 className="text-lg font-semibold">
+                  {timeSlotNow === "morning" || timeSlotNow === "late-morning" ? "Start Your Day With" :
+                   timeSlotNow === "afternoon" ? "Recharge This Afternoon" :
+                   timeSlotNow === "evening" ? "Wind Down Tonight" :
+                   "Before You Sleep"}
+                </h2>
                 {activitiesLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
               {activitiesData?.activities && (
