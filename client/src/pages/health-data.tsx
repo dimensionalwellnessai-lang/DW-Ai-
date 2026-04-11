@@ -17,7 +17,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar,
 } from "recharts";
-import { Activity, Moon, Heart, Scale, Plus, Trash2 } from "lucide-react";
+import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { DWLearnCard } from "@/components/dw-learn-card";
 
 interface HealthMetric {
@@ -67,6 +67,8 @@ export default function HealthDataPage() {
     staleTime: 30000,
   });
 
+  const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+
   const logMutation = useMutation({
     mutationFn: (vals: LogForm) => apiRequest("POST", "/api/health-metrics", {
       loggedDate: vals.loggedDate,
@@ -101,11 +103,46 @@ export default function HealthDataPage() {
 
   const latest = sorted[sorted.length - 1];
 
+  const weightGoals = (goals as any[]).filter(g =>
+    g.isActive !== false &&
+    (g.title?.toLowerCase().includes("weight") || g.title?.toLowerCase().includes("lose") || g.title?.toLowerCase().includes("kg"))
+  );
+
+  const weightDelta = (() => {
+    if (sorted.length < 2) return null;
+    const first = sorted[0].weightKg;
+    const last = sorted[sorted.length - 1].weightKg;
+    if (first == null || last == null) return null;
+    return (last - first).toFixed(1);
+  })();
+
   return (
     <div className="min-h-screen pb-24">
       <PageHeader title="Health Data" subtitle="Track daily metrics and spot trends" />
 
       <div className="max-w-2xl mx-auto px-4 space-y-5 pt-2">
+        {/* Goal impact panel */}
+        {weightGoals.length > 0 && weightDelta !== null && (
+          <Card className="border-amber-500/20 bg-amber-500/5" data-testid="card-health-goal-impact">
+            <CardContent className="p-3 flex items-center gap-3">
+              <Target className="h-5 w-5 text-amber-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Weight Goal Progress</p>
+                <p className="text-xs text-muted-foreground truncate">{weightGoals[0].title}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {Number(weightDelta) < 0
+                  ? <TrendingDown className="h-4 w-4 text-green-500" />
+                  : <TrendingUp className="h-4 w-4 text-amber-500" />
+                }
+                <span className={`text-sm font-bold ${Number(weightDelta) < 0 ? "text-green-600" : "text-amber-600"}`}>
+                  {Number(weightDelta) >= 0 ? "+" : ""}{weightDelta} kg
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Latest snapshot */}
         {latest && (
           <div className="grid grid-cols-4 gap-2">

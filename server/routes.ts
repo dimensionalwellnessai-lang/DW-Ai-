@@ -3468,6 +3468,127 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
     res.json(goals);
   });
 
+  // ── Goal Progress Data — enriches goals with live contributing signals ──────
+  app.get("/api/goals/progress-data", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const goals = await storage.getGoals(userId);
+      const activeGoals = goals.filter((g: any) => g.isActive !== false && (g.progress ?? 0) < 100);
+
+      // Fetch data sources in parallel
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [workoutSessionsResult, healthMetricsResult, habitsWithLogs] = await Promise.all([
+        db.execute(sql`
+          SELECT COUNT(*) as count
+          FROM workout_sessions
+          WHERE user_id = ${userId}
+            AND status = 'completed'
+            AND created_at >= ${thirtyDaysAgo.toISOString()}
+        `),
+        db.execute(sql`
+          SELECT weight_kg, logged_date
+          FROM health_metrics
+          WHERE user_id = ${userId}
+            AND weight_kg IS NOT NULL
+          ORDER BY logged_date DESC
+          LIMIT 10
+        `),
+        storage.getHabits(userId),
+      ]);
+
+      const workoutCount = Number((workoutSessionsResult.rows[0] as any)?.count ?? 0);
+      const weightRows = healthMetricsResult.rows as any[];
+      const latestWeight = weightRows[0]?.weight_kg ? Number(weightRows[0].weight_kg) : null;
+      const earliestWeight = weightRows.length > 1 ? Number(weightRows[weightRows.length - 1].weight_kg) : null;
+
+      // Build habit completion rate map keyed by goal title
+      const habitCompletionByGoalTitle: Record<string, { completedCount: number; totalHabits: number; habitNames: string[] }> = {};
+      for (const habit of habitsWithLogs as any[]) {
+        if (!habit.isActive) continue;
+        const descLower = (habit.description || "").toLowerCase();
+        const titleLower = (habit.title || "").toLowerCase();
+        for (const g of activeGoals) {
+          const gTitleLower = (g.title || "").toLowerCase();
+          if (descLower.includes(`supports goal: ${gTitleLower}`) || titleLower.includes(gTitleLower)) {
+            if (!habitCompletionByGoalTitle[g.id]) {
+              habitCompletionByGoalTitle[g.id] = { completedCount: 0, totalHabits: 0, habitNames: [] };
+            }
+            habitCompletionByGoalTitle[g.id].totalHabits++;
+            if (habit.completedToday) habitCompletionByGoalTitle[g.id].completedCount++;
+            habitCompletionByGoalTitle[g.id].habitNames.push(habit.title);
+          }
+        }
+      }
+
+      const enriched = activeGoals.map((goal: any) => {
+        const dim = (goal.wellnessDimension || "").toLowerCase();
+        const titleLower = (goal.title || "").toLowerCase();
+        const isWeight = /weight|kg|lbs|lb|body fat|slim|lose|body|mass/i.test(titleLower);
+        const isFitness = !isWeight && (dim === "physical" || /workout|exercise|run|gym|fitness|strength|cardio|steps/i.test(titleLower));
+        const habitData = habitCompletionByGoalTitle[goal.id];
+
+        let contributingData: {
+          type: string;
+          label: string;
+          value: string | null;
+          detail: string | null;
+          delta: string | null;
+        } | null = null;
+
+        if (isFitness && workoutCount > 0) {
+          contributingData = {
+            type: "workouts",
+            label: "Sessions this month",
+            value: String(workoutCount),
+            detail: `${workoutCount} workout${workoutCount === 1 ? "" : "s"} completed in the last 30 days`,
+            delta: null,
+          };
+        } else if (isWeight && latestWeight !== null) {
+          let delta: string | null = null;
+          if (earliestWeight !== null && earliestWeight !== latestWeight) {
+            const diff = latestWeight - earliestWeight;
+            const absDiff = Math.abs(diff).toFixed(1);
+            delta = diff < 0 ? `-${absDiff} kg` : `+${absDiff} kg`;
+          }
+          contributingData = {
+            type: "weight",
+            label: "Latest weight",
+            value: `${latestWeight} kg`,
+            detail: `Last logged: ${latestWeight} kg`,
+            delta,
+          };
+        } else if (habitData && habitData.totalHabits > 0) {
+          const rate = Math.round((habitData.completedCount / habitData.totalHabits) * 100);
+          contributingData = {
+            type: "habits",
+            label: "Habit completion today",
+            value: `${rate}%`,
+            detail: `${habitData.completedCount}/${habitData.totalHabits} habits done today: ${habitData.habitNames.slice(0, 2).join(", ")}`,
+            delta: null,
+          };
+        }
+
+        return {
+          ...goal,
+          contributingData: contributingData ?? {
+            type: "none",
+            label: "No data yet",
+            value: null,
+            detail: "No data yet — start tracking to see progress here",
+            delta: null,
+          },
+        };
+      });
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Goals progress data error:", error);
+      res.status(500).json({ error: "Failed to load goals progress data" });
+    }
+  });
+
   app.post("/api/goals", requireAuth, async (req, res) => {
     try {
       const { title, description, userId: _userId, id: _id, createdAt: _createdAt, ...rest } = req.body;
@@ -5166,38 +5287,13 @@ Return only valid JSON, no markdown, no extra text.`;
     }
   });
 
-  app.get("/api/body-scans", requireAuth, async (req, res) => {
-    try {
-      const scans = await storage.getBodyScans(req.session.userId!);
-      res.json(scans);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to load body scans" });
-    }
-  });
-
-  app.post("/api/body-scans", requireAuth, async (req, res) => {
-    try {
-      const data = insertBodyScanSchema.parse({ ...req.body, userId: req.session.userId! });
-      const created = await storage.createBodyScan(data);
-      res.json(created);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      res.status(500).json({ error: "Failed to create body scan" });
-    }
-  });
-
-  app.delete("/api/body-scans/:id", requireAuth, async (req, res) => {
-    try {
-      const deleted = await storage.deleteBodyScan(req.params.id, req.session.userId!);
-      if (!deleted) {
-        return res.status(404).json({ error: "Body scan not found" });
-      }
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete body scan" });
-    }
+  // Body scan data is never stored — privacy by design.
+  // The POST endpoint returns a success stub without DB writes.
+  // The GET history endpoint is intentionally removed.
+  app.post("/api/body-scans", requireAuth, async (_req, res) => {
+    // No data is written to the database. Scans are transient, used only
+    // for the current session to personalize the AI.
+    res.json({ id: "transient", stored: false });
   });
 
   // ── Body Scan AI Analysis ─────────────────────────────────────────────────
@@ -5248,16 +5344,13 @@ Return only valid JSON, no markdown, no extra text.`;
   app.get("/api/my-plan", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const [user, goals, habits, profile, bodyScans, calendarEvents] = await Promise.all([
+      const [user, goals, habits, profile] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
         storage.getOnboardingProfile(userId),
-        storage.getBodyScans(userId),
-        storage.getCalendarEvents(userId),
       ]);
 
-      const latestBodyScan = bodyScans[0];
       const activeGoals = goals.filter((g: any) => g.status === "active").slice(0, 5);
       const activeHabits = habits.filter((h: any) => h.isActive !== false).slice(0, 8);
 
@@ -5266,8 +5359,6 @@ Return only valid JSON, no markdown, no extra text.`;
         profile?.fitnessGoal && `Fitness goal: ${profile.fitnessGoal}`,
         activeGoals.length && `Active goals: ${activeGoals.map((g: any) => g.title).join(", ")}`,
         activeHabits.length && `Daily habits: ${activeHabits.map((h: any) => h.title).join(", ")}`,
-        latestBodyScan?.notes && `Body context: ${latestBodyScan.notes.slice(0, 200)}`,
-        latestBodyScan?.goals?.length && `Body goals: ${latestBodyScan.goals.join(", ")}`,
       ].filter(Boolean).join("\n");
 
       const systemPrompt = `You are DW, a wellness AI creating a personalized 7-day life plan. Generate a unified JSON plan that connects workouts, nutrition, habits, and recovery. Make it specific, realistic, and motivating.

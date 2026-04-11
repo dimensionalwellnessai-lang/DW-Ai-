@@ -588,6 +588,13 @@ export function BodyScanDialog({ open, onClose, onComplete }: BodyScanDialogProp
           </DialogDescription>
         </DialogHeader>
 
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 rounded-lg px-2.5 py-1.5 -mt-1 mb-0.5" data-testid="text-body-scan-privacy-notice">
+          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.657-1.343-3-3-3s-3 1.343-3 3 1.343 3 3 3 3-1.343 3-3zm0 0c0-1.657 1.343-3 3-3s3 1.343 3 3-1.343 3-3 3-3-1.343-3-3zm-7 8a7 7 0 0114 0H5z" />
+          </svg>
+          Your body scan data is used only in this session for AI personalization and is never stored.
+        </div>
+
         {showNav && (
           <div className="flex items-center justify-between gap-2 mb-2">
             <Button

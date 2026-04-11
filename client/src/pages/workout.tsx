@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -325,7 +325,14 @@ export default function WorkoutPage() {
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [sessionEngineOpen, setSessionEngineOpen] = useState(false);
   const [activeSessionConfig, setActiveSessionConfig] = useState<WorkoutSessionConfig | null>(null);
+  const [postSessionGoalNudge, setPostSessionGoalNudge] = useState(false);
   const { isAuthenticated } = useUserRole();
+
+  const { data: physicalGoals = [] } = useQuery<any[]>({
+    queryKey: ["/api/goals"],
+    select: (data: any[]) => data.filter((g: any) => g.isActive !== false && (g.wellnessDimension === "physical" || g.wellnessDimension === null)),
+    enabled: isAuthenticated,
+  });
 
   const { toast } = useToast();
   
@@ -1527,8 +1534,52 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             open={sessionEngineOpen}
             onClose={() => setSessionEngineOpen(false)}
             isAuthenticated={isAuthenticated}
+            onComplete={() => {
+              if (physicalGoals.length > 0) {
+                setPostSessionGoalNudge(true);
+              }
+            }}
           />
         )}
+
+        <Dialog open={postSessionGoalNudge} onOpenChange={setPostSessionGoalNudge}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Goal Progress
+              </DialogTitle>
+              <DialogDescription>
+                This workout counts toward your active goals
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 mt-1">
+              {(physicalGoals as any[]).slice(0, 3).map((goal: any) => (
+                <div key={goal.id} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                  <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <span className="text-sm flex-1">{goal.title}</span>
+                  <span className="text-xs text-muted-foreground">{goal.progress ?? 0}%</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setPostSessionGoalNudge(false)}
+              >
+                Done
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => { setPostSessionGoalNudge(false); setLocation("/goals"); }}
+                data-testid="button-update-goal-progress"
+              >
+                Update Progress
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </ScrollArea>
     </div>
   );

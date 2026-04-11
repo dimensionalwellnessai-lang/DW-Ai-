@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   CheckSquare, Plus, CheckCircle2, Circle, Trash2, ChevronDown, ChevronUp,
   Dumbbell, Brain, Heart, Wallet, Sparkles, Users, Leaf, Briefcase, Compass,
-  Flame, Bell, BellOff, X
+  Flame, Bell, BellOff, X, Target
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -88,6 +88,7 @@ export default function HabitsPage() {
   });
 
   const { data: habits = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/habits"] });
+  const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/habits", data).then(r => r.json()),
@@ -308,18 +309,27 @@ export default function HabitsPage() {
           {activeHabits.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-0.5">Today's Habits</h3>
-              {activeHabits.map((habit: any) => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  expanded={expandedId === habit.id}
-                  onToggleExpand={() => setExpandedId(expandedId === habit.id ? null : habit.id)}
-                  onToggleComplete={() => toggleMutation.mutate({ habitId: habit.id })}
-                  onDeactivate={() => updateMutation.mutate({ id: habit.id, data: { isActive: false } })}
-                  onDelete={() => deleteMutation.mutate(habit.id)}
-                  isPending={toggleMutation.isPending || updateMutation.isPending}
-                />
-              ))}
+              {activeHabits.map((habit: any) => {
+                const goalMatch = (() => {
+                  const desc = habit.description || "";
+                  const match = desc.match(/Supports goal: (.+)/i);
+                  if (!match) return null;
+                  return (goals as any[]).find((g: any) => g.title?.toLowerCase() === match[1]?.toLowerCase()) || null;
+                })();
+                return (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    linkedGoal={goalMatch}
+                    expanded={expandedId === habit.id}
+                    onToggleExpand={() => setExpandedId(expandedId === habit.id ? null : habit.id)}
+                    onToggleComplete={() => toggleMutation.mutate({ habitId: habit.id })}
+                    onDeactivate={() => updateMutation.mutate({ id: habit.id, data: { isActive: false } })}
+                    onDelete={() => deleteMutation.mutate(habit.id)}
+                    isPending={toggleMutation.isPending || updateMutation.isPending}
+                  />
+                );
+              })}
             </div>
           )}
 
@@ -353,13 +363,14 @@ interface HabitCardProps {
   expanded: boolean;
   paused?: boolean;
   isPending: boolean;
+  linkedGoal?: any | null;
   onToggleExpand: () => void;
   onToggleComplete: () => void;
   onDeactivate: () => void;
   onDelete: () => void;
 }
 
-function HabitCard({ habit, expanded, paused, isPending, onToggleExpand, onToggleComplete, onDeactivate, onDelete }: HabitCardProps) {
+function HabitCard({ habit, expanded, paused, isPending, linkedGoal, onToggleExpand, onToggleComplete, onDeactivate, onDelete }: HabitCardProps) {
   const dim = DIMENSIONS.find(d => d.value === habit.wellnessDimension);
   const DimIcon = dim?.icon;
   const streak = habit.streak ?? 0;
@@ -404,6 +415,15 @@ function HabitCard({ habit, expanded, paused, isPending, onToggleExpand, onToggl
                 <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                   <Bell className="h-2.5 w-2.5" />
                   {habit.reminderTime}
+                </span>
+              )}
+              {linkedGoal && (
+                <span
+                  className="flex items-center gap-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full px-1.5 py-0.5"
+                  data-testid={`chip-goal-link-${habit.id}`}
+                >
+                  <Target className="h-2.5 w-2.5" />
+                  {linkedGoal.title.length > 20 ? linkedGoal.title.slice(0, 20) + "…" : linkedGoal.title}
                 </span>
               )}
             </div>

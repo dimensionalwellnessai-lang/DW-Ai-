@@ -14,10 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
+import { useLocation } from "wouter";
 import {
   Target, Plus, CheckCircle2, Repeat, Trash2, ChevronDown, ChevronUp,
   Dumbbell, Brain, Heart, Wallet, Sparkles, Users, Leaf, Briefcase,
-  Compass, Edit2, TrendingUp, X
+  Compass, Edit2, TrendingUp, X, Activity, Scale, CalendarDays, Link2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -44,6 +45,7 @@ export default function GoalsPage() {
   usePageMeta("Goals", "Set and track your wellness goals across every dimension of your life.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,11 +64,36 @@ export default function GoalsPage() {
 
   const { data: goals = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/goals"] });
   const { data: habits = [] } = useQuery<any[]>({ queryKey: ["/api/habits"] });
+  const { data: progressData = [] } = useQuery<any[]>({
+    queryKey: ["/api/goals/progress-data"],
+    staleTime: 60000,
+  });
+  const { data: challenges = [] } = useQuery<any[]>({ queryKey: ["/api/challenges"] });
+
+  const progressDataById = React.useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const g of progressData) {
+      map[g.id] = g.contributingData;
+    }
+    return map;
+  }, [progressData]);
+
+  const linkedChallengesByGoalId = React.useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const c of challenges as any[]) {
+      if (c.linkedGoalId) {
+        if (!map[c.linkedGoalId]) map[c.linkedGoalId] = [];
+        map[c.linkedGoalId].push(c);
+      }
+    }
+    return map;
+  }, [challenges]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/goals", data).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals/progress-data"] });
       setShowForm(false);
       resetForm();
       toast({ title: "Goal created" });
@@ -78,6 +105,7 @@ export default function GoalsPage() {
       apiRequest("PATCH", `/api/goals/${id}`, data).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals/progress-data"] });
       setEditingId(null);
       toast({ title: "Goal updated" });
     },
@@ -87,6 +115,7 @@ export default function GoalsPage() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/goals/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals/progress-data"] });
       toast({ title: "Goal removed" });
     },
   });
@@ -313,6 +342,24 @@ export default function GoalsPage() {
             </Card>
           )}
 
+          {/* This week's plan shortcut */}
+          {activeGoals.length > 0 && (
+            <Card
+              className="border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+              onClick={() => setLocation("/my-plan")}
+              data-testid="card-my-plan-shortcut"
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <CalendarDays className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">This Week's Plan</p>
+                  <p className="text-xs text-muted-foreground">See all activities serving your {activeGoals.length} active goal{activeGoals.length !== 1 ? "s" : ""}</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground rotate-[-90deg]" />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Active Goals */}
           {activeGoals.length > 0 && (
             <div className="space-y-3">
@@ -324,6 +371,8 @@ export default function GoalsPage() {
                   expanded={expandedId === goal.id}
                   editing={editingId === goal.id}
                   linkedHabits={(habits as any[]).filter(h => h.description?.includes(`Supports goal: ${goal.title}`))}
+                  linkedChallenges={linkedChallengesByGoalId[goal.id] || []}
+                  contributingData={progressDataById[goal.id]}
                   onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
                   onEdit={() => setEditingId(editingId === goal.id ? null : goal.id)}
                   onProgressUpdate={p => handleProgressUpdate(goal, p)}
@@ -347,6 +396,8 @@ export default function GoalsPage() {
                   goal={goal}
                   expanded={expandedId === goal.id}
                   editing={false}
+                  linkedHabits={[]}
+                  linkedChallenges={[]}
                   onToggleExpand={() => setExpandedId(expandedId === goal.id ? null : goal.id)}
                   onEdit={() => {}}
                   onProgressUpdate={() => {}}
@@ -381,6 +432,8 @@ interface GoalCardProps {
   completed?: boolean;
   isPending: boolean;
   linkedHabits?: any[];
+  linkedChallenges?: any[];
+  contributingData?: any;
   onToggleExpand: () => void;
   onEdit: () => void;
   onProgressUpdate: (p: number) => void;
@@ -390,7 +443,43 @@ interface GoalCardProps {
   onSaveEdit: (data: any) => void;
 }
 
-function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits = [], onToggleExpand, onEdit, onProgressUpdate, onMarkComplete, onDelete, onCreateHabit, onSaveEdit }: GoalCardProps) {
+function ContributingDataBadge({ data }: { data: any }) {
+  if (!data || data.type === "none") {
+    return (
+      <div className="text-xs text-muted-foreground/70 italic" data-testid="text-no-contributing-data">
+        No data yet — start tracking to see progress here
+      </div>
+    );
+  }
+
+  const iconMap: Record<string, any> = {
+    workouts: Dumbbell,
+    weight: Scale,
+    habits: Repeat,
+  };
+  const Icon = iconMap[data.type] ?? Activity;
+  const colorMap: Record<string, string> = {
+    workouts: "text-blue-600 dark:text-blue-400",
+    weight: "text-amber-600 dark:text-amber-400",
+    habits: "text-green-600 dark:text-green-400",
+  };
+  const color = colorMap[data.type] ?? "text-primary";
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs" data-testid={`text-contributing-${data.type}`}>
+      <Icon className={`h-3.5 w-3.5 shrink-0 ${color}`} />
+      <span className="font-medium">{data.label}:</span>
+      <span className={color}>{data.value}</span>
+      {data.delta && (
+        <span className={`font-semibold ${data.delta.startsWith("-") ? "text-green-600" : "text-amber-600"}`}>
+          ({data.delta})
+        </span>
+      )}
+    </div>
+  );
+}
+
+function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits = [], linkedChallenges = [], contributingData, onToggleExpand, onEdit, onProgressUpdate, onMarkComplete, onDelete, onCreateHabit, onSaveEdit }: GoalCardProps) {
   const dim = getDimension(goal.wellnessDimension);
   const DimIcon = dim?.icon ?? Target;
   const progress = goal.progress ?? 0;
@@ -467,6 +556,14 @@ function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits 
           </div>
         )}
 
+        {/* Contributing Data — always visible on active goals */}
+        {!completed && contributingData && (
+          <div className="mt-3 pt-2.5 border-t border-dashed">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Contributing Data</p>
+            <ContributingDataBadge data={contributingData} />
+          </div>
+        )}
+
         {/* Expanded section */}
         {expanded && (
           <div className="mt-4 pt-4 border-t space-y-4">
@@ -508,7 +605,7 @@ function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits 
                   <p className="text-sm text-muted-foreground">{goal.description.replace(/ \| Target date:.*/, "")}</p>
                 )}
 
-                {/* DW Thread: linked habits */}
+                {/* Linked habits */}
                 {linkedHabits.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
@@ -520,6 +617,23 @@ function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits 
                         <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
                         <span className="text-xs">{h.title}</span>
                         {h.completedToday && <CheckCircle2 className="h-3 w-3 text-green-500 ml-auto shrink-0" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Linked challenges */}
+                {linkedChallenges.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <Link2 className="h-3 w-3" />
+                      Supporting Challenges
+                    </p>
+                    {linkedChallenges.map((c: any) => (
+                      <div key={c.id} className="flex items-center gap-2 bg-muted/30 rounded-lg px-2 py-1.5">
+                        <span className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
+                        <span className="text-xs capitalize">{c.title}</span>
+                        <Badge variant="outline" className="ml-auto text-[9px] h-4">{c.category}</Badge>
                       </div>
                     ))}
                   </div>

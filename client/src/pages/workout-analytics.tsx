@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
 } from "recharts";
-import { Dumbbell, Flame, Clock, Trophy, TrendingUp, ChevronRight } from "lucide-react";
+import { Dumbbell, Flame, Clock, Trophy, TrendingUp, ChevronRight, Target } from "lucide-react";
 
 interface AnalyticsData {
   weeklyActivity: { week: string; session_count: number; total_seconds: number }[];
@@ -34,6 +34,12 @@ export default function WorkoutAnalyticsPage() {
     queryKey: ["/api/workout-sessions/analytics"],
     staleTime: 60000,
   });
+
+  const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+  const physicalGoals = (goals as any[]).filter((g: any) =>
+    g.isActive !== false &&
+    (g.wellnessDimension === "physical" || !g.wellnessDimension)
+  );
 
   const weeklyChartData = (data?.weeklyActivity || []).map(w => ({
     week: formatWeek(w.week),
@@ -163,6 +169,49 @@ export default function WorkoutAnalyticsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Goal Alignment */}
+        {physicalGoals.length > 0 && (
+          <Card data-testid="card-goal-alignment">
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                Goal Alignment
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Your {data?.totalSessions ?? 0} session{(data?.totalSessions ?? 0) !== 1 ? "s" : ""} tracked are working toward:
+              </p>
+              <div className="space-y-2">
+                {physicalGoals.slice(0, 3).map((g: any) => (
+                  <div
+                    key={g.id}
+                    className="flex items-center gap-3 p-2 rounded-lg bg-muted/40 cursor-pointer hover:bg-muted/60 transition-colors"
+                    onClick={() => setLocation("/goals")}
+                    data-testid={`card-goal-alignment-${g.id}`}
+                  >
+                    <Target className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-sm flex-1 truncate">{g.title}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary/70 rounded-full" style={{ width: `${g.progress ?? 0}%` }} />
+                      </div>
+                      <span className="text-xs text-primary font-medium">{g.progress ?? 0}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setLocation("/goals")}
+                className="text-xs text-primary mt-2 hover:underline"
+                data-testid="button-update-goal-from-analytics"
+              >
+                Update goal progress →
+              </button>
+            </CardContent>
+          </Card>
+        )}
 
         <Button
           variant="outline"

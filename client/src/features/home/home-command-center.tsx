@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
@@ -941,6 +941,16 @@ function NutritionPreview({ summary }: { summary: ReturnType<typeof useHomeSumma
 function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummary> }) {
   const [, nav] = useLocation();
   const streakHabits = summary.activeHabits.filter((h) => (h.streak ?? 0) > 0);
+  const activeGoals = summary.activeGoals.filter((g) => (g.progress ?? 0) < 100);
+
+  const { data: progressData = [] } = useQuery<any[]>({
+    queryKey: ["/api/goals/progress-data"],
+    staleTime: 60000,
+  });
+  const progressByGoalId = progressData.reduce((acc: Record<string, any>, g: any) => {
+    acc[g.id] = g.contributingData;
+    return acc;
+  }, {});
 
   const slides: { content: JSX.Element }[] = [];
 
@@ -962,6 +972,48 @@ function MomentumPreview({ summary }: { summary: ReturnType<typeof useHomeSummar
           {summary.momentumData.reasons.slice(0, 2).map((r, i) => (
             <p key={i} className="text-xs text-muted-foreground">{r}</p>
           ))}
+        </div>
+      ),
+    });
+  }
+
+  if (activeGoals.length > 0) {
+    slides.push({
+      content: (
+        <div
+          className="cc-card cursor-pointer hover:ring-1 hover:ring-primary/40 transition-all"
+          onClick={() => nav("/goals")}
+          data-testid="momentum-card-goals-pulse"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Goals Pulse</span>
+          </div>
+          <div className="space-y-1.5">
+            {activeGoals.slice(0, 2).map((g) => {
+              const cd = progressByGoalId[g.id];
+              return (
+                <div key={g.id} className="space-y-0.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="truncate max-w-[130px]">{g.title}</span>
+                    <span className="text-primary font-medium ml-1 shrink-0">{g.progress ?? 0}%</span>
+                  </div>
+                  <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary/60 rounded-full" style={{ width: `${g.progress ?? 0}%` }} />
+                  </div>
+                  {cd && cd.type !== "none" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {cd.label}: <span className="text-foreground">{cd.value}</span>
+                      {cd.delta && <span className="text-green-600 ml-1">{cd.delta}</span>}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {activeGoals.length > 2 && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">+{activeGoals.length - 2} more goals →</p>
+          )}
         </div>
       ),
     });

@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dumbbell, Utensils, Brain, Moon, RefreshCw,
   ChevronRight, Flame, Heart, Leaf, Camera, Sparkles,
-  Target, ArrowRight,
+  Target, ArrowRight, Link2,
 } from "lucide-react";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
 import { hasCompletedBodyScan } from "@/lib/guest-storage";
@@ -114,7 +114,7 @@ function QuickLinkCard({ label, Icon, route, color }: { label: string; Icon: any
   );
 }
 
-function DayCard({ day, isToday }: { day: any; isToday: boolean }) {
+function DayCard({ day, isToday, physicalGoals }: { day: any; isToday: boolean; physicalGoals?: any[] }) {
   const [expanded, setExpanded] = useState(isToday);
   const colorClass = DAY_COLORS[day.day] || DAY_COLORS.Monday;
   const accentClass = DAY_ACCENT[day.day] || DAY_ACCENT.Monday;
@@ -153,7 +153,21 @@ function DayCard({ day, isToday }: { day: any; isToday: boolean }) {
 
       {expanded && (
         <CardContent className="px-4 pb-4 space-y-3">
-          {day.workout && <WorkoutCard workout={day.workout} />}
+          {day.workout && (
+            <div>
+              <WorkoutCard workout={day.workout} />
+              {physicalGoals && physicalGoals.length > 0 && (
+                <div className="flex items-center gap-1 mt-1.5 flex-wrap px-1">
+                  <Link2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                  {physicalGoals.slice(0, 2).map((g: any) => (
+                    <span key={g.id} className="text-[10px] bg-primary/10 text-primary rounded-full px-2 py-0.5">
+                      → {g.title.length > 22 ? g.title.slice(0, 22) + "…" : g.title}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {day.nutrition && <NutritionCard nutrition={day.nutrition} target={null} />}
           {day.habits?.length > 0 && (
             <div className="p-3 rounded-lg bg-background/50 border">
@@ -198,6 +212,7 @@ function PlanSkeleton() {
 export default function MyPlanPage() {
   usePageMeta({ title: "My DW Plan — Dimensional Wellness AI" });
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
   const [bodyScanDone, setBodyScanDone] = useState(hasCompletedBodyScan());
 
@@ -205,6 +220,13 @@ export default function MyPlanPage() {
     queryKey: ["/api/my-plan"],
     staleTime: 1000 * 60 * 30,
   });
+
+  const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+  const { data: habits = [] } = useQuery<any[]>({ queryKey: ["/api/habits"] });
+
+  const activeGoals = (goals as any[]).filter((g: any) => g.isActive !== false && (g.progress ?? 0) < 100);
+  const todayHabits = (habits as any[]).filter((h: any) => h.isActive !== false);
+  const completedHabits = todayHabits.filter((h: any) => h.completedToday);
 
   const handleRegenerate = () => {
     queryClient.removeQueries({ queryKey: ["/api/my-plan"] });
@@ -303,6 +325,49 @@ export default function MyPlanPage() {
                   </CardContent>
                 </Card>
 
+                {/* Goals This Week */}
+                {activeGoals.length > 0 && (
+                  <Card className="border-primary/20" data-testid="card-plan-goals">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-semibold flex items-center gap-1.5 text-primary">
+                          <Target className="h-3.5 w-3.5" />
+                          Goals This Week
+                        </p>
+                        <button
+                          onClick={() => setLocation("/goals")}
+                          className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          View all →
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {activeGoals.slice(0, 3).map((g: any) => (
+                          <div key={g.id} className="flex items-center gap-2">
+                            <div
+                              className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden cursor-pointer"
+                              onClick={() => setLocation("/goals")}
+                            >
+                              <div
+                                className="h-full bg-primary/70 rounded-full"
+                                style={{ width: `${g.progress ?? 0}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{g.title}</span>
+                            <span className="text-[10px] text-primary font-medium shrink-0">{g.progress ?? 0}%</span>
+                          </div>
+                        ))}
+                      </div>
+                      {todayHabits.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-dashed flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Habits today</span>
+                          <span className="text-[10px] font-medium text-primary">{completedHabits.length}/{todayHabits.length} done</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Body goal + nutrition summary */}
                 <div className="grid grid-cols-2 gap-3">
                   {plan.bodyGoalFocus && (
@@ -337,6 +402,7 @@ export default function MyPlanPage() {
                       key={day.day}
                       day={day}
                       isToday={day.day === today}
+                      physicalGoals={activeGoals.filter((g: any) => g.wellnessDimension === "physical" || !g.wellnessDimension)}
                     />
                   ))}
                 </div>

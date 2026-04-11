@@ -379,6 +379,8 @@ interface WorkoutSessionEngineProps {
   onClose: () => void;
   /** Whether the user is authenticated (needed for server-side save) */
   isAuthenticated?: boolean;
+  /** Called when a session completes successfully */
+  onComplete?: () => void;
 }
 
 export function WorkoutSessionEngine({
@@ -386,6 +388,7 @@ export function WorkoutSessionEngine({
   open,
   onClose,
   isAuthenticated = false,
+  onComplete,
 }: WorkoutSessionEngineProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -635,7 +638,7 @@ export function WorkoutSessionEngine({
             <History className="h-4 w-4 mr-1" />
             History
           </Button>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={() => { onComplete?.(); onClose(); }}>Close</Button>
         </div>
       </div>
     );

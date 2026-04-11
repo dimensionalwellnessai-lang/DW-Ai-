@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Dumbbell,
   Brain,
@@ -221,11 +223,25 @@ export function ChallengesPage() {
   usePageMeta("Challenges", "Push your limits with growth challenges and track your progress.");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<{ category: string; title: string } | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedAIPick, setSelectedAIPick] = useState<AIPick | null>(null);
   const [calendarConfirmOpen, setCalendarConfirmOpen] = useState(false);
+  const [selectedLinkGoalId, setSelectedLinkGoalId] = useState<string | null>(null);
+
+  const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+
+  const linkGoalMutation = useMutation({
+    mutationFn: ({ challengeId, goalId }: { challengeId: string; goalId: string }) =>
+      apiRequest("PATCH", `/api/challenges/${challengeId}`, { linkedGoalId: goalId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals/progress-data"] });
+      toast({ title: "Challenge linked to goal" });
+    },
+  });
   const gtky = getGettingToKnowYou();
   const bodyProfile = getBodyProfile();
   const financeProfile = getFinanceProfile();
@@ -245,6 +261,16 @@ export function ChallengesPage() {
     setSelectedChallenge({ category: categoryId, title: challengeTitle });
     setDetailDialogOpen(true);
   };
+
+  const createChallengeMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/challenges", data).then(r => r.json()),
+    onSuccess: (newChallenge: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      if (selectedLinkGoalId && newChallenge?.id) {
+        linkGoalMutation.mutate({ challengeId: newChallenge.id, goalId: selectedLinkGoalId });
+      }
+    },
+  });
 
   const handleAddToCalendar = () => {
     if (!selectedChallenge) return;
@@ -272,11 +298,26 @@ export function ChallengesPage() {
       relatedFoundationIds: [],
       tags: ["challenge", selectedChallenge.category],
     });
+
+    if (selectedLinkGoalId) {
+      createChallengeMutation.mutate({
+        title: selectedChallenge.title,
+        category: selectedChallenge.category,
+        linkedGoalId: selectedLinkGoalId,
+      });
+    }
+
+    const linkedGoalTitle = selectedLinkGoalId
+      ? (goals as any[]).find((g: any) => g.id === selectedLinkGoalId)?.title
+      : null;
     
     toast({
-      title: "Added to calendar.",
-      description: `"${selectedChallenge.title}" starts tomorrow. Notice how planning ahead shifts the mental load.`,
+      title: "Added to calendar." + (linkedGoalTitle ? " Goal linked!" : ""),
+      description: linkedGoalTitle
+        ? `"${selectedChallenge.title}" linked to "${linkedGoalTitle}".`
+        : `"${selectedChallenge.title}" starts tomorrow. Notice how planning ahead shifts the mental load.`,
     });
+    setSelectedLinkGoalId(null);
     setDetailDialogOpen(false);
   };
 
@@ -438,10 +479,30 @@ export function ChallengesPage() {
             <p className="text-sm text-muted-foreground">
               This challenge will help you build positive habits. You can add it to your calendar or get AI guidance to personalize it.
             </p>
+            {(goals as any[]).filter((g: any) => g.isActive !== false).length > 0 && (
+              <div className="bg-muted/40 rounded-lg p-3">
+                <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5 text-primary" />
+                  Link to a Goal
+                </p>
+                <div className="space-y-1.5">
+                  {(goals as any[]).filter((g: any) => g.isActive !== false).slice(0, 4).map((g: any) => (
+                    <button
+                      key={g.id}
+                      onClick={() => setSelectedLinkGoalId(selectedLinkGoalId === g.id ? null : g.id)}
+                      className={`w-full text-left text-xs px-2.5 py-1.5 rounded-md border transition-colors ${selectedLinkGoalId === g.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}
+                      data-testid={`button-link-challenge-goal-${g.id}`}
+                    >
+                      {g.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <Button onClick={handleAddToCalendar} className="w-full" data-testid="button-add-challenge-calendar">
                 <Calendar className="h-4 w-4 mr-2" />
-                Add to Calendar
+                Add to Calendar{selectedLinkGoalId ? " & Link Goal" : ""}
               </Button>
               <Button variant="outline" onClick={handleStartWithAI} className="w-full" data-testid="button-start-challenge-ai">
                 <Sparkles className="h-4 w-4 mr-2" />

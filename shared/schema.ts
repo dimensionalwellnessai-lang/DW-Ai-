@@ -691,6 +691,7 @@ export const challenges = pgTable("challenges", {
   startDate: text("start_date"),
   currentDay: integer("current_day").default(0),
   status: text("status").default("not_started"),
+  linkedGoalId: varchar("linked_goal_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
