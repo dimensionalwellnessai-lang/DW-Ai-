@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export type OrbState = "idle" | "suggestion" | "active" | "chat" | "speaking";
+export type OrbState = "idle" | "suggestion" | "active" | "chat" | "speaking" | "listening";
 
 interface DWOrbProps {
   size?: number;
@@ -37,6 +37,7 @@ export function DWOrb({
           state === "suggestion" && "dw-orb-halo--pulse",
           state === "chat" && "dw-orb-halo--bright",
           state === "speaking" && "dw-orb-halo--speaking",
+          state === "listening" && "dw-orb-halo--listening",
         )}
         style={{ width: haloSize, height: haloSize }}
       />
@@ -47,6 +48,7 @@ export function DWOrb({
           state === "active" && "scale-110",
           state === "chat" && "dw-orb-sphere--chat",
           state === "speaking" && "dw-orb-sphere--speaking",
+          state === "listening" && "dw-orb-sphere--listening",
         )}
         style={{ width: size, height: size }}
       >

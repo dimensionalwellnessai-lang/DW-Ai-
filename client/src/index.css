@@ -671,6 +671,22 @@ summary::marker {
   animation: orbSpeakSphere 0.7s ease-in-out infinite;
 }
 
+.dw-orb-halo--listening {
+  background: radial-gradient(
+    circle,
+    rgba(80, 200, 180, 0.35) 40%,
+    transparent 70%
+  );
+  animation: orbListen 0.45s ease-in-out infinite;
+}
+
+.dw-orb-sphere--listening {
+  box-shadow:
+    inset 0 0 16px 6px rgba(80, 200, 160, 0.5),
+    0 0 20px 8px rgba(60, 180, 160, 0.45);
+  animation: orbListenSphere 0.45s ease-in-out infinite;
+}
+
 @keyframes orbSwirl {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -691,11 +707,23 @@ summary::marker {
   50% { transform: scale(1.06); }
 }
 
+@keyframes orbListen {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes orbListenSphere {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dw-orb-swirl { animation: none; }
   .dw-orb-halo--pulse { animation: none; }
   .dw-orb-halo--speaking { animation: none; }
   .dw-orb-sphere--speaking { animation: none; }
+  .dw-orb-halo--listening { animation: none; }
+  .dw-orb-sphere--listening { animation: none; }
 }
 
 /* ─── Cosmic Background ───────────────────────────────────────────────── */

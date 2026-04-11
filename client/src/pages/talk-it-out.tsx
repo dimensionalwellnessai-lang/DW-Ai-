@@ -213,10 +213,21 @@ export function TalkItOutPage() {
   });
   const [isTyping, setIsTyping] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
-  const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [voiceModeActive, setVoiceModeActive] = useState(() => {
+    try { return localStorage.getItem("dw:auto_speak") !== "off"; } catch { return true; }
+  });
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [autoListenTrigger, setAutoListenTrigger] = useState(0);
   const ttsRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const voiceModeActiveRef = useRef(voiceModeActive);
+  voiceModeActiveRef.current = voiceModeActive;
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+    }
+  }, []);
 
   const speakDWResponse = useCallback((text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -229,17 +240,22 @@ export function TalkItOutPage() {
     const utter = new SpeechSynthesisUtterance(stripped);
     utter.rate = 0.95;
     utter.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      /Samantha|Karen|Moira|Google US English|Microsoft Aria|Zira/i.test(v.name)
+    ) || voices.find(v => v.lang.startsWith("en") && !v.localService) || voices[0];
+    if (preferred) utter.voice = preferred;
     ttsRef.current = utter;
     utter.onstart = () => setIsSpeaking(true);
     utter.onend = () => {
       setIsSpeaking(false);
-      if (voiceModeActive) {
+      if (voiceModeActiveRef.current) {
         setTimeout(() => setAutoListenTrigger((n) => n + 1), 300);
       }
     };
     utter.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utter);
-  }, [voiceModeActive]);
+  }, []);
 
   const stopSpeaking = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -601,7 +617,7 @@ export function TalkItOutPage() {
         setTimeout(() => navigate(data.navigation.path), 1200);
       }
       setIsTyping(false);
-      if (voiceModeActive && data.response) {
+      if (voiceModeActiveRef.current && data.response) {
         speakDWResponse(data.response);
       }
     },
@@ -972,10 +988,10 @@ export function TalkItOutPage() {
           <div className="flex flex-col items-center gap-2 pb-2" data-testid="chat-orb-header">
             <DWOrb
               size={56}
-              state={isSpeaking ? "speaking" : isTyping ? "active" : "chat"}
+              state={isSpeaking ? "speaking" : isListening ? "listening" : isTyping ? "active" : "chat"}
             />
             <p className="text-xs text-muted-foreground">
-              {isSpeaking ? "DW is speaking..." : isTyping ? "DW is thinking..." : "You're talking with DW"}
+              {isSpeaking ? "DW is speaking..." : isListening ? "Listening..." : isTyping ? "DW is thinking..." : "You're talking with DW"}
             </p>
           </div>
           {messages.map((message, index) => {
@@ -1189,12 +1205,13 @@ export function TalkItOutPage() {
               onClick={() => {
                 const next = !voiceModeActive;
                 setVoiceModeActive(next);
+                try { localStorage.setItem("dw:auto_speak", next ? "on" : "off"); } catch {}
                 if (!next) stopSpeaking();
               }}
               className="rounded-full h-12 w-12 shrink-0"
               data-testid="button-voice-mode-toggle"
-              aria-label={voiceModeActive ? "Disable voice mode" : "Enable voice mode"}
-              title={voiceModeActive ? "Voice mode on" : "Voice mode off"}
+              aria-label={voiceModeActive ? "Mute DW voice" : "Unmute DW voice"}
+              title={voiceModeActive ? "DW voice on — tap to mute" : "DW voice off — tap to unmute"}
             >
               {voiceModeActive ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
             </Button>
@@ -1211,6 +1228,7 @@ export function TalkItOutPage() {
                   variant: "destructive",
                 });
               }}
+              onStateChange={(state) => setIsListening(state === "listening")}
               disabled={isTyping}
               autoListenTrigger={autoListenTrigger}
               size="icon"

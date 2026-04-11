@@ -9,6 +9,7 @@ type VoiceState = "idle" | "listening" | "processing" | "error";
 interface VoiceModeButtonProps {
   onTranscript: (text: string) => void;
   onError?: (error: string) => void;
+  onStateChange?: (state: VoiceState) => void;
   disabled?: boolean;
   className?: string;
   size?: "default" | "sm" | "lg" | "icon";
@@ -52,6 +53,7 @@ declare global {
 export function VoiceModeButton({
   onTranscript,
   onError,
+  onStateChange,
   disabled = false,
   className,
   size = "icon",
@@ -59,6 +61,10 @@ export function VoiceModeButton({
   autoListenTrigger,
 }: VoiceModeButtonProps) {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const setVoiceStateWithCallback = (state: VoiceState) => {
+    setVoiceState(state);
+    onStateChange?.(state);
+  };
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,21 +108,21 @@ export function VoiceModeButton({
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
-        setVoiceState("listening");
+        setVoiceStateWithCallback("listening");
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        setVoiceState("processing");
+        setVoiceStateWithCallback("processing");
         const transcript = event.results[0][0].transcript;
         
         timeoutRef.current = setTimeout(() => {
           onTranscript(transcript);
-          setVoiceState("idle");
+          setVoiceStateWithCallback("idle");
         }, 300);
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        setVoiceState("error");
+        setVoiceStateWithCallback("error");
         let errorMessage = VOICE_SCRIPTS.errorFallback;
         
         if (event.error === "not-allowed" || event.error === "permission-denied") {
@@ -126,23 +132,23 @@ export function VoiceModeButton({
         onError?.(errorMessage);
         
         timeoutRef.current = setTimeout(() => {
-          setVoiceState("idle");
+          setVoiceStateWithCallback("idle");
         }, 2000);
       };
 
       recognition.onend = () => {
         if (voiceState === "listening") {
-          setVoiceState("idle");
+          setVoiceStateWithCallback("idle");
         }
       };
 
       recognition.start();
     } catch {
-      setVoiceState("error");
+      setVoiceStateWithCallback("error");
       onError?.(VOICE_SCRIPTS.microphoneError);
       
       timeoutRef.current = setTimeout(() => {
-        setVoiceState("idle");
+        setVoiceStateWithCallback("idle");
       }, 2000);
     }
   }, [isSupported, onTranscript, onError, voiceState]);
@@ -161,7 +167,7 @@ export function VoiceModeButton({
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
-    setVoiceState("idle");
+    setVoiceStateWithCallback("idle");
   }, []);
 
   const handleClick = useCallback(() => {
