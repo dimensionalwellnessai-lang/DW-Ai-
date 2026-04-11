@@ -3308,6 +3308,46 @@ Return ONLY this JSON:
     }
   });
 
+  // Context-aware transcript correction — fix Whisper misrecognitions using conversation history
+  app.post("/api/ai/fix-transcript", async (req, res) => {
+    try {
+      const { transcript, context } = req.body as {
+        transcript: string;
+        context?: Array<{ role: string; content: string }>;
+      };
+      if (!transcript || transcript.trim().length === 0) {
+        return res.status(400).json({ error: "transcript required" });
+      }
+      const recentContext = (context ?? [])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-6)
+        .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content.slice(0, 200)}`)
+        .join("\n");
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a speech-to-text correction assistant. You will receive a raw voice transcript that may have misheard words, wrong homophones, missing punctuation, or garbled phrases. Using the conversation context, correct only actual errors — do not rephrase or expand. Return ONLY the corrected transcript text, nothing else. If the transcript is already correct, return it unchanged.`,
+          },
+          {
+            role: "user",
+            content: `Conversation so far:\n${recentContext || "(no prior context)"}\n\nRaw transcript to correct:\n"${transcript.trim()}"`,
+          },
+        ],
+        max_tokens: 256,
+        temperature: 0.2,
+      });
+
+      const corrected = completion.choices[0]?.message?.content?.trim() || transcript;
+      res.json({ text: corrected.replace(/^["']|["']$/g, "").trim() });
+    } catch (err) {
+      console.error("[ai/fix-transcript]", err);
+      res.json({ text: req.body?.transcript ?? "" });
+    }
+  });
+
   // Proactive DW opener for returning users — based on today's schedule/habits context
   app.get("/api/ai/proactive-opener", requireAuth, async (req, res) => {
     try {

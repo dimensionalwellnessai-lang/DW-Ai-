@@ -21,9 +21,10 @@ import { getDailyPrompt } from "@/lib/prompt-kit";
 import { getSwitchStatuses } from "@/lib/switch-storage";
 import { getCurrentEnergyContext } from "@/lib/energy-context";
 import { PageHeader } from "@/components/page-header";
-import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check, RefreshCw, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquare, BookmarkPlus, Check, RefreshCw, Mic, MicOff, Volume2, VolumeX, Headphones } from "lucide-react";
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
+import { DWVoiceConversation } from "@/components/dw-voice-conversation";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
@@ -219,6 +220,9 @@ export function TalkItOutPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [autoListenTrigger, setAutoListenTrigger] = useState(0);
+  const [voiceConvOpen, setVoiceConvOpen] = useState(false);
+  const voiceConvOpenRef = useRef(false);
+  voiceConvOpenRef.current = voiceConvOpen;
   const ttsRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceModeActiveRef = useRef(voiceModeActive);
   voiceModeActiveRef.current = voiceModeActive;
@@ -629,7 +633,7 @@ export function TalkItOutPage() {
         setTimeout(() => navigate(data.navigation.path), 1200);
       }
       setIsTyping(false);
-      if (voiceModeActiveRef.current && data.response) {
+      if (voiceModeActiveRef.current && data.response && !voiceConvOpenRef.current) {
         speakDWResponse(data.response);
       }
     },
@@ -681,6 +685,20 @@ export function TalkItOutPage() {
     setIsTyping(true);
     chatMutation.mutate(userMessage);
   };
+
+  const handleVoiceSend = useCallback((text: string) => {
+    if (!text.trim() || isTyping) return;
+    const crisisAnalysis = analyzeCrisisRisk(text);
+    if (crisisAnalysis.isPotentialCrisis) {
+      setPendingCrisisMessage(text);
+      setCrisisDialogOpen(true);
+      return;
+    }
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setLastFailedMessage(null);
+    setIsTyping(true);
+    chatMutation.mutate(text);
+  }, [isTyping, chatMutation]);
 
   const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
     const messageToSend = pendingCrisisMessage;
@@ -1184,12 +1202,22 @@ export function TalkItOutPage() {
               </div>
             </div>
           )}
-          {voiceModeActive && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pb-1">
-              <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : isListening ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-              {isSpeaking ? "DW is speaking — tap mic to interrupt" : isListening ? "Recording — tap mic again to send" : "Voice mode on — tap mic to speak"}
-            </div>
-          )}
+          <div className="flex items-center justify-between px-1 pb-1">
+            {voiceModeActive ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : isListening ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+                {isSpeaking ? "DW is speaking — tap mic to interrupt" : isListening ? "Recording — tap mic again to send" : "Voice mode on — tap mic to speak"}
+              </div>
+            ) : <div />}
+            <button
+              onClick={() => setVoiceConvOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-primary font-medium hover:opacity-80 transition-opacity shrink-0"
+              data-testid="button-open-voice-conversation"
+            >
+              <Headphones className="w-3.5 h-3.5" />
+              Speak with DW
+            </button>
+          </div>
           <div className="flex gap-2 items-end">
             <Textarea
               ref={inputRef}
@@ -1314,6 +1342,19 @@ export function TalkItOutPage() {
             setCheckinModalOpen(false);
           }}
           isSubmitting={checkinSubmitting}
+        />
+      )}
+
+      {/* Full-screen voice conversation mode */}
+      {voiceConvOpen && (
+        <DWVoiceConversation
+          messages={messages}
+          onSend={handleVoiceSend}
+          isTyping={isTyping}
+          onClose={() => {
+            setVoiceConvOpen(false);
+            stopSpeaking();
+          }}
         />
       )}
     </div>
