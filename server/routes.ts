@@ -3197,6 +3197,80 @@ Example: ["Work stress mostly", "It's been everything", "Just need a plan"]`,
     }
   });
 
+  // Browse: Music — personalized playlist/genre/mood recommendations
+  app.get("/api/browse/music", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      let personalCtx = "";
+      if (userId) {
+        try {
+          const [profile, goals, onboarding] = await Promise.all([
+            storage.getUserProfile(userId),
+            storage.getGoals(userId),
+            storage.getOnboardingProfile(userId),
+          ]);
+          const lp = (profile?.lifestylePreferences ?? {}) as Record<string, string>;
+          const parts = [
+            lp.musicLikes ? `Music they like: ${lp.musicLikes}` : "",
+            lp.identityVision ? `Aspiring to: ${lp.identityVision}` : "",
+            onboarding?.wellnessFocus?.length ? `Wellness focus: ${onboarding.wellnessFocus.join(", ")}` : "",
+            goals.filter((g: any) => g.isActive).slice(0, 2).map((g: any) => g.title).join(", "),
+          ].filter(Boolean).join(". ");
+          personalCtx = parts;
+        } catch { /* non-fatal */ }
+      }
+
+      const hour = new Date().getHours();
+      const timeOfDay = hour < 9 ? "morning" : hour < 12 ? "late morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "night";
+
+      const prompt = `${personalCtx ? `User context: ${personalCtx}.` : ""}
+Time of day: ${timeOfDay}.
+
+Generate 6 music playlist/genre/mood recommendations that would genuinely suit this person right now. Mix moods and purposes — some for energy, some for focus, some for wind-down. Each should link to both Spotify search and YouTube Music search.
+
+Return ONLY this JSON:
+{"playlists":[{"id":"m1","title":"Playlist or Vibe Name","mood":"Energy/Focus/Chill/etc","genre":"Genre","description":"1 sentence describing the sound and feeling","why":"1 sentence why this fits this person right now","spotifySearchUrl":"https://open.spotify.com/search/[URL-encoded query]","youtubeSearchUrl":"https://www.youtube.com/results?search_query=[URL-encoded query]","appleMusicSearchUrl":"https://music.apple.com/search?term=[URL-encoded query]"}]}`;
+
+      let playlists: any[] = [];
+      const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+      if (perplexityApiKey) {
+        try {
+          const pxRes = await fetch("https://api.perplexity.ai/chat/completions", {
+            signal: AbortSignal.timeout(20000),
+            method: "POST",
+            headers: { "Authorization": `Bearer ${perplexityApiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "llama-3.1-sonar-large-128k-online",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0.5, max_tokens: 1200,
+            }),
+          });
+          if (pxRes.ok) {
+            const pxData = await pxRes.json();
+            let raw = (pxData.choices?.[0]?.message?.content || "").trim();
+            if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+            const si = raw.indexOf("{"); const ei = raw.lastIndexOf("}");
+            if (si !== -1 && ei !== -1) playlists = JSON.parse(raw.substring(si, ei + 1)).playlists || [];
+          }
+        } catch { /* fall through */ }
+      }
+      if (!playlists.length) {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7, max_tokens: 900,
+        });
+        const raw = (completion.choices[0]?.message?.content ?? "{}").trim()
+          .replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+        try { playlists = JSON.parse(raw).playlists || []; } catch { playlists = []; }
+      }
+      res.json({ playlists });
+    } catch (err) {
+      console.error("[browse/music]", err);
+      res.status(500).json({ playlists: [] });
+    }
+  });
+
   // DW Explain — inline educational explanations personalized to the user's context
   app.post("/api/ai/explain", async (req, res) => {
     try {

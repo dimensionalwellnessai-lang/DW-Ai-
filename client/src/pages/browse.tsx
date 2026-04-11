@@ -52,6 +52,11 @@ import {
   BookMarked,
   History,
   FlameKindling,
+  Music2,
+  Tv,
+  Layers,
+  GraduationCap,
+  PartyPopper,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -628,7 +633,8 @@ export default function Browse() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "video" | "articles" | "saved">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "video" | "articles" | "saved">("for-you");
+  const [exploreCategory, setExploreCategory] = useState<"all" | "videos" | "articles" | "shows" | "music" | "workouts" | "skills" | "events">("all");
 
   // ── Discover feed state ──
   interface DiscoverCard {
@@ -748,14 +754,14 @@ export default function Browse() {
   }>({
     queryKey: ["/api/browse/for-you", timeSlotNow, dayNameNow],
     staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
-    enabled: activeTab === "for-you" || activeTab === "video",
+    enabled: activeTab === "for-you" || activeTab === "video" || activeTab === "explore",
   });
 
   // For You: Entertainment (TV/movies)
   const { data: entertainmentData, isLoading: entertainmentLoading } = useQuery<{ shows: any[] }>({
     queryKey: ["/api/browse/entertainment"],
     staleTime: 60 * 60 * 1000,
-    enabled: activeTab === "for-you",
+    enabled: activeTab === "for-you" || activeTab === "explore",
   });
 
   // For You: Activities
@@ -766,14 +772,21 @@ export default function Browse() {
       return res.json();
     },
     staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
-    enabled: activeTab === "for-you",
+    enabled: activeTab === "for-you" || activeTab === "explore",
   });
 
   // For You: Learning resources
   const { data: learningData, isLoading: learningLoading } = useQuery<{ resources: any[] }>({
     queryKey: ["/api/browse/learning"],
     staleTime: 60 * 60 * 1000,
-    enabled: activeTab === "for-you",
+    enabled: activeTab === "for-you" || activeTab === "explore",
+  });
+
+  // For You + Explore: Music recommendations
+  const { data: musicData, isLoading: musicLoading } = useQuery<{ playlists: any[] }>({
+    queryKey: ["/api/browse/music"],
+    staleTime: 60 * 60 * 1000,
+    enabled: activeTab === "for-you" || activeTab === "explore",
   });
 
   // Community: Online groups
@@ -827,7 +840,7 @@ export default function Browse() {
   }>({
     queryKey: ["/api/browse/ai-articles", timeSlotNow, dayNameNow],
     staleTime: 30 * 60 * 1000, // 30 min
-    enabled: activeTab === "articles",
+    enabled: activeTab === "articles" || activeTab === "explore",
   });
 
   // Fetch previously not-interested URLs for persistent hiding
@@ -1297,7 +1310,7 @@ ${contentList}`,
     <div className="flex flex-col h-full bg-background">
       <PageHeader
         title="Browse"
-        rightContent={activeTab === "all" ? (
+        rightContent={activeTab === "for-you" ? (
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -1322,22 +1335,19 @@ ${contentList}`,
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => {
-          setActiveTab(v as "for-you" | "video" | "articles" | "saved");
+          setActiveTab(v as "for-you" | "explore" | "video" | "articles" | "saved");
           setTopicFilter("");
           setLengthFilter(null);
+          if (v === "explore") setExploreCategory("all");
         }} className="w-full">
           <TabsList className="w-full justify-start px-4 h-12 bg-transparent rounded-xl overflow-x-auto flex-nowrap">
             <TabsTrigger value="for-you" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-for-you">
               <Sparkles className="h-4 w-4 mr-1" />
               For You
             </TabsTrigger>
-            <TabsTrigger value="video" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-video">
-              <Video className="h-4 w-4 mr-1" />
-              Video
-            </TabsTrigger>
-            <TabsTrigger value="articles" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-articles">
-              <FileText className="h-4 w-4 mr-1" />
-              Articles
+            <TabsTrigger value="explore" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-explore">
+              <Layers className="h-4 w-4 mr-1" />
+              Explore
             </TabsTrigger>
             <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 shrink-0" data-testid="tab-saved">
               <Bookmark className="h-4 w-4 mr-1" />
@@ -1862,6 +1872,57 @@ ${contentList}`,
                         </div>
                       </CardContent>
                     </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Music for Your Mood ── */}
+          {(musicLoading || (musicData?.playlists && musicData.playlists.length > 0)) && (
+            <div className="pt-4 pb-2 border-t border-border/30 mt-2">
+              <div className="flex items-center gap-2 px-4 mb-3">
+                <Music2 className="h-4 w-4 text-violet-500" />
+                <h2 className="text-sm font-semibold">Music for Your Mood</h2>
+                {musicLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                <span className="text-xs text-muted-foreground ml-auto">DW picked these for right now</span>
+              </div>
+              {musicData?.playlists && (
+                <div className="flex gap-3 overflow-x-auto pb-2 px-4 snap-x snap-mandatory" style={{ scrollbarWidth: "none" }}>
+                  {musicData.playlists.map((pl: any, idx: number) => (
+                    <div
+                      key={idx}
+                      className="shrink-0 w-44 snap-start"
+                      data-testid={`card-music-${idx}`}
+                    >
+                      <div
+                        className="w-44 h-44 rounded-xl overflow-hidden relative group cursor-pointer"
+                        style={{ background: `hsl(${(idx * 47 + 200) % 360}, 60%, 45%)` }}
+                        onClick={() => { if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
+                      >
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
+                          <Music2 className="h-10 w-10 text-white/80 mb-2" />
+                          <p className="text-white text-xs font-bold text-center leading-tight line-clamp-2">{pl.title}</p>
+                          <p className="text-white/70 text-[10px] mt-1">{pl.genre}</p>
+                        </div>
+                        <div className="absolute bottom-0 inset-x-0 p-2 flex gap-1.5">
+                          <button
+                            className="flex-1 text-[10px] bg-green-500 hover:bg-green-400 text-white rounded-full px-1.5 py-0.5 font-medium truncate"
+                            onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
+                            data-testid={`button-music-spotify-${idx}`}
+                          >Spotify</button>
+                          <button
+                            className="flex-1 text-[10px] bg-red-500 hover:bg-red-400 text-white rounded-full px-1.5 py-0.5 font-medium truncate"
+                            onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.youtubeSearchUrl)) window.open(pl.youtubeSearchUrl, "_blank", "noopener,noreferrer"); }}
+                            data-testid={`button-music-youtube-${idx}`}
+                          >YouTube</button>
+                        </div>
+                      </div>
+                      <div className="mt-2 px-0.5">
+                        <p className="text-xs font-semibold leading-tight line-clamp-1">{pl.mood}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{pl.why}</p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -2643,6 +2704,365 @@ ${contentList}`,
               )}
             </div>
           )}
+        </main>
+      )}
+
+      {/* ── Explore Tab ── */}
+      {activeTab === "explore" && (
+        <main className="pb-28">
+          {/* Search bar */}
+          <div className="px-4 pt-4 pb-3 border-b border-border/30">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search anything — workouts, shows, music, skills..."
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                className="pl-9 pr-9 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
+                data-testid="input-explore-search"
+              />
+              {topicFilter && (
+                <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setTopicFilter("")}>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Category chips */}
+          <div className="flex gap-2 overflow-x-auto px-4 py-3 border-b border-border/30" style={{ scrollbarWidth: "none" }}>
+            {([
+              { key: "all", label: "All", icon: <Layers className="h-3.5 w-3.5" /> },
+              { key: "videos", label: "Videos", icon: <Video className="h-3.5 w-3.5" /> },
+              { key: "articles", label: "Articles", icon: <FileText className="h-3.5 w-3.5" /> },
+              { key: "shows", label: "Shows & Movies", icon: <Tv className="h-3.5 w-3.5" /> },
+              { key: "music", label: "Music", icon: <Music2 className="h-3.5 w-3.5" /> },
+              { key: "workouts", label: "Workouts", icon: <Dumbbell className="h-3.5 w-3.5" /> },
+              { key: "skills", label: "Skills", icon: <GraduationCap className="h-3.5 w-3.5" /> },
+              { key: "events", label: "Events", icon: <PartyPopper className="h-3.5 w-3.5" /> },
+            ] as const).map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => setExploreCategory(cat.key as any)}
+                className={`flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  exploreCategory === cat.key
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+                data-testid={`chip-explore-${cat.key}`}
+              >
+                {cat.icon}
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4 space-y-6">
+
+            {/* Videos section */}
+            {(exploreCategory === "all" || exploreCategory === "videos") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Video className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">Videos</h3>
+                </div>
+                <div className="grid gap-3 grid-cols-2">
+                  {(forYouData?.videos?.length ? forYouData.videos : CURATED_VIDEO_LIBRARY)
+                    .filter((v: any) => !topicFilter || (v.title + " " + (v.description || v.channel || "") + " " + (v.category || v.dimension || "")).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 6 : 20)
+                    .map((v: any, idx: number) => {
+                      const yt = getYouTubeThumbnail(v.url);
+                      return (
+                        <button
+                          key={v.id || idx}
+                          className="text-left group"
+                          onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
+                          data-testid={`card-explore-video-${idx}`}
+                        >
+                          <div className="aspect-video rounded-xl overflow-hidden relative bg-muted mb-1.5">
+                            <img
+                              src={yt || getContentThumbnail("video", String(idx))}
+                              alt={v.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => { (e.target as HTMLImageElement).src = getContentThumbnail("video", String(idx)); }}
+                            />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors rounded-xl" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="bg-white/90 rounded-full p-2"><Play className="h-4 w-4 text-gray-900 fill-gray-900" /></div>
+                            </div>
+                            {v.duration && <span className="absolute bottom-1.5 right-1.5 text-[10px] text-white bg-black/60 px-1 rounded">{v.duration}</span>}
+                          </div>
+                          <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{v.channel || v.source || ""}</p>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Articles section */}
+            {(exploreCategory === "all" || exploreCategory === "articles") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold">Articles</h3>
+                  {aiArticlesLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                </div>
+                <div className="space-y-2">
+                  {(aiArticlesData?.articles || forYouData?.articles || [])
+                    .filter((a: any) => !topicFilter || (a.title + " " + (a.synopsis || a.description || "") + " " + (a.category || "")).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 4 : 20)
+                    .map((article: any, idx: number) => (
+                      <button
+                        key={article.id || idx}
+                        className="w-full text-left flex gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors group"
+                        onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`card-explore-article-${idx}`}
+                      >
+                        <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-muted">
+                          <img
+                            src={getContentThumbnail("article", String(idx))}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold line-clamp-2 leading-snug">{article.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{article.synopsis || article.description || ""}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            {article.readTimeMinutes && <span className="text-[10px] text-muted-foreground">{article.readTimeMinutes} min read</span>}
+                            {article.source && <span className="text-[10px] text-muted-foreground">{article.source}</span>}
+                            <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto" />
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  {!aiArticlesLoading && !aiArticlesData?.articles?.length && !forYouData?.articles?.length && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Loading personalized articles...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Shows & Movies section */}
+            {(exploreCategory === "all" || exploreCategory === "shows") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Tv className="h-4 w-4 text-violet-500" />
+                  <h3 className="text-sm font-semibold">Shows & Movies</h3>
+                  {entertainmentLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                  <span className="text-[10px] text-muted-foreground ml-auto">DW picked these for you</span>
+                </div>
+                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+                  {(entertainmentData?.shows || [])
+                    .filter((s: any) => !topicFilter || (s.title + " " + s.synopsis + " " + s.genre).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 4 : 20)
+                    .map((show: any, idx: number) => (
+                      <button
+                        key={show.id || idx}
+                        className="text-left group"
+                        onClick={() => { if (isSafeExternalUrl(show.searchUrl)) window.open(show.searchUrl, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`card-explore-show-${idx}`}
+                      >
+                        <div className="aspect-[2/3] rounded-xl overflow-hidden relative bg-muted mb-1.5">
+                          <img
+                            src={getContentThumbnail("entertainment", String(idx))}
+                            alt={show.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-xl" />
+                          <div className="absolute bottom-0 inset-x-0 p-2">
+                            <p className="text-white text-[10px] font-bold line-clamp-1">{show.title}</p>
+                            <p className="text-white/70 text-[9px]">{show.platform} · {show.type}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground line-clamp-2">{show.whyPicked}</p>
+                      </button>
+                    ))}
+                  {!entertainmentLoading && !entertainmentData?.shows?.length && (
+                    <p className="text-xs text-muted-foreground col-span-full text-center py-4">Loading show recommendations...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Music section */}
+            {(exploreCategory === "all" || exploreCategory === "music") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Music2 className="h-4 w-4 text-violet-500" />
+                  <h3 className="text-sm font-semibold">Music & Playlists</h3>
+                  {musicLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                </div>
+                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+                  {(musicData?.playlists || [])
+                    .filter((p: any) => !topicFilter || (p.title + " " + p.mood + " " + p.genre + " " + p.description).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 4 : 20)
+                    .map((pl: any, idx: number) => (
+                      <div key={idx} className="rounded-xl overflow-hidden" data-testid={`card-explore-music-${idx}`}>
+                        <div
+                          className="aspect-square flex flex-col items-center justify-center p-3 cursor-pointer hover:brightness-110 transition-all"
+                          style={{ background: `hsl(${(idx * 47 + 200) % 360}, 60%, 45%)` }}
+                          onClick={() => { if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
+                        >
+                          <Music2 className="h-8 w-8 text-white/80 mb-1.5" />
+                          <p className="text-white text-xs font-bold text-center line-clamp-2">{pl.title}</p>
+                          <p className="text-white/70 text-[10px] mt-1">{pl.genre}</p>
+                          <div className="flex gap-1.5 mt-2">
+                            <button
+                              className="text-[9px] bg-green-500 hover:bg-green-400 text-white rounded-full px-2 py-0.5 font-medium"
+                              onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
+                            >Spotify</button>
+                            <button
+                              className="text-[9px] bg-red-500 hover:bg-red-400 text-white rounded-full px-2 py-0.5 font-medium"
+                              onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.youtubeSearchUrl)) window.open(pl.youtubeSearchUrl, "_blank", "noopener,noreferrer"); }}
+                            >YouTube</button>
+                          </div>
+                        </div>
+                        <div className="pt-1.5 px-0.5">
+                          <p className="text-xs font-semibold line-clamp-1">{pl.mood}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{pl.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  {!musicLoading && !musicData?.playlists?.length && (
+                    <p className="text-xs text-muted-foreground col-span-full text-center py-4">Loading music picks...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Workouts section */}
+            {(exploreCategory === "all" || exploreCategory === "workouts") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Dumbbell className="h-4 w-4 text-emerald-500" />
+                  <h3 className="text-sm font-semibold">Workout Videos</h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {CURATED_VIDEO_LIBRARY
+                    .filter((v) => (v.dimension === "physical" || v.dimension === "emotional") && (!topicFilter || (v.title + " " + v.channel).toLowerCase().includes(topicFilter.toLowerCase())))
+                    .slice(0, exploreCategory === "all" ? 6 : 20)
+                    .map((v, idx) => (
+                      <button
+                        key={v.id}
+                        className="shrink-0 w-44 text-left group"
+                        onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`card-explore-workout-${idx}`}
+                      >
+                        <div className="w-44 h-28 rounded-xl overflow-hidden relative bg-muted mb-1.5">
+                          <img src={v.thumb} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors rounded-xl" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="bg-white/90 rounded-full p-2"><Play className="h-4 w-4 text-gray-900 fill-gray-900" /></div>
+                          </div>
+                          <span className="absolute bottom-1.5 right-1.5 text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded">{v.duration}</span>
+                        </div>
+                        <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{v.channel}</p>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Skills section */}
+            {(exploreCategory === "all" || exploreCategory === "skills") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <GraduationCap className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold">Skill Building</h3>
+                  {learningLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                  <span className="text-[10px] text-muted-foreground ml-auto">DW curated for your goals</span>
+                </div>
+                <div className="space-y-2">
+                  {(learningData?.resources || [])
+                    .filter((r: any) => !topicFilter || (r.title + " " + (r.description || "") + " " + (r.platform || "")).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 3 : 20)
+                    .map((resource: any, idx: number) => (
+                      <button
+                        key={idx}
+                        className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors group"
+                        onClick={() => { if (isSafeExternalUrl(resource.url)) window.open(resource.url, "_blank", "noopener,noreferrer"); }}
+                        data-testid={`card-explore-skill-${idx}`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                          <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold line-clamp-1">{resource.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{resource.description || resource.whyPicked}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {resource.platform && <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{resource.platform}</span>}
+                            {resource.duration && <span className="text-[10px] text-muted-foreground">{resource.duration}</span>}
+                            <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto" />
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  {!learningLoading && !learningData?.resources?.length && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Loading skill picks...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Events / Activities section */}
+            {(exploreCategory === "all" || exploreCategory === "events") && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <PartyPopper className="h-4 w-4 text-rose-500" />
+                  <h3 className="text-sm font-semibold">Activities & Events</h3>
+                  {activitiesLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
+                  <span className="text-[10px] text-muted-foreground ml-auto">For {timeSlotNow}</span>
+                </div>
+                <div className="space-y-2">
+                  {(activitiesData?.activities || [])
+                    .filter((a: any) => !topicFilter || (a.title + " " + (a.description || a.why || "")).toLowerCase().includes(topicFilter.toLowerCase()))
+                    .slice(0, exploreCategory === "all" ? 4 : 20)
+                    .map((activity: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors"
+                        data-testid={`card-explore-event-${idx}`}
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
+                          <PartyPopper className="h-5 w-5 text-rose-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold line-clamp-1">{activity.title}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{activity.description || activity.why || ""}</p>
+                          {activity.duration && <span className="text-[10px] text-muted-foreground mt-1 block">{activity.duration}</span>}
+                        </div>
+                        {activity.url && isSafeExternalUrl(activity.url) && (
+                          <button
+                            onClick={() => window.open(activity.url, "_blank", "noopener,noreferrer")}
+                            className="shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  {!activitiesLoading && !activitiesData?.activities?.length && (
+                    <p className="text-xs text-muted-foreground text-center py-4">Loading activity picks...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {topicFilter && exploreCategory === "all" &&
+              !forYouData?.videos?.length && !aiArticlesData?.articles?.length &&
+              !entertainmentData?.shows?.length && !musicData?.playlists?.length && (
+              <div className="text-center py-12">
+                <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No results for "{topicFilter}"</p>
+                <button className="text-xs text-primary mt-2" onClick={() => setTopicFilter("")}>Clear search</button>
+              </div>
+            )}
+          </div>
         </main>
       )}
 
