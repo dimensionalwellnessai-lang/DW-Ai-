@@ -13497,6 +13497,29 @@ Response:`;
     }
   });
 
+  // ── Speech-to-text transcription (Whisper) ───────────────────────────────
+  app.post("/api/transcribe", async (req, res) => {
+    const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } }).single("audio");
+    transcribeUpload(req, res, async (err) => {
+      if (err) return res.status(400).json({ error: "File upload failed" });
+      try {
+        const file = req.file;
+        if (!file) return res.status(400).json({ error: "No audio file provided" });
+        const { toFile } = await import("openai");
+        const audioFile = await toFile(file.buffer, "audio.webm", { type: file.mimetype || "audio/webm" });
+        const transcription = await openai.audio.transcriptions.create({
+          model: "whisper-1",
+          file: audioFile,
+          language: "en",
+        });
+        res.json({ text: transcription.text });
+      } catch (e: any) {
+        console.error("[Transcribe] Error:", e?.message ?? e);
+        res.status(500).json({ error: "Transcription failed" });
+      }
+    });
+  });
+
   // ── Assistant action analytics ──────────────────────────────────────────
   app.post("/api/assistant/log", async (req, res) => {
     try {

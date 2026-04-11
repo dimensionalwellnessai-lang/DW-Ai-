@@ -229,6 +229,18 @@ export function TalkItOutPage() {
     }
   }, []);
 
+  // Auto-speak DW's opening message when the chat page first loads
+  const hasSpokenGreetingRef = useRef(false);
+  useEffect(() => {
+    if (hasSpokenGreetingRef.current) return;
+    if (!voiceModeActive) return;
+    if (messages.length === 1 && messages[0].role === "assistant") {
+      hasSpokenGreetingRef.current = true;
+      setTimeout(() => speakDWResponse(messages[0].content), 800);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const speakDWResponse = useCallback((text: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -1174,8 +1186,8 @@ export function TalkItOutPage() {
           )}
           {voiceModeActive && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 pb-1">
-              <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : "bg-muted-foreground/40"}`} />
-              {isSpeaking ? "DW is speaking — tap mic to interrupt" : "Voice mode on — DW will listen after responding"}
+              <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : isListening ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+              {isSpeaking ? "DW is speaking — tap mic to interrupt" : isListening ? "Recording — tap mic again to send" : "Voice mode on — tap mic to speak"}
             </div>
           )}
           <div className="flex gap-2 items-end">
@@ -1228,7 +1240,7 @@ export function TalkItOutPage() {
                   variant: "destructive",
                 });
               }}
-              onStateChange={(state) => setIsListening(state === "listening")}
+              onStateChange={(state) => setIsListening(state === "recording")}
               disabled={isTyping}
               autoListenTrigger={autoListenTrigger}
               size="icon"

@@ -1,10 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { VOICE_SCRIPTS } from "@/config/voiceScripts";
 
-type VoiceState = "idle" | "listening" | "processing" | "error";
+type VoiceState = "idle" | "recording" | "processing" | "error";
 
 interface VoiceModeButtonProps {
   onTranscript: (text: string) => void;
@@ -15,39 +14,6 @@ interface VoiceModeButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
   variant?: "default" | "ghost" | "outline";
   autoListenTrigger?: number;
-}
-
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string;
-}
-
-interface SpeechRecognitionInstance {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  onstart: (() => void) | null;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-
-interface SpeechRecognitionConstructor {
-  new (): SpeechRecognitionInstance;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
 }
 
 export function VoiceModeButton({
@@ -61,138 +27,129 @@ export function VoiceModeButton({
   autoListenTrigger,
 }: VoiceModeButtonProps) {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
-  const setVoiceStateWithCallback = (state: VoiceState) => {
-    setVoiceState(state);
-    onStateChange?.(state);
-  };
-  const [isSupported, setIsSupported] = useState(true);
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const startListeningRef = useRef<(() => void) | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const autoTriggerRef = useRef(0);
 
-  useEffect(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      setIsSupported(false);
+  const setVS = useCallback((s: VoiceState) => {
+    setVoiceState(s);
+    onStateChange?.(s);
+  }, [onStateChange]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
     }
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
   }, []);
 
-  const startListening = useCallback(() => {
-    if (!isSupported) {
-      onError?.(VOICE_SCRIPTS.voiceNotSupported);
-      return;
-    }
-
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      setIsSupported(false);
-      onError?.(VOICE_SCRIPTS.voiceNotSupported);
-      return;
-    }
-
+  const transcribeAudio = useCallback(async (blob: Blob) => {
+    setVS("processing");
     try {
-      const recognition = new SpeechRecognitionAPI();
-      recognitionRef.current = recognition;
+      const formData = new FormData();
+      const mimeType = blob.type || "audio/webm";
+      const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
+      formData.append("audio", blob, `recording.${ext}`);
 
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-      recognition.maxAlternatives = 1;
+      const resp = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
 
-      recognition.onstart = () => {
-        setVoiceStateWithCallback("listening");
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        setVoiceStateWithCallback("processing");
-        const transcript = event.results[0][0].transcript;
-        
-        timeoutRef.current = setTimeout(() => {
-          onTranscript(transcript);
-          setVoiceStateWithCallback("idle");
-        }, 300);
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        setVoiceStateWithCallback("error");
-        let errorMessage = VOICE_SCRIPTS.errorFallback;
-        
-        if (event.error === "not-allowed" || event.error === "permission-denied") {
-          errorMessage = VOICE_SCRIPTS.microphoneError;
-        }
-        
-        onError?.(errorMessage);
-        
-        timeoutRef.current = setTimeout(() => {
-          setVoiceStateWithCallback("idle");
-        }, 2000);
-      };
-
-      recognition.onend = () => {
-        if (voiceState === "listening") {
-          setVoiceStateWithCallback("idle");
-        }
-      };
-
-      recognition.start();
-    } catch {
-      setVoiceStateWithCallback("error");
-      onError?.(VOICE_SCRIPTS.microphoneError);
-      
-      timeoutRef.current = setTimeout(() => {
-        setVoiceStateWithCallback("idle");
-      }, 2000);
+      if (!resp.ok) throw new Error("Transcription failed");
+      const data = await resp.json();
+      const text = data.text?.trim();
+      if (text) {
+        onTranscript(text);
+      } else {
+        onError?.("Couldn't make out what you said — try again.");
+      }
+    } catch (e: any) {
+      onError?.(e?.message ?? "Transcription failed. Please try again.");
+    } finally {
+      setVS("idle");
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     }
-  }, [isSupported, onTranscript, onError, voiceState]);
+  }, [onTranscript, onError, setVS]);
 
-  useEffect(() => {
-    startListeningRef.current = startListening;
-  }, [startListening]);
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
 
-  useEffect(() => {
-    if (!autoListenTrigger) return;
-    const fn = startListeningRef.current;
-    if (fn) fn();
-  }, [autoListenTrigger]);
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg",
+      ].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = mr;
+
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mr.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+        await transcribeAudio(blob);
+      };
+
+      mr.start();
+      setVS("recording");
+
+      // Auto-stop after 30 seconds as a safety net
+      setTimeout(() => {
+        if (mr.state !== "inactive") mr.stop();
+      }, 30000);
+    } catch (e: any) {
+      const msg = e?.name === "NotAllowedError"
+        ? "Microphone permission denied — check your browser settings."
+        : "Could not access microphone.";
+      onError?.(msg);
+      setVS("error");
+      setTimeout(() => setVS("idle"), 2500);
     }
-    setVoiceStateWithCallback("idle");
-  }, []);
+  }, [transcribeAudio, onError, setVS]);
 
   const handleClick = useCallback(() => {
-    if (voiceState === "listening") {
-      stopListening();
-    } else if (voiceState === "idle") {
-      startListening();
+    if (voiceState === "recording") {
+      stopRecording();
+    } else if (voiceState === "idle" || voiceState === "error") {
+      startRecording();
     }
-  }, [voiceState, startListening, stopListening]);
+  }, [voiceState, startRecording, stopRecording]);
 
-  if (!isSupported) {
-    return null;
-  }
+  // Auto-listen trigger (after DW finishes speaking)
+  useEffect(() => {
+    if (!autoListenTrigger || autoListenTrigger === autoTriggerRef.current) return;
+    autoTriggerRef.current = autoListenTrigger;
+    setTimeout(() => startRecording(), 400);
+  }, [autoListenTrigger, startRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state !== "inactive") {
+        mediaRecorderRef.current?.stop();
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   if (voiceState === "error") {
     return (
       <Button
-        size="sm"
+        size={size}
         variant="ghost"
         onClick={handleClick}
         disabled={disabled}
-        className={cn(
-          "text-destructive gap-1.5 transition-all duration-200",
-          className
-        )}
+        className={cn("text-destructive gap-1.5 transition-all duration-200", className)}
         data-testid="button-voice-mode"
         aria-label="Try again"
       >
@@ -210,29 +167,28 @@ export function VoiceModeButton({
       disabled={disabled || voiceState === "processing"}
       className={cn(
         "relative transition-all duration-200",
-        voiceState === "listening" && "text-primary",
+        voiceState === "recording" && "text-red-500 bg-red-50 dark:bg-red-950/30",
         className
       )}
       data-testid="button-voice-mode"
       aria-label={
-        voiceState === "listening" 
-          ? "Stop listening" 
+        voiceState === "recording"
+          ? "Stop recording"
           : voiceState === "processing"
-          ? "Processing..."
+          ? "Transcribing..."
           : "Start voice input"
       }
     >
-      {voiceState === "listening" && (
-        <span className="absolute inset-0 rounded-full animate-pulse bg-primary/20" />
+      {voiceState === "recording" && (
+        <span className="absolute inset-0 rounded-full animate-pulse bg-red-400/20" />
       )}
-      
+
       {voiceState === "processing" ? (
         <Loader2 className="w-4 h-4 animate-spin text-foreground" />
+      ) : voiceState === "recording" ? (
+        <Square className="w-4 h-4 fill-red-500 text-red-500" />
       ) : (
-        <Mic className={cn(
-          "w-4 h-4 text-foreground",
-          voiceState === "listening" && "text-primary"
-        )} />
+        <Mic className="w-4 h-4 text-foreground" />
       )}
     </Button>
   );
