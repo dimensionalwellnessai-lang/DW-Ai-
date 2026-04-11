@@ -34,6 +34,8 @@ import {
   ChevronDown,
   Clock,
   LayoutDashboard,
+  BarChart2,
+  Activity,
 } from "lucide-react";
 
 const MENU_SECTIONS: Array<{
@@ -67,6 +69,8 @@ const MENU_SECTIONS: Array<{
     items: [
       { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "body" },
       { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
+      { id: "workout-analytics", name: "📊 Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
+      { id: "health-data", name: "❤️ Health Data", path: "/health-data", icon: Activity, dimension: "body" },
       { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
       { id: "meditation", name: "🧘 Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },
       { id: "journal", name: "📓 Journal", path: "/journal", icon: Feather, dimension: "mind" },

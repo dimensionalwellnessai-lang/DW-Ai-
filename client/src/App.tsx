@@ -50,6 +50,8 @@ const DailySchedulePage = lazy(() => import("@/pages/daily-schedule"));
 const WeekSchedulePage = lazy(() => import("@/pages/week-schedule"));
 const WorkoutPage = lazy(() => import("@/pages/workout"));
 const MyPlanPage = lazy(() => import("@/pages/my-plan"));
+const WorkoutAnalyticsPage = lazy(() => import("@/pages/workout-analytics"));
+const HealthDataPage = lazy(() => import("@/pages/health-data"));
 const RecoveryPage = lazy(() =>
   import("@/pages/recovery").then((m) => ({ default: m.RecoveryPage })),
 );
@@ -261,6 +263,8 @@ function Router() {
       {isRouteEnabled("/week-schedule") && <Route path="/week-schedule" component={WeekSchedulePage} />}
       {isRouteEnabled("/workout") && <Route path="/workout" component={WorkoutPage} />}
       <Route path="/my-plan" component={MyPlanPage} />
+      <Route path="/workout/analytics" component={WorkoutAnalyticsPage} />
+      <Route path="/health-data" component={HealthDataPage} />
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}

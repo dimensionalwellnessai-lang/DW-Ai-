@@ -2965,3 +2965,34 @@ export const insertEveningCheckInSchema = createInsertSchema(eveningCheckIns).om
 
 export type EveningCheckIn = typeof eveningCheckIns.$inferSelect;
 export type InsertEveningCheckIn = z.infer<typeof insertEveningCheckInSchema>;
+
+// ── Push Subscriptions ────────────────────────────────────────────────────────
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ── Health Metrics ────────────────────────────────────────────────────────────
+export const healthMetrics = pgTable("health_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  loggedDate: text("logged_date").notNull(), // YYYY-MM-DD
+  steps: integer("steps"),
+  sleepHours: real("sleep_hours"),
+  heartRate: integer("heart_rate"),
+  weightKg: real("weight_kg"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [uniqueIndex("health_metrics_user_date_idx").on(t.userId, t.loggedDate)]);
+
+export const insertHealthMetricSchema = createInsertSchema(healthMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+export type HealthMetric = typeof healthMetrics.$inferSelect;
+export type InsertHealthMetric = z.infer<typeof insertHealthMetricSchema>;
