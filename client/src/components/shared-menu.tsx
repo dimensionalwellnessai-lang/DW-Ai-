@@ -33,6 +33,7 @@ import {
   Lock,
   ChevronDown,
   Clock,
+  LayoutDashboard,
 } from "lucide-react";
 
 const MENU_SECTIONS: Array<{
@@ -64,6 +65,7 @@ const MENU_SECTIONS: Array<{
   {
     title: "BODY & MIND",
     items: [
+      { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "body" },
       { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
       { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
       { id: "meditation", name: "🧘 Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },

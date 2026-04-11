@@ -42,10 +42,12 @@ import {
   X,
   Check,
   Heart,
+  Camera,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
+import { FormCheckDialog } from "@/components/form-check-dialog";
 import { 
   getBodyProfile, 
   hasCompletedBodyScan,
@@ -265,6 +267,7 @@ export default function WorkoutPage() {
   const selectedWorkoutParam = searchParams.get("selected");
   
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
+  const [formCheckOpen, setFormCheckOpen] = useState(false);
   const [bodyProfile, setBodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [savedWorkouts, setSavedWorkouts] = useState<SavedRoutine[]>(getSavedRoutinesByType("workout"));
   const [hasBodyScan, setHasBodyScan] = useState(hasCompletedBodyScan());
@@ -673,6 +676,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
               <Button size="sm" variant="outline" onClick={() => setBodyScanOpen(true)} data-testid="button-body-scan">
                 <User className="w-4 h-4 mr-1.5" />
                 {hasBodyScan ? "Update Profile" : "Body Scan"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setFormCheckOpen(true)} data-testid="button-form-check">
+                <Camera className="w-4 h-4 mr-1.5" />
+                Check My Form
               </Button>
             </div>
           </div>
@@ -1267,6 +1274,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
         />
 
         <BodyScanDialog open={bodyScanOpen} onClose={() => setBodyScanOpen(false)} onComplete={handleBodyScanComplete} />
+        <FormCheckDialog open={formCheckOpen} onClose={() => setFormCheckOpen(false)} exerciseName={selectedExercise} />
 
         <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
           <DialogContent className="max-w-sm">

@@ -5163,6 +5163,115 @@ Return only valid JSON, no markdown, no extra text.`;
     }
   });
 
+  // ── Body Scan AI Analysis ─────────────────────────────────────────────────
+  app.post("/api/body-scan/analyze", requireAuth, async (req, res) => {
+    try {
+      const { photoDataUrl, measurements, bodyGoal, focusAreas, currentState, exercise } = req.body;
+      const isFormCheck = !!exercise;
+
+      const systemPrompt = isFormCheck
+        ? `You are DW, a professional fitness coach. The user is performing "${exercise}". Analyze their form in the photo and give short, direct coaching feedback. Focus on: alignment, posture, safety, and technique. Be encouraging but specific. Keep it under 80 words.`
+        : `You are DW, a wellness AI. Analyze the user's body photo and measurements to provide personalized, compassionate insights. Cover: posture assessment, body type observation, key areas to focus on, and 3 specific recommendations for their stated goal. Be honest, supportive, and specific. Keep it under 200 words. Start with a positive observation.`;
+
+      const userContent: any[] = [];
+
+      if (photoDataUrl) {
+        userContent.push({ type: "image_url", image_url: { url: photoDataUrl } });
+      }
+
+      const contextText = isFormCheck
+        ? `Exercise: ${exercise}. Please analyze my form in this photo.`
+        : [
+            currentState && `How I'm feeling: ${currentState}`,
+            bodyGoal && `Goal: ${bodyGoal}`,
+            focusAreas?.length && `Focus areas: ${focusAreas.join(", ")}`,
+            measurements?.heightCm && `Height: ${measurements.heightCm}cm`,
+            measurements?.weightKg && `Weight: ${measurements.weightKg}kg`,
+          ].filter(Boolean).join("\n") || "No additional context provided.";
+
+      userContent.push({ type: "text", text: contextText });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: photoDataUrl ? userContent : contextText },
+        ],
+        max_tokens: 400,
+      });
+
+      res.json({ analysis: response.choices[0].message.content });
+    } catch (error: any) {
+      console.error("Body scan analyze error:", error);
+      res.status(500).json({ error: "Failed to analyze. Please try again." });
+    }
+  });
+
+  // ── Unified Life Plan ─────────────────────────────────────────────────────
+  app.get("/api/my-plan", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const [user, goals, habits, profile, bodyScans, calendarEvents] = await Promise.all([
+        storage.getUser(userId),
+        storage.getGoals(userId),
+        storage.getHabits(userId),
+        storage.getOnboardingProfile(userId),
+        storage.getBodyScans(userId),
+        storage.getCalendarEvents(userId),
+      ]);
+
+      const latestBodyScan = bodyScans[0];
+      const activeGoals = goals.filter((g: any) => g.status === "active").slice(0, 5);
+      const activeHabits = habits.filter((h: any) => h.isActive !== false).slice(0, 8);
+
+      const context = [
+        user?.name && `User: ${user.name}`,
+        profile?.fitnessGoal && `Fitness goal: ${profile.fitnessGoal}`,
+        activeGoals.length && `Active goals: ${activeGoals.map((g: any) => g.title).join(", ")}`,
+        activeHabits.length && `Daily habits: ${activeHabits.map((h: any) => h.title).join(", ")}`,
+        latestBodyScan?.notes && `Body context: ${latestBodyScan.notes.slice(0, 200)}`,
+        latestBodyScan?.goals?.length && `Body goals: ${latestBodyScan.goals.join(", ")}`,
+      ].filter(Boolean).join("\n");
+
+      const systemPrompt = `You are DW, a wellness AI creating a personalized 7-day life plan. Generate a unified JSON plan that connects workouts, nutrition, habits, and recovery. Make it specific, realistic, and motivating.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "weekTheme": "string — an inspiring theme for the week",
+  "bodyGoalFocus": "string — 1-sentence focus based on body goals",
+  "nutritionTarget": { "calories": number, "protein": "Xg", "note": "string" },
+  "days": [
+    {
+      "day": "Monday",
+      "workout": { "type": "string", "duration": "string", "focus": "string", "exercises": ["string"] },
+      "nutrition": { "breakfast": "string", "lunch": "string", "dinner": "string", "snack": "string" },
+      "habits": ["string"],
+      "recovery": "string",
+      "intention": "string — a short morning intention"
+    }
+  ],
+  "weeklyInsight": "string — a motivating summary for the week"
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Create my personalized 7-day plan based on:\n${context || "General wellness and balance"}` },
+        ],
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      });
+
+      const content = response.choices[0].message.content || "{}";
+      const plan = JSON.parse(content);
+      res.json(plan);
+    } catch (error: any) {
+      console.error("My plan error:", error);
+      res.status(500).json({ error: "Failed to generate plan. Please try again." });
+    }
+  });
+
   app.get("/api/wellness-content", async (req, res) => {
     try {
       const content = await storage.getWellnessContent();
