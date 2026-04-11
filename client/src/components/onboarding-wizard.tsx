@@ -105,17 +105,32 @@ const DIMENSION_SNAPSHOT_OPTIONS = [
 ];
 
 // DW voice scripts for each step — warm, conversational, personal
+// Steps 3+ are name-aware so DW addresses the user directly after they've introduced themselves
 const STEP_VOICE_SCRIPTS: Record<number, string | ((name: string | null) => string)> = {
   0: "Hey — I'm DW. I'm your personal intelligence system. Think of me as the operating system for your life. I bring together AI coaching, astrology, life planning, journaling, fitness, and more — and I learn who you are over time. Let's start by getting to know each other.",
   1: "Before we dive in — I want to be straight with you. I'm good at cutting through noise, building real plans, and keeping you on track. I'll adapt to your energy and never waste your time. I'm not a therapist, and I won't pretend to be. What I am is your most capable personal system. Sound good?",
-  2: "Let's start simple — what's your name? And if you share your birth date and where you were born, I'll unlock personalized cosmic and astrology readings for you. That part is completely optional.",
-  3: "And where are you based right now? This helps me with things like local timing, weather context, and how I plan your days.",
-  4: "Tell me about your daily rhythm. When you wake up, when you wind down, when you like to move — knowing this helps me build plans that actually fit your life instead of fighting it.",
-  5: "What do you do? This helps me understand your schedule, your pressures, and how to frame everything I build for you.",
-  6: "I want to take stock of where things stand across your life right now. Which areas feel most alive or most challenging at the moment? Pick any that apply — be honest.",
-  7: "Now, where do you most want to grow in the next 90 days? Be honest — this shapes everything. Pick what actually matters to you right now.",
-  8: (name) => `${name ? `${name}, I've` : "I've"} heard you. Based on everything you've shared, here's how I've set up your space. Your Life Blueprint is pre-populated, and I've got a few first focus areas in mind. Take a look.`,
-  9: (name) => `${name ? `You're in, ${name}.` : "You're in."} DW is ready to work with you. Everything gets more personal the more you use it. I'm excited to show you what's possible.`,
+  2: "Let's start with who you are. What should I call you? And if you share your birth date and where you were born, I'll unlock personalized cosmic and astrology readings for you. Totally optional.",
+  3: (name) => name
+    ? `Nice to meet you, ${name}. Where are you based right now? This helps me with local timing and how I frame your days.`
+    : "Where are you based right now? This helps me with local timing and how I frame your days.",
+  4: (name) => name
+    ? `${name}, tell me about your daily rhythm. When do you usually wake up, wind down, and like to move? You can say it out loud or just tap.`
+    : "Tell me about your daily rhythm. When do you wake up, wind down, and like to move? You can say it out loud or just tap.",
+  5: (name) => name
+    ? `${name}, what do you do? This helps me understand your schedule and the pressures you're working around.`
+    : "What do you do? This helps me understand your schedule and the pressures you're working around.",
+  6: (name) => name
+    ? `${name}, let's take stock of where things stand. Which areas of your life feel most alive — or most challenging — right now?`
+    : "Let's take stock of where things stand. Which areas of your life feel most alive or most challenging right now?",
+  7: (name) => name
+    ? `Now ${name}, where do you most want to grow in the next 90 days? Be honest — this shapes everything I build for you.`
+    : "Where do you most want to grow in the next 90 days? Be honest — this shapes everything.",
+  8: (name) => name
+    ? `${name}, I've heard everything. Based on what you've shared, here's how I've set up your space.`
+    : "I've heard everything. Based on what you've shared, here's how I've set up your space.",
+  9: (name) => name
+    ? `You're in, ${name}. DW is ready. Everything gets sharper the more you use it — I'm excited to show you what's possible.`
+    : "You're in. DW is ready. Everything gets sharper the more you use it.",
 };
 
 // ─── Speech recognition shims ─────────────────────────────────────────────────
@@ -277,50 +292,46 @@ function DWVoiceOrb({ script, voiceEnabled, onToggleVoice, autoSpeak, size = 72 
   }, [script]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative flex items-center justify-center">
+    <div className="flex flex-col items-center gap-1.5">
+      <button
+        type="button"
+        onClick={voiceEnabled ? speak : undefined}
+        disabled={ttsState === "loading"}
+        className={cn(
+          "relative flex items-center justify-center focus:outline-none transition-transform",
+          voiceEnabled && ttsState !== "loading" && "hover:scale-105 active:scale-95 cursor-pointer",
+          !voiceEnabled && "cursor-default"
+        )}
+        aria-label={ttsState === "speaking" ? "Stop DW" : "Hear DW speak"}
+        data-testid="button-dw-orb-speak"
+        title={voiceEnabled ? (ttsState === "speaking" ? "Tap to stop" : "Tap to hear DW") : ""}
+      >
         {ttsState === "speaking" && (
           <>
             <span className="absolute w-24 h-24 rounded-full bg-primary/8 animate-ping" style={{ animationDuration: "2s" }} />
             <span className="absolute w-20 h-20 rounded-full bg-primary/12 animate-ping" style={{ animationDuration: "1.5s", animationDelay: "0.3s" }} />
           </>
         )}
-        <DWOrb size={size} state={ttsState === "speaking" ? "active" : "suggestion"} />
-      </div>
+        <DWOrb size={size} state={ttsState === "speaking" ? "active" : ttsState === "loading" ? "active" : "suggestion"} />
+      </button>
 
       <div className="flex items-center gap-2">
         {voiceEnabled && (
-          <button
-            type="button"
-            onClick={speak}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-              ttsState === "speaking"
-                ? "bg-primary/10 text-primary border border-primary/30"
-                : ttsState === "loading"
-                  ? "bg-muted/60 text-muted-foreground border border-border/40"
-                  : "bg-muted/40 text-muted-foreground border border-border/30 hover:bg-muted hover:text-foreground"
-            )}
-            data-testid="button-dw-speak"
-            disabled={ttsState === "loading"}
-          >
-            {ttsState === "loading" ? (
-              <><Loader2 className="w-3 h-3 animate-spin" /> Speaking…</>
-            ) : ttsState === "speaking" ? (
-              <><VolumeX className="w-3 h-3" /> Stop</>
-            ) : (
-              <><Volume2 className="w-3 h-3" /> Hear DW</>
-            )}
-          </button>
+          <span className={cn(
+            "text-[10px] font-medium uppercase tracking-wider transition-colors",
+            ttsState === "speaking" ? "text-primary" : ttsState === "loading" ? "text-muted-foreground" : "text-muted-foreground/50"
+          )}>
+            {ttsState === "loading" ? "Loading…" : ttsState === "speaking" ? "Speaking — tap to stop" : "Tap orb to hear DW"}
+          </span>
         )}
         <button
           type="button"
           onClick={onToggleVoice}
-          className="p-1.5 rounded-full text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          className="p-1.5 rounded-full text-muted-foreground/40 hover:text-muted-foreground transition-colors"
           title={voiceEnabled ? "Mute DW voice" : "Unmute DW voice"}
           data-testid="button-toggle-dw-voice"
         >
-          {voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          {voiceEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
         </button>
       </div>
     </div>
@@ -413,6 +424,18 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     return s ?? "";
   })();
 
+  // Auto-advance ref — used to trigger goNext after voice input resolves
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleAutoAdvance = useCallback((delay = 1400) => {
+    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+    autoAdvanceRef.current = setTimeout(() => {
+      stopTTS();
+      setDirection(1);
+      setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+    }, delay);
+  }, []);
+  useEffect(() => () => { if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current); }, []);
+
   const handleNameVoice = (transcript: string) => {
     const name = transcript.split(/\s+/).slice(0, 2).join(" ");
     setData((d) => ({ ...d, name: name || null }));
@@ -424,6 +447,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
 
   const handleCurrentLocationVoice = (transcript: string) => {
     setData((d) => ({ ...d, currentLocation: transcript }));
+    scheduleAutoAdvance();
   };
 
   const handleProfessionVoice = (transcript: string) => {
@@ -432,7 +456,64 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
       lower.includes(p.label.toLowerCase().split(" ")[0]) ||
       lower.includes(p.id)
     );
-    if (match) setData((d) => ({ ...d, profession: match.id }));
+    if (match) {
+      setData((d) => ({ ...d, profession: match.id }));
+      scheduleAutoAdvance();
+    }
+  };
+
+  // Parse natural language schedule input — "I wake up at 7 and sleep at 11"
+  const handleScheduleVoice = (transcript: string) => {
+    const lower = transcript.toLowerCase();
+    const updates: { wakeTime?: string; sleepTime?: string; preferredWorkoutDays?: string[] } = {};
+
+    // Extract a time number from a context match
+    const extractHour = (match: RegExpMatchArray | null): number | null => {
+      if (!match) return null;
+      return parseInt(match[1]);
+    };
+
+    // Wake time — "wake up at X", "up at X", "start at X"
+    const wakeMatch = lower.match(/(?:wake\s+up|wakeup|get\s+up|up|start)\s+(?:at|around|by)?\s*(\d{1,2})/);
+    const wakeHour = extractHour(wakeMatch);
+    if (wakeHour !== null) {
+      // Wake times are always AM; find closest
+      const amHour = wakeHour < 12 ? wakeHour : wakeHour - 12;
+      const target = amHour <= 5 ? "5:00 AM" : amHour <= 6 ? "6:00 AM" : amHour <= 7 ? (lower.includes("6:30") || lower.includes("six thirty") ? "6:30 AM" : "7:00 AM") : amHour <= 8 ? (lower.includes("7:30") || lower.includes("seven thirty") ? "7:30 AM" : "8:00 AM") : amHour <= 9 ? "9:00 AM" : "10:00 AM+";
+      if (WAKE_TIMES.includes(target)) updates.wakeTime = target;
+    }
+
+    // Sleep time — "sleep at X", "bed at X", "wind down at X"
+    const sleepMatch = lower.match(/(?:sleep|bed|wind\s+down|asleep|night)\s+(?:at|around|by)?\s*(\d{1,2})/);
+    const sleepHour = extractHour(sleepMatch);
+    if (sleepHour !== null) {
+      // Sleep times are PM (or midnight/1am); map to closest
+      const pmHour = sleepHour <= 3 ? sleepHour + 12 : sleepHour; // 1→13(1am), treat <=3 as past midnight
+      const target = sleepHour <= 3 ? (sleepHour === 1 ? "1:00 AM+" : "12:00 AM") : pmHour <= 20 ? "8:00 PM" : pmHour <= 21 ? "9:00 PM" : pmHour <= 22 ? (lower.includes("10:30") || lower.includes("ten thirty") ? "10:30 PM" : "10:00 PM") : pmHour <= 23 ? (lower.includes("11:30") || lower.includes("eleven thirty") ? "11:30 PM" : "11:00 PM") : "12:00 AM";
+      if (SLEEP_TIMES.includes(target)) updates.sleepTime = target;
+    }
+
+    // Workout days — "monday wednesday friday", "weekdays", "mon wed fri"
+    const dayMap: Record<string, string> = {
+      monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu",
+      friday: "Fri", saturday: "Sat", sunday: "Sun",
+      mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu",
+      fri: "Fri", sat: "Sat", sun: "Sun",
+    };
+    if (lower.includes("weekday") || lower.includes("week day")) {
+      updates.preferredWorkoutDays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    } else if (lower.includes("weekend")) {
+      updates.preferredWorkoutDays = ["Sat", "Sun"];
+    } else {
+      const days = Object.entries(dayMap)
+        .filter(([key]) => lower.includes(key))
+        .map(([, val]) => val);
+      if (days.length > 0) updates.preferredWorkoutDays = [...new Set(days)];
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setData((d) => ({ ...d, ...updates }));
+    }
   };
 
   const handleGoalsVoice = (transcript: string) => {
@@ -878,13 +959,16 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button variant="ghost" onClick={goBack} data-testid="button-schedule-back">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                  </Button>
-                  <Button className="flex-1" onClick={goNext} data-testid="button-schedule-next">
-                    Continue <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <VoiceButton onTranscript={handleScheduleVoice} label="Say your schedule, e.g. wake at 7, sleep at 11" />
+                  <div className="flex-1 flex gap-3">
+                    <Button variant="ghost" onClick={goBack} data-testid="button-schedule-back">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                    </Button>
+                    <Button className="flex-1" onClick={goNext} data-testid="button-schedule-next">
+                      Continue <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
