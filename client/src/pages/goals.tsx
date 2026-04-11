@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { DWContextPrompt } from "@/components/dw-context-prompt";
+import { DWLearnCard } from "@/components/dw-learn-card";
 
 const DIMENSIONS = [
   { value: "physical",     label: "Physical",     icon: Dumbbell,  color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
@@ -159,6 +160,17 @@ export default function GoalsPage() {
             topic="Help me set a meaningful goal right now"
             placeholder="Help me set a meaningful goal — or review the ones I have"
             context="page:goals"
+          />
+
+          {/* DW explains how to actually achieve goals */}
+          <DWLearnCard
+            topic="How do I actually stick to a goal and make real progress? What separates people who hit their goals from people who set them and give up after a few weeks?"
+            question="Why do most goals fail — and how do you make yours stick?"
+            teaser="DW explains the real difference between setting a goal and achieving one."
+            userContext={{
+              activeGoals: (goals as any[]).slice(0, 3).map((g: any) => ({ title: g.title, dimension: g.wellnessDimension })),
+            }}
+            accent="primary"
           />
 
           {/* Create Form */}

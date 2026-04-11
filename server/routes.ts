@@ -3197,6 +3197,43 @@ Example: ["Work stress mostly", "It's been everything", "Just need a plan"]`,
     }
   });
 
+  // DW Explain — inline educational explanations personalized to the user's context
+  app.post("/api/ai/explain", async (req, res) => {
+    try {
+      const { topic, userContext } = req.body as {
+        topic: string;
+        userContext?: Record<string, unknown>;
+      };
+      if (!topic || topic.trim().length < 3) return res.status(400).json({ error: "topic required" });
+
+      const contextStr = userContext && Object.keys(userContext).length > 0
+        ? `\n\nHere is what I know about this person: ${JSON.stringify(userContext)}`
+        : "";
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are DW — a personal life intelligence system. Your job is to explain real-life topics clearly and honestly, in plain conversational English. Never use jargon without explaining it immediately in parentheses. Always connect your explanation to the person's specific situation. Structure: start with the direct answer first, then explain the "why", then give one concrete thing they can do today. Keep it under 200 words. Use short paragraphs (2-3 sentences max). Be warm, direct, never preachy or generic.`,
+          },
+          {
+            role: "user",
+            content: `Explain this specifically for my situation: ${topic.trim()}${contextStr}`,
+          },
+        ],
+        max_tokens: 320,
+        temperature: 0.72,
+      });
+
+      const explanation = completion.choices[0]?.message?.content?.trim() || "";
+      res.json({ explanation });
+    } catch (err) {
+      console.error("[ai/explain]", err);
+      res.status(500).json({ error: "Failed to generate explanation" });
+    }
+  });
+
   // Proactive DW opener for returning users — based on today's schedule/habits context
   app.get("/api/ai/proactive-opener", requireAuth, async (req, res) => {
     try {

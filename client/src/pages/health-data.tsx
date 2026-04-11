@@ -18,6 +18,7 @@ import {
   BarChart, Bar,
 } from "recharts";
 import { Activity, Moon, Heart, Scale, Plus, Trash2 } from "lucide-react";
+import { DWLearnCard } from "@/components/dw-learn-card";
 
 interface HealthMetric {
   id: string;
@@ -124,6 +125,14 @@ export default function HealthDataPage() {
             })}
           </div>
         )}
+
+        {/* DW explains macros and why health metrics matter */}
+        <DWLearnCard
+          topic="What are macros (protein, carbs, fat) and why do people count calories? I don't fully understand what these numbers actually mean for my body and whether I actually need to track them."
+          question="What are macros and do you actually need to count them?"
+          teaser="DW explains calories, protein, carbs, and fat in plain English."
+          accent="emerald"
+        />
 
         {/* Log button */}
         <Button

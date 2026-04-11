@@ -78,6 +78,7 @@ import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { ExerciseAnimation } from "@/components/exercise-animation";
+import { DWLearnCard } from "@/components/dw-learn-card";
 import { WorkoutSessionEngine, type WorkoutSessionConfig, type StepType } from "@/components/workout-session-engine";
 import { useUserRole } from "@/hooks/use-user-role";
 import { EXERCISE_ANIMATIONS, getExercisesByEquipment, EQUIPMENT_TYPES } from "@/lib/exercise-animations";
@@ -735,6 +736,59 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                 </CardContent>
               </Card>
             )}
+
+            {/* ── DW Education Cards ─────────────────────────────── */}
+            {(() => {
+              const goal = bodyProfile?.bodyGoal;
+              const fatPct = bodyProfile?.bodyFatPercentage;
+
+              // Body composition question — only show when user has a body goal
+              if (!goal) return null;
+
+              const goalLabels: Record<string, string> = {
+                lose_fat: "lose body fat",
+                build_muscle: "build muscle",
+                tone: "tone up",
+                maintain: "maintain your current physique",
+                athletic_performance: "improve athletic performance",
+              };
+              const goalLabel = goalLabels[goal] ?? goal;
+
+              const topic = goal === "build_muscle" && fatPct && fatPct > 18
+                ? `I want to build muscle but I also have body fat to lose (around ${fatPct}% body fat). Should I lose the fat first or start building muscle now? Which approach will actually work better for my situation and why?`
+                : goal === "lose_fat"
+                  ? `I want to lose body fat${fatPct ? ` (currently around ${fatPct}%)` : ""}. What does that actually mean — does the fat just disappear? Where does it go? And how do my workouts vs my eating affect this differently?`
+                  : goal === "build_muscle"
+                    ? `I want to build muscle. How does muscle actually grow — like, what's happening in my body when I lift weights? And how much protein do I really need, and why does it matter?`
+                    : goal === "tone"
+                      ? `I want to "tone up" — but what does that actually mean? Is it the same as losing fat? Is it the same as building muscle? What kind of training and eating actually produces that look?`
+                      : `I want to ${goalLabel}. What's the most important thing I should actually focus on — and what do most people waste their time on when working toward this?`;
+
+              return (
+                <DWLearnCard
+                  topic={topic}
+                  question={
+                    goal === "build_muscle" && fatPct && fatPct > 18
+                      ? "Should you lose fat first or start building muscle?"
+                      : goal === "lose_fat"
+                        ? "Where does fat actually go when you lose it?"
+                        : goal === "build_muscle"
+                          ? "How does muscle actually grow — and what do you need?"
+                          : goal === "tone"
+                            ? "What does 'toning up' actually mean?"
+                            : `What matters most for your goal to ${goalLabel}?`
+                  }
+                  teaser="DW breaks this down specifically for you."
+                  userContext={{
+                    bodyGoal: goal,
+                    bodyFatPercentage: fatPct,
+                    bmi: bodyProfile?.bmi,
+                    fitnessLevel: bodyProfile?.fitnessLevel,
+                  }}
+                  accent="primary"
+                />
+              );
+            })()}
 
             {(hasBodyScan || seeksCalmOrMindfulness) && recommendedWorkout ? (
               <div className="space-y-3">
