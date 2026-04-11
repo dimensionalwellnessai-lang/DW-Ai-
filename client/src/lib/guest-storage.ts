@@ -412,13 +412,18 @@ export interface EnhancedOnboardingData {
   birthDate: string | null;
   birthTime: string | null;
   birthLocation: string | null;
+  currentLocation: string | null;
   wakeTime: string | null;
   sleepTime: string | null;
   dietaryPreferences: string[];
   fitnessGoals: string[];
+  preferredWorkoutDays: string[];
   wearableDataPermission: boolean;
   completedAt: number | null;
   tourCompleted: boolean;
+  profession: string | null;
+  lifeGoals: string[];
+  dimensionSnapshot: string[];
 }
 
 export interface OnboardingLog {
@@ -2576,13 +2581,18 @@ export function saveEnhancedOnboarding(onboarding: Partial<EnhancedOnboardingDat
     birthDate: onboarding.birthDate ?? data.enhancedOnboarding?.birthDate ?? null,
     birthTime: onboarding.birthTime ?? data.enhancedOnboarding?.birthTime ?? null,
     birthLocation: onboarding.birthLocation ?? data.enhancedOnboarding?.birthLocation ?? null,
+    currentLocation: onboarding.currentLocation ?? data.enhancedOnboarding?.currentLocation ?? null,
     wakeTime: onboarding.wakeTime ?? data.enhancedOnboarding?.wakeTime ?? null,
     sleepTime: onboarding.sleepTime ?? data.enhancedOnboarding?.sleepTime ?? null,
     dietaryPreferences: onboarding.dietaryPreferences ?? data.enhancedOnboarding?.dietaryPreferences ?? [],
     fitnessGoals: onboarding.fitnessGoals ?? data.enhancedOnboarding?.fitnessGoals ?? [],
+    preferredWorkoutDays: onboarding.preferredWorkoutDays ?? data.enhancedOnboarding?.preferredWorkoutDays ?? [],
     wearableDataPermission: onboarding.wearableDataPermission ?? data.enhancedOnboarding?.wearableDataPermission ?? false,
     completedAt: onboarding.completedAt ?? data.enhancedOnboarding?.completedAt ?? null,
     tourCompleted: onboarding.tourCompleted ?? data.enhancedOnboarding?.tourCompleted ?? false,
+    profession: onboarding.profession ?? data.enhancedOnboarding?.profession ?? null,
+    lifeGoals: onboarding.lifeGoals ?? data.enhancedOnboarding?.lifeGoals ?? [],
+    dimensionSnapshot: onboarding.dimensionSnapshot ?? data.enhancedOnboarding?.dimensionSnapshot ?? [],
   };
   saveGuestData(data);
 }
@@ -2606,13 +2616,18 @@ export function markTourCompleted(): void {
       birthDate: null,
       birthTime: null,
       birthLocation: null,
+      currentLocation: null,
       wakeTime: null,
       sleepTime: null,
       dietaryPreferences: [],
       fitnessGoals: [],
+      preferredWorkoutDays: [],
       wearableDataPermission: false,
       completedAt: null,
       tourCompleted: true,
+      profession: null,
+      lifeGoals: [],
+      dimensionSnapshot: [],
     };
   } else {
     data.enhancedOnboarding.tourCompleted = true;

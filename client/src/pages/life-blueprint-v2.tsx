@@ -29,6 +29,7 @@ import { LIFE_DIMENSIONS, ASSESSMENT_QUESTIONS, getDimensionById, type LifeDimen
 import { motion } from "framer-motion";
 import { COPY } from "@/copy/en";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { DWContextPrompt } from "@/components/dw-context-prompt";
 
 type ViewMode = "overview" | "dimension-detail" | "assessment";
 
@@ -312,6 +313,11 @@ export default function LifeBlueprintV2() {
 
     return (
       <div className="space-y-6">
+        <DWContextPrompt
+          topic="Walk me through my Life Blueprint and what I should focus on"
+          placeholder="Walk me through my Life Blueprint — what should I focus on?"
+          context="page:life-blueprint"
+        />
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>

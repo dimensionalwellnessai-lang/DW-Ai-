@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { BodyScanDialog } from "@/components/body-scan-dialog";
 import { hasCompletedBodyScan } from "@/lib/guest-storage";
+import { DWContextPrompt } from "@/components/dw-context-prompt";
 
 const DAY_COLORS: Record<string, string> = {
   Monday:    "from-violet-500/10 to-violet-500/5 border-violet-500/20",
@@ -243,6 +244,13 @@ export default function MyPlanPage() {
       />
 
       <ScrollArea className="flex-1">
+        <div className="px-4 pt-4">
+          <DWContextPrompt
+            topic="Help me optimize my weekly plan"
+            placeholder="Help me optimize my plan or adjust my schedule"
+            context="page:my-plan"
+          />
+        </div>
         {isLoading ? (
           <PlanSkeleton />
         ) : plan?.error ? (

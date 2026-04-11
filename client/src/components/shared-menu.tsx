@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { getRecentPages, addRecentPage } from "@/lib/recent-pages";
 import {
   Zap,
-  MessageCircle,
   Calendar,
   BookOpen,
   Target,
@@ -24,7 +23,6 @@ import {
   Search,
   Award,
   RefreshCw,
-  Layers,
   BarChart3,
   FileText,
   Settings,
@@ -36,76 +34,145 @@ import {
   LayoutDashboard,
   BarChart2,
   Activity,
+  Brain,
+  Layers,
+  Home,
+  Compass,
+  MessageCircle,
+  Sun,
+  User,
+  Moon,
+  type LucideIcon,
 } from "lucide-react";
 
-const MENU_SECTIONS: Array<{
+// Dimension icon colors
+const DIM_COLORS: Record<string, string> = {
+  body: "text-green-500",
+  mind: "text-blue-500",
+  time: "text-amber-500",
+  purpose: "text-violet-500",
+  money: "text-emerald-500",
+  relationships: "text-pink-500",
+  environment: "text-cyan-500",
+  identity: "text-indigo-500",
+};
+
+interface MenuItem {
+  id: string;
+  name: string;
+  path: string;
+  icon: LucideIcon;
+  dimension?: string;
+  isDWEntry?: boolean;
+}
+
+interface MenuSection {
   title?: string;
   collapsible?: boolean;
-  items: Array<{
-    id: string;
-    name: string;
-    path: string;
-    icon: any;
-    dimension?: string;
-  }>;
-}> = [
+  dimensionKey?: string;
+  items: MenuItem[];
+  dwContextLabel?: string;
+}
+
+const MENU_SECTIONS: MenuSection[] = [
   {
     items: [
       { id: "command-center", name: "⭐ Life Command Center", path: "/command-center", icon: Zap },
-      { id: "talk", name: "💬 Talk to DW", path: "/talk", icon: MessageCircle },
       { id: "calendar", name: "📅 Life Timeline", path: "/calendar", icon: Calendar },
     ]
   },
   {
-    title: "MY IDENTITY",
+    title: "BODY",
+    collapsible: true,
+    dimensionKey: "body",
+    dwContextLabel: "Body",
     items: [
-      { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "time" },
-      { id: "goals", name: "🎯 My Goals", path: "/goals", icon: Target, dimension: "time" },
-      { id: "habits", name: "✅ My Habits", path: "/habits", icon: CheckSquare, dimension: "mind" },
-    ]
-  },
-  {
-    title: "BODY & MIND",
-    items: [
-      { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "body" },
       { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
       { id: "workout-analytics", name: "📊 Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
       { id: "health-data", name: "❤️ Health Data", path: "/health-data", icon: Activity, dimension: "body" },
       { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
+      { id: "body-scan", name: "🔄 Body Scan", path: "/recovery", icon: RefreshCw, dimension: "body" },
+    ]
+  },
+  {
+    title: "MIND",
+    collapsible: true,
+    dimensionKey: "mind",
+    dwContextLabel: "Mind",
+    items: [
       { id: "meditation", name: "🧘 Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },
       { id: "journal", name: "📓 Journal", path: "/journal", icon: Feather, dimension: "mind" },
+      { id: "insights", name: "💡 Insights", path: "/insights", icon: Brain, dimension: "mind" },
+      { id: "mood", name: "🌤️ Mood", path: "/mood-tracker", icon: Sun, dimension: "mind" },
     ]
   },
   {
-    title: "LIFE DIMENSIONS",
+    title: "TIME & SCHEDULE",
+    collapsible: true,
+    dimensionKey: "time",
+    dwContextLabel: "Time & Schedule",
     items: [
-      { id: "life-dimensions", name: "🧩 Life Dimensions", path: "/life-dimensions", icon: Layers, dimension: "mind" },
-      { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "mind" },
+      { id: "calendar-full", name: "📅 Calendar", path: "/calendar", icon: Calendar, dimension: "time" },
+      { id: "daily-schedule", name: "⏰ Daily Schedule", path: "/daily-schedule", icon: Clock, dimension: "time" },
+      { id: "routines", name: "📝 Routines", path: "/routines", icon: FileText, dimension: "time" },
+      { id: "tasks", name: "✅ Tasks", path: "/tasks", icon: CheckSquare, dimension: "time" },
+    ]
+  },
+  {
+    title: "PURPOSE",
+    collapsible: true,
+    dimensionKey: "purpose",
+    dwContextLabel: "Purpose",
+    items: [
+      { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "purpose" },
+      { id: "goals", name: "🎯 Goals", path: "/goals", icon: Target, dimension: "purpose" },
+      { id: "challenges", name: "🏆 Challenges", path: "/challenges", icon: Award, dimension: "purpose" },
+      { id: "habits", name: "✅ Habits", path: "/habits", icon: CheckSquare, dimension: "purpose" },
+    ]
+  },
+  {
+    title: "MONEY",
+    collapsible: true,
+    dimensionKey: "money",
+    dwContextLabel: "Money",
+    items: [
       { id: "finances", name: "💰 Finances", path: "/finances", icon: Wallet, dimension: "money" },
-      { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "community" },
     ]
   },
   {
-    title: "EXPLORE",
+    title: "RELATIONSHIPS",
     collapsible: true,
+    dimensionKey: "relationships",
+    dwContextLabel: "Relationships",
     items: [
-      { id: "browse", name: "🔍 Browse", path: "/browse", icon: Search },
-      { id: "challenges", name: "🎯 Challenges", path: "/challenges", icon: Award },
-      { id: "recovery", name: "🔄 Recovery", path: "/recovery", icon: RefreshCw, dimension: "body" },
+      { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "relationships" },
     ]
   },
   {
-    title: "SYSTEMS",
+    title: "ENVIRONMENT",
     collapsible: true,
+    dimensionKey: "environment",
+    dwContextLabel: "Environment",
     items: [
-      { id: "progress", name: "📊 My Progress", path: "/profile/progress", icon: BarChart3 },
-      { id: "routines", name: "📝 Routines", path: "/routines", icon: FileText },
-      { id: "tasks", name: "✅ Tasks", path: "/tasks", icon: CheckSquare },
+      { id: "life-system-import", name: "📥 DW Smart Import", path: "/life-system-import", icon: Layers, dimension: "environment" },
+      { id: "browse", name: "🔍 Browse", path: "/browse", icon: Search, dimension: "environment" },
+    ]
+  },
+  {
+    title: "IDENTITY",
+    collapsible: true,
+    dimensionKey: "identity",
+    dwContextLabel: "Identity",
+    items: [
+      { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "identity" },
+      { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "identity" },
+      { id: "life-timeline", name: "📅 Life Timeline", path: "/calendar", icon: Calendar, dimension: "identity" },
     ]
   },
   {
     title: "SETTINGS",
     items: [
+      { id: "progress", name: "📊 My Progress", path: "/profile/progress", icon: BarChart3 },
       { id: "settings", name: "⚙️ Settings", path: "/settings", icon: Settings },
       { id: "app-tour", name: "🗺️ App Tour", path: "/app-tour", icon: Map },
       { id: "feedback", name: "📋 Feedback", path: "/feedback", icon: MessageSquare },
@@ -113,14 +180,6 @@ const MENU_SECTIONS: Array<{
     ]
   },
 ];
-
-const DIMENSION_COLORS: Record<string, string> = {
-  body: "text-green-500",
-  mind: "text-blue-500",
-  time: "text-yellow-500",
-  money: "text-purple-500",
-  community: "text-teal-500",
-};
 
 interface SharedMenuProps {
   open: boolean;
@@ -132,6 +191,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
   const { startNavigationTutorial, state: tutorialState, requiresMenuOpen } = useTutorial();
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
   const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
 
   const recentPages = React.useMemo(() => getRecentPages().slice(0, 3), [open]);
 
@@ -145,6 +205,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
       }
       return next;
     });
+  };
+
+  const handleDWContextClick = (dimensionLabel: string) => {
+    onClose();
+    navigate(`/talk?context=dimension:${encodeURIComponent(dimensionLabel)}`);
   };
 
   return (
@@ -198,9 +263,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                 open={expandedSections.has(section.title)}
                 onOpenChange={() => section.title && toggleSection(section.title)}
               >
-                <CollapsibleTrigger className="w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 flex items-center justify-between hover:text-foreground transition-colors">
-                  {section.title}
-                  <ChevronDown className={`h-3 w-3 transition-transform ${section.title && expandedSections.has(section.title) ? 'rotate-180' : ''}`} />
+                <CollapsibleTrigger className="w-full px-2 py-2 text-xs font-semibold uppercase tracking-wider mt-4 flex items-center justify-between hover:text-foreground transition-colors">
+                  <span className={section.dimensionKey ? DIM_COLORS[section.dimensionKey] : "text-muted-foreground"}>
+                    {section.title}
+                  </span>
+                  <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform ${section.title && expandedSections.has(section.title) ? 'rotate-180' : ''}`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-1 mt-1">
@@ -219,12 +286,24 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                           }}
                           data-testid={`menu-item-${item.id}`}
                         >
-                          <span className={`text-sm ${item.dimension ? DIMENSION_COLORS[item.dimension] : 'text-foreground'}`}>
+                          <span className={`text-sm ${item.dimension ? DIM_COLORS[item.dimension] : 'text-foreground'}`}>
                             {item.name}
                           </span>
                         </button>
                       </Link>
                     ))}
+                    {section.dwContextLabel && (
+                      <button
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors hover:bg-primary/5"
+                        onClick={() => handleDWContextClick(section.dwContextLabel!)}
+                        data-testid={`menu-dw-${section.dimensionKey}`}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-primary/60 shrink-0" />
+                        <span className="text-xs text-primary/70 font-medium">
+                          Ask DW about {section.dwContextLabel}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -251,7 +330,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                         }}
                         data-testid={`menu-item-${item.id}`}
                       >
-                        <span className={`text-sm ${item.dimension ? DIMENSION_COLORS[item.dimension] : 'text-foreground'}`}>
+                        <span className={`text-sm ${item.dimension ? DIM_COLORS[item.dimension] : 'text-foreground'}`}>
                           {item.name}
                         </span>
                       </button>

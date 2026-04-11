@@ -189,12 +189,12 @@ export default function HomeCommandCenter() {
   const modules: OrbitModule[] = useMemo(() => [
     {
       id: "today",
-      label: "Today",
+      label: "My Time",
       icon: CalendarDays,
       color: "text-blue-400",
       bgClass: "bg-blue-500/15",
       path: "/calendar?view=day",
-      dwTopic: "Talk about my day",
+      dwTopic: "Help me plan my time today",
       badge: summary.todayEvents.length > 0 ? `${summary.todayEvents.length}` : undefined,
       snippet: (() => {
         const nowMs = Date.now();
@@ -209,55 +209,55 @@ export default function HomeCommandCenter() {
           .filter(x => x.t && x.t.getTime() > nowMs)
           .sort((a, b) => a.t!.getTime() - b.t!.getTime())[0];
         if (next) return `Next: ${truncate(next.e.title, 22)}`;
-        return summary.nextEvent ? truncate(summary.nextEvent.title, 30) : "No events";
+        return summary.nextEvent ? truncate(summary.nextEvent.title, 30) : "No events today";
       })(),
     },
     {
       id: "insight",
-      label: "Insight",
+      label: "My Mind",
       icon: Lightbulb,
       color: "text-amber-400",
       bgClass: "bg-amber-500/15",
       path: "/insights",
-      dwTopic: "Break this insight down",
+      dwTopic: "What patterns do you see in my thinking?",
       badge: summary.latestInsight ? "•" : undefined,
       snippet: summary.latestInsight ? truncate(summary.latestInsight.summary, 30) : "No new insights",
     },
     {
       id: "plan",
-      label: "Plan",
+      label: "My Purpose",
       icon: Target,
       color: "text-violet-400",
       bgClass: "bg-violet-500/15",
       path: "/goals",
-      dwTopic: "Help me with my plan",
+      dwTopic: "Help me clarify my purpose and goals",
       badge: summary.activeGoals[0]?.progress != null ? `${summary.activeGoals[0].progress}%` : undefined,
       snippet: summary.activeGoals[0]?.title ? truncate(summary.activeGoals[0].title, 30) : "Set a goal",
     },
     {
       id: "nutrition",
-      label: "Nutrition",
+      label: "My Body",
       icon: UtensilsCrossed,
       color: "text-emerald-400",
       bgClass: "bg-emerald-500/15",
       path: "/meal-prep?category=meal-plans",
-      dwTopic: "Adjust my nutrition plan",
-      snippet: calRemaining != null ? `${calRemaining} cal left` : "Log a meal",
+      dwTopic: "How am I doing with my physical health?",
+      snippet: calRemaining != null ? `${calRemaining} cal left` : "Track nutrition",
     },
     {
       id: "momentum",
-      label: "Momentum",
+      label: "My Habits",
       icon: TrendingUp,
       color: "text-rose-400",
       bgClass: "bg-rose-500/15",
       path: "/habits",
-      dwTopic: "Help me stay on track",
+      dwTopic: "Help me build better habits and stay consistent",
       badge: topStreak > 0 ? `${topStreak}` : undefined,
-      snippet: momentumSnippet ? truncate(momentumSnippet, 30) : "Check in",
+      snippet: momentumSnippet ? truncate(momentumSnippet, 30) : "Build momentum",
     },
     {
       id: "followup",
-      label: "Follow-Up",
+      label: "DW",
       icon: MessageCircle,
       color: "text-indigo-400",
       bgClass: "bg-indigo-500/15",
@@ -267,38 +267,38 @@ export default function HomeCommandCenter() {
         ? truncate(summary.activeFollowUp.prompt, 30)
         : summary.lastConversationTopic
           ? truncate(summary.lastConversationTopic, 30)
-          : "Start a conversation",
+          : "Ask me anything",
     },
     {
       id: "journal",
-      label: "Journal",
+      label: "My Story",
       icon: BookOpen,
       color: "text-teal-400",
       bgClass: "bg-teal-500/15",
       path: "/journal",
-      dwTopic: "Help me reflect",
+      dwTopic: "Help me reflect on my life story",
       snippet: summary.latestJournalEntry
         ? truncate(summary.latestJournalEntry.title, 30)
         : "Write or reflect",
     },
     {
       id: "cosmic",
-      label: "Cosmic",
+      label: "My Identity",
       icon: Moon,
       color: "text-violet-400",
       bgClass: "bg-violet-500/15",
       path: "/cosmic",
-      dwTopic: "What does the cosmos say today",
-      snippet: "Moon & transits",
+      dwTopic: "What does my birth chart say about me?",
+      snippet: "Cosmic & astrology",
     },
     {
       id: "foryou",
-      label: "For You",
+      label: "My World",
       icon: Compass,
       color: "text-sky-400",
       bgClass: "bg-sky-500/15",
       path: "/browse",
-      dwTopic: "Suggest something for me",
+      dwTopic: "What should I explore or learn about right now?",
       snippet: "Curated for you",
     },
   ], [summary, topStreak, calRemaining, momentumSnippet]);

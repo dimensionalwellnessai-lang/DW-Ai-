@@ -33,6 +33,7 @@ import { getOnboardingLogs, type OnboardingLog } from "@/lib/guest-storage";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useDwIntelligence } from "@/hooks/use-dw-intelligence";
+import { DWContextPrompt } from "@/components/dw-context-prompt";
 import { 
   detectJournalCategory, 
   generateJournalTitle, 
@@ -318,6 +319,11 @@ export default function JournalPage() {
       
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+          <DWContextPrompt
+            topic="Help me reflect on something from my life right now"
+            placeholder="Help me reflect — or suggest a journaling prompt for today"
+            context="page:journal"
+          />
           <Tabs
             value={activeJournalTab}
             onValueChange={(v) => setActiveJournalTab(v as "my-entries" | "dw-journal" | "dw-insights")}

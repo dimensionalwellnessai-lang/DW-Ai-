@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { DWContextPrompt } from "@/components/dw-context-prompt";
 
 const DIMENSIONS = [
   { value: "physical",     label: "Physical",     icon: Dumbbell,  color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
@@ -153,6 +154,12 @@ export default function GoalsPage() {
 
       <div className="flex-1 overflow-auto">
         <div className="container max-w-2xl mx-auto p-4 space-y-5 pb-24">
+
+          <DWContextPrompt
+            topic="Help me set a meaningful goal right now"
+            placeholder="Help me set a meaningful goal — or review the ones I have"
+            context="page:goals"
+          />
 
           {/* Create Form */}
           {showForm && (
