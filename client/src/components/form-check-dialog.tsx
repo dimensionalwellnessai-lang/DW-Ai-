@@ -1,11 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
-import { Camera, RotateCcw, Sparkles, Loader2, X, Volume2 } from "lucide-react";
+import { Camera, RotateCcw, Sparkles, Loader2, X, Volume2, Mic, MicOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FormCheckDialogProps {
   open: boolean;
@@ -18,43 +16,18 @@ export function FormCheckDialog({ open, onClose, exerciseName = "" }: FormCheckD
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [exercise, setExercise] = useState(exerciseName);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [isMuted, setIsMuted] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setExercise(exerciseName);
   }, [exerciseName]);
-
-  useEffect(() => {
-    if (!open) {
-      stopCamera();
-      setCapturedPhoto(null);
-      setAnalysis(null);
-      setCameraError(null);
-    }
-  }, [open]);
-
-  const startCamera = useCallback(async () => {
-    try {
-      setCameraError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 720 }, height: { ideal: 1280 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setCameraActive(true);
-      }
-    } catch (err: any) {
-      setCameraError("Camera access denied. Please allow camera permissions and try again.");
-    }
-  }, [facingMode]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -65,20 +38,51 @@ export function FormCheckDialog({ open, onClose, exerciseName = "" }: FormCheckD
     setCameraActive(false);
   }, []);
 
-  const flipCamera = useCallback(async () => {
-    stopCamera();
-    const next = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(next);
-  }, [facingMode, stopCamera]);
+  useEffect(() => {
+    if (!open) {
+      stopCamera();
+      setAnalysis(null);
+      setCameraError(null);
+      setIsAnalyzing(false);
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+  }, [open, stopCamera]);
+
+  const startCamera = useCallback(async (mode?: "user" | "environment") => {
+    const facing = mode ?? facingMode;
+    try {
+      setCameraError(null);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraActive(true);
+      }
+    } catch {
+      setCameraError("Camera access denied. Please allow camera permissions and try again.");
+    }
+  }, [facingMode]);
 
   useEffect(() => {
-    if (open && !capturedPhoto && facingMode) {
-      startCamera();
-    }
-  }, [facingMode, open]);
+    if (open) startCamera();
+  }, [open]);
 
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+  const flipCamera = useCallback(() => {
+    const next = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(next);
+    startCamera(next);
+  }, [facingMode, startCamera]);
+
+  const captureFrameAndAnalyze = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || isAnalyzing) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
@@ -86,201 +90,196 @@ export function FormCheckDialog({ open, onClose, exerciseName = "" }: FormCheckD
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    setCapturedPhoto(dataUrl);
-    stopCamera();
-  }, [stopCamera]);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
 
-  const retake = useCallback(() => {
-    setCapturedPhoto(null);
-    setAnalysis(null);
-    startCamera();
-  }, [startCamera]);
-
-  const analyzeForm = useCallback(async () => {
-    if (!capturedPhoto) return;
     setIsAnalyzing(true);
+    setAnalysis(null);
     try {
       const result: any = await apiRequest("POST", "/api/body-scan/analyze", {
-        photoDataUrl: capturedPhoto,
+        photoDataUrl: dataUrl,
         exercise: exercise || "general exercise",
       });
       const text = result?.analysis || "Couldn't get feedback right now. Try again.";
       setAnalysis(text);
-      if (typeof window !== "undefined" && window.speechSynthesis) {
+      if (!isMuted && window.speechSynthesis) {
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text.slice(0, 300));
         utter.rate = 0.95;
         window.speechSynthesis.speak(utter);
       }
     } catch {
-      setAnalysis("Couldn't analyze right now. Make sure you're connected and try again.");
+      setAnalysis("Couldn't analyze right now. Check your connection and try again.");
     } finally {
       setIsAnalyzing(false);
     }
-  }, [capturedPhoto, exercise]);
+  }, [exercise, isAnalyzing, isMuted]);
+
+  const replayFeedback = useCallback(() => {
+    if (!analysis || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(analysis.slice(0, 300));
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  }, [analysis]);
 
   const handleClose = () => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     stopCamera();
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-        <DialogHeader className="p-4 pb-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-primary" />
-            Form Check
-          </DialogTitle>
-          <DialogDescription>
-            Prop your phone up, hold your position, then capture for DW's coaching feedback.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="p-0 overflow-hidden max-w-sm w-full rounded-2xl border-0">
+        {/* Full-bleed live video */}
+        <div className="relative bg-black w-full" style={{ aspectRatio: "9/16", maxHeight: "85dvh" }}>
+          {/* Live video — always on */}
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            autoPlay
+          />
+          <canvas ref={canvasRef} className="hidden" />
 
-        <div className="p-4 space-y-4">
-          {/* Exercise name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="exercise-name" className="text-xs">Exercise</Label>
-            <Textarea
-              id="exercise-name"
-              value={exercise}
-              onChange={(e) => setExercise(e.target.value)}
-              placeholder="e.g. Squat, Push-up, Deadlift…"
-              className="resize-none min-h-[48px] text-sm"
-              rows={1}
-              data-testid="input-form-check-exercise"
-            />
-          </div>
+          {/* No-camera states */}
+          {!cameraActive && !cameraError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80">
+              <Camera className="w-12 h-12 text-white/40" />
+              <Button
+                onClick={() => startCamera()}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                variant="outline"
+                data-testid="button-start-camera"
+              >
+                Start Camera
+              </Button>
+            </div>
+          )}
+          {cameraError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 p-6 text-center">
+              <X className="w-10 h-10 text-red-400" />
+              <p className="text-white text-sm">{cameraError}</p>
+              <Button
+                variant="outline"
+                className="bg-white/10 border-white/30 text-white"
+                onClick={() => startCamera()}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
 
-          {/* Camera / photo area */}
-          <div className="relative rounded-xl overflow-hidden bg-black aspect-[3/4] w-full">
-            {!capturedPhoto && (
-              <video
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                playsInline
-                muted
-                autoPlay
-              />
-            )}
-            {capturedPhoto && (
-              <img
-                src={capturedPhoto}
-                alt="Captured form"
-                className="w-full h-full object-cover"
-              />
-            )}
-            {!cameraActive && !capturedPhoto && !cameraError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60">
-                <Camera className="w-10 h-10 text-white/60" />
-                <Button
-                  onClick={startCamera}
-                  variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20"
-                  data-testid="button-start-camera"
+          {/* Top bar: exercise label + controls */}
+          <div className="absolute top-0 left-0 right-0 flex items-start justify-between p-3 bg-gradient-to-b from-black/60 to-transparent">
+            <div className="flex-1 mr-2">
+              {editingExercise ? (
+                <input
+                  ref={inputRef}
+                  value={exercise}
+                  onChange={e => setExercise(e.target.value)}
+                  onBlur={() => setEditingExercise(false)}
+                  onKeyDown={e => e.key === "Enter" && setEditingExercise(false)}
+                  className="w-full bg-black/40 text-white text-sm rounded-lg px-2 py-1 border border-white/30 outline-none"
+                  placeholder="Exercise name…"
+                  autoFocus
+                  data-testid="input-form-check-exercise"
+                />
+              ) : (
+                <button
+                  className="flex items-center gap-1.5 text-white/90 text-sm font-medium"
+                  onClick={() => {
+                    setEditingExercise(true);
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                  }}
+                  data-testid="button-edit-exercise"
                 >
-                  Start Camera
-                </Button>
-              </div>
-            )}
-            {cameraError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-4 text-center">
-                <X className="w-8 h-8 text-red-400" />
-                <p className="text-white text-sm">{cameraError}</p>
-              </div>
-            )}
-            {cameraActive && !capturedPhoto && (
+                  <Camera className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                  {exercise || "Tap to name exercise"}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
               <button
-                className="absolute top-3 right-3 w-9 h-9 bg-black/40 rounded-full flex items-center justify-center text-white"
+                className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
+                onClick={() => {
+                  setIsMuted(m => !m);
+                  if (!isMuted && window.speechSynthesis) window.speechSynthesis.cancel();
+                }}
+                data-testid="button-toggle-mute"
+                aria-label={isMuted ? "Unmute feedback" : "Mute feedback"}
+              >
+                {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+              <button
+                className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
                 onClick={flipCamera}
                 data-testid="button-flip-camera"
                 aria-label="Flip camera"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
-            )}
+              <button
+                className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white"
+                onClick={handleClose}
+                data-testid="button-close-form-check"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <canvas ref={canvasRef} className="hidden" />
 
-          {/* Analysis result */}
-          {analysis && (
-            <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+          {/* Feedback overlay — appears at bottom while video stays live */}
+          {(analysis || isAnalyzing) && (
+            <div className="absolute left-3 right-3 bottom-20 rounded-2xl bg-black/75 backdrop-blur-sm border border-white/10 p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-sm font-medium text-primary">DW's Feedback</span>
-                <button
-                  className="ml-auto text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    if (window.speechSynthesis) {
-                      window.speechSynthesis.cancel();
-                      const u = new SpeechSynthesisUtterance(analysis.slice(0, 300));
-                      u.rate = 0.95;
-                      window.speechSynthesis.speak(u);
-                    }
-                  }}
-                  data-testid="button-replay-feedback"
-                  aria-label="Replay voice feedback"
-                >
-                  <Volume2 className="w-4 h-4" />
-                </button>
+                <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
+                <span className="text-teal-300 text-xs font-semibold tracking-wide uppercase">DW's Coaching</span>
+                {analysis && (
+                  <button
+                    className="ml-auto text-white/50 hover:text-white"
+                    onClick={replayFeedback}
+                    data-testid="button-replay-feedback"
+                    aria-label="Replay voice feedback"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-              <p className="text-sm leading-relaxed">{analysis}</p>
+              {isAnalyzing && (
+                <div className="flex items-center gap-2 text-white/70 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyzing your form…
+                </div>
+              )}
+              {analysis && !isAnalyzing && (
+                <p className="text-white text-sm leading-relaxed">{analysis}</p>
+              )}
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {!capturedPhoto && cameraActive && (
-              <Button
-                className="flex-1"
-                onClick={capturePhoto}
-                data-testid="button-capture-form"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Capture
-              </Button>
-            )}
-            {capturedPhoto && !analysis && (
-              <>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={retake}
-                  data-testid="button-retake"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Retake
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={analyzeForm}
-                  disabled={isAnalyzing}
-                  data-testid="button-analyze-form"
-                >
-                  {isAnalyzing ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4 mr-2" />
-                  )}
-                  {isAnalyzing ? "Analyzing…" : "Analyze Form"}
-                </Button>
-              </>
-            )}
-            {analysis && (
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={retake}
-                data-testid="button-check-again"
-              >
-                <Camera className="w-4 h-4 mr-2" />
-                Check Again
-              </Button>
-            )}
+          {/* Bottom action button */}
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center px-6">
+            <Button
+              onClick={captureFrameAndAnalyze}
+              disabled={!cameraActive || isAnalyzing}
+              className={cn(
+                "h-14 w-14 rounded-full p-0 shadow-lg border-4 transition-all",
+                isAnalyzing
+                  ? "border-teal-400/60 bg-teal-500/20 scale-95"
+                  : "border-white bg-white/10 hover:bg-white/20 active:scale-95"
+              )}
+              data-testid="button-analyze-form"
+              aria-label="Analyze my form"
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
+              ) : (
+                <Sparkles className="w-6 h-6 text-white" />
+              )}
+            </Button>
           </div>
         </div>
       </DialogContent>
