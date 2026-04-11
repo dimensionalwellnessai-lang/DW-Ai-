@@ -109,7 +109,7 @@ const DIMENSION_SNAPSHOT_OPTIONS = [
 const STEP_VOICE_SCRIPTS: Record<number, string | ((name: string | null) => string)> = {
   0: "Hey — I'm DW. I'm your personal intelligence system. Think of me as the operating system for your life. I bring together AI coaching, astrology, life planning, journaling, fitness, and more — and I learn who you are over time. Let's start by getting to know each other.",
   1: "Before we dive in — I want to be straight with you. I'm good at cutting through noise, building real plans, and keeping you on track. I'll adapt to your energy and never waste your time. I'm not a therapist, and I won't pretend to be. What I am is your most capable personal system. Sound good?",
-  2: "Let's start with who you are. What should I call you? And if you share your birth date and where you were born, I'll unlock personalized cosmic and astrology readings for you. Totally optional.",
+  2: "Let's start with who you are. What should I call you? Say your name out loud so I know how to pronounce it — or type it if you prefer. And if you share your birth date and where you were born, I can unlock personalized astrology readings. Totally optional.",
   3: (name) => name
     ? `Nice to meet you, ${name}. Where are you based right now? This helps me with local timing and how I frame your days.`
     : "Where are you based right now? This helps me with local timing and how I frame your days.",
@@ -437,12 +437,86 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
   useEffect(() => () => { if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current); }, []);
 
   const handleNameVoice = (transcript: string) => {
-    const name = transcript.split(/\s+/).slice(0, 2).join(" ");
-    setData((d) => ({ ...d, name: name || null }));
+    // Strip filler words like "My name is", "I'm", "Call me", "It's"
+    const cleaned = transcript
+      .replace(/^(?:my\s+name\s+is|i['']?m|call\s+me|it['']?s|i\s+am)\s+/i, "")
+      .trim();
+    const name = cleaned.split(/\s+/).slice(0, 2).join(" ");
+    if (name) {
+      setData((d) => ({ ...d, name }));
+      scheduleAutoAdvance(1600); // let DW say name back before moving
+    }
+  };
+
+  // Parse "April 15, 1990" / "March 3rd 1988" / "1990-04-15" → YYYY-MM-DD
+  const handleBirthDateVoice = (transcript: string) => {
+    const MONTHS: Record<string, string> = {
+      january: "01", february: "02", march: "03", april: "04",
+      may: "05", june: "06", july: "07", august: "08",
+      september: "09", october: "10", november: "11", december: "12",
+      jan: "01", feb: "02", mar: "03", apr: "04", jun: "06",
+      jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+    };
+    const lower = transcript.toLowerCase().replace(/(\d+)(st|nd|rd|th)/g, "$1");
+    // Match "Month Day Year" or "Day Month Year"
+    const m1 = lower.match(/([a-z]+)\s+(\d{1,2})[,\s]+(\d{4})/);
+    const m2 = lower.match(/(\d{1,2})\s+([a-z]+)[,\s]+(\d{4})/);
+    // Match ISO-like: "1990-04-15" or "04/15/1990"
+    const m3 = lower.match(/(\d{4})[/-](\d{2})[/-](\d{2})/);
+    const m4 = lower.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    let result: string | null = null;
+    if (m1 && MONTHS[m1[1]]) {
+      result = `${m1[3]}-${MONTHS[m1[1]]}-${m1[2].padStart(2, "0")}`;
+    } else if (m2 && MONTHS[m2[2]]) {
+      result = `${m2[3]}-${MONTHS[m2[2]]}-${m2[1].padStart(2, "0")}`;
+    } else if (m3) {
+      result = `${m3[1]}-${m3[2]}-${m3[3]}`;
+    } else if (m4) {
+      result = `${m4[3]}-${m4[1].padStart(2, "0")}-${m4[2].padStart(2, "0")}`;
+    }
+    if (result) setData((d) => ({ ...d, birthDate: result }));
+  };
+
+  // Parse "3:30 PM", "7 AM", "quarter past 2" → HH:MM (24h for input type="time")
+  const handleBirthTimeVoice = (transcript: string) => {
+    const lower = transcript.toLowerCase();
+    const m = lower.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    if (!m) return;
+    let hour = parseInt(m[1]);
+    const min = m[2] ? parseInt(m[2]) : 0;
+    const meridiem = m[3];
+    if (meridiem === "pm" && hour < 12) hour += 12;
+    if (meridiem === "am" && hour === 12) hour = 0;
+    const timeStr = `${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
+    setData((d) => ({ ...d, birthTime: timeStr }));
   };
 
   const handleLocationVoice = (transcript: string) => {
     setData((d) => ({ ...d, birthLocation: transcript }));
+  };
+
+  // Match spoken words to dimension snapshot options (step 6)
+  const handleSnapshotVoice = (transcript: string) => {
+    const lower = transcript.toLowerCase();
+    const keywordMap: Record<string, string[]> = {
+      body: ["body", "health", "fitness", "physical", "exercise", "weight", "energy"],
+      mind: ["mind", "mental", "anxiety", "stress", "focus", "brain", "thoughts", "clarity"],
+      time: ["time", "schedule", "busy", "overwhelmed", "calendar", "routine", "organized"],
+      purpose: ["purpose", "meaning", "direction", "career", "calling", "passion", "goal"],
+      money: ["money", "financial", "finances", "income", "budget", "debt", "savings", "wealth"],
+      relationships: ["relationship", "relationships", "family", "friends", "social", "love", "partner", "lonely"],
+      environment: ["environment", "home", "space", "workspace", "living", "clutter", "surroundings"],
+      identity: ["identity", "self", "who i am", "values", "confidence", "purpose", "growth"],
+    };
+    const matched = Object.entries(keywordMap)
+      .filter(([, keywords]) => keywords.some(kw => lower.includes(kw)))
+      .map(([id]) => id);
+    if (matched.length > 0) {
+      setData((d) => ({
+        ...d,
+        dimensionSnapshot: [...new Set([...d.dimensionSnapshot, ...matched])],
+      }));
+    }
   };
 
   const handleCurrentLocationVoice = (transcript: string) => {
@@ -739,7 +813,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                         className="h-12 flex-1"
                         data-testid="input-name"
                       />
-                      <VoiceButton onTranscript={handleNameVoice} label="Say your name" />
+                      <VoiceButton onTranscript={handleNameVoice} label="Say your name so DW hears how to pronounce it" />
                     </div>
                   </div>
 
@@ -748,13 +822,16 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       Date of birth
                     </label>
-                    <Input
-                      type="date"
-                      value={data.birthDate ?? ""}
-                      onChange={(e) => setData((d) => ({ ...d, birthDate: e.target.value || null }))}
-                      className="h-12"
-                      data-testid="input-birthdate"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={data.birthDate ?? ""}
+                        onChange={(e) => setData((d) => ({ ...d, birthDate: e.target.value || null }))}
+                        className="h-12 flex-1"
+                        data-testid="input-birthdate"
+                      />
+                      <VoiceButton onTranscript={handleBirthDateVoice} label="Say your birth date, e.g. April 15 1990" />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -762,13 +839,16 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       Birth time <span className="text-muted-foreground font-normal text-xs">(optional — refines your chart)</span>
                     </label>
-                    <Input
-                      type="time"
-                      value={data.birthTime ?? ""}
-                      onChange={(e) => setData((d) => ({ ...d, birthTime: e.target.value || null }))}
-                      className="h-12"
-                      data-testid="input-birthtime"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={data.birthTime ?? ""}
+                        onChange={(e) => setData((d) => ({ ...d, birthTime: e.target.value || null }))}
+                        className="h-12 flex-1"
+                        data-testid="input-birthtime"
+                      />
+                      <VoiceButton onTranscript={handleBirthTimeVoice} label="Say your birth time, e.g. 3:30 PM" />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -1097,17 +1177,20 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                   })}
                 </div>
 
-                <div className="flex gap-3">
-                  <Button variant="ghost" onClick={goBack} data-testid="button-snapshot-back">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={goNext}
-                    data-testid="button-snapshot-next"
-                  >
-                    Continue <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  <VoiceButton onTranscript={handleSnapshotVoice} label="Describe what's alive or challenging right now" />
+                  <div className="flex-1 flex gap-3">
+                    <Button variant="ghost" onClick={goBack} data-testid="button-snapshot-back">
+                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={goNext}
+                      data-testid="button-snapshot-next"
+                    >
+                      Continue <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
