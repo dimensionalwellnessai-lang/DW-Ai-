@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles, Settings2, Heart, Wind, ChevronDown, ChevronUp, Clock,
-  Play, CheckCircle2, Flame, Wand2, Loader2, Volume2, Star
+  Play, CheckCircle2, Flame, Wand2, Loader2, Volume2, Star, X, Square, Headphones
 } from "lucide-react";
 import { SpiritualProfileDialog } from "@/components/spiritual-profile-dialog";
 import {
@@ -22,6 +22,7 @@ import {
   type SpiritualProfile, type SavedRoutine
 } from "@/lib/guest-storage";
 import { TTSButton } from "@/components/tts-button";
+import { ttsService } from "@/lib/tts-service";
 import { MeditationAudioPlayer } from "@/components/meditation-audio-player";
 import { useToast } from "@/hooks/use-toast";
 
@@ -271,6 +272,47 @@ export default function SpiritualPage() {
   const [meditationFocus, setMeditationFocus] = useState("");
   const [generatedMeditation, setGeneratedMeditation] = useState<string | null>(null);
 
+  // DW Guided Session
+  const [dwSession, setDwSession] = useState<{ script: string; title: string; duration: number } | null>(null);
+
+  const startSession = useCallback((script: string, title: string, duration: number) => {
+    setDwSession({ script, title, duration });
+  }, []);
+
+  const endSession = useCallback(() => {
+    ttsService.stop();
+    setDwSession(null);
+  }, []);
+
+  // Guide a practice with DW's voice
+  const guidePracticeMutation = useMutation({
+    mutationFn: async (practice: PracticeData) => {
+      const profile = getSpiritualProfile();
+      const context = profile
+        ? `This person's spiritual practices: ${(profile.practices || []).join(", ")}. Their needs: ${(profile.groundingNeeds || []).join(", ")}.`
+        : "";
+      const prompt = `You are DW, a calm, warm, wise personal meditation guide. Narrate this practice as if you are guiding someone through it right now, in real-time.
+
+Practice: ${practice.title}
+Duration: ${practice.duration} minutes
+Description: ${practice.description}
+Steps:
+${practice.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}
+${context}
+
+Write a flowing guided narration in second person ("you"). Match the pacing to ${practice.duration} minutes — roughly ${practice.duration * 60} words. Include natural pauses like "Take a breath here..." or "Rest in this for a moment...". Start by settling the listener in. End by gently bringing them back. Be warm, unhurried, and present. Write ONLY the narration — no labels, no headers, no metadata.`;
+
+      const res = await apiRequest("POST", "/api/chat/smart", {
+        message: prompt,
+        conversationHistory: [],
+      });
+      const json = await res.json();
+      return { script: json.response as string, title: practice.title, duration: practice.duration };
+    },
+    onSuccess: (data) => startSession(data.script, data.title, data.duration),
+    onError: () => toast({ title: "Couldn't generate guided session. Try again.", variant: "destructive" }),
+  });
+
   const handleProfileComplete = () => {
     setProfileOpen(false);
     setSpiritualProfile(getSpiritualProfile());
@@ -407,6 +449,8 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
                       onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
                       onComplete={() => handleComplete(p.id, p.title)}
                       lastCompleted={getLastCompleted(p.id)}
+                      onGuide={() => guidePracticeMutation.mutate(p)}
+                      guideLoading={guidePracticeMutation.isPending && guidePracticeMutation.variables?.id === p.id}
                     />
                   ))}
                 </div>
@@ -449,6 +493,8 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
                     onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
                     onComplete={() => handleComplete(p.id, p.title)}
                     lastCompleted={getLastCompleted(p.id)}
+                    onGuide={() => guidePracticeMutation.mutate(p)}
+                    guideLoading={guidePracticeMutation.isPending && guidePracticeMutation.variables?.id === p.id}
                   />
                 ))}
               </div>
@@ -507,15 +553,34 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
 
                   {generatedMeditation && (
                     <div className="space-y-3">
+                      {/* Start DW Session — immersive guided experience */}
+                      <Button
+                        onClick={() => startSession(
+                          generatedMeditation,
+                          meditationFocus || `${meditationDuration}-Minute Meditation`,
+                          parseInt(meditationDuration)
+                        )}
+                        className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                        data-testid="button-start-dw-session"
+                      >
+                        <Headphones className="h-4 w-4" />
+                        Start DW Guided Session
+                      </Button>
+
+                      {/* Script preview */}
                       <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{generatedMeditation}</p>
+                        <p className="text-xs font-medium text-purple-400 mb-2 flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          Your personalized meditation script
+                        </p>
+                        <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{generatedMeditation}</p>
                       </div>
                       <div className="flex gap-2">
                         <TTSButton
                           text={generatedMeditation}
                           alwaysShow
-                          label="Listen to meditation"
-                          variant="default"
+                          label="Listen (no visuals)"
+                          variant="outline"
                           className="flex-1"
                         />
                         <Button
@@ -558,6 +623,16 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
           />
         </div>
       </ScrollArea>
+
+      {/* DW Guided Meditation Session Overlay */}
+      {dwSession && (
+        <DWSessionOverlay
+          script={dwSession.script}
+          title={dwSession.title}
+          duration={dwSession.duration}
+          onClose={endSession}
+        />
+      )}
     </div>
   );
 }
@@ -568,9 +643,11 @@ interface PracticeCardProps {
   lastCompleted: number | null;
   onToggle: () => void;
   onComplete: () => void;
+  onGuide?: () => void;
+  guideLoading?: boolean;
 }
 
-function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete }: PracticeCardProps) {
+function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete, onGuide, guideLoading }: PracticeCardProps) {
   const completedRecently = lastCompleted !== null && daysSince(lastCompleted) === 0;
 
   return (
@@ -639,6 +716,24 @@ function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete 
               ))}
             </div>
 
+            {/* DW Guided Session button */}
+            {onGuide && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2 border-purple-400/40 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                onClick={onGuide}
+                disabled={guideLoading}
+                data-testid={`button-guide-practice-${practice.id}`}
+              >
+                {guideLoading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> DW is preparing your session…</>
+                ) : (
+                  <><Headphones className="h-4 w-4" /> Guide me through this with DW</>
+                )}
+              </Button>
+            )}
+
             <Button
               size="sm"
               variant={completedRecently ? "secondary" : "default"}
@@ -656,5 +751,202 @@ function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete 
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── DW Guided Meditation Session Overlay ───────────────────────────────────
+
+interface DWSessionOverlayProps {
+  script: string;
+  title: string;
+  duration: number;
+  onClose: () => void;
+}
+
+function DWSessionOverlay({ script, title, duration, onClose }: DWSessionOverlayProps) {
+  const [seconds, setSeconds] = useState(0);
+  const [phase, setPhase] = useState<"loading" | "playing" | "done">("loading");
+  const [breathLabel, setBreathLabel] = useState("breathe in");
+
+  // Auto-start TTS when session opens
+  useEffect(() => {
+    setPhase("loading");
+    ttsService.speak(script)
+      .then(() => setPhase("done"))
+      .catch(() => setPhase("done"));
+
+    return () => {
+      ttsService.stop();
+    };
+  }, [script]);
+
+  // Set playing state once audio starts (small delay for UX)
+  useEffect(() => {
+    const t = setTimeout(() => setPhase(p => p === "loading" ? "playing" : p), 800);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Session timer
+  useEffect(() => {
+    const id = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Breathing label cycle: inhale 4s / hold 2s / exhale 6s
+  useEffect(() => {
+    const labels = [
+      { label: "breathe in", ms: 4000 },
+      { label: "hold", ms: 2000 },
+      { label: "breathe out", ms: 6000 },
+    ];
+    let i = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const cycle = () => {
+      setBreathLabel(labels[i].label);
+      timeoutId = setTimeout(() => {
+        i = (i + 1) % labels.length;
+        cycle();
+      }, labels[i].ms);
+    };
+    cycle();
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-between overflow-hidden select-none"
+      style={{ background: "linear-gradient(160deg, #1a0533 0%, #0d0620 40%, #0a1a3a 100%)" }}>
+
+      {/* Breathing animation keyframes */}
+      <style>{`
+        @keyframes dw-breathe {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.25); opacity: 1; }
+        }
+        @keyframes dw-pulse-ring {
+          0%, 100% { transform: scale(1); opacity: 0.15; }
+          50% { transform: scale(1.35); opacity: 0.35; }
+        }
+        @keyframes dw-orb {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 60px 20px rgba(139, 92, 246, 0.3); }
+          50% { transform: scale(1.1); box-shadow: 0 0 100px 40px rgba(139, 92, 246, 0.5); }
+        }
+        @keyframes dw-text-fade {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.8; }
+        }
+      `}</style>
+
+      {/* Top: session title & timer */}
+      <div className="w-full flex items-center justify-between px-6 pt-12 pb-4">
+        <div>
+          <p className="text-white/50 text-xs uppercase tracking-widest font-medium">DW Guided Session</p>
+          <p className="text-white/80 text-sm font-light mt-0.5 line-clamp-1">{title}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-white/30 text-xs font-mono">
+            {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+          </p>
+          <p className="text-white/20 text-[10px] mt-0.5">{duration} min session</p>
+        </div>
+      </div>
+
+      {/* Center: breathing orb */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-8">
+        <div className="relative flex items-center justify-center">
+          {/* Outermost pulse ring */}
+          <div
+            className="absolute rounded-full border border-purple-400/20"
+            style={{
+              width: 280, height: 280,
+              animation: "dw-pulse-ring 12s ease-in-out infinite",
+            }}
+          />
+          {/* Middle pulse ring */}
+          <div
+            className="absolute rounded-full border border-purple-400/25"
+            style={{
+              width: 220, height: 220,
+              animation: "dw-pulse-ring 12s ease-in-out infinite 2s",
+            }}
+          />
+          {/* Inner breathing ring */}
+          <div
+            className="absolute rounded-full border border-purple-500/30"
+            style={{
+              width: 168, height: 168,
+              animation: "dw-breathe 12s ease-in-out infinite",
+            }}
+          />
+          {/* DW Orb */}
+          <div
+            className="w-36 h-36 rounded-full flex flex-col items-center justify-center relative"
+            style={{
+              background: "radial-gradient(circle at 40% 35%, rgba(167,139,250,0.5), rgba(109,40,217,0.4))",
+              animation: "dw-orb 12s ease-in-out infinite",
+            }}
+          >
+            <p className="text-white text-2xl font-light tracking-wide">DW</p>
+            <div className="flex items-center gap-1 mt-1.5">
+              {phase === "loading" && <Loader2 className="h-3 w-3 text-white/50 animate-spin" />}
+              {phase === "playing" && (
+                <span className="flex gap-0.5">
+                  {[0, 1, 2].map(i => (
+                    <span key={i} className="w-0.5 rounded-full bg-white/60"
+                      style={{
+                        height: 10 + i * 4,
+                        animation: `dw-breathe ${1.2 + i * 0.2}s ease-in-out infinite ${i * 0.15}s`,
+                      }} />
+                  ))}
+                </span>
+              )}
+              {phase === "done" && <CheckCircle2 className="h-3 w-3 text-green-400/70" />}
+            </div>
+          </div>
+        </div>
+
+        {/* Status text */}
+        <div className="text-center space-y-2">
+          {phase === "loading" && (
+            <p className="text-white/40 text-sm" style={{ animation: "dw-text-fade 2s ease-in-out infinite" }}>
+              DW is preparing your session…
+            </p>
+          )}
+          {phase === "playing" && (
+            <p className="text-white/60 text-sm font-light" style={{ animation: "dw-text-fade 12s ease-in-out infinite" }}>
+              {breathLabel}
+            </p>
+          )}
+          {phase === "done" && (
+            <div className="text-center space-y-1">
+              <p className="text-white/70 text-sm font-light">Session complete</p>
+              <p className="text-white/30 text-xs">Take a moment before returning</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom: tip + end button */}
+      <div className="w-full px-6 pb-12 space-y-4 max-w-sm mx-auto">
+        {phase === "playing" && (
+          <div className="flex items-center gap-2 justify-center">
+            <Volume2 className="h-3.5 w-3.5 text-white/30" />
+            <p className="text-white/30 text-xs text-center">
+              DW's voice is guiding you — close your eyes
+            </p>
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-2xl border border-white/15 text-white/50 text-sm font-light hover:border-white/30 hover:text-white/70 transition-colors"
+          data-testid="button-end-dw-session"
+        >
+          {phase === "done" ? "Return" : "End Session"}
+        </button>
+      </div>
+    </div>
   );
 }
