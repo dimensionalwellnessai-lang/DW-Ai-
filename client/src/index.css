@@ -851,3 +851,69 @@ summary::marker {
     }
   }
 }
+
+/* ─── Page Entry Animation ────────────────────────────────────────────── */
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Stagger children with CSS custom properties */
+.page-enter-stagger > * {
+  animation: pageEnter 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.page-enter-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.page-enter-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.page-enter-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.page-enter-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.page-enter-stagger > *:nth-child(5) { animation-delay: 145ms; }
+.page-enter-stagger > *:nth-child(6) { animation-delay: 165ms; }
+.page-enter-stagger > *:nth-child(n+7) { animation-delay: 180ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .page-enter-stagger > * {
+    animation: none;
+  }
+}
+
+/* ─── Section Label ───────────────────────────────────────────────────── */
+
+/* Consistent section label style used throughout the app */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+}
+
+/* ─── Active Badge (replaces hardcoded purple) ────────────────────────── */
+
+.badge-active {
+  background-color: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.45);
+  color: hsl(var(--primary));
+}
+
+.badge-inactive {
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.badge-inactive:hover {
+  border-color: hsl(var(--primary) / 0.35);
+  color: hsl(var(--foreground));
+}

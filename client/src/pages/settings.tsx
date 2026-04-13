@@ -199,7 +199,7 @@ export function SettingsPage() {
       <PageHeader title="Settings" backPath="/" />
 
       <div className="flex-1 overflow-auto">
-        <main className="p-4 max-w-2xl mx-auto space-y-4" data-tour="settings">
+        <main className="p-4 max-w-2xl mx-auto space-y-4 page-enter" data-tour="settings">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">

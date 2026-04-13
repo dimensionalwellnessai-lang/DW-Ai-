@@ -195,7 +195,7 @@ export default function InsightsDashboard() {
       <PageHeader title="Insights" />
       
       <div className="flex-1 overflow-auto">
-        <div className="container max-w-6xl mx-auto p-4 space-y-6">
+        <div className="container max-w-6xl mx-auto p-4 space-y-6 page-enter">
         {/* Overview Card */}
         <Card>
           <CardHeader>

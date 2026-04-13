@@ -376,7 +376,7 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Meditation & Mindfulness" />
       <ScrollArea className="flex-1">
-        <div className="p-4 max-w-2xl mx-auto space-y-5 pb-24">
+        <div className="p-4 max-w-2xl mx-auto space-y-5 pb-24 page-enter">
 
           {/* Streak + Profile row */}
           <div className="flex items-center justify-between gap-3">

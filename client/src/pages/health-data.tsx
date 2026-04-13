@@ -120,7 +120,7 @@ export default function HealthDataPage() {
     <div className="min-h-screen pb-24">
       <PageHeader title="Health Data" subtitle="Track daily metrics and spot trends" />
 
-      <div className="max-w-2xl mx-auto px-4 space-y-5 pt-2">
+      <div className="max-w-2xl mx-auto px-4 space-y-5 pt-2 page-enter">
         {/* Goal impact panel */}
         {weightGoals.length > 0 && weightDelta !== null && (
           <Card className="border-amber-500/20 bg-amber-500/5" data-testid="card-health-goal-impact">

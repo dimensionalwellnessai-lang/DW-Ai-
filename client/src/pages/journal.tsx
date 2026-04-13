@@ -318,7 +318,7 @@ export default function JournalPage() {
       <PageHeader title="Journal" />
       
       <ScrollArea className="flex-1 overflow-auto">
-        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8 page-enter">
           <DWContextPrompt
             topic="Help me reflect on something from my life right now"
             placeholder="Help me reflect — or suggest a journaling prompt for today"
@@ -503,8 +503,8 @@ export default function JournalPage() {
           
           {momentumLogs.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Wind className="w-4 h-4" />
+              <h2 className="section-label flex items-center gap-1.5">
+                <Wind className="w-3.5 h-3.5" />
                 Reset Practices
               </h2>
               {momentumLogs.map(log => {

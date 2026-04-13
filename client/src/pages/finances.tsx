@@ -164,7 +164,7 @@ export default function FinancesPage() {
     <div className="flex flex-col h-full">
       <PageHeader title="Financial Wellness" />
       <ScrollArea className="flex-1">
-        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24">
+        <div className="p-4 max-w-2xl mx-auto space-y-6 pb-24 page-enter">
 
           {/* Profile setup or display */}
           {!hasProfile ? (

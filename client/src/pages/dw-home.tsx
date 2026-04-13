@@ -187,7 +187,7 @@ export default function DWHomePage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="card-modern bg-gradient-to-br from-slate-800/50 to-slate-900/50">
+          <Card className="card-modern border-primary/15 bg-primary/[0.03]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-foreground">
                 Your system today
@@ -217,10 +217,10 @@ export default function DWHomePage() {
                       <Badge
                         key={opt.value}
                         variant="outline"
-                        className={`cursor-pointer text-xs ${
+                        className={`cursor-pointer text-xs transition-colors ${
                           signals.timeBand === opt.value
-                            ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                            : "border-border text-muted-foreground hover:border-border"
+                            ? "badge-active"
+                            : "badge-inactive"
                         }`}
                         onClick={() => handleTimeChange(opt.value)}
                         data-testid={`time-${opt.value}`}
@@ -239,10 +239,10 @@ export default function DWHomePage() {
                         <Badge
                           key={opt.value}
                           variant="outline"
-                          className={`cursor-pointer ${
+                          className={`cursor-pointer transition-colors ${
                             signals.energyLevel === opt.value
-                              ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                              : "border-border text-muted-foreground hover:border-border"
+                              ? "badge-active"
+                              : "badge-inactive"
                           }`}
                           onClick={() => handleEnergyChange(opt.value)}
                           data-testid={`energy-${opt.value}`}
@@ -341,7 +341,7 @@ export default function DWHomePage() {
                 const switchColors = SWITCH_COLORS[switchId];
                 return (
                   <Link key={switchId} href={`/switch/${switchId}`}>
-                    <Card className="border-border hover:border-border transition-colors cursor-pointer">
+                    <Card className="border-border hover:border-primary/30 hover:bg-muted/40 transition-colors cursor-pointer">
                       <CardContent className="p-3 text-center">
                         <div className={`w-10 h-10 mx-auto rounded-lg ${switchColors.bg} flex items-center justify-center mb-2`}>
                           <Icon className={`h-5 w-5 ${switchColors.text}`} />

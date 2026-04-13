@@ -119,121 +119,101 @@ export default function TrackingDashboard() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
-      <PageHeader title="Tracking Dashboard" />
+    <div className="flex flex-col h-full">
+      <PageHeader title="Daily Tracking" />
       <div className="flex-1 overflow-auto">
-        <div className="container max-w-6xl mx-auto p-4 space-y-6">
-        <p className="text-muted-foreground text-center">
-          Monitor your daily wellness metrics
-        </p>
+        <div className="container max-w-2xl mx-auto p-4 space-y-5 pb-24 page-enter">
 
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           {/* Water Tracker */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Droplets className="h-5 w-5 text-blue-500" />
-                Water Intake
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl font-bold">{todayWater} oz</span>
-                  <span className="text-sm text-muted-foreground">/ 64 oz</span>
-                </div>
-                <Progress value={(todayWater / 64) * 100} className="h-3" />
+          <Card className="card-modern">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2.5 text-base">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Droplets className="h-4 w-4 text-blue-500" />
+                  </div>
+                  Water Intake
+                </CardTitle>
+                <span className="text-sm font-semibold tabular-nums">
+                  {todayWater}<span className="text-xs text-muted-foreground font-normal ml-0.5">/ 64 oz</span>
+                </span>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Amount (oz)"
-                    value={waterAmount}
-                    onChange={(e) => setWaterAmount(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogWater()}
-                  />
-                  <Button onClick={handleLogWater} size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => quickLogWater(8)}
-                    className="flex-1"
-                  >
-                    +8 oz
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => quickLogWater(16)}
-                    className="flex-1"
-                  >
-                    +16 oz
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => quickLogWater(24)}
-                    className="flex-1"
-                  >
-                    +24 oz
-                  </Button>
-                </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Progress value={Math.min((todayWater / 64) * 100, 100)} className="h-2" />
+                <p className="text-xs text-muted-foreground text-right">
+                  {Math.round(Math.min((todayWater / 64) * 100, 100))}% of daily goal
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Amount (oz)"
+                  value={waterAmount}
+                  onChange={(e) => setWaterAmount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogWater()}
+                  className="text-sm"
+                  data-testid="input-water-amount"
+                />
+                <Button onClick={handleLogWater} size="icon" data-testid="button-log-water">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => quickLogWater(8)} className="flex-1 text-xs h-8" data-testid="button-quick-8oz">+8 oz</Button>
+                <Button variant="outline" size="sm" onClick={() => quickLogWater(16)} className="flex-1 text-xs h-8" data-testid="button-quick-16oz">+16 oz</Button>
+                <Button variant="outline" size="sm" onClick={() => quickLogWater(24)} className="flex-1 text-xs h-8" data-testid="button-quick-24oz">+24 oz</Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Calorie Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Utensils className="h-5 w-5 text-orange-500" />
-                Calories Today
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-bold">{todayCalories}</span>
-                    <span className="text-sm text-muted-foreground">/ 2000 kcal</span>
+          <Card className="card-modern">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2.5 text-base">
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Utensils className="h-4 w-4 text-orange-500" />
                   </div>
-                  <Progress value={(todayCalories / 2000) * 100} className="h-3" />
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate('/meal-prep')}
-                >
-                  Log Meal
-                </Button>
+                  Calories Today
+                </CardTitle>
+                <span className="text-sm font-semibold tabular-nums">
+                  {todayCalories}<span className="text-xs text-muted-foreground font-normal ml-0.5">/ 2000 kcal</span>
+                </span>
               </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Progress value={Math.min((todayCalories / 2000) * 100, 100)} className="h-2" />
+                <p className="text-xs text-muted-foreground text-right">
+                  {Math.round(Math.min((todayCalories / 2000) * 100, 100))}% of daily goal
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/meal-prep')} data-testid="button-log-meal">
+                <Plus className="h-4 w-4 mr-2" />
+                Log Meal
+              </Button>
             </CardContent>
           </Card>
 
           {/* Workout Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-500" />
+          <Card className="card-modern">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2.5 text-base">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                </div>
                 Workout Status
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-2">Today's Workout</p>
-                <Badge variant="outline" className="mb-4">Not Started</Badge>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3 py-2">
+                <Badge variant="outline" className="text-xs">Not started today</Badge>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => navigate('/workout')}
-              >
+              <Button className="w-full" onClick={() => navigate('/workout')} data-testid="button-start-workout">
                 Start Workout
               </Button>
             </CardContent>
@@ -242,9 +222,11 @@ export default function TrackingDashboard() {
 
         {/* Today's Habits */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2.5 text-base">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+              </div>
               Today's Habits
             </CardTitle>
           </CardHeader>
@@ -291,38 +273,23 @@ export default function TrackingDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            className="h-20"
-            onClick={() => navigate('/meal-prep')}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <Utensils className="h-6 w-6" />
-              <span>Log Meal</span>
-            </div>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-20"
-            onClick={() => navigate('/workout')}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <Zap className="h-6 w-6" />
-              <span>Log Workout</span>
-            </div>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-20"
-            onClick={() => navigate('/command-center')}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <TrendingUp className="h-6 w-6" />
-              <span>Command Center</span>
-            </div>
-          </Button>
+        {/* Quick Navigation */}
+        <div className="space-y-2">
+          <h2 className="section-label">Quick links</h2>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" size="sm" className="h-auto flex-col gap-1.5 py-3" onClick={() => navigate('/meal-prep')} data-testid="link-meal-prep">
+              <Utensils className="h-4 w-4 text-orange-500" />
+              <span className="text-xs">Meals</span>
+            </Button>
+            <Button variant="outline" size="sm" className="h-auto flex-col gap-1.5 py-3" onClick={() => navigate('/workout')} data-testid="link-workout">
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span className="text-xs">Workout</span>
+            </Button>
+            <Button variant="outline" size="sm" className="h-auto flex-col gap-1.5 py-3" onClick={() => navigate('/command-center')} data-testid="link-command-center">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="text-xs">Overview</span>
+            </Button>
+          </div>
         </div>
       </div>
       </div>

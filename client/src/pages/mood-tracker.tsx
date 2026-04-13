@@ -224,7 +224,7 @@ function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl">
+        <CardTitle className="flex items-center gap-3 text-base">
           <div className="rounded-full bg-blue-500/20 dark:bg-blue-400/25 p-2">
             <Activity className="h-5 w-5 text-blue-500 dark:text-blue-400" />
           </div>
@@ -879,7 +879,7 @@ export default function MoodTrackerPage() {
       />
       
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24" data-tour="mood-tracker">
+        <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24 page-enter" data-tour="mood-tracker">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="checkin" data-testid="tab-checkin">
