@@ -22,7 +22,7 @@ type ConvState = "idle" | "listening" | "processing" | "speaking" | "error";
 const SILENCE_THRESHOLD = 0.013;   // RMS level below which we consider silence
 const SILENCE_DURATION_MS = 700;   // ms of silence before we stop recording
 const MIN_RECORDING_MS = 300;      // minimum ms before silence detection kicks in
-const TTS_SPEED = 1.15;            // slightly faster playback feels more natural
+const TTS_SPEED = 1.0;             // natural speech speed
 const TTS_MAX_CHARS = 900;         // maximum chars sent to TTS (long responses truncated)
 
 export function DWVoiceConversation({
