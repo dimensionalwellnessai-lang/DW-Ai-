@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { DWContextPrompt } from "@/components/dw-context-prompt";
 import { DWLearnCard } from "@/components/dw-learn-card";
+import { EmptyState } from "@/components/empty-state";
 
 const DIMENSIONS = [
   { value: "physical",     label: "Physical",     icon: Dumbbell,  color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },

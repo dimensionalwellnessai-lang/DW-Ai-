@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { EmptyState } from "@/components/empty-state";
 
 const DIMENSIONS = [
   { value: "physical",     label: "Physical",     icon: Dumbbell,  color: "text-blue-600 dark:text-blue-400" },

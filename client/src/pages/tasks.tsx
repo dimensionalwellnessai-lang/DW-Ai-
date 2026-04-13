@@ -1,7 +1,8 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Plus, MessageSquareText, CheckSquare, Circle, CheckCircle2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Task } from "@shared/schema";
