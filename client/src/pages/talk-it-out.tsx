@@ -1354,6 +1354,10 @@ export function TalkItOutPage() {
           onClose={() => {
             setVoiceConvOpen(false);
             stopSpeaking();
+            // Scroll to bottom so user can see the full voice conversation in text
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 150);
           }}
         />
       )}
