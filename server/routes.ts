@@ -2654,6 +2654,16 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       res.json({ ...safeResult, syncSessionId, actionsTaken, navigation: navigationAction });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
+      // Graceful degradation: AI provider temporarily down → return a friendly response
+      if (errMsg.includes("DW_AI_UNAVAILABLE") || errMsg.includes("529") || errMsg.includes("overloaded") || errMsg.includes("rate limit") || errMsg.includes("503")) {
+        console.warn("Smart chat: AI temporarily unavailable, returning graceful fallback");
+        return res.json({
+          response: "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.",
+          intent: "general",
+          actionsTaken: [],
+          navigation: null,
+        });
+      }
       const errStatus: number = typeof error?.status === "number" ? error.status : 500;
       console.error("Smart chat error:", errStatus, errMsg);
       return res.status(errStatus >= 400 && errStatus < 600 ? errStatus : 500).json({

@@ -641,13 +641,16 @@ export function TalkItOutPage() {
       setLastFailedMessage(variables as string);
       const errDetail = parseApiError(error);
       const isAuthErr = errDetail.includes("401") || errDetail.toLowerCase().includes("unauthorized") || errDetail.toLowerCase().includes("no body");
+      const isServerErr = errDetail.includes("500") || errDetail.includes("503") || errDetail.toLowerCase().includes("unavailable");
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: isAuthErr
             ? "I'm having trouble connecting right now. This is usually a temporary issue — please try again in a moment."
-            : `Something went wrong: ${errDetail}`,
+            : isServerErr
+            ? "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up."
+            : "I had a small hiccup on my end. Give it another try — I'm not going anywhere.",
           isError: true,
         },
       ]);
