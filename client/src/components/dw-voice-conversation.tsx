@@ -19,9 +19,9 @@ interface DWVoiceConversationProps {
 type ConvState = "idle" | "listening" | "processing" | "speaking" | "error";
 
 // --- Tuning knobs ---
-const SILENCE_THRESHOLD = 0.013;   // RMS level below which we consider silence
-const SILENCE_DURATION_MS = 700;   // ms of silence before we stop recording
-const MIN_RECORDING_MS = 300;      // minimum ms before silence detection kicks in
+const SILENCE_THRESHOLD = 0.010;   // RMS level below which we consider silence (lower = catches softer voices)
+const SILENCE_DURATION_MS = 800;   // ms of continuous silence before we stop recording
+const MIN_RECORDING_MS = 400;      // minimum ms before silence detection kicks in
 const TTS_SPEED = 1.0;             // natural speech speed
 const TTS_MAX_CHARS = 900;         // maximum chars sent to TTS (long responses truncated)
 
@@ -52,8 +52,6 @@ export function DWVoiceConversation({
   const messagesLenRef = useRef(messages.length);
   const convStateRef = useRef<ConvState>("idle");
   const isMountedRef = useRef(true);
-  // Track whether any speech was detected in the current recording
-  const speechDetectedRef = useRef(false);
 
   const setState = useCallback((s: ConvState) => {
     convStateRef.current = s;
@@ -130,7 +128,6 @@ export function DWVoiceConversation({
     setState("listening");
     setStatusText("Listening…");
     chunksRef.current = [];
-    speechDetectedRef.current = false;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -166,17 +163,17 @@ export function DWVoiceConversation({
         setAudioLevel(Math.min(1, rms * 8));
 
         const elapsed = Date.now() - recordingStartRef.current;
+        // Don't start silence detection until minimum recording time has passed
         if (elapsed < MIN_RECORDING_MS) return;
 
-        // Mark speech as detected once we cross the threshold
         if (rms >= SILENCE_THRESHOLD) {
-          speechDetectedRef.current = true;
+          // Sound detected — cancel any pending silence timer
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = null;
           }
-        } else if (speechDetectedRef.current) {
-          // Only start silence timer after actual speech was detected
+        } else {
+          // Silence — start countdown if not already running
           if (!silenceTimerRef.current) {
             silenceTimerRef.current = setTimeout(() => {
               silenceTimerRef.current = null;
@@ -186,7 +183,7 @@ export function DWVoiceConversation({
             }, SILENCE_DURATION_MS);
           }
         }
-      }, 60); // Poll at 60ms for faster response
+      }, 60);
 
       const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
@@ -196,14 +193,15 @@ export function DWVoiceConversation({
       mr.onstop = async () => {
         cleanupRecording();
         const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-        if (blob.size < 800 || !speechDetectedRef.current) {
+        // If the recording is tiny, nothing was said — go back to listening
+        if (blob.size < 800) {
           if (isMountedRef.current) startListening();
           return;
         }
         await transcribeAndSend(blob);
       };
 
-      mr.start(200); // smaller timeslice for faster data availability
+      mr.start(200);
     } catch (e: any) {
       setState("error");
       setStatusText(e?.name === "NotAllowedError" ? "Microphone access denied" : "Could not start mic");
@@ -390,23 +388,12 @@ export function DWVoiceConversation({
         </div>
       </div>
 
-      {/* Bottom row: done talking + exit */}
-      <div className="flex flex-col items-center gap-3 w-full">
-        {convState === "listening" && (
-          <button
-            onClick={() => {
-              if (mediaRecorderRef.current?.state !== "inactive") {
-                mediaRecorderRef.current?.stop();
-              }
-            }}
-            className="text-white/40 text-xs underline underline-offset-2 hover:text-white/70 transition-colors"
-            data-testid="button-done-talking"
-          >
-            Done talking
-          </button>
-        )}
+      {/* Bottom hint */}
+      <div className="flex flex-col items-center gap-2 w-full">
         <p className="text-white/20 text-xs text-center">
-          Conversation saves automatically when you switch to text
+          {convState === "listening"
+            ? "Just speak — it auto-detects when you're done"
+            : "Conversation saves automatically when you switch to text"}
         </p>
       </div>
     </div>
