@@ -36,8 +36,10 @@ const _resilience = {
   perplexityCircuitOpenUntil: 0,
 };
 
-const _CIRCUIT_THRESHOLD = 3;
-const _CIRCUIT_RESET_MS = 2 * 60 * 1000;
+// Require 6 consecutive failures before tripping (not 3 — too aggressive for concurrent users)
+const _CIRCUIT_THRESHOLD = 6;
+// Only pause for 30 seconds, not 2 full minutes — recover fast so users aren't locked out
+const _CIRCUIT_RESET_MS = 30 * 1000;
 
 function _isCircuitOpen(provider: "openai" | "perplexity"): boolean {
   const until = provider === "openai" ? _resilience.openaiCircuitOpenUntil : _resilience.perplexityCircuitOpenUntil;
@@ -107,16 +109,54 @@ export function enforceOneQuestion(text: string): string {
   return paragraphs.join("\n\n");
 }
 
-async function _withRetry<T>(fn: () => Promise<T>, attempts = 2, delay = 600): Promise<T> {
+async function _withRetry<T>(fn: () => Promise<T>, attempts = 3, delay = 400): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try { return await fn(); }
-    catch (e) {
+    catch (e: any) {
       lastErr = e;
-      if (i < attempts - 1) await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+      if (i < attempts - 1) {
+        const status = e?.status ?? e?.response?.status;
+        // 429 = rate limited: respect Retry-After header or back off longer
+        if (status === 429) {
+          const retryAfterSec = parseInt(e?.response?.headers?.["retry-after"] ?? "0", 10);
+          const waitMs = retryAfterSec > 0 ? retryAfterSec * 1000 : 2000 + delay * Math.pow(2, i);
+          console.warn(`[openai] Rate limited (429), waiting ${waitMs}ms before retry ${i + 1}`);
+          await new Promise(r => setTimeout(r, waitMs));
+        } else if (status === 529 || status === 503) {
+          // Provider overloaded — brief wait then retry
+          await new Promise(r => setTimeout(r, 800 * (i + 1)));
+        } else {
+          // Generic error — standard exponential backoff
+          await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+        }
+      }
     }
   }
   throw lastErr;
+}
+
+// ─── Concurrency limiter ───────────────────────────────────────────────────────
+// Prevents thundering herd: cap simultaneous AI calls so bursts don't all hit
+// the provider at once. Chat calls are queued and served in order.
+const _MAX_CONCURRENT = 8;
+let _activeAiCalls = 0;
+const _waitQueue: Array<() => void> = [];
+
+async function _acquireSlot(): Promise<void> {
+  if (_activeAiCalls < _MAX_CONCURRENT) {
+    _activeAiCalls++;
+    return;
+  }
+  return new Promise((resolve) => {
+    _waitQueue.push(() => { _activeAiCalls++; resolve(); });
+  });
+}
+
+function _releaseSlot(): void {
+  _activeAiCalls = Math.max(0, _activeAiCalls - 1);
+  const next = _waitQueue.shift();
+  if (next) next();
 }
 
 // ─── Wrap chat.completions.create with resilience ─────────────────────────────
@@ -126,43 +166,53 @@ const _originalCreate = _openai.chat.completions.create.bind(_openai.chat.comple
   params: Parameters<typeof _openai.chat.completions.create>[0],
   options?: Parameters<typeof _openai.chat.completions.create>[1],
 ): Promise<ReturnType<typeof _openai.chat.completions.create>> {
-  // ── OpenAI attempt ──────────────────────────────────────────────────────────
-  if (!_isCircuitOpen("openai")) {
-    try {
-      const result = await _withRetry(() => _originalCreate(params as Parameters<typeof _originalCreate>[0], options as Parameters<typeof _originalCreate>[1]), 2, 600);
-      _recordSuccess("openai");
-      return result as ReturnType<typeof _openai.chat.completions.create>;
-    } catch (err) {
-      _recordFailure("openai");
-      console.warn("[openai] Primary failed, trying Perplexity fallback:", (err as Error).message);
-    }
-  } else {
-    console.warn("[openai] Circuit open — skipping primary, trying Perplexity");
-  }
+  // ── Concurrency gate: queue requests during load spikes ────────────────────
+  await _acquireSlot();
 
-  // ── Perplexity fallback ─────────────────────────────────────────────────────
-  if (!_isCircuitOpen("perplexity")) {
-    const perp = _buildPerplexityClient();
-    if (perp) {
+  try {
+    // ── OpenAI attempt ──────────────────────────────────────────────────────
+    if (!_isCircuitOpen("openai")) {
       try {
-        const perpParams = { ...params, model: "sonar" };
-        const result = await _withRetry(
-          () => perp.chat.completions.create(perpParams as Parameters<typeof perp.chat.completions.create>[0], options as Parameters<typeof perp.chat.completions.create>[1]),
-          2,
-          600,
-        );
-        _recordSuccess("perplexity");
-        console.log("[openai] Perplexity fallback succeeded");
+        const result = await _withRetry(() => _originalCreate(params as Parameters<typeof _originalCreate>[0], options as Parameters<typeof _originalCreate>[1]), 3, 400);
+        _recordSuccess("openai");
         return result as ReturnType<typeof _openai.chat.completions.create>;
-      } catch (err) {
-        _recordFailure("perplexity");
-        console.error("[openai] Perplexity fallback also failed:", (err as Error).message);
+      } catch (err: any) {
+        // Only trip circuit for non-rate-limit errors; 429 is expected under load
+        if (err?.status !== 429) {
+          _recordFailure("openai");
+        }
+        console.warn("[openai] Primary failed, trying Perplexity fallback:", (err as Error).message);
+      }
+    } else {
+      console.warn("[openai] Circuit open — skipping primary, trying Perplexity");
+    }
+
+    // ── Perplexity fallback ─────────────────────────────────────────────────
+    if (!_isCircuitOpen("perplexity")) {
+      const perp = _buildPerplexityClient();
+      if (perp) {
+        try {
+          const perpParams = { ...params, model: "sonar" };
+          const result = await _withRetry(
+            () => perp.chat.completions.create(perpParams as Parameters<typeof perp.chat.completions.create>[0], options as Parameters<typeof perp.chat.completions.create>[1]),
+            3,
+            400,
+          );
+          _recordSuccess("perplexity");
+          console.log("[openai] Perplexity fallback succeeded");
+          return result as ReturnType<typeof _openai.chat.completions.create>;
+        } catch (err) {
+          _recordFailure("perplexity");
+          console.error("[openai] Perplexity fallback also failed:", (err as Error).message);
+        }
       }
     }
-  }
 
-  // ── Last resort: throw a clean error that callers can handle ────────────────
-  throw new Error("DW_AI_UNAVAILABLE: All AI providers temporarily unavailable. Please try again in a moment.");
+    // ── Last resort: throw a clean error that callers can handle ──────────────
+    throw new Error("DW_AI_UNAVAILABLE: All AI providers temporarily unavailable. Please try again in a moment.");
+  } finally {
+    _releaseSlot();
+  }
 } as typeof _openai.chat.completions.create;
 
 // Export the resilient openai instance for direct use in routes
@@ -1989,7 +2039,8 @@ Calm over speed.`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      // gpt-4o-mini: 10x higher rate limits than gpt-4o, faster, perfect for chat
+      model: "gpt-4o-mini",
       messages,
       tools,
       tool_choice: "auto",
