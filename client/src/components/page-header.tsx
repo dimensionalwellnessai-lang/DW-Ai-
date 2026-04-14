@@ -118,7 +118,7 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
 
   return (
     <>
-      {/* Header - sticky at top of content, below safe area handled by app-shell */}
+      {/* Header - fixed to top of viewport, always visible while scrolling */}
       <header className="page-header-fixed flex items-center gap-2 px-3 py-3">
         <div className="flex items-center gap-1">
           {showBack && (
@@ -149,6 +149,8 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
         <NotificationBell />
         {rightContent}
       </header>
+      {/* Spacer pushes page content below the fixed header */}
+      <div className="page-header-spacer" aria-hidden="true" />
 
       {/* Use new navigation if feature flag is enabled */}
       {useNewNavigation ? (

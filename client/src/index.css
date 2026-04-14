@@ -31,6 +31,8 @@
   --safe-bottom: var(--sab);
   /* Android status bar height fallback (24dp = ~24px at 1x density) */
   --android-status-bar: 24px;
+  /* Page header height (content only, not including safe area) */
+  --dw-header-h: 52px;
   /* Android nav bar height fallback */
   --android-nav-bar: 48px;
   
@@ -349,9 +351,13 @@ summary::marker {
   
   /* Page header that respects Dynamic Island */
   .page-header-fixed {
-    position: sticky;
-    top: 0;
-    z-index: 40;
+    position: fixed;
+    /* Sit right below the status bar / notch — app-shell pushes content via padding-top,
+       so we mirror that same offset to align with the content start. */
+    top: max(env(safe-area-inset-top, 0px), var(--android-status-bar, 0px));
+    left: 0;
+    right: 0;
+    z-index: 50;
     background-color: hsl(var(--background) / 0.92);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -362,6 +368,13 @@ summary::marker {
     background-color: hsl(240 20% 7% / 0.85);
     border-bottom-color: hsl(240 10% 18% / 0.5);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  /* Spacer that compensates for the fixed header — placed in flow after the header */
+  .page-header-spacer {
+    height: var(--dw-header-h);
+    flex-shrink: 0;
+    pointer-events: none;
   }
   
   /* Page scroll container - for pages with scrollable content under fixed header */
