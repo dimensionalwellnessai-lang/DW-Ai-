@@ -1,0 +1,62 @@
+Redesign the entire DW app visual theme so it feels like a modern premium native mobile app instead of a web app.
+
+Core direction:
+DW should feel sleek, intelligent, calm, elevated, and luxurious. The design language should feel like ambient intelligence mixed with wellness and futuristic elegance.
+
+Visual goals:
+- Dark premium base instead of pale gray backgrounds
+- Use a deep midnight/navy/charcoal gradient background throughout the app
+- Keep purple-blue glow as the main signature accent
+- Use glassy or softly elevated surfaces for cards and panels
+- Add subtle blur, faint borders, and soft shadows for depth
+- Reduce visual clutter and improve hierarchy
+- Make the app feel more like iOS-native and less like a responsive website
+
+Color system:
+- Primary background: deep navy / charcoal / near-black gradient
+- Primary accent: luminous purple-blue
+- Text primary: near-white
+- Text secondary: muted cool gray
+- Use secondary category colors sparingly and keep them muted so the UI feels cohesive and premium
+
+Typography:
+- Improve typography hierarchy with fewer font sizes
+- Headlines should feel crisp, elegant, and intentional
+- Supporting copy should be smaller, softer, and cleaner
+- Increase spacing consistency and visual rhythm
+
+Home screen redesign:
+- Keep the central orb as the hero focal point
+- Make the surrounding wellness dimensions feel more refined and less playful
+- Improve spacing, alignment, and visual balance around the wheel
+- Make cards below the wheel feel premium and intentional, not generic
+- Greeting area should feel cleaner and more branded
+- Reduce the “web dashboard” feeling
+
+DW chat screen redesign:
+- Make the DW chat page immersive and atmospheric
+- Use the dark premium background there too
+- Improve the top header so it feels native and polished
+- Style messages and input areas like a premium AI companion app
+- Keep the DW orb/presence element but make it feel elegant and integrated
+- Reduce the empty-page feel and improve composition
+
+Bottom navigation:
+- Redesign the bottom tab bar with a frosted / slightly blurred premium look
+- Make icons more refined and consistent
+- Use a subtle glow or elegant active state for the selected tab
+- Make it feel like a native app nav bar, not a basic web footer
+
+UI components:
+- Update buttons, cards, chips, badges, and icons to match the premium theme
+- Use larger corner radius where appropriate, but keep it refined
+- Add subtle motion and hover/tap polish where possible
+- Make all spacing, padding, and alignment feel intentional and mobile-first
+
+Important:
+- Do not just swap colors. Rework the visual system, hierarchy, spacing, and surfaces so the product feels truly premium.
+- Keep the app usable and calm, not overdesigned.
+- Prioritize a polished mobile-native feel across Home, DW chat, Calendar, Browse, and Journal.
+- Preserve the DW brand identity and purple orb, but elevate everything around it.
+
+Please implement the theme updates directly in the app and ensure visual consistency across all main screens.

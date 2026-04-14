@@ -772,7 +772,7 @@ export function TalkItOutPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full dw-premium-bg">
       <PageHeader
         title={
           <span className="font-display text-xl font-medium tracking-tight">
@@ -1015,12 +1015,18 @@ export function TalkItOutPage() {
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto py-6 px-4 space-y-8">
-          <div className="flex flex-col items-center gap-2 pb-2" data-testid="chat-orb-header">
-            <DWOrb
-              size={56}
-              state={isSpeaking ? "speaking" : isListening ? "listening" : isTyping ? "active" : "chat"}
-            />
-            <p className="text-xs text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 pb-2" data-testid="chat-orb-header">
+            <div className="relative">
+              <div
+                className="absolute inset-0 rounded-full blur-2xl opacity-30"
+                style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)', transform: 'scale(2.2)' }}
+              />
+              <DWOrb
+                size={60}
+                state={isSpeaking ? "speaking" : isListening ? "listening" : isTyping ? "active" : "chat"}
+              />
+            </div>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground">
               {isSpeaking ? "DW is speaking..." : isListening ? "Listening..." : isTyping ? "DW is thinking..." : "You're talking with DW"}
             </p>
           </div>
@@ -1060,16 +1066,14 @@ export function TalkItOutPage() {
             return (
               <article
                 key={index}
-                className={`animate-fade-in-up rounded-lg transition-colors duration-700 ${
-                  message.role === "user"
-                    ? "border-l-4 border-primary/40 pl-4 py-2"
-                    : ""
-                } ${highlightedIndex === index ? "ring-2 ring-primary/40 bg-primary/5 px-2" : ""}`}
+                className={`animate-fade-in-up transition-colors duration-700 ${
+                  highlightedIndex === index ? "ring-2 ring-primary/30 rounded-2xl bg-primary/5 px-3 py-1" : ""
+                }`}
                 data-testid={`message-talk-${index}`}
               >
                 {message.role === "user" ? (
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">You</p>
+                  <div className="space-y-1 pl-3 border-l-2 border-primary/25 py-1">
+                    <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/70">You</p>
                     <p className="font-body text-base leading-relaxed text-foreground/90 whitespace-pre-line break-words">{message.content}</p>
                     <MessageActions
                       messageIndex={index}
@@ -1080,9 +1084,9 @@ export function TalkItOutPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <DWOrb size={28} state="chat" />
-                      <p className="text-sm font-medium text-foreground">DW</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <DWOrb size={24} state="chat" />
+                      <p className="text-xs font-semibold tracking-wide text-primary/80 uppercase" style={{ letterSpacing: '0.08em' }}>DW</p>
                     </div>
                     <div className="dw-chat-response prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown
@@ -1173,7 +1177,7 @@ export function TalkItOutPage() {
         </div>
       </div>
 
-      <div className="border-t bg-background/95 backdrop-blur-sm">
+      <div className="chat-input-area">
         <div className="max-w-2xl mx-auto p-4">
           {/* Daily check-in banner (shown only when check-in is missing) */}
           {showCheckinBanner && (

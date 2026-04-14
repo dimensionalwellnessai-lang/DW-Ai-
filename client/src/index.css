@@ -73,11 +73,11 @@ html, body {
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display, 'Space Grotesk', system-ui, sans-serif);
     font-weight: 600;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
   }
   .font-display {
     font-family: var(--font-display, 'Space Grotesk', system-ui, sans-serif);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
   }
   .font-body {
     font-family: var(--font-body, 'Nunito', system-ui, sans-serif);
@@ -159,43 +159,43 @@ summary::marker {
   display: none;
 }
 
-/* LIGHT MODE - Sleek Blue Theme */
+/* LIGHT MODE - Deep Indigo Premium */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 214 32% 91%;
-  --foreground: 222 47% 11%;
-  --border: 214 20% 84%;
-  --card: 210 40% 96%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 20% 88%;
-  --sidebar: 217 33% 17%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 217 33% 22%;
-  --sidebar-primary: 199 89% 48%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 217 33% 25%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 199 89% 48%;
-  --popover: 210 40% 96%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 20% 84%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 214 32% 85%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 214 20% 88%;
-  --muted-foreground: 215 16% 47%;
+  --background: 240 8% 96%;
+  --foreground: 240 20% 11%;
+  --border: 240 8% 86%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 20% 11%;
+  --card-border: 240 8% 90%;
+  --sidebar: 240 30% 16%;
+  --sidebar-foreground: 240 6% 97%;
+  --sidebar-border: 240 20% 22%;
+  --sidebar-primary: 252 76% 62%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 25% 24%;
+  --sidebar-accent-foreground: 240 6% 97%;
+  --sidebar-ring: 252 76% 62%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 20% 11%;
+  --popover-border: 240 8% 88%;
+  --primary: 252 76% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 8% 90%;
+  --secondary-foreground: 240 20% 11%;
+  --muted: 240 6% 92%;
+  --muted-foreground: 240 8% 48%;
   --accent: 199 89% 48%;
-  --accent-foreground: 210 40% 98%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --input: 214 20% 69%;
-  --ring: 217 91% 60%;
-  --chart-1: 217 91% 60%;
+  --input: 240 6% 74%;
+  --ring: 252 76% 58%;
+  --chart-1: 252 76% 58%;
   --chart-2: 199 89% 48%;
   --chart-3: 262 83% 58%;
   --chart-4: 173 58% 39%;
@@ -258,48 +258,48 @@ summary::marker {
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .12);
-  --badge-outline: rgba(255,255,255, .08);
-  --opaque-button-border-intensity: 12;
-  --elevate-1: rgba(255,255,255, .05);
-  --elevate-2: rgba(255,255,255, .12);
-  /* Dark Mode Base - Per accessibility spec */
-  --background: 222 47% 11%;
-  --foreground: 220 14% 91%;
-  --border: 217 19% 27%;
-  --card: 217 33% 11%;
-  --card-foreground: 220 14% 91%;
-  --card-border: 217 19% 22%;
-  --sidebar: 222 47% 8%;
-  --sidebar-foreground: 220 14% 91%;
-  --sidebar-border: 217 19% 20%;
-  --sidebar-primary: 231 82% 69%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 217 33% 17%;
-  --sidebar-accent-foreground: 220 14% 91%;
-  --sidebar-ring: 231 82% 69%;
-  --popover: 217 33% 10%;
-  --popover-foreground: 220 14% 91%;
-  --popover-border: 217 19% 22%;
-  /* Primary Blue (Commit) #6D83F2 */
-  --primary: 231 82% 69%;
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .06);
+  --opaque-button-border-intensity: 10;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .08);
+  /* Dark Mode Base - Deep Indigo Premium */
+  --background: 240 20% 7%;
+  --foreground: 240 6% 93%;
+  --border: 240 10% 18%;
+  --card: 240 16% 10%;
+  --card-foreground: 240 6% 93%;
+  --card-border: 240 10% 15%;
+  --sidebar: 240 20% 5%;
+  --sidebar-foreground: 240 6% 93%;
+  --sidebar-border: 240 10% 14%;
+  --sidebar-primary: 252 84% 72%;
+  --sidebar-primary-foreground: 240 20% 7%;
+  --sidebar-accent: 240 14% 15%;
+  --sidebar-accent-foreground: 240 6% 93%;
+  --sidebar-ring: 252 84% 72%;
+  --popover: 240 16% 9%;
+  --popover-foreground: 240 6% 93%;
+  --popover-border: 240 10% 15%;
+  /* Primary — Luminous Indigo-Violet */
+  --primary: 252 84% 72%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary - Neutral outline */
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 220 14% 96%;
-  /* Muted text levels - increased lightness for better contrast on dark backgrounds */
-  --muted: 217 33% 17%;
-  --muted-foreground: 220 14% 80%;
-  /* Growth Green #5FCFA5 */
+  /* Secondary — refined neutral surface */
+  --secondary: 240 14% 18%;
+  --secondary-foreground: 240 6% 93%;
+  /* Muted surfaces — deep and minimal */
+  --muted: 240 14% 13%;
+  --muted-foreground: 240 8% 60%;
+  /* Growth Green — preserved for wellness metaphor */
   --accent: 158 51% 59%;
-  --accent-foreground: 222 47% 11%;
-  /* Soft Red #E07A73 */
+  --accent-foreground: 240 20% 7%;
+  /* Soft Red */
   --destructive: 4 64% 66%;
-  --destructive-foreground: 217 33% 12%;
-  --input: 217 19% 22%;
-  --ring: 231 82% 69%;
+  --destructive-foreground: 240 16% 10%;
+  --input: 240 14% 14%;
+  --ring: 252 84% 72%;
   /* Chart colors */
-  --chart-1: 231 82% 69%;
+  --chart-1: 252 84% 72%;
   --chart-2: 158 51% 59%;
   --chart-3: 256 100% 83%;
   --chart-4: 174 57% 56%;
@@ -313,19 +313,19 @@ summary::marker {
   --cal-social: 45 96% 56%;
   --cal-finance: 84 20% 62%;
   /* Shadows */
-  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.15);
-  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.2);
-  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.25);
-  --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.35);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.45);
-  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 40px -5px rgba(109,131,242,0.35);
-  --glow-primary: 0 0 20px rgba(109,131,242,0.4);
-  --glow-accent: 0 0 20px rgba(95,207,165,0.4);
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,0.2);
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,0.28);
+  --shadow-sm: 0 2px 4px -1px rgba(0,0,0,0.35);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+  --shadow-md: 0 6px 10px -2px rgba(0,0,0,0.45);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.55);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,0.6);
+  --shadow-glow: 0 0 50px -5px rgba(140, 110, 255, 0.45);
+  --glow-primary: 0 0 28px rgba(140, 110, 255, 0.45);
+  --glow-accent: 0 0 20px rgba(95, 207, 165, 0.35);
   /* Focus ring for accessibility */
-  --focus-ring: 204 94% 78%;
+  --focus-ring: 252 84% 82%;
 }
 
 /* Safe Area Utilities */
@@ -352,12 +352,16 @@ summary::marker {
     position: sticky;
     top: 0;
     z-index: 40;
-    background-color: hsl(var(--background));
-    border-bottom: 1px solid hsl(var(--border));
+    background-color: hsl(var(--background) / 0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
   }
   
   .dark .page-header-fixed {
-    border-bottom-color: rgba(255, 255, 255, 0.05);
+    background-color: hsl(240 20% 7% / 0.85);
+    border-bottom-color: hsl(240 10% 18% / 0.5);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
   }
   
   /* Page scroll container - for pages with scrollable content under fixed header */
@@ -438,13 +442,14 @@ summary::marker {
   
   /* Rounded modern card style */
   .card-modern {
-    @apply rounded-2xl border border-border bg-card/50 backdrop-blur-sm;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    @apply rounded-2xl border border-border bg-card backdrop-blur-sm;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
   }
   
   .dark .card-modern {
-    @apply bg-card/30;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    background: hsl(240 16% 11% / 0.85);
+    border-color: hsl(240 10% 17%);
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
   
   /* Gradient backgrounds */
@@ -486,7 +491,7 @@ summary::marker {
   
   /* Glow effects for dark mode */
   .dark .glow-primary {
-    box-shadow: 0 0 20px rgba(109, 131, 242, 0.3);
+    box-shadow: 0 0 28px rgba(140, 110, 255, 0.4);
   }
   
   .dark .glow-accent {
@@ -598,30 +603,30 @@ summary::marker {
 
 .dw-orb-sphere {
   background: radial-gradient(
-    circle at 35% 35%,
-    hsl(260 80% 65%) 0%,
-    hsl(240 70% 45%) 30%,
-    hsl(220 85% 40%) 60%,
-    hsl(280 60% 35%) 100%
+    circle at 32% 32%,
+    hsl(268 88% 74%) 0%,
+    hsl(252 82% 55%) 28%,
+    hsl(235 92% 44%) 58%,
+    hsl(280 72% 38%) 100%
   );
   box-shadow:
-    inset 0 0 12px 4px rgba(180, 140, 255, 0.35),
-    0 0 8px 2px rgba(120, 100, 255, 0.25);
+    inset 0 0 18px 6px rgba(200, 160, 255, 0.45),
+    0 0 18px 5px rgba(140, 110, 255, 0.4);
 }
 
 .dw-orb-sphere--chat {
   box-shadow:
-    inset 0 0 14px 5px rgba(180, 140, 255, 0.45),
-    0 0 14px 4px rgba(120, 100, 255, 0.4);
+    inset 0 0 20px 7px rgba(200, 160, 255, 0.55),
+    0 0 24px 8px rgba(140, 110, 255, 0.5);
 }
 
 .dw-orb-swirl {
   background: conic-gradient(
     from 0deg,
     transparent 0%,
-    rgba(180, 160, 255, 0.15) 25%,
+    rgba(200, 170, 255, 0.18) 25%,
     transparent 50%,
-    rgba(100, 180, 255, 0.12) 75%,
+    rgba(120, 190, 255, 0.14) 75%,
     transparent 100%
   );
   animation: orbSwirl 8s linear infinite;
@@ -629,16 +634,16 @@ summary::marker {
 
 .dw-orb-inner-glow {
   background: radial-gradient(
-    circle at 30% 30%,
-    rgba(255, 200, 240, 0.25) 0%,
-    transparent 50%
+    circle at 28% 28%,
+    rgba(255, 210, 245, 0.3) 0%,
+    transparent 55%
   );
 }
 
 .dw-orb-halo {
   background: radial-gradient(
     circle,
-    rgba(120, 100, 255, 0.12) 40%,
+    rgba(140, 110, 255, 0.18) 40%,
     transparent 70%
   );
 }
@@ -650,7 +655,7 @@ summary::marker {
 .dw-orb-halo--bright {
   background: radial-gradient(
     circle,
-    rgba(120, 100, 255, 0.2) 40%,
+    rgba(140, 110, 255, 0.28) 40%,
     transparent 70%
   );
 }
@@ -658,7 +663,7 @@ summary::marker {
 .dw-orb-halo--speaking {
   background: radial-gradient(
     circle,
-    rgba(120, 100, 255, 0.28) 40%,
+    rgba(140, 110, 255, 0.38) 40%,
     transparent 70%
   );
   animation: orbSpeak 0.7s ease-in-out infinite;
@@ -666,8 +671,8 @@ summary::marker {
 
 .dw-orb-sphere--speaking {
   box-shadow:
-    inset 0 0 16px 6px rgba(180, 140, 255, 0.55),
-    0 0 18px 6px rgba(120, 100, 255, 0.5);
+    inset 0 0 20px 7px rgba(200, 160, 255, 0.65),
+    0 0 24px 8px rgba(140, 110, 255, 0.6);
   animation: orbSpeakSphere 0.7s ease-in-out infinite;
 }
 
@@ -730,23 +735,26 @@ summary::marker {
 
 .dark .cosmic-bg {
   background:
+    radial-gradient(ellipse 90% 45% at 65% -5%, hsl(252 50% 16% / 0.75) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 35% at -5% 85%, hsl(240 35% 10% / 0.5) 0%, transparent 50%),
     linear-gradient(
       165deg,
-      hsl(222 47% 10%) 0%,
-      hsl(240 30% 12%) 40%,
-      hsl(260 25% 11%) 70%,
-      hsl(222 47% 10%) 100%
+      hsl(240 22% 8%) 0%,
+      hsl(252 28% 10%) 40%,
+      hsl(268 24% 9%) 70%,
+      hsl(240 22% 8%) 100%
     );
 }
 
 .cosmic-bg {
   background:
+    radial-gradient(ellipse 80% 40% at 65% -8%, hsl(252 65% 90% / 0.35) 0%, transparent 55%),
     linear-gradient(
       165deg,
-      hsl(214 32% 91%) 0%,
-      hsl(220 28% 89%) 40%,
-      hsl(230 24% 90%) 70%,
-      hsl(214 32% 91%) 100%
+      hsl(240 8% 96%) 0%,
+      hsl(248 10% 94%) 40%,
+      hsl(252 8% 95%) 70%,
+      hsl(240 8% 96%) 100%
     );
 }
 
@@ -766,18 +774,20 @@ summary::marker {
 }
 
 .dark .cc-card {
-  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.25);
+  background: hsl(240 16% 11% / 0.85);
+  border-color: hsl(240 10% 20% / 0.6);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .cc-card--primary {
   border-width: 1px;
-  border-color: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.18);
   box-shadow: 0 4px 28px -4px rgba(0, 0, 0, 0.08);
 }
 
 .dark .cc-card--primary {
-  border-color: hsl(var(--primary) / 0.2);
-  box-shadow: 0 4px 28px -4px rgba(0, 0, 0, 0.3);
+  border-color: hsl(var(--primary) / 0.28);
+  box-shadow: 0 4px 28px -4px rgba(0, 0, 0, 0.5), 0 0 24px -8px hsl(var(--primary) / 0.3);
 }
 
 /* ─── Command Center Time-of-Day Background ──────────────────────────── */
@@ -788,31 +798,33 @@ summary::marker {
 
 .cc-time--dawn {
   background:
-    linear-gradient(165deg, hsl(30 60% 15% / 0.3) 0%, hsl(20 50% 20% / 0.2) 40%, hsl(350 40% 15% / 0.1) 100%),
+    radial-gradient(ellipse at 50% 0%, hsl(25 70% 20% / 0.35) 0%, transparent 60%),
     hsl(var(--background));
 }
 
 .cc-time--morning {
   background:
-    linear-gradient(165deg, hsl(200 50% 20% / 0.2) 0%, hsl(210 40% 18% / 0.15) 40%, hsl(230 35% 15% / 0.1) 100%),
+    radial-gradient(ellipse at 50% 0%, hsl(210 60% 18% / 0.25) 0%, transparent 55%),
     hsl(var(--background));
 }
 
 .cc-time--afternoon {
   background:
-    linear-gradient(165deg, hsl(190 45% 18% / 0.15) 0%, hsl(210 40% 16% / 0.1) 40%, hsl(230 30% 14% / 0.1) 100%),
+    radial-gradient(ellipse at 50% 0%, hsl(190 50% 16% / 0.2) 0%, transparent 50%),
     hsl(var(--background));
 }
 
 .cc-time--evening {
   background:
-    linear-gradient(165deg, hsl(25 55% 18% / 0.25) 0%, hsl(350 40% 16% / 0.2) 40%, hsl(270 35% 14% / 0.15) 100%),
+    radial-gradient(ellipse at 50% 0%, hsl(280 45% 16% / 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 50%, hsl(20 60% 14% / 0.2) 0%, transparent 45%),
     hsl(var(--background));
 }
 
 .cc-time--night {
   background:
-    linear-gradient(165deg, hsl(240 40% 10% / 0.3) 0%, hsl(220 35% 10% / 0.2) 40%, hsl(260 30% 10% / 0.15) 100%),
+    radial-gradient(ellipse at 60% -10%, hsl(252 50% 14% / 0.6) 0%, transparent 55%),
+    radial-gradient(ellipse at 0% 80%, hsl(240 30% 8% / 0.4) 0%, transparent 45%),
     hsl(var(--background));
 }
 
@@ -916,4 +928,92 @@ summary::marker {
 .badge-inactive:hover {
   border-color: hsl(var(--primary) / 0.35);
   color: hsl(var(--foreground));
+}
+
+/* ─── Premium Glass Card ─────────────────────────────────────────────── */
+
+.card-glass {
+  background: hsl(var(--card) / 0.85);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid hsl(var(--border) / 0.7);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.dark .card-glass {
+  background: hsl(240 18% 11% / 0.65);
+  border-color: hsl(240 10% 22% / 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Premium Atmospheric Background ────────────────────────────────── */
+
+.dw-premium-bg {
+  background-color: hsl(var(--background));
+}
+
+.dark .dw-premium-bg {
+  background:
+    radial-gradient(ellipse 80% 40% at 60% -5%, hsl(252 45% 16% / 0.65) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at -5% 90%, hsl(240 30% 10% / 0.4) 0%, transparent 50%),
+    hsl(var(--background));
+}
+
+/* ─── Stat / KPI Display Number ─────────────────────────────────────── */
+
+.stat-display {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: hsl(var(--foreground));
+}
+
+/* ─── Chat Input Frosted Area ─────────────────────────────────────────── */
+
+.chat-input-area {
+  background: hsl(var(--background) / 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.dark .chat-input-area {
+  background: hsl(240 20% 7% / 0.88);
+  border-top-color: hsl(240 10% 18% / 0.5);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* ─── Premium DW Button ──────────────────────────────────────────────── */
+
+.btn-dw-primary {
+  background: linear-gradient(135deg, hsl(252 76% 58%) 0%, hsl(268 72% 62%) 100%);
+  color: white;
+  box-shadow: 0 4px 14px hsl(252 76% 58% / 0.35);
+  border: none;
+}
+
+.btn-dw-primary:hover {
+  background: linear-gradient(135deg, hsl(252 76% 62%) 0%, hsl(268 72% 66%) 100%);
+  box-shadow: 0 6px 20px hsl(252 76% 58% / 0.45);
+}
+
+.dark .btn-dw-primary {
+  box-shadow: 0 4px 18px hsl(252 84% 72% / 0.4);
+}
+
+/* ─── Hover Elevate ──────────────────────────────────────────────────── */
+
+.hover-elevate {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.hover-elevate:hover {
+  background-color: hsl(var(--muted) / 0.6);
+}
+
+.hover-elevate:active {
+  transform: scale(0.98);
 }

@@ -124,7 +124,7 @@ export default function DWHomePage() {
 
   if (isFirstTime) {
     return (
-      <div className="bg-background">
+      <div className="dw-premium-bg">
         <PageHeader title="Home" showBack={false} />
           <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
           <motion.div
@@ -166,7 +166,7 @@ export default function DWHomePage() {
           >
             <Link href="/switchboard/intake">
               <Button 
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white shadow-lg shadow-purple-500/25"
+                className="w-full btn-dw-primary"
                 data-testid="button-start-training"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -180,7 +180,7 @@ export default function DWHomePage() {
   }
 
   return (
-    <div className="bg-background">
+    <div className="dw-premium-bg">
       <PageHeader title="Home" showBack={false} />
         <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
         <motion.div
@@ -293,7 +293,7 @@ export default function DWHomePage() {
 
               <div className="flex gap-2">
                 <Button 
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white"
+                  className="flex-1 btn-dw-primary"
                   onClick={() => navigate(`/switch/${recommendation.recommendedSwitchId}`)}
                   data-testid="button-start-action"
                 >
@@ -467,7 +467,7 @@ export default function DWHomePage() {
                   <Link href="/elevation-plan">
                     <Button
                       size="sm"
-                      className="w-full mt-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs"
+                      className="w-full mt-3 btn-dw-primary text-xs"
                     >
                       <Sparkles className="h-3 w-3 mr-1.5" />
                       Build Elevation Plan

@@ -39,13 +39,14 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t"
+      className="fixed bottom-0 left-0 right-0 z-50"
       style={{
         paddingBottom: 'var(--bottom-nav-padding, 32px)',
-        background: 'hsl(var(--background) / 0.85)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        borderColor: 'hsl(var(--border) / 0.6)',
+        background: 'hsl(var(--background) / 0.78)',
+        backdropFilter: 'blur(28px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(200%)',
+        borderTop: '1px solid hsl(var(--border) / 0.35)',
+        boxShadow: '0 -1px 0 rgba(255,255,255,0.025), 0 -8px 32px rgba(0,0,0,0.12)',
       }}
       data-testid="nav-bottom"
       aria-label="Main navigation"
@@ -73,14 +74,23 @@ export function BottomNav() {
               aria-current={isActive ? "page" : undefined}
               {...(tourAttr && { "data-tour": tourAttr })}
             >
-              <div className={cn(
-                "relative p-1.5 rounded-xl transition-all duration-200",
-                isActive && "bg-primary/12 shadow-sm"
-              )}>
-                <item.icon className={cn(
-                  "h-[19px] w-[19px] transition-transform duration-200",
-                  isActive && "scale-110"
-                )} aria-hidden="true" />
+              <div
+                className={cn(
+                  "relative p-1.5 rounded-xl transition-all duration-200",
+                  isActive && "bg-primary/12 shadow-sm"
+                )}
+                style={isActive ? {
+                  boxShadow: '0 0 12px hsl(var(--primary) / 0.25)',
+                } : undefined}
+              >
+                <item.icon
+                  className={cn(
+                    "h-[19px] w-[19px] transition-all duration-200",
+                    isActive && "scale-110"
+                  )}
+                  aria-hidden="true"
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                />
                 {showAttentionDot && (
                   <span
                     className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 border-2 border-background"
@@ -90,7 +100,7 @@ export function BottomNav() {
               </div>
               <span className={cn(
                 "text-[9px] font-medium mt-0.5 transition-all tracking-tight",
-                isActive && "font-semibold text-primary"
+                isActive ? "font-semibold text-primary opacity-100" : "opacity-70"
               )}>
                 {item.label}
               </span>
