@@ -1836,7 +1836,7 @@ export async function registerRoutes(
 
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
@@ -4447,7 +4447,7 @@ Return ONLY a valid JSON object:
 { "steps": ["step 1", "step 2", ...], "whySuggested": "One sentence explaining the routine's focus" }`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_completion_tokens: 400,
@@ -4587,7 +4587,7 @@ Return ONLY:
 {"articles":[{"id":"ai-article-1","title":"...","synopsis":"...","whySuggested":"...","url":"https://...","category":"article","readTimeMinutes":5}]}`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_completion_tokens: 900,
@@ -5262,7 +5262,7 @@ Return only valid JSON, no markdown, no extra text.`;
       }
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.8,
         max_tokens: 600,
@@ -5506,7 +5506,7 @@ Return ONLY valid JSON in this exact shape:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Create my personalized 7-day plan based on:\n${context || "General wellness and balance"}` },
@@ -7511,7 +7511,7 @@ Rules:
 - For meals, capture the meal type (breakfast/lunch/dinner) from context`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Extract actionable items from this message:\n\n${content}` }
@@ -11643,7 +11643,7 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
       ];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.7,
         max_tokens: 1200,
@@ -11905,7 +11905,7 @@ Return ONLY this JSON, no other text:
       }
       if (!shows.length) {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7, max_tokens: 1000,
         });
@@ -11966,7 +11966,7 @@ Return ONLY this JSON, no other text:
       const cfg = slotConfig[slot] ?? slotConfig["evening"];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.\n\n` : ""}It is ${cfg.label}.
 
 Suggest 6 specific activities for RIGHT NOW — activities that fit what people actually do at ${cfg.label}. The intent is to ${cfg.intent}.
@@ -12050,7 +12050,7 @@ Return ONLY this JSON:
       }
       if (!resources.length) {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o", messages: [{ role: "user", content: prompt }],
+          model: "gpt-4o-mini", messages: [{ role: "user", content: prompt }],
           temperature: 0.7, max_tokens: 900,
         });
         const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
@@ -12319,7 +12319,7 @@ Write a brief, warm, supportive response (2-4 sentences max).
 Response:`;
 
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4o-mini",
             messages: [{ role: "user", content: dwPrompt }],
             temperature: 0.8,
             max_tokens: 250,

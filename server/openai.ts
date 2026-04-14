@@ -2252,7 +2252,7 @@ Respond with just the reflection text, no quotes or formatting.`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 150,
     });
@@ -2320,7 +2320,7 @@ Respond with valid JSON containing:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 1500,
@@ -2392,7 +2392,7 @@ Respond with valid JSON array:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 800,
@@ -2936,7 +2936,7 @@ RESPONSE FORMATTING:
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages,
       tools,
       tool_choice: "auto",
@@ -3412,7 +3412,7 @@ VOICE: Calm, observational, never pushy. Use phrases like "I noticed..." or "It 
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 600,
@@ -3558,7 +3558,7 @@ Respond with valid JSON:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 1500,
@@ -3630,7 +3630,7 @@ Respond with valid JSON:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 800,
@@ -3778,7 +3778,7 @@ Respond with valid JSON:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 1000,
@@ -3894,7 +3894,7 @@ Respond with valid JSON only:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 2000,
@@ -3998,7 +3998,7 @@ Rules:
 - followupPrompt should feel warm and personally relevant.`;
 
     const analyticsResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: analyticsPrompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 800,
@@ -4042,7 +4042,7 @@ Return ONLY valid JSON:
 }`;
 
     const journalResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: journalPrompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 600,
@@ -4197,7 +4197,7 @@ Do not make specific predictions. Focus on energy, invitation, and inner orienta
       : `Placement: ${placement}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },
@@ -4226,7 +4226,7 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
   const prompt = prompts[type] || prompts.fun_fact;
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -4250,7 +4250,7 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
 export async function generateAffirmation(name: string, timeOfDay: string): Promise<string> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: "You are DW, a calm, wise personal wellness AI. Write a single warm affirmation sentence (2-3 sentences max) for the user. Do not start with Hi or Hello. Make it specific to their moment." },
         { role: "user", content: `Write a ${timeOfDay} affirmation for ${name}. Make it warm, grounding, and focused on their potential.` },
@@ -4286,7 +4286,7 @@ export async function generateCheckInAnalysis(
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

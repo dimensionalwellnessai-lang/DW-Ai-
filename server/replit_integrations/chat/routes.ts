@@ -81,7 +81,7 @@ export function registerChatRoutes(app: Express): void {
         (chunk) => {
           res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
         },
-        { model: "gpt-4o", maxTokens: 2000 },
+        { model: "gpt-4o-mini", maxTokens: 2000 },
       );
 
       // Save assistant message
