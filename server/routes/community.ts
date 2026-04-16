@@ -6,11 +6,31 @@ import { storage } from "../storage";
 import { pool } from "../db";
 import { db } from "../db";
 
-import { requireAuth } from "./_shared";
+import { z } from "zod";
+
+import { requireAuth, zodError } from "./_shared";
 
 import { openai } from "../openai";
 
 import { communityPosts, communityPostLikes, communityGroups, communityGroupMembers } from "@shared/schema";
+
+const communityGroupBodySchema = z.object({
+  name: z.string().min(1, "Group name is required").max(200),
+  description: z.string().max(2000).optional().nullable(),
+  type: z.string().max(64).optional(),
+  location: z.string().max(200).optional().nullable(),
+  meetingUrl: z.string().max(2000).optional().nullable(),
+  meetingSchedule: z.string().max(500).optional().nullable(),
+  tags: z.array(z.string().max(64)).max(50).optional(),
+});
+
+const communityPostBodySchema = z.object({
+  title: z.string().min(1, "Title is required").max(300),
+  body: z.string().min(1, "Body is required").max(10000),
+  category: z.string().max(64).optional(),
+  isAnonymous: z.boolean().optional(),
+  groupId: z.string().max(128).optional().nullable(),
+});
 
 export function registerCommunityRoutes(app: Express): void {
   app.get("/api/community/engage", async (req, res) => {
@@ -112,10 +132,11 @@ Return ONLY this JSON:
   });
 
   app.post("/api/community/groups", requireAuth, async (req, res) => {
+    const parsed = communityGroupBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
       const userId = req.session.userId!;
-      const { name, description, type, location, meetingUrl, meetingSchedule, tags } = req.body;
-      if (!name?.trim()) return res.status(400).json({ error: "Group name is required" });
+      const { name, description, type, location, meetingUrl, meetingSchedule, tags } = parsed.data;
       const [group] = await db.insert(communityGroups).values({
         createdByUserId: userId,
         name: name.trim(),
@@ -210,10 +231,11 @@ Return ONLY this JSON:
   });
 
   app.post("/api/community/posts", requireAuth, async (req, res) => {
+    const parsed = communityPostBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
       const userId = req.session.userId!;
-      const { title, body, category, isAnonymous, groupId } = req.body;
-      if (!title?.trim() || !body?.trim()) return res.status(400).json({ error: "Title and body are required" });
+      const { title, body, category, isAnonymous, groupId } = parsed.data;
 
       const [post] = await db.insert(communityPosts).values({
         userId,

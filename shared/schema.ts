@@ -2978,6 +2978,22 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url("endpoint must be a valid URL").max(2000),
+  keys: z.object({
+    p256dh: z.string().min(1, "keys.p256dh is required").max(500),
+    auth: z.string().min(1, "keys.auth is required").max(500),
+  }),
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url("endpoint must be a valid URL").max(2000),
+});
+
+export const analyticsEventsSchema = z.object({
+  events: z.array(z.unknown()).max(100, "events must have at most 100 entries"),
+});
+
 // ── Health Metrics ────────────────────────────────────────────────────────────
 export const healthMetrics = pgTable("health_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

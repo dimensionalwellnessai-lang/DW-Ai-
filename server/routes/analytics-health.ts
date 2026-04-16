@@ -2,6 +2,8 @@ import type { Express } from "express";
 import type { Request, Response } from "express";
 
 import { analyticsLimiter } from "./_limiters";
+import { zodError } from "./_shared";
+import { analyticsEventsSchema } from "@shared/schema";
 
 import { getAiConfigStatus } from "../openai";
 
@@ -20,11 +22,10 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
 
 export function registerAnalyticsHealthRoutes(app: Express): void {
   app.post("/api/analytics/events", analyticsLimiter, (req: Request, res: Response) => {
+    const parsed = analyticsEventsSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
-      const { events } = req.body as { events?: unknown };
-      if (!Array.isArray(events)) {
-        return res.status(400).json({ error: "events must be an array" });
-      }
+      const { events } = parsed.data;
 
       // Truncate a string field to a safe length (prevents log injection)
       const truncate = (v: unknown, max = 64): string | undefined =>

@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "../db";
-import { requireAuth } from "./_shared";
+import { requireAuth, zodError } from "./_shared";
+import { pushSubscribeSchema, pushUnsubscribeSchema } from "@shared/schema";
 
 export function registerHealthMetricsRoutes(app: Express): void {
   // ─── Workout Sessions Analytics ─────────────────────────────────────────────
@@ -59,11 +60,10 @@ export function registerHealthMetricsRoutes(app: Express): void {
 
   // ─── Push Notification Subscriptions ────────────────────────────────────────
   app.post("/api/push/subscribe", requireAuth, async (req: any, res) => {
+    const parsed = pushSubscribeSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     const userId = req.user!.id;
-    const { endpoint, keys } = req.body;
-    if (!endpoint || !keys?.p256dh || !keys?.auth) {
-      return res.status(400).json({ error: "Missing subscription data" });
-    }
+    const { endpoint, keys } = parsed.data;
     try {
       await db.execute(sql`
         INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
@@ -81,9 +81,10 @@ export function registerHealthMetricsRoutes(app: Express): void {
   });
 
   app.delete("/api/push/subscribe", requireAuth, async (req: any, res) => {
+    const parsed = pushUnsubscribeSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     const userId = req.user!.id;
-    const { endpoint } = req.body;
-    if (!endpoint) return res.status(400).json({ error: "Missing endpoint" });
+    const { endpoint } = parsed.data;
     try {
       await db.execute(sql`
         DELETE FROM push_subscriptions WHERE user_id = ${userId} AND endpoint = ${endpoint}

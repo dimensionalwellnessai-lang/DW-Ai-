@@ -1,5 +1,16 @@
 import type { Request, Response, NextFunction } from "express";
+import type { ZodError } from "zod";
 import { storage } from "../storage";
+
+export function zodError(error: ZodError) {
+  return {
+    error: "Invalid request body",
+    issues: error.issues.map((i) => ({
+      path: i.path.join("."),
+      message: i.message,
+    })),
+  };
+}
 
 declare module "express-session" {
   interface SessionData {

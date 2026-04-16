@@ -1,9 +1,39 @@
 import type { Express } from "express";
 import { and } from "drizzle-orm";
+import { z } from "zod";
 
 import { storage } from "../storage";
+import { insertInteractionEventSchema } from "@shared/schema";
 
-import { requireAuth } from "./_shared";
+import { requireAuth, zodError } from "./_shared";
+
+const syncSessionCreateSchema = z.object({
+  conversationId: z.string().nullish(),
+  totalItems: z.number().int().nonnegative().optional(),
+  sourceType: z.string().max(64).optional(),
+});
+
+const syncSessionUpdateSchema = z.object({
+  status: z.string().max(64).optional(),
+  totalItems: z.number().int().nonnegative().optional(),
+  processedItems: z.number().int().nonnegative().optional(),
+  conversationId: z.string().nullish(),
+  sourceType: z.string().max(64).optional(),
+}).passthrough();
+
+const syncItemBaseSchema = z.object({
+  sessionId: z.string().min(1),
+}).passthrough();
+const syncItemCreateSchema = z.union([
+  syncItemBaseSchema,
+  z.array(syncItemBaseSchema).max(500),
+]);
+const syncItemUpdateSchema = z.object({
+  userDecision: z.string().max(64).optional(),
+  status: z.string().max(64).optional(),
+}).passthrough();
+
+const interactionEventBodySchema = insertInteractionEventSchema.omit({ userId: true } as any);
 export function registerConversationsRoutes(app: Express): void {
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
@@ -160,13 +190,15 @@ export function registerConversationsRoutes(app: Express): void {
   });
 
   app.post("/api/sync/sessions", requireAuth, async (req, res) => {
+    const parsed = syncSessionCreateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
       const session = await storage.createSyncSession({
         userId: req.session.userId!,
-        conversationId: req.body.conversationId || null,
+        conversationId: parsed.data.conversationId || null,
         status: "processing",
-        totalItems: req.body.totalItems || 0,
-        sourceType: req.body.sourceType || "chat",
+        totalItems: parsed.data.totalItems || 0,
+        sourceType: parsed.data.sourceType || "chat",
       });
       res.json(session);
     } catch (error) {
@@ -190,8 +222,11 @@ export function registerConversationsRoutes(app: Express): void {
   });
 
   app.patch("/api/sync/sessions/:id", requireAuth, async (req, res) => {
+    const parsed = syncSessionUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
+    const { userId: _ignored, ...rest } = parsed.data as any;
     try {
-      const updated = await storage.updateSyncSession(req.params.id, req.body);
+      const updated = await storage.updateSyncSession(req.params.id, rest);
       res.json(updated);
     } catch (error) {
       console.error("Update sync session error:", error);
@@ -200,12 +235,14 @@ export function registerConversationsRoutes(app: Express): void {
   });
 
   app.post("/api/sync/items", requireAuth, async (req, res) => {
+    const parsed = syncItemCreateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
-      if (Array.isArray(req.body)) {
-        const items = await storage.createSyncItems(req.body);
+      if (Array.isArray(parsed.data)) {
+        const items = await storage.createSyncItems(parsed.data as any);
         res.json(items);
       } else {
-        const item = await storage.createSyncItem(req.body);
+        const item = await storage.createSyncItem(parsed.data as any);
         res.json(item);
       }
     } catch (error) {
@@ -215,10 +252,13 @@ export function registerConversationsRoutes(app: Express): void {
   });
 
   app.patch("/api/sync/items/:id", requireAuth, async (req, res) => {
+    const parsed = syncItemUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
+    const { userId: _ignored, ...rest } = parsed.data as any;
     try {
       const updated = await storage.updateSyncItem(req.params.id, {
-        ...req.body,
-        decidedAt: req.body.userDecision ? new Date() : undefined,
+        ...rest,
+        decidedAt: rest.userDecision ? new Date() : undefined,
       });
       res.json(updated);
     } catch (error) {
@@ -277,15 +317,12 @@ export function registerConversationsRoutes(app: Express): void {
   });
 
   app.post("/api/interactions", requireAuth, async (req, res) => {
+    const parsed = interactionEventBodySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(zodError(parsed.error));
     try {
       const event = await storage.createInteractionEvent({
+        ...(parsed.data as any),
         userId: req.session.userId!,
-        eventType: req.body.eventType,
-        pagePath: req.body.pagePath,
-        actionTarget: req.body.actionTarget,
-        actionValue: req.body.actionValue,
-        durationMs: req.body.durationMs,
-        metadata: req.body.metadata,
       });
       res.json(event);
     } catch (error) {
