@@ -125,13 +125,7 @@ async function extractFromImage(buffer: Buffer): Promise<ParsedDocumentResult> {
   let tesseractError: Error | null = null;
 
   try {
-    const result = await Tesseract.recognize(buffer, "eng", {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`[Tesseract] Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
+    const result = await Tesseract.recognize(buffer, "eng");
     
     tesseractResult = {
       text: result.data.text?.trim() || "",

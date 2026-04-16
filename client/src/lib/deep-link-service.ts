@@ -90,7 +90,7 @@ class DeepLinkService {
 
   private handleDeepLink(url: string) {
     try {
-      console.log("[DeepLink] Received:", url);
+      if (import.meta.env.DEV) console.log("[DeepLink] Received:", url);
       const urlObj = new URL(url);
       if (urlObj.protocol !== "dwai:") return;
 

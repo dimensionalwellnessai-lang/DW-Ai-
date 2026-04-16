@@ -97,9 +97,7 @@ export async function scheduleTaskAccountability(
 
   // Check if notification time would be in quiet hours
   const preTaskTime = new Date(startTime.getTime() - preTaskMinutes * 60 * 1000);
-  if (isInQuietHours(preTaskTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
-    console.log(`Pre-task notification for ${task.title} would be in quiet hours, skipping`);
-  } else {
+  if (!isInQuietHours(preTaskTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
     // Schedule pre-task notification
     try {
       await schedulePreTaskNotification(task.id, task.title, startTime, preTaskMinutes);
@@ -111,9 +109,7 @@ export async function scheduleTaskAccountability(
 
   // Schedule post-task notification if end time exists
   if (endTime) {
-    if (isInQuietHours(endTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
-      console.log(`Post-task notification for ${task.title} would be in quiet hours, skipping`);
-    } else {
+    if (!isInQuietHours(endTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
       try {
         await schedulePostTaskNotification(task.id, task.title, endTime);
         result.postTask = true;
@@ -153,9 +149,7 @@ export async function scheduleEventAccountability(
 
   // Check if notification time would be in quiet hours
   const preTaskTime = new Date(startTime.getTime() - preTaskMinutes * 60 * 1000);
-  if (isInQuietHours(preTaskTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
-    console.log(`Pre-event notification for ${event.title} would be in quiet hours, skipping`);
-  } else {
+  if (!isInQuietHours(preTaskTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
     // Schedule pre-task notification
     try {
       await schedulePreTaskNotification(event.id, event.title, startTime, preTaskMinutes);
@@ -167,9 +161,7 @@ export async function scheduleEventAccountability(
 
   // Schedule post-task notification if end time exists
   if (endTime) {
-    if (isInQuietHours(endTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
-      console.log(`Post-event notification for ${event.title} would be in quiet hours, skipping`);
-    } else {
+    if (!isInQuietHours(endTime, quietHoursEnabled, quietHoursStart, quietHoursEnd)) {
       try {
         await schedulePostTaskNotification(event.id, event.title, endTime);
         result.postTask = true;
