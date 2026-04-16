@@ -22,14 +22,9 @@ export function registerPlansShoppingRoutes(app: Express): void {
         return res.status(404).json({ error: "Meal plan not found" });
       }
       
-      // If activating this plan, deactivate others first
+      // If activating this plan, deactivate others first (single SQL UPDATE)
       if (req.body.isActive === true) {
-        const allPlans = await storage.getMealPlans(req.session.userId!);
-        for (const p of allPlans) {
-          if (p.id !== req.params.id && p.isActive) {
-            await storage.updateMealPlan(p.id, { isActive: false });
-          }
-        }
+        await storage.deactivateOtherMealPlans(req.session.userId!, req.params.id);
       }
       
       const updated = await storage.updateMealPlan(req.params.id, req.body);

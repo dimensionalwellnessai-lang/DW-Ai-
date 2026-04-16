@@ -63,25 +63,25 @@ export function registerOnboardingRoutes(app: Express): void {
         mealSuggestions: recommendations.mealSuggestions || [],
       });
 
-      for (const habit of recommendations.suggestedHabits) {
-        await storage.createHabit({
+      await storage.createHabits(
+        recommendations.suggestedHabits.map((habit) => ({
           userId,
           title: habit.title,
           description: habit.description,
           frequency: habit.frequency,
           isActive: true,
-        });
-      }
+        }))
+      );
 
-      for (const goal of recommendations.suggestedGoals) {
-        await storage.createGoal({
+      await storage.createGoals(
+        recommendations.suggestedGoals.map((goal) => ({
           userId,
           title: goal.title,
           description: goal.description,
           wellnessDimension: goal.wellnessDimension,
           isActive: true,
-        });
-      }
+        }))
+      );
 
       await storage.updateUser(userId, { onboardingCompleted: true, systemName: systemName || "My Life System" });
 

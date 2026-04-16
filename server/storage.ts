@@ -269,7 +269,7 @@ import {
   type InsertCommunityOpportunityRecord,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, or, inArray, count } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, or, inArray, ne, count } from "drizzle-orm";
 import { createHash } from "crypto";
 
 export interface IStorage {
@@ -291,12 +291,14 @@ export interface IStorage {
   getGoals(userId: string): Promise<Goal[]>;
   getGoal(id: string): Promise<Goal | undefined>;
   createGoal(goal: InsertGoal): Promise<Goal>;
+  createGoals(goalsList: InsertGoal[]): Promise<Goal[]>;
   updateGoal(id: string, data: Partial<Goal>): Promise<Goal | undefined>;
   deleteGoal(id: string): Promise<void>;
 
   getHabits(userId: string): Promise<Habit[]>;
   getHabit(id: string): Promise<Habit | undefined>;
   createHabit(habit: InsertHabit): Promise<Habit>;
+  createHabits(habitsList: InsertHabit[]): Promise<Habit[]>;
   updateHabit(id: string, data: Partial<Habit>): Promise<Habit | undefined>;
   deleteHabit(id: string): Promise<void>;
 
@@ -323,6 +325,7 @@ export interface IStorage {
 
   getCategoryEntries(userId: string, category?: string): Promise<CategoryEntry[]>;
   createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry>;
+  createCategoryEntries(entries: InsertCategoryEntry[]): Promise<CategoryEntry[]>;
   deleteCategoryEntry(id: string): Promise<void>;
 
   getWellnessBlueprint(userId: string): Promise<WellnessBlueprint | undefined>;
@@ -381,12 +384,14 @@ export interface IStorage {
   getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
   getCalendarEventForUser(id: string, userId: string): Promise<CalendarEvent | undefined>;
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  createCalendarEvents(events: InsertCalendarEvent[]): Promise<CalendarEvent[]>;
   updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEventForUser(id: string, userId: string): Promise<boolean>;
   clearLifeSystemImportData(userId: string): Promise<{ calendarEvents: number; mealPlans: number; workoutPlans: number }>;
 
   getEventTasks(calendarEventId: string, userId: string): Promise<CalendarEventTask[]>;
   createEventTask(task: InsertCalendarEventTask): Promise<CalendarEventTask>;
+  createEventTasks(tasks: InsertCalendarEventTask[]): Promise<CalendarEventTask[]>;
   updateEventTask(id: string, userId: string, data: Partial<CalendarEventTask>): Promise<CalendarEventTask | undefined>;
   deleteEventTask(id: string, userId: string): Promise<boolean>;
 
@@ -446,12 +451,14 @@ export interface IStorage {
 
   getImportedDocumentItems(documentId: string): Promise<ImportedDocumentItem[]>;
   createImportedDocumentItem(item: InsertImportedDocumentItem): Promise<ImportedDocumentItem>;
+  createImportedDocumentItems(items: InsertImportedDocumentItem[]): Promise<ImportedDocumentItem[]>;
   updateImportedDocumentItem(id: string, data: Partial<ImportedDocumentItem>): Promise<ImportedDocumentItem | undefined>;
 
   getMealPlans(userId: string): Promise<MealPlan[]>;
   getMealPlan(id: string): Promise<MealPlan | undefined>;
   createMealPlan(plan: InsertMealPlan): Promise<MealPlan>;
   updateMealPlan(id: string, data: Partial<MealPlan>): Promise<MealPlan | undefined>;
+  deactivateOtherMealPlans(userId: string, exceptId: string): Promise<void>;
   deleteMealPlan(id: string): Promise<void>;
 
   getMeals(userId: string, mealPlanId?: string): Promise<Meal[]>;
@@ -1016,6 +1023,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async createGoals(goalsList: InsertGoal[]): Promise<Goal[]> {
+    if (goalsList.length === 0) return [];
+    return await db.insert(goals).values(goalsList).returning();
+  }
+
   async updateGoal(id: string, data: Partial<Goal>): Promise<Goal | undefined> {
     const [goal] = await db.update(goals).set(data).where(eq(goals.id, id)).returning();
     return goal || undefined;
@@ -1037,6 +1049,11 @@ export class DatabaseStorage implements IStorage {
   async createHabit(habit: InsertHabit): Promise<Habit> {
     const [created] = await db.insert(habits).values(habit).returning();
     return created;
+  }
+
+  async createHabits(habitsList: InsertHabit[]): Promise<Habit[]> {
+    if (habitsList.length === 0) return [];
+    return await db.insert(habits).values(habitsList).returning();
   }
 
   async updateHabit(id: string, data: Partial<Habit>): Promise<Habit | undefined> {
@@ -1180,6 +1197,11 @@ export class DatabaseStorage implements IStorage {
   async createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry> {
     const [created] = await db.insert(categoryEntries).values(entry).returning();
     return created;
+  }
+
+  async createCategoryEntries(entries: InsertCategoryEntry[]): Promise<CategoryEntry[]> {
+    if (entries.length === 0) return [];
+    return await db.insert(categoryEntries).values(entries).returning();
   }
 
   async deleteCategoryEntry(id: string): Promise<void> {
@@ -1441,6 +1463,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async createCalendarEvents(events: InsertCalendarEvent[]): Promise<CalendarEvent[]> {
+    if (events.length === 0) return [];
+    return await db.insert(calendarEvents).values(events).returning();
+  }
+
   async updateCalendarEventForUser(id: string, userId: string, data: Partial<CalendarEvent>): Promise<CalendarEvent | undefined> {
     const [updated] = await db.update(calendarEvents).set(data)
       .where(and(eq(calendarEvents.id, id), eq(calendarEvents.userId, userId))).returning();
@@ -1516,6 +1543,11 @@ export class DatabaseStorage implements IStorage {
   async createEventTask(task: InsertCalendarEventTask): Promise<CalendarEventTask> {
     const [created] = await db.insert(calendarEventTasks).values(task).returning();
     return created;
+  }
+
+  async createEventTasks(tasks: InsertCalendarEventTask[]): Promise<CalendarEventTask[]> {
+    if (tasks.length === 0) return [];
+    return await db.insert(calendarEventTasks).values(tasks).returning();
   }
 
   async updateEventTask(id: string, userId: string, data: Partial<CalendarEventTask>): Promise<CalendarEventTask | undefined> {
@@ -1785,6 +1817,11 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async createImportedDocumentItems(items: InsertImportedDocumentItem[]): Promise<ImportedDocumentItem[]> {
+    if (items.length === 0) return [];
+    return await db.insert(importedDocumentItems).values(items).returning();
+  }
+
   async updateImportedDocumentItem(id: string, data: Partial<ImportedDocumentItem>): Promise<ImportedDocumentItem | undefined> {
     const [updated] = await db.update(importedDocumentItems)
       .set(data)
@@ -1816,6 +1853,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(mealPlans.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deactivateOtherMealPlans(userId: string, exceptId: string): Promise<void> {
+    await db.update(mealPlans)
+      .set({ isActive: false })
+      .where(and(
+        eq(mealPlans.userId, userId),
+        eq(mealPlans.isActive, true),
+        ne(mealPlans.id, exceptId),
+      ));
   }
 
   async deleteMealPlan(id: string): Promise<void> {

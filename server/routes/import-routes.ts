@@ -261,12 +261,21 @@ export function registerImportRoutes(app: Express): void {
         return res.status(400).json({ error: "No calendar suggestions provided" });
       }
 
-      // Only create events explicitly marked as selected
-      const selectedSuggestions = suggestions.filter((s: { isSelected?: boolean }) => s.isSelected === true);
-      const created = [];
-
-      for (const suggestion of selectedSuggestions) {
-        const event = await storage.createCalendarEvent({
+      // Only create events explicitly marked as selected (single batch insert)
+      type CalendarSuggestion = {
+        isSelected?: boolean;
+        title: string;
+        notes?: string;
+        suggestedStart?: string;
+        durationMinutes?: number;
+        recurrence?: { frequency?: string };
+        mealId?: string | null;
+      };
+      const selectedSuggestions = (suggestions as CalendarSuggestion[]).filter(
+        (s) => s.isSelected === true,
+      );
+      const created = await storage.createCalendarEvents(
+        selectedSuggestions.map((suggestion) => ({
           userId: req.session.userId!,
           title: suggestion.title,
           description: suggestion.notes || "",
@@ -274,16 +283,15 @@ export function registerImportRoutes(app: Express): void {
           endTime: calculateEndTime(suggestion.suggestedStart || "09:00", suggestion.durationMinutes || 60),
           eventType: "meal-prep",
           isRecurring: suggestion.recurrence?.frequency !== "none" && !!suggestion.recurrence?.frequency,
-          recurrenceRule: suggestion.recurrence?.frequency && suggestion.recurrence.frequency !== "none" 
-            ? suggestion.recurrence.frequency 
+          recurrenceRule: suggestion.recurrence?.frequency && suggestion.recurrence.frequency !== "none"
+            ? suggestion.recurrence.frequency
             : undefined,
           linkedType: "meal",
           linkedId: suggestion.mealId || null,
           linkedRoute: suggestion.mealId ? `/meal-prep?selected=${suggestion.mealId}` : "/meal-prep",
           linkedMeta: { source: "import", documentId: req.params.documentId },
-        });
-        created.push(event);
-      }
+        }))
+      );
 
       res.json({
         success: true,

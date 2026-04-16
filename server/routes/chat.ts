@@ -200,21 +200,25 @@ export function registerChatRoutes(app: Express): void {
       
       const extractedData = extractCategoryData(message, response, context);
       
-      for (const item of extractedData) {
+      if (extractedData.length > 0) {
         try {
-          await storage.createCategoryEntry({
-            userId,
-            category: item.category,
-            title: item.title,
-            content: item.content,
-            date: item.date,
-            metadata: item.metadata,
-          });
-          if (!updatedCategories.includes(item.category)) {
-            updatedCategories.push(item.category);
+          await storage.createCategoryEntries(
+            extractedData.map((item) => ({
+              userId,
+              category: item.category,
+              title: item.title,
+              content: item.content,
+              date: item.date,
+              metadata: item.metadata,
+            }))
+          );
+          for (const item of extractedData) {
+            if (!updatedCategories.includes(item.category)) {
+              updatedCategories.push(item.category);
+            }
           }
         } catch (err) {
-          console.error("Failed to create category entry:", err);
+          console.error("Failed to create category entries:", err);
         }
       }
       

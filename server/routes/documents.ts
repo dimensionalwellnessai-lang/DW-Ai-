@@ -132,8 +132,8 @@ export function registerDocumentsRoutes(app: Express): void {
         status: "analyzed",
       });
 
-      for (const item of analysisResult.items) {
-        await storage.createImportedDocumentItem({
+      await storage.createImportedDocumentItems(
+        analysisResult.items.map((item) => ({
           documentId: docId,
           itemType: item.itemType,
           title: item.title,
@@ -142,8 +142,8 @@ export function registerDocumentsRoutes(app: Express): void {
           destinationSystem: item.destinationSystem,
           confidence: item.confidence,
           isSelected: item.isSelected,
-        });
-      }
+        }))
+      );
 
       const previewRoute = getPreviewRoute(primaryCategory);
 
