@@ -41,7 +41,6 @@ export const ROUTES: RouteConfig[] = [
   { path: "/body-scan", name: "Body Scan", enabled: true },
   { path: "/blueprint", name: "Blueprint", enabled: false },
   { path: "/projects", name: "Projects", enabled: false },
-  { path: "/community", name: "Community", enabled: false },
   { path: "/systems", name: "Systems Hub", enabled: false },
 ];
 

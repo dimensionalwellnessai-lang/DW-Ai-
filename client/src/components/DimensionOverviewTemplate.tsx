@@ -493,12 +493,6 @@ const DIMENSION_CONFIGS: Record<SwitchId, DimensionConfig> = {
     ],
     recommendedActions: [
       {
-        title: "Community",
-        subtitle: "Engage with your network",
-        path: "/community",
-        icon: Users,
-      },
-      {
         title: "Talk it out",
         subtitle: "Process a relationship",
         path: "/talk?topic=A%20relationship%20in%20my%20life",
@@ -527,7 +521,7 @@ const DIMENSION_CONFIGS: Record<SwitchId, DimensionConfig> = {
       {
         title: "Reach Out",
         description: "Identify someone to reconnect with",
-        path: "/community",
+        path: "/talk?topic=Someone%20I%20want%20to%20reconnect%20with",
         icon: MapPin,
       },
     ],

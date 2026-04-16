@@ -14,7 +14,6 @@ import {
   hasCompletedBodyScan,
   hasCompletedFinanceProfile,
   hasCompletedSpiritualProfile,
-  hasCompletedCommunityProfile,
   getMealPrepPreferences,
 } from "@/lib/guest-storage";
 import { useQuery } from "@tanstack/react-query";

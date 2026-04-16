@@ -102,14 +102,6 @@ const DIMENSION_SECTIONS: MenuSection[] = [
     ]
   },
   {
-    title: "RELATIONSHIPS",
-    dimensionKey: "relationships",
-    dwContextLabel: "Relationships",
-    items: [
-      { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "relationships" },
-    ]
-  },
-  {
     title: "ENVIRONMENT",
     dimensionKey: "environment",
     dwContextLabel: "Environment",

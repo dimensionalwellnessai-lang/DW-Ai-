@@ -177,11 +177,11 @@ function inferFromKeywords(title: string, type: string): DwLink {
     };
   }
 
-  if (/social|friend|family|connect|community|call|visit|relationship/.test(t)) {
+  if (/social|friend|family|connect|call|visit|relationship/.test(t)) {
     return {
-      route: "/community",
-      label: "Open in DW · Community",
-      description: "Connect with your DW community, share wins, or join a group.",
+      route: "/journal",
+      label: "Open in DW · Journal",
+      description: "Reflect on this connection and capture what mattered.",
       steps: [
         "Put away devices before the interaction",
         "Be fully present — listen more than you speak",

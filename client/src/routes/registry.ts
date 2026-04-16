@@ -680,18 +680,6 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
-    id: "community",
-    path: "/community",
-    label: "Community",
-    icon: "users",
-    type: "page",
-    description: "Connect and contribute",
-    showInMenu: true,
-    menuSection: "more",
-    menuOrder: 87,
-    enabled: true,
-  },
-  {
     id: "blueprint",
     path: "/blueprint",
     label: "Blueprint",

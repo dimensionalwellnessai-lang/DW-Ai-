@@ -140,15 +140,6 @@ const MENU_SECTIONS: MenuSection[] = [
     ]
   },
   {
-    title: "RELATIONSHIPS",
-    collapsible: true,
-    dimensionKey: "relationships",
-    dwContextLabel: "Relationships",
-    items: [
-      { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "relationships" },
-    ]
-  },
-  {
     title: "ENVIRONMENT",
     collapsible: true,
     dimensionKey: "environment",

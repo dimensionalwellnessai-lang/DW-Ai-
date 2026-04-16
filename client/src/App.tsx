@@ -88,7 +88,6 @@ import ExportPage from "@/pages/export";
 import CalendarMonthPage from "@/pages/calendar-month";
 import CalendarSchedulePage from "@/pages/calendar-schedule";
 import SystemsHubPage from "@/pages/systems-hub";
-import CommunityPage from "@/pages/community";
 import { BlueprintPage } from "@/pages/blueprint";
 import TrainingSystemPage from "@/pages/systems/training";
 import WakeUpSystemPage from "@/pages/systems/wake-up";
@@ -303,7 +302,6 @@ function Router() {
       {isRouteEnabled("/systems/training") && <Route path="/systems/training" component={TrainingSystemPage} />}
       {isRouteEnabled("/systems/wake-up") && <Route path="/systems/wake-up" component={WakeUpSystemPage} />}
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}
-      {isRouteEnabled("/community") && <Route path="/community" component={CommunityPage} />}
       {isRouteEnabled("/blueprint") && <Route path="/blueprint" component={BlueprintPage} />}
       {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
@@ -381,14 +379,14 @@ function AppContent() {
   }, [user]);
 
   // Prompt username setup for logged-in users without a username
-  // Show when they navigate to community-related pages
+  // Show when they navigate to social-facing pages
   useEffect(() => {
     if (!user) return;
     const hasUsername = !!(user as any).username;
     if (hasUsername) return;
-    const communityPaths = ["/browse", "/community"];
-    const isCommunityPage = communityPaths.some(p => location.startsWith(p));
-    if (!isCommunityPage) return;
+    const socialPaths = ["/browse"];
+    const isSocialPage = socialPaths.some(p => location.startsWith(p));
+    if (!isSocialPage) return;
     const shownKey = "dw_username_prompt_shown";
     if (sessionStorage.getItem(shownKey)) return;
     sessionStorage.setItem(shownKey, "1");

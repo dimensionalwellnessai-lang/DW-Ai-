@@ -174,37 +174,6 @@ export interface FoundationsProfile {
   updatedAt: number;
 }
 
-export type CommunityFocus = "volunteering" | "mentoring" | "advocacy" | "local_events" | "online_groups" | "donations";
-export type AvailabilityLevel = "few_hours_month" | "weekly" | "bi_weekly" | "flexible";
-
-export interface CommunityProfile {
-  impactGoals: string[];
-  preferredCauses: string[];
-  focusAreas: CommunityFocus[];
-  availability: AvailabilityLevel | null;
-  locationCity: string | null;
-  locationCountry: string | null;
-  preferOnline: boolean;
-  preferLocal: boolean;
-  currentInvolvement: string[];
-  notes: string;
-  updatedAt: number;
-}
-
-export interface CommunityOpportunity {
-  id: string;
-  title: string;
-  organization: string;
-  description: string;
-  type: CommunityFocus;
-  isOnline: boolean;
-  location: string | null;
-  url: string | null;
-  tags: string[];
-  matchScore: number;
-  discoveredAt: number;
-}
-
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -560,9 +529,6 @@ export interface GuestData {
   financeProfile: FinanceProfile | null;
   spiritualProfile: SpiritualProfile | null;
   foundationsProfile: FoundationsProfile | null;
-  communityProfile: CommunityProfile | null;
-  communityOpportunities: CommunityOpportunity[];
-  savedCommunityOpportunityIds?: string[];
   calendarEvents: CalendarEvent[];
   dimensionWellnessProfiles: DimensionWellnessProfile[];
   savedRoutines: SavedRoutine[];
@@ -656,8 +622,6 @@ export function getGuestData(): GuestData | null {
           financeProfile: null,
           spiritualProfile: null,
           foundationsProfile: null,
-          communityProfile: null,
-          communityOpportunities: [],
           calendarEvents: [],
           dimensionWellnessProfiles: [],
           savedRoutines: [],
@@ -701,8 +665,6 @@ export function initGuestData(): GuestData {
     financeProfile: null,
     spiritualProfile: null,
     foundationsProfile: null,
-    communityProfile: null,
-    communityOpportunities: [],
     calendarEvents: [],
     dimensionWellnessProfiles: [],
     savedRoutines: [],
@@ -1359,64 +1321,6 @@ export function getFoundationsConfidence(): number {
 export function hasFoundations(): boolean {
   const profile = getFoundationsProfile();
   return profile != null && profile.confidence > 0.3;
-}
-
-export function getCommunityProfile(): CommunityProfile | null {
-  const data = getGuestData();
-  return data?.communityProfile || null;
-}
-
-export function saveCommunityProfile(profile: CommunityProfile): void {
-  const data = getGuestData() || initGuestData();
-  data.communityProfile = { ...profile, updatedAt: Date.now() };
-  saveGuestData(data);
-}
-
-export function hasCompletedCommunityProfile(): boolean {
-  const profile = getCommunityProfile();
-  return profile?.focusAreas != null && profile.focusAreas.length > 0;
-}
-
-export function getCommunityOpportunities(): CommunityOpportunity[] {
-  const data = getGuestData();
-  return data?.communityOpportunities || [];
-}
-
-export function saveCommunityOpportunity(opp: Omit<CommunityOpportunity, "id" | "discoveredAt">): CommunityOpportunity {
-  const data = getGuestData() || initGuestData();
-  if (!data.communityOpportunities) data.communityOpportunities = [];
-  
-  const newOpp: CommunityOpportunity = {
-    ...opp,
-    id: generateId(),
-    discoveredAt: Date.now(),
-  };
-  
-  data.communityOpportunities.push(newOpp);
-  saveGuestData(data);
-  return newOpp;
-}
-
-export function getSavedCommunityOpportunityIds(): string[] {
-  const data = getGuestData();
-  return data?.savedCommunityOpportunityIds || [];
-}
-
-export function isCommunityOpportunitySaved(id: string): boolean {
-  return getSavedCommunityOpportunityIds().includes(id);
-}
-
-export function toggleSavedCommunityOpportunity(id: string): boolean {
-  const data = getGuestData() || initGuestData();
-  if (!data.savedCommunityOpportunityIds) data.savedCommunityOpportunityIds = [];
-  const idx = data.savedCommunityOpportunityIds.indexOf(id);
-  if (idx >= 0) {
-    data.savedCommunityOpportunityIds.splice(idx, 1);
-  } else {
-    data.savedCommunityOpportunityIds.push(id);
-  }
-  saveGuestData(data);
-  return idx < 0;
 }
 
 export function getCalendarEvents(): CalendarEvent[] {

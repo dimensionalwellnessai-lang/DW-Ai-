@@ -48,7 +48,6 @@ import {
   getMealPrepPreferences,
   getFinanceProfile,
   getSpiritualProfile,
-  getCommunityProfile,
   getDimensionSignals,
   getDimensionWellnessProfile,
   saveDimensionWellnessProfile,
@@ -56,12 +55,10 @@ import {
   hasCompletedBodyScan,
   hasCompletedFinanceProfile,
   hasCompletedSpiritualProfile,
-  hasCompletedCommunityProfile,
   type BodyProfile,
   type MealPrepPreferences,
   type FinanceProfile,
   type SpiritualProfile,
-  type CommunityProfile,
   type DimensionSignals,
   type DimensionWellnessProfile,
   type WellnessDimension,
@@ -96,7 +93,7 @@ const DIMENSION_CONFIGS = [
     icon: Users,
     color: "text-teal-500",
     bgColor: "bg-teal-500/10",
-    path: "/community",
+    path: "/journal",
     overviewPath: "/dimension/relationships",
     description: "Relationships & connection",
     defaultPhrase: "How I connect with others",
@@ -163,7 +160,7 @@ function getDimensionStatus(dimensionId: string, signals: DimensionSignals) {
     case "emotional":
       return "not_started";
     case "social":
-      return hasCompletedCommunityProfile() ? "active" : "not_started";
+      return "not_started";
     case "intellectual":
       return "not_started";
     case "spiritual":
@@ -438,7 +435,6 @@ export default function LifeDashboardPage() {
     hasCompletedBodyScan(),
     hasCompletedFinanceProfile(),
     hasCompletedSpiritualProfile(),
-    hasCompletedCommunityProfile(),
   ].filter(Boolean).length;
   
   const totalDimensions = DIMENSION_CONFIGS.length;

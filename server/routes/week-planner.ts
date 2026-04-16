@@ -245,14 +245,4 @@ TONE: Warm, grounded, non-prescriptive. Never preachy. Match the user's energy l
     }
   });
 
-  // ========================================
-  // COMMUNITY OPPORTUNITIES (live data)
-  // ========================================
-
-  // Seed default opportunities on startup (no-op if already seeded)
-  storage.seedDefaultCommunityOpportunities().catch((err) =>
-    console.error("[community] seed error:", err),
-  );
-
-  // GET /api/community/opportunities — public; includes isSaved if authenticated
 }

@@ -1268,20 +1268,6 @@ function ForYouPreview() {
           <div
             className="cc-card cursor-pointer hover:ring-1 hover:ring-sky-400/40 transition-all"
             onClick={() => nav("/browse")}
-            data-testid="foryou-card-community"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <MessageCircle className="h-4 w-4 text-blue-400" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Community</span>
-            </div>
-            <p className="text-sm font-medium text-foreground">Connect & grow together</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Groups, challenges & support</p>
-          </div>
-        </CarouselItem>
-        <CarouselItem className="pl-2 basis-[85%]">
-          <div
-            className="cc-card cursor-pointer hover:ring-1 hover:ring-sky-400/40 transition-all"
-            onClick={() => nav("/browse")}
             data-testid="foryou-card-resources"
           >
             <div className="flex items-center gap-2 mb-1">

@@ -386,19 +386,6 @@ export const PAGE_TUTORIALS: Record<string, PageTutorial> = {
       }
     ]
   },
-  community: {
-    pageId: "community",
-    pageName: "Community",
-    welcomeMessage: "Connect with others on the same journey.",
-    steps: [
-      {
-        targetTestId: "button-setup-community",
-        title: "Set Up Your Profile",
-        description: "Tell us about your interests to find the best opportunities.",
-        placement: "bottom"
-      }
-    ]
-  },
   settings: {
     pageId: "settings",
     pageName: "Settings",
