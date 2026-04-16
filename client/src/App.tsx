@@ -15,6 +15,7 @@ import { FloatingAIWidget } from "@/components/floating-ai-widget";
 
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
 import { trackNewDayOpen } from "@/lib/analytics";
+import { apiRequest } from "@/lib/queryClient";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { deepLinkService } from "@/lib/deep-link-service";
 import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
@@ -375,7 +376,7 @@ function AppContent() {
     const key = "dw_daily_affirmation_" + new Date().toISOString().split("T")[0];
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
-    fetch("/api/notifications/dw-daily", { method: "POST", credentials: "include" }).catch(() => {});
+    apiRequest("POST", "/api/notifications/dw-daily").catch(() => {});
   }, [user]);
 
   // Prompt username setup for logged-in users without a username

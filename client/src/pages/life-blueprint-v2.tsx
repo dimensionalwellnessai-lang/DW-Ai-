@@ -30,6 +30,7 @@ import { motion } from "framer-motion";
 import { COPY } from "@/copy/en";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { DWContextPrompt } from "@/components/dw-context-prompt";
+import { apiRequest } from "@/lib/queryClient";
 
 type ViewMode = "overview" | "dimension-detail" | "assessment";
 
@@ -95,13 +96,7 @@ export default function LifeBlueprintV2() {
   // Create assessment mutation
   const createAssessmentMutation = useMutation({
     mutationFn: async (data: { dimension: string; score: number; answers: Record<string, number> }) => {
-      const res = await fetch('/api/life-dimension-assessments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to save assessment');
+      const res = await apiRequest('POST', '/api/life-dimension-assessments', data);
       return res.json();
     },
     onSuccess: () => {
@@ -117,13 +112,7 @@ export default function LifeBlueprintV2() {
   // Create system mutation
   const createSystemMutation = useMutation({
     mutationFn: async (data: { dimension: string; name: string; description: string }) => {
-      const res = await fetch('/api/dimension-systems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to create system');
+      const res = await apiRequest('POST', '/api/dimension-systems', data);
       return res.json();
     },
     onSuccess: () => {
@@ -141,11 +130,7 @@ export default function LifeBlueprintV2() {
   // Delete system mutation
   const deleteSystemMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/dimension-systems/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to delete system');
+      const res = await apiRequest('DELETE', `/api/dimension-systems/${id}`);
       return res.json();
     },
     onSuccess: () => {
@@ -162,20 +147,10 @@ export default function LifeBlueprintV2() {
     mutationFn: async (data: { redFlags?: string[]; howIReset?: string[]; whenThingsGetHard?: string[] }) => {
       const typedProtocol = resetProtocol as any;
       if (typedProtocol?.id) {
-        const res = await fetch(`/api/reset-protocol/${typedProtocol.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(data),
-        });
+        const res = await apiRequest('PATCH', `/api/reset-protocol/${typedProtocol.id}`, data);
         return res.json();
       } else {
-        const res = await fetch('/api/reset-protocol', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(data),
-        });
+        const res = await apiRequest('POST', '/api/reset-protocol', data);
         return res.json();
       }
     },

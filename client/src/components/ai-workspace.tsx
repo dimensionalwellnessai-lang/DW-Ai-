@@ -767,7 +767,7 @@ export function AIWorkspace() {
     if (!startedFresh) return; // skip if resuming an existing conversation
 
     proactiveOpenerSentRef.current = true;
-    fetch("/api/ai/proactive-opener", { credentials: "include" })
+    apiRequest("GET", "/api/ai/proactive-opener")
       .then(r => r.json())
       .then(({ message }: { message: string | null }) => {
         if (!message) return;
@@ -789,12 +789,7 @@ export function AIWorkspace() {
   // Fetch quick-reply chip suggestions for a given DW message
   function fetchChips(dwMessage: string) {
     if (!user) return; // chips require auth
-    fetch("/api/ai/chips", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: dwMessage }),
-    })
+    apiRequest("POST", "/api/ai/chips", { message: dwMessage })
       .then(r => r.json())
       .then(({ chips }: { chips: string[] }) => {
         if (Array.isArray(chips) && chips.length > 0) setQuickChips(chips);
@@ -957,6 +952,8 @@ export function AIWorkspace() {
       const formData = new FormData();
       formData.append("file", file);
       
+      // Direct fetch: apiRequest forces JSON Content-Type when a body is provided,
+      // which would break multipart/form-data boundary detection for file uploads.
       const response = await fetch("/api/documents/upload", {
         method: "POST",
         body: formData,
@@ -1006,7 +1003,9 @@ export function AIWorkspace() {
         setConversationVersion(v => v + 1);
       }
       
-      // Use streaming endpoint instead of smart endpoint
+      // Use streaming endpoint instead of smart endpoint.
+      // Direct fetch: apiRequest does not accept an AbortSignal, which we need
+      // to cancel the in-flight SSE stream when a new message is sent.
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: {

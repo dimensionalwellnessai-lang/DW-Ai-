@@ -728,7 +728,7 @@ export default function Browse() {
   const { data: activitiesData, isLoading: activitiesLoading } = useQuery<{ activities: any[] }>({
     queryKey: ["/api/browse/activities", timeSlotNow],
     queryFn: async () => {
-      const res = await fetch(`/api/browse/activities?slot=${timeSlotNow}`, { credentials: "include" });
+      const res = await apiRequest("GET", `/api/browse/activities?slot=${timeSlotNow}`);
       return res.json();
     },
     staleTime: 30 * 60 * 1000, // 30 min — re-fetches when time slot changes
@@ -795,7 +795,7 @@ export default function Browse() {
     if (discoverLoading) return;
     setDiscoverLoading(true);
     try {
-      const res = await fetch(`/api/discover/feed?page=${page}`, { credentials: "include" });
+      const res = await apiRequest("GET", `/api/discover/feed?page=${page}`);
       const data = await res.json();
       setDiscoverCards(prev => page === 1 ? data.cards : [...prev, ...data.cards]);
       setDiscoverHasMore(data.hasMore);

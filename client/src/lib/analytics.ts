@@ -216,7 +216,11 @@ export function flushEventsToServer(): void {
     // async fetch is in flight will land in the fresh queue, not the batch.
     window.__dwEvents = [];
     const batch = [...pending];
-    // Best-effort POST — do not await, never throw
+    // Direct fetch (not apiRequest): this is a fire-and-forget batch upload
+    // that runs from a visibilitychange handler with `keepalive: true` so the
+    // request can complete after the page is hidden/unloaded. apiRequest does
+    // not support `keepalive` and would throw on non-2xx responses, which we
+    // explicitly want to swallow here so analytics never breaks the app.
     fetch("/api/analytics/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
