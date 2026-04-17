@@ -102,3 +102,39 @@ export async function ensurePushSubscription(): Promise<boolean> {
   })();
   return inflight;
 }
+
+/**
+ * Unsubscribe this browser from push notifications and tell the server to
+ * forget the subscription. Idempotent — returns true if there was nothing to
+ * unsubscribe or the unsubscribe succeeded.
+ */
+export async function unsubscribePushSubscription(): Promise<boolean> {
+  if (!isWebPushSupported()) return true;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    if (!sub) return true;
+    const endpoint = sub.endpoint;
+    try {
+      await sub.unsubscribe();
+    } catch {
+      /* ignore — we'll still ask the server to drop the row */
+    }
+    try {
+      await fetch("/api/push/subscribe", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      });
+    } catch {
+      /* ignore network errors — local unsubscribe still succeeded */
+    }
+    // Reset the in-flight cache so a re-subscribe call works immediately.
+    inflight = null;
+    return true;
+  } catch (err) {
+    console.error("[push-subscription] unsubscribe failed:", err);
+    return false;
+  }
+}

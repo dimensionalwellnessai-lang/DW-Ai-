@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ensurePushSubscription, unsubscribePushSubscription } from "@/lib/push-subscription";
+import { cancelAllNativeReminders, isCapacitor } from "@/lib/capacitor-notifications";
+import type { NotificationPreferences } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -549,27 +552,11 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <CardTitle className="text-base">Reminders</CardTitle>
-                <CardDescription>Notification preferences</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Daily check-in reminder</Label>
-              <Switch data-testid="switch-daily-reminder" />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Challenge reminders</Label>
-              <Switch data-testid="switch-challenge-reminder" />
-            </div>
-          </CardContent>
-        </Card>
+        <AccountabilityRemindersSection
+          permission={permission}
+          isSupported={isSupported}
+          requestPermission={requestPermission}
+        />
 
         <Card>
           <CardHeader>
@@ -886,5 +873,268 @@ export function SettingsPage() {
         onOpenChange={setShowPremiumDialog}
       />
     </div>
+  );
+}
+
+interface AccountabilityRemindersSectionProps {
+  permission: NotificationPermission | "default";
+  isSupported: boolean;
+  requestPermission: () => Promise<boolean>;
+}
+
+function AccountabilityRemindersSection({
+  permission,
+  isSupported,
+  requestPermission,
+}: AccountabilityRemindersSectionProps) {
+  const { toast } = useToast();
+  const native = isCapacitor();
+
+  const { data: prefs, isLoading } = useQuery<NotificationPreferences>({
+    queryKey: ["/api/accountability/preferences"],
+  });
+
+  const updatePrefs = useMutation({
+    mutationFn: async (updates: Partial<NotificationPreferences>) => {
+      const res = await apiRequest("PUT", "/api/accountability/preferences", updates);
+      return res.json();
+    },
+    onSuccess: (next) => {
+      queryClient.setQueryData(["/api/accountability/preferences"], next);
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't save reminder settings",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const accountabilityEnabled = prefs?.accountabilityEnabled ?? false;
+  const preTaskEnabled = prefs?.preTaskEnabled ?? false;
+  const postTaskEnabled = prefs?.postTaskEnabled ?? false;
+
+  const handleEnableNotifications = async () => {
+    const granted = await requestPermission();
+    if (!granted) {
+      toast({
+        title: "Permission denied",
+        description: "Enable notifications in your browser settings to receive reminders.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const ok = await ensurePushSubscription();
+    if (!ok) {
+      toast({
+        title: "Couldn't subscribe to reminders",
+        description: "Notifications were allowed, but we couldn't register this browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!accountabilityEnabled) {
+      updatePrefs.mutate({ accountabilityEnabled: true });
+    }
+    toast({
+      title: "Reminders on",
+      description: "We'll nudge you about upcoming and finished tasks.",
+    });
+  };
+
+  const handleMasterToggle = async (checked: boolean) => {
+    if (checked) {
+      // Going from off → on: make sure we have permission + a push sub.
+      if (!native) {
+        if (!isSupported) {
+          toast({
+            title: "Not supported",
+            description: "This browser doesn't support push notifications.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (permission !== "granted") {
+          const granted = await requestPermission();
+          if (!granted) {
+            toast({
+              title: "Permission denied",
+              description: "Enable notifications in your browser settings to receive reminders.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+        const ok = await ensurePushSubscription();
+        if (!ok) {
+          toast({
+            title: "Couldn't subscribe to reminders",
+            description: "We couldn't register this browser. Try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      updatePrefs.mutate({ accountabilityEnabled: true });
+    } else {
+      // Going from on → off: persist the pref, drop the web-push subscription
+      // for this browser, and cancel any pending native local notifications
+      // so the OS won't fire them after the user has opted out.
+      updatePrefs.mutate({ accountabilityEnabled: false });
+      if (!native) {
+        void unsubscribePushSubscription();
+      } else {
+        void cancelAllNativeReminders();
+      }
+    }
+  };
+
+  const handleSubToggle = (
+    field: "preTaskEnabled" | "postTaskEnabled",
+    checked: boolean,
+  ) => {
+    updatePrefs.mutate({ [field]: checked });
+    if (!checked && native) {
+      // On native, the in-OS schedule is rebuilt by the accountability
+      // scheduler the next time it runs, but cancel proactively so the user
+      // sees an immediate effect.
+      void cancelAllNativeReminders();
+    }
+  };
+
+  return (
+    <Card data-testid="card-accountability-reminders">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <BellRing className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <CardTitle className="text-base">Accountability Reminders</CardTitle>
+            <CardDescription>
+              Get nudges before and after scheduled tasks — even when the app is closed.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Permission gate (web only) */}
+        {!native && isSupported && permission !== "granted" && (
+          <div className="rounded-md border border-orange-200 dark:border-orange-900 bg-orange-50 dark:bg-orange-950/30 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-orange-900 dark:text-orange-100">
+              <Bell className="h-4 w-4" />
+              {permission === "denied"
+                ? "Notifications are blocked in this browser."
+                : "Allow notifications to receive reminders."}
+            </div>
+            {permission === "denied" ? (
+              <p className="text-xs text-orange-700 dark:text-orange-300">
+                Re-enable notifications for this site in your browser settings, then come back.
+              </p>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleEnableNotifications}
+                data-testid="button-enable-accountability-notifications"
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Enable Notifications
+              </Button>
+            )}
+          </div>
+        )}
+        {!native && !isSupported && (
+          <p className="text-sm text-muted-foreground">
+            Push notifications aren't supported in this browser.
+          </p>
+        )}
+
+        {/* Master toggle */}
+        <div className="flex items-center justify-between gap-3">
+          <Label
+            htmlFor="accountability-master-toggle"
+            className="flex flex-col gap-0.5 cursor-pointer"
+          >
+            <span>Reminders</span>
+            <span className="text-xs text-muted-foreground font-normal">
+              {accountabilityEnabled
+                ? "On — pre-task and post-task nudges"
+                : "Off — no accountability reminders"}
+            </span>
+          </Label>
+          <Switch
+            id="accountability-master-toggle"
+            checked={accountabilityEnabled}
+            disabled={
+              isLoading ||
+              updatePrefs.isPending ||
+              (!native && (!isSupported || permission === "denied"))
+            }
+            onCheckedChange={handleMasterToggle}
+            data-testid="switch-accountability-enabled"
+          />
+        </div>
+
+        {/* Pre-task */}
+        <div className="flex items-center justify-between gap-3">
+          <Label
+            htmlFor="accountability-pre-toggle"
+            className="flex flex-col gap-0.5 cursor-pointer"
+          >
+            <span>Pre-task reminders</span>
+            <span className="text-xs text-muted-foreground font-normal">
+              "Will you be doing this?" before each scheduled item
+            </span>
+          </Label>
+          <Switch
+            id="accountability-pre-toggle"
+            checked={preTaskEnabled}
+            disabled={
+              isLoading ||
+              updatePrefs.isPending ||
+              !accountabilityEnabled
+            }
+            onCheckedChange={(c) => handleSubToggle("preTaskEnabled", c)}
+            data-testid="switch-accountability-pre-task"
+          />
+        </div>
+
+        {/* Post-task */}
+        <div className="flex items-center justify-between gap-3">
+          <Label
+            htmlFor="accountability-post-toggle"
+            className="flex flex-col gap-0.5 cursor-pointer"
+          >
+            <span>Post-task reminders</span>
+            <span className="text-xs text-muted-foreground font-normal">
+              "Did you complete this?" after each scheduled item
+            </span>
+          </Label>
+          <Switch
+            id="accountability-post-toggle"
+            checked={postTaskEnabled}
+            disabled={
+              isLoading ||
+              updatePrefs.isPending ||
+              !accountabilityEnabled
+            }
+            onCheckedChange={(c) => handleSubToggle("postTaskEnabled", c)}
+            data-testid="switch-accountability-post-task"
+          />
+        </div>
+
+        <Link href="/accountability/settings">
+          <div
+            className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer"
+            data-testid="link-accountability-advanced"
+          >
+            <div className="flex items-center gap-3">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Advanced reminder settings</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </Link>
+      </CardContent>
+    </Card>
   );
 }

@@ -243,3 +243,37 @@ export async function cancelNativeRemindersForItem(itemId: string): Promise<void
 
   writeScheduledIds(stored.filter((id) => !targets.includes(id)));
 }
+
+/**
+ * Cancel every native reminder previously scheduled by this app. Safe to call
+ * on web (no-op) and when nothing has been scheduled yet.
+ */
+export async function cancelAllNativeReminders(): Promise<void> {
+  if (!isCapacitor()) return;
+  try {
+    const { LocalNotifications } = await loadModule();
+    const previous = readScheduledIds();
+    if (previous.length > 0) {
+      await LocalNotifications.cancel({
+        notifications: previous.map((id) => ({ id })),
+      }).catch((err) => {
+        console.error("[capacitor-notifications] cancel failed:", err);
+      });
+    }
+    // Also drain anything currently pending in the OS, in case a previous
+    // run wrote a different id list (e.g. after reinstall or storage clear).
+    try {
+      const pending = await LocalNotifications.getPending();
+      if (pending?.notifications?.length) {
+        await LocalNotifications.cancel({
+          notifications: pending.notifications.map((n) => ({ id: n.id })),
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+    writeScheduledIds([]);
+  } catch (err) {
+    console.error("[capacitor-notifications] cancelAll failed:", err);
+  }
+}
