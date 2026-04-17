@@ -18,7 +18,6 @@ import {
   Calendar as CalendarIcon,
   CalendarDays,
   Repeat,
-  BookmarkPlus,
   Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -153,19 +152,6 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
     }
   };
 
-  const handleSaveToLibrary = () => {
-    // Library API is not yet implemented on the backend.
-    // Inform the user that this feature is not available yet.
-    toast({
-      title: "Library coming soon",
-      description: "Saving items to your library isn't available yet. We're still building this feature.",
-    });
-
-    // Do not call onAdded('library') because nothing was actually saved.
-    onOpenChange(false);
-    setIsAdding(false);
-  };
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
@@ -247,26 +233,6 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
                 <p className="font-medium">Add to Routine</p>
                 <p className="text-sm text-muted-foreground">
                   Make this a recurring activity
-                </p>
-              </div>
-            </div>
-          </Button>
-
-          {/* Save to Library */}
-          <Button
-            className="w-full justify-start h-auto py-4"
-            variant="outline"
-            onClick={handleSaveToLibrary}
-            disabled={isAdding}
-          >
-            <div className="flex items-center gap-3 w-full">
-              <div className="p-2 rounded-lg bg-green-500/10 dark:bg-green-400/15">
-                <BookmarkPlus className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-medium">Save to Library</p>
-                <p className="text-sm text-muted-foreground">
-                  Save for later
                 </p>
               </div>
             </div>

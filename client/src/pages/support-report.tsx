@@ -42,14 +42,13 @@ interface ReportPayload {
   includeRecentContext: boolean;
   recentContext?: {
     route?: string;
-    lastAction?: string;
   };
   includeConversationSnippet: boolean;
   includeConstraintsSnapshot: boolean;
 }
 
 async function submitSupportReport(payload: ReportPayload) {
-  const res = await fetch("/api/support/report", {
+  const res = await fetch("/api/support/detailed-report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -73,7 +72,6 @@ export default function SupportReportPage() {
   const [steps, setSteps] = useState("");
   const [includeTech, setIncludeTech] = useState(true);
   const [includeContext, setIncludeContext] = useState(false);
-  const [includeConversation, setIncludeConversation] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const mutation = useMutation({
@@ -116,13 +114,7 @@ export default function SupportReportPage() {
       recentContext: includeContext
         ? { route: window.location.pathname }
         : undefined,
-      includeConversationSnippet: includeConversation,
-      conversationSnippet: includeConversation
-        ? {
-            lastUserMessage: description.trim(),
-            lastDwReply: "(Conversation history not yet captured in beta — description included as context)",
-          }
-        : undefined,
+      includeConversationSnippet: false,
       includeConstraintsSnapshot: false,
     };
 
@@ -251,21 +243,6 @@ export default function SupportReportPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="toggle-conversation" className="text-sm font-medium">
-                    Conversation snippet
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Your description will be included as context. Full conversation history is not yet captured in beta.
-                  </p>
-                </div>
-                <Switch
-                  id="toggle-conversation"
-                  checked={includeConversation}
-                  onCheckedChange={setIncludeConversation}
-                />
-              </div>
             </CardContent>
           </Card>
 

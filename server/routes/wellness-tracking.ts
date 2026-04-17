@@ -325,34 +325,6 @@ export function registerWellnessTrackingRoutes(app: Express): void {
     }
   });
 
-  // Analyze Meal Photo (placeholder for AI vision integration)
-  app.post("/api/analyze-meal-photo", requireAuth, async (req, res) => {
-    try {
-      const { photoUrl } = req.body;
-      
-      if (!photoUrl) {
-        return res.status(400).json({ error: "Photo URL is required" });
-      }
-
-      // Placeholder for AI vision analysis
-      // In a real implementation, this would use Google Vision API or OpenAI Vision
-      const analysis = {
-        items: ["Food item detected"],
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        confidence: 0,
-        aiAnalysis: "Meal photo analysis not yet implemented. Please enter nutrition information manually.",
-      };
-      
-      res.json(analysis);
-    } catch (error) {
-      console.error("Analyze meal photo error:", error);
-      res.status(500).json({ error: "Failed to analyze meal photo" });
-    }
-  });
-
   // Achievements endpoints
   app.get("/api/achievements", requireAuth, async (req, res) => {
     try {
