@@ -53,7 +53,6 @@ import {
   getSavedRoutinesByType,
   saveRoutine,
   getDimensionSignals,
-  saveCalendarEvent,
   getUserResourcesByType,
   deleteUserResource,
   getSavedRecipes,
@@ -934,8 +933,6 @@ export default function MealPrepPage() {
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [addItem, setAddItem] = useState<AddToSheetItem | null>(null);
   const [aiPickSelectedId, setAiPickSelectedId] = useState<string | null>(null);
-  const [aiPickCalendarOpen, setAiPickCalendarOpen] = useState(false);
-  const [pendingAIPick, setPendingAIPick] = useState<NutritionAIPick | null>(null);
   // Wave 6A filters
   const [dietFilter, setDietFilter] = useState<DietFilter>("any");
   const [prepTimeFilter, setPrepTimeFilter] = useState<PrepTimeFilter>("any");
@@ -1126,44 +1123,18 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
   const handleSaveAIPick = () => {
     const selectedPick = nutritionAIPicks.find(p => p.id === aiPickSelectedId);
     if (!selectedPick) return;
-    setPendingAIPick(selectedPick);
-    setAiPickCalendarOpen(true);
-  };
-
-  const confirmSaveAIPick = () => {
-    if (!pendingAIPick) return;
-    
-    const now = new Date();
-    const startHour = pendingAIPick.title.toLowerCase().includes("breakfast") || pendingAIPick.title.toLowerCase().includes("oat") || pendingAIPick.title.toLowerCase().includes("smoothie") ? 8 :
-                      pendingAIPick.title.toLowerCase().includes("dinner") ? 18 : 12;
-    
-    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0).getTime();
-    const endTime = startTime + pendingAIPick.duration * 60 * 1000;
-    
-    saveCalendarEvent({
-      title: pendingAIPick.title,
-      description: `${pendingAIPick.duration} min prep - ${pendingAIPick.tag}`,
-      dimension: "physical",
-      startTime,
-      endTime,
-      isAllDay: false,
-      location: null,
-      virtualLink: null,
-      reminders: [],
-      recurring: false,
-      recurrencePattern: null,
-      recurrenceEndDate: null,
-      relatedFoundationIds: [],
-      tags: ["meal", "ai-pick", pendingAIPick.tag.toLowerCase()],
+    setAddItem({
+      title: selectedPick.title,
+      type: "meal",
+      duration: selectedPick.duration,
+      description: selectedPick.why,
+      metadata: {
+        prepTime: selectedPick.duration,
+        tags: [selectedPick.tag, "ai-pick"],
+        aiPickTag: selectedPick.tag,
+        whySuggested: selectedPick.why,
+      },
     });
-    
-    toast({
-      title: "Added to calendar.",
-      description: `"${pendingAIPick.title}" scheduled for today. Notice how nourishing yourself shifts your energy.`,
-    });
-    
-    setAiPickCalendarOpen(false);
-    setPendingAIPick(null);
     setAiPickSelectedId(null);
   };
 
@@ -2097,7 +2068,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                   data-testid="button-save-ai-pick-nutrition"
                 >
                   <Heart className="h-4 w-4 mr-2" />
-                  Add to Orbit
+                  Save
                 </Button>
               </div>
             </section>
@@ -3085,53 +3056,6 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
             }}
           />
         )}
-
-        {/* Wave 6.3: AI Pick Calendar Confirmation Dialog */}
-        <Dialog open={aiPickCalendarOpen} onOpenChange={setAiPickCalendarOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add to Your Calendar</DialogTitle>
-              <DialogDescription>
-                This will schedule "{pendingAIPick?.title}" for today. You can always adjust it later.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-3">
-              {pendingAIPick && (
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium text-foreground">{pendingAIPick.title}</div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
-                      {pendingAIPick.duration} min prep time
-                    </div>
-                  </div>
-                  <Badge variant="secondary">{pendingAIPick.tag}</Badge>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setAiPickCalendarOpen(false);
-                  setPendingAIPick(null);
-                }}
-                data-testid="button-ai-pick-nutrition-cancel"
-              >
-                Not Now
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={confirmSaveAIPick}
-                data-testid="button-ai-pick-nutrition-confirm"
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Add to Orbit
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         <PlanningScopeDialog {...PlanningScopeDialogProps} />
         

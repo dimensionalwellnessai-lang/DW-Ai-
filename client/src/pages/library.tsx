@@ -72,6 +72,8 @@ function parseMealMetadata(raw: unknown): MealLibraryMetadata | null {
     planTitle: stringField(m.planTitle),
     youtubeVideoId: stringField(m.youtubeVideoId),
     youtubeSearch: stringField(m.youtubeSearch),
+    aiPickTag: stringField(m.aiPickTag),
+    whySuggested: stringField(m.whySuggested),
   };
 }
 
@@ -93,7 +95,9 @@ function hasMealDetail(m: MealLibraryMetadata | null): boolean {
   if (!m) return false;
   return (m.ingredients?.length ?? 0) > 0 ||
     (m.instructions?.length ?? 0) > 0 ||
-    !!m.nutrition;
+    !!m.nutrition ||
+    !!m.whySuggested ||
+    !!m.aiPickTag;
 }
 
 function hasMeditationDetail(m: MeditationLibraryMetadata | null): boolean {
@@ -372,7 +376,16 @@ function SavedDetailDialog({
                 {mealMeta?.planTitle && (
                   <Badge variant="outline">{mealMeta.planTitle}</Badge>
                 )}
+                {mealMeta?.aiPickTag && (
+                  <Badge variant="secondary" data-testid="badge-meal-ai-pick-tag">{mealMeta.aiPickTag}</Badge>
+                )}
               </div>
+
+              {mealMeta?.whySuggested && (
+                <div className="bg-primary/5 rounded-md p-3" data-testid="text-meal-why-suggested">
+                  <p className="text-sm italic text-muted-foreground leading-relaxed">{mealMeta.whySuggested}</p>
+                </div>
+              )}
 
               {youtubeVideoId && (
                 <div className="aspect-video w-full overflow-hidden rounded-md border bg-black">

@@ -49,6 +49,8 @@ export interface MealLibraryMetadata {
   planTitle?: string;
   youtubeVideoId?: string;
   youtubeSearch?: string;
+  aiPickTag?: string;
+  whySuggested?: string;
 }
 
 export interface MeditationLibraryMetadata {
