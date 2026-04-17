@@ -13500,6 +13500,36 @@ Return ONLY this JSON:
     }
   });
 
+  app.post("/api/push/test", requireAuth, async (req: any, res) => {
+    const userId = req.user!.id;
+    try {
+      const { sendPushToUser, getUserSubscriptions } = await import("./push");
+      const subs = await getUserSubscriptions(userId);
+      if (subs.length === 0) {
+        return res.status(404).json({
+          error: "no_subscription",
+          message: "No push subscription registered for this account.",
+        });
+      }
+      const result = await sendPushToUser(userId, {
+        title: "Test reminder",
+        body: "If you can read this, accountability reminders are working.",
+        notificationType: "pre_task",
+        url: "/settings",
+        taskData: {
+          taskId: null,
+          calendarEventId: null,
+          taskName: "Test reminder",
+        },
+        tag: `test-${Date.now()}`,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err: any) {
+      console.error("[push] test send failed:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/push/vapid-key", async (_req, res) => {
     // Always return the key that initPush() actually configured web-push with
     // (env pair if both set, else the DB-stored generated pair). Returning

@@ -269,6 +269,39 @@ export async function cancelSingleNativeReminder(
 }
 
 /**
+ * Schedule a one-off local notification a few seconds in the future so the
+ * user can verify that OS-level notifications are reaching the device. Used
+ * by the "Send test reminder" button in Settings on native (Capacitor) builds.
+ */
+export async function scheduleNativeTestReminder(
+  delaySeconds = 5,
+): Promise<boolean> {
+  if (!isCapacitor()) return false;
+  const granted = await ensureNativePermission();
+  if (!granted) return false;
+  try {
+    const { LocalNotifications } = await loadModule();
+    const fireAt = new Date(Date.now() + delaySeconds * 1000);
+    const id = hashId(`test:${Date.now()}`);
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title: "Test reminder",
+          body: "If you can read this, accountability reminders are working.",
+          schedule: { at: fireAt, allowWhileIdle: true },
+          extra: { notificationType: "test" },
+        },
+      ],
+    });
+    return true;
+  } catch (err) {
+    console.error("[capacitor-notifications] test schedule failed:", err);
+    return false;
+  }
+}
+
+/**
  * Cancel every native reminder previously scheduled by this app. Safe to call
  * on web (no-op) and when nothing has been scheduled yet.
  */

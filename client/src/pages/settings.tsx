@@ -3,7 +3,7 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ensurePushSubscription, unsubscribePushSubscription } from "@/lib/push-subscription";
-import { cancelAllNativeReminders, isCapacitor } from "@/lib/capacitor-notifications";
+import { cancelAllNativeReminders, isCapacitor, scheduleNativeTestReminder } from "@/lib/capacitor-notifications";
 import type { NotificationPreferences } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -990,6 +990,89 @@ function AccountabilityRemindersSection({
     }
   };
 
+  const sendTestReminder = useMutation({
+    mutationFn: async () => {
+      if (native) {
+        const ok = await scheduleNativeTestReminder(5);
+        if (!ok) throw new Error("native_failed");
+        return { mode: "native" as const };
+      }
+      const res = await apiRequest("POST", "/api/push/test", {});
+      const body = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        sent?: number;
+        removed?: number;
+      };
+      return { mode: "web" as const, body };
+    },
+    onSuccess: (result) => {
+      if (result.mode === "native") {
+        toast({
+          title: "Test reminder scheduled",
+          description: "Watch for a notification in about 5 seconds.",
+        });
+        return;
+      }
+      const { sent = 0, removed = 0 } = result.body;
+      if (sent === 0) {
+        toast({
+          title: "No active subscriptions",
+          description:
+            removed > 0
+              ? "Your saved devices were no longer reachable and have been cleared. Toggle reminders off and on again to re-register this browser."
+              : "We couldn't reach any registered devices. Toggle reminders off and on again to re-register this browser.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Test reminder sent",
+        description:
+          sent === 1
+            ? "It should arrive on your device in a few seconds."
+            : `Sent to ${sent} devices. It should arrive in a few seconds.`,
+      });
+    },
+    onError: async (err: any) => {
+      let description = "Please try again in a moment.";
+      if (err?.message === "native_failed") {
+        description =
+          "Allow notifications for this app in system settings, then try again.";
+      } else {
+        // apiRequest throws errors shaped like "<status>: <body>". Parse the
+        // JSON body when present so we can branch on a structured `error`
+        // code instead of relying purely on the status-prefix string.
+        const raw: string = err?.message || "";
+        const colon = raw.indexOf(":");
+        const status = colon > 0 ? parseInt(raw.slice(0, colon), 10) : NaN;
+        const tail = colon > 0 ? raw.slice(colon + 1).trim() : raw;
+        let parsed: { error?: string; message?: string } | null = null;
+        try {
+          parsed = tail ? JSON.parse(tail) : null;
+        } catch {
+          parsed = null;
+        }
+        if (parsed?.error === "no_subscription" || status === 404) {
+          description =
+            parsed?.message ||
+            "No subscription is registered yet. Toggle reminders on first.";
+        } else if (parsed?.message) {
+          description = parsed.message;
+        }
+      }
+      toast({
+        title: "Couldn't send test reminder",
+        description,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canSendTest =
+    accountabilityEnabled &&
+    !sendTestReminder.isPending &&
+    (native || (isSupported && permission === "granted"));
+
   const handleSubToggle = (
     field: "preTaskEnabled" | "postTaskEnabled",
     checked: boolean,
@@ -1120,6 +1203,28 @@ function AccountabilityRemindersSection({
             onCheckedChange={(c) => handleSubToggle("postTaskEnabled", c)}
             data-testid="switch-accountability-post-task"
           />
+        </div>
+
+        {/* Send a test reminder */}
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm">Send a test reminder</span>
+            <span className="text-xs text-muted-foreground">
+              {native
+                ? "Fires a local notification in about 5 seconds."
+                : "Pushes a one-off notification to all your registered devices."}
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canSendTest}
+            onClick={() => sendTestReminder.mutate()}
+            data-testid="button-send-test-reminder"
+          >
+            <BellRing className="h-4 w-4 mr-2" />
+            {sendTestReminder.isPending ? "Sending…" : "Send test"}
+          </Button>
         </div>
 
         <Link href="/accountability/settings">
