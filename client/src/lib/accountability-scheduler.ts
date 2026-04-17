@@ -17,6 +17,11 @@ import {
   isNotificationSupported,
   getNotificationPermission,
 } from "@/lib/notifications";
+import { ensurePushSubscription, isWebPushSupported } from "@/lib/push-subscription";
+import {
+  isCapacitor,
+  rescheduleNativeReminders,
+} from "@/lib/capacitor-notifications";
 import type {
   Task,
   CalendarEvent,
@@ -162,16 +167,23 @@ async function loadTodayItems(): Promise<ScheduleableItem[]> {
 /**
  * Plan all reminders for the next ~24 hours given the current preferences and
  * today's schedule. Existing timers are cleared first.
+ *
+ * Delivery channels (in priority order):
+ *   1. **Native (Capacitor iOS/Android)** — schedules with @capacitor/local-
+ *      notifications so the OS fires reminders even when the app is closed.
+ *   2. **Web Push (server-driven)** — registers a push subscription with the
+ *      server. The server's reminder scheduler (see server/push.ts) delivers
+ *      the same payloads through the OS push service even when the tab/PWA
+ *      is closed.
+ *   3. **In-page setTimeout** — kept as a low-latency fallback while the tab
+ *      is foregrounded. The service worker's notification `tag` deduplicates
+ *      visually if both an in-page timer and a push arrive.
  */
 export async function planReminders(): Promise<{
   scheduled: number;
   skipped: number;
 }> {
   clearAllTimers();
-
-  if (!isNotificationSupported() || getNotificationPermission() !== "granted") {
-    return { scheduled: 0, skipped: 0 };
-  }
 
   const prefs = await loadPreferences();
   if (!prefs || !prefs.accountabilityEnabled) {
@@ -183,6 +195,37 @@ export async function planReminders(): Promise<{
   const minutesBefore = prefs.preTaskMinutes ?? 15;
   let scheduled = 0;
   let skipped = 0;
+
+  // Native Capacitor path — schedule with the OS so reminders fire even when
+  // the app is killed. The browser Notification API and its permission state
+  // do not apply here; @capacitor/local-notifications uses its own native
+  // permission flow handled inside rescheduleNativeReminders().
+  if (isCapacitor()) {
+    try {
+      const native = await rescheduleNativeReminders(items, {
+        preTaskEnabled: !!prefs.preTaskEnabled,
+        postTaskEnabled: !!prefs.postTaskEnabled,
+        preTaskMinutes: prefs.preTaskMinutes ?? 15,
+        quietHoursEnabled: !!prefs.quietHoursEnabled,
+        quietHoursStart: prefs.quietHoursStart ?? "22:00",
+        quietHoursEnd: prefs.quietHoursEnd ?? "08:00",
+      });
+      return native;
+    } catch (err) {
+      console.error("[accountability-scheduler] native schedule failed:", err);
+      // Fall through to in-page timers as a safety net.
+    }
+  }
+
+  // Web path — in-page setTimeout fallback requires Notification permission.
+  if (!isNotificationSupported() || getNotificationPermission() !== "granted") {
+    return { scheduled: 0, skipped: 0 };
+  }
+
+  // Make sure the server can push to this browser when the tab closes.
+  if (isWebPushSupported()) {
+    void ensurePushSubscription();
+  }
 
   for (const item of items) {
     // Pre-task reminder

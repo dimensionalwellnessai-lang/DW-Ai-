@@ -1,0 +1,416 @@
+/**
+ * Web Push delivery + server-side reminder scheduler.
+ *
+ * VAPID keys are generated once on first boot and stored in the `vapid_keys`
+ * table so subscriptions remain valid across server restarts.
+ *
+ * The scheduler scans every minute for upcoming pre-task and post-task
+ * reminders that should fire in the next ~minute and pushes notification
+ * payloads to all of the user's registered subscriptions. The service worker
+ * (`client/public/sw.js`) renders the OS-level notification — meaning the
+ * reminder is delivered even when the tab/PWA is closed.
+ */
+
+import webpush from "web-push";
+import { db } from "./db";
+import { eq, and, isNotNull } from "drizzle-orm";
+import {
+  pushSubscriptions,
+  vapidKeys as vapidKeysTable,
+  notificationPreferences,
+  tasks as tasksTable,
+  calendarEvents as calendarEventsTable,
+  type NotificationPreferences,
+  type Task,
+  type CalendarEvent,
+} from "@shared/schema";
+
+const VAPID_ROW_ID = "default";
+const SCHEDULER_INTERVAL_MS = 60 * 1000;
+
+let initialized = false;
+let cachedPublicKey: string | null = null;
+
+interface ReminderPayload {
+  title: string;
+  body: string;
+  notificationType: "pre_task" | "post_task";
+  url?: string;
+  taskData: {
+    taskId: string | null;
+    calendarEventId: string | null;
+    taskName: string;
+    scheduledTime?: string;
+    scheduledEndTime?: string;
+  };
+  tag: string;
+}
+
+async function loadOrCreateVapidKeys(): Promise<{
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+}> {
+  const [existing] = await db
+    .select()
+    .from(vapidKeysTable)
+    .where(eq(vapidKeysTable.id, VAPID_ROW_ID))
+    .limit(1);
+  if (existing) {
+    return {
+      publicKey: existing.publicKey,
+      privateKey: existing.privateKey,
+      subject: existing.subject,
+    };
+  }
+  const generated = webpush.generateVAPIDKeys();
+  const subject =
+    process.env.VAPID_SUBJECT ||
+    `mailto:${process.env.SUPPORT_EMAIL || "support@example.com"}`;
+  await db.insert(vapidKeysTable).values({
+    id: VAPID_ROW_ID,
+    publicKey: generated.publicKey,
+    privateKey: generated.privateKey,
+    subject,
+  });
+  console.log("[push] Generated and stored new VAPID key pair.");
+  return { ...generated, subject };
+}
+
+export async function initPush(): Promise<void> {
+  if (initialized) return;
+  try {
+    // Source of truth for VAPID keys: prefer the env-provided pair when BOTH
+    // public and private keys are set (legacy/manual provisioning); otherwise
+    // load or generate a pair in the DB. Whatever we end up using here is the
+    // exact same key returned to clients via /api/push/vapid-key.
+    const envPublic = process.env.VAPID_PUBLIC_KEY;
+    const envPrivate = process.env.VAPID_PRIVATE_KEY;
+    const envSubject =
+      process.env.VAPID_SUBJECT ||
+      `mailto:${process.env.SUPPORT_EMAIL || "support@example.com"}`;
+
+    let publicKey: string;
+    let privateKey: string;
+    let subject: string;
+    if (envPublic && envPrivate) {
+      publicKey = envPublic;
+      privateKey = envPrivate;
+      subject = envSubject;
+      console.log("[push] Using VAPID keys from environment.");
+    } else {
+      const stored = await loadOrCreateVapidKeys();
+      publicKey = stored.publicKey;
+      privateKey = stored.privateKey;
+      subject = stored.subject;
+    }
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    cachedPublicKey = publicKey;
+    initialized = true;
+    console.log(
+      `[push] Web push initialized (public key fingerprint: ${publicKey.slice(0, 12)}…).`,
+    );
+  } catch (err) {
+    console.error("[push] Failed to initialize web push:", err);
+  }
+}
+
+export async function getVapidPublicKey(): Promise<string | null> {
+  if (!initialized) await initPush();
+  return cachedPublicKey;
+}
+
+export async function getUserSubscriptions(userId: string) {
+  return db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.userId, userId));
+}
+
+async function deleteSubscriptionByEndpoint(endpoint: string): Promise<void> {
+  try {
+    await db
+      .delete(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, endpoint));
+  } catch (err) {
+    console.error("[push] Failed to delete dead subscription:", err);
+  }
+}
+
+export async function sendPushToUser(
+  userId: string,
+  payload: ReminderPayload,
+): Promise<{ sent: number; removed: number }> {
+  if (!initialized) await initPush();
+  if (!initialized) return { sent: 0, removed: 0 };
+  const subs = await getUserSubscriptions(userId);
+  let sent = 0;
+  let removed = 0;
+  await Promise.all(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          JSON.stringify(payload),
+          { TTL: 60 * 60 },
+        );
+        sent++;
+      } catch (err: any) {
+        const status = err?.statusCode;
+        // 404 / 410 → subscription no longer valid; remove it.
+        if (status === 404 || status === 410) {
+          await deleteSubscriptionByEndpoint(sub.endpoint);
+          removed++;
+        } else {
+          console.error(
+            `[push] sendNotification failed (${status}):`,
+            err?.body || err?.message || err,
+          );
+        }
+      }
+    }),
+  );
+  return { sent, removed };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reminder scheduler
+// ─────────────────────────────────────────────────────────────────────────────
+
+function parseTimeOfDay(value: string | null | undefined, fallback: string) {
+  const raw = (value || fallback).trim();
+  const [h, m] = raw.split(":").map((n) => parseInt(n, 10));
+  return { h: isFinite(h) ? h : 0, m: isFinite(m) ? m : 0 };
+}
+
+function isInQuietHours(when: Date, prefs: NotificationPreferences): boolean {
+  if (!prefs.quietHoursEnabled) return false;
+  const start = parseTimeOfDay(prefs.quietHoursStart, "22:00");
+  const end = parseTimeOfDay(prefs.quietHoursEnd, "08:00");
+  const minutes = when.getHours() * 60 + when.getMinutes();
+  const startMin = start.h * 60 + start.m;
+  const endMin = end.h * 60 + end.m;
+  if (startMin === endMin) return false;
+  if (startMin < endMin) {
+    return minutes >= startMin && minutes < endMin;
+  }
+  return minutes >= startMin || minutes < endMin;
+}
+
+function formatTime(d: Date): string {
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+interface PendingReminder {
+  fireAt: number;
+  payload: ReminderPayload;
+}
+
+/**
+ * For the given user, build the list of reminders that should fire in the
+ * window [windowStart, windowEnd). We rebuild from scratch each tick — the
+ * 60-second cadence means each reminder is evaluated exactly once per minute
+ * boundary, and the sw.js `tag` field deduplicates against any in-page timer.
+ */
+async function buildRemindersForUser(
+  userId: string,
+  prefs: NotificationPreferences,
+  windowStart: number,
+  windowEnd: number,
+): Promise<PendingReminder[]> {
+  const now = new Date(windowStart);
+  const startOfDay = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+  // Pull today's tasks + calendar events for this user.
+  const [userTasks, userEvents] = (await Promise.all([
+    db.select().from(tasksTable).where(eq(tasksTable.userId, userId)),
+    db
+      .select()
+      .from(calendarEventsTable)
+      .where(eq(calendarEventsTable.userId, userId)),
+  ])) as [Task[], CalendarEvent[]];
+
+  interface Item {
+    id: string;
+    kind: "task" | "event";
+    name: string;
+    start: Date;
+    end: Date | null;
+  }
+  const toDate = (v: Date | string | null | undefined): Date | null => {
+    if (!v) return null;
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const items: Item[] = [];
+  for (const t of userTasks) {
+    if (t.isCompleted) continue;
+    const start = toDate(t.scheduledStart);
+    if (!start) continue;
+    if (start < startOfDay || start >= endOfDay) continue;
+    items.push({
+      id: `task:${t.id}`,
+      kind: "task",
+      name: t.title || "Task",
+      start,
+      end: toDate(t.scheduledEnd),
+    });
+  }
+  for (const ev of userEvents) {
+    const start = toDate(ev.startTime);
+    if (!start) continue;
+    if (start < startOfDay || start >= endOfDay) continue;
+    items.push({
+      id: `event:${ev.id}`,
+      kind: "event",
+      name: ev.title || "Event",
+      start,
+      end: toDate(ev.endTime),
+    });
+  }
+
+  const minutesBefore = prefs.preTaskMinutes ?? 15;
+  const out: PendingReminder[] = [];
+
+  for (const item of items) {
+    const taskId = item.kind === "task" ? item.id.slice(5) : null;
+    const calendarEventId = item.kind === "event" ? item.id.slice(6) : null;
+
+    if (prefs.preTaskEnabled) {
+      const fireAt = item.start.getTime() - minutesBefore * 60 * 1000;
+      if (
+        fireAt >= windowStart &&
+        fireAt < windowEnd &&
+        !isInQuietHours(new Date(fireAt), prefs)
+      ) {
+        out.push({
+          fireAt,
+          payload: {
+            title: `⏰ Coming Up: ${item.name}`,
+            body: `Scheduled for ${formatTime(item.start)}. Will you be doing this?`,
+            notificationType: "pre_task",
+            url: "/accountability",
+            tag: `pre-task-${item.id}`,
+            taskData: {
+              taskId,
+              calendarEventId,
+              taskName: item.name,
+              scheduledTime: item.start.toISOString(),
+              scheduledEndTime: item.end?.toISOString(),
+            },
+          },
+        });
+      }
+    }
+
+    if (prefs.postTaskEnabled) {
+      const endRef = item.end ?? new Date(item.start.getTime() + 30 * 60 * 1000);
+      const fireAt = endRef.getTime();
+      if (
+        fireAt >= windowStart &&
+        fireAt < windowEnd &&
+        !isInQuietHours(new Date(fireAt), prefs)
+      ) {
+        out.push({
+          fireAt,
+          payload: {
+            title: `${item.name} - Time's Up!`,
+            body: "Did you complete this task?",
+            notificationType: "post_task",
+            url: "/accountability",
+            tag: `post-task-${item.id}`,
+            taskData: {
+              taskId,
+              calendarEventId,
+              taskName: item.name,
+            },
+          },
+        });
+      }
+    }
+  }
+  return out;
+}
+
+let schedulerHandle: ReturnType<typeof setInterval> | null = null;
+
+async function tick(): Promise<void> {
+  const now = Date.now();
+  const windowEnd = now + SCHEDULER_INTERVAL_MS;
+  try {
+    // Find every user with at least one push subscription. Joining keeps the
+    // workload bounded: only users who have actually opted-in are scanned.
+    const subs = await db
+      .select({ userId: pushSubscriptions.userId })
+      .from(pushSubscriptions);
+    const userIds = Array.from(new Set(subs.map((s) => s.userId)));
+    if (userIds.length === 0) return;
+
+    for (const userId of userIds) {
+      try {
+        const [prefs] = await db
+          .select()
+          .from(notificationPreferences)
+          .where(eq(notificationPreferences.userId, userId))
+          .limit(1);
+        if (!prefs || !prefs.accountabilityEnabled) continue;
+        const reminders = await buildRemindersForUser(
+          userId,
+          prefs,
+          now,
+          windowEnd,
+        );
+        for (const reminder of reminders) {
+          await sendPushToUser(userId, reminder.payload);
+        }
+      } catch (err) {
+        console.error(
+          `[push] reminder tick failed for user ${userId}:`,
+          err,
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[push] reminder tick top-level error:", err);
+  }
+}
+
+export function startReminderScheduler(): void {
+  if (schedulerHandle) return;
+  // Align to the next minute boundary so reminders fire close to wall-clock
+  // minutes (less drift relative to user-perceived schedule times).
+  const now = new Date();
+  const msToNextMinute =
+    1000 - now.getMilliseconds() + (60 - now.getSeconds() - 1) * 1000;
+  setTimeout(() => {
+    void tick();
+    schedulerHandle = setInterval(() => {
+      void tick();
+    }, SCHEDULER_INTERVAL_MS);
+  }, Math.max(msToNextMinute, 0));
+  console.log("[push] Reminder scheduler started.");
+}
+
+export function stopReminderScheduler(): void {
+  if (schedulerHandle) {
+    clearInterval(schedulerHandle);
+    schedulerHandle = null;
+  }
+}

@@ -69,6 +69,17 @@ app.use((req, res, next) => {
 
   await registerRoutes(httpServer, app);
 
+  // Initialize web push + start the server-side reminder scheduler so
+  // pre-task and post-task notifications fire even when the user's tab/PWA
+  // is closed. See server/push.ts.
+  try {
+    const { initPush, startReminderScheduler } = await import("./push");
+    await initPush();
+    startReminderScheduler();
+  } catch (err) {
+    console.error("[push] Failed to start reminder scheduler:", err);
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

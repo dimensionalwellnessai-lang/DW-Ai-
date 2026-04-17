@@ -13421,8 +13421,19 @@ Return ONLY this JSON:
     }
   });
 
-  app.get("/api/push/vapid-key", (req, res) => {
-    const key = process.env.VAPID_PUBLIC_KEY || "";
+  app.get("/api/push/vapid-key", async (_req, res) => {
+    // Always return the key that initPush() actually configured web-push with
+    // (env pair if both set, else the DB-stored generated pair). Returning
+    // anything else would cause a key mismatch where clients subscribe with
+    // one public key while the server signs sends with a different private
+    // key, producing 401/403 from the push services.
+    let key = "";
+    try {
+      const { getVapidPublicKey } = await import("./push");
+      key = (await getVapidPublicKey()) || "";
+    } catch {
+      /* ignore */
+    }
     res.json({ publicKey: key });
   });
 

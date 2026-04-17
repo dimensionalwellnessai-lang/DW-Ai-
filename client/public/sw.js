@@ -59,6 +59,11 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     vibrate: [100, 50, 100],
+    // Tag deduplicates: a second notification with the same tag REPLACES the
+    // earlier one rather than stacking, so an in-page timer + a server push
+    // for the same reminder collapse to a single OS notification.
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
     data: {
       url: data.url || '/',
       dateOfArrival: Date.now(),

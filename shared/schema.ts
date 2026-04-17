@@ -2160,6 +2160,18 @@ export const insertNotificationPreferencesSchema = createInsertSchema(notificati
   updatedAt: true,
 });
 
+// Singleton VAPID keys row (id = "default") — generated once at server boot
+// and reused for the lifetime of the deployment so existing subscriptions
+// remain valid across restarts. (The `push_subscriptions` table itself is
+// declared further down — see "Push Subscriptions".)
+export const vapidKeys = pgTable("vapid_keys", {
+  id: varchar("id").primaryKey(),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  subject: text("subject").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Conversation Insight Cards – persisted for authenticated users
 export const conversationInsights = pgTable("conversation_insights", {
   id: varchar("id").primaryKey(), // client-generated id; ON CONFLICT DO NOTHING prevents duplicate migration uploads
@@ -2361,6 +2373,7 @@ export type AccountabilityStats = typeof accountabilityStats.$inferSelect;
 export type InsertAccountabilityStats = z.infer<typeof insertAccountabilityStatsSchema>;
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type VapidKeys = typeof vapidKeys.$inferSelect;
 export type LifeDimensionAssessment = typeof lifeDimensionAssessments.$inferSelect;
 export type InsertLifeDimensionAssessment = z.infer<typeof insertLifeDimensionAssessmentSchema>;
 export type DimensionSystem = typeof dimensionSystems.$inferSelect;
