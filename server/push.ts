@@ -28,6 +28,11 @@ import {
 
 const VAPID_ROW_ID = "default";
 const SCHEDULER_INTERVAL_MS = 60 * 1000;
+// Max number of users processed in parallel within a single tick. Bounded so
+// the scheduler doesn't slam the DB / web-push providers with hundreds of
+// concurrent requests, but high enough that the tick duration stays well
+// under SCHEDULER_INTERVAL_MS even with hundreds of subscribed users.
+const USER_TICK_CONCURRENCY = 10;
 
 let initialized = false;
 let cachedPublicKey: string | null = null;
@@ -639,9 +644,66 @@ async function buildRemindersForUser(
 
 let schedulerHandle: ReturnType<typeof setInterval> | null = null;
 
+async function processUserTick(
+  userId: string,
+  windowStart: number,
+  windowEnd: number,
+): Promise<void> {
+  try {
+    const [prefs] = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, userId))
+      .limit(1);
+    if (!prefs || !prefs.accountabilityEnabled) return;
+    const reminders = await buildRemindersForUser(
+      userId,
+      prefs,
+      windowStart,
+      windowEnd,
+    );
+    for (const reminder of reminders) {
+      const key = sentKey(userId, reminder.payload.tag, reminder.fireAt);
+      if (sentLedger.has(key)) continue;
+      // Mark before dispatch so a slow send cannot be doubled-up by a
+      // subsequent tick that arrives before the await resolves. The
+      // persisted write also prevents a server restart in the same minute
+      // bucket from re-sending this reminder.
+      sentLedger.set(key, Date.now());
+      void persistLedgerRow(
+        userId,
+        reminder.payload.tag,
+        "sent",
+        sentBucket(reminder.fireAt),
+      );
+      await sendPushToUser(userId, reminder.payload);
+    }
+  } catch (err) {
+    console.error(`[push] reminder tick failed for user ${userId}:`, err);
+  }
+}
+
+async function runWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const effectiveLimit = Math.max(1, Math.min(limit, items.length));
+  let cursor = 0;
+  const runners = Array.from({ length: effectiveLimit }, async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= items.length) return;
+      await worker(items[idx]);
+    }
+  });
+  await Promise.all(runners);
+}
+
 async function tick(): Promise<void> {
-  const now = Date.now();
-  const windowEnd = now + SCHEDULER_INTERVAL_MS;
+  const tickStart = Date.now();
+  const windowEnd = tickStart + SCHEDULER_INTERVAL_MS;
   // First tick after boot loads any sent/cancelled markers that were written
   // before the previous process exited. Subsequent ticks just hit the cache.
   await hydrateLedger();
@@ -657,45 +719,22 @@ async function tick(): Promise<void> {
     const userIds = Array.from(new Set(subs.map((s) => s.userId)));
     if (userIds.length === 0) return;
 
-    for (const userId of userIds) {
-      try {
-        const [prefs] = await db
-          .select()
-          .from(notificationPreferences)
-          .where(eq(notificationPreferences.userId, userId))
-          .limit(1);
-        if (!prefs || !prefs.accountabilityEnabled) continue;
-        const reminders = await buildRemindersForUser(
-          userId,
-          prefs,
-          now,
-          windowEnd,
-        );
-        for (const reminder of reminders) {
-          const key = sentKey(userId, reminder.payload.tag, reminder.fireAt);
-          if (sentLedger.has(key)) continue;
-          // Mark before dispatch so a slow send cannot be doubled-up by a
-          // subsequent tick that arrives before the await resolves. The
-          // persisted write also prevents a server restart in the same minute
-          // bucket from re-sending this reminder.
-          sentLedger.set(key, Date.now());
-          void persistLedgerRow(
-            userId,
-            reminder.payload.tag,
-            "sent",
-            sentBucket(reminder.fireAt),
-          );
-          await sendPushToUser(userId, reminder.payload);
-        }
-      } catch (err) {
-        console.error(
-          `[push] reminder tick failed for user ${userId}:`,
-          err,
-        );
-      }
-    }
+    // Fan out per-user work with a bounded concurrency pool so a growing
+    // subscriber base doesn't cause a single tick to run longer than the
+    // 60s scheduler interval.
+    await runWithConcurrency(userIds, USER_TICK_CONCURRENCY, (userId) =>
+      processUserTick(userId, tickStart, windowEnd),
+    );
   } catch (err) {
     console.error("[push] reminder tick top-level error:", err);
+  } finally {
+    const duration = Date.now() - tickStart;
+    if (duration > SCHEDULER_INTERVAL_MS) {
+      console.warn(
+        `[push] reminder tick exceeded interval: ${duration}ms > ${SCHEDULER_INTERVAL_MS}ms. ` +
+          `Consider raising USER_TICK_CONCURRENCY or sharding work across processes.`,
+      );
+    }
   }
 }
 
