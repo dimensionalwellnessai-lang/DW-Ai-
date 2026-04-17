@@ -8,13 +8,39 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
-import { AddToSheet, type AddToSheetItem } from "@/components/add-to-sheet";
+import { AddToSheet, type AddToSheetItem, type WorkoutLibraryMetadata } from "@/components/add-to-sheet";
 import {
   Bookmark, BookmarkX, Dumbbell, Utensils, Sparkles, CheckSquare, Target, Plus, Clock,
+  ExternalLink,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { SavedContent } from "@shared/schema";
 
 type LibraryType = "workout" | "meal" | "meditation" | "habit" | "goal";
+
+function parseWorkoutMetadata(raw: unknown): WorkoutLibraryMetadata | null {
+  if (!raw || typeof raw !== "object") return null;
+  const m = raw as Record<string, unknown>;
+  const stringArray = (v: unknown): string[] | undefined =>
+    Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]) : undefined;
+  const stringField = (v: unknown): string | undefined =>
+    typeof v === "string" ? v : undefined;
+  return {
+    intensity: stringField(m.intensity),
+    tags: stringArray(m.tags),
+    steps: stringArray(m.steps),
+    equipment: stringArray(m.equipment),
+    tips: stringArray(m.tips),
+    youtubeVideoId: stringField(m.youtubeVideoId),
+    youtubeSearch: stringField(m.youtubeSearch),
+  };
+}
 
 const TYPE_META: Record<LibraryType, { label: string; icon: typeof Dumbbell; tone: string }> = {
   workout:    { label: "Workouts",    icon: Dumbbell,    tone: "text-blue-600 dark:text-blue-400" },
@@ -39,6 +65,7 @@ export default function LibraryPage() {
 
   const [filter, setFilter] = useState<LibraryType | "all">("all");
   const [addItem, setAddItem] = useState<AddToSheetItem | null>(null);
+  const [detailItem, setDetailItem] = useState<SavedContent | null>(null);
 
   const { data: items = [], isLoading } = useQuery<SavedContent[]>({
     queryKey: ["/api/library"],
@@ -110,6 +137,14 @@ export default function LibraryPage() {
             {filtered.map((it) => {
               const meta = TYPE_META[it.contentType as LibraryType];
               const Icon = meta?.icon ?? Bookmark;
+              const workoutMeta = it.contentType === "workout" ? parseWorkoutMetadata(it.metadata) : null;
+              const hasDetail = !!workoutMeta && (
+                (workoutMeta.steps?.length ?? 0) > 0 ||
+                !!workoutMeta.youtubeVideoId ||
+                !!workoutMeta.youtubeSearch ||
+                (workoutMeta.tips?.length ?? 0) > 0 ||
+                (workoutMeta.equipment?.length ?? 0) > 0
+              );
               return (
                 <Card key={it.id} data-testid={`library-item-${it.id}`}>
                   <CardContent className="p-4">
@@ -119,9 +154,15 @@ export default function LibraryPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <p className="font-medium truncate" data-testid={`text-title-${it.id}`}>
+                          <button
+                            type="button"
+                            className={`font-medium truncate text-left ${hasDetail ? "hover:underline" : "cursor-default"}`}
+                            onClick={() => hasDetail && setDetailItem(it)}
+                            disabled={!hasDetail}
+                            data-testid={`text-title-${it.id}`}
+                          >
                             {it.title}
-                          </p>
+                          </button>
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {it.contentType}
                           </Badge>
@@ -138,6 +179,16 @@ export default function LibraryPage() {
                           </p>
                         )}
                         <div className="flex flex-wrap gap-2 mt-3">
+                          {hasDetail && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setDetailItem(it)}
+                              data-testid={`button-open-${it.id}`}
+                            >
+                              Open
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             onClick={() => setAddItem({
@@ -145,6 +196,7 @@ export default function LibraryPage() {
                               type: it.contentType as LibraryType,
                               description: it.description ?? undefined,
                               duration: it.duration ? Number(it.duration) || undefined : undefined,
+                              metadata: workoutMeta ?? undefined,
                             })}
                             data-testid={`button-add-${it.id}`}
                           >
@@ -179,7 +231,148 @@ export default function LibraryPage() {
           onOpenChange={(open) => { if (!open) setAddItem(null); }}
         />
       )}
+
+      <SavedWorkoutDetailDialog
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        onAddToDay={(it) => {
+          setDetailItem(null);
+          setAddItem({
+            title: it.title,
+            type: it.contentType as LibraryType,
+            description: it.description ?? undefined,
+            duration: it.duration ? Number(it.duration) || undefined : undefined,
+            metadata: parseWorkoutMetadata(it.metadata) ?? undefined,
+          });
+        }}
+      />
     </div>
+  );
+}
+
+function SavedWorkoutDetailDialog({
+  item,
+  onClose,
+  onAddToDay,
+}: {
+  item: SavedContent | null;
+  onClose: () => void;
+  onAddToDay: (it: SavedContent) => void;
+}) {
+  const meta = item ? parseWorkoutMetadata(item.metadata) : null;
+  const steps = meta?.steps ?? [];
+  const equipment = meta?.equipment ?? [];
+  const tips = meta?.tips ?? [];
+  const tags = meta?.tags ?? [];
+  const intensity = meta?.intensity;
+  const youtubeVideoId = meta?.youtubeVideoId;
+  const youtubeSearch = meta?.youtubeSearch;
+
+  return (
+    <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-library-detail">
+        {item && (
+          <>
+            <DialogHeader>
+              <DialogTitle data-testid="text-detail-title">{item.title}</DialogTitle>
+              {item.description && (
+                <DialogDescription>{item.description}</DialogDescription>
+              )}
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                {item.duration && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {item.duration}{!isNaN(Number(item.duration)) ? " min" : ""}
+                  </span>
+                )}
+                {intensity && (
+                  <Badge variant="secondary" className="capitalize">{intensity}</Badge>
+                )}
+              </div>
+
+              {youtubeVideoId && (
+                <div className="aspect-video w-full overflow-hidden rounded-md border bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                    title={item.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                    data-testid="iframe-youtube"
+                  />
+                </div>
+              )}
+
+              {steps.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Steps</h4>
+                  <ol className="space-y-1 list-decimal list-inside" data-testid="list-steps">
+                    {steps.map((step, idx) => (
+                      <li key={idx} className="text-sm text-muted-foreground">{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {equipment.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Equipment</h4>
+                  <div className="flex flex-wrap gap-1" data-testid="list-equipment">
+                    {equipment.map((e, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{e}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tips.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Tips</h4>
+                  <ul className="space-y-1 list-disc list-inside" data-testid="list-tips">
+                    {tips.map((tip, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{tip}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button onClick={() => onAddToDay(item)} data-testid="button-detail-add">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add to my day
+                </Button>
+                {youtubeSearch && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      window.open(
+                        `https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearch)}`,
+                        "_blank",
+                      )
+                    }
+                    data-testid="button-detail-youtube"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    More videos
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

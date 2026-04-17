@@ -477,6 +477,15 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
       type: "workout",
       duration: workout.duration,
       description: workout.description,
+      metadata: {
+        intensity: workout.intensity,
+        tags: workout.tags,
+        steps: workout.steps,
+        equipment: workout.equipment,
+        tips: workout.tips,
+        youtubeVideoId: workout.youtubeVideoId,
+        youtubeSearch: workout.youtubeSearch,
+      },
     });
   };
 

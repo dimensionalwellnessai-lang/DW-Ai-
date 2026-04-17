@@ -24,11 +24,24 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+export interface WorkoutLibraryMetadata {
+  intensity?: string;
+  tags?: string[];
+  steps?: string[];
+  equipment?: string[];
+  tips?: string[];
+  youtubeVideoId?: string;
+  youtubeSearch?: string;
+}
+
+export type LibraryItemMetadata = WorkoutLibraryMetadata;
+
 export interface AddToSheetItem {
   title: string;
   type: 'workout' | 'meal' | 'meditation' | 'habit' | 'goal';
   duration?: number;
   description?: string;
+  metadata?: LibraryItemMetadata;
 }
 
 export interface AddToSheetProps {
@@ -131,6 +144,7 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
         contentType: item.type,
         description: item.description,
         duration: item.duration,
+        metadata: item.metadata,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/library"] });
 
