@@ -108,7 +108,7 @@ export async function schedulePreTaskNotification(
 /**
  * Show a pre-task notification asking if user will do the task
  */
-async function showPreTaskNotification(
+export async function showPreTaskNotification(
   taskId: string,
   taskName: string,
   scheduledTime: Date
@@ -170,7 +170,7 @@ export async function schedulePostTaskNotification(
 /**
  * Show a post-task notification asking if user completed the task
  */
-async function showPostTaskNotification(
+export async function showPostTaskNotification(
   taskId: string,
   taskName: string
 ): Promise<void> {

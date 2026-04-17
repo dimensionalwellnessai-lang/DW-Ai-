@@ -379,6 +379,23 @@ function AppContent() {
     apiRequest("POST", "/api/notifications/dw-daily").catch(() => {});
   }, [user]);
 
+  // Start the accountability reminder scheduler for signed-in users.
+  // Plans pre-task and post-task local notifications for today's tasks and
+  // calendar events, respecting the user's quiet hours and preferences.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    let stop: (() => void) | undefined;
+    void import("@/lib/accountability-scheduler").then((m) => {
+      if (cancelled) return;
+      stop = m.startAccountabilityScheduler();
+    });
+    return () => {
+      cancelled = true;
+      if (stop) stop();
+    };
+  }, [user]);
+
   // Prompt username setup for logged-in users without a username
   // Show when they navigate to social-facing pages
   useEffect(() => {

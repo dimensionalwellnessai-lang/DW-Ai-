@@ -46,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 The following advertised-but-unfinished features were hidden or removed to keep the UI honest:
 - **Save to Library** (in `client/src/components/add-to-sheet.tsx`): The "Save to Library" entry-point button was removed because the backend Library API is not built. The other destinations (Add to Today / This Week / Routine) still work.
 - **Meal photo analysis**: No UI surfaces this, so the unused stub backend endpoints `/api/analyze-meal-photo` (in `server/routes.ts` and `server/routes/wellness-tracking.ts`) were deleted.
-- **Accountability scheduler client library** (`client/src/lib/accountability-scheduler.ts`): The unused client-side scheduler module (no consumers, depended on missing server endpoints) was deleted.
+- ~~**Accountability scheduler client library**~~ — restored. `client/src/lib/accountability-scheduler.ts` plans pre-task and post-task local notifications for today's tasks and calendar events, respects quiet hours, and is started in `App.tsx` for signed-in users. Backed by the existing `/api/accountability/preferences` endpoints and configured from the Accountability Settings page.
 - **Support report — conversation snippet toggle** (`client/src/pages/support-report.tsx`): The "Conversation snippet" toggle and its "not yet captured in beta" copy were removed because conversation history capture is not implemented. The page now POSTs to the working `/api/support/detailed-report` endpoint (it had been pointed at the wrong URL); tech-details and recent-context toggles function end-to-end.
 
 The underlying database schemas and unrelated code paths were left intact in case these features come back.
