@@ -70,6 +70,12 @@ export interface PlannedReminder {
   startMs: number;
 }
 const plannedReminders = new Map<string, PlannedReminder>();
+/**
+ * Snapshot of reminders the user has skipped but whose fire-time is still in
+ * the future. Powers the "Skipped" sub-list with a Restore action so a
+ * miss-tap can be undone before the reminder would have fired.
+ */
+const skippedReminders = new Map<string, PlannedReminder>();
 const snapshotSubscribers = new Set<() => void>();
 function notifySnapshot() {
   for (const cb of Array.from(snapshotSubscribers)) {
@@ -79,6 +85,10 @@ function notifySnapshot() {
 
 export function getPlannedReminders(): PlannedReminder[] {
   return Array.from(plannedReminders.values()).sort((a, b) => a.fireAt - b.fireAt);
+}
+
+export function getSkippedReminders(): PlannedReminder[] {
+  return Array.from(skippedReminders.values()).sort((a, b) => a.fireAt - b.fireAt);
 }
 
 export function subscribeToPlannedReminders(cb: () => void): () => void {
@@ -322,9 +332,33 @@ export async function planReminders(): Promise<{
   // Build the planned-reminders snapshot regardless of delivery channel so
   // the upcoming-reminders UI can display them. We only include reminders
   // that haven't been individually skipped and aren't already in the past.
+  // Skipped-but-still-upcoming reminders are tracked in a parallel snapshot
+  // so the UI can offer a Restore action.
   const minutesBefore = prefs.preTaskMinutes ?? 15;
   plannedReminders.clear();
+  skippedReminders.clear();
   const now = Date.now();
+  const recordSkipped = (
+    key: string,
+    item: ScheduleableItem,
+    kind: "pre" | "post",
+    fireAt: number,
+  ) => {
+    // Only surface a Restore option while the reminder would still be in the
+    // future and isn't suppressed by quiet hours — otherwise restoring it
+    // wouldn't actually re-arm a ping.
+    if (fireAt > now && !isInQuietHours(new Date(fireAt), prefs)) {
+      skippedReminders.set(key, {
+        key,
+        itemId: item.id,
+        itemKind: item.kind,
+        kind,
+        name: item.name,
+        fireAt,
+        startMs: item.start.getTime(),
+      });
+    }
+  };
   for (const item of items) {
     const itemKind: "task" | "event" = item.kind;
     if (prefs.preTaskEnabled) {
@@ -333,11 +367,9 @@ export async function planReminders(): Promise<{
       // Mirror the actual delivery filters here so the panel only lists
       // reminders that would genuinely fire: not in the past, not skipped,
       // and not silently suppressed by quiet hours.
-      if (
-        fireAt > now &&
-        !isSkipped(key, item.start.getTime()) &&
-        !isInQuietHours(new Date(fireAt), prefs)
-      ) {
+      if (isSkipped(key, item.start.getTime())) {
+        recordSkipped(key, item, "pre", fireAt);
+      } else if (fireAt > now && !isInQuietHours(new Date(fireAt), prefs)) {
         plannedReminders.set(key, {
           key,
           itemId: item.id,
@@ -353,11 +385,9 @@ export async function planReminders(): Promise<{
       const key = `post:${item.id}`;
       const endRef = item.end ?? new Date(item.start.getTime() + 30 * 60 * 1000);
       const fireAt = endRef.getTime();
-      if (
-        fireAt > now &&
-        !isSkipped(key, item.start.getTime()) &&
-        !isInQuietHours(new Date(fireAt), prefs)
-      ) {
+      if (isSkipped(key, item.start.getTime())) {
+        recordSkipped(key, item, "post", fireAt);
+      } else if (fireAt > now && !isInQuietHours(new Date(fireAt), prefs)) {
         plannedReminders.set(key, {
           key,
           itemId: item.id,
@@ -503,6 +533,10 @@ export async function skipReminder(
   saveSkipped(skips);
 
   plannedReminders.delete(reminder.key);
+  // Mirror the skip into the skipped snapshot immediately so the UI's
+  // "Skipped" sub-list and any in-flight Undo affordance can refer to it
+  // before the asynchronous replan finishes.
+  skippedReminders.set(reminder.key, reminder);
   notifySnapshot();
 
   // Native: cancel just this one OS notification.
@@ -540,6 +574,53 @@ export async function skipReminder(
   }
 
   return { localPersisted: true, nativeCancelled, serverCancelled };
+}
+
+/**
+ * Restore a previously-skipped reminder so it will fire again. Reverses the
+ * three-channel state changes performed by skipReminder():
+ *   - drops the localStorage skip entry
+ *   - clears the server's cancelled-ledger entry for this single tag
+ *   - re-plans, which re-arms the in-page timer and (on Capacitor) the OS
+ *     notification.
+ */
+export interface RestoreReminderResult {
+  localPersisted: true;
+  serverCleared: boolean;
+}
+
+export async function restoreReminder(
+  reminder: PlannedReminder,
+): Promise<RestoreReminderResult> {
+  const skips = loadSkipped();
+  if (skips[reminder.key] !== undefined) {
+    delete skips[reminder.key];
+    saveSkipped(skips);
+  }
+  skippedReminders.delete(reminder.key);
+  notifySnapshot();
+
+  let serverCleared = false;
+  try {
+    await apiRequest("POST", "/api/accountability/reminders/restore", {
+      itemId: reminder.itemId,
+      kind: reminder.kind,
+    });
+    serverCleared = true;
+  } catch (err) {
+    console.error("[accountability-scheduler] server restore failed:", err);
+  }
+
+  // Re-plan to re-arm the in-page timer (and native OS notification on
+  // Capacitor). The replan will also rebuild plannedReminders so the panel
+  // shows the restored entry in its upcoming list.
+  try {
+    await planReminders();
+  } catch (err) {
+    console.error("[accountability-scheduler] replan after restore failed:", err);
+  }
+
+  return { localPersisted: true, serverCleared };
 }
 
 /**

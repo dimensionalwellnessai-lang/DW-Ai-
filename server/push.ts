@@ -411,6 +411,32 @@ export function markSingleReminderCancelled(
 }
 
 /**
+ * Clear a single pre- or post-task reminder cancellation so the matching
+ * reminder can fire again. Used when the user undoes a skip from the
+ * upcoming-reminders panel.
+ */
+export function clearSingleReminderCancellation(
+  userId: string,
+  kind: "pre" | "post",
+  opts: { taskId?: string | null; calendarEventId?: string | null },
+): void {
+  const tag = opts.taskId
+    ? `${kind}-task-task:${opts.taskId}`
+    : opts.calendarEventId
+      ? `${kind}-task-event:${opts.calendarEventId}`
+      : null;
+  if (!tag) return;
+  cancelledLedger.delete(cancelKey(userId, tag));
+  // Also drop any sent-marker so a restored reminder whose fireAt lands in a
+  // bucket the scheduler already wrote to can still dispatch.
+  const prefix = `${userId}|${tag}|`;
+  for (const k of Array.from(sentLedger.keys())) {
+    if (k.startsWith(prefix)) sentLedger.delete(k);
+  }
+  void deleteLedgerRowsForTag(userId, tag);
+}
+
+/**
  * Clear a previous cancellation so reminders for this item can fire again
  * (e.g. when a completed task is uncompleted, or a task is rescheduled to a
  * fresh slot the user genuinely wants to be reminded about).
