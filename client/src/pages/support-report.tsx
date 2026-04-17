@@ -17,6 +17,21 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, CheckCircle2, Send } from "lucide-react";
 import { APP_VERSION } from "@/routes/registry";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useAuth } from "@/hooks/use-auth";
+import { useConversations } from "@/hooks/use-conversations";
+
+interface ChatLikeMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp?: number;
+}
+
+const SNIPPET_MAX_CHARS = 2000;
+
+function truncate(value: string, max = SNIPPET_MAX_CHARS): string {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}…`;
+}
 
 const CATEGORIES = [
   { value: "bug", label: "Bug / Something broken" },
@@ -44,6 +59,11 @@ interface ReportPayload {
     route?: string;
   };
   includeConversationSnippet: boolean;
+  conversationSnippet?: {
+    conversationId?: string;
+    lastUserMessage?: string;
+    lastDwReply?: string;
+  };
   includeConstraintsSnapshot: boolean;
 }
 
@@ -72,7 +92,27 @@ export default function SupportReportPage() {
   const [steps, setSteps] = useState("");
   const [includeTech, setIncludeTech] = useState(true);
   const [includeContext, setIncludeContext] = useState(false);
+  const [includeConversation, setIncludeConversation] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const { user } = useAuth();
+  const { activeConversation } = useConversations({ userId: user?.id });
+
+  const conversationSnippet = (() => {
+    if (!activeConversation) return null;
+    const messages = ((activeConversation as { messages?: ChatLikeMessage[] }).messages ?? []) as ChatLikeMessage[];
+    if (messages.length === 0) return null;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastUser && !lastAssistant) return null;
+    return {
+      conversationId: (activeConversation as { id?: string }).id,
+      lastUserMessage: lastUser ? truncate(lastUser.content) : undefined,
+      lastDwReply: lastAssistant ? truncate(lastAssistant.content) : undefined,
+    };
+  })();
+
+  const hasConversationSnippet = !!conversationSnippet;
 
   const mutation = useMutation({
     mutationFn: submitSupportReport,
@@ -114,7 +154,9 @@ export default function SupportReportPage() {
       recentContext: includeContext
         ? { route: window.location.pathname }
         : undefined,
-      includeConversationSnippet: false,
+      includeConversationSnippet: includeConversation && hasConversationSnippet,
+      conversationSnippet:
+        includeConversation && conversationSnippet ? conversationSnippet : undefined,
       includeConstraintsSnapshot: false,
     };
 
@@ -240,6 +282,26 @@ export default function SupportReportPage() {
                   id="toggle-context"
                   checked={includeContext}
                   onCheckedChange={setIncludeContext}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="pr-3">
+                  <Label htmlFor="toggle-conversation" className="text-sm font-medium">
+                    Conversation snippet
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {hasConversationSnippet
+                      ? "Your last message to DW and DW's last reply"
+                      : "No recent DW conversation to attach"}
+                  </p>
+                </div>
+                <Switch
+                  id="toggle-conversation"
+                  data-testid="switch-conversation-snippet"
+                  checked={includeConversation && hasConversationSnippet}
+                  disabled={!hasConversationSnippet}
+                  onCheckedChange={setIncludeConversation}
                 />
               </div>
 
