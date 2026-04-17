@@ -213,6 +213,98 @@ interface PendingReminder {
   payload: ReminderPayload;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Reminder ledger
+//
+// Two in-memory maps keep the scheduler honest across ticks and across
+// task/event mutations:
+//
+//   - sentLedger:      keyed by `${userId}|${tag}|${minute}` to dedupe a single
+//                      reminder so it cannot be dispatched twice (e.g. if a
+//                      tick fires twice during the same wall-clock minute, or
+//                      if a reschedule lands the new fireAt back inside the
+//                      same scheduler window).
+//   - cancelledLedger: keyed by `${userId}|${tag}` to suppress an upcoming
+//                      reminder when the user completes / deletes a task or
+//                      moves it out of today. Routes call markRemindersCancelled
+//                      to populate this; the next scheduler tick skips them.
+//
+// Both ledgers self-prune entries older than 25h so they cannot grow without
+// bound. The 25h horizon is the pre-task lead time + a generous safety margin.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const sentLedger = new Map<string, number>();
+const cancelledLedger = new Map<string, number>();
+const LEDGER_TTL_MS = 25 * 60 * 60 * 1000;
+
+function pruneLedger(map: Map<string, number>): void {
+  const cutoff = Date.now() - LEDGER_TTL_MS;
+  for (const [k, ts] of Array.from(map.entries())) {
+    if (ts < cutoff) map.delete(k);
+  }
+}
+
+function sentKey(userId: string, tag: string, fireAt: number): string {
+  return `${userId}|${tag}|${Math.floor(fireAt / 60000)}`;
+}
+
+function cancelKey(userId: string, tag: string): string {
+  return `${userId}|${tag}`;
+}
+
+function tagsForItem(opts: {
+  taskId?: string | null;
+  calendarEventId?: string | null;
+}): string[] {
+  const out: string[] = [];
+  if (opts.taskId) {
+    out.push(`pre-task-task:${opts.taskId}`);
+    out.push(`post-task-task:${opts.taskId}`);
+  }
+  if (opts.calendarEventId) {
+    out.push(`pre-task-event:${opts.calendarEventId}`);
+    out.push(`post-task-event:${opts.calendarEventId}`);
+  }
+  return out;
+}
+
+/**
+ * Mark a task / calendar event's upcoming reminders as cancelled. Called by
+ * the routes when an item is completed, deleted, or moved out of today —
+ * ensures the next scheduler tick will not push a stale reminder for it.
+ */
+export function markRemindersCancelled(
+  userId: string,
+  opts: { taskId?: string | null; calendarEventId?: string | null },
+): void {
+  const now = Date.now();
+  for (const tag of tagsForItem(opts)) {
+    cancelledLedger.set(cancelKey(userId, tag), now);
+  }
+}
+
+/**
+ * Clear a previous cancellation so reminders for this item can fire again
+ * (e.g. when a completed task is uncompleted, or a task is rescheduled to a
+ * fresh slot the user genuinely wants to be reminded about).
+ */
+export function clearReminderCancellations(
+  userId: string,
+  opts: { taskId?: string | null; calendarEventId?: string | null },
+): void {
+  for (const tag of tagsForItem(opts)) {
+    cancelledLedger.delete(cancelKey(userId, tag));
+    // Also drop any sent-marker for this tag in the last day so a freshly
+    // rescheduled item that lands in the same minute bucket as the original
+    // can fire again. Sent keys are `${userId}|${tag}|${minute}` so we strip
+    // by prefix.
+    const prefix = `${userId}|${tag}|`;
+    for (const k of Array.from(sentLedger.keys())) {
+      if (k.startsWith(prefix)) sentLedger.delete(k);
+    }
+  }
+}
+
 /**
  * For the given user, build the list of reminders that should fire in the
  * window [windowStart, windowEnd). We rebuild from scratch each tick — the
@@ -293,12 +385,19 @@ async function buildRemindersForUser(
     const taskId = item.kind === "task" ? item.id.slice(5) : null;
     const calendarEventId = item.kind === "event" ? item.id.slice(6) : null;
 
-    if (prefs.preTaskEnabled) {
+    const preTag = `pre-task-${item.id}`;
+    const postTag = `post-task-${item.id}`;
+
+    if (
+      prefs.preTaskEnabled &&
+      !cancelledLedger.has(cancelKey(userId, preTag))
+    ) {
       const fireAt = item.start.getTime() - minutesBefore * 60 * 1000;
       if (
         fireAt >= windowStart &&
         fireAt < windowEnd &&
-        !isInQuietHours(new Date(fireAt), prefs)
+        !isInQuietHours(new Date(fireAt), prefs) &&
+        !sentLedger.has(sentKey(userId, preTag, fireAt))
       ) {
         out.push({
           fireAt,
@@ -307,7 +406,7 @@ async function buildRemindersForUser(
             body: `Scheduled for ${formatTime(item.start)}. Will you be doing this?`,
             notificationType: "pre_task",
             url: "/accountability",
-            tag: `pre-task-${item.id}`,
+            tag: preTag,
             taskData: {
               taskId,
               calendarEventId,
@@ -320,13 +419,17 @@ async function buildRemindersForUser(
       }
     }
 
-    if (prefs.postTaskEnabled) {
+    if (
+      prefs.postTaskEnabled &&
+      !cancelledLedger.has(cancelKey(userId, postTag))
+    ) {
       const endRef = item.end ?? new Date(item.start.getTime() + 30 * 60 * 1000);
       const fireAt = endRef.getTime();
       if (
         fireAt >= windowStart &&
         fireAt < windowEnd &&
-        !isInQuietHours(new Date(fireAt), prefs)
+        !isInQuietHours(new Date(fireAt), prefs) &&
+        !sentLedger.has(sentKey(userId, postTag, fireAt))
       ) {
         out.push({
           fireAt,
@@ -335,7 +438,7 @@ async function buildRemindersForUser(
             body: "Did you complete this task?",
             notificationType: "post_task",
             url: "/accountability",
-            tag: `post-task-${item.id}`,
+            tag: postTag,
             taskData: {
               taskId,
               calendarEventId,
@@ -354,6 +457,8 @@ let schedulerHandle: ReturnType<typeof setInterval> | null = null;
 async function tick(): Promise<void> {
   const now = Date.now();
   const windowEnd = now + SCHEDULER_INTERVAL_MS;
+  pruneLedger(sentLedger);
+  pruneLedger(cancelledLedger);
   try {
     // Find every user with at least one push subscription. Joining keeps the
     // workload bounded: only users who have actually opted-in are scanned.
@@ -378,6 +483,11 @@ async function tick(): Promise<void> {
           windowEnd,
         );
         for (const reminder of reminders) {
+          const key = sentKey(userId, reminder.payload.tag, reminder.fireAt);
+          if (sentLedger.has(key)) continue;
+          // Mark before dispatch so a slow send cannot be doubled-up by a
+          // subsequent tick that arrives before the await resolves.
+          sentLedger.set(key, Date.now());
           await sendPushToUser(userId, reminder.payload);
         }
       } catch (err) {

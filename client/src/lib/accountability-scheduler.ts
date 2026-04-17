@@ -21,6 +21,7 @@ import { ensurePushSubscription, isWebPushSupported } from "@/lib/push-subscript
 import {
   isCapacitor,
   rescheduleNativeReminders,
+  cancelNativeRemindersForItem,
 } from "@/lib/capacitor-notifications";
 import type {
   Task,
@@ -44,6 +45,14 @@ let lastRunAt = 0;
 let mutationReplanTimer: TimerHandle | null = null;
 let suppressCacheReplan = false;
 let unsubscribeQueryCache: (() => void) | null = null;
+/**
+ * Snapshot of the items planned in the most recent run, keyed by item id
+ * (`task:<id>` / `event:<id>`). Used to diff against the current cache so we
+ * can immediately cancel native notifications for items that disappear, get
+ * completed, or have their start time edited — without waiting for the
+ * debounced replan to finish.
+ */
+const lastPlannedItems = new Map<string, { startMs: number }>();
 
 const RUN_THROTTLE_MS = 60 * 1000;
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -218,6 +227,14 @@ export async function planReminders(): Promise<{
   }
 
   const items = await loadTodayItems();
+
+  // Refresh the planned-items snapshot so the cache subscriber can diff
+  // against the latest plan when subsequent mutations arrive.
+  lastPlannedItems.clear();
+  for (const it of items) {
+    lastPlannedItems.set(it.id, { startMs: it.start.getTime() });
+  }
+
   const now = Date.now();
   const minutesBefore = prefs.preTaskMinutes ?? 15;
   let scheduled = 0;
@@ -308,7 +325,34 @@ export function startAccountabilityScheduler(): () => void {
     }
   };
 
+  /**
+   * Compare the latest tasks/calendar caches against the previously-planned
+   * snapshot and immediately cancel native (Capacitor) reminders for any
+   * items that have been completed, deleted, moved out of today, or whose
+   * scheduled start has shifted. This closes the window between a user's
+   * mutation and the debounced full-replan finishing.
+   */
+  const cancelRemovedNativeReminders = () => {
+    if (!isCapacitor() || lastPlannedItems.size === 0) return;
+    const tasks = queryClient.getQueryData<Task[]>(["/api/tasks"]) ?? [];
+    const events = queryClient.getQueryData<CalendarEvent[]>(["/api/calendar"]) ?? [];
+    const current = new Map<string, number>();
+    for (const it of tasksToItems(tasks)) current.set(it.id, it.start.getTime());
+    for (const it of eventsToItems(events)) current.set(it.id, it.start.getTime());
+
+    for (const [id, prev] of Array.from(lastPlannedItems.entries())) {
+      const next = current.get(id);
+      if (next === undefined || next !== prev.startMs) {
+        // Removed, completed, moved out of today, or rescheduled — cancel
+        // the previously-scheduled OS notifications now.
+        void cancelNativeRemindersForItem(id);
+        lastPlannedItems.delete(id);
+      }
+    }
+  };
+
   const scheduleMutationReplan = () => {
+    cancelRemovedNativeReminders();
     if (mutationReplanTimer) clearTimeout(mutationReplanTimer);
     mutationReplanTimer = setTimeout(() => {
       mutationReplanTimer = null;
@@ -377,5 +421,6 @@ export function stopAccountabilityScheduler(): void {
     clearInterval(refreshInterval);
     refreshInterval = null;
   }
+  lastPlannedItems.clear();
   clearAllTimers();
 }

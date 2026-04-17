@@ -211,3 +211,35 @@ export async function rescheduleNativeReminders(
   writeScheduledIds(newIds);
   return { scheduled: toSchedule.length, skipped };
 }
+
+/**
+ * Cancel the pre-task and post-task local notifications for a single item
+ * (`task:<id>` or `event:<id>`). Used when the user completes, deletes, or
+ * reschedules a single task so its previously-scheduled OS notifications
+ * don't fire.
+ *
+ * Idempotent — a cancel for an unknown id is a no-op.
+ */
+export async function cancelNativeRemindersForItem(itemId: string): Promise<void> {
+  if (!isCapacitor()) return;
+  const preId = hashId(`pre:${itemId}`);
+  const postId = hashId(`post:${itemId}`);
+
+  const stored = readScheduledIds();
+  const targets: number[] = [];
+  if (stored.includes(preId)) targets.push(preId);
+  if (stored.includes(postId)) targets.push(postId);
+  if (targets.length === 0) return;
+
+  try {
+    const { LocalNotifications } = await loadModule();
+    await LocalNotifications.cancel({
+      notifications: targets.map((id) => ({ id })),
+    });
+  } catch (err) {
+    console.error("[capacitor-notifications] cancelForItem failed:", err);
+    return;
+  }
+
+  writeScheduledIds(stored.filter((id) => !targets.includes(id)));
+}

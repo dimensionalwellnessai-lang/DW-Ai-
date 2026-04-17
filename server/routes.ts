@@ -4911,6 +4911,39 @@ Return ONLY this exact JSON structure, no other text:
         }
       }
 
+      // Cancel/clear server-side accountability reminders to match the new
+      // task state. The native (Capacitor) cancel runs client-side via the
+      // accountability scheduler's cache subscription.
+      try {
+        const { markRemindersCancelled, clearReminderCancellations } =
+          await import("./push");
+        const becameCompleted =
+          updateData.isCompleted === true && existing.isCompleted !== true;
+        const becameUncompleted =
+          updateData.isCompleted === false && existing.isCompleted === true;
+        // Normalize both sides to epoch-ms before comparing so a Date vs
+        // ISO-string round-trip doesn't falsely report a change.
+        const normalizeTs = (v: unknown): number | null => {
+          if (v === null || v === undefined || v === "") return null;
+          const d = v instanceof Date ? v : new Date(v as string);
+          const t = d.getTime();
+          return isFinite(t) ? t : null;
+        };
+        const startChanged =
+          updateData.scheduledStart !== undefined &&
+          normalizeTs(updateData.scheduledStart) !==
+            normalizeTs(existing.scheduledStart);
+
+        if (becameCompleted) {
+          markRemindersCancelled(userId, { taskId: req.params.id });
+        }
+        if (becameUncompleted || startChanged) {
+          clearReminderCancellations(userId, { taskId: req.params.id });
+        }
+      } catch {
+        // Non-fatal — push module may be unavailable in some envs.
+      }
+
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -4927,6 +4960,12 @@ Return ONLY this exact JSON structure, no other text:
         return res.status(404).json({ error: "Task not found" });
       }
       await storage.deleteTask(req.params.id);
+      try {
+        const { markRemindersCancelled } = await import("./push");
+        markRemindersCancelled(req.session.userId!, { taskId: req.params.id });
+      } catch {
+        // Non-fatal
+      }
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete task" });
@@ -5143,9 +5182,20 @@ Return ONLY this exact JSON structure, no other text:
 
   app.patch("/api/calendar/:id", requireAuth, async (req, res) => {
     try {
-      const updated = await storage.updateCalendarEventForUser(req.params.id, req.session.userId!, req.body);
+      const userId = req.session.userId!;
+      const updated = await storage.updateCalendarEventForUser(req.params.id, userId, req.body);
       if (!updated) {
         return res.status(404).json({ error: "Event not found" });
+      }
+      // If the event's start/end was edited, drop any existing reminder
+      // cancellations so the rescheduled instance can fire fresh reminders.
+      if (req.body && (req.body.startTime !== undefined || req.body.endTime !== undefined)) {
+        try {
+          const { clearReminderCancellations } = await import("./push");
+          clearReminderCancellations(userId, { calendarEventId: req.params.id });
+        } catch {
+          // Non-fatal
+        }
       }
       res.json(updated);
     } catch (error) {
@@ -5158,6 +5208,12 @@ Return ONLY this exact JSON structure, no other text:
       const deleted = await storage.deleteCalendarEventForUser(req.params.id, req.session.userId!);
       if (!deleted) {
         return res.status(404).json({ error: "Event not found" });
+      }
+      try {
+        const { markRemindersCancelled } = await import("./push");
+        markRemindersCancelled(req.session.userId!, { calendarEventId: req.params.id });
+      } catch {
+        // Non-fatal
       }
       res.json({ success: true });
     } catch (error) {
