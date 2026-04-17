@@ -41,9 +41,29 @@ interface ScheduleableItem {
 const activeTimers = new Set<TimerHandle>();
 let refreshInterval: TimerHandle | null = null;
 let lastRunAt = 0;
+let mutationReplanTimer: TimerHandle | null = null;
+let suppressCacheReplan = false;
+let unsubscribeQueryCache: (() => void) | null = null;
 
 const RUN_THROTTLE_MS = 60 * 1000;
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+/**
+ * Small debounce so a single user action that invalidates several queries
+ * (e.g. completing a task that touches both /api/tasks and /api/calendar)
+ * only triggers one re-plan instead of one per cache event.
+ */
+const MUTATION_REPLAN_DEBOUNCE_MS = 250;
+
+/**
+ * Query keys whose cache updates should immediately re-plan reminders so
+ * cancelled/edited/completed items stop firing stale notifications without
+ * waiting for the next 15-minute refresh.
+ */
+const REPLAN_TRIGGER_KEYS = new Set<string>([
+  "/api/tasks",
+  "/api/calendar",
+  "/api/accountability/preferences",
+]);
 
 function clearAllTimers(): void {
   activeTimers.forEach((t) => clearTimeout(t));
@@ -141,7 +161,14 @@ async function fetchJson<T>(url: string): Promise<T | null> {
     });
     if (!res.ok) return null;
     const data = (await res.json()) as T;
-    queryClient.setQueryData([url], data);
+    // Republish to the cache without re-triggering our own cache subscription
+    // (otherwise planReminders → setQueryData → subscriber → planReminders).
+    suppressCacheReplan = true;
+    try {
+      queryClient.setQueryData([url], data);
+    } finally {
+      suppressCacheReplan = false;
+    }
     return data;
   } catch (err) {
     console.error(`[accountability-scheduler] fetch ${url} failed:`, err);
@@ -271,14 +298,22 @@ export async function planReminders(): Promise<{
  * becomes visible again (covers laptops waking from sleep).
  */
 export function startAccountabilityScheduler(): () => void {
-  const run = async () => {
-    if (Date.now() - lastRunAt < RUN_THROTTLE_MS) return;
+  const run = async (force = false) => {
+    if (!force && Date.now() - lastRunAt < RUN_THROTTLE_MS) return;
     lastRunAt = Date.now();
     try {
       await planReminders();
     } catch (err) {
       console.error("[accountability-scheduler] planReminders failed:", err);
     }
+  };
+
+  const scheduleMutationReplan = () => {
+    if (mutationReplanTimer) clearTimeout(mutationReplanTimer);
+    mutationReplanTimer = setTimeout(() => {
+      mutationReplanTimer = null;
+      void run(true);
+    }, MUTATION_REPLAN_DEBOUNCE_MS);
   };
 
   void run();
@@ -291,17 +326,53 @@ export function startAccountabilityScheduler(): () => void {
   };
   document.addEventListener("visibilitychange", onVisibility);
 
+  // React in real time to task / event / preference mutations. Any time one of
+  // these queries is invalidated, updated, or removed, re-plan reminders so a
+  // freshly completed/moved/deleted item stops firing stale notifications
+  // before the next 15-minute refresh cycle.
+  if (unsubscribeQueryCache) unsubscribeQueryCache();
+  unsubscribeQueryCache = queryClient.getQueryCache().subscribe((event) => {
+    if (!event || suppressCacheReplan) return;
+    const firstKey = event.query?.queryKey?.[0];
+    if (typeof firstKey !== "string" || !REPLAN_TRIGGER_KEYS.has(firstKey)) {
+      return;
+    }
+    if (
+      event.type === "updated" ||
+      event.type === "added" ||
+      event.type === "removed"
+    ) {
+      scheduleMutationReplan();
+    }
+  });
+
   return () => {
     if (refreshInterval) {
       clearInterval(refreshInterval);
       refreshInterval = null;
     }
+    if (mutationReplanTimer) {
+      clearTimeout(mutationReplanTimer);
+      mutationReplanTimer = null;
+    }
     document.removeEventListener("visibilitychange", onVisibility);
+    if (unsubscribeQueryCache) {
+      unsubscribeQueryCache();
+      unsubscribeQueryCache = null;
+    }
     clearAllTimers();
   };
 }
 
 export function stopAccountabilityScheduler(): void {
+  if (mutationReplanTimer) {
+    clearTimeout(mutationReplanTimer);
+    mutationReplanTimer = null;
+  }
+  if (unsubscribeQueryCache) {
+    unsubscribeQueryCache();
+    unsubscribeQueryCache = null;
+  }
   if (refreshInterval) {
     clearInterval(refreshInterval);
     refreshInterval = null;
