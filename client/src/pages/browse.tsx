@@ -1167,6 +1167,10 @@ ${contentList}`,
       
       <div className="sticky z-40 bg-background border-b" style={{ top: 'var(--header-total-height, 80px)' }}>
         <Tabs value={activeTab} onValueChange={(v) => {
+          if (v === "saved") {
+            setLocation("/library");
+            return;
+          }
           setActiveTab(v as "for-you" | "explore" | "video" | "articles" | "saved");
           setTopicFilter("");
           setLengthFilter(null);
