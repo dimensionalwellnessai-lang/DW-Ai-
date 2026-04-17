@@ -15,6 +15,7 @@ import { Bell, Clock, Moon, Sun, CheckCircle2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
+import { UpcomingReminders } from "@/components/upcoming-reminders";
 import type { NotificationPreferences } from "@shared/schema";
 
 export function AccountabilitySettings() {
@@ -129,6 +130,9 @@ export function AccountabilitySettings() {
           </CardContent>
         </Card>
       )}
+
+      {/* Upcoming Reminders */}
+      <UpcomingReminders />
 
       {/* Main Settings */}
       <Card>

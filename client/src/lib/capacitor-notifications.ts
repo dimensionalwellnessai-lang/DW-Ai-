@@ -245,6 +245,30 @@ export async function cancelNativeRemindersForItem(itemId: string): Promise<void
 }
 
 /**
+ * Cancel a single pre- or post-task local notification for the given item.
+ * Used when the user "skips" a single upcoming reminder from the upcoming-
+ * reminders panel, leaving the item's other reminder (and the task itself)
+ * intact.
+ */
+export async function cancelSingleNativeReminder(
+  itemId: string,
+  kind: "pre" | "post",
+): Promise<void> {
+  if (!isCapacitor()) return;
+  const id = hashId(`${kind}:${itemId}`);
+  const stored = readScheduledIds();
+  if (!stored.includes(id)) return;
+  try {
+    const { LocalNotifications } = await loadModule();
+    await LocalNotifications.cancel({ notifications: [{ id }] });
+  } catch (err) {
+    console.error("[capacitor-notifications] cancelSingle failed:", err);
+    return;
+  }
+  writeScheduledIds(stored.filter((x) => x !== id));
+}
+
+/**
  * Cancel every native reminder previously scheduled by this app. Safe to call
  * on web (no-op) and when nothing has been scheduled yet.
  */

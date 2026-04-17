@@ -22,7 +22,9 @@ import {
   isCapacitor,
   rescheduleNativeReminders,
   cancelNativeRemindersForItem,
+  cancelSingleNativeReminder,
 } from "@/lib/capacitor-notifications";
+import { apiRequest } from "@/lib/queryClient";
 import type {
   Task,
   CalendarEvent,
@@ -53,6 +55,60 @@ let unsubscribeQueryCache: (() => void) | null = null;
  * debounced replan to finish.
  */
 const lastPlannedItems = new Map<string, { startMs: number }>();
+
+/**
+ * Snapshot of every individual reminder (pre and post) currently planned for
+ * today, keyed by `${kind}:${itemId}`. Powers the upcoming-reminders panel.
+ */
+export interface PlannedReminder {
+  key: string;
+  itemId: string;
+  itemKind: "task" | "event";
+  kind: "pre" | "post";
+  name: string;
+  fireAt: number;
+  startMs: number;
+}
+const plannedReminders = new Map<string, PlannedReminder>();
+const snapshotSubscribers = new Set<() => void>();
+function notifySnapshot() {
+  for (const cb of Array.from(snapshotSubscribers)) {
+    try { cb(); } catch (err) { console.error("[accountability-scheduler] subscriber error:", err); }
+  }
+}
+
+export function getPlannedReminders(): PlannedReminder[] {
+  return Array.from(plannedReminders.values()).sort((a, b) => a.fireAt - b.fireAt);
+}
+
+export function subscribeToPlannedReminders(cb: () => void): () => void {
+  snapshotSubscribers.add(cb);
+  return () => { snapshotSubscribers.delete(cb); };
+}
+
+// ─── Skipped reminders (persisted) ──────────────────────────────────────────
+// Maps `${kind}:${itemId}` → the item's startMs at the time of the skip. If
+// the item is later rescheduled (different startMs) or removed, the entry is
+// dropped so a fresh slot will fire reminders again — matching the server's
+// clearReminderCancellations behavior.
+const SKIP_STORAGE_KEY = "dw_skipped_reminders";
+type SkipMap = Record<string, number>;
+
+function loadSkipped(): SkipMap {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(SKIP_STORAGE_KEY) : null;
+    return raw ? (JSON.parse(raw) as SkipMap) : {};
+  } catch {
+    return {};
+  }
+}
+function saveSkipped(map: SkipMap): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(SKIP_STORAGE_KEY, JSON.stringify(map));
+    }
+  } catch { /* ignore */ }
+}
 
 const RUN_THROTTLE_MS = 60 * 1000;
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -223,6 +279,13 @@ export async function planReminders(): Promise<{
 
   const prefs = await loadPreferences();
   if (!prefs || !prefs.accountabilityEnabled) {
+    // No reminders should appear in the upcoming-reminders panel when
+    // accountability is off (or prefs are unavailable). Clear any leftover
+    // snapshot from a previous run before returning.
+    if (plannedReminders.size > 0) {
+      plannedReminders.clear();
+      notifySnapshot();
+    }
     return { scheduled: 0, skipped: 0 };
   }
 
@@ -235,25 +298,126 @@ export async function planReminders(): Promise<{
     lastPlannedItems.set(it.id, { startMs: it.start.getTime() });
   }
 
-  const now = Date.now();
+  // Reconcile the persisted skip set against the latest items: drop any skip
+  // whose underlying item has disappeared or been rescheduled (matches the
+  // server's clearReminderCancellations behaviour). What remains will then
+  // suppress matching reminders below.
+  const skips = loadSkipped();
+  const itemStartById = new Map<string, number>();
+  for (const it of items) itemStartById.set(it.id, it.start.getTime());
+  let skipsChanged = false;
+  for (const key of Object.keys(skips)) {
+    const colon = key.indexOf(":");
+    const itemId = colon >= 0 ? key.slice(colon + 1) : "";
+    const currentStart = itemStartById.get(itemId);
+    if (currentStart === undefined || currentStart !== skips[key]) {
+      delete skips[key];
+      skipsChanged = true;
+    }
+  }
+  if (skipsChanged) saveSkipped(skips);
+  const isSkipped = (key: string, startMs: number) =>
+    skips[key] !== undefined && skips[key] === startMs;
+
+  // Build the planned-reminders snapshot regardless of delivery channel so
+  // the upcoming-reminders UI can display them. We only include reminders
+  // that haven't been individually skipped and aren't already in the past.
   const minutesBefore = prefs.preTaskMinutes ?? 15;
+  plannedReminders.clear();
+  const now = Date.now();
+  for (const item of items) {
+    const itemKind: "task" | "event" = item.kind;
+    if (prefs.preTaskEnabled) {
+      const key = `pre:${item.id}`;
+      const fireAt = item.start.getTime() - minutesBefore * 60 * 1000;
+      // Mirror the actual delivery filters here so the panel only lists
+      // reminders that would genuinely fire: not in the past, not skipped,
+      // and not silently suppressed by quiet hours.
+      if (
+        fireAt > now &&
+        !isSkipped(key, item.start.getTime()) &&
+        !isInQuietHours(new Date(fireAt), prefs)
+      ) {
+        plannedReminders.set(key, {
+          key,
+          itemId: item.id,
+          itemKind,
+          kind: "pre",
+          name: item.name,
+          fireAt,
+          startMs: item.start.getTime(),
+        });
+      }
+    }
+    if (prefs.postTaskEnabled) {
+      const key = `post:${item.id}`;
+      const endRef = item.end ?? new Date(item.start.getTime() + 30 * 60 * 1000);
+      const fireAt = endRef.getTime();
+      if (
+        fireAt > now &&
+        !isSkipped(key, item.start.getTime()) &&
+        !isInQuietHours(new Date(fireAt), prefs)
+      ) {
+        plannedReminders.set(key, {
+          key,
+          itemId: item.id,
+          itemKind,
+          kind: "post",
+          name: item.name,
+          fireAt,
+          startMs: item.start.getTime(),
+        });
+      }
+    }
+  }
+  notifySnapshot();
+
   let scheduled = 0;
   let skipped = 0;
 
   // Native Capacitor path — schedule with the OS so reminders fire even when
   // the app is killed. The browser Notification API and its permission state
   // do not apply here; @capacitor/local-notifications uses its own native
-  // permission flow handled inside rescheduleNativeReminders().
+  // permission flow handled inside rescheduleNativeReminders(). To honour
+  // individual skips, we filter out skipped pre/post reminders item-by-item
+  // before handing off.
   if (isCapacitor()) {
     try {
-      const native = await rescheduleNativeReminders(items, {
+      const nativeItems = items.map((it) => {
+        const preKey = `pre:${it.id}`;
+        const postKey = `post:${it.id}`;
+        // Treat a skipped pre as having no scheduled start in the past for
+        // pre-task purposes; skipped post as having no end. The native
+        // helper uses both so we preserve them with split clones.
+        return {
+          base: it,
+          skipPre: isSkipped(preKey, it.start.getTime()),
+          skipPost: isSkipped(postKey, it.start.getTime()),
+        };
+      });
+      // Schedule pre-only and post-only batches independently using the
+      // existing helper by toggling the prefs flags per pass. This avoids
+      // changing the native helper's contract.
+      const baseNativePrefs = {
         preTaskEnabled: !!prefs.preTaskEnabled,
         postTaskEnabled: !!prefs.postTaskEnabled,
         preTaskMinutes: prefs.preTaskMinutes ?? 15,
         quietHoursEnabled: !!prefs.quietHoursEnabled,
         quietHoursStart: prefs.quietHoursStart ?? "22:00",
         quietHoursEnd: prefs.quietHoursEnd ?? "08:00",
-      });
+      };
+      const native = await rescheduleNativeReminders(
+        nativeItems
+          .filter((n) => !(n.skipPre && n.skipPost))
+          .map((n) => n.base),
+        baseNativePrefs,
+      );
+      // Cancel any pre/post that the user individually skipped, since the
+      // helper above re-scheduled both. Cheap and idempotent.
+      for (const n of nativeItems) {
+        if (n.skipPre) await cancelSingleNativeReminder(n.base.id, "pre");
+        if (n.skipPost) await cancelSingleNativeReminder(n.base.id, "post");
+      }
       return native;
     } catch (err) {
       console.error("[accountability-scheduler] native schedule failed:", err);
@@ -276,7 +440,7 @@ export async function planReminders(): Promise<{
     if (prefs.preTaskEnabled) {
       const fireAt = new Date(item.start.getTime() - minutesBefore * 60 * 1000);
       const delay = fireAt.getTime() - now;
-      if (delay > 0) {
+      if (delay > 0 && !isSkipped(`pre:${item.id}`, item.start.getTime())) {
         if (isInQuietHours(fireAt, prefs)) {
           skipped++;
         } else {
@@ -293,7 +457,7 @@ export async function planReminders(): Promise<{
     if (prefs.postTaskEnabled) {
       const endRef = item.end ?? new Date(item.start.getTime() + 30 * 60 * 1000);
       const delay = endRef.getTime() - now;
-      if (delay > 0) {
+      if (delay > 0 && !isSkipped(`post:${item.id}`, item.start.getTime())) {
         if (isInQuietHours(endRef, prefs)) {
           skipped++;
         } else {
@@ -308,6 +472,74 @@ export async function planReminders(): Promise<{
   }
 
   return { scheduled, skipped };
+}
+
+/**
+ * Skip a single upcoming pre- or post-task reminder. Persists the skip in
+ * localStorage (so re-plans don't re-add it), cancels any native OS
+ * notification already queued for it, and asks the server to suppress the
+ * matching push so the reminder also won't arrive when the tab is closed.
+ *
+ * The skip is automatically cleared by planReminders() the next time the
+ * underlying item is rescheduled or removed.
+ */
+export interface SkipReminderResult {
+  /** The local-state changes always succeed — the reminder is removed
+   *  from the snapshot and persisted in the skip ledger. */
+  localPersisted: true;
+  /** True if the native (Capacitor) OS notification was cancelled, or
+   *  not applicable on this platform. */
+  nativeCancelled: boolean;
+  /** True if the server accepted the cancellation (cancelled-ledger
+   *  updated so the push scheduler will suppress the reminder too). */
+  serverCancelled: boolean;
+}
+
+export async function skipReminder(
+  reminder: PlannedReminder,
+): Promise<SkipReminderResult> {
+  const skips = loadSkipped();
+  skips[reminder.key] = reminder.startMs;
+  saveSkipped(skips);
+
+  plannedReminders.delete(reminder.key);
+  notifySnapshot();
+
+  // Native: cancel just this one OS notification.
+  let nativeCancelled = true;
+  if (isCapacitor()) {
+    try {
+      await cancelSingleNativeReminder(reminder.itemId, reminder.kind);
+    } catch (err) {
+      nativeCancelled = false;
+      console.error("[accountability-scheduler] cancelSingleNative failed:", err);
+    }
+  }
+
+  // Server: add to cancelled ledger so the push scheduler skips it too.
+  let serverCancelled = false;
+  try {
+    await apiRequest("POST", "/api/accountability/reminders/skip", {
+      itemId: reminder.itemId,
+      kind: reminder.kind,
+    });
+    serverCancelled = true;
+  } catch (err) {
+    console.error("[accountability-scheduler] server skip failed:", err);
+  }
+
+  // Web in-page timers were already armed by the previous planReminders()
+  // run and are not individually cancellable from here. Re-plan now so the
+  // freshly-persisted skip causes the matching setTimeout to be cleared and
+  // not re-scheduled. Errors are non-fatal — server + native cancellations
+  // above still take effect.
+  try {
+    await planReminders();
+  } catch (err) {
+    console.error("[accountability-scheduler] replan after skip failed:", err);
+  }
+
+  return { localPersisted: true, nativeCancelled, serverCancelled };
 }
 
 /**
@@ -422,5 +654,7 @@ export function stopAccountabilityScheduler(): void {
     refreshInterval = null;
   }
   lastPlannedItems.clear();
+  plannedReminders.clear();
+  notifySnapshot();
   clearAllTimers();
 }

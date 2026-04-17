@@ -9450,6 +9450,29 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // Skip a single upcoming reminder. Body: { itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }
+  app.post("/api/accountability/reminders/skip", requireAuth, async (req, res) => {
+    try {
+      const { itemId, kind } = req.body as { itemId?: string; kind?: string };
+      if (
+        typeof itemId !== "string" ||
+        (!itemId.startsWith("task:") && !itemId.startsWith("event:")) ||
+        (kind !== "pre" && kind !== "post")
+      ) {
+        return res.status(400).json({ error: "Invalid itemId or kind" });
+      }
+      const { markSingleReminderCancelled } = await import("./push");
+      const opts = itemId.startsWith("task:")
+        ? { taskId: itemId.slice(5) }
+        : { calendarEventId: itemId.slice(6) };
+      markSingleReminderCancelled(req.session.userId!, kind, opts);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Skip reminder error:", error);
+      res.status(500).json({ error: "Failed to skip reminder" });
+    }
+  });
+
   app.put("/api/accountability/preferences", requireAuth, async (req, res) => {
     try {
       const prefs = await accountability.updateNotificationPreferences(

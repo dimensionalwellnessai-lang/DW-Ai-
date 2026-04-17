@@ -284,6 +284,25 @@ export function markRemindersCancelled(
 }
 
 /**
+ * Mark a single pre- or post-task reminder as cancelled. Used by the
+ * upcoming-reminders panel so the user can skip just one ping for an item
+ * without affecting its companion reminder.
+ */
+export function markSingleReminderCancelled(
+  userId: string,
+  kind: "pre" | "post",
+  opts: { taskId?: string | null; calendarEventId?: string | null },
+): void {
+  const tag = opts.taskId
+    ? `${kind}-task-task:${opts.taskId}`
+    : opts.calendarEventId
+      ? `${kind}-task-event:${opts.calendarEventId}`
+      : null;
+  if (!tag) return;
+  cancelledLedger.set(cancelKey(userId, tag), Date.now());
+}
+
+/**
  * Clear a previous cancellation so reminders for this item can fire again
  * (e.g. when a completed task is uncompleted, or a task is rescheduled to a
  * fresh slot the user genuinely wants to be reminded about).
