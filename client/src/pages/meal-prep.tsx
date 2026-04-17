@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { AddToSheet, type AddToSheetItem } from "@/components/add-to-sheet";
 import { 
   Utensils, 
   Settings2, 
@@ -931,7 +932,7 @@ export default function MealPrepPage() {
   const [suggestEnergy, setSuggestEnergy] = useState<"low" | "medium" | "high" | null>(null);
   const [suggestMealType, setSuggestMealType] = useState<MealType>("any");
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
-  const [confirmMealOpen, setConfirmMealOpen] = useState(false);
+  const [addItem, setAddItem] = useState<AddToSheetItem | null>(null);
   const [aiPickSelectedId, setAiPickSelectedId] = useState<string | null>(null);
   const [aiPickCalendarOpen, setAiPickCalendarOpen] = useState(false);
   const [pendingAIPick, setPendingAIPick] = useState<NutritionAIPick | null>(null);
@@ -1025,49 +1026,12 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
 
   const promptAddMealToCalendar = (mealName: string, mealType: string, prepTime: number) => {
     setPendingMeal({ name: mealName, mealType, prepTime });
-    setConfirmMealOpen(true);
-  };
-
-  const confirmAddMealToCalendar = () => {
-    if (!pendingMeal) return;
-    
-    const now = new Date();
-    let startHour = 12;
-    if (pendingMeal.mealType === "breakfast" || pendingMeal.name.toLowerCase().includes("oat") || pendingMeal.name.toLowerCase().includes("smoothie") || pendingMeal.name.toLowerCase().includes("egg")) {
-      startHour = 8;
-    } else if (pendingMeal.name.toLowerCase().includes("lunch") || pendingMeal.name.toLowerCase().includes("salad") || pendingMeal.name.toLowerCase().includes("wrap")) {
-      startHour = 12;
-    } else if (pendingMeal.name.toLowerCase().includes("dinner") || pendingMeal.name.toLowerCase().includes("salmon") || pendingMeal.name.toLowerCase().includes("beef") || pendingMeal.name.toLowerCase().includes("curry")) {
-      startHour = 18;
-    }
-    
-    const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0).getTime();
-    const endTime = startTime + pendingMeal.prepTime * 60 * 1000;
-    
-    saveCalendarEvent({
-      title: pendingMeal.name,
-      description: `${pendingMeal.prepTime} min prep time`,
-      dimension: "physical",
-      startTime,
-      endTime,
-      isAllDay: false,
-      location: null,
-      virtualLink: null,
-      reminders: [],
-      recurring: false,
-      recurrencePattern: null,
-      recurrenceEndDate: null,
-      relatedFoundationIds: [],
-      tags: ["meal", pendingMeal.mealType],
+    setAddItem({
+      title: mealName,
+      type: "meal",
+      duration: prepTime,
+      description: `${prepTime} min prep time`,
     });
-    
-    toast({
-      title: "Added to calendar.",
-      description: `"${pendingMeal.name}" scheduled for today. Notice how planning meals ahead shifts the mental load.`,
-    });
-    
-    setConfirmMealOpen(false);
-    setPendingMeal(null);
   };
 
   const getMealSuggestions = () => {
@@ -3065,59 +3029,18 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           </DialogContent>
         </Dialog>
 
-        <Dialog open={confirmMealOpen} onOpenChange={setConfirmMealOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Add to schedule</DialogTitle>
-              <DialogDescription>
-                {pendingMeal?.name} - {pendingMeal?.prepTime} min prep
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-4">
-              <p className="text-sm text-muted-foreground">
-                Choose where to add this meal:
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button onClick={confirmAddMealToCalendar} data-testid="button-add-meal-today">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Add to Orbit
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmMealOpen(false);
-                    setLocation("/calendar");
-                  }}
-                  data-testid="button-add-meal-week"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Add to Week
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setConfirmMealOpen(false);
-                    setLocation("/routines");
-                  }}
-                  data-testid="button-add-meal-routine"
-                >
-                  <History className="w-4 h-4 mr-2" />
-                  Add to Routine
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => {
-                    setConfirmMealOpen(false);
-                    setPendingMeal(null);
-                  }}
-                  data-testid="button-meal-not-now"
-                >
-                  Not Now
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {addItem && (
+          <AddToSheet
+            item={addItem}
+            open={!!addItem}
+            onOpenChange={(open) => {
+              if (!open) {
+                setAddItem(null);
+                setPendingMeal(null);
+              }
+            }}
+          />
+        )}
 
         {/* Wave 6.3: AI Pick Calendar Confirmation Dialog */}
         <Dialog open={aiPickCalendarOpen} onOpenChange={setAiPickCalendarOpen}>

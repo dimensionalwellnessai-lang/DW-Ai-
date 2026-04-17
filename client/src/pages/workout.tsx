@@ -57,7 +57,6 @@ import {
   saveRoutine,
   getSpiritualProfile,
   getDimensionSignals,
-  saveCalendarEvent,
   getUserResourcesByType,
   deleteUserResource,
   rotateContent,
@@ -78,6 +77,7 @@ import { getDomainExclusions } from "@/lib/guest-storage";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { ExerciseAnimation } from "@/components/exercise-animation";
+import { AddToSheet, type AddToSheetItem } from "@/components/add-to-sheet";
 import { DWLearnCard } from "@/components/dw-learn-card";
 import { WorkoutSessionEngine, type WorkoutSessionConfig, type StepType } from "@/components/workout-session-engine";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -304,8 +304,7 @@ export default function WorkoutPage() {
   const [goalFilter, setGoalFilter] = useState<GoalFilter>("any");
   const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>("any");
   const [showFilters, setShowFilters] = useState(false);
-  const [confirmAddOpen, setConfirmAddOpen] = useState(false);
-  const [pendingWorkout, setPendingWorkout] = useState<WorkoutData | null>(null);
+  const [addItem, setAddItem] = useState<AddToSheetItem | null>(null);
   const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
   const [documentImportOpen, setDocumentImportOpen] = useState(false);
   const [userResources, setUserResources] = useState<UserResource[]>(getUserResourcesByType("workout"));
@@ -473,67 +472,12 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
   };
 
   const promptAddToCalendar = (workout: WorkoutData) => {
-    setPendingWorkout(workout);
-    setConfirmAddOpen(true);
-  };
-
-  const addToCalendarMutation = useMutation({
-    mutationFn: async (workout: WorkoutData) => {
-      const now = new Date();
-      const endTime = new Date(now.getTime() + workout.duration * 60 * 1000);
-      
-      const formatTime = (d: Date) => `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-      
-      return apiRequest("POST", "/api/calendar", {
-        title: workout.title,
-        description: workout.description,
-        startTime: formatTime(now),
-        endTime: formatTime(endTime),
-        eventType: "workout",
-        dimensionTags: ["physical"],
-        linkedType: "workout",
-        linkedId: workout.title,
-        linkedRoute: `/workout?selected=${encodeURIComponent(workout.title)}`,
-        linkedMeta: { duration: workout.duration, intensity: workout.intensity },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
-      toast({
-        title: "Added to calendar.",
-        description: `"${pendingWorkout?.title}" scheduled for today. Notice how planning your workout supports momentum.`,
-      });
-      setConfirmAddOpen(false);
-      setPendingWorkout(null);
-    },
-    onError: () => {
-      saveCalendarEvent({
-        title: pendingWorkout?.title || "",
-        description: pendingWorkout?.description || "",
-        dimension: "physical",
-        startTime: Date.now(),
-        endTime: Date.now() + (pendingWorkout?.duration || 30) * 60 * 1000,
-        isAllDay: false,
-        location: null,
-        virtualLink: null,
-        reminders: [],
-        recurring: false,
-        recurrencePattern: null,
-        relatedFoundationIds: [],
-        tags: pendingWorkout?.tags || [],
-      });
-      toast({
-        title: "Added to calendar.",
-        description: `"${pendingWorkout?.title}" scheduled for today. Notice how planning your workout supports momentum.`,
-      });
-      setConfirmAddOpen(false);
-      setPendingWorkout(null);
-    },
-  });
-
-  const confirmAddToCalendar = () => {
-    if (!pendingWorkout) return;
-    addToCalendarMutation.mutate(pendingWorkout);
+    setAddItem({
+      title: workout.title,
+      type: "workout",
+      duration: workout.duration,
+      description: workout.description,
+    });
   };
 
   const getAISuggestions = (): WorkoutData[] => {
@@ -1337,25 +1281,13 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
         <BodyScanDialog open={bodyScanOpen} onClose={() => setBodyScanOpen(false)} onComplete={handleBodyScanComplete} />
         <FormCheckDialog open={formCheckOpen} onClose={() => setFormCheckOpen(false)} exerciseName={selectedExercise} />
 
-        <Dialog open={confirmAddOpen} onOpenChange={setConfirmAddOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Add to Today?</DialogTitle>
-              <DialogDescription>Schedule "{pendingWorkout?.title}" on your calendar for today.</DialogDescription>
-            </DialogHeader>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setConfirmAddOpen(false)}>Cancel</Button>
-              <Button
-                className="flex-1"
-                onClick={confirmAddToCalendar}
-                disabled={addToCalendarMutation.isPending}
-                data-testid="button-confirm-add"
-              >
-                {addToCalendarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add to Orbit"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {addItem && (
+          <AddToSheet
+            item={addItem}
+            open={!!addItem}
+            onOpenChange={(open) => { if (!open) setAddItem(null); }}
+          />
+        )}
 
         <Dialog open={!!selectedWorkout} onOpenChange={() => setSelectedWorkout(null)}>
           <DialogContent className="max-w-md">
