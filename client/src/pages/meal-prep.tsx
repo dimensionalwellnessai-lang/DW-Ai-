@@ -1024,18 +1024,47 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
   const hasPreferences = prefs?.dietaryStyle != null;
   const isBudgetConscious = signals.costTier === "frugal" || signals.costTier === "moderate";
 
-  const promptAddMealToCalendar = (mealName: string, mealType: string, prepTime: number) => {
+  const promptAddMealToCalendar = (
+    mealName: string,
+    mealType: string,
+    prepTime: number,
+    extras?: {
+      ingredients?: string[];
+      instructions?: string[];
+      tags?: string[];
+      nutrition?: { calories?: number; protein?: number; carbs?: number; fat?: number; fiber?: number };
+      planTitle?: string;
+      description?: string;
+    },
+  ) => {
     setPendingMeal({ name: mealName, mealType, prepTime });
     setAddItem({
       title: mealName,
       type: "meal",
       duration: prepTime,
-      description: `${prepTime} min prep time`,
+      description: extras?.description ?? `${prepTime} min prep time`,
+      metadata: {
+        ingredients: extras?.ingredients,
+        instructions: extras?.instructions,
+        prepTime,
+        tags: extras?.tags,
+        nutrition: extras?.nutrition,
+        planTitle: extras?.planTitle,
+      },
     });
   };
 
   const getMealSuggestions = () => {
-    let allMeals: { id: string; name: string; prepTime: number; planTitle: string; ingredients: string[] }[] = [];
+    let allMeals: {
+      id: string;
+      name: string;
+      prepTime: number;
+      planTitle: string;
+      ingredients: string[];
+      instructions: string[];
+      nutrition: { calories: number; protein: number; carbs: number; fat: number };
+      tags: string[];
+    }[] = [];
     
     SAMPLE_MEAL_PLANS.forEach(plan => {
       plan.meals.forEach(meal => {
@@ -1045,6 +1074,9 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
           prepTime: meal.prepTime,
           planTitle: plan.title,
           ingredients: meal.ingredients,
+          instructions: meal.instructions,
+          nutrition: meal.nutrition,
+          tags: plan.tags,
         });
       });
     });
@@ -2414,7 +2446,13 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                       size="sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        promptAddMealToCalendar(meal.name, "meal", meal.prepTime);
+                                        promptAddMealToCalendar(meal.name, "meal", meal.prepTime, {
+                                          ingredients: meal.ingredients,
+                                          instructions: meal.instructions,
+                                          nutrition: meal.nutrition,
+                                          tags: plan.tags,
+                                          planTitle: plan.title,
+                                        });
                                       }}
                                       data-testid={`button-schedule-meal-${index}-${mealIdx}`}
                                     >
@@ -3011,7 +3049,13 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                       const suggestions = getMealSuggestions();
                       const selected = suggestions.find(m => m.id === selectedSuggestionId);
                       if (selected) {
-                        promptAddMealToCalendar(selected.name, "meal", selected.prepTime);
+                        promptAddMealToCalendar(selected.name, "meal", selected.prepTime, {
+                          ingredients: selected.ingredients,
+                          instructions: selected.instructions,
+                          nutrition: selected.nutrition,
+                          tags: selected.tags,
+                          planTitle: selected.planTitle,
+                        });
                         setSuggestMealsOpen(false);
                         setSelectedSuggestionId(null);
                         setSuggestStep("energy");

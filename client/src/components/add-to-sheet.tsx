@@ -34,7 +34,37 @@ export interface WorkoutLibraryMetadata {
   youtubeSearch?: string;
 }
 
-export type LibraryItemMetadata = WorkoutLibraryMetadata;
+export interface MealLibraryMetadata {
+  ingredients?: string[];
+  instructions?: string[];
+  prepTime?: number;
+  tags?: string[];
+  nutrition?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    fiber?: number;
+  };
+  planTitle?: string;
+  youtubeVideoId?: string;
+  youtubeSearch?: string;
+}
+
+export interface MeditationLibraryMetadata {
+  steps?: string[];
+  guidance?: string;
+  category?: string;
+  practices?: string[];
+  forNeeds?: string[];
+  tags?: string[];
+  script?: string;
+}
+
+export type LibraryItemMetadata =
+  WorkoutLibraryMetadata
+  & MealLibraryMetadata
+  & MeditationLibraryMetadata;
 
 export interface AddToSheetItem {
   title: string;

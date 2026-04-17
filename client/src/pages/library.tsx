@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
-import { AddToSheet, type AddToSheetItem, type WorkoutLibraryMetadata } from "@/components/add-to-sheet";
+import {
+  AddToSheet,
+  type AddToSheetItem,
+  type WorkoutLibraryMetadata,
+  type MealLibraryMetadata,
+  type MeditationLibraryMetadata,
+  type LibraryItemMetadata,
+} from "@/components/add-to-sheet";
 import {
   Bookmark, BookmarkX, Dumbbell, Utensils, Sparkles, CheckSquare, Target, Plus, Clock,
   ExternalLink,
@@ -24,13 +31,16 @@ import type { SavedContent } from "@shared/schema";
 
 type LibraryType = "workout" | "meal" | "meditation" | "habit" | "goal";
 
+const stringArray = (v: unknown): string[] | undefined =>
+  Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]) : undefined;
+const stringField = (v: unknown): string | undefined =>
+  typeof v === "string" ? v : undefined;
+const numberField = (v: unknown): number | undefined =>
+  typeof v === "number" && !isNaN(v) ? v : undefined;
+
 function parseWorkoutMetadata(raw: unknown): WorkoutLibraryMetadata | null {
   if (!raw || typeof raw !== "object") return null;
   const m = raw as Record<string, unknown>;
-  const stringArray = (v: unknown): string[] | undefined =>
-    Array.isArray(v) && v.every((x) => typeof x === "string") ? (v as string[]) : undefined;
-  const stringField = (v: unknown): string | undefined =>
-    typeof v === "string" ? v : undefined;
   return {
     intensity: stringField(m.intensity),
     tags: stringArray(m.tags),
@@ -40,6 +50,66 @@ function parseWorkoutMetadata(raw: unknown): WorkoutLibraryMetadata | null {
     youtubeVideoId: stringField(m.youtubeVideoId),
     youtubeSearch: stringField(m.youtubeSearch),
   };
+}
+
+function parseMealMetadata(raw: unknown): MealLibraryMetadata | null {
+  if (!raw || typeof raw !== "object") return null;
+  const m = raw as Record<string, unknown>;
+  const rawNutrition = m.nutrition && typeof m.nutrition === "object" ? m.nutrition as Record<string, unknown> : undefined;
+  const nutrition = rawNutrition ? {
+    calories: numberField(rawNutrition.calories),
+    protein: numberField(rawNutrition.protein),
+    carbs: numberField(rawNutrition.carbs),
+    fat: numberField(rawNutrition.fat),
+    fiber: numberField(rawNutrition.fiber),
+  } : undefined;
+  return {
+    ingredients: stringArray(m.ingredients),
+    instructions: stringArray(m.instructions),
+    prepTime: numberField(m.prepTime),
+    tags: stringArray(m.tags),
+    nutrition,
+    planTitle: stringField(m.planTitle),
+    youtubeVideoId: stringField(m.youtubeVideoId),
+    youtubeSearch: stringField(m.youtubeSearch),
+  };
+}
+
+function parseMeditationMetadata(raw: unknown): MeditationLibraryMetadata | null {
+  if (!raw || typeof raw !== "object") return null;
+  const m = raw as Record<string, unknown>;
+  return {
+    steps: stringArray(m.steps),
+    guidance: stringField(m.guidance),
+    category: stringField(m.category),
+    practices: stringArray(m.practices),
+    forNeeds: stringArray(m.forNeeds),
+    tags: stringArray(m.tags),
+    script: stringField(m.script),
+  };
+}
+
+function hasMealDetail(m: MealLibraryMetadata | null): boolean {
+  if (!m) return false;
+  return (m.ingredients?.length ?? 0) > 0 ||
+    (m.instructions?.length ?? 0) > 0 ||
+    !!m.nutrition;
+}
+
+function hasMeditationDetail(m: MeditationLibraryMetadata | null): boolean {
+  if (!m) return false;
+  return (m.steps?.length ?? 0) > 0 ||
+    !!m.guidance ||
+    !!m.script;
+}
+
+function hasWorkoutDetail(m: WorkoutLibraryMetadata | null): boolean {
+  if (!m) return false;
+  return (m.steps?.length ?? 0) > 0 ||
+    !!m.youtubeVideoId ||
+    !!m.youtubeSearch ||
+    (m.tips?.length ?? 0) > 0 ||
+    (m.equipment?.length ?? 0) > 0;
 }
 
 const TYPE_META: Record<LibraryType, { label: string; icon: typeof Dumbbell; tone: string }> = {
@@ -138,13 +208,14 @@ export default function LibraryPage() {
               const meta = TYPE_META[it.contentType as LibraryType];
               const Icon = meta?.icon ?? Bookmark;
               const workoutMeta = it.contentType === "workout" ? parseWorkoutMetadata(it.metadata) : null;
-              const hasDetail = !!workoutMeta && (
-                (workoutMeta.steps?.length ?? 0) > 0 ||
-                !!workoutMeta.youtubeVideoId ||
-                !!workoutMeta.youtubeSearch ||
-                (workoutMeta.tips?.length ?? 0) > 0 ||
-                (workoutMeta.equipment?.length ?? 0) > 0
-              );
+              const mealMeta = it.contentType === "meal" ? parseMealMetadata(it.metadata) : null;
+              const meditationMeta = it.contentType === "meditation" ? parseMeditationMetadata(it.metadata) : null;
+              const combinedMeta: LibraryItemMetadata | undefined =
+                workoutMeta ?? mealMeta ?? meditationMeta ?? undefined;
+              const hasDetail =
+                hasWorkoutDetail(workoutMeta) ||
+                hasMealDetail(mealMeta) ||
+                hasMeditationDetail(meditationMeta);
               return (
                 <Card key={it.id} data-testid={`library-item-${it.id}`}>
                   <CardContent className="p-4">
@@ -196,7 +267,7 @@ export default function LibraryPage() {
                               type: it.contentType as LibraryType,
                               description: it.description ?? undefined,
                               duration: it.duration ? Number(it.duration) || undefined : undefined,
-                              metadata: workoutMeta ?? undefined,
+                              metadata: combinedMeta,
                             })}
                             data-testid={`button-add-${it.id}`}
                           >
@@ -232,17 +303,22 @@ export default function LibraryPage() {
         />
       )}
 
-      <SavedWorkoutDetailDialog
+      <SavedDetailDialog
         item={detailItem}
         onClose={() => setDetailItem(null)}
         onAddToDay={(it) => {
           setDetailItem(null);
+          const meta: LibraryItemMetadata | undefined =
+            it.contentType === "workout" ? (parseWorkoutMetadata(it.metadata) ?? undefined) :
+            it.contentType === "meal" ? (parseMealMetadata(it.metadata) ?? undefined) :
+            it.contentType === "meditation" ? (parseMeditationMetadata(it.metadata) ?? undefined) :
+            undefined;
           setAddItem({
             title: it.title,
             type: it.contentType as LibraryType,
             description: it.description ?? undefined,
             duration: it.duration ? Number(it.duration) || undefined : undefined,
-            metadata: parseWorkoutMetadata(it.metadata) ?? undefined,
+            metadata: meta,
           });
         }}
       />
@@ -250,7 +326,7 @@ export default function LibraryPage() {
   );
 }
 
-function SavedWorkoutDetailDialog({
+function SavedDetailDialog({
   item,
   onClose,
   onAddToDay,
@@ -259,14 +335,13 @@ function SavedWorkoutDetailDialog({
   onClose: () => void;
   onAddToDay: (it: SavedContent) => void;
 }) {
-  const meta = item ? parseWorkoutMetadata(item.metadata) : null;
-  const steps = meta?.steps ?? [];
-  const equipment = meta?.equipment ?? [];
-  const tips = meta?.tips ?? [];
-  const tags = meta?.tags ?? [];
-  const intensity = meta?.intensity;
-  const youtubeVideoId = meta?.youtubeVideoId;
-  const youtubeSearch = meta?.youtubeSearch;
+  const workoutMeta = item?.contentType === "workout" ? parseWorkoutMetadata(item.metadata) : null;
+  const mealMeta = item?.contentType === "meal" ? parseMealMetadata(item.metadata) : null;
+  const meditationMeta = item?.contentType === "meditation" ? parseMeditationMetadata(item.metadata) : null;
+
+  const tags = workoutMeta?.tags ?? mealMeta?.tags ?? meditationMeta?.tags ?? [];
+  const youtubeVideoId = workoutMeta?.youtubeVideoId ?? mealMeta?.youtubeVideoId;
+  const youtubeSearch = workoutMeta?.youtubeSearch ?? mealMeta?.youtubeSearch;
 
   return (
     <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -288,8 +363,14 @@ function SavedWorkoutDetailDialog({
                     {item.duration}{!isNaN(Number(item.duration)) ? " min" : ""}
                   </span>
                 )}
-                {intensity && (
-                  <Badge variant="secondary" className="capitalize">{intensity}</Badge>
+                {workoutMeta?.intensity && (
+                  <Badge variant="secondary" className="capitalize">{workoutMeta.intensity}</Badge>
+                )}
+                {meditationMeta?.category && (
+                  <Badge variant="secondary">{meditationMeta.category}</Badge>
+                )}
+                {mealMeta?.planTitle && (
+                  <Badge variant="outline">{mealMeta.planTitle}</Badge>
                 )}
               </div>
 
@@ -306,36 +387,108 @@ function SavedWorkoutDetailDialog({
                 </div>
               )}
 
-              {steps.length > 0 && (
+              {/* Workout: steps / equipment / tips */}
+              {workoutMeta && (workoutMeta.steps?.length ?? 0) > 0 && (
                 <div>
                   <h4 className="font-medium mb-2">Steps</h4>
                   <ol className="space-y-1 list-decimal list-inside" data-testid="list-steps">
-                    {steps.map((step, idx) => (
+                    {workoutMeta.steps!.map((step, idx) => (
                       <li key={idx} className="text-sm text-muted-foreground">{step}</li>
                     ))}
                   </ol>
                 </div>
               )}
 
-              {equipment.length > 0 && (
+              {workoutMeta && (workoutMeta.equipment?.length ?? 0) > 0 && (
                 <div>
                   <h4 className="font-medium mb-2 text-sm">Equipment</h4>
                   <div className="flex flex-wrap gap-1" data-testid="list-equipment">
-                    {equipment.map((e, i) => (
+                    {workoutMeta.equipment!.map((e, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">{e}</Badge>
                     ))}
                   </div>
                 </div>
               )}
 
-              {tips.length > 0 && (
+              {workoutMeta && (workoutMeta.tips?.length ?? 0) > 0 && (
                 <div>
                   <h4 className="font-medium mb-2 text-sm">Tips</h4>
                   <ul className="space-y-1 list-disc list-inside" data-testid="list-tips">
-                    {tips.map((tip, i) => (
+                    {workoutMeta.tips!.map((tip, i) => (
                       <li key={i} className="text-sm text-muted-foreground">{tip}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Meal: nutrition / ingredients / instructions */}
+              {mealMeta?.nutrition && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Nutrition</h4>
+                  <div className="grid grid-cols-4 gap-2 p-2 rounded-md bg-muted/40 border" data-testid="meal-nutrition">
+                    <NutritionCell label="kcal" value={mealMeta.nutrition.calories} />
+                    <NutritionCell label="Protein" value={mealMeta.nutrition.protein} unit="g" />
+                    <NutritionCell label="Carbs" value={mealMeta.nutrition.carbs} unit="g" />
+                    <NutritionCell label="Fat" value={mealMeta.nutrition.fat} unit="g" />
+                  </div>
+                </div>
+              )}
+
+              {mealMeta && (mealMeta.ingredients?.length ?? 0) > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Ingredients</h4>
+                  <ul className="space-y-1 list-disc list-inside" data-testid="list-ingredients">
+                    {mealMeta.ingredients!.map((ing, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{ing}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {mealMeta && (mealMeta.instructions?.length ?? 0) > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Instructions</h4>
+                  <ol className="space-y-1 list-decimal list-inside" data-testid="list-instructions">
+                    {mealMeta.instructions!.map((inst, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{inst}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* Meditation: guidance / steps / script / for-needs */}
+              {meditationMeta?.guidance && (
+                <div className="bg-primary/5 rounded-md p-3" data-testid="text-guidance">
+                  <p className="text-sm italic text-muted-foreground leading-relaxed">{meditationMeta.guidance}</p>
+                </div>
+              )}
+
+              {meditationMeta && (meditationMeta.steps?.length ?? 0) > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Step-by-step</h4>
+                  <ol className="space-y-1 list-decimal list-inside" data-testid="list-meditation-steps">
+                    {meditationMeta.steps!.map((step, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {meditationMeta?.script && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm">Guided script</h4>
+                  <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground" data-testid="text-meditation-script">
+                    {meditationMeta.script}
+                  </p>
+                </div>
+              )}
+
+              {meditationMeta && (meditationMeta.forNeeds?.length ?? 0) > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-muted-foreground">Great for:</span>
+                  {meditationMeta.forNeeds!.map((n) => (
+                    <Badge key={n} variant="secondary" className="text-xs capitalize">{n}</Badge>
+                  ))}
                 </div>
               )}
 
@@ -373,6 +526,16 @@ function SavedWorkoutDetailDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NutritionCell({ label, value, unit }: { label: string; value?: number; unit?: string }) {
+  if (value === undefined) return <div className="text-center text-muted-foreground/50">—</div>;
+  return (
+    <div className="text-center">
+      <div className="font-semibold text-foreground text-sm">{value}{unit ?? ""}</div>
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+    </div>
   );
 }
 

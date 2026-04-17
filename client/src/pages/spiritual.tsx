@@ -25,6 +25,8 @@ import { TTSButton } from "@/components/tts-button";
 import { ttsService } from "@/lib/tts-service";
 import { MeditationAudioPlayer } from "@/components/meditation-audio-player";
 import { useToast } from "@/hooks/use-toast";
+import { AddToSheet, type AddToSheetItem } from "@/components/add-to-sheet";
+import { Bookmark } from "lucide-react";
 
 const PRACTICE_LABELS: Record<string, string> = {
   meditation: "Meditation", prayer: "Prayer", breathwork: "Breathwork",
@@ -275,6 +277,46 @@ export default function SpiritualPage() {
   // DW Guided Session
   const [dwSession, setDwSession] = useState<{ script: string; title: string; duration: number } | null>(null);
 
+  // Add to Library / calendar
+  const [addItem, setAddItem] = useState<AddToSheetItem | null>(null);
+
+  const promptSavePractice = (practice: PracticeData) => {
+    setAddItem({
+      title: practice.title,
+      type: "meditation",
+      duration: practice.duration,
+      description: practice.description,
+      metadata: {
+        steps: practice.steps,
+        guidance: practice.guidance,
+        category: practice.category,
+        practices: practice.practices,
+        forNeeds: practice.forNeeds,
+        tags: [practice.category.toLowerCase(), ...practice.practices],
+      },
+    });
+  };
+
+  const promptSaveAIMeditation = () => {
+    if (!generatedMeditation) return;
+    const minutes = parseInt(meditationDuration);
+    const title = meditationFocus
+      ? `${meditationFocus} Meditation (${minutes} min)`
+      : `${minutes}-Minute Meditation`;
+    setAddItem({
+      title,
+      type: "meditation",
+      duration: minutes,
+      description: meditationFocus ? `Custom guided meditation focused on ${meditationFocus}` : "Custom guided meditation",
+      metadata: {
+        guidance: meditationFocus ? `Focus: ${meditationFocus}` : undefined,
+        category: "Meditation",
+        script: generatedMeditation,
+        tags: ["ai-generated", "meditation", ...(meditationFocus ? [meditationFocus.toLowerCase()] : [])],
+      },
+    });
+  };
+
   const startSession = useCallback((script: string, title: string, duration: number) => {
     setDwSession({ script, title, duration });
   }, []);
@@ -451,6 +493,7 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
                       lastCompleted={getLastCompleted(p.id)}
                       onGuide={() => guidePracticeMutation.mutate(p)}
                       guideLoading={guidePracticeMutation.isPending && guidePracticeMutation.variables?.id === p.id}
+                      onSave={() => promptSavePractice(p)}
                     />
                   ))}
                 </div>
@@ -495,6 +538,7 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
                     lastCompleted={getLastCompleted(p.id)}
                     onGuide={() => guidePracticeMutation.mutate(p)}
                     guideLoading={guidePracticeMutation.isPending && guidePracticeMutation.variables?.id === p.id}
+                    onSave={() => promptSavePractice(p)}
                   />
                 ))}
               </div>
@@ -592,6 +636,16 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
                           Regenerate
                         </Button>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={promptSaveAIMeditation}
+                        data-testid="button-save-ai-meditation"
+                      >
+                        <Bookmark className="h-4 w-4" />
+                        Save to Library
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -633,6 +687,14 @@ Use sensory language. Keep pauses natural. Write in second person ("you"). Under
           onClose={endSession}
         />
       )}
+
+      {addItem && (
+        <AddToSheet
+          item={addItem}
+          open={!!addItem}
+          onOpenChange={(open) => { if (!open) setAddItem(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -645,9 +707,10 @@ interface PracticeCardProps {
   onComplete: () => void;
   onGuide?: () => void;
   guideLoading?: boolean;
+  onSave?: () => void;
 }
 
-function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete, onGuide, guideLoading }: PracticeCardProps) {
+function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete, onGuide, guideLoading, onSave }: PracticeCardProps) {
   const completedRecently = lastCompleted !== null && daysSince(lastCompleted) === 0;
 
   return (
@@ -747,6 +810,19 @@ function PracticeCard({ practice, expanded, lastCompleted, onToggle, onComplete,
                 <><Play className="h-4 w-4" /> Mark as Complete</>
               )}
             </Button>
+
+            {onSave && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="w-full gap-2"
+                onClick={onSave}
+                data-testid={`button-save-practice-${practice.id}`}
+              >
+                <Bookmark className="h-4 w-4" />
+                Save to Library
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
