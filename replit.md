@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Voice Assistant System**: Full integration for iOS (Siri) and Android (Google Assistant) with a dedicated voice conversation mode, STT/TTS, deep-linking actions, App Intents, App Shortcuts, widgets, and Google Assistant App Actions.
 - **Cosmic Hub**: Features Calendar, Readings (AI-generated based on birth/numerology profile), Astrology, and Numerology.
 - **OpenAI TTS Integration**: All in-app speech uses OpenAI's Alloy voice via a unified `tts-service`, with adjustable personality presets and speed.
+- **Library**: Personal library of saved workouts, meals, meditations, habits, and goals. "Save to Library" is available from the Add sheet (`client/src/components/add-to-sheet.tsx`); the page at `/library` lists items with type filters and a per-item "Add to my day" action that re-opens the Add sheet so users can schedule today / this week / a routine.
 - **Workout Page Redesign**: Features "Today" (AI-personalized recommendations), "Library" (searchable workouts), and "My Plans" tabs.
 - **Goals Page**: Rebuilt with 9 wellness dimensions, creation forms, progress tracking, habit linking, and filtering.
 - **Habits Page**: Rebuilt with frequency/reminder pickers, dimension selection, 7-day WeekDots, streak tracking, pause/resume, and progress summary.
@@ -44,7 +45,6 @@ Preferred communication style: Simple, everyday language.
 
 ## Hidden / Removed Stub Features
 The following advertised-but-unfinished features were hidden or removed to keep the UI honest:
-- **Save to Library** (in `client/src/components/add-to-sheet.tsx`): The "Save to Library" entry-point button was removed because the backend Library API is not built. The other destinations (Add to Today / This Week / Routine) still work.
 - **Meal photo analysis**: No UI surfaces this, so the unused stub backend endpoints `/api/analyze-meal-photo` (in `server/routes.ts` and `server/routes/wellness-tracking.ts`) were deleted.
 - ~~**Accountability scheduler client library**~~ — restored. `client/src/lib/accountability-scheduler.ts` plans pre-task and post-task local notifications for today's tasks and calendar events, respects quiet hours, and is started in `App.tsx` for signed-in users. Backed by the existing `/api/accountability/preferences` endpoints and configured from the Accountability Settings page.
 - **Support report — conversation snippet toggle** (`client/src/pages/support-report.tsx`): The "Conversation snippet" toggle and its "not yet captured in beta" copy were removed because conversation history capture is not implemented. The page now POSTs to the working `/api/support/detailed-report` endpoint (it had been pointed at the wrong URL); tech-details and recent-context toggles function end-to-end.

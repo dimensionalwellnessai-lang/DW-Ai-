@@ -31,6 +31,7 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   
   // EXPLORE section
   { id: "browse", name: "🔍 Browse", path: "/browse", visibility: "primary", description: "Explore content", enabled: true },
+  { id: "library", name: "🔖 Library", path: "/library", visibility: "primary", description: "Saved items", enabled: true },
   { id: "challenges", name: "🎯 Challenges", path: "/challenges", visibility: "primary", description: "Growth challenges", enabled: true },
   { id: "recovery", name: "🔄 Recovery", path: "/recovery", visibility: "primary", description: "Rest & restore", enabled: true },
   

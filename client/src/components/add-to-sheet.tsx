@@ -19,9 +19,10 @@ import {
   CalendarDays,
   Repeat,
   Clock,
+  Bookmark,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export interface AddToSheetItem {
   title: string;
@@ -115,6 +116,35 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
       toast({
         title: "Error",
         description: "Failed to add to calendar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleSaveToLibrary = async () => {
+    setIsAdding(true);
+    try {
+      await apiRequest("POST", "/api/library", {
+        title: item.title,
+        contentType: item.type,
+        description: item.description,
+        duration: item.duration,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+
+      toast({
+        title: "Saved to Library",
+        description: `${item.title} is in your Library — open it any time to add it to your day.`,
+      });
+
+      onAdded?.('library');
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save to library. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -217,6 +247,27 @@ export function AddToSheet({ item, open, onOpenChange, onAdded }: AddToSheetProp
               />
             </div>
           </div>
+
+          {/* Save to Library */}
+          <Button
+            className="w-full justify-start h-auto py-4"
+            variant="outline"
+            onClick={handleSaveToLibrary}
+            disabled={isAdding}
+            data-testid="button-save-to-library"
+          >
+            <div className="flex items-center gap-3 w-full">
+              <div className="p-2 rounded-lg bg-amber-500/10 dark:bg-amber-400/15">
+                <Bookmark className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-medium">Save to Library</p>
+                <p className="text-sm text-muted-foreground">
+                  Bookmark for later — won't show on your calendar
+                </p>
+              </div>
+            </div>
+          </Button>
 
           {/* Add to Routine */}
           <Button

@@ -5660,6 +5660,81 @@ Return ONLY valid JSON in this exact shape:
     }
   });
 
+  // ── Library Routes ──────────────────────────────────────────────────────
+  // The Library lets users bookmark workouts, meals, meditations, habits, and
+  // goals to come back to later. Reuses the existing `saved_content` table.
+  // For internal items (no external URL), we store a sentinel `library://` URL
+  // so the notNull constraint on `url` is satisfied.
+  const LIBRARY_TYPES = ["workout", "meal", "meditation", "habit", "goal"] as const;
+  const librarySaveSchema = z.object({
+    title: z.string().min(1),
+    contentType: z.enum(LIBRARY_TYPES),
+    description: z.string().optional().nullable(),
+    duration: z.union([z.string(), z.number()]).optional().nullable(),
+    metadata: z.record(z.any()).optional().nullable(),
+  });
+  function librarySentinelUrl(type: string, title: string): string {
+    const slug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").slice(0, 64) || "item";
+    return `library://${type}/${slug}`;
+  }
+
+  app.get("/api/library", requireAuth, async (req, res) => {
+    try {
+      const all = await storage.getSavedContent(req.session.userId!);
+      const requestedType = typeof req.query.type === "string" ? req.query.type : null;
+      const items = all.filter((it) =>
+        (LIBRARY_TYPES as readonly string[]).includes(it.contentType) &&
+        (!requestedType || it.contentType === requestedType)
+      );
+      res.json(items);
+    } catch (error) {
+      console.error("Library list error:", error);
+      res.status(500).json({ error: "Failed to load library" });
+    }
+  });
+
+  app.post("/api/library", requireAuth, async (req, res) => {
+    try {
+      const body = librarySaveSchema.parse(req.body);
+      const userId = req.session.userId!;
+      const existing = await storage.getSavedContent(userId);
+      const dup = existing.find(
+        (it) => it.contentType === body.contentType && it.title === body.title,
+      );
+      if (dup) return res.json(dup);
+
+      const created = await storage.createSavedContent({
+        userId,
+        title: body.title,
+        description: body.description ?? null,
+        contentType: body.contentType,
+        url: librarySentinelUrl(body.contentType, body.title),
+        thumbnail: null,
+        source: "Library",
+        duration: body.duration != null ? String(body.duration) : null,
+        metadata: body.metadata ?? null,
+        isRead: false,
+      });
+      res.json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Library save error:", error);
+      res.status(500).json({ error: "Failed to save to library" });
+    }
+  });
+
+  app.delete("/api/library/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteSavedContent(req.params.id, req.session.userId!);
+      if (!deleted) return res.status(404).json({ error: "Library item not found" });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete library item" });
+    }
+  });
+
   // Feed Interaction Routes (not-interested, personalization signals)
   app.post("/api/feed-interactions", requireAuth, async (req, res) => {
     try {

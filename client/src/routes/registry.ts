@@ -454,6 +454,19 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
 
   {
+    id: "library",
+    path: "/library",
+    label: "Library",
+    icon: "bookmark",
+    type: "page",
+    description: "Saved workouts, meals, meditations, habits, and goals",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 60,
+    enabled: true,
+  },
+
+  {
     id: "plans",
     path: "/plans",
     label: "Plans",
