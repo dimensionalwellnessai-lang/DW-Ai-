@@ -13,13 +13,14 @@
 
 import webpush from "web-push";
 import { db } from "./db";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, isNotNull, gt, lt } from "drizzle-orm";
 import {
   pushSubscriptions,
   vapidKeys as vapidKeysTable,
   notificationPreferences,
   tasks as tasksTable,
   calendarEvents as calendarEventsTable,
+  reminderLedger,
   type NotificationPreferences,
   type Task,
   type CalendarEvent,
@@ -229,6 +230,13 @@ interface PendingReminder {
 //                      moves it out of today. Routes call markRemindersCancelled
 //                      to populate this; the next scheduler tick skips them.
 //
+// Both maps act as a write-through cache backed by the `reminder_ledger`
+// table so that markers survive a server restart. On startup (or on the first
+// access) the cache is hydrated from rows newer than the TTL; every mutation
+// is mirrored to Postgres. If the DB write fails we still keep the in-memory
+// marker so the running process behaves correctly — the persistence is purely
+// for restart-survival.
+//
 // Both ledgers self-prune entries older than 25h so they cannot grow without
 // bound. The 25h horizon is the pre-task lead time + a generous safety margin.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,6 +244,100 @@ interface PendingReminder {
 const sentLedger = new Map<string, number>();
 const cancelledLedger = new Map<string, number>();
 const LEDGER_TTL_MS = 25 * 60 * 60 * 1000;
+const CANCELLED_BUCKET = 0;
+
+let ledgerHydrated = false;
+let hydratePromise: Promise<void> | null = null;
+
+async function hydrateLedger(): Promise<void> {
+  if (ledgerHydrated) return;
+  if (hydratePromise) {
+    await hydratePromise;
+    return;
+  }
+  hydratePromise = (async () => {
+    try {
+      const cutoff = new Date(Date.now() - LEDGER_TTL_MS);
+      const rows = await db
+        .select()
+        .from(reminderLedger)
+        .where(gt(reminderLedger.createdAt, cutoff));
+      for (const row of rows) {
+        const ts = row.createdAt ? row.createdAt.getTime() : Date.now();
+        if (row.kind === "sent") {
+          sentLedger.set(`${row.userId}|${row.tag}|${row.bucket}`, ts);
+        } else if (row.kind === "cancelled") {
+          cancelledLedger.set(`${row.userId}|${row.tag}`, ts);
+        }
+      }
+      ledgerHydrated = true;
+      console.log(
+        `[push] Hydrated reminder ledger (${rows.length} rows from DB).`,
+      );
+    } catch (err) {
+      console.error("[push] Failed to hydrate reminder ledger:", err);
+    } finally {
+      hydratePromise = null;
+    }
+  })();
+  await hydratePromise;
+}
+
+async function persistLedgerRow(
+  userId: string,
+  tag: string,
+  kind: "sent" | "cancelled",
+  bucket: number,
+): Promise<void> {
+  try {
+    await db
+      .insert(reminderLedger)
+      .values({ userId, tag, kind, bucket })
+      .onConflictDoNothing({
+        target: [
+          reminderLedger.userId,
+          reminderLedger.tag,
+          reminderLedger.kind,
+          reminderLedger.bucket,
+        ],
+      });
+  } catch (err) {
+    console.error(
+      `[push] Failed to persist reminder ledger row (${kind}, ${tag}):`,
+      err,
+    );
+  }
+}
+
+async function deleteLedgerRowsForTag(
+  userId: string,
+  tag: string,
+): Promise<void> {
+  try {
+    await db
+      .delete(reminderLedger)
+      .where(
+        and(
+          eq(reminderLedger.userId, userId),
+          eq(reminderLedger.tag, tag),
+        ),
+      );
+  } catch (err) {
+    console.error(
+      `[push] Failed to delete reminder ledger rows for ${tag}:`,
+      err,
+    );
+  }
+}
+
+async function pruneLedgerDb(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - LEDGER_TTL_MS);
+    await db.delete(reminderLedger).where(lt(reminderLedger.createdAt, cutoff));
+  } catch (err) {
+    console.error("[push] Failed to prune reminder ledger rows:", err);
+  }
+}
 
 function pruneLedger(map: Map<string, number>): void {
   const cutoff = Date.now() - LEDGER_TTL_MS;
@@ -244,8 +346,12 @@ function pruneLedger(map: Map<string, number>): void {
   }
 }
 
+function sentBucket(fireAt: number): number {
+  return Math.floor(fireAt / 60000);
+}
+
 function sentKey(userId: string, tag: string, fireAt: number): string {
-  return `${userId}|${tag}|${Math.floor(fireAt / 60000)}`;
+  return `${userId}|${tag}|${sentBucket(fireAt)}`;
 }
 
 function cancelKey(userId: string, tag: string): string {
@@ -280,6 +386,7 @@ export function markRemindersCancelled(
   const now = Date.now();
   for (const tag of tagsForItem(opts)) {
     cancelledLedger.set(cancelKey(userId, tag), now);
+    void persistLedgerRow(userId, tag, "cancelled", CANCELLED_BUCKET);
   }
 }
 
@@ -300,6 +407,7 @@ export function markSingleReminderCancelled(
       : null;
   if (!tag) return;
   cancelledLedger.set(cancelKey(userId, tag), Date.now());
+  void persistLedgerRow(userId, tag, "cancelled", CANCELLED_BUCKET);
 }
 
 /**
@@ -321,6 +429,9 @@ export function clearReminderCancellations(
     for (const k of Array.from(sentLedger.keys())) {
       if (k.startsWith(prefix)) sentLedger.delete(k);
     }
+    // Mirror the reset to the persisted ledger so a server restart cannot
+    // resurrect a stale "cancelled" or "sent" marker.
+    void deleteLedgerRowsForTag(userId, tag);
   }
 }
 
@@ -476,8 +587,12 @@ let schedulerHandle: ReturnType<typeof setInterval> | null = null;
 async function tick(): Promise<void> {
   const now = Date.now();
   const windowEnd = now + SCHEDULER_INTERVAL_MS;
+  // First tick after boot loads any sent/cancelled markers that were written
+  // before the previous process exited. Subsequent ticks just hit the cache.
+  await hydrateLedger();
   pruneLedger(sentLedger);
   pruneLedger(cancelledLedger);
+  void pruneLedgerDb();
   try {
     // Find every user with at least one push subscription. Joining keeps the
     // workload bounded: only users who have actually opted-in are scanned.
@@ -505,8 +620,16 @@ async function tick(): Promise<void> {
           const key = sentKey(userId, reminder.payload.tag, reminder.fireAt);
           if (sentLedger.has(key)) continue;
           // Mark before dispatch so a slow send cannot be doubled-up by a
-          // subsequent tick that arrives before the await resolves.
+          // subsequent tick that arrives before the await resolves. The
+          // persisted write also prevents a server restart in the same minute
+          // bucket from re-sending this reminder.
           sentLedger.set(key, Date.now());
+          void persistLedgerRow(
+            userId,
+            reminder.payload.tag,
+            "sent",
+            sentBucket(reminder.fireAt),
+          );
           await sendPushToUser(userId, reminder.payload);
         }
       } catch (err) {

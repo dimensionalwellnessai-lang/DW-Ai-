@@ -2172,6 +2172,23 @@ export const vapidKeys = pgTable("vapid_keys", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Persisted reminder ledger — survives server restarts so we never re-send a
+// reminder that was already delivered ("sent" rows) or fire a reminder for a
+// task the user already completed/deleted ("cancelled" rows). Rows older than
+// 25h are pruned by the scheduler. The unique index lets us upsert without
+// races. For "sent" rows, `bucket` is the minute-since-epoch the reminder
+// fired in; for "cancelled" rows, `bucket` is always 0.
+export const reminderLedger = pgTable("reminder_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tag: text("tag").notNull(),
+  kind: text("kind").notNull(), // "sent" | "cancelled"
+  bucket: integer("bucket").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("reminder_ledger_unique_idx").on(t.userId, t.tag, t.kind, t.bucket),
+]);
+
 // Conversation Insight Cards – persisted for authenticated users
 export const conversationInsights = pgTable("conversation_insights", {
   id: varchar("id").primaryKey(), // client-generated id; ON CONFLICT DO NOTHING prevents duplicate migration uploads
