@@ -190,36 +190,93 @@ function parseDateMaybe(value: string | Date | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function isToday(d: Date): boolean {
+/**
+ * Returns true if `d` falls within the day window starting at midnight today
+ * and ending at midnight `daysAhead + 1` days from now. With `daysAhead = 0`
+ * this is equivalent to "is today"; higher values include subsequent days
+ * for the read-only preview snapshot.
+ */
+function isWithinDays(d: Date, daysAhead: number): boolean {
   const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfWindow = new Date(
+    startOfToday.getTime() + (daysAhead + 1) * 24 * 60 * 60 * 1000,
   );
+  return d >= startOfToday && d < endOfWindow;
 }
 
-function tasksToItems(tasks: Task[]): ScheduleableItem[] {
+function tasksToItems(tasks: Task[], daysAhead = 0): ScheduleableItem[] {
   const out: ScheduleableItem[] = [];
   for (const t of tasks) {
     if (t.isCompleted) continue;
     const start = parseDateMaybe(t.scheduledStart);
-    if (!start || !isToday(start)) continue;
+    if (!start || !isWithinDays(start, daysAhead)) continue;
     const end = parseDateMaybe(t.scheduledEnd);
     out.push({ id: `task:${t.id}`, kind: "task", name: t.title, start, end });
   }
   return out;
 }
 
-function eventsToItems(events: CalendarEvent[]): ScheduleableItem[] {
+function eventsToItems(events: CalendarEvent[], daysAhead = 0): ScheduleableItem[] {
   const out: ScheduleableItem[] = [];
   for (const ev of events) {
     const start = parseDateMaybe(ev.startTime);
-    if (!start || !isToday(start)) continue;
+    if (!start || !isWithinDays(start, daysAhead)) continue;
     const end = parseDateMaybe(ev.endTime);
     out.push({ id: `event:${ev.id}`, kind: "event", name: ev.title, start, end });
   }
   return out;
+}
+
+// ─── Preview horizon ────────────────────────────────────────────────────────
+// User-controlled "look ahead" for the upcoming-reminders panel. Today (0) by
+// default. Higher values populate the planned-reminders snapshot with the
+// next N days' reminders so users can preview / pre-skip them, but the actual
+// delivery (native OS notifications, in-page setTimeout) stays today-only so
+// nothing is scheduled prematurely. The server's push scheduler honours the
+// skip indefinitely via its cancellation ledger.
+const PREVIEW_STORAGE_KEY = "dw_preview_days_ahead";
+const MAX_PREVIEW_DAYS = 7;
+
+function clampPreviewDays(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(Math.max(Math.floor(n), 0), MAX_PREVIEW_DAYS);
+}
+
+function loadPreviewDays(): number {
+  try {
+    const raw =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(PREVIEW_STORAGE_KEY)
+        : null;
+    return clampPreviewDays(raw ? parseInt(raw, 10) : 0);
+  } catch {
+    return 0;
+  }
+}
+
+let previewDaysAhead = loadPreviewDays();
+
+export function getPreviewDaysAhead(): number {
+  return previewDaysAhead;
+}
+
+export async function setPreviewDaysAhead(n: number): Promise<void> {
+  const clamped = clampPreviewDays(n);
+  if (clamped === previewDaysAhead) return;
+  previewDaysAhead = clamped;
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(PREVIEW_STORAGE_KEY, String(clamped));
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    await planReminders();
+  } catch (err) {
+    console.error("[accountability-scheduler] replan after preview change failed:", err);
+  }
 }
 
 async function fetchJson<T>(url: string): Promise<T | null> {
@@ -255,15 +312,18 @@ async function loadPreferences(): Promise<NotificationPreferences | null> {
   return fetchJson<NotificationPreferences>("/api/accountability/preferences");
 }
 
-async function loadTodayItems(): Promise<ScheduleableItem[]> {
+async function loadRawTasksAndEvents(): Promise<{
+  tasks: Task[];
+  events: CalendarEvent[];
+}> {
   const [tasks, events] = await Promise.all([
     fetchJson<Task[]>("/api/tasks"),
     fetchJson<CalendarEvent[]>("/api/calendar"),
   ]);
-  const items: ScheduleableItem[] = [];
-  if (Array.isArray(tasks)) items.push(...tasksToItems(tasks));
-  if (Array.isArray(events)) items.push(...eventsToItems(events));
-  return items;
+  return {
+    tasks: Array.isArray(tasks) ? tasks : [],
+    events: Array.isArray(events) ? events : [],
+  };
 }
 
 /**
@@ -299,22 +359,44 @@ export async function planReminders(): Promise<{
     return { scheduled: 0, skipped: 0 };
   }
 
-  const items = await loadTodayItems();
+  const { tasks, events } = await loadRawTasksAndEvents();
+
+  // Items eligible for actual delivery (native OS, server push, in-page
+  // setTimeout) are always today-only — we never schedule OS notifications
+  // for tomorrow ahead of time.
+  const deliveryItems: ScheduleableItem[] = [
+    ...tasksToItems(tasks, 0),
+    ...eventsToItems(events, 0),
+  ];
+
+  // Items shown in the upcoming-reminders snapshot panel. Defaults to today,
+  // but the user can extend this horizon up to the next 7 days for a
+  // read-only preview of their reminders.
+  const previewItems: ScheduleableItem[] =
+    previewDaysAhead > 0
+      ? [
+          ...tasksToItems(tasks, previewDaysAhead),
+          ...eventsToItems(events, previewDaysAhead),
+        ]
+      : deliveryItems;
 
   // Refresh the planned-items snapshot so the cache subscriber can diff
-  // against the latest plan when subsequent mutations arrive.
+  // against the latest plan when subsequent mutations arrive. Only delivery
+  // items are tracked here — the preview items aren't natively scheduled so
+  // they don't need diff-based cancellation.
   lastPlannedItems.clear();
-  for (const it of items) {
+  for (const it of deliveryItems) {
     lastPlannedItems.set(it.id, { startMs: it.start.getTime() });
   }
 
   // Reconcile the persisted skip set against the latest items: drop any skip
   // whose underlying item has disappeared or been rescheduled (matches the
   // server's clearReminderCancellations behaviour). What remains will then
-  // suppress matching reminders below.
+  // suppress matching reminders below. Use the broader preview set so future
+  // skips aren't accidentally dropped just because the item isn't today.
   const skips = loadSkipped();
   const itemStartById = new Map<string, number>();
-  for (const it of items) itemStartById.set(it.id, it.start.getTime());
+  for (const it of previewItems) itemStartById.set(it.id, it.start.getTime());
   let skipsChanged = false;
   for (const key of Object.keys(skips)) {
     const colon = key.indexOf(":");
@@ -359,7 +441,7 @@ export async function planReminders(): Promise<{
       });
     }
   };
-  for (const item of items) {
+  for (const item of previewItems) {
     const itemKind: "task" | "event" = item.kind;
     if (prefs.preTaskEnabled) {
       const key = `pre:${item.id}`;
@@ -413,7 +495,7 @@ export async function planReminders(): Promise<{
   // before handing off.
   if (isCapacitor()) {
     try {
-      const nativeItems = items.map((it) => {
+      const nativeItems = deliveryItems.map((it) => {
         const preKey = `pre:${it.id}`;
         const postKey = `post:${it.id}`;
         // Treat a skipped pre as having no scheduled start in the past for
@@ -465,7 +547,7 @@ export async function planReminders(): Promise<{
     void ensurePushSubscription();
   }
 
-  for (const item of items) {
+  for (const item of deliveryItems) {
     // Pre-task reminder
     if (prefs.preTaskEnabled) {
       const fireAt = new Date(item.start.getTime() - minutesBefore * 60 * 1000);

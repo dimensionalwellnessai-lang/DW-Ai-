@@ -237,13 +237,22 @@ interface PendingReminder {
 // marker so the running process behaves correctly — the persistence is purely
 // for restart-survival.
 //
-// Both ledgers self-prune entries older than 25h so they cannot grow without
-// bound. The 25h horizon is the pre-task lead time + a generous safety margin.
+// Both ledgers self-prune older entries so they cannot grow without bound.
+// Sent markers expire after ~25h (pre-task lead time + safety margin); cancel
+// markers persist long enough to cover the upcoming-reminders preview horizon
+// (see SENT_LEDGER_TTL_MS / CANCELLED_LEDGER_TTL_MS below).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const sentLedger = new Map<string, number>();
 const cancelledLedger = new Map<string, number>();
-const LEDGER_TTL_MS = 25 * 60 * 60 * 1000;
+// Sent markers only need to outlive the longest plausible single reminder
+// fire-window (pre-task lead time + safety margin) — 25h is plenty.
+const SENT_LEDGER_TTL_MS = 25 * 60 * 60 * 1000;
+// Cancellation markers must outlive the upcoming-reminders panel's preview
+// horizon (up to 7 days ahead) so a skip placed today still suppresses the
+// reminder when its day arrives. 9 days = 7-day preview + 2-day safety.
+const CANCELLED_LEDGER_TTL_MS = 9 * 24 * 60 * 60 * 1000;
+const HYDRATE_LOOKBACK_MS = Math.max(SENT_LEDGER_TTL_MS, CANCELLED_LEDGER_TTL_MS);
 const CANCELLED_BUCKET = 0;
 
 let ledgerHydrated = false;
@@ -257,16 +266,20 @@ async function hydrateLedger(): Promise<void> {
   }
   hydratePromise = (async () => {
     try {
-      const cutoff = new Date(Date.now() - LEDGER_TTL_MS);
+      const cutoff = new Date(Date.now() - HYDRATE_LOOKBACK_MS);
       const rows = await db
         .select()
         .from(reminderLedger)
         .where(gt(reminderLedger.createdAt, cutoff));
+      const sentCutoff = Date.now() - SENT_LEDGER_TTL_MS;
+      const cancelledCutoff = Date.now() - CANCELLED_LEDGER_TTL_MS;
       for (const row of rows) {
         const ts = row.createdAt ? row.createdAt.getTime() : Date.now();
         if (row.kind === "sent") {
+          if (ts < sentCutoff) continue;
           sentLedger.set(`${row.userId}|${row.tag}|${row.bucket}`, ts);
         } else if (row.kind === "cancelled") {
+          if (ts < cancelledCutoff) continue;
           cancelledLedger.set(`${row.userId}|${row.tag}`, ts);
         }
       }
@@ -332,15 +345,31 @@ async function deleteLedgerRowsForTag(
 
 async function pruneLedgerDb(): Promise<void> {
   try {
-    const cutoff = new Date(Date.now() - LEDGER_TTL_MS);
-    await db.delete(reminderLedger).where(lt(reminderLedger.createdAt, cutoff));
+    const sentCutoff = new Date(Date.now() - SENT_LEDGER_TTL_MS);
+    const cancelledCutoff = new Date(Date.now() - CANCELLED_LEDGER_TTL_MS);
+    await db
+      .delete(reminderLedger)
+      .where(
+        and(
+          eq(reminderLedger.kind, "sent"),
+          lt(reminderLedger.createdAt, sentCutoff),
+        ),
+      );
+    await db
+      .delete(reminderLedger)
+      .where(
+        and(
+          eq(reminderLedger.kind, "cancelled"),
+          lt(reminderLedger.createdAt, cancelledCutoff),
+        ),
+      );
   } catch (err) {
     console.error("[push] Failed to prune reminder ledger rows:", err);
   }
 }
 
-function pruneLedger(map: Map<string, number>): void {
-  const cutoff = Date.now() - LEDGER_TTL_MS;
+function pruneLedger(map: Map<string, number>, ttlMs: number): void {
+  const cutoff = Date.now() - ttlMs;
   for (const [k, ts] of Array.from(map.entries())) {
     if (ts < cutoff) map.delete(k);
   }
@@ -616,8 +645,8 @@ async function tick(): Promise<void> {
   // First tick after boot loads any sent/cancelled markers that were written
   // before the previous process exited. Subsequent ticks just hit the cache.
   await hydrateLedger();
-  pruneLedger(sentLedger);
-  pruneLedger(cancelledLedger);
+  pruneLedger(sentLedger, SENT_LEDGER_TTL_MS);
+  pruneLedger(cancelledLedger, CANCELLED_LEDGER_TTL_MS);
   void pruneLedgerDb();
   try {
     // Find every user with at least one push subscription. Joining keeps the
