@@ -18,16 +18,25 @@ import { cn } from "@/lib/utils";
 export interface ThreeRingOrbitProps {
   /** Set of pillar ids that should appear lit. If undefined, all are lit. */
   litPillars?: Set<LifeSystemPillarId>;
-  /** Project names to render on the outer ring; lit if in litProjects. */
-  projects?: { name: string }[];
+  /**
+   * Projects to render on the outer ring. Each may optionally carry an id; the
+   * orbit falls back to `name` as the node identifier when no id is provided.
+   * `litProjects` and `onProjectClick` operate on the same identifier
+   * (id when present, otherwise name) so callers can wire either shape.
+   */
+  projects?: { id?: string; name: string }[];
   litProjects?: Set<string>;
   /** Diameter in pixels. */
   size?: number;
   className?: string;
   /** Tap handler for lit Core or Expression pillar nodes. */
   onPillarClick?: (id: LifeSystemPillarId) => void;
-  /** Tap handler for lit Creation (project) nodes on the outer ring. */
-  onProjectClick?: (name: string) => void;
+  /**
+   * Tap handler for lit Creation (project) nodes on the outer ring.
+   * Receives the same identifier used in `litProjects` — the project's id
+   * when provided on the project item, otherwise its name.
+   */
+  onProjectClick?: (projectKey: string) => void;
   /** Tap handler for the central DW orb. */
   onCenterClick?: () => void;
 }
@@ -96,7 +105,7 @@ export function ThreeRingOrbit({
         : projects.map((p, i) => {
             const angle = (360 / Math.max(projects.length, 3)) * i + 30;
             const { x, y } = polar(outerR, angle);
-            return { id: p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor, kind: "project" as const };
+            return { id: p.id ?? p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor, kind: "project" as const };
           }),
     [outerR, projects],
   );

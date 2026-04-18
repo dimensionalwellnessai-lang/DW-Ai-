@@ -153,8 +153,8 @@ export default function HomeCommandCenter() {
     const active = (lifeData?.projects ?? []).filter(p => p.status === "active");
     return {
       litPillars: lit,
-      orbitProjects: active.map(p => ({ name: p.name })),
-      litProjects: new Set(active.map(p => p.name)),
+      orbitProjects: active.map(p => ({ id: p.id, name: p.name })),
+      litProjects: new Set(active.map(p => p.id)),
     };
   }, [lifeData]);
 
@@ -270,7 +270,7 @@ export default function HomeCommandCenter() {
               size={340}
               className="relative z-10"
               onPillarClick={(id) => navigate(`/life-system/pillar/${id}`)}
-              onProjectClick={() => navigate("/life-system#projects")}
+              onProjectClick={(id) => navigate(`/life-system/project/${id}`)}
               onCenterClick={() => navigate("/life-system/document")}
             />
           </div>

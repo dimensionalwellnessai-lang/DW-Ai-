@@ -99,7 +99,7 @@ export default function LifeSystemPage() {
     const enabled = row ? row.enabled !== false : !isEmpty && def.defaultOn;
     if (enabled) litPillars.add(def.id);
   }
-  const litProjects = new Set(projects.filter(p => p.status === "active").map(p => p.name));
+  const litProjects = new Set(projects.filter(p => p.status === "active").map(p => p.id));
 
   async function onAdopt() {
     setAdopting(true);
@@ -168,7 +168,7 @@ export default function LifeSystemPage() {
         </p>
         <ThreeRingOrbit
           litPillars={litPillars}
-          projects={projects.filter(p => p.status === "active").map(p => ({ name: p.name }))}
+          projects={projects.filter(p => p.status === "active").map(p => ({ id: p.id, name: p.name }))}
           litProjects={litProjects}
           size={320}
         />

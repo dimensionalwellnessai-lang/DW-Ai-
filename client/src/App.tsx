@@ -129,6 +129,7 @@ const RelationshipsPage = lazy(() => import("@/pages/relationships"));
 const LifeSystemPage = lazy(() => import("@/pages/life-system"));
 const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document"));
 const LifeSystemPillarDetailPage = lazy(() => import("@/pages/life-system-pillar-detail"));
+const LifeSystemProjectDetailPage = lazy(() => import("@/pages/life-system-project-detail"));
 const LifeSystemOnboardingPage = lazy(() => import("@/pages/life-system-onboarding"));
 
 function isReturningUser(): boolean {
@@ -237,6 +238,7 @@ function Router() {
       <Route path="/onboarding" component={LifeSystemOnboardingPage} />
       <Route path="/life-system/document" component={LifeSystemDocumentPage} />
       <Route path="/life-system/pillar/:id" component={LifeSystemPillarDetailPage} />
+      <Route path="/life-system/project/:id" component={LifeSystemProjectDetailPage} />
       <Route path="/life-system" component={LifeSystemPage} />
 
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
