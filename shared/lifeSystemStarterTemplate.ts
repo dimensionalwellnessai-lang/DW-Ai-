@@ -234,5 +234,21 @@ export const STARTER_TEMPLATE: StarterTemplate = {
       nextAction: "Adopt the Starter Template and run it for the week.",
       status: "active",
     },
+    {
+      name: "DW App",
+      description: "Build Dimensional Wellness AI — the personal life operating system that knows me whole.",
+      currentFocus: "Ship the three-level Life System and the six-act onboarding.",
+      weeklyCadence: "Daily build blocks Mon–Thu, Friday for design + planning.",
+      nextAction: "Wire the Life System Document into the home command center.",
+      status: "active",
+    },
+    {
+      name: "Content",
+      description: "Share the build and the philosophy in public — writing, video, and the story of running my own life on a system.",
+      currentFocus: "Post a weekly thread on what I changed in the system.",
+      weeklyCadence: "One long-form post + two short captures per week.",
+      nextAction: "Draft the launch story for DW App.",
+      status: "active",
+    },
   ],
 };

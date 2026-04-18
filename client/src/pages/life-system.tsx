@@ -163,7 +163,7 @@ export default function LifeSystemPage() {
       <div className="grid gap-3 sm:grid-cols-2">
         {PILLARS_BY_LEVEL.core.map(def => {
           const row = findPillarRow(data, def.id);
-          const enabled = row ? row.enabled !== false : isEmpty;
+          const enabled = row ? row.enabled !== false : true;
           return (
             <Card
               key={def.id}

@@ -47,6 +47,7 @@ export const AUTH_ONBOARDING_PAGES: readonly string[] = [
   "/welcome",
   "/login",
   "/reset-password",
+  "/onboarding",
   "/voice-onboarding",
   "/enhanced-onboarding",
   "/app-tour",
