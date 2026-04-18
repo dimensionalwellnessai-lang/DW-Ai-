@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient, parseApiError } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +39,8 @@ import {
   RefreshCw,
   Flag,
   Server,
+  BellOff,
+  ShieldAlert,
 } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -117,6 +128,17 @@ interface SchedulerSlotsResponse {
     heartbeatAgeMs: number;
     stale: boolean;
     isThisInstance: boolean;
+  }[];
+}
+
+interface MonitoringAlertsResponse {
+  cooldownMs: number;
+  alerts: {
+    alertType: string;
+    lastSentAt: string;
+    ageMs: number;
+    cooldownRemainingMs: number;
+    snoozed: boolean;
   }[];
 }
 
@@ -285,6 +307,46 @@ export default function AdminAnalyticsPage() {
     },
     retry: false,
     enabled: !summaryError,
+  });
+
+  const { toast } = useToast();
+  const { data: monitoringAlerts, isLoading: monitoringAlertsLoading, error: monitoringAlertsError } = useQuery<MonitoringAlertsResponse>({
+    queryKey: ["admin", "monitoring-alerts"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/monitoring-alerts`);
+      if (!res.ok) throw new Error("Not authorized");
+      return res.json();
+    },
+    retry: false,
+    enabled: !summaryError,
+    refetchInterval: 30_000,
+  });
+
+  const [snoozeHoursByAlert, setSnoozeHoursByAlert] = useState<Record<string, string>>({});
+
+  const snoozeMutation = useMutation({
+    mutationFn: async ({ alertType, hours }: { alertType: string; hours: number }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/monitoring-alerts/${encodeURIComponent(alertType)}/snooze`,
+        { hours },
+      );
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      toast({
+        title: "Alert snoozed",
+        description: `${vars.alertType} silenced for ${vars.hours}h`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin", "monitoring-alerts"] });
+    },
+    onError: (err) => {
+      toast({
+        title: "Snooze failed",
+        description: parseApiError(err),
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: schedulerSlots, isLoading: schedulerSlotsLoading, error: schedulerSlotsError } = useQuery<SchedulerSlotsResponse>({
@@ -670,6 +732,132 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : null}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.42 }}
+        >
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-amber-400" />
+                Scheduler Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {monitoringAlertsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : monitoringAlertsError ? (
+                <p className="text-sm text-red-400" data-testid="monitoring-alerts-error">
+                  Failed to load scheduler alerts
+                </p>
+              ) : monitoringAlerts?.alerts?.length ? (
+                <div className="space-y-2" data-testid="monitoring-alerts-list">
+                  {monitoringAlerts.alerts.map((a) => {
+                    const ageMin = Math.round(a.ageMs / 60000);
+                    const ageLabel =
+                      ageMin < 1
+                        ? "just now"
+                        : ageMin < 60
+                          ? `${ageMin}m ago`
+                          : ageMin < 60 * 24
+                            ? `${Math.round(ageMin / 60)}h ago`
+                            : `${Math.round(ageMin / (60 * 24))}d ago`;
+                    const cdMin = Math.round(a.cooldownRemainingMs / 60000);
+                    const cdLabel =
+                      a.cooldownRemainingMs <= 0
+                        ? "ready to fire"
+                        : cdMin < 60
+                          ? `${cdMin}m left`
+                          : `${Math.floor(cdMin / 60)}h ${cdMin % 60}m left`;
+                    const snoozeKey = a.alertType;
+                    const snoozeValue = snoozeHoursByAlert[snoozeKey] ?? "1";
+                    const isSnoozing =
+                      snoozeMutation.isPending &&
+                      snoozeMutation.variables?.alertType === a.alertType;
+                    return (
+                      <div
+                        key={a.alertType}
+                        className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                        data-testid={`monitoring-alert-${a.alertType}`}
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Badge variant="outline" className="bg-muted">
+                              {a.alertType}
+                            </Badge>
+                            {a.snoozed && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                suppressed
+                              </Badge>
+                            )}
+                            <span
+                              className="text-xs text-muted-foreground"
+                              data-testid={`monitoring-alert-last-${a.alertType}`}
+                            >
+                              last sent {ageLabel}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-xs ${a.cooldownRemainingMs > 0 ? "text-amber-400" : "text-muted-foreground"}`}
+                            data-testid={`monitoring-alert-cooldown-${a.alertType}`}
+                          >
+                            {cdLabel}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 justify-end">
+                          <Select
+                            value={snoozeValue}
+                            onValueChange={(v) =>
+                              setSnoozeHoursByAlert((prev) => ({ ...prev, [snoozeKey]: v }))
+                            }
+                          >
+                            <SelectTrigger
+                              className="h-8 w-[110px] text-xs"
+                              data-testid={`select-snooze-hours-${a.alertType}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1 hour</SelectItem>
+                              <SelectItem value="4">4 hours</SelectItem>
+                              <SelectItem value="12">12 hours</SelectItem>
+                              <SelectItem value="24">24 hours</SelectItem>
+                              <SelectItem value="72">3 days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isSnoozing}
+                            onClick={() =>
+                              snoozeMutation.mutate({
+                                alertType: a.alertType,
+                                hours: Number(snoozeValue) || 1,
+                              })
+                            }
+                            data-testid={`button-snooze-alert-${a.alertType}`}
+                          >
+                            <BellOff className="h-3.5 w-3.5 mr-1" />
+                            Snooze
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic" data-testid="monitoring-alerts-empty">
+                  No scheduler alerts have fired
+                </p>
               )}
             </CardContent>
           </Card>

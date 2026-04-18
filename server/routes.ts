@@ -8495,6 +8495,83 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // Recent scheduler health alerts so operators can triage active incidents
+  // without digging through email. Each row is one alert type with the most
+  // recent send time and how much of the cooldown window remains before
+  // another alert of that type would be allowed to fire.
+  app.get("/api/admin/monitoring-alerts", requireAdmin, async (_req, res) => {
+    try {
+      const { getRecentMonitoringAlerts, SCHEDULER_ALERT_COOLDOWN_MS } =
+        await import("./push");
+      const rows = await getRecentMonitoringAlerts(20);
+      const now = Date.now();
+      res.json({
+        cooldownMs: SCHEDULER_ALERT_COOLDOWN_MS,
+        alerts: rows.map((r) => {
+          const lastSentMs = new Date(r.lastSentAt).getTime();
+          const cooldownRemainingMs = Math.max(
+            0,
+            lastSentMs + SCHEDULER_ALERT_COOLDOWN_MS - now,
+          );
+          return {
+            alertType: r.alertType,
+            lastSentAt: r.lastSentAt,
+            ageMs: Math.max(0, now - lastSentMs),
+            cooldownRemainingMs,
+            // Treat any active suppression window as "snoozed" so the UI
+            // badge accurately reflects what the dedup gate is doing,
+            // even when the snooze window was shorter than the base
+            // cooldown (in which case `last_sent_at` lands in the past
+            // but suppression is still in effect).
+            snoozed: cooldownRemainingMs > 0,
+          };
+        }),
+      });
+    } catch (err) {
+      console.error("[admin] monitoring-alerts failed:", err);
+      res.status(500).json({ error: "Failed to load monitoring alerts" });
+    }
+  });
+
+  // Manually silence one alert type for a configurable window. Bumps the
+  // dedup row's last_sent_at forward so the existing cooldown gate suppresses
+  // future emails until the snooze window elapses.
+  app.post(
+    "/api/admin/monitoring-alerts/:alertType/snooze",
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const { alertType } = req.params;
+        const schema = z.object({
+          hours: z.coerce.number().positive().max(24 * 30),
+        });
+        const parsed = schema.safeParse(req.body ?? {});
+        if (!parsed.success) {
+          return res
+            .status(400)
+            .json({ error: "hours must be a positive number (max 720)" });
+        }
+        if (!alertType || alertType.length > 100) {
+          return res.status(400).json({ error: "Invalid alertType" });
+        }
+        const { snoozeMonitoringAlert } = await import("./push");
+        const newLastSentAt = await snoozeMonitoringAlert(
+          alertType,
+          parsed.data.hours,
+        );
+        if (!newLastSentAt) {
+          return res
+            .status(500)
+            .json({ error: "Failed to snooze alert" });
+        }
+        res.json({ alertType, lastSentAt: newLastSentAt });
+      } catch (err) {
+        console.error("[admin] snooze monitoring alert failed:", err);
+        res.status(500).json({ error: "Failed to snooze alert" });
+      }
+    },
+  );
+
   // Admin metrics - summary
   app.get("/api/admin/metrics/summary", requireAdmin, async (req, res) => {
     try {

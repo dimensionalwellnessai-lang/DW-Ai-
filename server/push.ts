@@ -23,10 +23,12 @@ import {
   calendarEvents as calendarEventsTable,
   reminderLedger,
   schedulerLeases,
+  monitoringAlerts,
   type NotificationPreferences,
   type Task,
   type CalendarEvent,
   type SchedulerLease,
+  type MonitoringAlert,
 } from "@shared/schema";
 import { sendOperatorAlertEmail } from "./email";
 
@@ -1307,3 +1309,60 @@ export async function stopReminderScheduler(): Promise<void> {
 // Public for the admin slot-ownership endpoint so it can label rows using
 // the same staleness threshold the reclaim logic uses.
 export const SCHEDULER_LEASE_STALE_MS = LEASE_STALE_MS;
+
+// Public for the admin monitoring-alerts endpoint so the UI can compute
+// "cooldown remaining" the same way the health monitor does.
+export const SCHEDULER_ALERT_COOLDOWN_MS = ALERT_COOLDOWN_MS;
+
+/**
+ * Read the recent rows from `monitoring_alerts` for the admin dashboard.
+ */
+export async function getRecentMonitoringAlerts(
+  limit = 20,
+): Promise<MonitoringAlert[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(monitoringAlerts)
+      .orderBy(dsql`${monitoringAlerts.lastSentAt} DESC`)
+      .limit(limit);
+    return rows;
+  } catch (err) {
+    console.error("[push] Failed to read monitoring_alerts:", err);
+    return [];
+  }
+}
+
+/**
+ * Manually silence `alertType` for `snoozeHours` from now. Implemented by
+ * pushing `last_sent_at` forward so that
+ * `last_sent_at + ALERT_COOLDOWN_MS` lands `snoozeHours` from now —
+ * matching the same dedup gate the health monitor already enforces. Returns
+ * the new `last_sent_at` timestamp on success.
+ */
+export async function snoozeMonitoringAlert(
+  alertType: string,
+  snoozeHours: number,
+): Promise<Date | null> {
+  if (!Number.isFinite(snoozeHours) || snoozeHours <= 0) return null;
+  const snoozeMs = snoozeHours * 60 * 60 * 1000;
+  // last_sent_at = now + snoozeMs - cooldownMs ⇒ remaining cooldown = snoozeMs.
+  const newLastSentAt = new Date(Date.now() + snoozeMs - ALERT_COOLDOWN_MS);
+  try {
+    const [row] = await db
+      .insert(monitoringAlerts)
+      .values({ alertType, lastSentAt: newLastSentAt })
+      .onConflictDoUpdate({
+        target: monitoringAlerts.alertType,
+        set: { lastSentAt: newLastSentAt },
+      })
+      .returning();
+    return row?.lastSentAt ?? newLastSentAt;
+  } catch (err) {
+    console.error(
+      `[push] Failed to snooze monitoring alert '${alertType}':`,
+      err,
+    );
+    return null;
+  }
+}
