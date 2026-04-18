@@ -29,6 +29,7 @@ import {
   Zap,
   RefreshCw,
   Flag,
+  Server,
 } from "lucide-react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
@@ -101,6 +102,22 @@ interface ErrorsResponse {
   errorsPerSession: number;
   topErrorCodes: { errorCode: string; count: number }[];
   topScreens: { screenId: string; count: number }[];
+}
+
+interface SchedulerSlotsResponse {
+  thisInstance: {
+    instanceId: string;
+    slotIndex: number;
+    slotCount: number;
+  };
+  slots: {
+    slotIndex: number;
+    instanceId: string;
+    lastHeartbeatAt: string;
+    heartbeatAgeMs: number;
+    stale: boolean;
+    isThisInstance: boolean;
+  }[];
 }
 
 interface FlagsResponse {
@@ -268,6 +285,18 @@ export default function AdminAnalyticsPage() {
     },
     retry: false,
     enabled: !summaryError,
+  });
+
+  const { data: schedulerSlots, isLoading: schedulerSlotsLoading, error: schedulerSlotsError } = useQuery<SchedulerSlotsResponse>({
+    queryKey: ["admin", "scheduler-slots"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/scheduler-slots`);
+      if (!res.ok) throw new Error("Not authorized");
+      return res.json();
+    },
+    retry: false,
+    enabled: !summaryError,
+    refetchInterval: 30_000,
   });
 
   const { data: timeband } = useQuery<TimebandResponse>({
@@ -641,6 +670,90 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : null}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
+                <Server className="h-4 w-4 text-cyan-400" />
+                Reminder Servers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {schedulerSlotsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : schedulerSlotsError ? (
+                <p className="text-sm text-red-400" data-testid="scheduler-slots-error">
+                  Failed to load reminder server status
+                </p>
+              ) : schedulerSlots?.slots?.length ? (
+                <div className="space-y-2" data-testid="scheduler-slots-list">
+                  {schedulerSlots.slots
+                    .slice()
+                    .sort((a, b) => a.slotIndex - b.slotIndex)
+                    .map((slot) => {
+                      const ageSec = Math.round(slot.heartbeatAgeMs / 1000);
+                      const ageLabel =
+                        ageSec < 60
+                          ? `${ageSec}s ago`
+                          : ageSec < 3600
+                            ? `${Math.round(ageSec / 60)}m ago`
+                            : `${Math.round(ageSec / 3600)}h ago`;
+                      return (
+                        <div
+                          key={slot.slotIndex}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                          data-testid={`scheduler-slot-${slot.slotIndex}`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span
+                              className={`inline-block h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                                slot.stale ? "bg-red-500" : "bg-green-500"
+                              }`}
+                              data-testid={`scheduler-slot-health-${slot.slotIndex}`}
+                              aria-label={slot.stale ? "stale" : "healthy"}
+                            />
+                            <Badge variant="outline" className="bg-muted">
+                              Slot {slot.slotIndex}
+                            </Badge>
+                            <code
+                              className="text-xs text-foreground truncate"
+                              data-testid={`scheduler-slot-instance-${slot.slotIndex}`}
+                              title={slot.instanceId}
+                            >
+                              {slot.instanceId}
+                            </code>
+                            {slot.isThisInstance && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                this
+                              </Badge>
+                            )}
+                          </div>
+                          <span
+                            className={`text-xs ${slot.stale ? "text-red-400" : "text-muted-foreground"}`}
+                            data-testid={`scheduler-slot-age-${slot.slotIndex}`}
+                          >
+                            {ageLabel}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic" data-testid="scheduler-slots-empty">
+                  No active reminder servers
+                </p>
               )}
             </CardContent>
           </Card>
