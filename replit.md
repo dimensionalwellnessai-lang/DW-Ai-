@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Spiritual Page**: Over 30 practices across 11 categories, completion tracking, spiritual streak, personalized sections, and an AI Meditation Generator.
 - **App Tour**: Enhanced with 8 milestone tracking, real-time completion detection, progress bar, and clickable links to relevant pages.
 - **DW Proactive Intelligence**: AI proactively reaches out based on user energy levels, suggests habits for financial goals, sends habit reminders, and provides weekly summaries.
+- **Relationships (Social Environment)**: People directory categorized as Aligned / Growth / Neutral / Draining; per-interaction logging of energy/clarity/self after each encounter (-2..+2 scale); Aliveness Moments capture; Weekly Rhythm reference (Mon–Thu light social, Fri optional, Sat main social window, Sun calm). Routes: `/relationships`, API: `/api/people`, `/api/people/interactions`, `/api/aliveness`, `/api/people/summary`. Schema: `people`, `people_interactions`, `aliveness_moments` in `shared/schema.ts`. Routes module: `server/routes/relationships.ts` (wired from `server/routes.ts`).
 
 ## Hidden / Removed Stub Features
 The following advertised-but-unfinished features were hidden or removed to keep the UI honest:

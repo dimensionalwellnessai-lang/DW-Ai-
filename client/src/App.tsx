@@ -125,6 +125,7 @@ import { AIWorkspace } from "@/components/ai-workspace";
 import VoiceModePage from "@/pages/voice-mode";
 import DayStartPage from "@/pages/day-start";
 const LibraryPage = lazy(() => import("@/pages/library"));
+const RelationshipsPage = lazy(() => import("@/pages/relationships"));
 
 function isReturningUser(): boolean {
   try {
@@ -273,6 +274,7 @@ function Router() {
       <Route path="/cosmic" component={CosmicHubPage} />
       {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
+      {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}
       {/* Routine sub-routes must come before /routines so wouter matches them first */}

@@ -18,6 +18,7 @@ import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable, onboardingProfiles as onboardingProfilesTable, aiSyncSessions as aiSyncSessionsTable, aiSyncItems as aiSyncItemsTable, interactionEvents as interactionEventsTable, aiPatternSnapshots as aiPatternSnapshotsTable, userLearningProfile as userLearningProfileTable } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
+import { registerRelationshipsRoutes } from "./routes/relationships";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -457,6 +458,9 @@ export async function registerRoutes(
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user, done) => done(null, user as Express.User));
   app.use(passport.initialize());
+
+  // Relationships / Social Environment routes (people, interactions, aliveness)
+  registerRelationshipsRoutes(app);
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation

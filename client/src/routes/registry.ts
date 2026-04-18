@@ -467,6 +467,19 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   },
 
   {
+    id: "relationships",
+    path: "/relationships",
+    label: "Relationships",
+    icon: "heart",
+    type: "page",
+    description: "People in your life — categorize, log interactions, track aliveness",
+    showInMenu: true,
+    menuSection: "primary",
+    menuOrder: 65,
+    enabled: true,
+  },
+
+  {
     id: "plans",
     path: "/plans",
     label: "Plans",

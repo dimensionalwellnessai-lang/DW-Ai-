@@ -1091,6 +1091,104 @@ export const importedDocumentItemsRelations = relations(importedDocumentItems, (
   }),
 }));
 
+// ── Relationships: people, interactions, aliveness moments ─────────────────
+// The "Social Environment" pillar: track the actual people in your life,
+// categorize them (aligned / neutral / draining / growth), log how each
+// interaction left you, and capture aliveness moments so the AI can use
+// real social context — not just abstract dimension scores.
+export const people = pgTable("people", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  // family | partner | close-friend | friend | coworker | mentor | acquaintance | other
+  relationship: text("relationship").default("friend"),
+  // aligned | neutral | draining | growth
+  category: text("category").default("neutral"),
+  notes: text("notes"),
+  photoUrl: text("photo_url"),
+  // Free-form so users can record "March 14" without a year if they want
+  birthday: text("birthday"),
+  lastInteractionAt: timestamp("last_interaction_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const peopleInteractions = pgTable("people_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  personId: varchar("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  // in-person | call | text | video | group | other
+  kind: text("kind").default("in-person"),
+  // Energy after the interaction: -2..+2 (heavier ↔ lighter)
+  energyAfter: integer("energy_after"),
+  // Clarity after: -2..+2 (confused ↔ clear)
+  clarityAfter: integer("clarity_after"),
+  // Self alignment after: -2..+2 (less like myself ↔ more like myself)
+  selfAfter: integer("self_after"),
+  notes: text("notes"),
+  occurredAt: timestamp("occurred_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const peopleRelations = relations(people, ({ one, many }) => ({
+  user: one(users, {
+    fields: [people.userId],
+    references: [users.id],
+  }),
+  interactions: many(peopleInteractions),
+}));
+
+export const peopleInteractionsRelations = relations(peopleInteractions, ({ one }) => ({
+  user: one(users, {
+    fields: [peopleInteractions.userId],
+    references: [users.id],
+  }),
+  person: one(people, {
+    fields: [peopleInteractions.personId],
+    references: [people.id],
+  }),
+}));
+
+export const alivenessMoments = pgTable("aliveness_moments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  tags: text("tags").array(),
+  // 1..5: small spark ↔ deeply alive
+  alivenessLevel: integer("aliveness_level").default(3),
+  occurredAt: timestamp("occurred_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const alivenessMomentsRelations = relations(alivenessMoments, ({ one }) => ({
+  user: one(users, {
+    fields: [alivenessMoments.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertPersonSchema = createInsertSchema(people).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPerson = z.infer<typeof insertPersonSchema>;
+export type Person = typeof people.$inferSelect;
+
+export const insertPeopleInteractionSchema = createInsertSchema(peopleInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPeopleInteraction = z.infer<typeof insertPeopleInteractionSchema>;
+export type PeopleInteraction = typeof peopleInteractions.$inferSelect;
+
+export const insertAlivenessMomentSchema = createInsertSchema(alivenessMoments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAlivenessMoment = z.infer<typeof insertAlivenessMomentSchema>;
+export type AlivenessMoment = typeof alivenessMoments.$inferSelect;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
