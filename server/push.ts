@@ -1105,9 +1105,14 @@ export async function startReminderScheduler(): Promise<void> {
   );
 }
 
-export function stopReminderScheduler(): void {
+export async function stopReminderScheduler(): Promise<void> {
   if (schedulerHandle) {
     clearInterval(schedulerHandle);
     schedulerHandle = null;
   }
+  await shutdownLease();
 }
+
+// Public for the admin slot-ownership endpoint so it can label rows using
+// the same staleness threshold the reclaim logic uses.
+export const SCHEDULER_LEASE_STALE_MS = LEASE_STALE_MS;

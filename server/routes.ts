@@ -8460,11 +8460,15 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   // heartbeat, and freshness so an operator can confirm coverage.
   app.get("/api/admin/scheduler-slots", requireAdmin, async (_req, res) => {
     try {
-      const { getActiveSchedulerLeases, getInstanceId, getCurrentShard } =
-        await import("./push");
+      const {
+        getActiveSchedulerLeases,
+        getInstanceId,
+        getCurrentShard,
+        SCHEDULER_LEASE_STALE_MS,
+      } = await import("./push");
       const leases = await getActiveSchedulerLeases();
       const now = Date.now();
-      const STALE_MS = 90 * 1000;
+      const STALE_MS = SCHEDULER_LEASE_STALE_MS;
       const myInstance = getInstanceId();
       const myShard = getCurrentShard();
       res.json({
