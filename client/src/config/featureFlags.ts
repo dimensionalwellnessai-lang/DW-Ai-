@@ -10,6 +10,7 @@ export interface FeatureFlags {
   NEW_ONBOARDING: boolean;          // ✅ Conversational onboarding flow
   ALL_FEATURES_VIEW: boolean;       // ✅ Searchable feature directory
   AI_PERSONALIZATION: boolean;      // ✅ "Most Used" learning
+  LIFE_BLUEPRINT: boolean;          // ⏸️ Life Blueprint (long-term plan view) — off by default
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
   APP_TOUR: boolean;                // ✅ Tooltip-based app tour
   INTERACTION_ENGINE: boolean;      // ⏸️ Client-side interaction engine (A→B→C shaping, 2-question max)
@@ -390,6 +391,7 @@ export const FEATURE_FLAGS: FeatureFlags = {
   NEW_ONBOARDING: true,
   ALL_FEATURES_VIEW: true,
   AI_PERSONALIZATION: true,
+  LIFE_BLUEPRINT: false,
   HOME_CONSOLIDATION: true,
   APP_TOUR: true,
   INTERACTION_ENGINE: resolveInteractionEngineFlag(),
