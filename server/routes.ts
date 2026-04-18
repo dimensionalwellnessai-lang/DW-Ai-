@@ -19,6 +19,7 @@ import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, g
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { registerRelationshipsRoutes } from "./routes/relationships";
+import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -462,6 +463,9 @@ export async function registerRoutes(
 
   // Relationships / Social Environment routes (people, interactions, aliveness)
   registerRelationshipsRoutes(app);
+
+  // Life System pillars / projects / generated document
+  registerLifeSystemPillarRoutes(app);
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation

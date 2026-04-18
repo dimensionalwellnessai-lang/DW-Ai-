@@ -126,6 +126,9 @@ import VoiceModePage from "@/pages/voice-mode";
 import DayStartPage from "@/pages/day-start";
 const LibraryPage = lazy(() => import("@/pages/library"));
 const RelationshipsPage = lazy(() => import("@/pages/relationships"));
+const LifeSystemPage = lazy(() => import("@/pages/life-system"));
+const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document"));
+const LifeSystemOnboardingPage = lazy(() => import("@/pages/life-system-onboarding"));
 
 function isReturningUser(): boolean {
   try {
@@ -173,12 +176,16 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   
-  // Not setup complete and not on an onboarding page -> go to enhanced-onboarding
-  if (!setupComplete && location !== "/enhanced-onboarding") {
+  // Allow the new six-act Life System onboarding (/onboarding) and the
+  // legacy /enhanced-onboarding to render without redirect when setup is incomplete.
+  const onboardingRoutes = ["/enhanced-onboarding", "/onboarding"];
+  const isOnOnboardingRoute = onboardingRoutes.includes(location);
+
+  if (!setupComplete && !isOnOnboardingRoute) {
     return <Redirect to="/enhanced-onboarding" />;
   }
-  
-  // Setup complete, on onboarding page -> go to /command-center
+
+  // Setup complete, on legacy onboarding page -> go to /command-center
   if (setupComplete && location === "/enhanced-onboarding") {
     return <Redirect to="/command-center" />;
   }
@@ -226,7 +233,10 @@ function Router() {
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/checkout" component={CheckoutPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
-      
+      <Route path="/onboarding" component={LifeSystemOnboardingPage} />
+      <Route path="/life-system/document" component={LifeSystemDocumentPage} />
+      <Route path="/life-system" component={LifeSystemPage} />
+
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
       <Route path="/life-dimensions" component={LifeDimensionsPage} />
       {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}

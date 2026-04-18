@@ -4,6 +4,9 @@ import {
   notificationPreferences,
   onboardingProfiles,
   lifeSystems,
+  lifeSystemPillars,
+  lifeSystemProjects,
+  lifeSystemDocuments,
   goals,
   habits,
   habitLogs,
@@ -71,6 +74,12 @@ import {
   type InsertOnboardingProfile,
   type LifeSystem,
   type InsertLifeSystem,
+  type LifeSystemPillar,
+  type InsertLifeSystemPillar,
+  type LifeSystemProject,
+  type InsertLifeSystemProject,
+  type LifeSystemDocument,
+  type InsertLifeSystemDocument,
   type Goal,
   type InsertGoal,
   type Habit,
@@ -285,6 +294,22 @@ export interface IStorage {
   getLifeSystem(userId: string): Promise<LifeSystem | undefined>;
   createLifeSystem(system: InsertLifeSystem): Promise<LifeSystem>;
   updateLifeSystem(id: string, data: Partial<LifeSystem>): Promise<LifeSystem | undefined>;
+
+  // ── Life System Pillars (3-level taxonomy) ──────────────────────────────
+  getLifeSystemPillars(userId: string): Promise<LifeSystemPillar[]>;
+  upsertLifeSystemPillar(pillar: InsertLifeSystemPillar): Promise<LifeSystemPillar>;
+  updateLifeSystemPillar(userId: string, pillarId: string, data: Partial<InsertLifeSystemPillar>): Promise<LifeSystemPillar | undefined>;
+  deleteAllLifeSystemPillars(userId: string): Promise<void>;
+
+  // Life System Projects (sub-items inside the Creation pillar)
+  getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]>;
+  createLifeSystemProject(project: InsertLifeSystemProject): Promise<LifeSystemProject>;
+  updateLifeSystemProject(id: string, userId: string, data: Partial<InsertLifeSystemProject>): Promise<LifeSystemProject | undefined>;
+  deleteLifeSystemProject(id: string, userId: string): Promise<boolean>;
+
+  // Life System Documents (snapshots of the generated artifact)
+  getLatestLifeSystemDocument(userId: string): Promise<LifeSystemDocument | undefined>;
+  createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument>;
 
   getGoals(userId: string): Promise<Goal[]>;
   getGoal(id: string): Promise<Goal | undefined>;
@@ -3700,6 +3725,99 @@ export class DatabaseStorage implements IStorage {
     const updates: any = { username };
     if (systemName !== undefined) updates.systemName = systemName;
     await db.update(users).set(updates).where(eq(users.id, userId));
+  }
+
+  // ── Life System Pillars ───────────────────────────────────────────────────
+  async getLifeSystemPillars(userId: string): Promise<LifeSystemPillar[]> {
+    return await db
+      .select()
+      .from(lifeSystemPillars)
+      .where(eq(lifeSystemPillars.userId, userId))
+      .orderBy(lifeSystemPillars.sortOrder);
+  }
+
+  async upsertLifeSystemPillar(pillar: InsertLifeSystemPillar): Promise<LifeSystemPillar> {
+    const existing = await db
+      .select()
+      .from(lifeSystemPillars)
+      .where(and(eq(lifeSystemPillars.userId, pillar.userId), eq(lifeSystemPillars.pillarId, pillar.pillarId)))
+      .limit(1);
+    if (existing[0]) {
+      const [updated] = await db
+        .update(lifeSystemPillars)
+        .set({ ...pillar, updatedAt: new Date() })
+        .where(eq(lifeSystemPillars.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(lifeSystemPillars).values(pillar).returning();
+    return created;
+  }
+
+  async updateLifeSystemPillar(
+    userId: string,
+    pillarId: string,
+    data: Partial<InsertLifeSystemPillar>,
+  ): Promise<LifeSystemPillar | undefined> {
+    const [updated] = await db
+      .update(lifeSystemPillars)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(lifeSystemPillars.userId, userId), eq(lifeSystemPillars.pillarId, pillarId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteAllLifeSystemPillars(userId: string): Promise<void> {
+    await db.delete(lifeSystemPillars).where(eq(lifeSystemPillars.userId, userId));
+  }
+
+  async getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]> {
+    return await db
+      .select()
+      .from(lifeSystemProjects)
+      .where(eq(lifeSystemProjects.userId, userId))
+      .orderBy(lifeSystemProjects.sortOrder);
+  }
+
+  async createLifeSystemProject(project: InsertLifeSystemProject): Promise<LifeSystemProject> {
+    const [created] = await db.insert(lifeSystemProjects).values(project).returning();
+    return created;
+  }
+
+  async updateLifeSystemProject(
+    id: string,
+    userId: string,
+    data: Partial<InsertLifeSystemProject>,
+  ): Promise<LifeSystemProject | undefined> {
+    const [updated] = await db
+      .update(lifeSystemProjects)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(lifeSystemProjects.id, id), eq(lifeSystemProjects.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteLifeSystemProject(id: string, userId: string): Promise<boolean> {
+    const deleted = await db
+      .delete(lifeSystemProjects)
+      .where(and(eq(lifeSystemProjects.id, id), eq(lifeSystemProjects.userId, userId)))
+      .returning({ id: lifeSystemProjects.id });
+    return deleted.length > 0;
+  }
+
+  async getLatestLifeSystemDocument(userId: string): Promise<LifeSystemDocument | undefined> {
+    const [row] = await db
+      .select()
+      .from(lifeSystemDocuments)
+      .where(eq(lifeSystemDocuments.userId, userId))
+      .orderBy(desc(lifeSystemDocuments.generatedAt))
+      .limit(1);
+    return row;
+  }
+
+  async createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument> {
+    const [created] = await db.insert(lifeSystemDocuments).values(doc).returning();
+    return created;
   }
 }
 

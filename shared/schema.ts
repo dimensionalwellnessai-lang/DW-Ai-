@@ -3068,3 +3068,73 @@ export const insertHealthMetricSchema = createInsertSchema(healthMetrics).omit({
 });
 export type HealthMetric = typeof healthMetrics.$inferSelect;
 export type InsertHealthMetric = z.infer<typeof insertHealthMetricSchema>;
+
+// ── Life System Pillars (3-level taxonomy: core / expression / creation) ─────
+export const lifeSystemLevelEnum = ["core", "expression", "creation"] as const;
+export type LifeSystemLevel = typeof lifeSystemLevelEnum[number];
+
+export const lifeSystemPillars = pgTable("life_system_pillars", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pillarId: text("pillar_id").notNull(), // e.g. "foundation", "physical_health", "purpose"
+  level: text("level").notNull().$type<LifeSystemLevel>(),
+  enabled: boolean("enabled").default(true),
+  // Free-form structured content, shape varies per pillar; common keys:
+  // description, laws (string[]), nonNegotiables (string[]), weeklyRhythm,
+  // userVoice (the user's own answer captured during onboarding),
+  // identityStatement, finalStatement, custom fields by pillar
+  content: jsonb("content"),
+  sortOrder: integer("sort_order").default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [uniqueIndex("life_system_pillars_user_pillar_idx").on(t.userId, t.pillarId)]);
+
+export const insertLifeSystemPillarSchema = createInsertSchema(lifeSystemPillars).omit({
+  id: true,
+  updatedAt: true,
+  createdAt: true,
+});
+export type LifeSystemPillar = typeof lifeSystemPillars.$inferSelect;
+export type InsertLifeSystemPillar = z.infer<typeof insertLifeSystemPillarSchema>;
+
+// ── Life System Projects (sub-items inside the Creation pillar) ──────────────
+export const lifeSystemProjectStatusEnum = ["vision", "active", "paused", "done"] as const;
+export type LifeSystemProjectStatus = typeof lifeSystemProjectStatusEnum[number];
+
+export const lifeSystemProjects = pgTable("life_system_projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  currentFocus: text("current_focus"),
+  weeklyCadence: text("weekly_cadence"),
+  nextAction: text("next_action"),
+  status: text("status").default("active").$type<LifeSystemProjectStatus>(),
+  sortOrder: integer("sort_order").default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLifeSystemProjectSchema = createInsertSchema(lifeSystemProjects).omit({
+  id: true,
+  updatedAt: true,
+  createdAt: true,
+});
+export type LifeSystemProject = typeof lifeSystemProjects.$inferSelect;
+export type InsertLifeSystemProject = z.infer<typeof insertLifeSystemProjectSchema>;
+
+// ── Life System Documents (snapshots of the generated artifact) ──────────────
+export const lifeSystemDocuments = pgTable("life_system_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Structured document body — sections keyed by id, see shared/lifeSystemTaxonomy.ts
+  content: jsonb("content").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
+
+export const insertLifeSystemDocumentSchema = createInsertSchema(lifeSystemDocuments).omit({
+  id: true,
+  generatedAt: true,
+});
+export type LifeSystemDocument = typeof lifeSystemDocuments.$inferSelect;
+export type InsertLifeSystemDocument = z.infer<typeof insertLifeSystemDocumentSchema>;
