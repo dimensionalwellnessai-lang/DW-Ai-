@@ -30,7 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToastAction } from "@/components/ui/toast";
-import { BellOff, BellRing, Clock, CalendarClock, Undo2 } from "lucide-react";
+import {
+  BellOff,
+  BellRing,
+  Clock,
+  CalendarClock,
+  Undo2,
+  Check,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   getPlannedReminders,
@@ -107,6 +116,12 @@ export function UpcomingReminders() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [busyDay, setBusyDay] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<number>(() => getPreviewDaysAhead());
+  // Sync indicator state for the horizon select. "saving" while the PUT is in
+  // flight, "saved" briefly after success (auto-clears), and "error" with a
+  // message when persistence failed (the local value has already been rolled
+  // back by setPreviewDaysAhead, so the select itself is consistent again).
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [syncError, setSyncError] = useState<string | null>(null);
   // Ticking clock used to refresh skipped-row countdowns. Updated every 30s
   // so a "Restore in N min" label shifts within the same minute it would.
   const [now, setNow] = useState<number>(() => Date.now());
@@ -136,12 +151,29 @@ export function UpcomingReminders() {
     const days = parseInt(value, 10);
     if (!Number.isFinite(days)) return;
     setHorizon(days);
+    setSyncError(null);
+    setSyncStatus("saving");
     try {
       await setPreviewDaysAhead(days);
+      setSyncStatus("saved");
     } catch (err) {
       console.error("[upcoming-reminders] horizon change failed:", err);
+      // setPreviewDaysAhead already rolled back the in-memory value and
+      // notified subscribers, so the select snaps back via the subscription.
+      setSyncStatus("error");
+      setSyncError(
+        "Couldn't save your horizon to the server. Check your connection and try again.",
+      );
     }
   };
+
+  // Auto-clear the transient "Synced" indicator a few seconds after a
+  // successful save so it doesn't linger forever.
+  useEffect(() => {
+    if (syncStatus !== "saved") return;
+    const id = setTimeout(() => setSyncStatus("idle"), 3000);
+    return () => clearTimeout(id);
+  }, [syncStatus]);
 
   const handleRestore = async (reminder: PlannedReminder) => {
     setBusyKey(reminder.key);
@@ -339,7 +371,7 @@ export function UpcomingReminders() {
               reminder without disabling the feature for the whole task.
             </CardDescription>
           </div>
-          <div className="min-w-[180px]">
+          <div className="min-w-[180px] space-y-1">
             <Select value={horizonValue} onValueChange={handleHorizonChange}>
               <SelectTrigger
                 aria-label="Reminder preview horizon"
@@ -359,6 +391,47 @@ export function UpcomingReminders() {
                 ))}
               </SelectContent>
             </Select>
+            <div
+              className="flex items-start gap-1 text-xs min-h-[1rem]"
+              aria-live="polite"
+              data-testid="status-horizon-sync"
+            >
+              {syncStatus === "saving" && (
+                <span
+                  className="flex items-center gap-1 text-muted-foreground"
+                  data-testid="status-horizon-saving"
+                >
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Saving…
+                </span>
+              )}
+              {syncStatus === "saved" && (
+                <span
+                  className="flex items-center gap-1 text-muted-foreground"
+                  data-testid="status-horizon-saved"
+                >
+                  <Check className="w-3 h-3" />
+                  Synced across devices
+                </span>
+              )}
+              {syncStatus === "error" && syncError && (
+                <span
+                  className="flex items-start gap-1 text-destructive"
+                  data-testid="status-horizon-error"
+                >
+                  <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span>{syncError}</span>
+                </span>
+              )}
+              {syncStatus === "idle" && (
+                <span
+                  className="text-muted-foreground"
+                  data-testid="status-horizon-idle"
+                >
+                  Synced across devices
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
