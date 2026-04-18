@@ -1,8 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Sparkles, 
-  ArrowRight, 
+import {
+  Sparkles,
+  ArrowRight,
   X,
   Sun,
   Moon,
@@ -12,12 +12,19 @@ import {
   Target,
   Calendar,
   Dumbbell,
-  UtensilsCrossed
+  UtensilsCrossed,
+  MessageCircle,
+  Repeat,
+  BookOpen,
+  Compass,
+  Feather,
+  CalendarPlus,
+  ChefHat
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COPY } from "@/copy/en";
 
-export type ProactiveCardType = 
+export type ProactiveCardType =
   | "morning-briefing"
   | "energy-suggestion"
   | "goal-reminder"
@@ -25,7 +32,14 @@ export type ProactiveCardType =
   | "meal-suggestion"
   | "wind-down"
   | "pattern-insight"
-  | "check-in-prompt";
+  | "check-in-prompt"
+  | "conversation-starter"
+  | "past-convo-followup"
+  | "article-read"
+  | "topic-of-interest"
+  | "reflection-prompt"
+  | "schedule-suggestion"
+  | "food-idea";
 
 export interface ProactiveCardProps {
   type: ProactiveCardType;
@@ -79,10 +93,45 @@ const typeConfig: Record<ProactiveCardType, {
     gradient: "from-violet-500/20 to-fuchsia-500/20",
     iconColor: "text-violet-500"
   },
-  "check-in-prompt": { 
-    icon: Heart, 
+  "check-in-prompt": {
+    icon: Heart,
     gradient: "from-rose-500/20 to-pink-500/20",
     iconColor: "text-rose-500"
+  },
+  "conversation-starter": {
+    icon: MessageCircle,
+    gradient: "from-sky-500/20 to-indigo-500/20",
+    iconColor: "text-sky-500",
+  },
+  "past-convo-followup": {
+    icon: Repeat,
+    gradient: "from-violet-500/20 to-purple-500/20",
+    iconColor: "text-violet-500",
+  },
+  "article-read": {
+    icon: BookOpen,
+    gradient: "from-amber-500/15 to-yellow-500/15",
+    iconColor: "text-amber-600",
+  },
+  "topic-of-interest": {
+    icon: Compass,
+    gradient: "from-cyan-500/20 to-teal-500/20",
+    iconColor: "text-cyan-600",
+  },
+  "reflection-prompt": {
+    icon: Feather,
+    gradient: "from-fuchsia-500/15 to-pink-500/15",
+    iconColor: "text-fuchsia-500",
+  },
+  "schedule-suggestion": {
+    icon: CalendarPlus,
+    gradient: "from-blue-500/20 to-indigo-500/20",
+    iconColor: "text-blue-600",
+  },
+  "food-idea": {
+    icon: ChefHat,
+    gradient: "from-orange-500/20 to-red-500/15",
+    iconColor: "text-orange-600",
   },
 };
 

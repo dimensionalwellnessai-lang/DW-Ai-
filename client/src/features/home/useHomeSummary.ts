@@ -8,7 +8,7 @@
  * Real data only – no fake or mock values.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useInsights } from "@/hooks/use-insights";
@@ -142,6 +142,21 @@ export function useHomeSummary(): HomeSummary {
     retry: false,
     staleTime: STALE_TIME.MEDIUM,
   });
+
+  // 30-min rotation tick — re-renders the hook when the bucket boundary
+  // crosses so the rotating "ambient" cards swap on time even when the
+  // underlying data hasn't changed. We poll every 60s and only commit a
+  // new bucket value (which triggers a render) when it actually changes,
+  // so React bails out on equal updates.
+  const ROTATION_MS = 30 * 60 * 1000;
+  const [rotationBucket, setRotationBucket] = useState(() => Math.floor(Date.now() / ROTATION_MS));
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const next = Math.floor(Date.now() / ROTATION_MS);
+      setRotationBucket((prev) => (prev === next ? prev : next));
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [ROTATION_MS]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
@@ -309,8 +324,14 @@ export function useHomeSummary(): HomeSummary {
 
   const proactiveCards: ProactiveCardData[] = useMemo(() => {
     const cards: ProactiveCardData[] = [];
-    const hour = new Date().getHours();
+    const now = new Date();
+    const hour = now.getHours();
     const hasLifeSystem = allEvents.length > 5;
+    // 30-min rotation bucket — cards rotate twice an hour so the carousel feels fresh.
+    const rotationBucket = Math.floor(now.getTime() / (30 * 60 * 1000));
+    const pickFrom = <T,>(pool: readonly T[], offset: number): T =>
+      pool[((rotationBucket + offset) % pool.length + pool.length) % pool.length];
+    const encodeTopic = (t: string) => `/talk?topic=${encodeURIComponent(t)}`;
 
     if (hour >= 5 && hour < 12 && !moodData) {
       cards.push({
@@ -400,8 +421,128 @@ export function useHomeSummary(): HomeSummary {
       });
     }
 
+    // ── Rotating "ambient" cards ───────────────────────────────────────────────
+    // Each of these pulls one item from a copy pool keyed off rotationBucket so
+    // the carousel changes every ~30 minutes without any user action.
+
+    // 1. Conversation starter — always available.
+    {
+      const item = pickFrom(COPY.proactiveCards.conversationStarters, 0);
+      cards.push({
+        type: "conversation-starter",
+        title: item.title,
+        message: item.message,
+        actionLabel: "Start the chat",
+        actionPath: encodeTopic(item.topic),
+      });
+    }
+
+    // 2. Past-conversation follow-up — needs a real prior topic.
+    {
+      const priorTopic =
+        latestJournalEntry?.title ||
+        latestInsight?.title ||
+        (Array.isArray(dwFollowups) && dwFollowups[0]
+          ? String((dwFollowups[0] as Record<string, unknown>).prompt ?? "")
+          : "");
+      if (priorTopic) {
+        const tmpl = pickFrom(COPY.proactiveCards.pastConvoFollowUps, 1);
+        const shortTopic = priorTopic.length > 60 ? priorTopic.slice(0, 57) + "…" : priorTopic;
+        cards.push({
+          type: "past-convo-followup",
+          title: tmpl.title,
+          message: tmpl.message.replace("{topic}", shortTopic),
+          why: "Picking up a recent thread.",
+          actionLabel: "Continue",
+          actionPath: encodeTopic(tmpl.topic.replace("{topic}", priorTopic)),
+        });
+      }
+    }
+
+    // 3. Article to read — always available.
+    {
+      const item = pickFrom(COPY.proactiveCards.articlesToRead, 2);
+      cards.push({
+        type: "article-read",
+        title: item.title,
+        message: item.message,
+        actionLabel: "Read with DW",
+        actionPath: encodeTopic(item.topic),
+      });
+    }
+
+    // 4. Topic of interest — derived from the user's active goals/habits when
+    //    we have them, otherwise skipped (we don't fabricate topics).
+    {
+      const sources: string[] = [
+        ...activeGoals.map((g) => g.title).filter(Boolean),
+        ...activeHabits.map((h) => h.title).filter(Boolean),
+      ];
+      if (sources.length > 0) {
+        const chosen = sources[((rotationBucket + 3) % sources.length + sources.length) % sources.length];
+        const tmpl = pickFrom(COPY.proactiveCards.topicsOfInterest, 3);
+        cards.push({
+          type: "topic-of-interest",
+          title: tmpl.title.replace("{topic}", chosen),
+          message: tmpl.message,
+          why: "Pulled from your goals and habits.",
+          actionLabel: "Explore",
+          actionPath: encodeTopic(tmpl.topic.replace("{topic}", chosen)),
+        });
+      }
+    }
+
+    // 5. Reflection prompt — always available.
+    {
+      const item = pickFrom(COPY.proactiveCards.reflectionPrompts, 4);
+      cards.push({
+        type: "reflection-prompt",
+        title: item.title,
+        message: item.message,
+        actionLabel: "Reflect with DW",
+        actionPath: encodeTopic(item.topic),
+      });
+    }
+
+    // 6. Schedule update suggestion — always available.
+    {
+      const item = pickFrom(COPY.proactiveCards.scheduleSuggestions, 5);
+      cards.push({
+        type: "schedule-suggestion",
+        title: item.title,
+        message: item.message,
+        actionLabel: "Plan it",
+        actionPath: encodeTopic(item.topic),
+      });
+    }
+
+    // 7. Food / dish idea — always available, slight bias by hour so
+    //    breakfast-y ideas surface earlier.
+    {
+      const item = pickFrom(COPY.proactiveCards.foodIdeas, 6 + Math.floor(hour / 6));
+      cards.push({
+        type: "food-idea",
+        title: item.title,
+        message: item.message,
+        actionLabel: "Get the recipe",
+        actionPath: encodeTopic(item.topic),
+      });
+    }
+
     return cards;
-  }, [moodData, energyLevel, activeGoals.length, todayScheduleBlocks.length, todayCalendarEvents.length, allEvents.length]);
+  }, [
+    moodData,
+    energyLevel,
+    activeGoals,
+    activeHabits,
+    todayScheduleBlocks.length,
+    todayCalendarEvents.length,
+    allEvents.length,
+    latestInsight,
+    latestJournalEntry,
+    dwFollowups,
+    rotationBucket,
+  ]);
 
   const isLoading = authLoading || eventsLoading || goalsLoading || habitsLoading;
 
