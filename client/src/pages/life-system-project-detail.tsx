@@ -2,18 +2,42 @@
 //
 // Reached by tapping a project node on the home command-center orbit (and
 // linkable from /life-system). Shows the project's focus, weekly cadence and
-// next action, plus tasks assigned to the project. Falls back gracefully if
-// the project no longer exists (deleted, wrong id, signed-out preview).
-import { useMemo } from "react";
+// next action, plus tasks assigned to the project. All headline fields are
+// inline-editable here so users don't have to bounce back to the Life System
+// list to update them.
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Circle, CheckCircle2, Compass, Sparkles, Calendar, ListTodo } from "lucide-react";
+import {
+  ArrowLeft,
+  Circle,
+  CheckCircle2,
+  Compass,
+  Sparkles,
+  Calendar,
+  ListTodo,
+  Loader2,
+  Pencil,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useLifeSystem } from "@/lib/life-system";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useLifeSystem, updateProject } from "@/lib/life-system";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import type { Task } from "@shared/schema";
+import type { Task, LifeSystemProject } from "@shared/schema";
+
+type ProjectStatus = "vision" | "active" | "paused" | "done";
+const STATUS_OPTIONS: ProjectStatus[] = ["vision", "active", "paused", "done"];
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
   const label = status ?? "active";
@@ -36,6 +60,7 @@ export default function LifeSystemProjectDetailPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
   const { data, isLoading } = useLifeSystem();
+  const { toast } = useToast();
   const project = useMemo(
     () => (data?.projects ?? []).find(p => p.id === projectId),
     [data, projectId],
@@ -64,6 +89,21 @@ export default function LifeSystemProjectDetailPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
+
+  const saveProject = useMutation({
+    mutationFn: (patch: Parameters<typeof updateProject>[1]) =>
+      updateProject(projectId!, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/life-system/pillars"] });
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't save",
+        description: "Try again in a moment.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -103,69 +143,106 @@ export default function LifeSystemProjectDetailPage() {
   const doneTasks = projectTasks.filter(t => t.isCompleted);
   const updated = project.updatedAt ? new Date(project.updatedAt) : null;
 
+  async function onChangeStatus(next: ProjectStatus) {
+    if (!project || next === project.status) return;
+    await saveProject.mutateAsync({ status: next });
+    toast({ title: "Status updated", description: `Now ${next}.` });
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6" data-testid="page-project-detail">
       {/* ── Top bar ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm" data-testid="link-back">
           <Link href="/life-system">
             <ArrowLeft className="w-4 h-4 mr-1" /> Life System
           </Link>
         </Button>
-        <StatusBadge status={project.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={project.status} />
+          <Select
+            value={(project.status as ProjectStatus | null) ?? "active"}
+            onValueChange={v => { void onChangeStatus(v as ProjectStatus); }}
+          >
+            <SelectTrigger
+              className="h-8 w-[120px] text-xs"
+              aria-label="Change project status"
+              data-testid="select-project-status"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map(s => (
+                <SelectItem key={s} value={s} data-testid={`option-status-${s}`}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header (name + description) ────────────────────────────────── */}
       <header className="space-y-2">
-        <h1
-          className="text-3xl font-bold tracking-tight"
-          data-testid="text-project-name"
-        >
-          {project.name}
-        </h1>
-        {project.description && (
-          <p className="text-muted-foreground" data-testid="text-project-description">
-            {project.description}
-          </p>
-        )}
+        <InlineText
+          value={project.name}
+          onSave={v => saveProject.mutateAsync({ name: v })}
+          required
+          renderDisplay={v => (
+            <h1 className="text-3xl font-bold tracking-tight" data-testid="text-project-name">
+              {v}
+            </h1>
+          )}
+          inputClassName="text-3xl font-bold tracking-tight"
+          editLabel="Edit project name"
+          testId="project-name"
+        />
+        <InlineText
+          value={project.description ?? ""}
+          onSave={v => saveProject.mutateAsync({ description: v || undefined })}
+          multiline
+          placeholder="Add a short description so you remember why this matters."
+          renderDisplay={v =>
+            v ? (
+              <p className="text-muted-foreground" data-testid="text-project-description">{v}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic" data-testid="text-project-description-empty">
+                Add a short description so you remember why this matters.
+              </p>
+            )
+          }
+          editLabel="Edit description"
+          testId="project-description"
+        />
       </header>
 
-      {/* ── Focus ─────────────────────────────────────────────────────── */}
-      <Card className="p-5 space-y-3" data-testid="card-project-focus">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          <Compass className="w-4 h-4" /> Current focus
-        </div>
-        {project.currentFocus ? (
-          <p className="text-base leading-relaxed" data-testid="text-project-focus">
-            {project.currentFocus}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">
-            No focus set yet. Add one from the Life System list to keep this project pointed.
-          </p>
-        )}
-        {project.nextAction && (
-          <div className="pt-2 border-t flex gap-2 items-start">
-            <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Next action
-              </div>
-              <p className="text-sm" data-testid="text-project-next-action">{project.nextAction}</p>
-            </div>
-          </div>
-        )}
-        {project.weeklyCadence && (
-          <div className="pt-2 border-t flex gap-2 items-start">
-            <Calendar className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-            <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Weekly cadence
-              </div>
-              <p className="text-sm" data-testid="text-project-cadence">{project.weeklyCadence}</p>
-            </div>
-          </div>
-        )}
+      {/* ── Focus / Next action / Cadence ─────────────────────────────── */}
+      <Card className="p-5 space-y-4" data-testid="card-project-focus">
+        <FieldBlock
+          icon={<Compass className="w-4 h-4" />}
+          label="Current focus"
+          value={project.currentFocus ?? ""}
+          placeholder="What this project is pointed at right now."
+          onSave={v => saveProject.mutateAsync({ currentFocus: v || undefined })}
+          testId="focus"
+          multiline
+        />
+        <div className="border-t" />
+        <FieldBlock
+          icon={<Sparkles className="w-4 h-4 text-primary" />}
+          label="Next action"
+          value={project.nextAction ?? ""}
+          placeholder="The very next concrete step."
+          onSave={v => saveProject.mutateAsync({ nextAction: v || undefined })}
+          testId="next-action"
+        />
+        <div className="border-t" />
+        <FieldBlock
+          icon={<Calendar className="w-4 h-4 text-muted-foreground" />}
+          label="Weekly cadence"
+          value={project.weeklyCadence ?? ""}
+          placeholder="e.g. 2 build blocks Mon/Wed, review Friday."
+          onSave={v => saveProject.mutateAsync({ weeklyCadence: v || undefined })}
+          testId="cadence"
+        />
       </Card>
 
       {/* ── Recent activity ───────────────────────────────────────────── */}
@@ -252,6 +329,154 @@ export default function LifeSystemProjectDetailPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// ─── Inline edit helpers ──────────────────────────────────────────────────
+
+interface InlineTextProps {
+  value: string;
+  onSave: (v: string) => Promise<unknown>;
+  renderDisplay: (v: string) => React.ReactNode;
+  placeholder?: string;
+  multiline?: boolean;
+  required?: boolean;
+  inputClassName?: string;
+  editLabel: string;
+  testId: string;
+}
+
+function InlineText({
+  value,
+  onSave,
+  renderDisplay,
+  placeholder,
+  multiline,
+  required,
+  inputClassName,
+  editLabel,
+  testId,
+}: InlineTextProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setDraft(value); }, [value]);
+
+  if (!editing) {
+    return (
+      <div className="group flex items-start gap-2">
+        <div className="flex-1 min-w-0">{renderDisplay(value)}</div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={editLabel}
+          onClick={() => setEditing(true)}
+          className="opacity-60 hover:opacity-100"
+          data-testid={`button-edit-${testId}`}
+        >
+          <Pencil className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  async function commit() {
+    const trimmed = draft.trim();
+    if (required && !trimmed) {
+      setEditing(false);
+      setDraft(value);
+      return;
+    }
+    if (trimmed === (value ?? "").trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(trimmed);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setDraft(value);
+    setEditing(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      {multiline ? (
+        <Textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          autoFocus
+          data-testid={`textarea-edit-${testId}`}
+        />
+      ) : (
+        <Input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder={placeholder}
+          autoFocus
+          className={inputClassName}
+          onKeyDown={e => {
+            if (e.key === "Enter") { e.preventDefault(); void commit(); }
+            if (e.key === "Escape") { e.preventDefault(); cancel(); }
+          }}
+          data-testid={`input-edit-${testId}`}
+        />
+      )}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={cancel} disabled={saving} data-testid={`button-cancel-${testId}`}>
+          Cancel
+        </Button>
+        <Button size="sm" onClick={() => { void commit(); }} disabled={saving} data-testid={`button-save-${testId}`}>
+          {saving && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface FieldBlockProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  placeholder: string;
+  onSave: (v: string) => Promise<unknown>;
+  testId: string;
+  multiline?: boolean;
+}
+
+function FieldBlock({ icon, label, value, placeholder, onSave, testId, multiline }: FieldBlockProps) {
+  return (
+    <div className="space-y-2" data-testid={`field-${testId}`}>
+      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        {icon} {label}
+      </div>
+      <InlineText
+        value={value}
+        onSave={onSave}
+        placeholder={placeholder}
+        multiline={multiline}
+        renderDisplay={v =>
+          v ? (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap" data-testid={`text-${testId}`}>{v}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground italic" data-testid={`text-${testId}-empty`}>
+              {placeholder}
+            </p>
+          )
+        }
+        editLabel={`Edit ${label.toLowerCase()}`}
+        testId={testId}
+      />
     </div>
   );
 }

@@ -65,6 +65,21 @@ export async function createProject(input: {
   return await res.json();
 }
 
+export async function updateProject(
+  id: string,
+  patch: {
+    name?: string;
+    description?: string;
+    currentFocus?: string;
+    weeklyCadence?: string;
+    nextAction?: string;
+    status?: "vision" | "active" | "paused" | "done";
+  },
+): Promise<LifeSystemProject> {
+  const res = await apiRequest("PATCH", `/api/life-system/projects/${id}`, patch);
+  return await res.json();
+}
+
 export async function deleteProject(id: string): Promise<void> {
   await apiRequest("DELETE", `/api/life-system/projects/${id}`);
 }
