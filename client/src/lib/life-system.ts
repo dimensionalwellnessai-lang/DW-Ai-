@@ -69,10 +69,13 @@ export async function updateProject(
   id: string,
   patch: {
     name?: string;
-    description?: string;
-    currentFocus?: string;
-    weeklyCadence?: string;
-    nextAction?: string;
+    // null is sent (rather than undefined) to explicitly clear a field on
+    // the server. undefined values are dropped from JSON, which would leave
+    // the existing value untouched.
+    description?: string | null;
+    currentFocus?: string | null;
+    weeklyCadence?: string | null;
+    nextAction?: string | null;
     status?: "vision" | "active" | "paused" | "done";
   },
 ): Promise<LifeSystemProject> {

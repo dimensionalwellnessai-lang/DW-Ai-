@@ -34,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLifeSystem, updateProject } from "@/lib/life-system";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import type { Task, LifeSystemProject } from "@shared/schema";
+import type { Task } from "@shared/schema";
 
 type ProjectStatus = "vision" | "active" | "paused" | "done";
 const STATUS_OPTIONS: ProjectStatus[] = ["vision", "active", "paused", "done"];
@@ -145,8 +145,12 @@ export default function LifeSystemProjectDetailPage() {
 
   async function onChangeStatus(next: ProjectStatus) {
     if (!project || next === project.status) return;
-    await saveProject.mutateAsync({ status: next });
-    toast({ title: "Status updated", description: `Now ${next}.` });
+    try {
+      await saveProject.mutateAsync({ status: next });
+      toast({ title: "Status updated", description: `Now ${next}.` });
+    } catch {
+      // saveProject.onError already toasts; swallow to avoid unhandled rejection.
+    }
   }
 
   return (
@@ -197,7 +201,7 @@ export default function LifeSystemProjectDetailPage() {
         />
         <InlineText
           value={project.description ?? ""}
-          onSave={v => saveProject.mutateAsync({ description: v || undefined })}
+          onSave={v => saveProject.mutateAsync({ description: v ? v : null })}
           multiline
           placeholder="Add a short description so you remember why this matters."
           renderDisplay={v =>
@@ -221,7 +225,7 @@ export default function LifeSystemProjectDetailPage() {
           label="Current focus"
           value={project.currentFocus ?? ""}
           placeholder="What this project is pointed at right now."
-          onSave={v => saveProject.mutateAsync({ currentFocus: v || undefined })}
+          onSave={v => saveProject.mutateAsync({ currentFocus: v ? v : null })}
           testId="focus"
           multiline
         />
@@ -231,7 +235,7 @@ export default function LifeSystemProjectDetailPage() {
           label="Next action"
           value={project.nextAction ?? ""}
           placeholder="The very next concrete step."
-          onSave={v => saveProject.mutateAsync({ nextAction: v || undefined })}
+          onSave={v => saveProject.mutateAsync({ nextAction: v ? v : null })}
           testId="next-action"
         />
         <div className="border-t" />
@@ -240,7 +244,7 @@ export default function LifeSystemProjectDetailPage() {
           label="Weekly cadence"
           value={project.weeklyCadence ?? ""}
           placeholder="e.g. 2 build blocks Mon/Wed, review Friday."
-          onSave={v => saveProject.mutateAsync({ weeklyCadence: v || undefined })}
+          onSave={v => saveProject.mutateAsync({ weeklyCadence: v ? v : null })}
           testId="cadence"
         />
       </Card>
@@ -396,6 +400,8 @@ function InlineText({
     try {
       await onSave(trimmed);
       setEditing(false);
+    } catch {
+      // Parent mutation handles toast; keep the editor open so the user can retry.
     } finally {
       setSaving(false);
     }
