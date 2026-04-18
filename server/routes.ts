@@ -9473,6 +9473,45 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
+  // Skip multiple upcoming reminders in one round-trip.
+  // Body: { reminders: Array<{ itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }> }
+  app.post("/api/accountability/reminders/skip-batch", requireAuth, async (req, res) => {
+    try {
+      const { reminders } = req.body as {
+        reminders?: Array<{ itemId?: string; kind?: string }>;
+      };
+      if (!Array.isArray(reminders) || reminders.length === 0) {
+        return res.status(400).json({ error: "reminders[] is required" });
+      }
+      if (reminders.length > 200) {
+        return res.status(400).json({ error: "Too many reminders in batch" });
+      }
+      const valid: Array<{ itemId: string; kind: "pre" | "post" }> = [];
+      for (const r of reminders) {
+        if (
+          !r ||
+          typeof r.itemId !== "string" ||
+          (!r.itemId.startsWith("task:") && !r.itemId.startsWith("event:")) ||
+          (r.kind !== "pre" && r.kind !== "post")
+        ) {
+          return res.status(400).json({ error: "Invalid reminder entry" });
+        }
+        valid.push({ itemId: r.itemId, kind: r.kind });
+      }
+      const { markSingleReminderCancelled } = await import("./push");
+      for (const r of valid) {
+        const opts = r.itemId.startsWith("task:")
+          ? { taskId: r.itemId.slice(5) }
+          : { calendarEventId: r.itemId.slice(6) };
+        markSingleReminderCancelled(req.session.userId!, r.kind, opts);
+      }
+      res.json({ success: true, count: valid.length });
+    } catch (error) {
+      console.error("Batch skip reminders error:", error);
+      res.status(500).json({ error: "Failed to skip reminders" });
+    }
+  });
+
   // Restore a single previously-skipped upcoming reminder.
   // Body: { itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }
   app.post("/api/accountability/reminders/restore", requireAuth, async (req, res) => {

@@ -610,52 +610,85 @@ export interface SkipReminderResult {
 export async function skipReminder(
   reminder: PlannedReminder,
 ): Promise<SkipReminderResult> {
-  const skips = loadSkipped();
-  skips[reminder.key] = reminder.startMs;
-  saveSkipped(skips);
+  const result = await skipReminders([reminder]);
+  return {
+    localPersisted: true,
+    nativeCancelled: result.nativeCancelled,
+    serverCancelled: result.serverCancelled,
+  };
+}
 
-  plannedReminders.delete(reminder.key);
-  // Mirror the skip into the skipped snapshot immediately so the UI's
-  // "Skipped" sub-list and any in-flight Undo affordance can refer to it
-  // before the asynchronous replan finishes.
-  skippedReminders.set(reminder.key, reminder);
+/**
+ * Result of a batch skip. Mirrors {@link SkipReminderResult} but reports the
+ * outcome aggregated across the whole batch — `nativeCancelled` is true only
+ * if every native cancel succeeded (or didn't apply), and `serverCancelled`
+ * is true only if the single batch round-trip to the server succeeded.
+ */
+export interface SkipRemindersBatchResult {
+  localPersisted: true;
+  nativeCancelled: boolean;
+  serverCancelled: boolean;
+  count: number;
+}
+
+/**
+ * Batch variant of {@link skipReminder}. Persists every skip locally in a
+ * single localStorage write, cancels native OS notifications one-by-one
+ * (Capacitor has no batch API), sends a single round-trip to the server's
+ * cancellation ledger, and re-plans once at the end. Used by the
+ * "Skip this day" affordance on the upcoming-reminders panel so a user
+ * planning a known off-day doesn't have to skip each reminder individually.
+ */
+export async function skipReminders(
+  reminders: PlannedReminder[],
+): Promise<SkipRemindersBatchResult> {
+  if (reminders.length === 0) {
+    return { localPersisted: true, nativeCancelled: true, serverCancelled: true, count: 0 };
+  }
+
+  const skips = loadSkipped();
+  for (const r of reminders) {
+    skips[r.key] = r.startMs;
+    plannedReminders.delete(r.key);
+    skippedReminders.set(r.key, r);
+  }
+  saveSkipped(skips);
   notifySnapshot();
 
-  // Native: cancel just this one OS notification.
   let nativeCancelled = true;
   if (isCapacitor()) {
-    try {
-      await cancelSingleNativeReminder(reminder.itemId, reminder.kind);
-    } catch (err) {
-      nativeCancelled = false;
-      console.error("[accountability-scheduler] cancelSingleNative failed:", err);
+    for (const r of reminders) {
+      try {
+        await cancelSingleNativeReminder(r.itemId, r.kind);
+      } catch (err) {
+        nativeCancelled = false;
+        console.error("[accountability-scheduler] cancelSingleNative failed:", err);
+      }
     }
   }
 
-  // Server: add to cancelled ledger so the push scheduler skips it too.
   let serverCancelled = false;
   try {
-    await apiRequest("POST", "/api/accountability/reminders/skip", {
-      itemId: reminder.itemId,
-      kind: reminder.kind,
+    await apiRequest("POST", "/api/accountability/reminders/skip-batch", {
+      reminders: reminders.map((r) => ({ itemId: r.itemId, kind: r.kind })),
     });
     serverCancelled = true;
   } catch (err) {
-    console.error("[accountability-scheduler] server skip failed:", err);
+    console.error("[accountability-scheduler] server batch skip failed:", err);
   }
 
-  // Web in-page timers were already armed by the previous planReminders()
-  // run and are not individually cancellable from here. Re-plan now so the
-  // freshly-persisted skip causes the matching setTimeout to be cleared and
-  // not re-scheduled. Errors are non-fatal — server + native cancellations
-  // above still take effect.
   try {
     await planReminders();
   } catch (err) {
-    console.error("[accountability-scheduler] replan after skip failed:", err);
+    console.error("[accountability-scheduler] replan after batch skip failed:", err);
   }
 
-  return { localPersisted: true, nativeCancelled, serverCancelled };
+  return {
+    localPersisted: true,
+    nativeCancelled,
+    serverCancelled,
+    count: reminders.length,
+  };
 }
 
 /**

@@ -37,6 +37,7 @@ import {
   getSkippedReminders,
   subscribeToPlannedReminders,
   skipReminder,
+  skipReminders,
   restoreReminder,
   getPreviewDaysAhead,
   setPreviewDaysAhead,
@@ -103,6 +104,7 @@ export function UpcomingReminders() {
   const [reminders, setReminders] = useState<PlannedReminder[]>(() => getPlannedReminders());
   const [skipped, setSkipped] = useState<PlannedReminder[]>(() => getSkippedReminders());
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [busyDay, setBusyDay] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<number>(() => getPreviewDaysAhead());
   // Ticking clock used to refresh skipped-row countdowns. Updated every 30s
   // so a "Restore in N min" label shifts within the same minute it would.
@@ -161,6 +163,62 @@ export function UpcomingReminders() {
       });
     } finally {
       setBusyKey(null);
+    }
+  };
+
+  const handleSkipDay = async (
+    dayKeyStr: string,
+    dayLabelStr: string,
+    items: PlannedReminder[],
+  ) => {
+    if (items.length === 0) return;
+    setBusyDay(dayKeyStr);
+    // Snapshot the items so the Undo affordance can restore them even after
+    // the planned-reminders snapshot has been updated by the skip.
+    const snapshot = items.slice();
+    try {
+      const result = await skipReminders(snapshot);
+      const undoAction = (
+        <ToastAction
+          altText="Undo skip day"
+          onClick={() => {
+            // Restore each reminder individually — there's no batched
+            // restore endpoint and the per-item flow is what individual
+            // skips already use.
+            for (const r of snapshot) {
+              void handleRestore(r);
+            }
+          }}
+          data-testid={`button-undo-skip-day-${dayKeyStr}`}
+        >
+          <Undo2 className="w-3 h-3 mr-1" />
+          Undo
+        </ToastAction>
+      );
+      if (!result.serverCancelled || !result.nativeCancelled) {
+        toast({
+          title: `Skipped ${result.count} reminders, with a hiccup`,
+          description:
+            "The skips were saved on this device, but we couldn't fully reach the notification service. We'll keep retrying.",
+          variant: "destructive",
+          action: undoAction,
+        });
+      } else {
+        toast({
+          title: `Skipped all reminders for ${dayLabelStr}`,
+          description: `${result.count} reminder${result.count === 1 ? "" : "s"} silenced.`,
+          action: undoAction,
+        });
+      }
+    } catch (err) {
+      console.error("[upcoming-reminders] skip-day failed:", err);
+      toast({
+        title: "Couldn't skip the day's reminders",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyDay(null);
     }
   };
 
@@ -283,12 +341,27 @@ export function UpcomingReminders() {
             <div className="space-y-4">
               {grouped.map((group) => (
                 <div key={group.key} data-testid={`group-day-${group.key}`}>
-                  <h4
-                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-                    data-testid={`text-day-label-${group.key}`}
-                  >
-                    {group.label}
-                  </h4>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h4
+                      className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                      data-testid={`text-day-label-${group.key}`}
+                    >
+                      {group.label}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() =>
+                        handleSkipDay(group.key, group.label, group.items)
+                      }
+                      disabled={busyDay === group.key}
+                      data-testid={`button-skip-day-${group.key}`}
+                    >
+                      <BellOff className="w-3 h-3 mr-1" />
+                      {busyDay === group.key ? "Skipping…" : "Skip this day"}
+                    </Button>
+                  </div>
                   <ul className="space-y-2">
                     {group.items.map((r) => (
                       <li
