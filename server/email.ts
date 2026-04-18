@@ -565,6 +565,54 @@ export async function sendWelcomeEmail(toEmail: string, firstName?: string): Pro
   }
 }
 
+/**
+ * Send a plain operator alert email about an infrastructure problem (e.g.
+ * the reminder scheduler going unhealthy). Routed to OPERATOR_ALERT_EMAIL
+ * if set, falling back to the standard admin inbox.
+ */
+export async function sendOperatorAlertEmail(
+  subject: string,
+  bodyHtml: string,
+): Promise<boolean> {
+  const to =
+    process.env.OPERATOR_ALERT_EMAIL?.trim() ||
+    'admin@dimensionalwellness.com';
+  try {
+    const { client, resolvedFrom } = await getResendClient();
+    const timestamp = new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      dateStyle: 'full',
+      timeStyle: 'long',
+    });
+    await client.emails.send({
+      from: resolvedFrom,
+      to,
+      subject: `[DW.ai Ops] ${subject}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #b91c1c; margin: 0 0 12px;">Operator Alert</h2>
+          <p style="margin: 0 0 8px; color: #666; font-size: 13px;">${timestamp}</p>
+          <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 16px;">
+            ${bodyHtml}
+          </div>
+          <p style="margin-top: 16px; color: #888; font-size: 12px;">
+            Sent automatically by the DW.ai scheduler health monitor.
+          </p>
+        </body>
+        </html>
+      `,
+    });
+    console.log('[email] Operator alert sent:', subject);
+    return true;
+  } catch (error) {
+    console.error('[email] Failed to send operator alert email:', error);
+    return false;
+  }
+}
+
 export async function sendAccountDeletionEmail(toEmail: string): Promise<boolean> {
   try {
     const { client, resolvedFrom } = await getResendClient();

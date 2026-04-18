@@ -28,6 +28,7 @@ import {
   type CalendarEvent,
   type SchedulerLease,
 } from "@shared/schema";
+import { sendOperatorAlertEmail } from "./email";
 
 const VAPID_ROW_ID = "default";
 const SCHEDULER_INTERVAL_MS = 60 * 1000;
@@ -1082,12 +1083,201 @@ async function tick(): Promise<void> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Scheduler health monitor
+//
+// Slot reclaim happens within ~90s of a server dying, but if every instance
+// goes down at once nobody fires reminders and there's no automated signal.
+// This periodic job runs on every live instance and, when it sees one of two
+// failure modes, emails an operator via the existing Resend integration:
+//
+//   1. The most recent scheduler_leases heartbeat is older than
+//      HEARTBEAT_STALE_ALERT_MS — meaning the cluster has effectively
+//      stopped processing reminders.
+//   2. The lease count dropped by more than one slot since this instance's
+//      last check — an early warning that we're losing capacity even before
+//      total death.
+//
+// Multiple instances may detect the same condition simultaneously. To avoid
+// spamming N copies of the same email, every alert send is gated on a
+// conditional UPSERT into `monitoring_alerts`: only the instance whose
+// UPDATE actually mutates a row (i.e. won the race for this alert type
+// outside the cooldown window) sends the email.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HEALTH_CHECK_INTERVAL_MS = 3 * 60 * 1000;
+const HEARTBEAT_STALE_ALERT_MS = 5 * 60 * 1000;
+// Don't re-email the operator about the same alert type more than once per
+// hour, even if the underlying condition persists. Operators only need to
+// know once; re-alerting is for "it broke again later" cases.
+const ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+
+let healthMonitorHandle: ReturnType<typeof setInterval> | null = null;
+// Per-process memory of the last cluster size we observed, so we can detect
+// drops between consecutive checks. Reset to null when the table is empty
+// (DB outage) so we don't fire a phantom shrink alert on the next recovery.
+let lastObservedClusterSize: number | null = null;
+
+/**
+ * Conditionally record that we're sending `alertType`. Returns true iff this
+ * instance won the race to send (i.e. no other instance has sent the same
+ * alert within ALERT_COOLDOWN_MS). Implemented as a single atomic UPSERT so
+ * concurrent callers across instances are mutually exclusive.
+ */
+async function tryClaimAlertSlot(alertType: string): Promise<boolean> {
+  try {
+    const cutoff = new Date(Date.now() - ALERT_COOLDOWN_MS);
+    const result = await db.execute(dsql`
+      INSERT INTO monitoring_alerts (alert_type, last_sent_at)
+      VALUES (${alertType}, now())
+      ON CONFLICT (alert_type) DO UPDATE
+        SET last_sent_at = now()
+        WHERE monitoring_alerts.last_sent_at < ${cutoff}
+    `);
+    const rowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
+    return rowCount > 0;
+  } catch (err) {
+    console.error(
+      `[push] Failed to claim alert slot '${alertType}':`,
+      err,
+    );
+    return false;
+  }
+}
+
+async function runSchedulerHealthCheck(): Promise<void> {
+  let leases: SchedulerLease[];
+  try {
+    leases = await db
+      .select()
+      .from(schedulerLeases)
+      .orderBy(asc(schedulerLeases.slotIndex));
+  } catch (err) {
+    console.error("[push] Health monitor failed to read leases:", err);
+    return;
+  }
+
+  if (leases.length === 0) {
+    // Either a brand-new cluster that hasn't claimed yet, or every instance
+    // is down. We can't tell from here, and an alert from a half-initialized
+    // process would be a false positive — skip and reset shrink tracking.
+    lastObservedClusterSize = null;
+    return;
+  }
+
+  const latestHeartbeat = leases.reduce(
+    (max, l) => Math.max(max, l.lastHeartbeatAt.getTime()),
+    0,
+  );
+  const ageMs = Date.now() - latestHeartbeat;
+
+  if (ageMs > HEARTBEAT_STALE_ALERT_MS) {
+    const ageMinutes = Math.round(ageMs / 60000);
+    if (await tryClaimAlertSlot("scheduler_stale_heartbeat")) {
+      const body = `
+        <p><strong>The reminder scheduler has stopped heartbeating.</strong></p>
+        <p>The most recent <code>scheduler_leases.last_heartbeat_at</code>
+        across the entire cluster is <strong>${ageMinutes} minute(s)</strong>
+        old (threshold: ${Math.round(HEARTBEAT_STALE_ALERT_MS / 60000)}
+        minute(s)). Reminders are likely not being delivered.</p>
+        <p>Lease rows currently in the table: <strong>${leases.length}</strong>.</p>
+        <p>Investigate the app processes and the database connection from
+        the reminder scheduler.</p>
+      `;
+      const ok = await sendOperatorAlertEmail(
+        `Reminder scheduler unhealthy — no heartbeat in ${ageMinutes}m`,
+        body,
+      );
+      // Only commit the dedup timestamp on a successful send. If email
+      // delivery fails (transient Resend outage, etc.) roll back the
+      // cooldown row so the next health-check tick can retry instead of
+      // silently suppressing alerts for the full cooldown window.
+      if (!ok) await releaseAlertSlot("scheduler_stale_heartbeat");
+    }
+  }
+
+  if (
+    lastObservedClusterSize !== null &&
+    leases.length < lastObservedClusterSize - 1
+  ) {
+    const lost = lastObservedClusterSize - leases.length;
+    if (await tryClaimAlertSlot("scheduler_cluster_shrink")) {
+      const body = `
+        <p><strong>The reminder scheduler cluster lost ${lost} slot(s)
+        between checks.</strong></p>
+        <p>Previous size: <strong>${lastObservedClusterSize}</strong>.
+        Current size: <strong>${leases.length}</strong>.</p>
+        <p>This usually means multiple instances crashed or were redeployed
+        simultaneously. The remaining instances will continue to serve
+        reminders for their own user slice; this email is a heads-up so you
+        can confirm the deployment is still healthy.</p>
+      `;
+      const ok = await sendOperatorAlertEmail(
+        `Reminder scheduler cluster shrank by ${lost} slot(s)`,
+        body,
+      );
+      if (!ok) await releaseAlertSlot("scheduler_cluster_shrink");
+    }
+  }
+
+  lastObservedClusterSize = leases.length;
+}
+
+/**
+ * Roll back the cooldown row written by `tryClaimAlertSlot` so the next
+ * tick can retry. Used when the email send itself fails — without this
+ * we'd suppress alerts for the full ALERT_COOLDOWN_MS window on a
+ * transient Resend outage.
+ */
+async function releaseAlertSlot(alertType: string): Promise<void> {
+  try {
+    await db.execute(
+      dsql`DELETE FROM monitoring_alerts WHERE alert_type = ${alertType}`,
+    );
+  } catch (err) {
+    console.error(
+      `[push] Failed to release alert slot '${alertType}':`,
+      err,
+    );
+  }
+}
+
+export function startSchedulerHealthMonitor(): void {
+  if (healthMonitorHandle) return;
+  healthMonitorHandle = setInterval(() => {
+    void runSchedulerHealthCheck();
+  }, HEALTH_CHECK_INTERVAL_MS);
+  // Defer the first run so it doesn't race with this process's own initial
+  // lease claim (which would temporarily look like a stale-heartbeat
+  // condition during a cold cluster start).
+  setTimeout(() => {
+    void runSchedulerHealthCheck();
+  }, HEALTH_CHECK_INTERVAL_MS);
+  console.log(
+    `[push] Scheduler health monitor started (interval ${HEALTH_CHECK_INTERVAL_MS / 1000}s, ` +
+      `stale threshold ${HEARTBEAT_STALE_ALERT_MS / 1000}s).`,
+  );
+}
+
+export function stopSchedulerHealthMonitor(): void {
+  if (healthMonitorHandle) {
+    clearInterval(healthMonitorHandle);
+    healthMonitorHandle = null;
+  }
+  lastObservedClusterSize = null;
+}
+
+// Test-only hook so the suite can drive a single check deterministically
+// without waiting on the interval timer.
+export const __testRunSchedulerHealthCheck = runSchedulerHealthCheck;
+
 export async function startReminderScheduler(): Promise<void> {
   if (schedulerHandle) return;
   // Claim our scheduler slot synchronously before the first tick so the
   // initial pass already filters to this instance's user slice.
   await heartbeatLease();
   startLeaseManager();
+  startSchedulerHealthMonitor();
   // Align to the next minute boundary so reminders fire close to wall-clock
   // minutes (less drift relative to user-perceived schedule times).
   const now = new Date();
@@ -1110,6 +1300,7 @@ export async function stopReminderScheduler(): Promise<void> {
     clearInterval(schedulerHandle);
     schedulerHandle = null;
   }
+  stopSchedulerHealthMonitor();
   await shutdownLease();
 }
 

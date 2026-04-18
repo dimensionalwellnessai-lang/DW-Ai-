@@ -2317,6 +2317,18 @@ export const schedulerLeases = pgTable("scheduler_leases", {
 
 export type SchedulerLease = typeof schedulerLeases.$inferSelect;
 
+// Monitoring alert dedup — one row per alert type tracking when the cluster
+// most recently sent that operator email. Used by the scheduler health monitor
+// to coordinate alerts across multiple instances: every live instance runs
+// the check, but a conditional UPSERT here ensures only one of them actually
+// emails the operator within the cooldown window.
+export const monitoringAlerts = pgTable("monitoring_alerts", {
+  alertType: varchar("alert_type").primaryKey(),
+  lastSentAt: timestamp("last_sent_at").defaultNow().notNull(),
+});
+
+export type MonitoringAlert = typeof monitoringAlerts.$inferSelect;
+
 // Conversation Insight Cards – persisted for authenticated users
 export const conversationInsights = pgTable("conversation_insights", {
   id: varchar("id").primaryKey(), // client-generated id; ON CONFLICT DO NOTHING prevents duplicate migration uploads
