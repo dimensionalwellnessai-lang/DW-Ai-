@@ -151,12 +151,19 @@ async function pruneStaleLeases(now: number): Promise<void> {
 }
 
 /**
- * Try to claim `slotIndex` for this instance. Returns true on success.
- * Race-safe: relies on the PK on slot_index + the unique index on
- * instance_id, so two instances probing the same slot will produce exactly
- * one winner.
+ * Try to INSERT a fresh lease row at `slotIndex`. Use only when this
+ * instance does NOT already have a row (initial claim path) — otherwise the
+ * unique constraint on instance_id will reject the second row.
+ *
+ * Returns:
+ *   - "ok"          → row inserted, slot now ours
+ *   - "taken"       → slot already held by another live instance
+ *   - "infra_error" → DB is unreachable / table missing; caller should
+ *                     stop probing rather than spam 64 failed inserts.
  */
-async function tryClaimSlot(slotIndex: number): Promise<boolean> {
+async function tryInsertSlot(
+  slotIndex: number,
+): Promise<"ok" | "taken" | "infra_error"> {
   try {
     const result = await db
       .insert(schedulerLeases)
@@ -166,12 +173,49 @@ async function tryClaimSlot(slotIndex: number): Promise<boolean> {
         lastHeartbeatAt: new Date(),
       })
       .onConflictDoNothing({ target: schedulerLeases.slotIndex });
-    // pg returns rowCount on the underlying result; drizzle exposes it on
-    // the returned object's rowCount property (number | null).
+    const rowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
+    return rowCount > 0 ? "ok" : "taken";
+  } catch (err) {
+    console.error(
+      `[push] Slot-claim infrastructure error at slot ${slotIndex}:`,
+      err,
+    );
+    return "infra_error";
+  }
+}
+
+/**
+ * Atomically migrate this instance's existing lease row from its current
+ * slot down to `targetSlot`. Race-safe: a single SQL statement does both
+ * "is targetSlot free?" and "move our row" so two instances trying to
+ * compact into the same slot can't both succeed (the loser hits the PK
+ * uniqueness check, raises a duplicate_key error which we surface as a
+ * "taken" result).
+ *
+ * Returns true if we now own targetSlot.
+ */
+async function tryCompactDown(targetSlot: number): Promise<boolean> {
+  try {
+    const result = await db.execute(dsql`
+      UPDATE scheduler_leases
+      SET slot_index = ${targetSlot}, last_heartbeat_at = now()
+      WHERE instance_id = ${INSTANCE_ID}
+        AND NOT EXISTS (
+          SELECT 1 FROM scheduler_leases WHERE slot_index = ${targetSlot}
+        )
+    `);
     const rowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
     return rowCount > 0;
-  } catch (err) {
-    console.error(`[push] Failed to claim slot ${slotIndex}:`, err);
+  } catch (err: any) {
+    // 23505 = unique_violation. Two instances raced for the same lower slot
+    // and the other one committed first; that's expected — try again next
+    // heartbeat. Anything else is a real problem worth logging.
+    if (err?.code !== "23505") {
+      console.error(
+        `[push] Failed to compact lease into slot ${targetSlot}:`,
+        err,
+      );
+    }
     return false;
   }
 }
@@ -211,7 +255,8 @@ async function claimAndCompactSlot(): Promise<number | null> {
   let ourSlot = await findOurSlot();
   if (ourSlot === null) {
     for (let i = 0; i < MAX_SLOT_PROBE; i++) {
-      if (await tryClaimSlot(i)) {
+      const outcome = await tryInsertSlot(i);
+      if (outcome === "ok") {
         ourSlot = i;
         if (!leaseClaimed) {
           console.log(
@@ -221,6 +266,12 @@ async function claimAndCompactSlot(): Promise<number | null> {
         }
         break;
       }
+      if (outcome === "infra_error") {
+        // DB unreachable / table missing — bail out instead of spamming 64
+        // failed inserts. Caller will fall back to single-owner mode.
+        return null;
+      }
+      // outcome === "taken": slot busy, probe the next one.
     }
     if (ourSlot === null) {
       console.error(
@@ -230,31 +281,16 @@ async function claimAndCompactSlot(): Promise<number | null> {
     }
   }
 
-  // Compact downward: try every lower slot in order. The first one we win
-  // becomes our new home and we drop our previous (higher) row. We only do a
-  // single migration per heartbeat to keep behaviour predictable; further
-  // compaction happens on subsequent heartbeats.
+  // Compact downward: try every lower slot in order via a single atomic
+  // UPDATE that both checks the slot is free and migrates our existing row.
+  // Only one migration per heartbeat — further compaction happens on later
+  // heartbeats — to keep behaviour predictable and bounded.
   for (let i = 0; i < ourSlot; i++) {
-    if (await tryClaimSlot(i)) {
-      try {
-        await db
-          .delete(schedulerLeases)
-          .where(
-            and(
-              eq(schedulerLeases.slotIndex, ourSlot),
-              eq(schedulerLeases.instanceId, INSTANCE_ID),
-            ),
-          );
-        console.log(
-          `[push] Instance ${INSTANCE_ID.slice(0, 8)} compacted slot ${ourSlot} -> ${i}.`,
-        );
-        ourSlot = i;
-      } catch (err) {
-        console.error(
-          `[push] Failed to drop old slot ${ourSlot} after compaction:`,
-          err,
-        );
-      }
+    if (await tryCompactDown(i)) {
+      console.log(
+        `[push] Instance ${INSTANCE_ID.slice(0, 8)} compacted slot ${ourSlot} -> ${i}.`,
+      );
+      ourSlot = i;
       break;
     }
   }
