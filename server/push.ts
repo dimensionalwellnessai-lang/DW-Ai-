@@ -34,6 +34,65 @@ const SCHEDULER_INTERVAL_MS = 60 * 1000;
 // under SCHEDULER_INTERVAL_MS even with hundreds of subscribed users.
 const USER_TICK_CONCURRENCY = 10;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Horizontal sharding
+//
+// When multiple app instances run in parallel, every instance would otherwise
+// run the full reminder tick over every subscribed user — wasting work and
+// risking duplicate sends if any de-dup marker race slips through. Sharding
+// lets each instance own a deterministic slice of the user space:
+//
+//   SHARD_COUNT  total number of instances participating (default 1)
+//   SHARD_INDEX  this instance's slot, 0 <= SHARD_INDEX < SHARD_COUNT
+//
+// Each tick we hash the user id (FNV-1a 32-bit, stable across processes and
+// Node versions) and keep only those users whose `hash % SHARD_COUNT` matches
+// SHARD_INDEX. With SHARD_COUNT=1 (the default) every user is owned by the
+// single instance, preserving the previous behaviour for single-server
+// deployments. Adding more instances proportionally divides the work.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function parseShardConfig(): { index: number; count: number } {
+  const rawCount = process.env.SHARD_COUNT;
+  const rawIndex = process.env.SHARD_INDEX;
+  const count = rawCount ? parseInt(rawCount, 10) : 1;
+  const index = rawIndex ? parseInt(rawIndex, 10) : 0;
+  if (!Number.isFinite(count) || count < 1) {
+    console.warn(
+      `[push] Invalid SHARD_COUNT=${rawCount}; falling back to 1.`,
+    );
+    return { index: 0, count: 1 };
+  }
+  if (!Number.isFinite(index) || index < 0 || index >= count) {
+    console.warn(
+      `[push] Invalid SHARD_INDEX=${rawIndex} for SHARD_COUNT=${count}; falling back to 0.`,
+    );
+    return { index: 0, count };
+  }
+  return { index, count };
+}
+
+const SHARD_CONFIG = parseShardConfig();
+
+function hashUserId(userId: string): number {
+  // FNV-1a 32-bit. Deterministic, fast, dependency-free, and well-distributed
+  // for short string inputs like UUIDs / nanoids.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < userId.length; i++) {
+    h ^= userId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+export function isUserInShard(
+  userId: string,
+  shard: { index: number; count: number } = SHARD_CONFIG,
+): boolean {
+  if (shard.count <= 1) return true;
+  return hashUserId(userId) % shard.count === shard.index;
+}
+
 let initialized = false;
 let cachedPublicKey: string | null = null;
 
@@ -716,7 +775,13 @@ async function tick(): Promise<void> {
     const subs = await db
       .select({ userId: pushSubscriptions.userId })
       .from(pushSubscriptions);
-    const userIds = Array.from(new Set(subs.map((s) => s.userId)));
+    const allUserIds = Array.from(new Set(subs.map((s) => s.userId)));
+    // Only process users that hash into this instance's shard. With
+    // SHARD_COUNT=1 (default) this is a no-op pass-through.
+    const userIds =
+      SHARD_CONFIG.count <= 1
+        ? allUserIds
+        : allUserIds.filter((id) => isUserInShard(id));
     if (userIds.length === 0) return;
 
     // Fan out per-user work with a bounded concurrency pool so a growing
@@ -751,7 +816,9 @@ export function startReminderScheduler(): void {
       void tick();
     }, SCHEDULER_INTERVAL_MS);
   }, Math.max(msToNextMinute, 0));
-  console.log("[push] Reminder scheduler started.");
+  console.log(
+    `[push] Reminder scheduler started (shard ${SHARD_CONFIG.index}/${SHARD_CONFIG.count}).`,
+  );
 }
 
 export function stopReminderScheduler(): void {
