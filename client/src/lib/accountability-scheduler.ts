@@ -755,35 +755,64 @@ export interface RestoreReminderResult {
 export async function restoreReminder(
   reminder: PlannedReminder,
 ): Promise<RestoreReminderResult> {
-  const skips = loadSkipped();
-  if (skips[reminder.key] !== undefined) {
-    delete skips[reminder.key];
-    saveSkipped(skips);
+  const result = await restoreReminders([reminder]);
+  return { localPersisted: true, serverCleared: result.serverCleared };
+}
+
+/**
+ * Result of a batch restore. Mirrors {@link RestoreReminderResult} but
+ * reports the outcome aggregated across the whole batch — `serverCleared`
+ * is true only if the single batch round-trip to the server succeeded.
+ */
+export interface RestoreRemindersBatchResult {
+  localPersisted: true;
+  serverCleared: boolean;
+  count: number;
+}
+
+/**
+ * Batch variant of {@link restoreReminder}. Mirrors {@link skipReminders}:
+ * one localStorage write, one server round-trip, one re-plan. Used by the
+ * Undo affordance on the "Skip this day" toast so undoing a whole-day skip
+ * feels as instant as the skip itself instead of fanning out into N
+ * per-reminder requests.
+ */
+export async function restoreReminders(
+  reminders: PlannedReminder[],
+): Promise<RestoreRemindersBatchResult> {
+  if (reminders.length === 0) {
+    return { localPersisted: true, serverCleared: true, count: 0 };
   }
-  skippedReminders.delete(reminder.key);
+
+  const skips = loadSkipped();
+  let mutated = false;
+  for (const r of reminders) {
+    if (skips[r.key] !== undefined) {
+      delete skips[r.key];
+      mutated = true;
+    }
+    skippedReminders.delete(r.key);
+  }
+  if (mutated) saveSkipped(skips);
   notifySnapshot();
 
   let serverCleared = false;
   try {
-    await apiRequest("POST", "/api/accountability/reminders/restore", {
-      itemId: reminder.itemId,
-      kind: reminder.kind,
+    await apiRequest("POST", "/api/accountability/reminders/restore-batch", {
+      reminders: reminders.map((r) => ({ itemId: r.itemId, kind: r.kind })),
     });
     serverCleared = true;
   } catch (err) {
-    console.error("[accountability-scheduler] server restore failed:", err);
+    console.error("[accountability-scheduler] server batch restore failed:", err);
   }
 
-  // Re-plan to re-arm the in-page timer (and native OS notification on
-  // Capacitor). The replan will also rebuild plannedReminders so the panel
-  // shows the restored entry in its upcoming list.
   try {
     await planReminders();
   } catch (err) {
-    console.error("[accountability-scheduler] replan after restore failed:", err);
+    console.error("[accountability-scheduler] replan after batch restore failed:", err);
   }
 
-  return { localPersisted: true, serverCleared };
+  return { localPersisted: true, serverCleared, count: reminders.length };
 }
 
 /**

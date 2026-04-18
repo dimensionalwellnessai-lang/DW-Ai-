@@ -39,6 +39,7 @@ import {
   skipReminder,
   skipReminders,
   restoreReminder,
+  restoreReminders,
   getPreviewDaysAhead,
   setPreviewDaysAhead,
   type PlannedReminder,
@@ -171,6 +172,36 @@ export function UpcomingReminders() {
     }
   };
 
+  const handleRestoreBatch = async (
+    reminders: PlannedReminder[],
+    dayLabelStr: string,
+  ) => {
+    if (reminders.length === 0) return;
+    try {
+      const result = await restoreReminders(reminders);
+      if (!result.serverCleared) {
+        toast({
+          title: `Restored ${result.count} reminders, with a hiccup`,
+          description:
+            "Restored on this device, but we couldn't fully reach the notification service. We'll keep retrying.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: `Restored reminders for ${dayLabelStr}`,
+          description: `${result.count} reminder${result.count === 1 ? "" : "s"} will ping you again.`,
+        });
+      }
+    } catch (err) {
+      console.error("[upcoming-reminders] restore-day failed:", err);
+      toast({
+        title: "Couldn't restore the day's reminders",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSkipDay = async (
     dayKeyStr: string,
     dayLabelStr: string,
@@ -187,12 +218,10 @@ export function UpcomingReminders() {
         <ToastAction
           altText="Undo skip day"
           onClick={() => {
-            // Restore each reminder individually — there's no batched
-            // restore endpoint and the per-item flow is what individual
-            // skips already use.
-            for (const r of snapshot) {
-              void handleRestore(r);
-            }
+            // Batched restore — one localStorage write, one server
+            // round-trip, one re-plan, and a single aggregate toast
+            // instead of N per-reminder ones.
+            void handleRestoreBatch(snapshot, dayLabelStr);
           }}
           data-testid={`button-undo-skip-day-${dayKeyStr}`}
         >
