@@ -31,6 +31,8 @@ const adoptTemplateBody = z.object({
 const projectBody = insertLifeSystemProjectSchema.omit({ userId: true }).extend({
   status: z.enum(["vision", "active", "paused", "done"]).optional(),
 });
+type ProjectBody = z.infer<typeof projectBody>;
+type ProjectPatch = Partial<ProjectBody>;
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function pillarSortOrder(pillarId: LifeSystemPillarId): number {
@@ -166,12 +168,14 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     const parsed = upsertPillarBody.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const def = PILLAR_BY_ID[parsed.data.pillarId as LifeSystemPillarId];
+    // Core pillars are existential — they cannot be disabled.
+    const requestedEnabled = def.level === "core" ? true : (parsed.data.enabled ?? def.defaultOn);
     try {
       const row = await storage.upsertLifeSystemPillar({
         userId,
         pillarId: parsed.data.pillarId,
         level: def.level,
-        enabled: parsed.data.enabled ?? def.defaultOn,
+        enabled: requestedEnabled,
         content: parsed.data.content ?? null,
         sortOrder: pillarSortOrder(parsed.data.pillarId as LifeSystemPillarId),
       });
@@ -193,16 +197,21 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
       content: z.record(z.string(), z.any()).optional(),
     }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    const def = PILLAR_BY_ID[pillarId];
+    // Core pillars cannot be disabled — silently coerce to enabled.
+    const safePatch = {
+      ...parsed.data,
+      ...(def.level === "core" ? { enabled: true as const } : {}),
+    };
     try {
-      const row = await storage.updateLifeSystemPillar(userId, pillarId, parsed.data);
+      const row = await storage.updateLifeSystemPillar(userId, pillarId, safePatch);
       // If row doesn't exist yet, create it.
       if (!row) {
-        const def = PILLAR_BY_ID[pillarId];
         const created = await storage.upsertLifeSystemPillar({
           userId,
           pillarId,
           level: def.level,
-          enabled: parsed.data.enabled ?? def.defaultOn,
+          enabled: safePatch.enabled ?? def.defaultOn,
           content: parsed.data.content ?? null,
           sortOrder: pillarSortOrder(pillarId),
         });
@@ -222,7 +231,13 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     try {
       if (parsed.data.reset) {
+        // Wipe all three tables so the starter is the only thing seeded.
         await storage.deleteAllLifeSystemPillars(userId);
+        const existingProjects = await storage.getLifeSystemProjects(userId);
+        for (const p of existingProjects) {
+          await storage.deleteLifeSystemProject(p.id, userId);
+        }
+        await storage.deleteAllLifeSystemDocuments(userId);
       }
       // Upsert every pillar with starter content.
       for (const def of PILLARS) {
@@ -252,8 +267,8 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
         });
       }
       // Seed starter projects (only if user has none yet).
-      const existingProjects = await storage.getLifeSystemProjects(userId);
-      if (existingProjects.length === 0) {
+      const existingProjectsAfter = await storage.getLifeSystemProjects(userId);
+      if (existingProjectsAfter.length === 0) {
         for (let i = 0; i < STARTER_TEMPLATE.projects.length; i++) {
           const p = STARTER_TEMPLATE.projects[i];
           await storage.createLifeSystemProject({
@@ -285,10 +300,17 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     const parsed = projectBody.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     try {
+      const data: ProjectBody = parsed.data;
       const created = await storage.createLifeSystemProject({
         userId,
-        ...parsed.data,
-      } as any);
+        name: data.name,
+        description: data.description ?? null,
+        currentFocus: data.currentFocus ?? null,
+        weeklyCadence: data.weeklyCadence ?? null,
+        nextAction: data.nextAction ?? null,
+        status: data.status ?? "active",
+        sortOrder: data.sortOrder ?? 0,
+      });
       res.json(created);
     } catch (err) {
       console.error("createLifeSystemProject error:", err);
@@ -301,7 +323,8 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     const parsed = projectBody.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     try {
-      const updated = await storage.updateLifeSystemProject(req.params.id, userId, parsed.data as any);
+      const patch: ProjectPatch = parsed.data;
+      const updated = await storage.updateLifeSystemProject(req.params.id, userId, patch);
       if (!updated) return res.status(404).json({ error: "Not found" });
       res.json(updated);
     } catch (err) {

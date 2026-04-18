@@ -57,14 +57,27 @@ export function ThreeRingOrbit({
     [innerR],
   );
 
-  const middleNodes = useMemo(
+  // Middle ring should only render Expression pillars the user has enabled.
+  // (When `litPillars` is undefined we render all — used as a static preview.)
+  const visibleExpression = useMemo(
     () =>
-      expressionPillars.map((p, i) => {
-        const angle = (360 / expressionPillars.length) * i + 18;
+      allLit
+        ? expressionPillars
+        : expressionPillars.filter(p => litPillars!.has(p.id)),
+    [allLit, litPillars],
+  );
+
+  const middleNodes = useMemo(
+    () => {
+      const list = visibleExpression;
+      const denom = Math.max(list.length, 1);
+      return list.map((p, i) => {
+        const angle = (360 / denom) * i + 18;
         const { x, y } = polar(middleR, angle);
         return { id: p.id, label: p.label, x, y, color: LEVEL_META.expression.ringColor };
-      }),
-    [middleR],
+      });
+    },
+    [middleR, visibleExpression],
   );
 
   const outerNodes = useMemo(

@@ -300,6 +300,7 @@ export interface IStorage {
   upsertLifeSystemPillar(pillar: InsertLifeSystemPillar): Promise<LifeSystemPillar>;
   updateLifeSystemPillar(userId: string, pillarId: string, data: Partial<InsertLifeSystemPillar>): Promise<LifeSystemPillar | undefined>;
   deleteAllLifeSystemPillars(userId: string): Promise<void>;
+  deleteAllLifeSystemDocuments(userId: string): Promise<void>;
 
   // Life System Projects (sub-items inside the Creation pillar)
   getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]>;
@@ -3742,15 +3743,16 @@ export class DatabaseStorage implements IStorage {
       .from(lifeSystemPillars)
       .where(and(eq(lifeSystemPillars.userId, pillar.userId), eq(lifeSystemPillars.pillarId, pillar.pillarId)))
       .limit(1);
+    const values = pillar as typeof lifeSystemPillars.$inferInsert;
     if (existing[0]) {
       const [updated] = await db
         .update(lifeSystemPillars)
-        .set({ ...pillar, updatedAt: new Date() })
+        .set({ ...values, updatedAt: new Date() })
         .where(eq(lifeSystemPillars.id, existing[0].id))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(lifeSystemPillars).values(pillar).returning();
+    const [created] = await db.insert(lifeSystemPillars).values(values).returning();
     return created;
   }
 
@@ -3759,9 +3761,10 @@ export class DatabaseStorage implements IStorage {
     pillarId: string,
     data: Partial<InsertLifeSystemPillar>,
   ): Promise<LifeSystemPillar | undefined> {
+    const setData = data as Partial<typeof lifeSystemPillars.$inferInsert>;
     const [updated] = await db
       .update(lifeSystemPillars)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...setData, updatedAt: new Date() })
       .where(and(eq(lifeSystemPillars.userId, userId), eq(lifeSystemPillars.pillarId, pillarId)))
       .returning();
     return updated;
@@ -3769,6 +3772,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAllLifeSystemPillars(userId: string): Promise<void> {
     await db.delete(lifeSystemPillars).where(eq(lifeSystemPillars.userId, userId));
+  }
+
+  async deleteAllLifeSystemDocuments(userId: string): Promise<void> {
+    await db.delete(lifeSystemDocuments).where(eq(lifeSystemDocuments.userId, userId));
   }
 
   async getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]> {
@@ -3780,7 +3787,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLifeSystemProject(project: InsertLifeSystemProject): Promise<LifeSystemProject> {
-    const [created] = await db.insert(lifeSystemProjects).values(project).returning();
+    const values = project as typeof lifeSystemProjects.$inferInsert;
+    const [created] = await db.insert(lifeSystemProjects).values(values).returning();
     return created;
   }
 
@@ -3789,9 +3797,10 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     data: Partial<InsertLifeSystemProject>,
   ): Promise<LifeSystemProject | undefined> {
+    const setData = data as Partial<typeof lifeSystemProjects.$inferInsert>;
     const [updated] = await db
       .update(lifeSystemProjects)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...setData, updatedAt: new Date() })
       .where(and(eq(lifeSystemProjects.id, id), eq(lifeSystemProjects.userId, userId)))
       .returning();
     return updated;

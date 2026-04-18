@@ -176,17 +176,17 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   
-  // Allow the new six-act Life System onboarding (/onboarding) and the
-  // legacy /enhanced-onboarding to render without redirect when setup is incomplete.
-  const onboardingRoutes = ["/enhanced-onboarding", "/onboarding"];
+  // The new six-act Life System onboarding lives at /onboarding; the legacy
+  // /enhanced-onboarding remains available as a fallback for in-progress users.
+  const onboardingRoutes = ["/onboarding", "/enhanced-onboarding"];
   const isOnOnboardingRoute = onboardingRoutes.includes(location);
 
   if (!setupComplete && !isOnOnboardingRoute) {
-    return <Redirect to="/enhanced-onboarding" />;
+    return <Redirect to="/onboarding" />;
   }
 
-  // Setup complete, on legacy onboarding page -> go to /command-center
-  if (setupComplete && location === "/enhanced-onboarding") {
+  // Setup complete, on either onboarding page -> go to /command-center
+  if (setupComplete && isOnOnboardingRoute) {
     return <Redirect to="/command-center" />;
   }
   
