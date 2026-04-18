@@ -4,6 +4,7 @@ import { or } from "drizzle-orm";
 import { requireAuth } from "./_shared";
 import { sendPartnerInviteEmail } from "../email";
 import * as accountability from "../accountability";
+import { notificationPreferencesUpdateSchema } from "@shared/schema";
 
 export function registerAccountabilityRoutes(app: Express): void {
   app.post("/api/accountability/commit", requireAuth, async (req, res) => {
@@ -143,10 +144,19 @@ export function registerAccountabilityRoutes(app: Express): void {
   });
 
   app.put("/api/accountability/preferences", requireAuth, async (req, res) => {
+    // Reject unknown / non-allowed fields (incl. userId, id, timestamps) so a
+    // client cannot overwrite columns we don't intend to expose.
+    const parsed = notificationPreferencesUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "Invalid preferences payload",
+        details: parsed.error.flatten(),
+      });
+    }
     try {
       const prefs = await accountability.updateNotificationPreferences(
         req.session.userId!,
-        req.body
+        parsed.data,
       );
       res.json(prefs);
     } catch (error) {

@@ -2264,6 +2264,16 @@ export const insertNotificationPreferencesSchema = createInsertSchema(notificati
   updatedAt: true,
 });
 
+// PUT /api/accountability/preferences accepts a *partial* update from the
+// client. We additionally drop `userId` (it always comes from the session, not
+// the body) and call `.strict()` so unknown fields cause a 400 instead of
+// being silently passed through to `db.update().set(...)` — which would let a
+// caller overwrite arbitrary columns now or in the future.
+export const notificationPreferencesUpdateSchema = insertNotificationPreferencesSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 // Singleton VAPID keys row (id = "default") — generated once at server boot
 // and reused for the lifetime of the deployment so existing subscriptions
 // remain valid across restarts. (The `push_subscriptions` table itself is
