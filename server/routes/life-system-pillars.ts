@@ -42,6 +42,180 @@ function pillarSortOrder(pillarId: LifeSystemPillarId): number {
 }
 
 /**
+ * Build the starter content blob for a single pillar, including the headline
+ * sections that only Foundation carries.
+ */
+function buildStarterPillarContent(pillarId: LifeSystemPillarId): PillarContent {
+  const def = PILLAR_BY_ID[pillarId];
+  const starter = STARTER_TEMPLATE.pillars[pillarId];
+  const content: PillarContent = {
+    description: starter?.description ?? def.summary,
+    ...(starter?.laws ? { laws: starter.laws } : {}),
+    ...(starter?.nonNegotiables ? { nonNegotiables: starter.nonNegotiables } : {}),
+    ...(starter?.weeklyRhythm ? { weeklyRhythm: starter.weeklyRhythm } : {}),
+    ...(starter?.extras ? { extras: starter.extras as Record<string, string | string[]> } : {}),
+  };
+  if (pillarId === "foundation") {
+    content.identityStatement = STARTER_TEMPLATE.identityStatement;
+    content.weeklyNonNegotiables = STARTER_TEMPLATE.weeklyNonNegotiables;
+    content.minimumDayChecklist = STARTER_TEMPLATE.minimumDayChecklist;
+    content.commandments = STARTER_TEMPLATE.commandments;
+    content.finalStatement = STARTER_TEMPLATE.finalStatement;
+  }
+  return content;
+}
+
+/**
+ * Best-effort mapping from legacy onboarding-profile fields onto the new
+ * three-level pillar shape. Only adds well-known overrides; the rest of each
+ * pillar stays on the Starter Template defaults.
+ */
+function buildLegacyOverrides(
+  profile: { lifeAreaDetails?: unknown; peakMotivationTime?: string | null; responsibilities?: string[] | null; priorities?: string[] | null; shortTermGoals?: string | null; longTermGoals?: string | null; wellnessFocus?: string[] | null } | undefined,
+  habits: { title: string; isActive: boolean | null }[],
+): Partial<Record<LifeSystemPillarId, PillarContent>> {
+  const overrides: Partial<Record<LifeSystemPillarId, PillarContent>> = {};
+  if (!profile) return overrides;
+
+  const lad = (profile.lifeAreaDetails && typeof profile.lifeAreaDetails === "object")
+    ? (profile.lifeAreaDetails as Record<string, unknown>)
+    : {};
+  const wakeTime = typeof lad.wakeTime === "string" ? lad.wakeTime : undefined;
+  const sleepTime = typeof lad.sleepTime === "string" ? lad.sleepTime : undefined;
+  const peak = profile.peakMotivationTime || (typeof lad.peakMotivationTime === "string" ? lad.peakMotivationTime : undefined);
+
+  if (wakeTime || sleepTime || peak) {
+    const base = buildStarterPillarContent("daily_rhythm");
+    const extras: Record<string, string | string[]> = { ...(base.extras ?? {}) };
+    if (wakeTime) extras.wakeTarget = wakeTime;
+    if (sleepTime) extras.sleepTarget = sleepTime;
+    if (peak) extras.peakMotivationTime = peak;
+    overrides.daily_rhythm = { ...base, extras };
+  }
+
+  const responsibilities = (profile.responsibilities ?? []).filter(Boolean);
+  if (responsibilities.length) {
+    const base = buildStarterPillarContent("responsibility");
+    overrides.responsibility = {
+      ...base,
+      nonNegotiables: Array.from(new Set([...(base.nonNegotiables ?? []), ...responsibilities])),
+    };
+  }
+
+  const priorities = (profile.priorities ?? []).filter(Boolean);
+  const purposeText = [profile.shortTermGoals, profile.longTermGoals].filter(Boolean).join("\n\n").trim();
+  if (priorities.length || purposeText) {
+    const base = buildStarterPillarContent("purpose");
+    overrides.purpose = {
+      ...base,
+      ...(purposeText ? { userVoice: purposeText } : {}),
+      ...(priorities.length ? { nonNegotiables: priorities } : {}),
+    };
+  }
+
+  const wellnessFocus = (profile.wellnessFocus ?? []).filter(Boolean);
+  if (wellnessFocus.length) {
+    const base = buildStarterPillarContent("physical_health");
+    overrides.physical_health = {
+      ...base,
+      extras: { ...(base.extras ?? {}), wellnessFocus },
+    };
+  }
+
+  const activeHabitTitles = habits.filter(h => h.isActive !== false).map(h => h.title).filter(Boolean);
+  if (activeHabitTitles.length) {
+    const base = overrides.foundation ?? buildStarterPillarContent("foundation");
+    overrides.foundation = {
+      ...base,
+      weeklyNonNegotiables: Array.from(new Set([...(base.weeklyNonNegotiables ?? []), ...activeHabitTitles])),
+    };
+  }
+
+  return overrides;
+}
+
+function mapLegacyGoalStatus(progress: number | null | undefined): "vision" | "active" | "paused" | "done" {
+  const p = progress ?? 0;
+  if (p >= 100) return "done";
+  if (p > 0) return "active";
+  return "vision";
+}
+
+/**
+ * One-time seed for users still on the legacy data model. Idempotent and safe
+ * to run repeatedly: it short-circuits as soon as the user has any pillars,
+ * and only seeds projects when the user has none.
+ *
+ * Strategy:
+ *   1. If the user already has any life_system_pillars rows, do nothing.
+ *   2. Read legacy onboarding profile + habits and build best-effort overrides.
+ *   3. Upsert every pillar from the Starter Template, applying overrides.
+ *   4. If the user has no life_system_projects, map legacy goals → projects
+ *      (and seed the Starter Template projects when no legacy goals exist).
+ */
+export async function backfillLifeSystemForUser(userId: string): Promise<void> {
+  const existingPillars = await storage.getLifeSystemPillars(userId);
+  if (existingPillars.length > 0) return;
+
+  const [profile, goals, habits, existingProjects] = await Promise.all([
+    storage.getOnboardingProfile(userId),
+    storage.getGoals(userId),
+    storage.getHabits(userId),
+    storage.getLifeSystemProjects(userId),
+  ]);
+
+  const overrides = buildLegacyOverrides(profile, habits);
+
+  for (const def of PILLARS) {
+    const base = buildStarterPillarContent(def.id);
+    const content = overrides[def.id]
+      ? { ...base, ...overrides[def.id] }
+      : base;
+    await storage.upsertLifeSystemPillar({
+      userId,
+      pillarId: def.id,
+      level: def.level,
+      enabled: def.defaultOn,
+      content,
+      sortOrder: pillarSortOrder(def.id),
+    });
+  }
+
+  if (existingProjects.length === 0) {
+    const activeGoals = goals.filter(g => g.isActive !== false);
+    if (activeGoals.length > 0) {
+      for (let i = 0; i < activeGoals.length; i++) {
+        const g = activeGoals[i];
+        await storage.createLifeSystemProject({
+          userId,
+          name: g.title,
+          description: g.description ?? null,
+          currentFocus: g.explainWhy ?? null,
+          weeklyCadence: null,
+          nextAction: null,
+          status: mapLegacyGoalStatus(g.progress),
+          sortOrder: i,
+        });
+      }
+    } else {
+      for (let i = 0; i < STARTER_TEMPLATE.projects.length; i++) {
+        const p = STARTER_TEMPLATE.projects[i];
+        await storage.createLifeSystemProject({
+          userId,
+          name: p.name,
+          description: p.description,
+          currentFocus: p.currentFocus,
+          weeklyCadence: p.weeklyCadence,
+          nextAction: p.nextAction,
+          status: p.status ?? "active",
+          sortOrder: i,
+        });
+      }
+    }
+  }
+}
+
+/**
  * Compose the Life System Document from current pillar + project state.
  * Layered structure mirrors the user's ChatGPT template:
  *   identityStatement → foundationLaws → core pillars → expression pillars
@@ -155,10 +329,21 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
   app.get("/api/life-system/pillars", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const [pillars, projects] = await Promise.all([
+      let [pillars, projects] = await Promise.all([
         storage.getLifeSystemPillars(userId),
         storage.getLifeSystemProjects(userId),
       ]);
+      if (pillars.length === 0) {
+        try {
+          await backfillLifeSystemForUser(userId);
+          [pillars, projects] = await Promise.all([
+            storage.getLifeSystemPillars(userId),
+            storage.getLifeSystemProjects(userId),
+          ]);
+        } catch (backfillErr) {
+          console.error("backfillLifeSystemForUser error:", backfillErr);
+        }
+      }
       res.json({ pillars, projects });
     } catch (err) {
       console.error("getLifeSystemPillars error:", err);
