@@ -66,8 +66,12 @@ const USER_TICK_CONCURRENCY = 10;
 // one-time deprecation warning so old deploys notice.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LEASE_HEARTBEAT_MS = 30 * 1000;
-const LEASE_STALE_MS = 90 * 1000;
+// Heartbeat every 15s; consider a lease dead after 45s without a heartbeat.
+// That's three missed heartbeats — enough margin to absorb a transient DB
+// blip without false-positive reaping, while keeping reclaim latency below
+// the one-minute SLA called out in the task spec.
+const LEASE_HEARTBEAT_MS = 15 * 1000;
+const LEASE_STALE_MS = 45 * 1000;
 // Hard cap on slot probing — protects against degenerate retry loops if
 // something goes catastrophically wrong with the leases table. 64 instances
 // is well beyond any realistic horizontal-scale-out for this workload.
@@ -206,11 +210,15 @@ async function tryCompactDown(targetSlot: number): Promise<boolean> {
     `);
     const rowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
     return rowCount > 0;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 23505 = unique_violation. Two instances raced for the same lower slot
     // and the other one committed first; that's expected — try again next
     // heartbeat. Anything else is a real problem worth logging.
-    if (err?.code !== "23505") {
+    const code =
+      typeof err === "object" && err !== null && "code" in err
+        ? (err as { code?: unknown }).code
+        : undefined;
+    if (code !== "23505") {
       console.error(
         `[push] Failed to compact lease into slot ${targetSlot}:`,
         err,
@@ -303,9 +311,14 @@ async function heartbeatLease(): Promise<void> {
   await pruneStaleLeases(now);
   const ourSlot = await claimAndCompactSlot();
   if (ourSlot === null) {
-    // Fall back to single-owner mode so reminders still go out for everyone
-    // until the DB recovers.
-    currentShard = { index: 0, count: 1 };
+    // DB unavailable. If we previously held a slot, KEEP using that shard
+    // config — every other instance is in the same outage and will likewise
+    // hold its previous slot, so the partition stays intact and we avoid
+    // the duplicate-send storm that would happen if every instance flipped
+    // to {0,1} (single-owner mode) simultaneously.
+    if (!leaseClaimed) {
+      currentShard = { index: 0, count: 1 };
+    }
     return;
   }
   // Refresh heartbeat — INSERT on a fresh claim already set it to now, but
