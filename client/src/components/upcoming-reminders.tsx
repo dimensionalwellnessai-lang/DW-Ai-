@@ -51,6 +51,22 @@ function formatTime(ms: number): string {
   });
 }
 
+/**
+ * Format the time remaining until a skipped reminder would have fired.
+ * Returns null once the moment has passed (the row will be filtered out by
+ * planReminders shortly thereafter, but we hide the countdown immediately).
+ */
+function formatRestoreCountdown(fireAt: number, now: number): string | null {
+  const remainingMs = fireAt - now;
+  if (remainingMs <= 0) return null;
+  const totalMinutes = Math.ceil(remainingMs / 60_000);
+  if (totalMinutes < 60) return `Restore in ${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) return `Restore in ${hours} hr`;
+  return `Restore in ${hours} hr ${minutes} min`;
+}
+
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -88,6 +104,14 @@ export function UpcomingReminders() {
   const [skipped, setSkipped] = useState<PlannedReminder[]>(() => getSkippedReminders());
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [horizon, setHorizon] = useState<number>(() => getPreviewDaysAhead());
+  // Ticking clock used to refresh skipped-row countdowns. Updated every 30s
+  // so a "Restore in N min" label shifts within the same minute it would.
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeToPlannedReminders(() => {
@@ -323,14 +347,16 @@ export function UpcomingReminders() {
               Skipped ({skipped.length})
             </h4>
             <ul className="space-y-2">
-              {skipped.map((r) => (
+              {skipped.map((r) => {
+                const countdown = formatRestoreCountdown(r.fireAt, now);
+                return (
                 <li
                   key={r.key}
                   className="flex items-center justify-between gap-3 rounded-md border border-dashed p-3 opacity-80"
                   data-testid={`row-skipped-${r.key}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <Badge
                         variant="outline"
                         data-testid={`badge-skipped-kind-${r.key}`}
@@ -343,6 +369,16 @@ export function UpcomingReminders() {
                       >
                         {r.name}
                       </span>
+                      {countdown && (
+                        <Badge
+                          variant="secondary"
+                          className="font-normal"
+                          data-testid={`badge-restore-countdown-${r.key}`}
+                          aria-live="polite"
+                        >
+                          {countdown}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
@@ -362,7 +398,8 @@ export function UpcomingReminders() {
                     {busyKey === r.key ? "Restoring…" : "Restore"}
                   </Button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}
