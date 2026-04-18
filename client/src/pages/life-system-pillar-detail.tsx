@@ -6,16 +6,18 @@
 //   - The user replies, DW listens, and the server quietly captures structured
 //     fields (description, userVoice, laws, weeklyRhythm, nonNegotiables) from
 //     what was said.
-//   - "What DW has gathered so far" is a read-only summary that updates as the
-//     conversation progresses, so the user can see their pillar coming alive.
+//   - "What DW has gathered so far" is a live summary that updates as the
+//     conversation progresses, with inline editors for the user to tweak the
+//     description and non-negotiables by hand.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useLocation } from "wouter";
-import { ArrowLeft, Loader2, MessageCircle, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, MessageCircle, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -71,6 +73,19 @@ export default function LifeSystemPillarDetailPage() {
   const [lastCaptured, setLastCaptured] = useState<string[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
+  // ── Inline editors for description + non-negotiables ────────────────
+  const [descDraft, setDescDraft] = useState<string>(savedContent.description ?? "");
+  useEffect(() => { setDescDraft(savedContent.description ?? ""); }, [savedContent.description]);
+  const [savingDesc, setSavingDesc] = useState(false);
+
+  const [nnDraft, setNnDraft] = useState<string[]>(
+    Array.isArray(savedContent.nonNegotiables) ? savedContent.nonNegotiables : [],
+  );
+  useEffect(() => {
+    setNnDraft(Array.isArray(savedContent.nonNegotiables) ? savedContent.nonNegotiables : []);
+  }, [savedContent.nonNegotiables]);
+  const [savingNn, setSavingNn] = useState(false);
+
   // Auto-scroll chat to the newest message.
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -96,6 +111,51 @@ export default function LifeSystemPillarDetailPage() {
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Persist a partial content patch (merged with the latest known content) and
+  // refresh both local mirror + the source-of-truth cache.
+  async function saveContentPatch(patch: Partial<PillarContent>): Promise<boolean> {
+    if (!def) return false;
+    const merged: PillarContent = { ...content, ...patch };
+    try {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/life-system/pillars/${def.id}`,
+        { content: merged },
+      );
+      const row = await res.json();
+      const next = (row?.content && typeof row.content === "object")
+        ? (row.content as PillarContent)
+        : merged;
+      setContent(next);
+      await queryClient.invalidateQueries({ queryKey: ["/api/life-system/pillars"] });
+      return true;
+    } catch {
+      toast({ title: "Couldn't save", description: "Try again in a moment.", variant: "destructive" });
+      return false;
+    }
+  }
+
+  async function onSaveDescription() {
+    if (savingDesc) return;
+    setSavingDesc(true);
+    const trimmed = descDraft.trim();
+    const ok = await saveContentPatch({ description: trimmed || undefined });
+    setSavingDesc(false);
+    if (ok) toast({ title: "Description saved" });
+  }
+
+  async function onSaveNonNegotiables(next: string[]) {
+    if (savingNn) return;
+    setSavingNn(true);
+    const cleaned = next.map(s => s.trim()).filter(Boolean);
+    const ok = await saveContentPatch({ nonNegotiables: cleaned.length ? cleaned : undefined });
+    setSavingNn(false);
+    if (ok) {
+      setNnDraft(cleaned);
+      toast({ title: "Non-negotiables saved" });
+    }
   }
 
   async function onSend() {
@@ -138,12 +198,6 @@ export default function LifeSystemPillarDetailPage() {
   }
 
   const levelMeta = LEVEL_META[def.level];
-  const hasAnyContent = !!(
-    content.description || content.userVoice ||
-    (content.laws && content.laws.length) ||
-    (content.nonNegotiables && content.nonNegotiables.length) ||
-    content.weeklyRhythm
-  );
 
   // The conversation always opens with DW's pillar question. We render it as
   // an assistant bubble inline (without persisting) when no real conversation
@@ -259,24 +313,35 @@ export default function LifeSystemPillarDetailPage() {
         </div>
       </Card>
 
-      {/* ── What DW has gathered so far (READ-ONLY summary) ───────────── */}
+      {/* ── What DW has gathered so far (editable summary) ────────────── */}
       <Card className="p-5 space-y-4" data-testid="card-summary">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">What DW has gathered so far</h2>
           <span className="text-xs text-muted-foreground">Updated as you talk</span>
         </div>
 
-        {!hasAnyContent && (
-          <p className="text-sm text-muted-foreground" data-testid="text-summary-empty">
-            Nothing yet. Reply to DW above and your answers will start filling in here.
-          </p>
-        )}
-
-        {content.description && (
-          <SummarySection title="How this pillar shows up in your life" testId="summary-description">
-            <p className="text-sm whitespace-pre-wrap">{content.description}</p>
-          </SummarySection>
-        )}
+        <SummarySection title="How this pillar shows up in your life" testId="summary-description">
+          <Textarea
+            value={descDraft}
+            onChange={e => setDescDraft(e.target.value)}
+            placeholder={def.summary || "Describe how this pillar shows up in your life…"}
+            rows={4}
+            className="text-sm"
+            data-testid="textarea-description"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSaveDescription}
+              disabled={savingDesc || (descDraft.trim() === (content.description ?? ""))}
+              data-testid="button-save-description"
+            >
+              {savingDesc ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+              Save description
+            </Button>
+          </div>
+        </SummarySection>
 
         {content.userVoice && (
           <SummarySection title="In your own words" testId="summary-user-voice">
@@ -296,15 +361,62 @@ export default function LifeSystemPillarDetailPage() {
           </SummarySection>
         )}
 
-        {Array.isArray(content.nonNegotiables) && content.nonNegotiables.length > 0 && (
-          <SummarySection title="Non-negotiables" testId="summary-non-negotiables">
-            <ul className="text-sm list-disc pl-5 space-y-1">
-              {content.nonNegotiables.map((n, i) => (
-                <li key={i} data-testid={`text-non-negotiable-${i}`}>{n}</li>
-              ))}
-            </ul>
-          </SummarySection>
-        )}
+        <SummarySection title="Non-negotiables" testId="summary-non-negotiables">
+          <div className="space-y-2">
+            {nnDraft.length === 0 && (
+              <p className="text-xs text-muted-foreground" data-testid="text-non-negotiables-empty">
+                Add things you won't compromise on for this pillar.
+              </p>
+            )}
+            {nnDraft.map((n, i) => (
+              <div key={i} className="flex items-center gap-2" data-testid={`row-non-negotiable-${i}`}>
+                <Input
+                  value={n}
+                  onChange={e => {
+                    const next = [...nnDraft];
+                    next[i] = e.target.value;
+                    setNnDraft(next);
+                  }}
+                  placeholder="e.g. 4 workouts/week"
+                  className="text-sm"
+                  data-testid={`input-non-negotiable-${i}`}
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    const next = nnDraft.filter((_, j) => j !== i);
+                    setNnDraft(next);
+                  }}
+                  aria-label="Remove non-negotiable"
+                  data-testid={`button-remove-non-negotiable-${i}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex justify-between items-center pt-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setNnDraft([...nnDraft, ""])}
+                data-testid="button-add-non-negotiable"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add non-negotiable
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onSaveNonNegotiables(nnDraft)}
+                disabled={savingNn || sameStringList(nnDraft, content.nonNegotiables ?? [])}
+                data-testid="button-save-non-negotiables"
+              >
+                {savingNn ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                Save non-negotiables
+              </Button>
+            </div>
+          </div>
+        </SummarySection>
 
         {content.weeklyRhythm && (
           <SummarySection title="Weekly rhythm" testId="summary-weekly-rhythm">
@@ -331,6 +443,13 @@ function SummarySection({
       {children}
     </div>
   );
+}
+
+function sameStringList(a: string[], b: string[]): boolean {
+  const ca = a.map(s => s.trim()).filter(Boolean);
+  const cb = b.map(s => s.trim()).filter(Boolean);
+  if (ca.length !== cb.length) return false;
+  return ca.every((v, i) => v === cb[i]);
 }
 
 function prettyField(field: string): string {
