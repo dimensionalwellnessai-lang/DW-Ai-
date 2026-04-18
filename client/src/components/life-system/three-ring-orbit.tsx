@@ -24,6 +24,12 @@ export interface ThreeRingOrbitProps {
   /** Diameter in pixels. */
   size?: number;
   className?: string;
+  /** Tap handler for lit Core or Expression pillar nodes. */
+  onPillarClick?: (id: LifeSystemPillarId) => void;
+  /** Tap handler for lit Creation (project) nodes on the outer ring. */
+  onProjectClick?: (name: string) => void;
+  /** Tap handler for the central DW orb. */
+  onCenterClick?: () => void;
 }
 
 const corePillars = PILLARS.filter(p => p.level === "core");
@@ -40,6 +46,9 @@ export function ThreeRingOrbit({
   litProjects,
   size = 360,
   className,
+  onPillarClick,
+  onProjectClick,
+  onCenterClick,
 }: ThreeRingOrbitProps) {
   const allLit = !litPillars; // when undefined, treat everything as lit
 
@@ -52,7 +61,7 @@ export function ThreeRingOrbit({
       corePillars.map((p, i) => {
         const angle = (360 / corePillars.length) * i;
         const { x, y } = polar(innerR, angle);
-        return { id: p.id, label: p.label, x, y, color: LEVEL_META.core.ringColor };
+        return { id: p.id, label: p.label, x, y, color: LEVEL_META.core.ringColor, kind: "pillar" as const };
       }),
     [innerR],
   );
@@ -74,7 +83,7 @@ export function ThreeRingOrbit({
       return list.map((p, i) => {
         const angle = (360 / denom) * i + 18;
         const { x, y } = polar(middleR, angle);
-        return { id: p.id, label: p.label, x, y, color: LEVEL_META.expression.ringColor };
+        return { id: p.id, label: p.label, x, y, color: LEVEL_META.expression.ringColor, kind: "pillar" as const };
       });
     },
     [middleR, visibleExpression],
@@ -87,7 +96,7 @@ export function ThreeRingOrbit({
         : projects.map((p, i) => {
             const angle = (360 / Math.max(projects.length, 3)) * i + 30;
             const { x, y } = polar(outerR, angle);
-            return { id: p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor };
+            return { id: p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor, kind: "project" as const };
           }),
     [outerR, projects],
   );
@@ -129,34 +138,77 @@ export function ThreeRingOrbit({
           <stop offset="100%" stopColor="hsl(252 76% 42%)" />
         </radialGradient>
       </defs>
-      <circle
-        cx={0}
-        cy={0}
-        r={size * 0.075}
-        fill="url(#dwOrbGradient)"
-        style={{ filter: "drop-shadow(0 0 14px hsl(252 76% 58% / 0.6))" }}
-      />
-      <text
-        x={0}
-        y={4}
-        textAnchor="middle"
-        fontSize={size * 0.055}
-        fontWeight={700}
-        fill="white"
+      <g
+        onClick={onCenterClick ? () => onCenterClick() : undefined}
+        onKeyDown={
+          onCenterClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onCenterClick();
+                }
+              }
+            : undefined
+        }
+        role={onCenterClick ? "button" : undefined}
+        tabIndex={onCenterClick ? 0 : undefined}
+        aria-label={onCenterClick ? "Open Life System Document" : undefined}
+        data-testid="orbit-center-dw"
+        style={{ cursor: onCenterClick ? "pointer" : "default", outline: "none" }}
       >
-        DW
-      </text>
+        <circle
+          cx={0}
+          cy={0}
+          r={size * 0.075}
+          fill="url(#dwOrbGradient)"
+          style={{ filter: "drop-shadow(0 0 14px hsl(252 76% 58% / 0.6))" }}
+        />
+        <text
+          x={0}
+          y={4}
+          textAnchor="middle"
+          fontSize={size * 0.055}
+          fontWeight={700}
+          fill="white"
+          style={{ pointerEvents: "none" }}
+        >
+          DW
+        </text>
+      </g>
 
       {/* ── Nodes per ring ─────────────────────────────────────────────── */}
       {[...innerNodes, ...middleNodes, ...outerNodes].map(n => {
         const lit = isLit(n.id);
+        const handler = !lit
+          ? undefined
+          : n.kind === "project"
+            ? (onProjectClick ? () => onProjectClick(n.id) : undefined)
+            : (onPillarClick ? () => onPillarClick(n.id as LifeSystemPillarId) : undefined);
+        const interactive = !!handler;
         return (
           <g
             key={n.id}
+            onClick={handler}
+            onKeyDown={
+              interactive
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handler!();
+                    }
+                  }
+                : undefined
+            }
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-label={interactive ? n.label : undefined}
+            data-testid={`orbit-node-${n.id}`}
             style={{
               transition: "opacity 600ms ease, filter 600ms ease",
               opacity: lit ? 1 : 0.18,
               filter: lit ? `drop-shadow(0 0 6px hsl(${n.color.replace("hsl(", "").replace(")", "")} / 0.6))` : "none",
+              cursor: interactive ? "pointer" : "default",
+              outline: "none",
             }}
           >
             <circle
@@ -175,6 +227,7 @@ export function ThreeRingOrbit({
               fontSize={size * 0.028}
               fill="hsl(var(--foreground))"
               opacity={lit ? 0.9 : 0.4}
+              style={{ pointerEvents: "none" }}
             >
               {n.label}
             </text>
