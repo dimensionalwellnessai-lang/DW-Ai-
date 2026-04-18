@@ -119,10 +119,15 @@ export function UpcomingReminders() {
     const unsub = subscribeToPlannedReminders(() => {
       setReminders(getPlannedReminders());
       setSkipped(getSkippedReminders());
+      // The horizon may have just been hydrated from server-persisted
+      // notification preferences (e.g. on cold start, or after a change made
+      // on another device propagated). Re-pull so the select control matches.
+      setHorizon(getPreviewDaysAhead());
     });
     // Re-pull on mount in case planning has run since the initial state.
     setReminders(getPlannedReminders());
     setSkipped(getSkippedReminders());
+    setHorizon(getPreviewDaysAhead());
     return unsub;
   }, []);
 

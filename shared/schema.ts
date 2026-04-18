@@ -2142,7 +2142,13 @@ export const notificationPreferences = pgTable("notification_preferences", {
   quietHoursEnabled: boolean("quiet_hours_enabled").default(false),
   quietHoursStart: text("quiet_hours_start").default("22:00"),
   quietHoursEnd: text("quiet_hours_end").default("08:00"),
-  
+
+  // Upcoming-reminders panel "look ahead" horizon, in days (0–7).
+  // Persisted server-side so the user's preferred preview range follows
+  // them across phone, tablet, and desktop. Local storage on the client
+  // is used only as a startup hint until this value loads.
+  previewDaysAhead: integer("preview_days_ahead").default(0),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -235,6 +235,12 @@ function eventsToItems(events: CalendarEvent[], daysAhead = 0): ScheduleableItem
 // delivery (native OS notifications, in-page setTimeout) stays today-only so
 // nothing is scheduled prematurely. The server's push scheduler honours the
 // skip indefinitely via its cancellation ledger.
+//
+// The preference itself is persisted server-side as
+// `notificationPreferences.previewDaysAhead` so it follows the user across
+// devices. Local storage is kept only as a startup hint so the panel can
+// render the user's preferred horizon immediately on cold start, before the
+// preferences fetch resolves.
 const PREVIEW_STORAGE_KEY = "dw_preview_days_ahead";
 const MAX_PREVIEW_DAYS = 7;
 
@@ -243,7 +249,7 @@ function clampPreviewDays(n: number): number {
   return Math.min(Math.max(Math.floor(n), 0), MAX_PREVIEW_DAYS);
 }
 
-function loadPreviewDays(): number {
+function loadPreviewDaysHint(): number {
   try {
     const raw =
       typeof localStorage !== "undefined"
@@ -255,22 +261,58 @@ function loadPreviewDays(): number {
   }
 }
 
-let previewDaysAhead = loadPreviewDays();
+function savePreviewDaysHint(value: number): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(PREVIEW_STORAGE_KEY, String(value));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+let previewDaysAhead = loadPreviewDaysHint();
 
 export function getPreviewDaysAhead(): number {
   return previewDaysAhead;
 }
 
+/**
+ * Update the in-memory preview horizon from a freshly-fetched preferences
+ * payload. Returns true if the value changed (so callers can decide whether
+ * to notify subscribers / replan).
+ */
+function syncPreviewDaysFromPrefs(prefs: NotificationPreferences | null): boolean {
+  if (!prefs) return false;
+  const fromServer = clampPreviewDays(prefs.previewDaysAhead ?? 0);
+  if (fromServer === previewDaysAhead) return false;
+  previewDaysAhead = fromServer;
+  savePreviewDaysHint(fromServer);
+  return true;
+}
+
 export async function setPreviewDaysAhead(n: number): Promise<void> {
   const clamped = clampPreviewDays(n);
   if (clamped === previewDaysAhead) return;
+  const previous = previewDaysAhead;
   previewDaysAhead = clamped;
+  savePreviewDaysHint(clamped);
+  // Persist to the server so the choice carries across devices. If the
+  // request fails we roll back the local value so the UI doesn't drift from
+  // what the server actually has.
   try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(PREVIEW_STORAGE_KEY, String(clamped));
-    }
-  } catch {
-    /* ignore */
+    await apiRequest("PUT", "/api/accountability/preferences", {
+      previewDaysAhead: clamped,
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["/api/accountability/preferences"],
+    });
+  } catch (err) {
+    console.error("[accountability-scheduler] persist preview horizon failed:", err);
+    previewDaysAhead = previous;
+    savePreviewDaysHint(previous);
+    notifySnapshot();
+    throw err;
   }
   try {
     await planReminders();
@@ -348,6 +390,12 @@ export async function planReminders(): Promise<{
   clearAllTimers();
 
   const prefs = await loadPreferences();
+  // Pull the persisted preview horizon onto this device so a user who
+  // changed the value on another device sees their preferred range as soon
+  // as preferences land. Notify subscribers if it actually changed so the
+  // UI can re-render the select control.
+  const previewChanged = syncPreviewDaysFromPrefs(prefs);
+  if (previewChanged) notifySnapshot();
   if (!prefs || !prefs.accountabilityEnabled) {
     // No reminders should appear in the upcoming-reminders panel when
     // accountability is off (or prefs are unavailable). Clear any leftover

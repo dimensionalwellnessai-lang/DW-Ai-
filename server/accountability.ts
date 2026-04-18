@@ -314,7 +314,8 @@ export async function getNotificationPreferences(
         eveningSummaryTime: '21:00',
         quietHoursEnabled: false,
         quietHoursStart: '22:00',
-        quietHoursEnd: '08:00'
+        quietHoursEnd: '08:00',
+        previewDaysAhead: 0
       })
       .returning();
     return newPrefs;
