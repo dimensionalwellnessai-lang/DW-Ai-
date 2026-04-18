@@ -2303,6 +2303,20 @@ export const reminderLedger = pgTable("reminder_ledger", {
   uniqueIndex("reminder_ledger_unique_idx").on(t.userId, t.tag, t.kind, t.bucket),
 ]);
 
+// Scheduler leases – plug-and-play horizontal sharding for the reminder
+// scheduler. Each running instance claims one row (slot_index 0..N-1) on boot
+// and heartbeats every ~30s. Stale leases (>90s without heartbeat) are
+// reclaimed automatically and live instances compact down toward slot 0 so
+// the slot space stays densely packed [0..N-1] as servers come and go.
+// Exposed via /api/admin/scheduler-slots so operators can see ownership.
+export const schedulerLeases = pgTable("scheduler_leases", {
+  slotIndex: integer("slot_index").primaryKey(),
+  instanceId: varchar("instance_id").notNull().unique(),
+  lastHeartbeatAt: timestamp("last_heartbeat_at").defaultNow().notNull(),
+});
+
+export type SchedulerLease = typeof schedulerLeases.$inferSelect;
+
 // Conversation Insight Cards – persisted for authenticated users
 export const conversationInsights = pgTable("conversation_insights", {
   id: varchar("id").primaryKey(), // client-generated id; ON CONFLICT DO NOTHING prevents duplicate migration uploads

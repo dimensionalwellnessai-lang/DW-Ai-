@@ -75,7 +75,7 @@ app.use((req, res, next) => {
   try {
     const { initPush, startReminderScheduler } = await import("./push");
     await initPush();
-    startReminderScheduler();
+    await startReminderScheduler();
   } catch (err) {
     console.error("[push] Failed to start reminder scheduler:", err);
   }

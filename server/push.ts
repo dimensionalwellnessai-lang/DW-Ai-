@@ -12,8 +12,9 @@
  */
 
 import webpush from "web-push";
+import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, isNotNull, gt, lt } from "drizzle-orm";
+import { eq, and, isNotNull, gt, lt, asc, sql as dsql } from "drizzle-orm";
 import {
   pushSubscriptions,
   vapidKeys as vapidKeysTable,
@@ -21,9 +22,11 @@ import {
   tasks as tasksTable,
   calendarEvents as calendarEventsTable,
   reminderLedger,
+  schedulerLeases,
   type NotificationPreferences,
   type Task,
   type CalendarEvent,
+  type SchedulerLease,
 } from "@shared/schema";
 
 const VAPID_ROW_ID = "default";
@@ -35,44 +38,54 @@ const SCHEDULER_INTERVAL_MS = 60 * 1000;
 const USER_TICK_CONCURRENCY = 10;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Horizontal sharding
+// Horizontal sharding — plug-and-play, no env config
 //
 // When multiple app instances run in parallel, every instance would otherwise
 // run the full reminder tick over every subscribed user — wasting work and
-// risking duplicate sends if any de-dup marker race slips through. Sharding
-// lets each instance own a deterministic slice of the user space:
+// risking duplicate sends if any de-dup marker race slips through. We let
+// each instance own a deterministic slice of the user space by claiming a
+// row in the `scheduler_leases` table:
 //
-//   SHARD_COUNT  total number of instances participating (default 1)
-//   SHARD_INDEX  this instance's slot, 0 <= SHARD_INDEX < SHARD_COUNT
+//   - On boot, every process generates a random `instanceId` and tries to
+//     INSERT into the lowest free slot (0, 1, 2, …). The PK on `slot_index`
+//     guarantees uniqueness; ON CONFLICT lets us probe upward without races.
+//   - Every LEASE_HEARTBEAT_MS we update `last_heartbeat_at`. A row whose
+//     heartbeat is older than LEASE_STALE_MS is considered dead and any
+//     surviving instance is allowed to delete it.
+//   - We also "compact down": on each heartbeat we try to claim every lower
+//     slot index. If we succeed, we drop our old higher row and adopt the
+//     lower index — this keeps slots densely packed [0..N-1] as servers come
+//     and go, so `hash(userId) % N` always covers every active slot.
 //
-// Each tick we hash the user id (FNV-1a 32-bit, stable across processes and
-// Node versions) and keep only those users whose `hash % SHARD_COUNT` matches
-// SHARD_INDEX. With SHARD_COUNT=1 (the default) every user is owned by the
-// single instance, preserving the previous behaviour for single-server
-// deployments. Adding more instances proportionally divides the work.
+// The shard config (this instance's `index` and the cluster `count`) is
+// derived from live leases and refreshed at the start of every tick. With a
+// single instance the count is 1 and every user is owned, preserving the
+// previous behaviour. With N instances the work is divided ~evenly.
+//
+// SHARD_INDEX / SHARD_COUNT env vars are no longer read; if set, we log a
+// one-time deprecation warning so old deploys notice.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function parseShardConfig(): { index: number; count: number } {
-  const rawCount = process.env.SHARD_COUNT;
-  const rawIndex = process.env.SHARD_INDEX;
-  const count = rawCount ? parseInt(rawCount, 10) : 1;
-  const index = rawIndex ? parseInt(rawIndex, 10) : 0;
-  if (!Number.isFinite(count) || count < 1) {
-    console.warn(
-      `[push] Invalid SHARD_COUNT=${rawCount}; falling back to 1.`,
-    );
-    return { index: 0, count: 1 };
-  }
-  if (!Number.isFinite(index) || index < 0 || index >= count) {
-    console.warn(
-      `[push] Invalid SHARD_INDEX=${rawIndex} for SHARD_COUNT=${count}; falling back to 0.`,
-    );
-    return { index: 0, count };
-  }
-  return { index, count };
+const LEASE_HEARTBEAT_MS = 30 * 1000;
+const LEASE_STALE_MS = 90 * 1000;
+// Hard cap on slot probing — protects against degenerate retry loops if
+// something goes catastrophically wrong with the leases table. 64 instances
+// is well beyond any realistic horizontal-scale-out for this workload.
+const MAX_SLOT_PROBE = 64;
+
+const INSTANCE_ID = randomUUID();
+
+interface ShardConfig {
+  index: number;
+  count: number;
 }
 
-const SHARD_CONFIG = parseShardConfig();
+// Cached shard config kept in sync by the lease manager. {0,1} is the safe
+// fallback meaning "I am the sole owner of every user" — the same behaviour
+// we had before sharding existed.
+let currentShard: ShardConfig = { index: 0, count: 1 };
+let leaseManagerHandle: ReturnType<typeof setInterval> | null = null;
+let leaseClaimed = false;
 
 function hashUserId(userId: string): number {
   // FNV-1a 32-bit. Deterministic, fast, dependency-free, and well-distributed
@@ -87,10 +100,226 @@ function hashUserId(userId: string): number {
 
 export function isUserInShard(
   userId: string,
-  shard: { index: number; count: number } = SHARD_CONFIG,
+  shard: ShardConfig = currentShard,
 ): boolean {
   if (shard.count <= 1) return true;
   return hashUserId(userId) % shard.count === shard.index;
+}
+
+export function getCurrentShard(): ShardConfig {
+  return { ...currentShard };
+}
+
+export function getInstanceId(): string {
+  return INSTANCE_ID;
+}
+
+/**
+ * Return the live lease roster. Used by the admin endpoint so an operator can
+ * see which instance currently owns which slot, and how recently it
+ * heartbeated.
+ */
+export async function getActiveSchedulerLeases(): Promise<SchedulerLease[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(schedulerLeases)
+      .orderBy(asc(schedulerLeases.slotIndex));
+    return rows;
+  } catch (err) {
+    console.error("[push] Failed to read scheduler_leases:", err);
+    return [];
+  }
+}
+
+async function pruneStaleLeases(now: number): Promise<void> {
+  const cutoff = new Date(now - LEASE_STALE_MS);
+  try {
+    await db
+      .delete(schedulerLeases)
+      .where(
+        and(
+          lt(schedulerLeases.lastHeartbeatAt, cutoff),
+          // Never reap our own row even if our wall clock just jumped — we
+          // know we're alive.
+          dsql`${schedulerLeases.instanceId} <> ${INSTANCE_ID}`,
+        ),
+      );
+  } catch (err) {
+    console.error("[push] Failed to prune stale scheduler leases:", err);
+  }
+}
+
+/**
+ * Try to claim `slotIndex` for this instance. Returns true on success.
+ * Race-safe: relies on the PK on slot_index + the unique index on
+ * instance_id, so two instances probing the same slot will produce exactly
+ * one winner.
+ */
+async function tryClaimSlot(slotIndex: number): Promise<boolean> {
+  try {
+    const result = await db
+      .insert(schedulerLeases)
+      .values({
+        slotIndex,
+        instanceId: INSTANCE_ID,
+        lastHeartbeatAt: new Date(),
+      })
+      .onConflictDoNothing({ target: schedulerLeases.slotIndex });
+    // pg returns rowCount on the underlying result; drizzle exposes it on
+    // the returned object's rowCount property (number | null).
+    const rowCount = (result as { rowCount?: number | null }).rowCount ?? 0;
+    return rowCount > 0;
+  } catch (err) {
+    console.error(`[push] Failed to claim slot ${slotIndex}:`, err);
+    return false;
+  }
+}
+
+async function findOurSlot(): Promise<number | null> {
+  try {
+    const [row] = await db
+      .select({ slotIndex: schedulerLeases.slotIndex })
+      .from(schedulerLeases)
+      .where(eq(schedulerLeases.instanceId, INSTANCE_ID))
+      .limit(1);
+    return row?.slotIndex ?? null;
+  } catch (err) {
+    console.error("[push] Failed to look up our slot:", err);
+    return null;
+  }
+}
+
+async function countActiveLeases(): Promise<number> {
+  try {
+    const [row] = await db
+      .select({ count: dsql<number>`count(*)::int` })
+      .from(schedulerLeases);
+    return row?.count ?? 1;
+  } catch (err) {
+    console.error("[push] Failed to count scheduler leases:", err);
+    return 1;
+  }
+}
+
+/**
+ * Claim a slot if we don't have one, then try to compact downward. Returns
+ * the slot we ended up holding, or null if we could not acquire one (e.g.
+ * DB unreachable or all probe slots taken).
+ */
+async function claimAndCompactSlot(): Promise<number | null> {
+  let ourSlot = await findOurSlot();
+  if (ourSlot === null) {
+    for (let i = 0; i < MAX_SLOT_PROBE; i++) {
+      if (await tryClaimSlot(i)) {
+        ourSlot = i;
+        if (!leaseClaimed) {
+          console.log(
+            `[push] Instance ${INSTANCE_ID.slice(0, 8)} claimed scheduler slot ${i}.`,
+          );
+          leaseClaimed = true;
+        }
+        break;
+      }
+    }
+    if (ourSlot === null) {
+      console.error(
+        `[push] Could not claim any scheduler slot (probed 0..${MAX_SLOT_PROBE - 1}).`,
+      );
+      return null;
+    }
+  }
+
+  // Compact downward: try every lower slot in order. The first one we win
+  // becomes our new home and we drop our previous (higher) row. We only do a
+  // single migration per heartbeat to keep behaviour predictable; further
+  // compaction happens on subsequent heartbeats.
+  for (let i = 0; i < ourSlot; i++) {
+    if (await tryClaimSlot(i)) {
+      try {
+        await db
+          .delete(schedulerLeases)
+          .where(
+            and(
+              eq(schedulerLeases.slotIndex, ourSlot),
+              eq(schedulerLeases.instanceId, INSTANCE_ID),
+            ),
+          );
+        console.log(
+          `[push] Instance ${INSTANCE_ID.slice(0, 8)} compacted slot ${ourSlot} -> ${i}.`,
+        );
+        ourSlot = i;
+      } catch (err) {
+        console.error(
+          `[push] Failed to drop old slot ${ourSlot} after compaction:`,
+          err,
+        );
+      }
+      break;
+    }
+  }
+
+  return ourSlot;
+}
+
+async function heartbeatLease(): Promise<void> {
+  const now = Date.now();
+  await pruneStaleLeases(now);
+  const ourSlot = await claimAndCompactSlot();
+  if (ourSlot === null) {
+    // Fall back to single-owner mode so reminders still go out for everyone
+    // until the DB recovers.
+    currentShard = { index: 0, count: 1 };
+    return;
+  }
+  // Refresh heartbeat — INSERT on a fresh claim already set it to now, but
+  // for an existing lease this is the keep-alive.
+  try {
+    await db
+      .update(schedulerLeases)
+      .set({ lastHeartbeatAt: new Date() })
+      .where(eq(schedulerLeases.instanceId, INSTANCE_ID));
+  } catch (err) {
+    console.error("[push] Failed to heartbeat scheduler lease:", err);
+  }
+  const count = await countActiveLeases();
+  currentShard = { index: ourSlot, count: Math.max(count, ourSlot + 1) };
+}
+
+function startLeaseManager(): void {
+  if (leaseManagerHandle) return;
+  leaseManagerHandle = setInterval(() => {
+    void heartbeatLease();
+  }, LEASE_HEARTBEAT_MS);
+}
+
+async function shutdownLease(): Promise<void> {
+  if (leaseManagerHandle) {
+    clearInterval(leaseManagerHandle);
+    leaseManagerHandle = null;
+  }
+  try {
+    await db
+      .delete(schedulerLeases)
+      .where(eq(schedulerLeases.instanceId, INSTANCE_ID));
+  } catch (err) {
+    console.error("[push] Failed to release scheduler lease on shutdown:", err);
+  }
+}
+
+// Best-effort lease release on graceful shutdown so a redeploy frees its slot
+// immediately instead of waiting for the stale-prune window.
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.once(sig, () => {
+    void shutdownLease();
+  });
+}
+
+if (process.env.SHARD_INDEX || process.env.SHARD_COUNT) {
+  console.warn(
+    "[push] SHARD_INDEX / SHARD_COUNT env vars are deprecated and ignored. " +
+      "Slots are now claimed automatically via the scheduler_leases table.",
+  );
 }
 
 let initialized = false;
@@ -776,12 +1005,13 @@ async function tick(): Promise<void> {
       .select({ userId: pushSubscriptions.userId })
       .from(pushSubscriptions);
     const allUserIds = Array.from(new Set(subs.map((s) => s.userId)));
-    // Only process users that hash into this instance's shard. With
-    // SHARD_COUNT=1 (default) this is a no-op pass-through.
+    // Only process users that hash into this instance's shard. With a single
+    // active lease (cluster size 1) this is a no-op pass-through.
+    const shard = currentShard;
     const userIds =
-      SHARD_CONFIG.count <= 1
+      shard.count <= 1
         ? allUserIds
-        : allUserIds.filter((id) => isUserInShard(id));
+        : allUserIds.filter((id) => isUserInShard(id, shard));
     if (userIds.length === 0) return;
 
     // Fan out per-user work with a bounded concurrency pool so a growing
@@ -803,8 +1033,12 @@ async function tick(): Promise<void> {
   }
 }
 
-export function startReminderScheduler(): void {
+export async function startReminderScheduler(): Promise<void> {
   if (schedulerHandle) return;
+  // Claim our scheduler slot synchronously before the first tick so the
+  // initial pass already filters to this instance's user slice.
+  await heartbeatLease();
+  startLeaseManager();
   // Align to the next minute boundary so reminders fire close to wall-clock
   // minutes (less drift relative to user-perceived schedule times).
   const now = new Date();
@@ -817,7 +1051,8 @@ export function startReminderScheduler(): void {
     }, SCHEDULER_INTERVAL_MS);
   }, Math.max(msToNextMinute, 0));
   console.log(
-    `[push] Reminder scheduler started (shard ${SHARD_CONFIG.index}/${SHARD_CONFIG.count}).`,
+    `[push] Reminder scheduler started (instance ${INSTANCE_ID.slice(0, 8)}, ` +
+      `slot ${currentShard.index}/${currentShard.count}).`,
   );
 }
 

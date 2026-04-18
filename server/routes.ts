@@ -8455,6 +8455,42 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     return { range, startDate, endDate, generatedAt: now.toISOString() };
   };
 
+  // Reminder scheduler slot ownership – ops visibility for the plug-and-play
+  // sharding system. Returns each instance's current slot, instance id, last
+  // heartbeat, and freshness so an operator can confirm coverage.
+  app.get("/api/admin/scheduler-slots", requireAdmin, async (_req, res) => {
+    try {
+      const { getActiveSchedulerLeases, getInstanceId, getCurrentShard } =
+        await import("./push");
+      const leases = await getActiveSchedulerLeases();
+      const now = Date.now();
+      const STALE_MS = 90 * 1000;
+      const myInstance = getInstanceId();
+      const myShard = getCurrentShard();
+      res.json({
+        thisInstance: {
+          instanceId: myInstance,
+          slotIndex: myShard.index,
+          slotCount: myShard.count,
+        },
+        slots: leases.map((l) => {
+          const ageMs = now - new Date(l.lastHeartbeatAt).getTime();
+          return {
+            slotIndex: l.slotIndex,
+            instanceId: l.instanceId,
+            lastHeartbeatAt: l.lastHeartbeatAt,
+            heartbeatAgeMs: ageMs,
+            stale: ageMs > STALE_MS,
+            isThisInstance: l.instanceId === myInstance,
+          };
+        }),
+      });
+    } catch (err) {
+      console.error("[admin] scheduler-slots failed:", err);
+      res.status(500).json({ error: "Failed to load scheduler slots" });
+    }
+  });
+
   // Admin metrics - summary
   app.get("/api/admin/metrics/summary", requireAdmin, async (req, res) => {
     try {
