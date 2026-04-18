@@ -697,12 +697,47 @@ export default function AdminAnalyticsPage() {
                 <p className="text-sm text-red-400" data-testid="scheduler-slots-error">
                   Failed to load reminder server status
                 </p>
-              ) : schedulerSlots?.slots?.length ? (
+              ) : schedulerSlots && schedulerSlots.thisInstance.slotCount > 0 ? (
                 <div className="space-y-2" data-testid="scheduler-slots-list">
-                  {schedulerSlots.slots
-                    .slice()
-                    .sort((a, b) => a.slotIndex - b.slotIndex)
-                    .map((slot) => {
+                  {(() => {
+                    const slotCount = schedulerSlots.thisInstance.slotCount;
+                    const bySlot = new Map(
+                      schedulerSlots.slots.map((s) => [s.slotIndex, s] as const),
+                    );
+                    return Array.from({ length: slotCount }, (_, i) => i).map((slotIndex) => {
+                      const slot = bySlot.get(slotIndex);
+                      if (!slot) {
+                        return (
+                          <div
+                            key={slotIndex}
+                            className="flex items-center justify-between gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2"
+                            data-testid={`scheduler-slot-${slotIndex}`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0 bg-red-500"
+                                data-testid={`scheduler-slot-health-${slotIndex}`}
+                                aria-label="no owner"
+                              />
+                              <Badge variant="outline" className="bg-muted">
+                                Slot {slotIndex}
+                              </Badge>
+                              <span
+                                className="text-xs text-red-400 font-medium"
+                                data-testid={`scheduler-slot-missing-${slotIndex}`}
+                              >
+                                no owner
+                              </span>
+                            </div>
+                            <span
+                              className="text-xs text-red-400"
+                              data-testid={`scheduler-slot-age-${slotIndex}`}
+                            >
+                              uncovered
+                            </span>
+                          </div>
+                        );
+                      }
                       const ageSec = Math.round(slot.heartbeatAgeMs / 1000);
                       const ageLabel =
                         ageSec < 60
@@ -748,7 +783,8 @@ export default function AdminAnalyticsPage() {
                           </span>
                         </div>
                       );
-                    })}
+                    });
+                  })()}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground italic" data-testid="scheduler-slots-empty">
