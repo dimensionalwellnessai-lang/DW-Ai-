@@ -11,13 +11,19 @@
 //     description and non-negotiables by hand.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useLocation } from "wouter";
-import { ArrowLeft, Loader2, MessageCircle, Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Eraser, Loader2, MessageCircle, MoreHorizontal, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -146,6 +152,51 @@ export default function LifeSystemPillarDetailPage() {
     if (ok) toast({ title: "Description saved" });
   }
 
+  async function onClearConversation() {
+    if (!def) return;
+    if (conversation.length === 0) {
+      toast({ title: "Nothing to clear", description: "This conversation is already empty." });
+      return;
+    }
+    const confirmed = window.confirm(
+      `Clear your conversation with DW about ${def.label}? This can't be undone.`,
+    );
+    if (!confirmed) return;
+    const ok = await saveContentPatch({ conversation: [] });
+    if (ok) {
+      setConversation([]);
+      setLastCaptured([]);
+      toast({ title: "Conversation cleared" });
+    }
+  }
+
+  async function onCopyTranscript() {
+    if (!def) return;
+    if (conversation.length === 0) {
+      toast({ title: "Nothing to copy", description: "Start talking to DW first." });
+      return;
+    }
+    const lines: string[] = [];
+    lines.push(`# ${def.label} — conversation with DW`);
+    lines.push("");
+    for (const m of conversation) {
+      const who = m.role === "user" ? "Me" : "DW";
+      lines.push(`**${who}:** ${m.content}`);
+      lines.push("");
+    }
+    const text = lines.join("\n").trimEnd();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "Copied to clipboard", description: "Paste it anywhere you like." });
+    } catch {
+      toast({
+        title: "Couldn't copy",
+        description: "Your browser blocked clipboard access.",
+        variant: "destructive",
+      });
+    }
+  }
+
   async function onSaveNonNegotiables(next: string[]) {
     if (savingNn) return;
     setSavingNn(true);
@@ -250,7 +301,34 @@ export default function LifeSystemPillarDetailPage() {
       <Card className="p-5 space-y-3" data-testid="card-converse">
         <div className="flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold">Talk to DW about {def.label}</h2>
+          <h2 className="font-semibold flex-1">Talk to DW about {def.label}</h2>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Conversation options"
+                data-testid="button-conversation-menu"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => { void onCopyTranscript(); }}
+                data-testid="menu-item-copy-conversation"
+              >
+                <Copy className="w-4 h-4 mr-2" /> Copy as text
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => { void onClearConversation(); }}
+                className="text-destructive focus:text-destructive"
+                data-testid="menu-item-clear-conversation"
+              >
+                <Eraser className="w-4 h-4 mr-2" /> Clear conversation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div
