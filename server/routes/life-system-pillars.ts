@@ -15,12 +15,13 @@ import {
   insertLifeSystemPillarSchema,
   insertLifeSystemProjectSchema,
 } from "@shared/schema";
+import { pillarContentSchema, type PillarContent, type LifeSystemDocumentContent } from "@shared/lifeSystemContent";
 
 // ─── Body schemas ──────────────────────────────────────────────────────────
 const upsertPillarBody = z.object({
   pillarId: z.string().refine(isValidPillarId, "Unknown pillarId"),
   enabled: z.boolean().optional(),
-  content: z.record(z.string(), z.any()).optional(),
+  content: pillarContentSchema.optional(),
 });
 
 const adoptTemplateBody = z.object({
@@ -50,15 +51,18 @@ function pillarSortOrder(pillarId: LifeSystemPillarId): number {
  * shows the pillar definition's summary so nothing reads as empty.
  */
 function composeDocumentContent(
-  pillars: { pillarId: string; level: string; enabled: boolean | null; content: any }[],
+  pillars: { pillarId: string; level: string; enabled: boolean | null; content: unknown }[],
   projects: { name: string; description: string | null; currentFocus: string | null; weeklyCadence: string | null; nextAction: string | null; status: string | null }[],
   user: { firstName?: string | null; systemName?: string | null } | null,
-) {
-  const byId = new Map(pillars.map(p => [p.pillarId, p]));
+): LifeSystemDocumentContent {
+  const asContent = (raw: unknown): PillarContent =>
+    raw && typeof raw === "object" ? (raw as PillarContent) : {};
+
+  const byId = new Map(pillars.map(p => [p.pillarId, { ...p, content: asContent(p.content) }]));
   const get = (id: LifeSystemPillarId) => byId.get(id);
 
   const foundation = get("foundation");
-  const foundationContent = (foundation?.content || {}) as any;
+  const foundationContent: PillarContent = foundation?.content ?? {};
 
   const identityStatement: string =
     foundationContent.identityStatement ||
@@ -87,7 +91,7 @@ function composeDocumentContent(
   const pillarSection = (pillarId: LifeSystemPillarId) => {
     const def = PILLAR_BY_ID[pillarId];
     const row = get(pillarId);
-    const c = (row?.content || {}) as any;
+    const c: PillarContent = row?.content ?? {};
     const description: string =
       c.description || STARTER_TEMPLATE.pillars[pillarId]?.description || def.summary;
     const userVoice: string | undefined = c.userVoice;
@@ -100,8 +104,7 @@ function composeDocumentContent(
       description,
       userVoice,
       laws: c.laws ?? STARTER_TEMPLATE.pillars[pillarId]?.laws ?? [],
-      nonNegotiables: c.nonNegotiables ?? STARTER_TEMPLATE.pillars[pillarId]?.nonNegotiables ?? [],
-      weeklyRhythm: c.weeklyRhythm ?? STARTER_TEMPLATE.pillars[pillarId]?.weeklyRhythm ?? null,
+      weeklyRhythm: c.weeklyRhythm ?? STARTER_TEMPLATE.pillars[pillarId]?.weeklyRhythm ?? undefined,
     };
   };
 
@@ -117,7 +120,6 @@ function composeDocumentContent(
   return {
     title: user?.systemName || `${user?.firstName ?? "My"} Life System`,
     subtitle: "An operating system for a real life.",
-    levels: LEVEL_META,
     identityStatement,
     foundationLaws,
     corePillars,
@@ -194,7 +196,7 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     }
     const parsed = z.object({
       enabled: z.boolean().optional(),
-      content: z.record(z.string(), z.any()).optional(),
+      content: pillarContentSchema.optional(),
     }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const def = PILLAR_BY_ID[pillarId];

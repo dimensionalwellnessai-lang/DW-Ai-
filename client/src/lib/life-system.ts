@@ -9,6 +9,7 @@ import type {
 } from "@shared/schema";
 import type { LifeSystemPillarId, PillarDefinition } from "@shared/lifeSystemTaxonomy";
 import { PILLARS, PILLAR_BY_ID, LEVEL_META } from "@shared/lifeSystemTaxonomy";
+import type { PillarContent } from "@shared/lifeSystemContent";
 
 export {
   PILLARS,
@@ -48,7 +49,7 @@ export async function generateLifeSystemDocument(): Promise<LifeSystemDocument> 
 
 export async function upsertPillar(
   pillarId: LifeSystemPillarId,
-  patch: { enabled?: boolean; content?: Record<string, unknown> },
+  patch: { enabled?: boolean; content?: PillarContent },
 ): Promise<LifeSystemPillar> {
   const res = await apiRequest("PATCH", `/api/life-system/pillars/${pillarId}`, patch);
   return await res.json();
@@ -78,6 +79,6 @@ export function getPillarUserVoice(
   id: LifeSystemPillarId,
 ): string {
   const row = findPillarRow(state, id);
-  const c: any = row?.content;
-  return (c?.userVoice as string) || "";
+  const c = (row?.content ?? {}) as PillarContent;
+  return c.userVoice ?? "";
 }

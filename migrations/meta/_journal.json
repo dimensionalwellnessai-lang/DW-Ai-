@@ -78,6 +78,13 @@
       "when": 1776900000000,
       "tag": "0010_monitoring_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776950000000,
+      "tag": "0011_life_system",
+      "breakpoints": true
     }
   ]
 }

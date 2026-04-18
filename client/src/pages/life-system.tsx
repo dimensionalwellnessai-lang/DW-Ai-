@@ -33,9 +33,11 @@ import { queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Loader2, FileText, Plus, Trash2, Sparkles } from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 function PillarIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  const Icon = (LucideIcons as any)[name] as React.ComponentType<any> | undefined;
+  const registry = LucideIcons as unknown as Record<string, LucideIcon>;
+  const Icon = registry[name];
   if (!Icon) return null;
   return <Icon className={className} style={style} aria-hidden />;
 }

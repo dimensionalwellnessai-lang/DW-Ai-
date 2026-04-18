@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useLifeSystemDocument, generateLifeSystemDocument, LEVEL_META } from "@/lib/life-system";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import type { LifeSystemDocumentContent, PillarSection, ProjectSection } from "@shared/lifeSystemContent";
 
 export default function LifeSystemDocumentPage() {
   usePageMeta("Life System Document", "Your personalized operating system, beautifully written back to you.");
@@ -60,7 +61,7 @@ export default function LifeSystemDocumentPage() {
 
   function onDownloadText() {
     if (!document) return;
-    const c: any = document.content;
+    const c = document.content as LifeSystemDocumentContent;
     const lines: string[] = [];
     lines.push(c.title);
     lines.push(c.subtitle);
@@ -69,24 +70,24 @@ export default function LifeSystemDocumentPage() {
     lines.push(c.identityStatement);
     lines.push("");
     lines.push("FOUNDATION LAWS");
-    (c.foundationLaws ?? []).forEach((l: string) => lines.push(`• ${l}`));
+    (c.foundationLaws ?? []).forEach((l) => lines.push(`• ${l}`));
     lines.push("");
     lines.push("CORE SYSTEM");
-    (c.corePillars ?? []).forEach((p: any) => {
+    (c.corePillars ?? []).forEach((p) => {
       lines.push(`\n${p.label}`);
       lines.push(p.description);
       if (p.userVoice) lines.push(`In your words: "${p.userVoice}"`);
     });
     lines.push("");
     lines.push("LIFE EXPRESSION");
-    (c.expressionPillars ?? []).forEach((p: any) => {
+    (c.expressionPillars ?? []).forEach((p) => {
       lines.push(`\n${p.label}`);
       lines.push(p.description);
       if (p.userVoice) lines.push(`In your words: "${p.userVoice}"`);
     });
     lines.push("");
     lines.push("CREATION");
-    (c.projects ?? []).forEach((p: any) => {
+    (c.projects ?? []).forEach((p) => {
       lines.push(`\n${p.name}`);
       if (p.description) lines.push(p.description);
     });
@@ -146,7 +147,7 @@ export default function LifeSystemDocumentPage() {
     );
   }
 
-  const c: any = document.content;
+  const c = document.content as LifeSystemDocumentContent;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8" data-testid="page-life-system-document">
@@ -214,7 +215,7 @@ export default function LifeSystemDocumentPage() {
           <DocSection title="Creation" accent={LEVEL_META.creation.ringColor}>
             <p className="text-sm text-muted-foreground italic mb-4">{LEVEL_META.creation.tagline}</p>
             <div className="space-y-4">
-              {(c.projects ?? []).map((p: any, i: number) => (
+              {(c.projects ?? []).map((p: ProjectSection, i: number) => (
                 <div key={i} className="border-l-2 pl-4" style={{ borderColor: LEVEL_META.creation.ringColor }}>
                   <h4 className="font-semibold">{p.name}</h4>
                   {p.description && <p className="text-sm text-muted-foreground">{p.description}</p>}
@@ -289,12 +290,12 @@ function LayerSection({
   tagline,
   accent,
   pillars,
-}: { title: string; tagline: string; accent: string; pillars: any[] }) {
+}: { title: string; tagline: string; accent: string; pillars: PillarSection[] }) {
   return (
     <DocSection title={title} accent={accent}>
       <p className="text-sm text-muted-foreground italic mb-4">{tagline}</p>
       <div className="space-y-5">
-        {pillars.map((p: any) => (
+        {pillars.map((p) => (
           <div key={p.id} className="border-l-2 pl-4" style={{ borderColor: accent }}>
             <h4 className="font-semibold">{p.label}</h4>
             <p className="text-sm leading-relaxed">{p.description}</p>
