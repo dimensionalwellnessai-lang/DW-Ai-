@@ -95,6 +95,15 @@ interface NutritionAIPick {
   duration: number;
   tag: string;
   why: string;
+  ingredients: string[];
+  instructions: string[];
+  nutrition: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber?: number;
+  };
 }
 
 const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
@@ -104,22 +113,67 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       title: "Quick Smoothie Bowl",
       duration: 5,
       tag: "Quick",
-      why: "Notice if your energy feels low. This takes minimal effort and still supports your nutrition."
+      why: "Notice if your energy feels low. This takes minimal effort and still supports your nutrition.",
+      ingredients: [
+        "1 frozen banana",
+        "1/2 cup frozen mixed berries",
+        "1/2 cup milk (or plant milk)",
+        "1 tbsp nut or seed butter",
+        "2 tbsp granola",
+        "1 tsp chia seeds",
+      ],
+      instructions: [
+        "Blend banana, berries, and milk until thick and creamy",
+        "Pour into a bowl",
+        "Top with nut butter, granola, and chia seeds",
+        "Eat immediately while cold",
+      ],
+      nutrition: { calories: 320, protein: 9, carbs: 48, fat: 11, fiber: 7 },
     },
     {
-      id: "low-2", 
+      id: "low-2",
       title: "Overnight Oats",
       duration: 5,
       tag: "Prep Ahead",
-      why: "Notice if tomorrow feels heavy. Prep the night before so it's one less thing to think about."
+      why: "Notice if tomorrow feels heavy. Prep the night before so it's one less thing to think about.",
+      ingredients: [
+        "1/2 cup rolled oats",
+        "1/2 cup milk (or plant milk)",
+        "1/4 cup Greek yogurt",
+        "1 tbsp honey or maple syrup",
+        "1 tbsp chia seeds",
+        "1/4 cup berries or sliced fruit",
+      ],
+      instructions: [
+        "Combine oats, milk, yogurt, and sweetener in a jar",
+        "Stir in chia seeds",
+        "Cover and refrigerate at least 4 hours (overnight is best)",
+        "Top with berries before serving",
+      ],
+      nutrition: { calories: 350, protein: 15, carbs: 52, fat: 10, fiber: 8 },
     },
     {
       id: "low-3",
       title: "Simple Grain Bowl",
       duration: 10,
       tag: "Balanced",
-      why: "Notice how a quick, balanced meal can restore your energy without demanding too much."
-    }
+      why: "Notice how a quick, balanced meal can restore your energy without demanding too much.",
+      ingredients: [
+        "1 cup pre-cooked rice or quinoa",
+        "1/2 cup canned chickpeas, drained",
+        "1 cup baby spinach",
+        "1/4 avocado, sliced",
+        "2 tbsp hummus",
+        "Squeeze of lemon, salt, pepper",
+      ],
+      instructions: [
+        "Warm the grain in the microwave for 1 minute",
+        "Top with spinach so it wilts slightly",
+        "Add chickpeas and avocado",
+        "Dollop with hummus, finish with lemon, salt, and pepper",
+      ],
+      nutrition: { calories: 420, protein: 14, carbs: 58, fat: 14, fiber: 11 },
+    },
   ],
   medium: [
     {
@@ -127,22 +181,69 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       title: "Balanced Protein Bowl",
       duration: 20,
       tag: "Balanced",
-      why: "Notice that you have enough energy to engage without pushing. This keeps things balanced."
+      why: "Notice that you have enough energy to engage without pushing. This keeps things balanced.",
+      ingredients: [
+        "4 oz chicken breast or tofu",
+        "1/2 cup cooked brown rice",
+        "1 cup roasted vegetables (peppers, zucchini)",
+        "2 tbsp tahini or yogurt sauce",
+        "Handful of greens",
+        "Salt, pepper, olive oil",
+      ],
+      instructions: [
+        "Season protein with salt and pepper, pan-sear 4-5 min per side",
+        "Warm rice and roasted vegetables",
+        "Layer greens, rice, vegetables in a bowl",
+        "Slice protein and place on top",
+        "Drizzle with sauce and serve",
+      ],
+      nutrition: { calories: 480, protein: 35, carbs: 42, fat: 18, fiber: 7 },
     },
     {
       id: "med-2",
       title: "Sheet Pan Dinner",
       duration: 25,
       tag: "Easy",
-      why: "Notice if you want something easy. One pan, minimal cleanup works for steady energy days."
+      why: "Notice if you want something easy. One pan, minimal cleanup works for steady energy days.",
+      ingredients: [
+        "4 oz chicken thighs or chickpeas",
+        "1 cup baby potatoes, halved",
+        "1 cup broccoli florets",
+        "1/2 red onion, sliced",
+        "2 tbsp olive oil",
+        "Garlic powder, paprika, salt, pepper",
+      ],
+      instructions: [
+        "Preheat oven to 425F",
+        "Toss everything on a sheet pan with oil and seasonings",
+        "Roast 20-25 min, stirring once, until potatoes are tender",
+        "Serve directly from the pan",
+      ],
+      nutrition: { calories: 460, protein: 28, carbs: 38, fat: 20, fiber: 6 },
     },
     {
       id: "med-3",
       title: "Mediterranean Salad",
       duration: 15,
       tag: "Fresh",
-      why: "Notice how fresh ingredients can support your energy throughout the day."
-    }
+      why: "Notice how fresh ingredients can support your energy throughout the day.",
+      ingredients: [
+        "2 cups chopped romaine",
+        "1/2 cucumber, diced",
+        "1/2 cup cherry tomatoes, halved",
+        "1/4 cup kalamata olives",
+        "1/4 cup feta cheese, crumbled",
+        "1/4 cup canned chickpeas",
+        "2 tbsp olive oil, 1 tbsp red wine vinegar, oregano",
+      ],
+      instructions: [
+        "Whisk olive oil, vinegar, oregano, salt, and pepper",
+        "Combine romaine, cucumber, tomatoes, olives, and chickpeas in a bowl",
+        "Top with feta",
+        "Drizzle with dressing and toss gently",
+      ],
+      nutrition: { calories: 380, protein: 13, carbs: 24, fat: 26, fiber: 7 },
+    },
   ],
   high: [
     {
@@ -150,23 +251,74 @@ const NUTRITION_AI_PICKS: Record<EnergyLevel, NutritionAIPick[]> = {
       title: "High-Protein Meal Prep",
       duration: 30,
       tag: "Protein",
-      why: "Notice that your energy is up. Use it to prep meals that support your goals."
+      why: "Notice that your energy is up. Use it to prep meals that support your goals.",
+      ingredients: [
+        "1 lb chicken breast, cubed",
+        "1 cup quinoa, dry",
+        "2 cups broccoli florets",
+        "1 red bell pepper, sliced",
+        "2 tbsp olive oil",
+        "Garlic, lemon, salt, pepper",
+      ],
+      instructions: [
+        "Cook quinoa according to package (about 15 min)",
+        "Toss chicken with olive oil, garlic, salt, and pepper",
+        "Roast chicken at 400F for 18-20 min until 165F internal",
+        "Steam or roast broccoli and pepper until tender-crisp",
+        "Divide into 4 containers with quinoa, vegetables, and chicken",
+        "Finish each portion with a squeeze of lemon",
+      ],
+      nutrition: { calories: 520, protein: 42, carbs: 48, fat: 16, fiber: 7 },
     },
     {
       id: "high-2",
       title: "Buddha Bowl with Tofu",
       duration: 25,
       tag: "Plant-Based",
-      why: "Notice if you have capacity for something more involved. This recipe is worth the effort."
+      why: "Notice if you have capacity for something more involved. This recipe is worth the effort.",
+      ingredients: [
+        "4 oz firm tofu, cubed",
+        "1/2 cup cooked quinoa",
+        "1/2 sweet potato, cubed",
+        "1 cup baby spinach",
+        "1/4 cup chickpeas",
+        "2 tbsp tahini, 1 tbsp lemon juice, 1 tsp maple syrup",
+      ],
+      instructions: [
+        "Press tofu 10-15 min, then cube",
+        "Toss tofu and sweet potato with oil, salt, pepper",
+        "Roast at 400F for 20-25 min, flipping once",
+        "Whisk tahini, lemon, maple, and 2-3 tbsp water for dressing",
+        "Layer quinoa, spinach, sweet potato, chickpeas, and tofu in a bowl",
+        "Drizzle with tahini dressing",
+      ],
+      nutrition: { calories: 510, protein: 22, carbs: 56, fat: 22, fiber: 11 },
     },
     {
       id: "high-3",
       title: "Batch Cooking Session",
       duration: 45,
       tag: "Prep Ahead",
-      why: "Notice how channeling high energy into batch prep sets you up for the week ahead."
-    }
-  ]
+      why: "Notice how channeling high energy into batch prep sets you up for the week ahead.",
+      ingredients: [
+        "2 cups brown rice, dry",
+        "1 lb ground turkey or lentils",
+        "2 large sweet potatoes, cubed",
+        "1 head broccoli, in florets",
+        "1 onion, diced; 2 cloves garlic, minced",
+        "Olive oil, cumin, paprika, salt, pepper",
+      ],
+      instructions: [
+        "Start brown rice (about 35-40 min)",
+        "Toss sweet potatoes and broccoli with oil and spices, roast at 425F for 25 min",
+        "Saute onion and garlic, then brown turkey (or simmer lentils) with cumin and paprika",
+        "Cool everything fully before portioning",
+        "Divide into 4-5 containers with rice, vegetables, and protein",
+        "Refrigerate up to 4 days or freeze portions for later",
+      ],
+      nutrition: { calories: 540, protein: 32, carbs: 62, fat: 18, fiber: 10 },
+    },
+  ],
 };
 
 // Categories for Nutrition guided experience
@@ -1133,6 +1285,9 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
         tags: [selectedPick.tag, "ai-pick"],
         aiPickTag: selectedPick.tag,
         whySuggested: selectedPick.why,
+        ingredients: selectedPick.ingredients,
+        instructions: selectedPick.instructions,
+        nutrition: selectedPick.nutrition,
       },
     });
     setAiPickSelectedId(null);
