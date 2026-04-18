@@ -29,7 +29,22 @@ export interface PillarContent {
   minimumDayChecklist?: string[];
   commandments?: string[];
   finalStatement?: string;
+
+  /** Last 20 messages of "Talk to DW about this pillar" chat. */
+  conversation?: PillarConversationMessage[];
 }
+
+export interface PillarConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+  ts: string;
+}
+
+export const pillarConversationMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  ts: z.string(),
+});
 
 export const pillarContentSchema: z.ZodType<PillarContent> = z.object({
   description: z.string().optional(),
@@ -43,6 +58,7 @@ export const pillarContentSchema: z.ZodType<PillarContent> = z.object({
   minimumDayChecklist: z.array(z.string()).optional(),
   commandments: z.array(z.string()).optional(),
   finalStatement: z.string().optional(),
+  conversation: z.array(pillarConversationMessageSchema).optional(),
 });
 
 // ─── Document content (the rendered Life System Document) ─────────────────

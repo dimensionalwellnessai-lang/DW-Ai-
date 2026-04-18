@@ -165,22 +165,27 @@ export default function LifeSystemPage() {
           const row = findPillarRow(data, def.id);
           const enabled = row ? row.enabled !== false : true;
           return (
-            <Card
+            <Link
               key={def.id}
-              className="p-4 flex items-start gap-3 hover-elevate"
-              data-testid={`card-pillar-${def.id}`}
+              href={`/life-system/pillar/${def.id}`}
+              data-testid={`link-pillar-${def.id}`}
             >
-              <span
-                aria-hidden
-                className="w-2.5 h-2.5 rounded-full mt-2"
-                style={{ background: enabled ? `hsl(${def.color})` : "hsl(var(--muted-foreground) / 0.3)" }}
-              />
-              <PillarIcon name={def.icon} className="w-5 h-5 mt-0.5 text-primary" />
-              <div className="flex-1">
-                <div className="font-medium">{def.label}</div>
-                <div className="text-sm text-muted-foreground">{def.summary}</div>
-              </div>
-            </Card>
+              <Card
+                className="p-4 flex items-start gap-3 hover-elevate cursor-pointer"
+                data-testid={`card-pillar-${def.id}`}
+              >
+                <span
+                  aria-hidden
+                  className="w-2.5 h-2.5 rounded-full mt-2"
+                  style={{ background: enabled ? `hsl(${def.color})` : "hsl(var(--muted-foreground) / 0.3)" }}
+                />
+                <PillarIcon name={def.icon} className="w-5 h-5 mt-0.5 text-primary" />
+                <div className="flex-1">
+                  <div className="font-medium">{def.label}</div>
+                  <div className="text-sm text-muted-foreground">{def.summary}</div>
+                </div>
+              </Card>
+            </Link>
           );
         })}
       </div>
@@ -198,10 +203,14 @@ export default function LifeSystemPage() {
               data-testid={`card-pillar-${def.id}`}
             >
               <PillarIcon name={def.icon} className="w-5 h-5 mt-0.5" style={{ color: `hsl(${def.color})` }} />
-              <div className="flex-1">
+              <Link
+                href={`/life-system/pillar/${def.id}`}
+                className="flex-1 cursor-pointer"
+                data-testid={`link-pillar-${def.id}`}
+              >
                 <div className="font-medium">{def.label}</div>
                 <div className="text-sm text-muted-foreground">{def.summary}</div>
-              </div>
+              </Link>
               <Switch
                 checked={enabled}
                 onCheckedChange={(v) => togglePillar(def.id, v)}

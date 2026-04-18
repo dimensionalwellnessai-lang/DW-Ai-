@@ -15,7 +15,8 @@ import {
   insertLifeSystemPillarSchema,
   insertLifeSystemProjectSchema,
 } from "@shared/schema";
-import { pillarContentSchema, type PillarContent, type LifeSystemDocumentContent } from "@shared/lifeSystemContent";
+import { pillarContentSchema, type PillarContent, type PillarConversationMessage, type LifeSystemDocumentContent } from "@shared/lifeSystemContent";
+import { openai } from "../openai";
 
 // ─── Body schemas ──────────────────────────────────────────────────────────
 const upsertPillarBody = z.object({
@@ -362,6 +363,177 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
     } catch (err) {
       console.error("generateLifeSystemDocument error:", err);
       res.status(500).json({ error: "Failed to generate document" });
+    }
+  });
+
+  // ── Talk to DW about a single pillar ────────────────────────────────────
+  const converseBody = z.object({
+    message: z.string().min(1).max(2000),
+  });
+
+  app.post("/api/life-system/pillars/:pillarId/converse", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const { pillarId } = req.params;
+    if (!isValidPillarId(pillarId)) {
+      return res.status(400).json({ error: "Unknown pillarId" });
+    }
+    const parsed = converseBody.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    const def = PILLAR_BY_ID[pillarId];
+
+    try {
+      // Load the pillar (or build a default row from definition).
+      const userPillars = await storage.getLifeSystemPillars(userId);
+      const existing = userPillars.find(p => p.pillarId === pillarId);
+      const content: PillarContent =
+        (existing?.content && typeof existing.content === "object")
+          ? (existing.content as PillarContent)
+          : {};
+      const history: PillarConversationMessage[] = Array.isArray(content.conversation)
+        ? content.conversation
+        : [];
+
+      // Build pillar-context system prompt — DW's job is to interview the user
+      // and quietly capture what they say into the pillar's structured fields.
+      const tone = LEVEL_META[def.level].toneSentence;
+      const knownLines: string[] = [];
+      if (content.description) knownLines.push(`description: ${content.description}`);
+      if (content.userVoice) knownLines.push(`userVoice: ${content.userVoice}`);
+      if (Array.isArray(content.laws) && content.laws.length) {
+        knownLines.push(`laws:\n- ${content.laws.join("\n- ")}`);
+      }
+      if (Array.isArray(content.nonNegotiables) && content.nonNegotiables.length) {
+        knownLines.push(`nonNegotiables:\n- ${content.nonNegotiables.join("\n- ")}`);
+      }
+      if (content.weeklyRhythm) knownLines.push(`weeklyRhythm: ${content.weeklyRhythm}`);
+      const knownBlock = knownLines.length
+        ? `WHAT YOU ALREADY KNOW ABOUT THIS PILLAR FROM THIS USER:\n${knownLines.join("\n")}`
+        : `WHAT YOU ALREADY KNOW ABOUT THIS PILLAR FROM THIS USER: (nothing yet)`;
+
+      const system = [
+        `You are DW, the user's life-system concierge. You are talking to them about ONE pillar of their Life System: "${def.label}" (${def.level} level).`,
+        `Pillar summary: ${def.summary}`,
+        `Pillar opening question DW would ask if starting fresh: ${def.openingQuestion}`,
+        `Tone for this level: ${tone}`,
+        knownBlock,
+        `YOUR JOB
+1. Have a warm, grounded conversation about this pillar — the user fills out their Life System by talking with you, NOT by typing into forms.
+2. Ask one clear, inviting question at a time. Build naturally on what they just said.
+3. Quietly capture what the user shares into the pillar's structured fields.
+   - description: a 1–2 sentence description of how this pillar works in their life (only fill once they've given enough to say something true).
+   - userVoice: a short verbatim or near-verbatim quote of how they describe this area.
+   - laws: rules/principles they live by for this pillar (full updated list — include existing + any new ones the user just expressed).
+   - weeklyRhythm: what their week looks like for this pillar (e.g. "lift M/W/F, run Sun").
+   - nonNegotiables: things they refuse to skip (full updated list — include existing + new).
+4. Only update a field when the user has clearly expressed information that maps to it. If they haven't said anything new about a field, OMIT that field from the update — do not echo or invent.
+5. NEVER drop existing items from laws/nonNegotiables unless the user explicitly asked to remove or change them. When in doubt, keep what's there and append.
+6. Keep your reply short (2–4 short paragraphs max). End with at most ONE question.
+
+OUTPUT FORMAT (strict):
+Return ONLY a JSON object with this shape:
+{
+  "reply": "<your warm, conversational message to the user>",
+  "update": {
+    "description"?: string,
+    "userVoice"?: string,
+    "laws"?: string[],
+    "weeklyRhythm"?: string,
+    "nonNegotiables"?: string[]
+  }
+}
+If the user did not share anything new this turn, return an empty "update": {}.`,
+      ].join("\n\n");
+
+      // Compose the messages array (recent history + new user message).
+      const recent = history.slice(-19); // leave room for the new user msg
+      const messages = [
+        { role: "system" as const, content: system },
+        ...recent.map(m => ({ role: m.role, content: m.content })),
+        { role: "user" as const, content: parsed.data.message },
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        temperature: 0.7,
+        max_tokens: 700,
+        response_format: { type: "json_object" },
+      });
+      const raw = completion.choices?.[0]?.message?.content?.toString().trim() || "";
+
+      // Parse the model's JSON, with a tolerant fallback so a malformed reply
+      // never breaks the conversation.
+      let reply = "I'm here — say that again and I'll pick right up.";
+      let update: Record<string, unknown> = {};
+      try {
+        const parsedReply = JSON.parse(raw);
+        if (parsedReply && typeof parsedReply === "object") {
+          if (typeof parsedReply.reply === "string" && parsedReply.reply.trim()) {
+            reply = parsedReply.reply.trim();
+          }
+          if (parsedReply.update && typeof parsedReply.update === "object") {
+            update = parsedReply.update as Record<string, unknown>;
+          }
+        }
+      } catch {
+        // Treat the raw text as the reply if JSON parsing fails.
+        if (raw) reply = raw;
+      }
+
+      // Validate + apply the structured update. We only accept the fields we
+      // know about and silently drop anything malformed.
+      const updatePatch: Partial<PillarContent> = {};
+      if (typeof update.description === "string" && update.description.trim()) {
+        updatePatch.description = update.description.trim();
+      }
+      if (typeof update.userVoice === "string" && update.userVoice.trim()) {
+        updatePatch.userVoice = update.userVoice.trim();
+      }
+      if (typeof update.weeklyRhythm === "string" && update.weeklyRhythm.trim()) {
+        updatePatch.weeklyRhythm = update.weeklyRhythm.trim();
+      }
+      if (Array.isArray(update.laws)) {
+        const cleaned = update.laws.filter((l): l is string => typeof l === "string" && !!l.trim()).map(l => l.trim());
+        if (cleaned.length) updatePatch.laws = Array.from(new Set(cleaned)).slice(0, 20);
+      }
+      if (Array.isArray(update.nonNegotiables)) {
+        const cleaned = update.nonNegotiables.filter((n): n is string => typeof n === "string" && !!n.trim()).map(n => n.trim());
+        if (cleaned.length) updatePatch.nonNegotiables = Array.from(new Set(cleaned)).slice(0, 20);
+      }
+
+      const now = new Date().toISOString();
+      const userMsg: PillarConversationMessage = { role: "user", content: parsed.data.message, ts: now };
+      const assistantMsg: PillarConversationMessage = { role: "assistant", content: reply, ts: new Date().toISOString() };
+      const nextConversation = [...history, userMsg, assistantMsg].slice(-20);
+
+      const nextContent: PillarContent = {
+        ...content,
+        ...updatePatch,
+        conversation: nextConversation,
+      };
+
+      if (existing) {
+        await storage.updateLifeSystemPillar(userId, pillarId, { content: nextContent });
+      } else {
+        await storage.upsertLifeSystemPillar({
+          userId,
+          pillarId,
+          level: def.level,
+          enabled: def.defaultOn,
+          content: nextContent,
+          sortOrder: pillarSortOrder(pillarId as LifeSystemPillarId),
+        });
+      }
+
+      res.json({
+        reply: assistantMsg,
+        conversation: nextConversation,
+        capturedFields: Object.keys(updatePatch),
+        content: nextContent,
+      });
+    } catch (err) {
+      console.error("conversePillar error:", err);
+      res.status(500).json({ error: "Failed to generate response" });
     }
   });
 
