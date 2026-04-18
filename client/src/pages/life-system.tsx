@@ -14,6 +14,7 @@ import {
   LEVEL_META,
   type LifeSystemPillarId,
 } from "@shared/lifeSystemTaxonomy";
+import type { PillarConversationMessage } from "@shared/lifeSystemContent";
 import {
   useLifeSystem,
   adoptStarterTemplate,
@@ -31,9 +32,46 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Loader2, FileText, Plus, Trash2, Sparkles } from "lucide-react";
+import { Loader2, FileText, Plus, Trash2, Sparkles, MessageCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+  const diff = Math.max(0, Date.now() - then);
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w}w ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(d / 365)}y ago`;
+}
+
+function ConversationHint({ messages, testId }: { messages?: PillarConversationMessage[]; testId: string }) {
+  if (!messages || messages.length === 0) return null;
+  const last = [...messages].reverse().find(m => m.ts) ?? messages[messages.length - 1];
+  const when = last?.ts ? relativeTime(last.ts) : "";
+  const count = messages.length;
+  return (
+    <div
+      className="text-xs mt-1.5 text-muted-foreground flex items-center gap-1"
+      data-testid={testId}
+    >
+      <MessageCircle className="w-3 h-3" aria-hidden />
+      <span>
+        {count} {count === 1 ? "message" : "messages"}
+        {when ? ` · last ${when}` : ""}
+      </span>
+    </div>
+  );
+}
 
 function PillarIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const registry = LucideIcons as unknown as Record<string, LucideIcon>;
@@ -183,6 +221,10 @@ export default function LifeSystemPage() {
                 <div className="flex-1">
                   <div className="font-medium">{def.label}</div>
                   <div className="text-sm text-muted-foreground">{def.summary}</div>
+                  <ConversationHint
+                    messages={row?.content?.conversation}
+                    testId={`text-conversation-hint-${def.id}`}
+                  />
                 </div>
               </Card>
             </Link>
@@ -210,6 +252,10 @@ export default function LifeSystemPage() {
               >
                 <div className="font-medium">{def.label}</div>
                 <div className="text-sm text-muted-foreground">{def.summary}</div>
+                <ConversationHint
+                  messages={row?.content?.conversation}
+                  testId={`text-conversation-hint-${def.id}`}
+                />
               </Link>
               <Switch
                 checked={enabled}
