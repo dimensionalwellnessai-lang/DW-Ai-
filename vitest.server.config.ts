@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    name: "server",
     globals: true,
     environment: "node",
     include: ["server/**/*.{test,spec}.{js,ts}"],
