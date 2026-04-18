@@ -1113,12 +1113,28 @@ const HEARTBEAT_STALE_ALERT_MS = 5 * 60 * 1000;
 // hour, even if the underlying condition persists. Operators only need to
 // know once; re-alerting is for "it broke again later" cases.
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+// Number of consecutive scheduler_leases read failures that must occur
+// before we treat the situation as a sustained DB outage worth alerting
+// about. With HEALTH_CHECK_INTERVAL_MS = 3min, 3 failures ≈ 9 minutes of
+// continuous DB unavailability — long enough to skip transient blips
+// (failovers, brief network hiccups) but short enough that operators
+// learn about a real outage well within an SLA window.
+const DB_OUTAGE_FAILURE_THRESHOLD = 3;
 
 let healthMonitorHandle: ReturnType<typeof setInterval> | null = null;
 // Per-process memory of the last cluster size we observed, so we can detect
 // drops between consecutive checks. Reset to null when the table is empty
 // (DB outage) so we don't fire a phantom shrink alert on the next recovery.
 let lastObservedClusterSize: number | null = null;
+// Per-process counter of consecutive scheduler_leases read failures. Reset
+// on the first successful read. Drives the sustained-DB-outage alert below.
+let consecutiveDbReadFailures = 0;
+// In-memory cooldown timestamp for the DB-outage alert. We can't use the
+// monitoring_alerts table for this one because the whole point is that the
+// DB is unreachable — so cooldown lives in process memory. Multiple
+// instances may each emit one alert during an outage; that's an accepted
+// trade-off vs. losing the signal entirely.
+let lastDbOutageAlertAt: number | null = null;
 
 /**
  * Conditionally record that we're sending `alertType`. Returns true iff this
@@ -1155,9 +1171,60 @@ async function runSchedulerHealthCheck(): Promise<void> {
       .from(schedulerLeases)
       .orderBy(asc(schedulerLeases.slotIndex));
   } catch (err) {
-    console.error("[push] Health monitor failed to read leases:", err);
+    // A single failed read is intentionally swallowed: brief blips during
+    // failover or transient network hiccups would otherwise spam operators
+    // every health-check tick. We do, however, want to surface a *sustained*
+    // outage, so we track consecutive failures and alert once the count
+    // crosses DB_OUTAGE_FAILURE_THRESHOLD. The cooldown for this alert is
+    // kept in process memory because the DB-backed cooldown row in
+    // monitoring_alerts is, by definition, also unreachable here.
+    consecutiveDbReadFailures += 1;
+    console.error(
+      `[push] Health monitor failed to read leases ` +
+        `(consecutive failures: ${consecutiveDbReadFailures}):`,
+      err,
+    );
+    if (consecutiveDbReadFailures >= DB_OUTAGE_FAILURE_THRESHOLD) {
+      const now = Date.now();
+      const cooledDown =
+        lastDbOutageAlertAt === null ||
+        now - lastDbOutageAlertAt >= ALERT_COOLDOWN_MS;
+      if (cooledDown) {
+        const minutesDown = Math.round(
+          (consecutiveDbReadFailures * HEALTH_CHECK_INTERVAL_MS) / 60000,
+        );
+        const body = `
+          <p><strong>The reminder scheduler can't read
+          <code>scheduler_leases</code> from the database.</strong></p>
+          <p>This instance has seen <strong>${consecutiveDbReadFailures}</strong>
+          consecutive failed reads (~${minutesDown} minute(s) of continuous
+          unavailability). Reminders are not being scheduled and the cluster
+          health signal is dark.</p>
+          <p>Investigate the database (connection pool, failover state,
+          credentials) and the network path from the app instances.</p>
+        `;
+        // We send the email unconditionally on this branch — the DB-backed
+        // dedup gate (`tryClaimAlertSlot`) won't help us here because the DB
+        // is the thing that's down. Set the in-memory cooldown timestamp
+        // optimistically so a failed Resend send still backs off and tries
+        // again on the next tick rather than emailing every 3 minutes.
+        lastDbOutageAlertAt = now;
+        const ok = await sendOperatorAlertEmail(
+          `Reminder scheduler can't reach the database (${minutesDown}m)`,
+          body,
+        );
+        if (!ok) {
+          // Roll back so the next tick can retry instead of waiting out the
+          // full cooldown on a transient Resend failure.
+          lastDbOutageAlertAt = null;
+        }
+      }
+    }
     return;
   }
+  // Successful read — clear the outage counter so we require another
+  // unbroken streak of failures before re-alerting.
+  consecutiveDbReadFailures = 0;
 
   if (leases.length === 0) {
     // Either a brand-new cluster that hasn't claimed yet, or every instance
@@ -1267,11 +1334,21 @@ export function stopSchedulerHealthMonitor(): void {
     healthMonitorHandle = null;
   }
   lastObservedClusterSize = null;
+  consecutiveDbReadFailures = 0;
+  lastDbOutageAlertAt = null;
 }
 
 // Test-only hook so the suite can drive a single check deterministically
 // without waiting on the interval timer.
 export const __testRunSchedulerHealthCheck = runSchedulerHealthCheck;
+
+// Test-only hook to reset module-level health-monitor state between cases
+// so each test starts from a clean slate (no leaked counters or cooldowns).
+export function __testResetSchedulerHealthState(): void {
+  lastObservedClusterSize = null;
+  consecutiveDbReadFailures = 0;
+  lastDbOutageAlertAt = null;
+}
 
 export async function startReminderScheduler(): Promise<void> {
   if (schedulerHandle) return;
