@@ -12,6 +12,8 @@ export interface StarterPillarContent {
   laws?: string[];
   nonNegotiables?: string[];
   weeklyRhythm?: string;
+  /** Emotional Regulation: standards the user wants surfaced during a trigger reset. */
+  triggerStandards?: string[];
   /** Pillar-specific extra fields. */
   extras?: Record<string, unknown>;
 }
@@ -178,6 +180,36 @@ export const STARTER_TEMPLATE: StarterTemplate = {
       description:
         "I'm always becoming. Reading, building, reflecting, taking new shots. Friday is the day I formally invest in growth — but the curiosity runs the whole week.",
       weeklyRhythm: "Fri: 2-hour growth block. Daily: read 20 min before sleep.",
+    },
+
+    emotional_regulation: {
+      description:
+        "Real-time emotional operating system. When something hits — anxiety, jealousy, the feeling that something's off — I move from reactive → aware → intentional instead of firing back. The protocol: identify, reality-check, pause, root, reframe, respond.",
+      laws: [
+        "I don't react without clarity.",
+        "I don't accuse without evidence.",
+        "A feeling is real, but it isn't always accurate.",
+        "Pause before I press send.",
+        "If I don't have proof, I don't have a case.",
+      ],
+      nonNegotiables: [
+        "Pause for at least 5 minutes before reacting to something charged",
+        "Name the feeling before naming the person",
+        "Ask for proof before assuming the worst",
+        "Use a grounded standard when I respond, not a hot one",
+      ],
+      triggerStandards: [
+        "I don't react without clarity",
+        "I don't accuse without evidence",
+        "I respond from grounded, not from afraid",
+      ],
+      extras: {
+        triggerStandards: [
+          "I don't react without clarity",
+          "I don't accuse without evidence",
+          "I respond from grounded, not from afraid",
+        ],
+      },
     },
 
     spiritual: {

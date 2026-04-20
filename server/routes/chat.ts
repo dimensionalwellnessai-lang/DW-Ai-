@@ -9,6 +9,31 @@ import { generateChatResponse, detectIntentAndRespond, detectIntentAndRespondStr
 
 import { type CoachingMode, coachingModeEnum } from "@shared/schema";
 
+// Lightweight keyword detector for the DW Trigger Protocol hook.
+// When a chat message reads as emotionally charged, the API returns a
+// `suggestion: { kind: "trigger_protocol" }` field so the client can
+// render a "Start trigger reset" affordance.
+const TRIGGER_KEYWORDS = [
+  "triggered", "anxious", "panicking", "spiraling", "spiralling",
+  "jealous", "cheating", "cheat on me", "lying to me", "lied to me",
+  "ignoring me", "ghosting me", "disrespect", "disrespected",
+  "they don't care", "she doesn't care", "he doesn't care",
+  "i feel like", "i feel so", "i'm so angry", "i'm furious",
+  "betray", "betrayed", "rejected", "abandoned",
+  "want to scream", "about to lose it", "can't even",
+];
+
+function detectTriggerSuggestion(message: unknown): { kind: "trigger_protocol"; reason: string } | null {
+  if (typeof message !== "string") return null;
+  const lower = message.toLowerCase();
+  const hit = TRIGGER_KEYWORDS.find(k => lower.includes(k));
+  if (!hit) return null;
+  return {
+    kind: "trigger_protocol",
+    reason: `Sounds heavy — want to slow this down with a quick reset?`,
+  };
+}
+
 export function registerChatRoutes(app: Express): void {
   app.post("/api/chat", chatLimiter, async (req, res) => {
     try {
@@ -640,7 +665,20 @@ export function registerChatRoutes(app: Express): void {
       }
       
       const safeResult = { ...result, response: enforceOneQuestion(result.response) };
-      res.json({ ...safeResult, syncSessionId, actionsTaken, navigation: navigationAction });
+
+      // ── Trigger Protocol hook ─────────────────────────────────────────
+      // If the user's message reads as emotionally charged (jealousy,
+      // accusation, anxiety spike), surface a structured suggestion so the
+      // client can render a "Start trigger reset" button.
+      const triggerSuggestion = detectTriggerSuggestion(message);
+
+      res.json({
+        ...safeResult,
+        syncSessionId,
+        actionsTaken,
+        navigation: navigationAction,
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
+      });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       // Graceful degradation: AI provider temporarily down → return a friendly response

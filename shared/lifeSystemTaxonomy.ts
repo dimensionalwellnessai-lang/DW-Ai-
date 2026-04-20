@@ -26,6 +26,7 @@ export type LifeSystemPillarId =
   | "responsibility"
   | "recovery"
   | "growth"
+  | "emotional_regulation"
   // expression
   | "spiritual"
   | "work_school"
@@ -184,6 +185,18 @@ export const PILLARS: PillarDefinition[] = [
     defaultOn: true,
     color: "252 76% 58%",
     icon: "Sprout",
+  },
+  {
+    id: "emotional_regulation",
+    level: "core",
+    label: "Emotional Regulation",
+    shortLabel: "Triggers",
+    summary: "Real-time tools for moving from reactive to intentional.",
+    openingQuestion: "When you get triggered, what does it usually look like — and what do you wish you did instead?",
+    toggleable: false,
+    defaultOn: true,
+    color: "252 76% 58%",
+    icon: "LifeBuoy",
   },
 
   // ── Expression (5) ─────────────────────────────────────────────────────────

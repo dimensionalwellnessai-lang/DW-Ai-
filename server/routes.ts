@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { parseLifeSystemRuleBased } from "./life-system-parser-rules";
+import { detectTriggerSuggestion } from "./routes/trigger-detection";
 import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -20,6 +21,7 @@ import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { registerRelationshipsRoutes } from "./routes/relationships";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
+import { registerTriggerRoutes } from "./routes/triggers";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -466,6 +468,7 @@ export async function registerRoutes(
 
   // Life System pillars / projects / generated document
   registerLifeSystemPillarRoutes(app);
+  registerTriggerRoutes(app);
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation
@@ -2343,7 +2346,14 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         }
       }
       
-      res.json({ response: enforceOneQuestion(response), updatedCategories, syncSessionId, actionsTaken });
+      const triggerSuggestion = detectTriggerSuggestion(message);
+      res.json({
+        response: enforceOneQuestion(response),
+        updatedCategories,
+        syncSessionId,
+        actionsTaken,
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
+      });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       // Graceful degradation: show a human-readable message instead of crashing
@@ -2718,7 +2728,14 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       const safeResult = { ...result, response: enforceOneQuestion(result.response) };
-      res.json({ ...safeResult, syncSessionId, actionsTaken, navigation: navigationAction });
+      const triggerSuggestion = detectTriggerSuggestion(message);
+      res.json({
+        ...safeResult,
+        syncSessionId,
+        actionsTaken,
+        navigation: navigationAction,
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
+      });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
       // Graceful degradation: AI provider temporarily down → return a friendly response

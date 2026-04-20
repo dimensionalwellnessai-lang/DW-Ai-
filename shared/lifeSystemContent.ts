@@ -32,6 +32,13 @@ export interface PillarContent {
 
   /** Last 20 messages of "Talk to DW about this pillar" chat. */
   conversation?: PillarConversationMessage[];
+
+  /**
+   * Emotional Regulation pillar only — the user's personal "trigger
+   * standards" (e.g. "I don't accuse without evidence"). Surfaced inside
+   * the Trigger Protocol alongside non-negotiables from other pillars.
+   */
+  triggerStandards?: string[];
 }
 
 export interface PillarConversationMessage {
@@ -59,6 +66,7 @@ export const pillarContentSchema: z.ZodType<PillarContent> = z.object({
   commandments: z.array(z.string()).optional(),
   finalStatement: z.string().optional(),
   conversation: z.array(pillarConversationMessageSchema).optional(),
+  triggerStandards: z.array(z.string()).optional(),
 });
 
 // ─── Document content (the rendered Life System Document) ─────────────────

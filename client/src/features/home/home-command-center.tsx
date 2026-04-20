@@ -33,7 +33,11 @@ import {
   Pencil,
   Check,
   X,
+  LifeBuoy,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
+import type { TriggerEventListResponse } from "@/lib/triggers";
 
 const AFFIRMATIONS = {
   morning: {
@@ -99,6 +103,11 @@ export default function HomeCommandCenter() {
   const [nameInput, setNameInput] = useState("");
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
+  const [triggerOpen, setTriggerOpen] = useState(false);
+  const triggersQ = useQuery<TriggerEventListResponse>({
+    queryKey: ["/api/trigger-events"],
+  });
+  const weekStats = triggersQ.data?.week;
 
   const dismissCard = (type: string) => {
     setDismissedCards(prev => new Set(Array.from(prev).concat(type)));
@@ -250,6 +259,35 @@ export default function HomeCommandCenter() {
       </header>
 
       <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* ── Quick "How are you feeling?" chip row ─────────────────────── */}
+        <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-feeling-chips">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {[
+              { label: "Calm", testId: "chip-feeling-calm" },
+              { label: "Off", testId: "chip-feeling-off" },
+              { label: "Stressed", testId: "chip-feeling-stressed" },
+            ].map(c => (
+              <button
+                key={c.label}
+                type="button"
+                className="text-xs px-3 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                data-testid={c.testId}
+              >
+                {c.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setTriggerOpen(true)}
+              className="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/30 hover:bg-primary/15 transition-colors flex items-center gap-1"
+              data-testid="chip-feeling-triggered"
+            >
+              <LifeBuoy className="h-3 w-3" />
+              I feel triggered
+            </button>
+          </div>
+        </div>
+
         {/* ── Hero: the user's three-ring orbit ─────────────────────────── */}
         <div
           className="flex flex-col items-center justify-center px-4 pt-2 pb-4 shrink-0"
@@ -290,6 +328,32 @@ export default function HomeCommandCenter() {
                 <InsightSnapshotCard summary={summary} className="h-full" />
               </CarouselItem>
 
+              {weekStats && weekStats.total > 0 && (
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/life-system/pillar/emotional_regulation")}
+                    className="w-full h-full text-left rounded-2xl border border-border bg-card px-4 py-3.5 flex items-center gap-3 hover:border-primary/40 transition-colors"
+                    data-testid="card-trigger-week"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <LifeBuoy className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold leading-snug" data-testid="text-trigger-week-title">
+                        {weekStats.total} trigger{weekStats.total === 1 ? "" : "s"} this week
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {weekStats.noProof > 0
+                          ? `${weekStats.noProof} had no confirmed issue.`
+                          : "Tap to review your patterns."}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                </CarouselItem>
+              )}
+
               {visibleProactiveCards.map((card) => (
                 <CarouselItem key={card.type} className="pl-2 basis-[85%] h-full">
                   <ProactiveCard
@@ -329,6 +393,7 @@ export default function HomeCommandCenter() {
 
       <HamburgerMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
+      <TriggerProtocolSheet open={triggerOpen} onOpenChange={setTriggerOpen} />
     </div>
   );
 }

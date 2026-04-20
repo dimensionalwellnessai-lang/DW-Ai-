@@ -80,6 +80,9 @@ import {
   type InsertLifeSystemProject,
   type LifeSystemDocument,
   type InsertLifeSystemDocument,
+  triggerEvents,
+  type TriggerEvent,
+  type InsertTriggerEvent,
   type Goal,
   type InsertGoal,
   type Habit,
@@ -301,6 +304,11 @@ export interface IStorage {
   updateLifeSystemPillar(userId: string, pillarId: string, data: Partial<InsertLifeSystemPillar>): Promise<LifeSystemPillar | undefined>;
   deleteAllLifeSystemPillars(userId: string): Promise<void>;
   deleteAllLifeSystemDocuments(userId: string): Promise<void>;
+
+  // Trigger Events (DW Trigger Protocol)
+  createTriggerEvent(event: InsertTriggerEvent): Promise<TriggerEvent>;
+  listTriggerEvents(userId: string, limit?: number): Promise<TriggerEvent[]>;
+  countTriggerEventsSince(userId: string, since: Date): Promise<{ total: number; noProof: number }>;
 
   // Life System Projects (sub-items inside the Creation pillar)
   getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]>;
@@ -3776,6 +3784,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAllLifeSystemDocuments(userId: string): Promise<void> {
     await db.delete(lifeSystemDocuments).where(eq(lifeSystemDocuments.userId, userId));
+  }
+
+  async createTriggerEvent(event: InsertTriggerEvent): Promise<TriggerEvent> {
+    const [row] = await db.insert(triggerEvents).values(event).returning();
+    return row;
+  }
+
+  async listTriggerEvents(userId: string, limit = 50): Promise<TriggerEvent[]> {
+    return await db
+      .select()
+      .from(triggerEvents)
+      .where(eq(triggerEvents.userId, userId))
+      .orderBy(desc(triggerEvents.createdAt))
+      .limit(limit);
+  }
+
+  async countTriggerEventsSince(userId: string, since: Date): Promise<{ total: number; noProof: number }> {
+    const rows = await db
+      .select({ hadProof: triggerEvents.hadProof })
+      .from(triggerEvents)
+      .where(and(eq(triggerEvents.userId, userId), gte(triggerEvents.createdAt, since)));
+    return {
+      total: rows.length,
+      noProof: rows.filter(r => r.hadProof === false).length,
+    };
   }
 
   async getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]> {

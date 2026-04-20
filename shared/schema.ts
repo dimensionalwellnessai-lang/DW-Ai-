@@ -3138,3 +3138,36 @@ export const insertLifeSystemDocumentSchema = createInsertSchema(lifeSystemDocum
 });
 export type LifeSystemDocument = typeof lifeSystemDocuments.$inferSelect;
 export type InsertLifeSystemDocument = z.infer<typeof insertLifeSystemDocumentSchema>;
+
+// ── Trigger Events (DW Trigger Protocol logs) ────────────────────────────────
+export const triggerOutcomeEnum = ["reacted", "paused", "responded"] as const;
+export type TriggerOutcome = typeof triggerOutcomeEnum[number];
+
+export const triggerEvents = pgTable("trigger_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // What the user said they were feeling (e.g. "anxious", "jealous").
+  feeling: text("feeling").notNull(),
+  // The story their brain was running ("they're cheating", "I'm being lied to").
+  assumption: text("assumption"),
+  // Did they have evidence, or was it a feeling? null = skipped.
+  hadProof: boolean("had_proof"),
+  // Optional notes captured during root check.
+  rootNote: text("root_note"),
+  // Which reframe card they locked in.
+  reframe: text("reframe"),
+  // Which response template they picked / wrote.
+  responseChoice: text("response_choice"),
+  // Pause duration in minutes (5 / 20 / 30 / 0 = skipped).
+  pauseMinutes: integer("pause_minutes"),
+  // Final outcome ("reacted" / "paused" / "responded").
+  outcome: text("outcome").$type<TriggerOutcome>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTriggerEventSchema = createInsertSchema(triggerEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type TriggerEvent = typeof triggerEvents.$inferSelect;
+export type InsertTriggerEvent = z.infer<typeof insertTriggerEventSchema>;
