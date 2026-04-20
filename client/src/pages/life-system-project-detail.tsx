@@ -4,7 +4,9 @@
 // linkable from /life-system). Shows the project's focus, weekly cadence and
 // next action, plus tasks assigned to the project. All headline fields are
 // inline-editable here so users don't have to bounce back to the Life System
-// list to update them.
+// list to update them. The workspace also offers an "Add task" affordance so
+// new tasks created here are pre-linked to this project (no need to hop to
+// /tasks and remember projectId by hand).
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -18,6 +20,7 @@ import {
   ListTodo,
   Loader2,
   Pencil,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -106,6 +109,33 @@ export default function LifeSystemProjectDetailPage() {
       });
     },
   });
+
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const addTask = useMutation({
+    mutationFn: async (title: string) => {
+      const res = await apiRequest("POST", "/api/tasks", {
+        title,
+        projectId,
+        status: "todo",
+        isCompleted: false,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setNewTaskTitle("");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Task added" });
+    },
+    onError: () => {
+      toast({ title: "Couldn't add task", variant: "destructive" });
+    },
+  });
+
+  function onSubmitNewTask() {
+    const title = newTaskTitle.trim();
+    if (!title || addTask.isPending) return;
+    addTask.mutate(title);
+  }
 
   if (isLoading) {
     return (
@@ -277,9 +307,44 @@ export default function LifeSystemProjectDetailPage() {
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           <ListTodo className="w-4 h-4" /> Tasks
         </div>
+
+        {/* Quick add — pre-links the new task to this project. */}
+        <Card className="p-3 space-y-2" data-testid="card-add-task">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Add a task for this project…"
+              value={newTaskTitle}
+              onChange={e => setNewTaskTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSubmitNewTask();
+                }
+              }}
+              disabled={addTask.isPending}
+              data-testid="input-new-task-title"
+            />
+            <Button
+              onClick={onSubmitNewTask}
+              disabled={addTask.isPending || !newTaskTitle.trim()}
+              data-testid="button-add-task"
+            >
+              {addTask.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4 mr-1" />
+              )}
+              Add task
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            New tasks land in this project automatically.
+          </p>
+        </Card>
+
         {projectTasks.length === 0 ? (
           <Card className="p-5 text-center text-sm text-muted-foreground" data-testid="empty-project-tasks">
-            No tasks linked to this project yet. Tasks created with this project will show up here.
+            No tasks linked to this project yet. Add the first one above.
           </Card>
         ) : (
           <div className="space-y-2">

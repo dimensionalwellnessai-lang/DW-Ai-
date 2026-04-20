@@ -278,7 +278,11 @@ export default function LifeSystemPage() {
               className="w-2.5 h-2.5 rounded-full mt-2"
               style={{ background: "hsl(38 92% 60%)" }}
             />
-            <div className="flex-1">
+            <Link
+              href={`/life-system/project/${p.id}`}
+              className="flex-1 hover-elevate rounded-md -m-1 p-1"
+              data-testid={`link-project-${p.id}`}
+            >
               <div className="font-medium" data-testid={`text-project-name-${p.id}`}>{p.name}</div>
               {p.description && (
                 <div className="text-sm text-muted-foreground">{p.description}</div>
@@ -288,7 +292,7 @@ export default function LifeSystemPage() {
                   <span className="font-medium">Focus:</span> {p.currentFocus}
                 </div>
               )}
-            </div>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
