@@ -35,8 +35,20 @@ export interface ThreeRingOrbitProps {
    * Tap handler for lit Creation (project) nodes on the outer ring.
    * Receives the same identifier used in `litProjects` — the project's id
    * when provided on the project item, otherwise its name.
+   * NOTE: ignored when `collapseProjects` is true.
    */
   onProjectClick?: (projectKey: string) => void;
+  /**
+   * When true (the default for the home orb), all active projects are
+   * represented as a SINGLE "Projects (N)" node on the outer ring. Tapping
+   * fires `onProjectsClick` (e.g. open a list sheet) instead of
+   * `onProjectClick`.
+   * Set to `false` for the onboarding reveal animation where each project
+   * lights up individually.
+   */
+  collapseProjects?: boolean;
+  /** Tap handler for the collapsed projects node. */
+  onProjectsClick?: () => void;
   /** Tap handler for the central DW orb. */
   onCenterClick?: () => void;
 }
@@ -57,6 +69,8 @@ export function ThreeRingOrbit({
   className,
   onPillarClick,
   onProjectClick,
+  collapseProjects = false,
+  onProjectsClick,
   onCenterClick,
 }: ThreeRingOrbitProps) {
   const allLit = !litPillars; // when undefined, treat everything as lit
@@ -99,19 +113,33 @@ export function ThreeRingOrbit({
   );
 
   const outerNodes = useMemo(
-    () =>
-      projects.length === 0
-        ? []
-        : projects.map((p, i) => {
-            const angle = (360 / Math.max(projects.length, 3)) * i + 30;
-            const { x, y } = polar(outerR, angle);
-            return { id: p.id ?? p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor, kind: "project" as const };
-          }),
-    [outerR, projects],
+    () => {
+      if (projects.length === 0) return [];
+      // Collapsed mode: one node at the top of the outer ring labeled
+      // "Projects (N)". Used on the home orb to keep the outer ring tidy
+      // regardless of how many active projects the user has.
+      if (collapseProjects) {
+        const { x, y } = polar(outerR, 0);
+        return [{
+          id: "__projects__",
+          label: `Projects (${projects.length})`,
+          x, y,
+          color: LEVEL_META.creation.ringColor,
+          kind: "projects-collapsed" as const,
+        }];
+      }
+      return projects.map((p, i) => {
+        const angle = (360 / Math.max(projects.length, 3)) * i + 30;
+        const { x, y } = polar(outerR, angle);
+        return { id: p.id ?? p.name, label: p.name, x, y, color: LEVEL_META.creation.ringColor, kind: "project" as const };
+      });
+    },
+    [outerR, projects, collapseProjects],
   );
 
   function isLit(id: string) {
     if (allLit) return true;
+    if (id === "__projects__") return projects.length > 0;
     if (litPillars && litPillars.has(id as LifeSystemPillarId)) return true;
     if (litProjects && litProjects.has(id)) return true;
     return false;
@@ -190,9 +218,11 @@ export function ThreeRingOrbit({
         const lit = isLit(n.id);
         const handler = !lit
           ? undefined
-          : n.kind === "project"
-            ? (onProjectClick ? () => onProjectClick(n.id) : undefined)
-            : (onPillarClick ? () => onPillarClick(n.id as LifeSystemPillarId) : undefined);
+          : n.kind === "projects-collapsed"
+            ? (onProjectsClick ? () => onProjectsClick() : undefined)
+            : n.kind === "project"
+              ? (onProjectClick ? () => onProjectClick(n.id) : undefined)
+              : (onPillarClick ? () => onPillarClick(n.id as LifeSystemPillarId) : undefined);
         const interactive = !!handler;
         return (
           <g

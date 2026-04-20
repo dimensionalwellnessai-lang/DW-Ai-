@@ -38,6 +38,17 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import type { TriggerEventListResponse } from "@/lib/triggers";
+import { ProjectsListSheet } from "@/components/life-system/projects-list-sheet";
+import { useToast } from "@/hooks/use-toast";
+
+// Map a quick "how I feel right now" chip to a mood-log payload. The shape
+// matches POST /api/mood (energy/mood/clarity 1-10) so the chip taps feed
+// the same insight pipeline as the full mood tracker.
+const FEELING_CHIPS = {
+  Calm:     { energyLevel: 7, moodLevel: 8, clarityLevel: 8, notes: "feeling calm" },
+  Off:      { energyLevel: 5, moodLevel: 5, clarityLevel: 5, notes: "feeling off" },
+  Stressed: { energyLevel: 4, moodLevel: 3, clarityLevel: 4, notes: "feeling stressed" },
+} as const;
 
 const AFFIRMATIONS = {
   morning: {
@@ -104,10 +115,32 @@ export default function HomeCommandCenter() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
   const [triggerOpen, setTriggerOpen] = useState(false);
+  const [projectsSheetOpen, setProjectsSheetOpen] = useState(false);
+  const { toast } = useToast();
   const triggersQ = useQuery<TriggerEventListResponse>({
     queryKey: ["/api/trigger-events"],
   });
   const weekStats = triggersQ.data?.week;
+
+  const moodChipMutation = useMutation({
+    mutationFn: (label: keyof typeof FEELING_CHIPS) =>
+      apiRequest("POST", "/api/mood", FEELING_CHIPS[label]),
+    onSuccess: (_data, label) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mood"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/today"] });
+      toast({
+        title: `Logged: ${label}`,
+        description: "DW will use this to shape today's check-ins.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't save that just now",
+        description: "Try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const dismissCard = (type: string) => {
     setDismissedCards(prev => new Set(Array.from(prev).concat(type)));
@@ -262,18 +295,16 @@ export default function HomeCommandCenter() {
         {/* ── Quick "How are you feeling?" chip row ─────────────────────── */}
         <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-feeling-chips">
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            {[
-              { label: "Calm", testId: "chip-feeling-calm" },
-              { label: "Off", testId: "chip-feeling-off" },
-              { label: "Stressed", testId: "chip-feeling-stressed" },
-            ].map(c => (
+            {(Object.keys(FEELING_CHIPS) as Array<keyof typeof FEELING_CHIPS>).map(label => (
               <button
-                key={c.label}
+                key={label}
                 type="button"
-                className="text-xs px-3 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                data-testid={c.testId}
+                disabled={moodChipMutation.isPending}
+                onClick={() => moodChipMutation.mutate(label)}
+                className="text-xs px-3 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
+                data-testid={`chip-feeling-${label.toLowerCase()}`}
               >
-                {c.label}
+                {label}
               </button>
             ))}
             <button
@@ -307,8 +338,9 @@ export default function HomeCommandCenter() {
               litProjects={litProjects}
               size={340}
               className="relative z-10"
+              collapseProjects
               onPillarClick={(id) => navigate(`/life-system/pillar/${id}`)}
-              onProjectClick={(id) => navigate(`/life-system/project/${id}`)}
+              onProjectsClick={() => setProjectsSheetOpen(true)}
               onCenterClick={() => navigate("/life-system/document")}
             />
           </div>
@@ -394,6 +426,7 @@ export default function HomeCommandCenter() {
       <HamburgerMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
       <TriggerProtocolSheet open={triggerOpen} onOpenChange={setTriggerOpen} />
+      <ProjectsListSheet open={projectsSheetOpen} onOpenChange={setProjectsSheetOpen} />
     </div>
   );
 }

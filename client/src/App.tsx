@@ -121,7 +121,6 @@ import ExpandMyWeekPage from "@/pages/expand-my-week";
 import PaywallPage from "@/pages/paywall";
 import CosmicHubPage from "@/pages/cosmic";
 import ActionCenterPage from "@/pages/action-center";
-import { AIWorkspace } from "@/components/ai-workspace";
 import VoiceModePage from "@/pages/voice-mode";
 import DayStartPage from "@/pages/day-start";
 const LibraryPage = lazy(() => import("@/pages/library"));
@@ -223,7 +222,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomeRedirect} />
-      <Route path="/chat" component={AIWorkspace} />
+      {/* /chat is the legacy URL — /talk is now the canonical chat surface
+          (bottom-nav, paste-detection, contextual hooks all live there). */}
+      <Route path="/chat"><Redirect to="/talk" /></Route>
       <Route path="/talk" component={TalkItOutPage} />
       <Route path="/today"><Redirect to="/command-center" /></Route>
       <Route path="/login" component={LoginPage} />
@@ -252,7 +253,7 @@ function Router() {
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
       <Route path="/life-blueprint" component={LifeBlueprintV2Page} />
-      <Route path="/life-blueprint-v2" component={LifeBlueprintV2Page} />
+      <Route path="/life-blueprint-v2"><Redirect to="/life-blueprint" /></Route>
       <Route path="/insights" component={InsightsDashboard} />
       <Route path="/wellness-preferences" component={WellnessPreferencesPage} />
       <Route path="/values-rules-profile" component={ValuesRulesProfilePage} />
@@ -304,7 +305,7 @@ function Router() {
       {isRouteEnabled("/journal") && <Route path="/journal" component={JournalPage} />}
       {isRouteEnabled("/action-center") && <Route path="/action-center" component={ActionCenterPage} />}
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
-      {isRouteEnabled("/support/report") && <Route path="/support/report" component={SupportReportPage} />}
+      {/* /support/report — single declaration further below; the gated alias was duplicate. */}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}

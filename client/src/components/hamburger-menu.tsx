@@ -106,7 +106,6 @@ const DIMENSION_SECTIONS: MenuSection[] = [
     dimensionKey: "environment",
     dwContextLabel: "Environment",
     items: [
-      { id: "life-system-import", name: "📥 DW Smart Import", path: "/life-system-import", icon: Layers, dimension: "environment" },
       { id: "browse", name: "🔍 Browse", path: "/browse", icon: Search, dimension: "environment" },
     ]
   },
@@ -222,6 +221,20 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
               data-testid="menu-item-calendar"
             >
               <span className="text-sm text-foreground">📅 Life Timeline</span>
+            </button>
+          </Link>
+          <Link href="/life-system-import">
+            <button
+              className="w-full flex items-start gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors"
+              onClick={() => { addRecentPage({ id: 'life-system-import', name: '📥 DW Smart Import', path: '/life-system-import', icon: '📥' }); onClose(); }}
+              data-testid="menu-item-smart-import"
+            >
+              <span className="text-sm text-foreground flex-1">
+                <span className="block">📥 DW Smart Import</span>
+                <span className="block text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                  Paste anything — meal plan, schedule, doc — and DW reads it. You can also paste straight into DW chat and it'll do the same thing.
+                </span>
+              </span>
             </button>
           </Link>
         </div>
