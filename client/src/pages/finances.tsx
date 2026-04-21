@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Wallet, Settings2, TrendingUp, PiggyBank, Sparkles,
   DollarSign, Send, Loader2, Plus, Trash2, Bot, Link2, RefreshCw,
-  ArrowUpRight, ArrowDownRight, Building2, AlertTriangle
+  ArrowUpRight, ArrowDownRight, Building2, AlertTriangle, Target, CheckCircle2
 } from "lucide-react";
 import { FinanceProfileDialog } from "@/components/finance-profile-dialog";
 import {
@@ -93,6 +93,15 @@ const budgetFormSchema = z.object({
 });
 type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 
+const goalFormSchema = z.object({
+  name: z.string().min(1, "Name required").max(120),
+  targetAmount: z.coerce.number().positive("Enter a positive target"),
+  currentAmount: z.coerce.number().nonnegative("Cannot be negative").default(0),
+  targetDate: z.string().optional(),
+  note: z.string().optional(),
+});
+type GoalFormValues = z.infer<typeof goalFormSchema>;
+
 const holdingFormSchema = z.object({
   ticker: z.string().optional(),
   name: z.string().min(1, "Name required"),
@@ -124,6 +133,10 @@ interface Holding {
   shares: number | null; costBasis: number | null; currentPrice: number | null;
   manualValue: number | null; lastQuoteAt: string | null; value: number;
 }
+interface SavingsGoal {
+  id: string; name: string; targetAmount: number; currentAmount: number;
+  targetDate: string | null; note: string | null;
+}
 interface NetWorthPoint { date: string; assets: number; liabilities: number; netWorth: number; }
 interface Summary {
   netWorth: number; assets: number; liabilities: number;
@@ -133,6 +146,7 @@ interface Summary {
   accounts: Account[];
   holdings: Holding[];
   recentTransactions: Transaction[];
+  goals?: SavingsGoal[];
 }
 interface PlaidStatus {
   configured: boolean; env: string;
@@ -161,16 +175,18 @@ export default function FinancesPage() {
       />
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4" data-testid="tabs-finance">
+        <TabsList className="grid w-full grid-cols-5" data-testid="tabs-finance">
           <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions" data-testid="tab-transactions">Transactions</TabsTrigger>
           <TabsTrigger value="budgets" data-testid="tab-budgets">Budgets</TabsTrigger>
+          <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
           <TabsTrigger value="investments" data-testid="tab-investments">Investments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6"><OverviewTab profile={financeProfile} /></TabsContent>
         <TabsContent value="transactions" className="mt-6"><TransactionsTab /></TabsContent>
         <TabsContent value="budgets" className="mt-6"><BudgetsTab /></TabsContent>
+        <TabsContent value="goals" className="mt-6"><GoalsTab /></TabsContent>
         <TabsContent value="investments" className="mt-6"><InvestmentsTab /></TabsContent>
       </Tabs>
 
@@ -829,6 +845,216 @@ function BudgetsTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Goals tab — personal savings goals with progress bars
+// ══════════════════════════════════════════════════════════════════════
+
+function GoalsTab() {
+  const { data: goals, isLoading } = useQuery<SavingsGoal[]>({ queryKey: ["/api/finance/goals"] });
+  const [editing, setEditing] = useState<SavingsGoal | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<GoalFormValues>({
+    resolver: zodResolver(goalFormSchema),
+    defaultValues: { name: "", targetAmount: 0, currentAmount: 0, targetDate: "", note: "" },
+  });
+
+  const openCreate = () => {
+    setEditing(null);
+    form.reset({ name: "", targetAmount: 0, currentAmount: 0, targetDate: "", note: "" });
+    setOpen(true);
+  };
+
+  const openEdit = (g: SavingsGoal) => {
+    setEditing(g);
+    form.reset({
+      name: g.name,
+      targetAmount: g.targetAmount,
+      currentAmount: g.currentAmount,
+      targetDate: g.targetDate || "",
+      note: g.note || "",
+    });
+    setOpen(true);
+  };
+
+  const saveMut = useMutation({
+    mutationFn: async (values: GoalFormValues) => {
+      const body = {
+        name: values.name,
+        targetAmount: values.targetAmount,
+        currentAmount: values.currentAmount,
+        targetDate: values.targetDate || null,
+        note: values.note || null,
+      };
+      const res = editing
+        ? await apiRequest("PATCH", `/api/finance/goals/${editing.id}`, body)
+        : await apiRequest("POST", "/api/finance/goals", body);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/summary"] });
+      setOpen(false);
+      setEditing(null);
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/finance/goals/${id}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/summary"] });
+    },
+  });
+
+  const totalTarget = (goals || []).reduce((s, g) => s + g.targetAmount, 0);
+  const totalSaved = (goals || []).reduce((s, g) => s + g.currentAmount, 0);
+  const overallPct = totalTarget > 0 ? Math.min(100, (totalSaved / totalTarget) * 100) : 0;
+
+  return (
+    <div className="space-y-4">
+      {goals && goals.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <StatCard title="Goals" value={String(goals.length)} icon={<Target className="w-4 h-4" />} testId="stat-goals-count" />
+          <StatCard title="Saved" value={fmtMoney(totalSaved)} icon={<PiggyBank className="w-4 h-4" />} testId="stat-goals-saved" />
+          <StatCard title="Target" value={fmtMoney(totalTarget)} icon={<TrendingUp className="w-4 h-4" />} testId="stat-goals-target" />
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="flex items-center gap-2"><Target className="w-4 h-4" /> Savings goals</CardTitle>
+            <Button size="sm" onClick={openCreate} data-testid="button-add-goal">
+              <Plus className="w-4 h-4 mr-1" /> New goal
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? <Skeleton className="h-32" /> : (goals && goals.length > 0) ? (
+            <div className="space-y-4">
+              {goals.length > 1 && (
+                <div className="space-y-1 pb-2 border-b">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-muted-foreground">All goals combined</span>
+                    <span className="text-muted-foreground" data-testid="text-goals-overall">
+                      {fmtMoney(totalSaved)} / {fmtMoney(totalTarget)} ({Math.round(overallPct)}%)
+                    </span>
+                  </div>
+                  <Progress value={overallPct} />
+                </div>
+              )}
+              {goals.map(g => {
+                const pct = g.targetAmount > 0 ? Math.min(100, (g.currentAmount / g.targetAmount) * 100) : 0;
+                const remaining = Math.max(0, g.targetAmount - g.currentAmount);
+                const complete = g.currentAmount >= g.targetAmount;
+                return (
+                  <div key={g.id} className="space-y-2 p-3 border rounded-md" data-testid={`row-goal-${g.id}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm flex items-center gap-2" data-testid={`text-goal-name-${g.id}`}>
+                          {complete && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                          {g.name}
+                        </p>
+                        {g.targetDate && (
+                          <p className="text-xs text-muted-foreground" data-testid={`text-goal-date-${g.id}`}>
+                            Target: {g.targetDate}
+                          </p>
+                        )}
+                        {g.note && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{g.note}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(g)} data-testid={`button-edit-goal-${g.id}`}>
+                          Edit
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteMut.mutate(g.id)} data-testid={`button-delete-goal-${g.id}`}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={complete ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-muted-foreground"} data-testid={`text-goal-progress-${g.id}`}>
+                          {fmtMoney(g.currentAmount)} of {fmtMoney(g.targetAmount)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {complete ? "Reached!" : `${fmtMoney(remaining)} to go · ${Math.round(pct)}%`}
+                        </span>
+                      </div>
+                      <Progress value={pct} className={complete ? "[&>div]:bg-emerald-500" : ""} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-10 space-y-2">
+              <Target className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
+              <p className="text-sm text-muted-foreground">No savings goals yet.</p>
+              <p className="text-xs text-muted-foreground">Try "Emergency fund", "Vacation", or "Down payment".</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing ? "Edit goal" : "New savings goal"}</DialogTitle></DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((v) => saveMut.mutate(v))} className="space-y-3">
+              <FormField control={form.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl><Input placeholder="Emergency fund" {...field} data-testid="input-goal-name" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-2">
+                <FormField control={form.control} name="targetAmount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target amount</FormLabel>
+                    <FormControl><Input type="number" step="1" placeholder="5000" {...field} data-testid="input-goal-target" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="currentAmount" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Saved so far</FormLabel>
+                    <FormControl><Input type="number" step="1" placeholder="0" {...field} data-testid="input-goal-current" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="targetDate" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target date (optional)</FormLabel>
+                  <FormControl><Input type="date" {...field} data-testid="input-goal-date" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="note" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note (optional)</FormLabel>
+                  <FormControl><Textarea rows={2} placeholder="What's this for?" {...field} data-testid="input-goal-note" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="submit" disabled={saveMut.isPending} data-testid="button-save-goal">
+                  {saveMut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {editing ? "Save changes" : "Create goal"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

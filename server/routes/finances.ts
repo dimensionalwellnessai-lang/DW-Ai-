@@ -8,6 +8,7 @@ import {
   insertTransactionSchema,
   insertBudgetSchema,
   insertInvestmentHoldingSchema,
+  insertSavingsGoalSchema,
   financialAccountTypeEnum,
   holdingTypeEnum,
 } from "@shared/schema";
@@ -22,6 +23,14 @@ const budgetBody = insertBudgetSchema.omit({ userId: true });
 
 const holdingBody = insertInvestmentHoldingSchema.omit({ userId: true, currentPrice: true, lastQuoteAt: true }).extend({
   type: z.enum(holdingTypeEnum).default("stock"),
+});
+
+const goalBody = insertSavingsGoalSchema.omit({ userId: true }).extend({
+  name: z.string().min(1).max(120),
+  targetAmount: z.coerce.number().positive(),
+  currentAmount: z.coerce.number().nonnegative().optional(),
+  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  note: z.string().max(500).optional().nullable(),
 });
 
 function monthBounds(date = new Date()): { from: string; to: string } {
@@ -236,6 +245,60 @@ export function registerFinancesRoutes(app: Express) {
     }
   });
 
+  // ── Savings goals ────────────────────────────────────────────────
+  app.get("/api/finance/goals", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const rows = await storage.getSavingsGoals(userId);
+      res.json(rows);
+    } catch (err) {
+      console.error("[finance] list goals", err);
+      res.status(500).json({ error: "Failed to load goals" });
+    }
+  });
+
+  app.post("/api/finance/goals", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = goalBody.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid goal", issues: parsed.error.issues });
+      const row = await storage.createSavingsGoal({
+        ...parsed.data,
+        userId,
+        currentAmount: parsed.data.currentAmount ?? 0,
+      });
+      res.json(row);
+    } catch (err) {
+      console.error("[finance] create goal", err);
+      res.status(500).json({ error: "Failed to create goal" });
+    }
+  });
+
+  app.patch("/api/finance/goals/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = goalBody.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid goal", issues: parsed.error.issues });
+      const row = await storage.updateSavingsGoal(req.params.id, userId, parsed.data);
+      if (!row) return res.status(404).json({ error: "Not found" });
+      res.json(row);
+    } catch (err) {
+      console.error("[finance] update goal", err);
+      res.status(500).json({ error: "Failed to update goal" });
+    }
+  });
+
+  app.delete("/api/finance/goals/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const ok = await storage.deleteSavingsGoal(req.params.id, userId);
+      res.json({ ok });
+    } catch (err) {
+      console.error("[finance] delete goal", err);
+      res.status(500).json({ error: "Failed to delete goal" });
+    }
+  });
+
   // ── Net worth snapshots ──────────────────────────────────────────
   app.get("/api/finance/net-worth", requireAuth, async (req, res) => {
     try {
@@ -253,7 +316,7 @@ export function registerFinancesRoutes(app: Express) {
     try {
       const userId = req.session.userId!;
       const { from, to } = monthBounds();
-      const [accounts, monthTxns, budgetsList, holdings, last90Txns] = await Promise.all([
+      const [accounts, monthTxns, budgetsList, holdings, last90Txns, goals] = await Promise.all([
         storage.getFinancialAccounts(userId),
         storage.getTransactions(userId, { from, to }),
         storage.getBudgets(userId),
@@ -261,6 +324,7 @@ export function registerFinancesRoutes(app: Express) {
         storage.getTransactions(userId, {
           from: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         }),
+        storage.getSavingsGoals(userId),
       ]);
 
       const monthSpend = monthTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
@@ -300,6 +364,7 @@ export function registerFinancesRoutes(app: Express) {
         holdings: holdings.map(h => ({ ...h, value: holdingValue(h) })),
         recentTransactions: last90Txns.slice(0, 25),
         totalTransactions90d: last90Txns.length,
+        goals,
       });
     } catch (err) {
       console.error("[finance] summary", err);
@@ -325,10 +390,11 @@ export function registerFinancesRoutes(app: Express) {
       if (!parsed.success) return res.status(400).json({ error: "Invalid chat request" });
 
       const from = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const [txns, budgetsList, holdings] = await Promise.all([
+      const [txns, budgetsList, holdings, goals] = await Promise.all([
         storage.getTransactions(userId, { from, limit: 500 }),
         storage.getBudgets(userId),
         storage.getInvestmentHoldings(userId),
+        storage.getSavingsGoals(userId),
       ]);
 
       const spendByCat: Record<string, number> = {};
@@ -349,6 +415,7 @@ export function registerFinancesRoutes(app: Express) {
         `- Budgets: ${budgetsList.map(b => `${b.category} $${b.monthlyLimit}/mo`).join(", ") || "none set"}`,
         `- Holdings total value: $${holdingsValue.toFixed(2)} (${holdings.length} position${holdings.length === 1 ? "" : "s"})`,
         holdings.length ? `- Holdings: ${holdings.map(h => `${h.ticker || h.name}${h.shares ? ` x${h.shares}` : ""}`).join(", ")}` : "",
+        goals.length ? `- Savings goals: ${goals.map(g => `${g.name} ${Math.round((g.currentAmount / g.targetAmount) * 100)}% ($${g.currentAmount.toFixed(0)}/$${g.targetAmount.toFixed(0)}${g.targetDate ? ` by ${g.targetDate}` : ""})`).join("; ")}` : "",
       ].filter(Boolean).join("\n");
 
       const systemPrompt = `You are DW's compassionate financial wellness coach. Answer questions using the real finance data below — cite specific numbers and categories when possible. Keep answers concise (2-3 short paragraphs), warm, practical. Never promise specific returns.\n\n${ctx}`;

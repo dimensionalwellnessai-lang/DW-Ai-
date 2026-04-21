@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -3504,6 +3504,32 @@ export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
 });
 export type PlaidItem = typeof plaidItems.$inferSelect;
 export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;
+
+// Personal savings goals: lightweight per-user targets ("Emergency fund",
+// "Hawaii trip"), with a current saved amount and an optional target date.
+// Progress is computed on the client as currentAmount / targetAmount.
+export const savingsGoals = pgTable("savings_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  targetAmount: real("target_amount").notNull(),
+  currentAmount: real("current_amount").notNull().default(0),
+  // Optional ISO date (YYYY-MM-DD) for the goal's target completion date.
+  targetDate: text("target_date"),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  index("savings_goals_user_idx").on(t.userId),
+]);
+
+export const insertSavingsGoalSchema = createInsertSchema(savingsGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type SavingsGoal = typeof savingsGoals.$inferSelect;
+export type InsertSavingsGoal = z.infer<typeof insertSavingsGoalSchema>;
 
 // ─── Spiritual: Meditation library, sessions, prayer entries ──────────────────
 

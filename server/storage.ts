@@ -285,6 +285,7 @@ import {
   budgets,
   investmentHoldings,
   netWorthSnapshots,
+  savingsGoals,
   plaidItems,
   type FinancialAccount,
   type InsertFinancialAccount,
@@ -296,6 +297,8 @@ import {
   type InsertInvestmentHolding,
   type NetWorthSnapshot,
   type InsertNetWorthSnapshot,
+  type SavingsGoal,
+  type InsertSavingsGoal,
   type PlaidItem,
   type InsertPlaidItem,
 } from "@shared/schema";
@@ -4051,6 +4054,29 @@ export class DatabaseStorage implements IStorage {
     }
     const [row] = await db.insert(netWorthSnapshots).values(data).returning();
     return row;
+  }
+
+  async getSavingsGoals(userId: string): Promise<SavingsGoal[]> {
+    return await db.select().from(savingsGoals)
+      .where(eq(savingsGoals.userId, userId))
+      .orderBy(desc(savingsGoals.createdAt));
+  }
+  async createSavingsGoal(data: InsertSavingsGoal): Promise<SavingsGoal> {
+    const [row] = await db.insert(savingsGoals).values(data).returning();
+    return row;
+  }
+  async updateSavingsGoal(id: string, userId: string, data: Partial<InsertSavingsGoal>): Promise<SavingsGoal | undefined> {
+    const [row] = await db.update(savingsGoals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId)))
+      .returning();
+    return row || undefined;
+  }
+  async deleteSavingsGoal(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(savingsGoals)
+      .where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId)))
+      .returning({ id: savingsGoals.id });
+    return result.length > 0;
   }
 
   async getPlaidItems(userId: string): Promise<PlaidItem[]> {
