@@ -1108,6 +1108,8 @@ export const people = pgTable("people", {
   photoUrl: text("photo_url"),
   // Free-form so users can record "March 14" without a year if they want
   birthday: text("birthday"),
+  // Target days between contact (e.g. 7 = weekly). null → no target.
+  contactFrequencyDays: integer("contact_frequency_days"),
   lastInteractionAt: timestamp("last_interaction_at"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -1188,6 +1190,114 @@ export const insertAlivenessMomentSchema = createInsertSchema(alivenessMoments).
 });
 export type InsertAlivenessMoment = z.infer<typeof insertAlivenessMomentSchema>;
 export type AlivenessMoment = typeof alivenessMoments.$inferSelect;
+
+// ── Boundaries / repairs / appreciations ─────────────────────────────────────
+// "I don't discuss X with mom" — a soft per-person rule the user wants to keep
+export const relationshipBoundaries = pgTable("relationship_boundaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  personId: varchar("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  rule: text("rule").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// An open issue with a planned action ("write apology by Friday")
+export const relationshipRepairs = pgTable("relationship_repairs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  personId: varchar("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  issue: text("issue").notNull(),
+  plannedAction: text("planned_action"),
+  dueDate: timestamp("due_date"),
+  // open | done | dropped
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+// "Mom called for no reason" — small positive moments
+export const relationshipAppreciations = pgTable("relationship_appreciations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  personId: varchar("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── Family / shared hub ──────────────────────────────────────────────────────
+export const peopleGroups = pgTable("people_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  // household | core-family | couple | friends | other
+  kind: text("kind").default("other"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const peopleGroupMembers = pgTable("people_group_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => peopleGroups.id, { onDelete: "cascade" }),
+  personId: varchar("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+  // If the group spans linked app users, the partnerUserId points to the other DW user
+  partnerUserId: varchar("partner_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Shared rule, event, or appreciation visible to everyone in the group
+export const groupSharedItems = pgTable("group_shared_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => peopleGroups.id, { onDelete: "cascade" }),
+  authorUserId: varchar("author_user_id").notNull().references(() => users.id),
+  // rule | event | appreciation | note
+  kind: text("kind").notNull().default("note"),
+  payload: jsonb("payload").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ── DW-generated insights cache ──────────────────────────────────────────────
+export const relationshipInsights = pgTable("relationship_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  // distance | birthday | unresolved | streak | suggestion
+  kind: text("kind").notNull(),
+  personId: varchar("person_id").references(() => people.id, { onDelete: "cascade" }),
+  groupId: varchar("group_id").references(() => peopleGroups.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  // optional CTA hint for UI ({ tab: "crm", personId: "..." })
+  cta: jsonb("cta"),
+  isDismissed: boolean("is_dismissed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertRelationshipBoundarySchema = createInsertSchema(relationshipBoundaries).omit({ id: true, createdAt: true });
+export type InsertRelationshipBoundary = z.infer<typeof insertRelationshipBoundarySchema>;
+export type RelationshipBoundary = typeof relationshipBoundaries.$inferSelect;
+
+export const insertRelationshipRepairSchema = createInsertSchema(relationshipRepairs).omit({ id: true, createdAt: true, resolvedAt: true });
+export type InsertRelationshipRepair = z.infer<typeof insertRelationshipRepairSchema>;
+export type RelationshipRepair = typeof relationshipRepairs.$inferSelect;
+
+export const insertRelationshipAppreciationSchema = createInsertSchema(relationshipAppreciations).omit({ id: true, createdAt: true });
+export type InsertRelationshipAppreciation = z.infer<typeof insertRelationshipAppreciationSchema>;
+export type RelationshipAppreciation = typeof relationshipAppreciations.$inferSelect;
+
+export const insertPeopleGroupSchema = createInsertSchema(peopleGroups).omit({ id: true, createdAt: true });
+export type InsertPeopleGroup = z.infer<typeof insertPeopleGroupSchema>;
+export type PeopleGroup = typeof peopleGroups.$inferSelect;
+
+export const insertPeopleGroupMemberSchema = createInsertSchema(peopleGroupMembers).omit({ id: true, createdAt: true });
+export type InsertPeopleGroupMember = z.infer<typeof insertPeopleGroupMemberSchema>;
+export type PeopleGroupMember = typeof peopleGroupMembers.$inferSelect;
+
+export const insertGroupSharedItemSchema = createInsertSchema(groupSharedItems).omit({ id: true, createdAt: true });
+export type InsertGroupSharedItem = z.infer<typeof insertGroupSharedItemSchema>;
+export type GroupSharedItem = typeof groupSharedItems.$inferSelect;
+
+export const insertRelationshipInsightSchema = createInsertSchema(relationshipInsights).omit({ id: true, createdAt: true });
+export type InsertRelationshipInsight = z.infer<typeof insertRelationshipInsightSchema>;
+export type RelationshipInsight = typeof relationshipInsights.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,

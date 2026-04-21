@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { parseLifeSystemRuleBased } from "./life-system-parser-rules";
 import { detectTriggerSuggestion } from "./routes/trigger-detection";
+import { detectPersonMention } from "./routes/relationships";
 import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -2355,12 +2356,16 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       const triggerSuggestion = detectTriggerSuggestion(message);
+      const personMention = req.session.userId ? await detectPersonMention(req.session.userId, message) : null;
+      const mergedSuggestion = triggerSuggestion
+        ? (personMention ? { ...triggerSuggestion, person: personMention } : triggerSuggestion)
+        : (personMention ? { type: "person" as const, person: personMention } : null);
       res.json({
         response: enforceOneQuestion(response),
         updatedCategories,
         syncSessionId,
         actionsTaken,
-        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
+        ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
       });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
@@ -2737,12 +2742,16 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       
       const safeResult = { ...result, response: enforceOneQuestion(result.response) };
       const triggerSuggestion = detectTriggerSuggestion(message);
+      const personMention = req.session.userId ? await detectPersonMention(req.session.userId, message) : null;
+      const mergedSuggestion = triggerSuggestion
+        ? (personMention ? { ...triggerSuggestion, person: personMention } : triggerSuggestion)
+        : (personMention ? { type: "person" as const, person: personMention } : null);
       res.json({
         ...safeResult,
         syncSessionId,
         actionsTaken,
         navigation: navigationAction,
-        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
+        ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
       });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
