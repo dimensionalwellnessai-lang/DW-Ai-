@@ -3437,3 +3437,70 @@ export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
 });
 export type PlaidItem = typeof plaidItems.$inferSelect;
 export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;
+
+// ─── Spiritual: Meditation library, sessions, prayer entries ──────────────────
+
+export const meditationThemeEnum = [
+  "calm", "focus", "sleep", "grief", "gratitude",
+  "energy", "release", "connection", "clarity",
+] as const;
+export type MeditationTheme = typeof meditationThemeEnum[number];
+
+export const meditationLibrary = pgTable("meditation_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Stable slug used as a deterministic seed key; unique so re-seeding is idempotent.
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  theme: text("theme").notNull().$type<MeditationTheme>(),
+  durationMinutes: integer("duration_minutes").notNull(),
+  scriptText: text("script_text").notNull(),
+  audioUrl: text("audio_url"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMeditationLibrarySchema = createInsertSchema(meditationLibrary).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  theme: z.enum(meditationThemeEnum as unknown as [MeditationTheme, ...MeditationTheme[]]),
+});
+export type MeditationLibraryItem = typeof meditationLibrary.$inferSelect;
+export type InsertMeditationLibraryItem = z.infer<typeof insertMeditationLibrarySchema>;
+
+export const meditationSessions = pgTable("meditation_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  libraryId: varchar("library_id").references(() => meditationLibrary.id, { onDelete: "set null" }),
+  themeOverride: text("theme_override"),
+  durationSec: integer("duration_sec").notNull(),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+  // Mood pulse: optional 1–5 rating before/after the session.
+  moodBefore: integer("mood_before"),
+  moodAfter: integer("mood_after"),
+  notes: text("notes"),
+});
+
+export const insertMeditationSessionSchema = createInsertSchema(meditationSessions).omit({
+  id: true,
+  completedAt: true,
+});
+export type MeditationSession = typeof meditationSessions.$inferSelect;
+export type InsertMeditationSession = z.infer<typeof insertMeditationSessionSchema>;
+
+export const prayerEntries = pgTable("prayer_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  intention: text("intention"),
+  gratitudeList: text("gratitude_list").array(),
+  // When true, the entry appears anonymously in /api/prayer-entries/collective.
+  shareCollective: boolean("share_collective").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPrayerEntrySchema = createInsertSchema(prayerEntries).omit({
+  id: true,
+  createdAt: true,
+});
+export type PrayerEntry = typeof prayerEntries.$inferSelect;
+export type InsertPrayerEntry = z.infer<typeof insertPrayerEntrySchema>;

@@ -25,6 +25,8 @@ import { registerRealtimeRoutes } from "./routes/realtime";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { registerTriggerRoutes } from "./routes/triggers";
 import { registerFinancesRoutes } from "./routes/finances";
+import { registerSpiritualRoutes } from "./routes/spiritual";
+import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
@@ -478,6 +480,11 @@ export async function registerRoutes(
   // Finances: accounts, transactions, budgets, investments, net-worth, AI chat
   registerFinancesRoutes(app);
   registerPlaidRoutes(app);
+
+  // Spiritual workspace: meditation library/sessions, prayer journal, cosmic feed
+  registerSpiritualRoutes(app);
+  // Idempotent seed for the meditation library — fire-and-forget on boot.
+  void seedMeditationLibrary();
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation
