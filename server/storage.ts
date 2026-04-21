@@ -4056,6 +4056,9 @@ export class DatabaseStorage implements IStorage {
   async getPlaidItems(userId: string): Promise<PlaidItem[]> {
     return await db.select().from(plaidItems).where(eq(plaidItems.userId, userId));
   }
+  async getAllPlaidItems(): Promise<PlaidItem[]> {
+    return await db.select().from(plaidItems);
+  }
   async getPlaidItem(itemId: string): Promise<PlaidItem | undefined> {
     const [row] = await db.select().from(plaidItems).where(eq(plaidItems.itemId, itemId));
     return row || undefined;

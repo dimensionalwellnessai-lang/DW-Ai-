@@ -2,31 +2,13 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "./_shared";
-import { encryptSecret, decryptSecret } from "./_encryption";
+import { encryptSecret } from "./_encryption";
+import { Products, CountryCode } from "plaid";
 import {
-  Configuration,
-  PlaidApi,
-  PlaidEnvironments,
-  Products,
-  CountryCode,
-  type Transaction as PlaidTransaction,
-} from "plaid";
-
-// Map Plaid's often-verbose category to our simple bucket the UI uses.
-function mapCategory(categories: string[] | null | undefined): string {
-  if (!categories || categories.length === 0) return "Other";
-  const head = categories[0].toLowerCase();
-  if (/food|restaurant|dining/.test(head)) return "Food";
-  if (/transport|travel|taxi|uber|gas/.test(head)) return "Transport";
-  if (/entertainment|recreation/.test(head)) return "Entertainment";
-  if (/shop|merchand/.test(head)) return "Shopping";
-  if (/health|medical|pharmacy/.test(head)) return "Health";
-  if (/rent|mortgage|utilities|home/.test(head)) return "Housing";
-  if (/payroll|deposit|income|payment/.test(head)) return "Income";
-  if (/transfer/.test(head)) return "Transfer";
-  if (/subscription|service/.test(head)) return "Subscriptions";
-  return categories[0];
-}
+  plaidConfigured,
+  getPlaidClient,
+  syncPlaidItem,
+} from "../plaid-sync";
 
 function mapAccountType(t: string | null | undefined, sub: string | null | undefined): "checking" | "savings" | "credit" | "loan" | "investment" | "other" {
   const s = (sub || t || "").toLowerCase();
@@ -36,25 +18,6 @@ function mapAccountType(t: string | null | undefined, sub: string | null | undef
   if (s.includes("loan") || s.includes("mortgage") || s.includes("student")) return "loan";
   if (s.includes("invest") || s.includes("401") || s.includes("ira") || s.includes("brokerage")) return "investment";
   return "other";
-}
-
-function plaidConfigured(): boolean {
-  return !!(process.env.PLAID_CLIENT_ID && process.env.PLAID_SECRET);
-}
-
-function getPlaidClient(): PlaidApi | null {
-  if (!plaidConfigured()) return null;
-  const env = (process.env.PLAID_ENV || "sandbox") as keyof typeof PlaidEnvironments;
-  const configuration = new Configuration({
-    basePath: PlaidEnvironments[env] || PlaidEnvironments.sandbox,
-    baseOptions: {
-      headers: {
-        "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID!,
-        "PLAID-SECRET": process.env.PLAID_SECRET!,
-      },
-    },
-  });
-  return new PlaidApi(configuration);
 }
 
 function requirePlaid(_req: Request, res: Response, next: () => void) {
@@ -160,74 +123,11 @@ export function registerPlaidRoutes(app: Express) {
       if (items.length === 0) return res.json({ added: 0, modified: 0, removed: 0, itemCount: 0 });
 
       let added = 0, modified = 0, removed = 0;
-
       for (const item of items) {
-        let cursor = item.cursor || undefined;
-        let hasMore = true;
-        const accessToken = decryptSecret(item.accessToken);
-        const accountsResp = await client.accountsGet({ access_token: accessToken });
-        // Map Plaid account_id -> our financial_accounts.id.
-        const userAccounts = await storage.getFinancialAccounts(userId);
-        const accIdByPlaid: Record<string, string> = {};
-        for (const a of userAccounts) {
-          if (a.plaidAccountId) accIdByPlaid[a.plaidAccountId] = a.id;
-        }
-
-        // Refresh balances on each sync.
-        for (const a of accountsResp.data.accounts) {
-          const localId = accIdByPlaid[a.account_id];
-          if (localId) {
-            await storage.updateFinancialAccount(localId, userId, { currentBalance: a.balances.current ?? 0 });
-          }
-        }
-
-        while (hasMore) {
-          const syncResp = await client.transactionsSync({ access_token: accessToken, cursor });
-          const { added: a, modified: m, removed: r, has_more, next_cursor } = syncResp.data;
-
-          for (const t of a as PlaidTransaction[]) {
-            await storage.upsertTransactionByPlaidId({
-              userId,
-              accountId: accIdByPlaid[t.account_id] || null,
-              // Plaid amounts: positive = money out of account. Convert to our signed convention.
-              amount: -t.amount,
-              category: mapCategory(t.category),
-              merchant: t.merchant_name || t.name || null,
-              note: null,
-              date: t.date,
-              source: "plaid",
-              plaidTransactionId: t.transaction_id,
-              pending: t.pending ?? false,
-              currency: "USD",
-            });
-            added++;
-          }
-          for (const t of m as PlaidTransaction[]) {
-            await storage.upsertTransactionByPlaidId({
-              userId,
-              accountId: accIdByPlaid[t.account_id] || null,
-              amount: -t.amount,
-              category: mapCategory(t.category),
-              merchant: t.merchant_name || t.name || null,
-              note: null,
-              date: t.date,
-              source: "plaid",
-              plaidTransactionId: t.transaction_id,
-              pending: t.pending ?? false,
-              currency: "USD",
-            });
-            modified++;
-          }
-          for (const rem of r) {
-            await storage.deleteTransactionByPlaidId(rem.transaction_id, userId);
-            removed++;
-          }
-
-          cursor = next_cursor;
-          hasMore = has_more;
-        }
-
-        await storage.updatePlaidItemCursor(item.itemId, cursor || "");
+        const counts = await syncPlaidItem(item, client);
+        added += counts.added;
+        modified += counts.modified;
+        removed += counts.removed;
       }
 
       res.json({ added, modified, removed, itemCount: items.length });
@@ -238,7 +138,9 @@ export function registerPlaidRoutes(app: Express) {
   });
 
   // Webhook — Plaid will hit this when transactions are available. We don't
-  // have a user session here so we identify the owner via item_id.
+  // have a user session here so we identify the owner via item_id. When we
+  // get a TRANSACTIONS webhook we run the sync immediately so the user sees
+  // the new transactions without waiting for the next scheduler tick.
   app.post("/api/plaid/webhook", async (req, res) => {
     try {
       if (!plaidConfigured()) return res.status(204).end();
@@ -249,15 +151,28 @@ export function registerPlaidRoutes(app: Express) {
       const item = await storage.getPlaidItem(itemId);
       if (!item) return res.status(204).end();
 
-      if (type === "TRANSACTIONS") {
-        // The actual sync still happens on the authenticated endpoint; we
-        // simply bump lastSyncAt so the UI shows the webhook arrived.
-        await storage.updatePlaidItemCursor(itemId, item.cursor || "");
-      }
+      // Acknowledge fast; do the actual sync in the background so Plaid
+      // doesn't time out and retry the webhook.
       res.status(200).json({ ok: true });
+
+      if (type === "TRANSACTIONS" || type === "SYNC_UPDATES_AVAILABLE") {
+        const client = getPlaidClient();
+        if (!client) return;
+        try {
+          const counts = await syncPlaidItem(item, client);
+          console.log(
+            `[plaid] webhook sync item=${itemId} added=${counts.added} modified=${counts.modified} removed=${counts.removed}`,
+          );
+        } catch (err: any) {
+          console.error(
+            `[plaid] webhook sync failed for item ${itemId}`,
+            err?.response?.data || err?.message || err,
+          );
+        }
+      }
     } catch (err) {
       console.error("[plaid] webhook", err);
-      res.status(200).json({ ok: false });
+      if (!res.headersSent) res.status(200).json({ ok: false });
     }
   });
 

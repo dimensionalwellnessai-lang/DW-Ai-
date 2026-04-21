@@ -80,6 +80,16 @@ app.use((req, res, next) => {
     console.error("[push] Failed to start reminder scheduler:", err);
   }
 
+  // Start the background Plaid sync scheduler so connected bank
+  // transactions are imported every few hours without the user having to
+  // tap "Sync" on the Finances page. See server/plaid-sync.ts.
+  try {
+    const { startPlaidSyncScheduler } = await import("./plaid-sync");
+    startPlaidSyncScheduler();
+  } catch (err) {
+    console.error("[plaid] Failed to start sync scheduler:", err);
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
