@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { DWOrb } from "@/components/dw-orb";
 import { Button } from "@/components/ui/button";
-import { X, Loader2, MessageSquare } from "lucide-react";
+import { X, Loader2, MessageSquare, Mic, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DW_MODES, type DWMode } from "@shared/dw-persona";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system" | "insight";
@@ -11,389 +12,443 @@ interface ChatMessage {
 
 interface DWVoiceConversationProps {
   messages: ChatMessage[];
+  /** Called when the user finishes a spoken turn (final transcript). */
   onSend: (text: string) => void;
-  isTyping: boolean;
+  /** Called when DW finishes speaking (final assistant transcript). */
+  onAssistantTranscript?: (text: string) => void;
+  /** Optional short summary of who the user is + recent state, injected into the live session. */
+  userContextSummary?: string;
+  /** Initial mode for the session. Defaults to "companion". */
+  initialMode?: DWMode;
+  /** Ignored in realtime mode but kept for backwards-compat with existing callers. */
+  isTyping?: boolean;
   onClose: () => void;
 }
 
-type ConvState = "idle" | "listening" | "processing" | "speaking" | "error";
+type ConvState = "connecting" | "idle" | "listening" | "thinking" | "speaking" | "muted" | "error";
 
-// --- Tuning knobs ---
-const SILENCE_THRESHOLD = 0.010;   // RMS level below which we consider silence (lower = catches softer voices)
-const SILENCE_DURATION_MS = 800;   // ms of continuous silence before we stop recording
-const MIN_RECORDING_MS = 400;      // minimum ms before silence detection kicks in
-const TTS_SPEED = 1.0;             // natural speech speed
-const TTS_MAX_CHARS = 900;         // maximum chars sent to TTS (long responses truncated)
+const orbStateFor = (s: ConvState): "idle" | "listening" | "speaking" | "active" | "chat" => {
+  if (s === "listening") return "listening";
+  if (s === "speaking") return "speaking";
+  if (s === "thinking") return "active";
+  if (s === "connecting") return "chat";
+  return "idle";
+};
 
 export function DWVoiceConversation({
   messages,
   onSend,
-  isTyping,
+  onAssistantTranscript,
+  userContextSummary,
+  initialMode = "companion",
   onClose,
 }: DWVoiceConversationProps) {
-  const [convState, setConvState] = useState<ConvState>("idle");
-  const [statusText, setStatusText] = useState("Starting up…");
+  const [convState, setConvState] = useState<ConvState>("connecting");
+  const [statusText, setStatusText] = useState("Waking DW…");
+  const [mode, setMode] = useState<DWMode>(initialMode);
+  const [muted, setMuted] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
   const [lastDWText, setLastDWText] = useState<string>(() => {
     const last = [...messages].reverse().find((m) => m.role === "assistant");
     return last?.content.replace(/[#*`_~[\]()>]/g, "").trim().slice(0, 320) ?? "";
   });
   const [lastUserText, setLastUserText] = useState<string>("");
-  const [audioLevel, setAudioLevel] = useState(0);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const levelIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recordingStartRef = useRef<number>(0);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const messagesLenRef = useRef(messages.length);
-  const convStateRef = useRef<ConvState>("idle");
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dcRef = useRef<RTCDataChannel | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const isMountedRef = useRef(true);
+  const assistantBufferRef = useRef<string>("");
+  const userBufferRef = useRef<string>("");
+  const modeRef = useRef<DWMode>(initialMode);
+  modeRef.current = mode;
 
   const setState = useCallback((s: ConvState) => {
-    convStateRef.current = s;
     if (isMountedRef.current) setConvState(s);
   }, []);
 
-  const stopAllAudio = useCallback(() => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.src = "";
-      currentAudioRef.current = null;
+  const sendEvent = useCallback((event: Record<string, unknown>) => {
+    const dc = dcRef.current;
+    if (!dc || dc.readyState !== "open") return;
+    try {
+      dc.send(JSON.stringify(event));
+    } catch (err) {
+      console.warn("[dw-voice] failed to send event", err);
     }
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
   }, []);
 
-  const cleanupRecording = useCallback(() => {
-    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-    if (levelIntervalRef.current) { clearInterval(levelIntervalRef.current); levelIntervalRef.current = null; }
-    if (mediaRecorderRef.current?.state !== "inactive") mediaRecorderRef.current?.stop();
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    audioContextRef.current?.close();
-    audioContextRef.current = null;
-    analyserRef.current = null;
-    if (isMountedRef.current) setAudioLevel(0);
+  const teardown = useCallback(() => {
+    try {
+      dcRef.current?.close();
+    } catch {}
+    dcRef.current = null;
+    try {
+      pcRef.current?.getSenders().forEach((s) => s.track && s.track.stop());
+      pcRef.current?.close();
+    } catch {}
+    pcRef.current = null;
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
+    if (remoteAudioRef.current) {
+      try {
+        remoteAudioRef.current.pause();
+      } catch {}
+      remoteAudioRef.current.srcObject = null;
+    }
   }, []);
 
-  // Transcribe audio and send to DW — no fix-transcript call, Whisper is accurate enough
-  const transcribeAndSend = useCallback(async (blob: Blob) => {
-    if (!isMountedRef.current) return;
-    setState("processing");
-    setStatusText("Heard you…");
+  const handleClose = useCallback(() => {
+    teardown();
+    onClose();
+  }, [teardown, onClose]);
 
-    try {
-      const formData = new FormData();
-      const mimeType = blob.type || "audio/webm";
-      const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
-      formData.append("audio", blob, `recording.${ext}`);
-
-      const transcribeResp = await fetch("/api/transcribe", { method: "POST", body: formData });
-      if (!transcribeResp.ok) throw new Error("Transcription failed");
-      const { text: rawText } = await transcribeResp.json();
-      const finalText = rawText?.trim() ?? "";
-
-      if (!finalText) {
-        if (isMountedRef.current) startListening();
-        return;
-      }
-
-      // Show what we heard immediately — reassures user their voice was captured
-      if (isMountedRef.current) {
-        setLastUserText(finalText);
-        setStatusText("DW is thinking…");
-      }
-
-      // Send directly to DW — no extra LLM round-trip for transcript correction
-      if (isMountedRef.current) {
-        onSend(finalText);
-      }
-    } catch {
-      if (isMountedRef.current) {
-        setState("error");
-        setStatusText("Couldn't hear that — tap to try again");
-        setTimeout(() => { if (isMountedRef.current) startListening(); }, 1800);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onSend]);
-
-  const startListening = useCallback(async () => {
-    if (!isMountedRef.current) return;
-    cleanupRecording();
-    stopAllAudio();
-    setState("listening");
-    setStatusText("Listening…");
-    chunksRef.current = [];
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+  // Apply a new mode to a live session via session.update.
+  const applyMode = useCallback(
+    (next: DWMode) => {
+      const def = DW_MODES.find((m) => m.id === next);
+      if (!def) return;
+      sendEvent({
+        type: "session.update",
+        session: {
+          instructions: undefined, // server keeps base persona; we only nudge the mode addendum below
+          // We can't replace instructions wholesale without losing the user context summary
+          // baked in at session creation, so we layer the mode hint in via a system message.
         },
       });
-      streamRef.current = stream;
-
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtx();
-      audioContextRef.current = ctx;
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      recordingStartRef.current = Date.now();
-
-      levelIntervalRef.current = setInterval(() => {
-        if (!analyserRef.current || !isMountedRef.current) return;
-        analyserRef.current.getByteTimeDomainData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          const v = (dataArray[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / dataArray.length);
-        setAudioLevel(Math.min(1, rms * 8));
-
-        const elapsed = Date.now() - recordingStartRef.current;
-        // Don't start silence detection until minimum recording time has passed
-        if (elapsed < MIN_RECORDING_MS) return;
-
-        if (rms >= SILENCE_THRESHOLD) {
-          // Sound detected — cancel any pending silence timer
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-            silenceTimerRef.current = null;
-          }
-        } else {
-          // Silence — start countdown if not already running
-          if (!silenceTimerRef.current) {
-            silenceTimerRef.current = setTimeout(() => {
-              silenceTimerRef.current = null;
-              if (convStateRef.current === "listening" && mediaRecorderRef.current?.state !== "inactive") {
-                mediaRecorderRef.current?.stop();
-              }
-            }, SILENCE_DURATION_MS);
-          }
-        }
-      }, 60);
-
-      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaRecorderRef.current = mr;
-
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        cleanupRecording();
-        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
-        // If the recording is tiny, nothing was said — go back to listening
-        if (blob.size < 800) {
-          if (isMountedRef.current) startListening();
-          return;
-        }
-        await transcribeAndSend(blob);
-      };
-
-      mr.start(200);
-    } catch (e: any) {
-      setState("error");
-      setStatusText(e?.name === "NotAllowedError" ? "Microphone access denied" : "Could not start mic");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleanupRecording, stopAllAudio, transcribeAndSend]);
-
-  const speakText = useCallback(async (text: string) => {
-    if (!isMountedRef.current) return;
-    cleanupRecording();
-    setState("speaking");
-    setStatusText("DW is speaking…");
-
-    const stripped = text
-      .replace(/[#*`_~[\]()>]/g, "")
-      .replace(/\n+/g, " ")
-      .trim()
-      .slice(0, TTS_MAX_CHARS);
-
-    try {
-      const resp = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: stripped, voice: "nova", speed: TTS_SPEED }),
+      sendEvent({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "system",
+          content: [
+            {
+              type: "input_text",
+              text: `Mode switch → ${def.label}. ${def.systemAddendum}`,
+            },
+          ],
+        },
       });
-      if (!resp.ok) throw new Error("TTS failed");
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      currentAudioRef.current = audio;
+    },
+    [sendEvent]
+  );
 
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        currentAudioRef.current = null;
-        if (isMountedRef.current) {
-          setTimeout(() => startListening(), 300);
-        }
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(url);
-        currentAudioRef.current = null;
-        if (isMountedRef.current) startListening();
-      };
-      await audio.play();
-    } catch {
-      if (isMountedRef.current) setTimeout(() => startListening(), 400);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleanupRecording, startListening]);
+  const handleModeChange = useCallback(
+    (next: DWMode) => {
+      if (next === modeRef.current) return;
+      setMode(next);
+      applyMode(next);
+    },
+    [applyMode]
+  );
 
-  // Watch for new DW messages → speak them
-  useEffect(() => {
-    const lastMsg = messages[messages.length - 1];
-    if (messages.length <= messagesLenRef.current) return;
-    messagesLenRef.current = messages.length;
-    if (lastMsg?.role === "assistant") {
-      const text = lastMsg.content.replace(/[#*`_~[\]()>]/g, "").trim().slice(0, 320);
-      setLastDWText(text);
-      speakText(lastMsg.content);
-    }
-  }, [messages, speakText]);
+  const toggleMute = useCallback(() => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    const willMute = !muted;
+    stream.getAudioTracks().forEach((t) => (t.enabled = !willMute));
+    setMuted(willMute);
+    if (willMute) setState("muted");
+    else setState("listening");
+  }, [muted, setState]);
 
-  // Fall back to listening if isTyping goes false but we never got a new message
-  useEffect(() => {
-    if (!isTyping && convStateRef.current === "processing") {
-      setTimeout(() => {
-        if (convStateRef.current === "processing" && isMountedRef.current) startListening();
-      }, 600);
-    }
-  }, [isTyping, startListening]);
-
-  // Start on mount
+  // --- Connect on mount ---
   useEffect(() => {
     isMountedRef.current = true;
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.role === "assistant" && lastMsg.content.trim()) {
-      setTimeout(() => speakText(lastMsg.content), 200);
-    } else {
-      setTimeout(() => startListening(), 400);
-    }
-    return () => {
-      isMountedRef.current = false;
-      cleanupRecording();
-      stopAllAudio();
+
+    let cancelled = false;
+    const connect = async () => {
+      try {
+        // 1. Mint ephemeral session
+        const sessionResp = await fetch("/api/realtime/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            mode,
+            userContextSummary: userContextSummary || undefined,
+          }),
+        });
+        if (!sessionResp.ok) {
+          const j = await sessionResp.json().catch(() => ({}));
+          throw new Error((j as any)?.error || "Voice mode unavailable");
+        }
+        const { clientSecret, model } = (await sessionResp.json()) as {
+          clientSecret: string;
+          model: string;
+        };
+        if (cancelled) return;
+
+        // 2. Get mic
+        const localStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+        if (cancelled) {
+          localStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        localStreamRef.current = localStream;
+
+        // 3. Build peer connection
+        const pc = new RTCPeerConnection();
+        pcRef.current = pc;
+
+        // Remote audio
+        const remoteAudio = remoteAudioRef.current ?? new Audio();
+        remoteAudio.autoplay = true;
+        remoteAudioRef.current = remoteAudio;
+        pc.ontrack = (ev) => {
+          if (ev.streams && ev.streams[0]) {
+            remoteAudio.srcObject = ev.streams[0];
+          }
+        };
+
+        // Local mic
+        localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+        // 4. Data channel for events
+        const dc = pc.createDataChannel("oai-events");
+        dcRef.current = dc;
+        dc.onopen = () => {
+          if (!isMountedRef.current) return;
+          setState("idle");
+          setStatusText("Connected. Say hi.");
+          // Ask DW for a brief opening so the user hears it's alive.
+          sendEvent({
+            type: "response.create",
+            response: {
+              modalities: ["audio", "text"],
+              instructions:
+                "Greet the user in one short sentence. Sound natural — like answering a call from a friend. Then stop and wait.",
+            },
+          });
+        };
+        dc.onmessage = (ev) => handleServerEvent(ev.data);
+        dc.onerror = () => {
+          if (!isMountedRef.current) return;
+          setState("error");
+          setErrorText("Voice channel hiccup.");
+        };
+
+        pc.onconnectionstatechange = () => {
+          if (!isMountedRef.current) return;
+          const s = pc.connectionState;
+          if (s === "failed" || s === "disconnected" || s === "closed") {
+            if (convState !== "error") {
+              setState("error");
+              setStatusText("Connection dropped — tap to retry.");
+            }
+          }
+        };
+
+        // 5. Offer / answer
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const sdpResp = await fetch(
+          `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${clientSecret}`,
+              "Content-Type": "application/sdp",
+            },
+            body: offer.sdp,
+          }
+        );
+        if (!sdpResp.ok) throw new Error("Could not establish voice session.");
+        const answerSDP = await sdpResp.text();
+        await pc.setRemoteDescription({ type: "answer", sdp: answerSDP });
+      } catch (err: any) {
+        if (cancelled || !isMountedRef.current) return;
+        console.error("[dw-voice] connect failed", err);
+        setErrorText(err?.message || "Voice mode failed to start.");
+        setState("error");
+      }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      isMountedRef.current = false;
+      teardown();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const orbState = convState === "speaking" ? "speaking" : convState === "listening" ? "listening" : convState === "processing" ? "active" : "chat";
+  // --- Server event handler ---
+  const handleServerEvent = useCallback((raw: any) => {
+    let evt: any;
+    try {
+      evt = typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch {
+      return;
+    }
+    if (!evt?.type) return;
 
-  const AudioBars = () => {
-    const bars = 7;
-    return (
-      <div className="flex items-center gap-[3px] h-8">
-        {Array.from({ length: bars }).map((_, i) => {
-          const mid = Math.floor(bars / 2);
-          const dist = Math.abs(i - mid) / mid;
-          const base = 0.15 + (1 - dist) * 0.35;
-          const active = convState === "listening" ? Math.max(base, audioLevel * (1 - dist * 0.4)) : base * 0.5;
-          return (
-            <div
-              key={i}
-              className={cn(
-                "rounded-full transition-all duration-75",
-                convState === "listening" ? "bg-white/70" : "bg-white/25",
-              )}
-              style={{
-                width: 3,
-                height: `${Math.min(100, active * 100)}%`,
-              }}
-            />
-          );
-        })}
-      </div>
-    );
-  };
+    switch (evt.type) {
+      case "input_audio_buffer.speech_started":
+        if (!muted) {
+          setState("listening");
+          setStatusText("Listening…");
+        }
+        break;
+      case "input_audio_buffer.speech_stopped":
+        setState("thinking");
+        setStatusText("DW is thinking…");
+        break;
+      case "conversation.item.input_audio_transcription.completed": {
+        const text: string = (evt.transcript || "").trim();
+        if (text) {
+          setLastUserText(text);
+          userBufferRef.current = text;
+          try {
+            onSend(text);
+          } catch {}
+        }
+        break;
+      }
+      case "response.created":
+        setState("thinking");
+        setStatusText("DW is thinking…");
+        assistantBufferRef.current = "";
+        break;
+      case "response.audio.delta":
+        if (convState !== "speaking") {
+          setState("speaking");
+          setStatusText("DW is speaking…");
+        }
+        break;
+      case "response.audio_transcript.delta": {
+        const piece: string = evt.delta || "";
+        assistantBufferRef.current += piece;
+        const preview = assistantBufferRef.current.slice(-320);
+        setLastDWText(preview);
+        break;
+      }
+      case "response.audio_transcript.done":
+      case "response.done": {
+        const final = (assistantBufferRef.current || evt.transcript || "").trim();
+        if (final) {
+          setLastDWText(final.slice(-320));
+          try {
+            onAssistantTranscript?.(final);
+          } catch {}
+        }
+        assistantBufferRef.current = "";
+        if (!muted) {
+          setState("idle");
+          setStatusText("Your turn.");
+        }
+        break;
+      }
+      case "error": {
+        const msg = evt?.error?.message || "Something went sideways.";
+        console.error("[dw-voice] server error", evt);
+        setErrorText(msg);
+        setState("error");
+        break;
+      }
+      default:
+        // useful while iterating: console.debug("[dw-voice] evt", evt.type, evt);
+        break;
+    }
+  }, [convState, muted, onSend, onAssistantTranscript, setState]);
 
+  // ---------- UI ----------
   return (
-    <div
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-[radial-gradient(ellipse_at_center,_#1e1b4b_0%,_#0d0d1a_70%)] px-6 pb-10"
-      style={{ paddingTop: "env(safe-area-inset-top, 20px)" }}
-    >
-      {/* Top row: exit button */}
-      <div className="w-full flex justify-between items-center pt-4">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="voice-conversation">
+      {/* Top bar */}
+      <div className="flex items-center justify-between p-3 border-b">
         <Button
           variant="ghost"
           size="sm"
-          onClick={onClose}
-          className="text-white/40 hover:text-white hover:bg-white/10 rounded-full text-xs gap-1.5"
-          data-testid="button-switch-to-text"
+          onClick={handleClose}
+          data-testid="button-voice-close"
+          className="gap-1"
         >
-          <MessageSquare className="h-3.5 w-3.5" />
-          Switch to text
+          <X className="h-4 w-4" />
+          <span className="hidden sm:inline">Close</span>
         </Button>
+        <span className="text-xs text-muted-foreground" data-testid="text-voice-status">
+          {statusText}
+        </span>
         <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="text-white/50 hover:text-white hover:bg-white/10 rounded-full"
-          data-testid="button-end-voice-conversation"
+          variant={muted ? "default" : "ghost"}
+          size="sm"
+          onClick={toggleMute}
+          disabled={convState === "connecting" || convState === "error"}
+          data-testid="button-voice-mute"
+          aria-label={muted ? "Unmute" : "Mute"}
         >
-          <X className="h-5 w-5" />
+          {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
       </div>
 
-      {/* Center: orb + status + conversation context */}
-      <div className="flex flex-col items-center gap-5 flex-1 justify-center w-full">
-        <DWOrb size={120} state={orbState} />
-
-        <div className="flex flex-col items-center gap-2 min-h-[2.5rem]">
-          <p className="text-white/60 text-sm font-medium tracking-wide">
-            {convState === "processing" ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {statusText}
-              </span>
-            ) : statusText}
-          </p>
-          <AudioBars />
-        </div>
-
-        {/* Conversation context — shows what was said and what DW said */}
-        <div className="w-full max-w-sm space-y-3">
-          {lastUserText && (
-            <div className="flex justify-end">
-              <div className="max-w-[85%] bg-white/10 border border-white/10 rounded-2xl rounded-br-sm px-4 py-2.5">
-                <p className="text-[10px] text-white/35 uppercase tracking-wider mb-1 font-medium">You</p>
-                <p className="text-white/75 text-sm leading-relaxed line-clamp-4">
-                  {lastUserText}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {lastDWText && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] bg-white/[0.07] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-2.5 backdrop-blur-sm">
-                <p className="text-[10px] text-white/35 uppercase tracking-wider mb-1 font-medium">DW</p>
-                <p className="text-white/80 text-sm leading-relaxed line-clamp-5">
-                  {lastDWText}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Mode pills */}
+      <div className="flex flex-wrap gap-2 px-3 py-2 border-b overflow-x-auto">
+        {DW_MODES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => handleModeChange(m.id)}
+            data-testid={`button-voice-mode-${m.id}`}
+            className={cn(
+              "px-3 py-1.5 text-xs rounded-full border whitespace-nowrap transition-colors",
+              mode === m.id
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-foreground border-border hover:bg-accent"
+            )}
+            aria-pressed={mode === m.id}
+            aria-label={`Switch to ${m.label} mode — ${m.short}`}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
-      {/* Bottom hint */}
-      <div className="flex flex-col items-center gap-2 w-full">
-        <p className="text-white/20 text-xs text-center">
-          {convState === "listening"
-            ? "Just speak — it auto-detects when you're done"
-            : "Conversation saves automatically when you switch to text"}
+      {/* Center stage */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+        <DWOrb size={160} state={orbStateFor(convState)} />
+
+        <div className="min-h-[80px] max-w-md text-center space-y-2">
+          {convState === "connecting" && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting…
+            </div>
+          )}
+          {convState === "error" && (
+            <p className="text-sm text-destructive" data-testid="text-voice-error">
+              {errorText || "Something went wrong with voice mode."}
+            </p>
+          )}
+          {lastUserText && convState !== "connecting" && (
+            <p
+              className="text-xs text-muted-foreground italic"
+              data-testid="text-voice-user-transcript"
+            >
+              You: {lastUserText}
+            </p>
+          )}
+          {lastDWText && convState !== "connecting" && (
+            <p
+              className="text-base text-foreground leading-relaxed"
+              data-testid="text-voice-dw-transcript"
+            >
+              {lastDWText}
+            </p>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground max-w-xs text-center flex items-center gap-1">
+          <MessageSquare className="h-3 w-3" />
+          Just talk. DW will reply. Tap a mode above to shift the vibe.
         </p>
       </div>
     </div>

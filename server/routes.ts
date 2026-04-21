@@ -20,6 +20,7 @@ import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, g
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { registerRelationshipsRoutes } from "./routes/relationships";
+import { registerRealtimeRoutes } from "./routes/realtime";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { registerTriggerRoutes } from "./routes/triggers";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
@@ -465,6 +466,7 @@ export async function registerRoutes(
 
   // Relationships / Social Environment routes (people, interactions, aliveness)
   registerRelationshipsRoutes(app);
+  registerRealtimeRoutes(app);
 
   // Life System pillars / projects / generated document
   registerLifeSystemPillarRoutes(app);

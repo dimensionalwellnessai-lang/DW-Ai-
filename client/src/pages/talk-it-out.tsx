@@ -1356,12 +1356,29 @@ export function TalkItOutPage() {
       {voiceConvOpen && (
         <DWVoiceConversation
           messages={messages}
-          onSend={handleVoiceSend}
-          isTyping={isTyping}
+          userContextSummary={(() => {
+            const name = (user?.firstName || user?.username || "").trim();
+            const recentMoods = messages
+              .filter((m) => m.role === "user")
+              .slice(-3)
+              .map((m) => m.content.slice(0, 120))
+              .join(" | ");
+            const parts = [
+              name ? `Name: ${name}.` : "",
+              recentMoods ? `Recent things they've said: ${recentMoods}` : "",
+            ].filter(Boolean);
+            return parts.join("\n");
+          })()}
+          onSend={(text) => {
+            // Realtime owns the reply — just append the user's spoken turn to the visible log.
+            setMessages((prev) => [...prev, { role: "user", content: text }]);
+          }}
+          onAssistantTranscript={(text) => {
+            setMessages((prev) => [...prev, { role: "assistant", content: text }]);
+          }}
           onClose={() => {
             setVoiceConvOpen(false);
             stopSpeaking();
-            // Scroll to bottom so user can see the full voice conversation in text
             setTimeout(() => {
               messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 150);
