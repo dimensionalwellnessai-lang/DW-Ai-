@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,982 +6,571 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
-import { useUserRole } from "@/hooks/use-user-role";
-import { 
-  Sun, 
-  Sunset, 
-  Moon,
-  Heart,
-  Activity,
-  Calendar,
-  TrendingUp,
-  Zap,
-  Cloud,
-  Smile,
-  Frown,
-  Meh,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  ListChecks,
-  X,
-  Brain,
-  Compass,
-  Wallet,
-  Users,
-  Home,
-  Sprout,
-  Settings,
-  Bell,
-  BellOff
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { usePageMeta } from "@/hooks/use-page-meta";
+import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
+import {
+  Activity, BarChart3, Brain, Calendar, CalendarDays, Clock, Heart,
+  Loader2, RefreshCw, Sparkles, TrendingUp, LifeBuoy, Moon,
 } from "lucide-react";
 import {
-  type TimeOfDay,
-  type MoodWord,
-  type MoodCheckin,
-  type ActivityCompletion,
-  type DailySynopsis,
-  addMoodCheckin,
-  getTodayMoodCheckins,
-  hasMoodCheckinForTimeOfDay,
-  getDailySynopsis,
-  getWeeklySynopsis,
-  getMoodCheckinsForDate,
-  addActivityCompletion,
-  getTodayActivityCompletions,
-  updateActivityCompletion,
-  getActivityCompletionsForDate,
-  type TrackerSettings,
-  getTrackerSettings,
-  saveTrackerSettings,
-} from "@/lib/guest-storage";
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  BarChart, Bar, Cell,
+} from "recharts";
 import { cn } from "@/lib/utils";
-import { type SwitchId } from "@/lib/switch-storage";
-import { SWITCH_COLORS } from "@/lib/switch-colors";
-import { COPY } from "@/copy/en";
-import { usePageMeta } from "@/hooks/use-page-meta";
 
-const MOOD_OPTIONS: { word: MoodWord; icon: typeof Smile; color: string }[] = [
-  { word: "calm", icon: Cloud, color: "text-blue-400" },
-  { word: "content", icon: Smile, color: "text-green-400" },
-  { word: "hopeful", icon: Sparkles, color: "text-purple-400" },
-  { word: "grateful", icon: Heart, color: "text-pink-400" },
-  { word: "motivated", icon: Zap, color: "text-yellow-400" },
-  { word: "energized", icon: TrendingUp, color: "text-orange-400" },
-  { word: "tired", icon: Moon, color: "text-muted-foreground" },
-  { word: "anxious", icon: Activity, color: "text-amber-500" },
-  { word: "overwhelmed", icon: Cloud, color: "text-red-400" },
-  { word: "frustrated", icon: Frown, color: "text-orange-500" },
-  { word: "sad", icon: Frown, color: "text-blue-500" },
-  { word: "scattered", icon: Meh, color: "text-muted-foreground" },
-];
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const TIME_OF_DAY_CONFIG: Record<TimeOfDay, { label: string; icon: typeof Sun; range: string }> = {
-  morning: { label: "Morning", icon: Sun, range: "6am - 12pm" },
-  afternoon: { label: "Afternoon", icon: Sunset, range: "12pm - 6pm" },
-  evening: { label: "Evening", icon: Moon, range: "6pm - 12am" },
-};
+interface TimelinePoint {
+  id: string;
+  createdAt: string;
+  dateKey: string;
+  energyLevel: number;
+  moodLevel: number;
+  clarityLevel: number | null;
+  notes: string | null;
+  context: {
+    habits: { id: string; name: string }[];
+    triggerCount: number;
+    sleepHours: number | null;
+  };
+}
+interface TimelineResponse { days: number; points: TimelinePoint[]; }
 
-function getCurrentTimeOfDay(): TimeOfDay {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return "morning";
-  if (hour >= 12 && hour < 18) return "afternoon";
-  return "evening";
+interface MoodInsight {
+  id: string;
+  factor: string;
+  label: string;
+  effect: number;
+  sampleSize: number;
+  correlation: number | null;
+  confidence: "low" | "medium" | "high";
+  description: string | null;
+  computedAt: string;
 }
 
-function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+interface PatternsResponse {
+  byHour: { hour: number; avgMood: number | null; sampleSize: number }[];
+  byDayOfWeek: { day: number; avgMood: number | null; sampleSize: number }[];
+  totalLogs: number;
 }
 
-function formatDisplayDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("en-US", { 
-    weekday: "short", 
-    month: "short", 
-    day: "numeric" 
-  });
+function formatDay(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function MoodCheckinCard({ 
-  selectedMood, 
-  setSelectedMood,
-  customNote,
-  setCustomNote,
-  onSubmit,
-  isSubmitting,
-  timeOfDay,
-  hasCheckedIn
-}: { 
-  selectedMood: MoodWord | null;
-  setSelectedMood: (mood: MoodWord) => void;
-  customNote: string;
-  setCustomNote: (note: string) => void;
-  onSubmit: () => void;
-  isSubmitting: boolean;
-  timeOfDay: TimeOfDay;
-  hasCheckedIn: boolean;
+// ── Quick Log Card ─────────────────────────────────────────────────────────
+function QuickLogCard({
+  onLogged,
+}: {
+  onLogged: (logId: string, moodLevel: number) => void;
 }) {
-  const config = TIME_OF_DAY_CONFIG[timeOfDay];
-  const TimeIcon = config.icon;
+  const { toast } = useToast();
+  const [energy, setEnergy] = useState(5);
+  const [mood, setMood] = useState(5);
+  const [clarity, setClarity] = useState(5);
+  const [notes, setNotes] = useState("");
 
-  if (hasCheckedIn) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-green-500/20 dark:bg-green-400/25 p-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="font-medium text-foreground">
-                {config.label} check-in complete
-              </p>
-              <p className="text-sm text-muted-foreground">
-                You've already logged how you're feeling this {timeOfDay}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/mood", {
+        energyLevel: energy,
+        moodLevel: mood,
+        clarityLevel: clarity,
+        notes: notes || undefined,
+      });
+      return res.json() as Promise<{ id: string; moodLevel: number }>;
+    },
+    onSuccess: (log) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mood"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/timeline"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/patterns"] });
+      toast({ title: "Mood logged", description: `Mood ${mood}/10` });
+      setNotes("");
+      onLogged(log.id, log.moodLevel);
+    },
+    onError: () => {
+      toast({ title: "Couldn't save mood", variant: "destructive" });
+    },
+  });
 
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-purple-500/20 dark:bg-purple-400/25 p-2">
-            <TimeIcon className="h-5 w-5 text-purple-500 dark:text-purple-400" />
+        <CardTitle className="flex items-center gap-3 text-lg">
+          <div className="rounded-full bg-rose-500/15 p-2">
+            <Heart className="h-5 w-5 text-rose-500" />
           </div>
-          How are you feeling this {timeOfDay}?
+          Quick log
         </CardTitle>
-        <p className="text-sm text-muted-foreground">{config.range}</p>
+        <p className="text-sm text-muted-foreground">
+          Slide each from 1 (low) to 10 (high). Note is optional.
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {MOOD_OPTIONS.map(({ word, icon: Icon, color }) => (
-            <button
-              key={word}
-              type="button"
-              onClick={() => setSelectedMood(word)}
-              data-testid={`mood-option-${word}`}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border p-3 transition-all",
-                selectedMood === word
-                  ? "border-primary/50 bg-primary/10 ring-2 ring-primary/30"
-                  : "border-border hover-elevate"
-              )}
-            >
-              <Icon className={cn("h-6 w-6", color)} />
-              <span className="text-xs font-medium capitalize">
-                {word}
+        {[
+          { label: "Energy", value: energy, set: setEnergy, testId: "slider-energy" },
+          { label: "Mood",   value: mood,   set: setMood,   testId: "slider-mood" },
+          { label: "Clarity", value: clarity, set: setClarity, testId: "slider-clarity" },
+        ].map(row => (
+          <div key={row.label} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{row.label}</span>
+              <span className="text-sm font-mono text-muted-foreground" data-testid={`text-${row.label.toLowerCase()}-value`}>
+                {row.value}/10
               </span>
-            </button>
-          ))}
-        </div>
+            </div>
+            <Slider
+              min={1} max={10} step={1}
+              value={[row.value]}
+              onValueChange={(v) => row.set(v[0])}
+              data-testid={row.testId}
+            />
+          </div>
+        ))}
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            Add a note (optional)
-          </label>
-          <Textarea
-            value={customNote}
-            onChange={(e) => setCustomNote(e.target.value)}
-            placeholder="What's on your mind?"
-            className="resize-none"
-            rows={3}
-            data-testid="mood-note-input"
-          />
-        </div>
+        <Textarea
+          placeholder="What's on your mind? (optional)"
+          rows={2}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          data-testid="input-mood-notes"
+        />
 
         <Button
-          onClick={onSubmit}
-          disabled={!selectedMood || isSubmitting}
-          className="w-full font-semibold"
-          data-testid="submit-mood-checkin"
+          className="w-full"
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate()}
+          data-testid="button-save-mood"
         >
-          {isSubmitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Heart className="mr-2 h-4 w-4" />
-          )}
-          Log Mood
+          {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save entry
         </Button>
       </CardContent>
     </Card>
   );
 }
 
-function DailySynopsisCard({ synopsis }: { synopsis: DailySynopsis }) {
-  const { moodSummary, activitySummary, moodCheckins } = synopsis;
+// ── Timeline Tab ───────────────────────────────────────────────────────────
+function TimelineTab({ onPromptJournal }: { onPromptJournal: (logId: string) => void }) {
+  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [selected, setSelected] = useState<TimelinePoint | null>(null);
+
+  const q = useQuery<TimelineResponse>({
+    queryKey: ["/api/mood/timeline", { days }],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/mood/timeline?days=${days}`);
+      return res.json();
+    },
+  });
+
+  const chartData = useMemo(() => {
+    if (!q.data) return [];
+    // Reverse so oldest → newest left to right.
+    return [...q.data.points].reverse().map(p => ({
+      ...p,
+      dateLabel: formatDay(p.createdAt),
+    }));
+  }, [q.data]);
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-base">
-          <div className="rounded-full bg-blue-500/20 dark:bg-blue-400/25 p-2">
-            <Activity className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-          </div>
-          Today's Journey
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {moodCheckins.length === 0 ? (
-          <p className="text-center text-muted-foreground">
-            {COPY.moodTracker.emptyToday}
-          </p>
-        ) : (
-          <>
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-muted-foreground">Mood Journey</h4>
-              <div className="flex flex-wrap gap-2">
-                {(["morning", "afternoon", "evening"] as TimeOfDay[]).map((tod) => {
-                  const checkin = moodCheckins.find(c => c.timeOfDay === tod);
-                  const config = TIME_OF_DAY_CONFIG[tod];
-                  const TimeIcon = config.icon;
-                  
-                  return (
-                    <div
-                      key={tod}
-                      className={cn(
-                        "flex items-center gap-2 rounded-full px-3 py-1.5",
-                        checkin 
-                          ? "bg-primary/10 border border-primary/30"
-                          : "bg-muted border border-border"
-                      )}
-                    >
-                      <TimeIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm capitalize">
-                        {checkin ? checkin.mood : "—"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {([7, 30, 90] as const).map(n => (
+          <Button
+            key={n}
+            size="sm"
+            variant={days === n ? "default" : "outline"}
+            onClick={() => setDays(n)}
+            data-testid={`button-range-${n}`}
+          >
+            {n}d
+          </Button>
+        ))}
+      </div>
 
-            {moodSummary.dominantMood && (
-              <div className="rounded-xl border border-border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Most felt today</p>
-                <p className="mt-1 text-lg font-medium capitalize">
-                  {moodSummary.dominantMood}
-                </p>
-              </div>
-            )}
-          </>
-        )}
-
-        {activitySummary.total > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">Activities</h4>
-            <div className="flex items-center gap-4">
-              <div className="rounded-xl border border-border bg-muted/50 p-4 text-center flex-1">
-                <p className="text-2xl font-bold text-green-500">
-                  {activitySummary.completed}
-                </p>
-                <p className="text-xs text-muted-foreground">Completed</p>
-              </div>
-              <div className="rounded-xl border border-border bg-muted/50 p-4 text-center flex-1">
-                <p className="text-2xl font-bold text-purple-500">
-                  {activitySummary.completionRate}%
-                </p>
-                <p className="text-xs text-muted-foreground">Rate</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface PlanItem {
-  id: string;
-  switchId: SwitchId;
-  title: string;
-  estimateMinutes: number;
-  completed: boolean;
-  steps: string[];
-}
-
-const PLAN_STORAGE_KEY = "dw_weekly_plan";
-
-function getWeeklyPlan(): PlanItem[] {
-  try {
-    const stored = localStorage.getItem(PLAN_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error("Error reading plan:", e);
-  }
-  return [];
-}
-
-const SWITCH_ICONS: Record<SwitchId, typeof Zap> = {
-  body: Zap,
-  mind: Brain,
-  time: Clock,
-  purpose: Compass,
-  money: Wallet,
-  relationships: Users,
-  environment: Home,
-  identity: Sprout,
-};
-
-function ActivityCheckinCard({ 
-  onActivityLogged,
-  todayCompletions 
-}: { 
-  onActivityLogged: () => void;
-  todayCompletions: ActivityCompletion[];
-}) {
-  const { toast } = useToast();
-  const [planItems, setPlanItems] = useState<PlanItem[]>([]);
-  
-  useEffect(() => {
-    setPlanItems(getWeeklyPlan());
-  }, []);
-  
-  const incompletePlanItems = planItems.filter(item => !item.completed);
-  const today = formatDate(new Date());
-  
-  const getCompletionForActivity = (activityId: string) => {
-    return todayCompletions.find(c => c.activityId === activityId);
-  };
-  
-  const handleLogActivity = (item: PlanItem, completed: boolean, skipReason?: string) => {
-    const existingCompletion = getCompletionForActivity(item.id);
-    
-    if (existingCompletion) {
-      updateActivityCompletion(existingCompletion.id, {
-        completed,
-        skippedReason: skipReason,
-      });
-    } else {
-      addActivityCompletion({
-        date: today,
-        activityTitle: item.title,
-        activityId: item.id,
-        switchId: item.switchId,
-        completed,
-        skippedReason: skipReason,
-      });
-    }
-    
-    toast({
-      title: completed ? "Activity completed" : "Activity skipped",
-      description: item.title,
-    });
-    
-    onActivityLogged();
-  };
-  
-  if (planItems.length === 0) {
-    return (
       <Card>
-        <CardContent className="p-6">
-          <div className="text-center space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <ListChecks className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground">
-              No activities in your weekly plan yet.
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4" /> Mood / Energy / Clarity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {q.isLoading ? (
+            <Skeleton className="h-[260px] w-full" />
+          ) : chartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-12 text-center">
+              No mood logs in this window yet. Tap <strong>Log</strong> to add one.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.href = "/plan"}
-              data-testid="go-to-plan-btn"
-            >
-              Create Your Plan
-            </Button>
-          </div>
+          ) : (
+            <div className="h-[260px]" data-testid="chart-timeline">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} onClick={(e: any) => {
+                  const p = e?.activePayload?.[0]?.payload as TimelinePoint | undefined;
+                  if (p) setSelected(p);
+                }}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  />
+                  <Line type="monotone" dataKey="moodLevel" name="Mood" stroke="#ec4899" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="energyLevel" name="Energy" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="clarityLevel" name="Clarity" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </CardContent>
       </Card>
-    );
-  }
-  
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-green-500/20 dark:bg-green-400/25 p-2">
-            <ListChecks className="h-5 w-5 text-green-500 dark:text-green-400" />
-          </div>
-          Activity Check-in
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Did you complete any of these today?
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {incompletePlanItems.length === 0 ? (
-          <p className="text-center text-muted-foreground py-4">
-            All activities completed! Great work.
-          </p>
-        ) : (
-          incompletePlanItems.map((item) => {
-            const Icon = SWITCH_ICONS[item.switchId];
-            const colors = SWITCH_COLORS[item.switchId];
-            const completion = getCompletionForActivity(item.id);
-            const isLogged = !!completion;
-            
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl border p-4 transition-all",
-                  isLogged 
-                    ? completion.completed
-                      ? "border-green-500/30 dark:border-green-400/30 bg-green-500/10 dark:bg-green-400/15"
-                      : "border-border bg-muted/50"
-                    : "border-border bg-muted/30"
-                )}
+
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Recent entries</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {chartData.slice().reverse().slice(0, 8).map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelected(p)}
+                className="w-full flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left hover-elevate"
+                data-testid={`row-mood-${p.id}`}
               >
-                <div className={cn("rounded-full p-2", colors.bg)}>
-                  <Icon className={cn("h-4 w-4", colors.text)} />
+                <div className="flex flex-col items-center justify-center w-12 shrink-0">
+                  <span className="text-xs text-muted-foreground">{formatDay(p.createdAt)}</span>
+                  <span className="text-lg font-semibold">{p.moodLevel}</span>
                 </div>
-                
                 <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "font-medium truncate",
-                    isLogged && completion.completed ? "text-green-500" : ""
-                  )}>
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {item.switchId} • {item.estimateMinutes}min
-                  </p>
-                </div>
-                
-                {isLogged ? (
-                  <Badge 
-                    variant="secondary" 
-                    className={cn(
-                      "text-xs",
-                      completion.completed ? "bg-green-500/20 text-green-600 dark:text-green-400" : ""
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary">E {p.energyLevel}</Badge>
+                    {p.clarityLevel != null && <Badge variant="secondary">C {p.clarityLevel}</Badge>}
+                    {p.context.triggerCount > 0 && (
+                      <Badge variant="destructive" className="gap-1">
+                        <LifeBuoy className="h-3 w-3" /> {p.context.triggerCount}
+                      </Badge>
                     )}
-                  >
-                    {completion.completed ? "Done" : "Skipped"}
-                  </Badge>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleLogActivity(item, true)}
-                      className="h-8 w-8 bg-green-500/10 dark:bg-green-400/15 hover:bg-green-500/20 dark:hover:bg-green-400/25"
-                      data-testid={`complete-activity-${item.id}`}
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleLogActivity(item, false, "skipped")}
-                      data-testid={`skip-activity-${item.id}`}
-                    >
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    {p.context.habits.length > 0 && (
+                      <Badge variant="outline">{p.context.habits.length} habit{p.context.habits.length === 1 ? "" : "s"}</Badge>
+                    )}
+                    {p.context.sleepHours != null && (
+                      <Badge variant="outline" className="gap-1"><Moon className="h-3 w-3" /> {p.context.sleepHours.toFixed(1)}h</Badge>
+                    )}
+                  </div>
+                  {p.notes && (
+                    <p className="mt-1 text-sm text-muted-foreground truncate">{p.notes}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Sheet open={!!selected} onOpenChange={o => !o && setSelected(null)}>
+        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto" data-testid="sheet-day-context">
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{new Date(selected.createdAt).toLocaleString()}</SheetTitle>
+                <SheetDescription>
+                  Mood {selected.moodLevel}/10 · Energy {selected.energyLevel}/10
+                  {selected.clarityLevel != null && ` · Clarity ${selected.clarityLevel}/10`}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4 space-y-4">
+                {selected.notes && (
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Note</p>
+                    <p className="text-sm">{selected.notes}</p>
                   </div>
                 )}
-              </div>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TrackerSettingsCard() {
-  const { toast } = useToast();
-  const [settings, setSettings] = useState<TrackerSettings>(getTrackerSettings);
-  const [notificationsPermission, setNotificationsPermission] = useState<NotificationPermission | "unsupported">("default");
-  
-  useEffect(() => {
-    if ("Notification" in window) {
-      setNotificationsPermission(Notification.permission);
-    } else {
-      setNotificationsPermission("unsupported");
-    }
-  }, []);
-  
-  const handleRequestNotifications = async () => {
-    if ("Notification" in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationsPermission(permission);
-      if (permission === "granted") {
-        toast({
-          title: "Notifications enabled",
-          description: "You'll receive mood check-in reminders",
-        });
-      }
-    }
-  };
-  
-  const handleToggleSetting = (key: keyof TrackerSettings, value: boolean) => {
-    const updated = saveTrackerSettings({ [key]: value });
-    setSettings(updated);
-    toast({
-      title: "Settings updated",
-      description: value ? "Feature enabled" : "Feature disabled",
-    });
-  };
-  
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="rounded-full bg-purple-500/20 dark:bg-purple-400/25 p-2">
-            <Settings className="h-5 w-5 text-purple-500 dark:text-purple-400" />
-          </div>
-          Tracker Settings
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {notificationsPermission !== "granted" && notificationsPermission !== "unsupported" && (
-          <div className="rounded-xl border border-amber-500/30 dark:border-amber-400/30 bg-amber-500/10 dark:bg-amber-400/15 p-4">
-            <div className="flex items-start gap-3">
-              <BellOff className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium text-amber-600 dark:text-amber-400">Enable Notifications</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Get reminded to check in with how you're feeling
-                </p>
-                <Button
-                  onClick={handleRequestNotifications}
-                  size="sm"
-                  className="mt-3"
-                  variant="outline"
-                  data-testid="enable-notifications-btn"
-                >
-                  <Bell className="mr-2 h-4 w-4" />
-                  Enable Notifications
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {notificationsPermission === "granted" && (
-          <div className="rounded-xl border border-green-500/30 dark:border-green-400/30 bg-green-500/10 dark:bg-green-400/15 p-4">
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-green-500 dark:text-green-400" />
-              <p className="text-green-600 dark:text-green-400">Notifications are enabled</p>
-            </div>
-          </div>
-        )}
-        
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
-            <div className="space-y-1">
-              <Label htmlFor="mood-checkins" className="font-medium text-foreground">
-                Mood Check-ins
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Reminders to log your mood throughout the day
-              </p>
-            </div>
-            <Switch
-              id="mood-checkins"
-              checked={settings.moodCheckinsEnabled}
-              onCheckedChange={(checked) => handleToggleSetting("moodCheckinsEnabled", checked)}
-              data-testid="toggle-mood-checkins"
-            />
-          </div>
-          
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
-            <div className="space-y-1">
-              <Label htmlFor="activity-reminders" className="font-medium text-foreground">
-                Activity Reminders
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Get reminded about planned activities
-              </p>
-            </div>
-            <Switch
-              id="activity-reminders"
-              checked={settings.activityRemindersEnabled}
-              onCheckedChange={(checked) => handleToggleSetting("activityRemindersEnabled", checked)}
-              data-testid="toggle-activity-reminders"
-            />
-          </div>
-          
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
-            <div className="space-y-1">
-              <Label htmlFor="daily-synopsis" className="font-medium text-foreground">
-                Daily Synopsis
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                End-of-day summary of your mood and activities
-              </p>
-            </div>
-            <Switch
-              id="daily-synopsis"
-              checked={settings.dailySynopsisEnabled}
-              onCheckedChange={(checked) => handleToggleSetting("dailySynopsisEnabled", checked)}
-              data-testid="toggle-daily-synopsis"
-            />
-          </div>
-        </div>
-        
-        {settings.moodCheckinsEnabled && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">Check-in Times</h4>
-            <div className="flex flex-wrap gap-2">
-              {TIME_OF_DAY_CONFIG && Object.entries(TIME_OF_DAY_CONFIG).map(([tod, config]) => (
-                <Badge
-                  key={tod}
-                  variant="secondary"
-                >
-                  {config.icon && <config.icon className="mr-1 h-3 w-3" />}
-                  {config.label}
-                </Badge>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Morning (9am), Afternoon (2pm), Evening (8pm)
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function WeeklyCalendarView() {
-  const [weekOffset, setWeekOffset] = useState(0);
-  
-  const getWeekDates = () => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
-    
-    const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      dates.push(formatDate(date));
-    }
-    return dates;
-  };
-
-  const weekDates = getWeekDates();
-  const synopses = weekDates.map(date => getDailySynopsis(date));
-
-  const getMoodColor = (mood: string | null): string => {
-    if (!mood) return "bg-muted";
-    const moodConfig = MOOD_OPTIONS.find(m => m.word === mood);
-    if (!moodConfig) return "bg-muted";
-    
-    // Map text colors to their corresponding background colors for mood indicators
-    const colorMap: Record<string, string> = {
-      "text-blue-400": "bg-blue-500",
-      "text-green-400": "bg-green-500",
-      "text-purple-400": "bg-purple-500",
-      "text-pink-400": "bg-pink-500",
-      "text-yellow-400": "bg-yellow-500",
-      "text-orange-400": "bg-orange-500",
-      "text-muted-foreground": "bg-muted", // Semantic token for neutral/default mood
-      "text-amber-500": "bg-amber-500",
-      "text-red-400": "bg-red-500",
-      "text-orange-500": "bg-orange-600",
-      "text-blue-500": "bg-blue-600",
-    };
-    return colorMap[moodConfig.color] || "bg-muted";
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <div className="rounded-full bg-green-500/20 p-2">
-              <Calendar className="h-5 w-5 text-green-500" />
-            </div>
-            Weekly View
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setWeekOffset(weekOffset - 1)}
-              data-testid="prev-week-btn"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setWeekOffset(0)}
-              disabled={weekOffset === 0}
-            >
-              <span className="text-xs">Today</span>
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setWeekOffset(weekOffset + 1)}
-              disabled={weekOffset >= 0}
-              data-testid="next-week-btn"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates.map((dateStr, idx) => {
-            const synopsis = synopses[idx];
-            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-            const date = new Date(dateStr + "T00:00:00");
-            const isToday = dateStr === formatDate(new Date());
-            
-            return (
-              <div
-                key={dateStr}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl border p-2 text-center",
-                  isToday 
-                    ? "border-primary/50 bg-primary/10" 
-                    : "border-border bg-muted/30"
-                )}
-              >
-                <span className="text-xs font-medium text-muted-foreground">
-                  {dayNames[date.getDay()]}
-                </span>
-                <span className={cn(
-                  "text-sm font-semibold",
-                  isToday ? "text-primary" : ""
-                )}>
-                  {date.getDate()}
-                </span>
-                
-                <div className="flex gap-1 mt-1">
-                  {(["morning", "afternoon", "evening"] as TimeOfDay[]).map((tod) => {
-                    const checkin = synopsis.moodCheckins.find(c => c.timeOfDay === tod);
-                    return (
-                      <div
-                        key={tod}
-                        className={cn(
-                          "h-2 w-2 rounded-full",
-                          getMoodColor(checkin?.mood || null)
-                        )}
-                        title={checkin ? `${tod}: ${checkin.mood}` : `${tod}: not logged`}
-                      />
-                    );
-                  })}
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Context that day</p>
+                  <p className="text-sm">
+                    Habits: {selected.context.habits.length === 0 ? "none logged" : selected.context.habits.map(h => h.name).join(", ")}
+                  </p>
+                  <p className="text-sm">
+                    Triggers: {selected.context.triggerCount}
+                  </p>
+                  <p className="text-sm">
+                    Sleep: {selected.context.sleepHours != null ? `${selected.context.sleepHours.toFixed(1)}h` : "no wearable data"}
+                  </p>
                 </div>
-                
-                {synopsis.activitySummary.total > 0 && (
-                  <span className="text-xs text-muted-foreground mt-1">
-                    {synopsis.activitySummary.completionRate}%
-                  </span>
+                {selected.moodLevel <= 4 && (
+                  <Button
+                    className="w-full"
+                    onClick={() => { onPromptJournal(selected.id); setSelected(null); }}
+                    data-testid="button-journal-on-mood"
+                  >
+                    <Heart className="mr-2 h-4 w-4" />
+                    Reflect on this entry
+                  </Button>
                 )}
               </div>
-            );
-          })}
-        </div>
-        
-        <div className="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Sun className="h-3 w-3" /> Morning
-          </div>
-          <div className="flex items-center gap-1">
-            <Sunset className="h-3 w-3" /> Afternoon
-          </div>
-          <div className="flex items-center gap-1">
-            <Moon className="h-3 w-3" /> Evening
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }
 
-export default function MoodTrackerPage() {
-  usePageMeta("Mood Tracker", "Log and track your daily mood and emotional patterns.");
-  useTutorialStart("mood-tracker", 1000);
+// ── Correlations Tab ───────────────────────────────────────────────────────
+function CorrelationsTab() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useUserRole();
-  
-  const [activeTab, setActiveTab] = useState("checkin");
-  const [selectedMood, setSelectedMood] = useState<MoodWord | null>(null);
-  const [customNote, setCustomNote] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [todayCheckins, setTodayCheckins] = useState<MoodCheckin[]>([]);
-  const [todayCompletions, setTodayCompletions] = useState<ActivityCompletion[]>([]);
-  const [todaySynopsis, setTodaySynopsis] = useState<DailySynopsis | null>(null);
-  
-  const currentTimeOfDay = getCurrentTimeOfDay();
-  const today = formatDate(new Date());
-  
-  useEffect(() => {
-    loadTodayData();
-  }, []);
-  
-  const loadTodayData = () => {
-    const checkins = getTodayMoodCheckins();
-    const completions = getTodayActivityCompletions();
-    setTodayCheckins(checkins);
-    setTodayCompletions(completions);
-    setTodaySynopsis(getDailySynopsis(today));
-  };
-  
-  const hasCheckedInForCurrentTime = hasMoodCheckinForTimeOfDay(today, currentTimeOfDay);
-  
-  const handleSubmitMood = async () => {
-    if (!selectedMood) return;
-    
-    setIsSubmitting(true);
-    try {
-      addMoodCheckin({
-        date: today,
-        timeOfDay: currentTimeOfDay,
-        mood: selectedMood,
-        customNote: customNote || undefined,
-      });
-      
-      toast({
-        title: "Mood logged",
-        description: `Feeling ${selectedMood} this ${currentTimeOfDay}`,
-      });
-      
-      setSelectedMood(null);
-      setCustomNote("");
-      loadTodayData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log mood. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const q = useQuery<MoodInsight[]>({ queryKey: ["/api/mood/insights"] });
+
+  const refresh = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/mood/insights/refresh");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/insights"] });
+      toast({ title: "Insights recomputed" });
+    },
+    onError: () => toast({ title: "Couldn't refresh insights", variant: "destructive" }),
+  });
+
+  const insights = q.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          What lines up with how you feel.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={refresh.isPending}
+          onClick={() => refresh.mutate()}
+          data-testid="button-refresh-insights"
+        >
+          {refresh.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Recompute
+        </Button>
+      </div>
+
+      {q.isLoading ? (
+        <Skeleton className="h-32 w-full" />
+      ) : insights.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center space-y-3">
+            <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              No insights yet. Log mood for at least 5 days, then tap Recompute.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        insights.map(i => (
+          <Card key={i.id} data-testid={`card-insight-${i.factor}`}>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{i.label}</p>
+                  {i.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{i.description}</p>
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1 text-sm font-mono font-semibold",
+                    i.effect >= 0 ? "bg-emerald-500/15 text-emerald-600" : "bg-rose-500/15 text-rose-600",
+                  )}
+                  data-testid={`text-effect-${i.factor}`}
+                >
+                  {i.effect >= 0 ? "+" : ""}{i.effect.toFixed(1)}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">{i.confidence} confidence</Badge>
+                <span>n={i.sampleSize} days</span>
+                {i.correlation != null && <span>· r={i.correlation.toFixed(2)}</span>}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
+
+// ── Patterns Tab ───────────────────────────────────────────────────────────
+function PatternsTab() {
+  const q = useQuery<PatternsResponse>({ queryKey: ["/api/mood/patterns"] });
+
+  const hourData = (q.data?.byHour ?? []).map(h => ({
+    label: `${h.hour}`,
+    mood: h.avgMood ?? 0,
+    n: h.sampleSize,
+  }));
+  const dowData = (q.data?.byDayOfWeek ?? []).map(d => ({
+    label: DAY_NAMES[d.day],
+    mood: d.avgMood ?? 0,
+    n: d.sampleSize,
+  }));
+
+  function colorFor(mood: number, n: number) {
+    if (n === 0) return "hsl(var(--muted))";
+    if (mood >= 7) return "#10b981";
+    if (mood >= 5) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock className="h-4 w-4" /> Mood by hour of day
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {q.isLoading ? (
+            <Skeleton className="h-[200px] w-full" />
+          ) : (q.data?.totalLogs ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              Log a few entries across different times to see patterns.
+            </p>
+          ) : (
+            <div className="h-[200px]" data-testid="chart-hour">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={hourData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  />
+                  <Bar dataKey="mood">
+                    {hourData.map((d, i) => (
+                      <Cell key={i} fill={colorFor(d.mood, d.n)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarDays className="h-4 w-4" /> Mood by day of week
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {q.isLoading ? (
+            <Skeleton className="h-[200px] w-full" />
+          ) : (q.data?.totalLogs ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              Not enough data yet.
+            </p>
+          ) : (
+            <div className="h-[200px]" data-testid="chart-dow">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dowData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  />
+                  <Bar dataKey="mood">
+                    {dowData.map((d, i) => (
+                      <Cell key={i} fill={colorFor(d.mood, d.n)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Page shell ─────────────────────────────────────────────────────────────
+export default function MoodTrackerPage() {
+  usePageMeta("Mood Tracker", "Log and track your daily mood, see correlations and patterns.");
+  useTutorialStart("mood-tracker", 1000);
+  const [tab, setTab] = useState("timeline");
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [pendingMoodLogId, setPendingMoodLogId] = useState<string | null>(null);
+
+  const promptJournal = (logId: string) => {
+    setPendingMoodLogId(logId);
+    setJournalOpen(true);
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader 
-        title="Mood & Activity Tracker" 
-        showBack 
-        backPath="/command-center"
-      />
-      
+      <PageHeader title="Mood Tracker" showBack backPath="/command-center" />
+
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-2xl space-y-6 p-4 pb-24 page-enter" data-tour="mood-tracker">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="checkin" data-testid="tab-checkin">
-              <Heart className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Check-in</span>
-            </TabsTrigger>
-            <TabsTrigger value="today" data-testid="tab-today">
-              <Activity className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Today</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" data-testid="tab-history">
-              <Calendar className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">History</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" data-testid="tab-settings">
-              <Settings className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Settings</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="checkin" className="mt-6 space-y-6">
-            <MoodCheckinCard
-              selectedMood={selectedMood}
-              setSelectedMood={setSelectedMood}
-              customNote={customNote}
-              setCustomNote={setCustomNote}
-              onSubmit={handleSubmitMood}
-              isSubmitting={isSubmitting}
-              timeOfDay={currentTimeOfDay}
-              hasCheckedIn={hasCheckedInForCurrentTime}
-            />
-            
-            <ActivityCheckinCard
-              onActivityLogged={loadTodayData}
-              todayCompletions={todayCompletions}
-            />
-            
-            {todayCheckins.length > 0 && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Today's Check-ins</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {todayCheckins
-                      .sort((a, b) => {
-                        const order = { morning: 0, afternoon: 1, evening: 2 };
-                        return order[a.timeOfDay] - order[b.timeOfDay];
-                      })
-                      .map((checkin) => {
-                        const config = TIME_OF_DAY_CONFIG[checkin.timeOfDay];
-                        const TimeIcon = config.icon;
-                        const moodConfig = MOOD_OPTIONS.find(m => m.word === checkin.mood);
-                        const MoodIcon = moodConfig?.icon || Smile;
-                        
-                        return (
-                          <div
-                            key={checkin.id}
-                            className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3"
-                          >
-                            <div className="rounded-full bg-muted p-1.5">
-                              <TimeIcon className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <MoodIcon className={cn("h-4 w-4", moodConfig?.color)} />
-                                <span className="font-medium capitalize">
-                                  {checkin.mood}
-                                </span>
-                                <Badge variant="secondary" className="text-xs">
-                                  {config.label}
-                                </Badge>
-                              </div>
-                              {checkin.customNote && (
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                  {checkin.customNote}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="today" className="mt-6 space-y-6">
-            {todaySynopsis && <DailySynopsisCard synopsis={todaySynopsis} />}
-          </TabsContent>
-          
-          <TabsContent value="history" className="mt-6 space-y-6">
-            <WeeklyCalendarView />
-          </TabsContent>
-          
-          <TabsContent value="settings" className="mt-6 space-y-6">
-            <TrackerSettingsCard />
-          </TabsContent>
-        </Tabs>
+        <div className="mx-auto max-w-2xl space-y-4 p-4 pb-24" data-tour="mood-tracker">
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="timeline" data-testid="tab-timeline">
+                <TrendingUp className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Timeline</span>
+              </TabsTrigger>
+              <TabsTrigger value="correlations" data-testid="tab-correlations">
+                <Brain className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Correlations</span>
+              </TabsTrigger>
+              <TabsTrigger value="patterns" data-testid="tab-patterns">
+                <BarChart3 className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Patterns</span>
+              </TabsTrigger>
+              <TabsTrigger value="log" data-testid="tab-log">
+                <Heart className="mr-1 h-4 w-4" />
+                <span className="hidden sm:inline">Log</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="timeline" className="mt-4">
+              <TimelineTab onPromptJournal={promptJournal} />
+            </TabsContent>
+            <TabsContent value="correlations" className="mt-4">
+              <CorrelationsTab />
+            </TabsContent>
+            <TabsContent value="patterns" className="mt-4">
+              <PatternsTab />
+            </TabsContent>
+            <TabsContent value="log" className="mt-4">
+              <QuickLogCard
+                onLogged={(logId, moodLevel) => {
+                  if (moodLevel <= 4) promptJournal(logId);
+                }}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-      </div>
+
+      <JournalPromptSheet
+        open={journalOpen}
+        onOpenChange={setJournalOpen}
+        moodLogId={pendingMoodLogId}
+        intro="That's a heavy entry. A small reflection can help. Skip any prompt."
+      />
     </div>
   );
 }

@@ -251,6 +251,9 @@ import {
   dwJournalEntries,
   type DwJournalEntry,
   type InsertDwJournalEntry,
+  moodInsights,
+  type MoodInsight,
+  type InsertMoodInsight,
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
@@ -363,6 +366,10 @@ export interface IStorage {
   getRecentMoodLogs(userId: string, sinceDate: Date): Promise<{ logs: MoodLog[]; hasPriorLogs: boolean }>;
   getTodaysMoodLog(userId: string): Promise<MoodLog | undefined>;
   createMoodLog(log: InsertMoodLog): Promise<MoodLog>;
+  getMoodLog(id: string): Promise<MoodLog | undefined>;
+  getMoodInsights(userId: string): Promise<MoodInsight[]>;
+  replaceMoodInsights(userId: string, insights: InsertMoodInsight[]): Promise<MoodInsight[]>;
+  getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]>;
 
   getCheckIns(userId: string): Promise<CheckIn[]>;
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
@@ -1202,6 +1209,37 @@ export class DatabaseStorage implements IStorage {
   async createMoodLog(log: InsertMoodLog): Promise<MoodLog> {
     const [created] = await db.insert(moodLogs).values(log).returning();
     return created;
+  }
+
+  async getMoodLog(id: string): Promise<MoodLog | undefined> {
+    const [row] = await db.select().from(moodLogs).where(eq(moodLogs.id, id)).limit(1);
+    return row || undefined;
+  }
+
+  async getMoodInsights(userId: string): Promise<MoodInsight[]> {
+    return db.select()
+      .from(moodInsights)
+      .where(eq(moodInsights.userId, userId))
+      .orderBy(desc(sql`abs(${moodInsights.effect})`));
+  }
+
+  async replaceMoodInsights(userId: string, rows: InsertMoodInsight[]): Promise<MoodInsight[]> {
+    // Atomic-ish replace: delete then insert. Done in a transaction so the user
+    // never sees a partial state.
+    return await db.transaction(async (tx) => {
+      await tx.delete(moodInsights).where(eq(moodInsights.userId, userId));
+      if (rows.length === 0) return [];
+      return tx.insert(moodInsights)
+        .values(rows.map(r => ({ ...r, userId })))
+        .returning();
+    });
+  }
+
+  async getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]> {
+    return db.select()
+      .from(dwJournalEntries)
+      .where(and(eq(dwJournalEntries.userId, userId), eq(dwJournalEntries.moodLogId, moodLogId)))
+      .orderBy(desc(dwJournalEntries.createdAt));
   }
 
   async getCheckIns(userId: string): Promise<CheckIn[]> {

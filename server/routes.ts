@@ -4067,6 +4067,207 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
     }
   });
 
+  // ── Mood Tracker v2: timeline + correlations + patterns ────────────────
+  // GET /api/mood/timeline?days=30 – mood logs in the window plus per-day
+  // context (habit completions, trigger events, sleep hours if available).
+  app.get("/api/mood/timeline", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const days = Math.max(1, Math.min(parseInt(String(req.query.days ?? "30"), 10) || 30, 365));
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      const { logs } = await storage.getRecentMoodLogs(userId, since);
+
+      // Build per-day context: count of habit logs, count of trigger events,
+      // average sleep hours (if any wearable data present).
+      const habitsList = await storage.getHabits(userId);
+      const habitLogsByDay = new Map<string, { id: string; name: string }[]>();
+      for (const h of habitsList) {
+        for (const log of await storage.getHabitLogs(h.id)) {
+          if (!log.completedAt) continue;
+          const k = log.completedAt.toISOString().slice(0, 10);
+          if (new Date(k) < since) continue;
+          const arr = habitLogsByDay.get(k) ?? [];
+          arr.push({ id: h.id, name: h.title ?? "habit" });
+          habitLogsByDay.set(k, arr);
+        }
+      }
+
+      const triggers = await storage.listTriggerEvents(userId, 200);
+      const triggersByDay = new Map<string, number>();
+      for (const t of triggers) {
+        if (!t.createdAt) continue;
+        const k = t.createdAt.toISOString().slice(0, 10);
+        triggersByDay.set(k, (triggersByDay.get(k) ?? 0) + 1);
+      }
+
+      const sleepByDay = new Map<string, number>();
+      try {
+        const wearable = await storage.getWearableData(userId, 1000);
+        const buckets = new Map<string, { sum: number; n: number }>();
+        for (const w of wearable) {
+          const ts = w.recordedAt ?? w.timestamp;
+          if (!ts) continue;
+          let hours: number | null = null;
+          if (w.metricKind === "sleep_minutes" && typeof w.metricValue === "number") {
+            hours = w.metricValue / 60;
+          }
+          if (hours == null) continue;
+          const k = ts.toISOString().slice(0, 10);
+          const b = buckets.get(k) ?? { sum: 0, n: 0 };
+          b.sum += hours;
+          b.n += 1;
+          buckets.set(k, b);
+        }
+        Array.from(buckets.entries()).forEach(([k, { sum, n }]) => sleepByDay.set(k, sum / n));
+      } catch {
+        // wearable optional
+      }
+
+      const points = logs.map(log => {
+        const k = log.createdAt ? log.createdAt.toISOString().slice(0, 10) : "";
+        return {
+          id: log.id,
+          createdAt: log.createdAt,
+          dateKey: k,
+          energyLevel: log.energyLevel,
+          moodLevel: log.moodLevel,
+          clarityLevel: log.clarityLevel,
+          notes: log.notes,
+          context: {
+            habits: habitLogsByDay.get(k) ?? [],
+            triggerCount: triggersByDay.get(k) ?? 0,
+            sleepHours: sleepByDay.get(k) ?? null,
+          },
+        };
+      });
+
+      res.json({ days, points });
+    } catch (error) {
+      console.error("mood/timeline error:", error);
+      res.status(500).json({ error: "Failed to load mood timeline" });
+    }
+  });
+
+  // GET /api/mood/insights – cached correlation insights.
+  app.get("/api/mood/insights", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const insights = await storage.getMoodInsights(userId);
+      res.json(insights);
+    } catch (error) {
+      console.error("mood/insights error:", error);
+      res.status(500).json({ error: "Failed to load insights" });
+    }
+  });
+
+  // POST /api/mood/insights/refresh – recompute on demand.
+  app.post("/api/mood/insights/refresh", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { computeMoodInsights } = await import("./mood-insights");
+      await computeMoodInsights(userId, 90);
+      const insights = await storage.getMoodInsights(userId);
+      res.json(insights);
+    } catch (error) {
+      console.error("mood/insights/refresh error:", error);
+      res.status(500).json({ error: "Failed to refresh insights" });
+    }
+  });
+
+  // GET /api/mood/patterns – hour-of-day + day-of-week aggregates.
+  app.get("/api/mood/patterns", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const { logs } = await storage.getRecentMoodLogs(userId, since);
+
+      const hourBuckets: Array<{ sum: number; n: number }> =
+        Array.from({ length: 24 }, () => ({ sum: 0, n: 0 }));
+      const dowBuckets: Array<{ sum: number; n: number }> =
+        Array.from({ length: 7 }, () => ({ sum: 0, n: 0 }));
+
+      for (const log of logs) {
+        if (!log.createdAt) continue;
+        const d = new Date(log.createdAt);
+        hourBuckets[d.getHours()].sum += log.moodLevel;
+        hourBuckets[d.getHours()].n += 1;
+        dowBuckets[d.getDay()].sum += log.moodLevel;
+        dowBuckets[d.getDay()].n += 1;
+      }
+
+      const byHour = hourBuckets.map((b, hour) => ({
+        hour, avgMood: b.n > 0 ? Number((b.sum / b.n).toFixed(2)) : null, sampleSize: b.n,
+      }));
+      const byDayOfWeek = dowBuckets.map((b, day) => ({
+        day, avgMood: b.n > 0 ? Number((b.sum / b.n).toFixed(2)) : null, sampleSize: b.n,
+      }));
+      res.json({ byHour, byDayOfWeek, totalLogs: logs.length });
+    } catch (error) {
+      console.error("mood/patterns error:", error);
+      res.status(500).json({ error: "Failed to load patterns" });
+    }
+  });
+
+  // POST /api/mood/journal – save a journal-on-mood reflection (3 prompt
+  // answers) linked back to the mood log that triggered it.
+  app.post("/api/mood/journal", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const schema = z.object({
+        moodLogId: z.string().min(1),
+        whatHappened: z.string().max(4000).optional().default(""),
+        whatINeed: z.string().max(4000).optional().default(""),
+        toAFriend: z.string().max(4000).optional().default(""),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.flatten() });
+      }
+      const moodLog = await storage.getMoodLog(parsed.data.moodLogId);
+      if (!moodLog || moodLog.userId !== userId) {
+        return res.status(404).json({ error: "Mood log not found" });
+      }
+      const { whatHappened, whatINeed, toAFriend } = parsed.data;
+      const story = [
+        whatHappened ? `**What happened**\n${whatHappened.trim()}` : null,
+        whatINeed ? `**What I need right now**\n${whatINeed.trim()}` : null,
+        toAFriend ? `**What I'd tell a friend feeling this**\n${toAFriend.trim()}` : null,
+      ].filter(Boolean).join("\n\n") || "(no reflection text provided)";
+      const entry = await storage.createDwJournalEntry({
+        userId,
+        title: `Mood reflection · ${new Date().toLocaleDateString()}`,
+        story,
+        quotes: [],
+        tags: ["mood-reflection"],
+        sourceConversationId: null,
+        moodLogId: parsed.data.moodLogId,
+      } as never);
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("mood/journal error:", error);
+      res.status(500).json({ error: "Failed to save reflection" });
+    }
+  });
+
+  // GET /api/mood/:id/journal – list journal entries for a single mood log.
+  app.get("/api/mood/:id/journal", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const moodLog = await storage.getMoodLog(req.params.id);
+      if (!moodLog || moodLog.userId !== userId) {
+        return res.status(404).json({ error: "Mood log not found" });
+      }
+      const entries = await storage.getJournalEntriesByMood(userId, req.params.id);
+      res.json(entries);
+    } catch (error) {
+      console.error("mood/:id/journal error:", error);
+      res.status(500).json({ error: "Failed to load mood journal entries" });
+    }
+  });
+
   app.get("/api/schedule", requireAuth, async (req, res) => {
     const blocks = await storage.getScheduleBlocks(req.session.userId!);
     res.json(blocks);

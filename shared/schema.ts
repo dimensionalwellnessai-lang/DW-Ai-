@@ -2714,6 +2714,9 @@ export const insertDwInsightSchema = createInsertSchema(dwInsights).omit({
 });
 
 // DW Journal Entries – AI-generated narrative journal stories from conversations
+// Also used by the Mood Tracker journal-on-mood prompt flow: when a user logs a
+// low mood (≤4), the answers to the 3 reflection prompts are saved here with
+// `moodLogId` set to link the journal entry back to the originating mood log.
 export const dwJournalEntries = pgTable("dw_journal_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -2722,9 +2725,55 @@ export const dwJournalEntries = pgTable("dw_journal_entries", {
   quotes: jsonb("quotes"),                      // string[] – quotes included in story
   tags: jsonb("tags"),                          // string[] – theme tags
   sourceConversationId: varchar("source_conversation_id"),
+  // Nullable FK back to the mood log that triggered this journal entry (for
+  // journal-on-mood reflections). Existing AI-generated entries leave this null.
+  moodLogId: varchar("mood_log_id").references(() => moodLogs.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Mood Insights – cached correlation results for the Mood Tracker → Correlations
+// tab. Recomputed daily (or on-demand via /api/mood/insights/refresh) by the
+// server-side correlation engine in `server/mood-insights.ts`. Each row is a
+// single "X is correlated with your mood" fact with an effect size + sample
+// size + computed timestamp.
+export const moodInsights = pgTable("mood_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Stable factor key, e.g. "habit:abc123", "trigger_event", "meditation",
+  // "sleep_hours", "habit_count". Used as the upsert dedupe key per user.
+  factor: text("factor").notNull(),
+  // Human-readable label shown to the user, e.g. "Days you meditate".
+  label: text("label").notNull(),
+  // Effect size on mood (1-10 scale). Positive = mood improves, negative = drops.
+  effect: real("effect").notNull(),
+  // Number of paired data points used in the computation.
+  sampleSize: integer("sample_size").notNull(),
+  // Pearson r (-1..1) for diagnostic / confidence display.
+  correlation: real("correlation"),
+  // "low" | "medium" | "high" – computed from |r| + sample size.
+  confidence: text("confidence").notNull(),
+  // Optional one-line plain-English explanation, e.g.
+  // "your mood is +1.3 on days you meditate".
+  description: text("description"),
+  computedAt: timestamp("computed_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("mood_insights_user_factor_idx").on(t.userId, t.factor),
+]);
+
+export const moodInsightsRelations = relations(moodInsights, ({ one }) => ({
+  user: one(users, {
+    fields: [moodInsights.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertMoodInsightSchema = createInsertSchema(moodInsights).omit({
+  id: true,
+  computedAt: true,
+});
+export type MoodInsight = typeof moodInsights.$inferSelect;
+export type InsertMoodInsight = z.infer<typeof insertMoodInsightSchema>;
 
 export const dwJournalEntriesRelations = relations(dwJournalEntries, ({ one }) => ({
   user: one(users, {

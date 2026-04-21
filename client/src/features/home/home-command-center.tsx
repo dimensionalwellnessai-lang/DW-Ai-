@@ -39,6 +39,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import type { TriggerEventListResponse } from "@/lib/triggers";
 import { ProjectsListSheet } from "@/components/life-system/projects-list-sheet";
+import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import { useToast } from "@/hooks/use-toast";
 
 // Map a quick "how I feel right now" chip to a mood-log payload. The shape
@@ -116,6 +117,8 @@ export default function HomeCommandCenter() {
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
   const [triggerOpen, setTriggerOpen] = useState(false);
   const [projectsSheetOpen, setProjectsSheetOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
+  const [journalMoodLogId, setJournalMoodLogId] = useState<string | null>(null);
   const { toast } = useToast();
   const triggersQ = useQuery<TriggerEventListResponse>({
     queryKey: ["/api/trigger-events"],
@@ -123,15 +126,24 @@ export default function HomeCommandCenter() {
   const weekStats = triggersQ.data?.week;
 
   const moodChipMutation = useMutation({
-    mutationFn: (label: keyof typeof FEELING_CHIPS) =>
-      apiRequest("POST", "/api/mood", FEELING_CHIPS[label]),
-    onSuccess: (_data, label) => {
+    mutationFn: async (label: keyof typeof FEELING_CHIPS) => {
+      const res = await apiRequest("POST", "/api/mood", FEELING_CHIPS[label]);
+      const log = (await res.json()) as { id: string; moodLevel: number };
+      return { label, log };
+    },
+    onSuccess: ({ label, log }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/mood"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mood/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mood/timeline"] });
       toast({
         title: `Logged: ${label}`,
         description: "DW will use this to shape today's check-ins.",
       });
+      // Journal-on-mood: low chips immediately offer a 3-prompt reflection.
+      if (label === "Stressed" || label === "Off") {
+        setJournalMoodLogId(log.id);
+        setJournalOpen(true);
+      }
     },
     onError: () => {
       toast({
@@ -427,6 +439,12 @@ export default function HomeCommandCenter() {
       <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
       <TriggerProtocolSheet open={triggerOpen} onOpenChange={setTriggerOpen} />
       <ProjectsListSheet open={projectsSheetOpen} onOpenChange={setProjectsSheetOpen} />
+      <JournalPromptSheet
+        open={journalOpen}
+        onOpenChange={setJournalOpen}
+        moodLogId={journalMoodLogId}
+        intro="That entry was on the heavier side. Want to add a small reflection? Skip any prompt."
+      />
     </div>
   );
 }
