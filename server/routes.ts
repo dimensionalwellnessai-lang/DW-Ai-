@@ -26,6 +26,7 @@ import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { registerTriggerRoutes } from "./routes/triggers";
 import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
+import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
@@ -483,6 +484,9 @@ export async function registerRoutes(
 
   // Spiritual workspace: meditation library/sessions, prayer journal, cosmic feed
   registerSpiritualRoutes(app);
+
+  // Wearable + Screen Time Manager (Apple Health + Screen Time end-to-end)
+  registerWearablesRoutes(app);
   // Idempotent seed for the meditation library — fire-and-forget on boot.
   void seedMeditationLibrary();
 
@@ -2136,7 +2140,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs, wellnessPrefs] = await Promise.all([
+      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs, wellnessPrefs, yesterdayMetrics] = await Promise.all([
         storage.getUser(userId),
         storage.getGoals(userId),
         storage.getHabits(userId),
@@ -2149,6 +2153,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         storage.getUserProfile(userId),
         storage.getUserSystemPreferences(userId),
         storage.getWellnessPreferences(userId),
+        getYesterdayHeadlineMetrics(userId).catch(() => null),
       ]);
       
       const today = new Date();
@@ -2220,6 +2225,9 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         },
         wellnessFocus: userProfile?.goals || [],
         peakMotivationTime: systemPrefs?.preferredWakeTime || undefined,
+        // Yesterday's headline metrics from connected wearables / Screen Time.
+        // DW uses these to answer questions like "why am I tired?" with real data.
+        yesterdayMetrics: yesterdayMetrics || undefined,
         coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
           ? (user!.coachingMode as CoachingMode)
           : "gentle",
@@ -3526,7 +3534,10 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       const completedGoalsCount = goals.filter(g => !g.isActive && (g.progress ?? 0) >= 100).length;
       const activeHabitsCount = habits.filter(h => h.isActive).length;
       const activeRoutinesCount = routines.filter(r => r.isActive).length;
-      
+
+      // Sleep + Screen-Time mood factors from the wearable pipeline.
+      const moodFactors = await getMoodCorrelationFactors(userId, days).catch(() => ({ factors: [], sampleSize: 0 }));
+
       res.json({
         period: `${days} days`,
         moodTrends: {
@@ -3535,6 +3546,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
           averageClarity: Math.round(avgClarity * 10) / 10,
           totalLogs: recentMoods.length
         },
+        moodFactors: moodFactors.factors,
         progress: {
           activeGoals: activeGoalsCount,
           completedGoals: completedGoalsCount,

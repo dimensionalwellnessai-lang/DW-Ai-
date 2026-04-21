@@ -56,6 +56,7 @@ const DIMENSION_SECTIONS: MenuSection[] = [
       { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
       { id: "workout-analytics", name: "📊 Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
       { id: "health-data", name: "❤️ Health Data", path: "/health-data", icon: Activity, dimension: "body" },
+      { id: "wearable-manager", name: "⌚ Wearables & Screen Time", path: "/wearable-manager", icon: Activity, dimension: "body" },
       { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
       { id: "body-scan", name: "🔄 Body Scan", path: "/recovery", icon: RefreshCw, dimension: "body" },
     ]

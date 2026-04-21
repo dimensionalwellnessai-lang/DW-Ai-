@@ -1806,6 +1806,12 @@ export const wearableDevices = pgTable("wearable_devices", {
   manufacturer: text("manufacturer"),
   isActive: boolean("is_active").default(true),
   lastSyncedAt: timestamp("last_synced_at"),
+  // Wearable Manager fields:
+  source: text("source"), // apple_health | screen_time | whoop | oura | garmin
+  // OAuth tokens are encrypted at rest via server/routes/_encryption.ts
+  accessTokenEnc: text("access_token_enc"),
+  refreshTokenEnc: text("refresh_token_enc"),
+  tokenExpiresAt: timestamp("token_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1829,8 +1835,20 @@ export const wearableData = pgTable("wearable_data", {
   hrvScore: integer("hrv_score"), // Heart Rate Variability
   detectedMood: text("detected_mood"), // calm, energetic, stressed, focused, relaxed
   biometricData: jsonb("biometric_data"), // Additional data
+  // Wearable Manager fields (Apple Health / Whoop / Oura / Garmin ingest):
+  source: text("source"), // apple_health | screen_time | whoop | oura | garmin
+  sourceRecordId: text("source_record_id"), // for dedup across re-imports
+  metricKind: text("metric_kind"), // steps | sleep_minutes | hrv | resting_hr | active_energy
+  metricValue: real("metric_value"), // numeric value for the metric
+  recordedAt: timestamp("recorded_at"), // when the metric occurred (vs ingest time)
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => [
+  uniqueIndex("wearable_data_user_source_record_idx").on(
+    t.userId,
+    t.source,
+    t.sourceRecordId,
+  ),
+]);
 
 export const wearableDataRelations = relations(wearableData, ({ one }) => ({
   device: one(wearableDevices, {
@@ -3504,3 +3522,57 @@ export const insertPrayerEntrySchema = createInsertSchema(prayerEntries).omit({
 });
 export type PrayerEntry = typeof prayerEntries.$inferSelect;
 export type InsertPrayerEntry = z.infer<typeof insertPrayerEntrySchema>;
+
+// ── Wearable + Screen Time Manager ───────────────────────────────────────────
+// Supported sources for the Wearable Manager. Apple Health + Screen Time ship
+// end-to-end in this milestone; the OAuth scaffolds for whoop/oura/garmin are
+// in place but their data pulls are stubbed until provider keys are wired up.
+export const wearableSourceEnum = [
+  "apple_health",
+  "screen_time",
+  "whoop",
+  "oura",
+  "garmin",
+] as const;
+export type WearableSource = typeof wearableSourceEnum[number];
+
+// Per-day, per-source screen time totals (Apple Screen Time export).
+export const screenTimeUsage = pgTable("screen_time_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  source: text("source").notNull().default("screen_time"),
+  dateKey: text("date_key").notNull(), // YYYY-MM-DD (user-local)
+  totalMinutes: integer("total_minutes").notNull().default(0),
+  byCategory: jsonb("by_category"), // { social: 192, productivity: 35, ... }
+  byApp: jsonb("by_app"), // { "Instagram": 88, "Slack": 22, ... }
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [uniqueIndex("screen_time_usage_user_date_source_idx").on(t.userId, t.dateKey, t.source)]);
+
+export const insertScreenTimeUsageSchema = createInsertSchema(screenTimeUsage).omit({
+  id: true,
+  createdAt: true,
+});
+export type ScreenTimeUsage = typeof screenTimeUsage.$inferSelect;
+export type InsertScreenTimeUsage = z.infer<typeof insertScreenTimeUsageSchema>;
+
+// One row per (user, source) tracking last sync state. Used to surface
+// last-synced timestamps and the most recent error in the manager UI.
+export const wearableSyncJobs = pgTable("wearable_sync_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  status: text("status").notNull().default("idle"), // idle | running | success | error | not_configured
+  lastSyncAt: timestamp("last_sync_at"),
+  errorText: text("error_text"),
+  recordsImported: integer("records_imported").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [uniqueIndex("wearable_sync_jobs_user_source_idx").on(t.userId, t.source)]);
+
+export const insertWearableSyncJobSchema = createInsertSchema(wearableSyncJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type WearableSyncJob = typeof wearableSyncJobs.$inferSelect;
+export type InsertWearableSyncJob = z.infer<typeof insertWearableSyncJobSchema>;

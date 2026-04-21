@@ -53,6 +53,7 @@ const WorkoutPage = lazy(() => import("@/pages/workout"));
 const MyPlanPage = lazy(() => import("@/pages/my-plan"));
 const WorkoutAnalyticsPage = lazy(() => import("@/pages/workout-analytics"));
 const HealthDataPage = lazy(() => import("@/pages/health-data"));
+const WearableManagerPage = lazy(() => import("@/pages/wearable-manager"));
 const RecoveryPage = lazy(() =>
   import("@/pages/recovery").then((m) => ({ default: m.RecoveryPage })),
 );
@@ -282,6 +283,7 @@ function Router() {
       <Route path="/my-plan" component={MyPlanPage} />
       <Route path="/workout/analytics" component={WorkoutAnalyticsPage} />
       <Route path="/health-data" component={HealthDataPage} />
+      <Route path="/wearable-manager" component={WearableManagerPage} />
       {isRouteEnabled("/recovery") && <Route path="/recovery" component={RecoveryPage} />}
       {isRouteEnabled("/spiritual") && <Route path="/spiritual" component={SpiritualPage} />}
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}

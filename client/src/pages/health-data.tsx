@@ -17,8 +17,9 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar,
 } from "recharts";
-import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp, Watch } from "lucide-react";
 import { DWLearnCard } from "@/components/dw-learn-card";
+import { Link } from "wouter";
 
 interface HealthMetric {
   id: string;
@@ -41,6 +42,15 @@ interface LogForm {
 
 function fmt(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function Stat({ label, value, testid }: { label: string; value: string; testid: string }) {
+  return (
+    <div className="rounded-md bg-muted/40 px-2 py-2">
+      <div className="text-sm font-bold leading-tight" data-testid={testid}>{value}</div>
+      <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+    </div>
+  );
 }
 
 const METRIC_CONFIG = [
@@ -68,6 +78,42 @@ export default function HealthDataPage() {
   });
 
   const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+
+  // Wearable Manager — recent metrics from Apple Health / Whoop / Oura / Garmin.
+  const { data: wearables } = useQuery<{
+    data: Array<{ id: string; metricKind: string | null; metricValue: number | null; recordedAt: string | null; source: string | null }>;
+    screenTime: Array<{ dateKey: string; totalMinutes: number }>;
+    insights: {
+      yesterday: {
+        dateKey: string;
+        totalMinutes: number;
+        topCategory: { name: string; minutes: number } | null;
+        topCategories: Array<{ name: string; minutes: number }>;
+      };
+    } | null;
+  }>({
+    queryKey: ["/api/wearables/data"],
+    staleTime: 60_000,
+  });
+
+  // Headline metrics from the past 24h: sum/last across all sources.
+  const wearableSummary = (() => {
+    const rows = wearables?.data ?? [];
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = rows.filter((r) => r.recordedAt && new Date(r.recordedAt).getTime() >= since);
+    const sumKind = (k: string) => recent.filter((r) => r.metricKind === k).reduce((s, r) => s + (r.metricValue ?? 0), 0);
+    const lastKind = (k: string) => recent
+      .filter((r) => r.metricKind === k)
+      .sort((a, b) => new Date(b.recordedAt!).getTime() - new Date(a.recordedAt!).getTime())[0]?.metricValue ?? null;
+    return {
+      hasAny: rows.length > 0 || (wearables?.screenTime?.length ?? 0) > 0,
+      sleepMinutes: sumKind("sleep_minutes"),
+      steps: sumKind("steps"),
+      hrv: lastKind("hrv"),
+      restingHr: lastKind("resting_hr"),
+      screenTimeMinutes: wearables?.screenTime?.[0]?.totalMinutes ?? null,
+    };
+  })();
 
   const logMutation = useMutation({
     mutationFn: (vals: LogForm) => apiRequest("POST", "/api/health-metrics", {
@@ -121,6 +167,50 @@ export default function HealthDataPage() {
       <PageHeader title="Health Data" subtitle="Track daily metrics and spot trends" />
 
       <div className="max-w-2xl mx-auto px-4 space-y-5 pt-2 page-enter">
+        {/* Wearable / Screen Time strip */}
+        {wearableSummary.hasAny ? (
+          <Card data-testid="card-wearable-summary">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Watch className="w-4 h-4 text-primary" /> From your wearables (last 24h)
+                <Link href="/wearable-manager" className="ml-auto text-xs underline text-muted-foreground" data-testid="link-wearable-manager">Manage</Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
+                <Stat label="Sleep" value={wearableSummary.sleepMinutes ? `${(wearableSummary.sleepMinutes / 60).toFixed(1)}h` : "—"} testid="stat-wearable-sleep" />
+                <Stat label="Steps" value={wearableSummary.steps ? wearableSummary.steps.toLocaleString() : "—"} testid="stat-wearable-steps" />
+                <Stat label="HRV" value={wearableSummary.hrv != null ? `${Math.round(wearableSummary.hrv)} ms` : "—"} testid="stat-wearable-hrv" />
+                <Stat label="Resting HR" value={wearableSummary.restingHr != null ? `${Math.round(wearableSummary.restingHr)} bpm` : "—"} testid="stat-wearable-rhr" />
+                <Stat label="Screen Time" value={wearableSummary.screenTimeMinutes != null ? `${Math.floor(wearableSummary.screenTimeMinutes / 60)}h ${wearableSummary.screenTimeMinutes % 60}m` : "—"} testid="stat-wearable-screentime" />
+              </div>
+              {wearables?.insights?.yesterday?.topCategory && (
+                <p className="text-[11px] text-muted-foreground mt-2" data-testid="text-screentime-insight">
+                  Yesterday you spent{" "}
+                  <span className="font-medium text-foreground">
+                    {Math.floor(wearables.insights.yesterday.topCategory.minutes / 60)}h{" "}
+                    {wearables.insights.yesterday.topCategory.minutes % 60}m
+                  </span>{" "}
+                  on {wearables.insights.yesterday.topCategory.name}.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed" data-testid="card-wearable-empty">
+            <CardContent className="p-3 flex items-center gap-3">
+              <Watch className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1 text-xs">
+                <p className="font-semibold">No wearable connected</p>
+                <p className="text-muted-foreground">Connect Apple Health, Screen Time, Whoop, Oura or Garmin to surface real metrics here.</p>
+              </div>
+              <Link href="/wearable-manager">
+                <Button size="sm" data-testid="button-connect-wearable">Connect</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Goal impact panel */}
         {weightGoals.length > 0 && weightDelta !== null && (
           <Card className="border-amber-500/20 bg-amber-500/5" data-testid="card-health-goal-impact">
