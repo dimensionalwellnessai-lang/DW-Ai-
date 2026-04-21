@@ -3171,3 +3171,159 @@ export const insertTriggerEventSchema = createInsertSchema(triggerEvents).omit({
 });
 export type TriggerEvent = typeof triggerEvents.$inferSelect;
 export type InsertTriggerEvent = z.infer<typeof insertTriggerEventSchema>;
+
+// ─── Finances ────────────────────────────────────────────────────────────────
+// Core tables for the Finances workspace: accounts, transactions, budgets,
+// investment holdings, net-worth snapshots, and Plaid items for bank sync.
+
+export const financialAccountTypeEnum = [
+  "checking", "savings", "credit", "loan", "cash", "investment", "other",
+] as const;
+export type FinancialAccountType = typeof financialAccountTypeEnum[number];
+
+export const transactionSourceEnum = ["manual", "plaid"] as const;
+export type TransactionSource = typeof transactionSourceEnum[number];
+
+export const holdingTypeEnum = ["stock", "etf", "crypto", "cash", "other"] as const;
+export type HoldingType = typeof holdingTypeEnum[number];
+
+export const financialAccounts = pgTable("financial_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type").notNull().$type<FinancialAccountType>(),
+  institution: text("institution"),
+  currentBalance: real("current_balance").default(0),
+  currency: text("currency").default("USD"),
+  plaidAccountId: text("plaid_account_id"),
+  plaidItemId: varchar("plaid_item_id"),
+  isManual: boolean("is_manual").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertFinancialAccountSchema = createInsertSchema(financialAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(financialAccountTypeEnum as unknown as [FinancialAccountType, ...FinancialAccountType[]]),
+});
+export type FinancialAccount = typeof financialAccounts.$inferSelect;
+export type InsertFinancialAccount = z.infer<typeof insertFinancialAccountSchema>;
+
+export const transactions = pgTable("transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountId: varchar("account_id").references(() => financialAccounts.id, { onDelete: "set null" }),
+  // Amount is signed: negative = spend, positive = income. USD only for v1.
+  amount: real("amount").notNull(),
+  currency: text("currency").default("USD"),
+  category: text("category").notNull(),
+  merchant: text("merchant"),
+  note: text("note"),
+  // ISO date string (YYYY-MM-DD) for simple date-range / month filtering.
+  date: text("date").notNull(),
+  source: text("source").notNull().default("manual").$type<TransactionSource>(),
+  plaidTransactionId: text("plaid_transaction_id"),
+  pending: boolean("pending").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("transactions_plaid_txn_idx").on(t.plaidTransactionId),
+]);
+
+export const insertTransactionSchema = createInsertSchema(transactions).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  source: z.enum(transactionSourceEnum as unknown as [TransactionSource, ...TransactionSource[]]).optional(),
+});
+export type Transaction = typeof transactions.$inferSelect;
+export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+
+export const budgets = pgTable("budgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  category: text("category").notNull(),
+  monthlyLimit: real("monthly_limit").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("budgets_user_category_idx").on(t.userId, t.category),
+]);
+
+export const insertBudgetSchema = createInsertSchema(budgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type Budget = typeof budgets.$inferSelect;
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+
+export const investmentHoldings = pgTable("investment_holdings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // "AAPL", "VTI", "BTC", or null for "other".
+  ticker: text("ticker"),
+  name: text("name").notNull(),
+  type: text("type").notNull().default("stock").$type<HoldingType>(),
+  shares: real("shares").default(0),
+  costBasis: real("cost_basis"),
+  currentPrice: real("current_price"),
+  // For "other" / manual: set manualValue directly; computed value uses shares*price.
+  manualValue: real("manual_value"),
+  lastQuoteAt: timestamp("last_quote_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvestmentHoldingSchema = createInsertSchema(investmentHoldings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(holdingTypeEnum as unknown as [HoldingType, ...HoldingType[]]),
+});
+export type InvestmentHolding = typeof investmentHoldings.$inferSelect;
+export type InsertInvestmentHolding = z.infer<typeof insertInvestmentHoldingSchema>;
+
+export const netWorthSnapshots = pgTable("net_worth_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // ISO date (YYYY-MM-DD) — one snapshot per user per day.
+  date: text("date").notNull(),
+  assets: real("assets").notNull().default(0),
+  liabilities: real("liabilities").notNull().default(0),
+  netWorth: real("net_worth").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("net_worth_user_date_idx").on(t.userId, t.date),
+]);
+
+export const insertNetWorthSnapshotSchema = createInsertSchema(netWorthSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
+export type NetWorthSnapshot = typeof netWorthSnapshots.$inferSelect;
+export type InsertNetWorthSnapshot = z.infer<typeof insertNetWorthSnapshotSchema>;
+
+export const plaidItems = pgTable("plaid_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull().unique(),
+  // Plaid access token — stored AES-256-GCM encrypted at rest (see
+  // server/routes/_encryption.ts). Never write the raw token here.
+  accessToken: text("access_token").notNull(),
+  institutionId: text("institution_id"),
+  institutionName: text("institution_name"),
+  cursor: text("cursor"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPlaidItemSchema = createInsertSchema(plaidItems).omit({
+  id: true,
+  createdAt: true,
+});
+export type PlaidItem = typeof plaidItems.$inferSelect;
+export type InsertPlaidItem = z.infer<typeof insertPlaidItemSchema>;

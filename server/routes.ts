@@ -23,6 +23,8 @@ import { registerRelationshipsRoutes } from "./routes/relationships";
 import { registerRealtimeRoutes } from "./routes/realtime";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { registerTriggerRoutes } from "./routes/triggers";
+import { registerFinancesRoutes } from "./routes/finances";
+import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -471,6 +473,10 @@ export async function registerRoutes(
   // Life System pillars / projects / generated document
   registerLifeSystemPillarRoutes(app);
   registerTriggerRoutes(app);
+
+  // Finances: accounts, transactions, budgets, investments, net-worth, AI chat
+  registerFinancesRoutes(app);
+  registerPlaidRoutes(app);
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation

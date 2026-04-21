@@ -277,6 +277,24 @@ import {
   type WeeklyPlanReview,
   type InsertWeeklyPlanReview,
   type UpdateWeeklyPlanReview,
+  financialAccounts,
+  transactions,
+  budgets,
+  investmentHoldings,
+  netWorthSnapshots,
+  plaidItems,
+  type FinancialAccount,
+  type InsertFinancialAccount,
+  type Transaction,
+  type InsertTransaction,
+  type Budget,
+  type InsertBudget,
+  type InvestmentHolding,
+  type InsertInvestmentHolding,
+  type NetWorthSnapshot,
+  type InsertNetWorthSnapshot,
+  type PlaidItem,
+  type InsertPlaidItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, or, inArray, ne, count } from "drizzle-orm";
@@ -3860,6 +3878,164 @@ export class DatabaseStorage implements IStorage {
   async createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument> {
     const [created] = await db.insert(lifeSystemDocuments).values(doc).returning();
     return created;
+  }
+
+  // ── Finances ──────────────────────────────────────────────────────────
+  async getFinancialAccounts(userId: string): Promise<FinancialAccount[]> {
+    return await db.select().from(financialAccounts)
+      .where(eq(financialAccounts.userId, userId))
+      .orderBy(desc(financialAccounts.createdAt));
+  }
+  async createFinancialAccount(data: InsertFinancialAccount): Promise<FinancialAccount> {
+    const [row] = await db.insert(financialAccounts).values(data).returning();
+    return row;
+  }
+  async updateFinancialAccount(id: string, userId: string, data: Partial<InsertFinancialAccount>): Promise<FinancialAccount | undefined> {
+    const [row] = await db.update(financialAccounts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(financialAccounts.id, id), eq(financialAccounts.userId, userId)))
+      .returning();
+    return row || undefined;
+  }
+  async deleteFinancialAccount(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(financialAccounts)
+      .where(and(eq(financialAccounts.id, id), eq(financialAccounts.userId, userId)))
+      .returning({ id: financialAccounts.id });
+    return result.length > 0;
+  }
+
+  async getTransactions(userId: string, opts?: { from?: string; to?: string; category?: string; limit?: number }): Promise<Transaction[]> {
+    const conds: any[] = [eq(transactions.userId, userId)];
+    if (opts?.from) conds.push(gte(transactions.date, opts.from));
+    if (opts?.to) conds.push(lte(transactions.date, opts.to));
+    if (opts?.category) conds.push(eq(transactions.category, opts.category));
+    return await db.select().from(transactions)
+      .where(and(...conds))
+      .orderBy(desc(transactions.date), desc(transactions.createdAt))
+      .limit(opts?.limit ?? 500);
+  }
+  async createTransaction(data: InsertTransaction): Promise<Transaction> {
+    const [row] = await db.insert(transactions).values(data).returning();
+    return row;
+  }
+  async upsertTransactionByPlaidId(data: InsertTransaction): Promise<Transaction> {
+    if (!data.plaidTransactionId) {
+      return this.createTransaction(data);
+    }
+    const existing = await db.select().from(transactions)
+      .where(eq(transactions.plaidTransactionId, data.plaidTransactionId))
+      .limit(1);
+    if (existing.length > 0) {
+      const [row] = await db.update(transactions)
+        .set({ amount: data.amount, category: data.category, merchant: data.merchant, date: data.date, pending: data.pending })
+        .where(eq(transactions.plaidTransactionId, data.plaidTransactionId))
+        .returning();
+      return row;
+    }
+    return this.createTransaction(data);
+  }
+  async deleteTransaction(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .returning({ id: transactions.id });
+    return result.length > 0;
+  }
+  async deleteTransactionByPlaidId(plaidTransactionId: string, userId: string): Promise<void> {
+    await db.delete(transactions)
+      .where(and(eq(transactions.plaidTransactionId, plaidTransactionId), eq(transactions.userId, userId)));
+  }
+
+  async getBudgets(userId: string): Promise<Budget[]> {
+    return await db.select().from(budgets)
+      .where(eq(budgets.userId, userId))
+      .orderBy(budgets.category);
+  }
+  async upsertBudget(data: InsertBudget): Promise<Budget> {
+    const existing = await db.select().from(budgets)
+      .where(and(eq(budgets.userId, data.userId), eq(budgets.category, data.category)))
+      .limit(1);
+    if (existing.length > 0) {
+      const [row] = await db.update(budgets)
+        .set({ monthlyLimit: data.monthlyLimit, updatedAt: new Date() })
+        .where(eq(budgets.id, existing[0].id))
+        .returning();
+      return row;
+    }
+    const [row] = await db.insert(budgets).values(data).returning();
+    return row;
+  }
+  async deleteBudget(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(budgets)
+      .where(and(eq(budgets.id, id), eq(budgets.userId, userId)))
+      .returning({ id: budgets.id });
+    return result.length > 0;
+  }
+
+  async getInvestmentHoldings(userId: string): Promise<InvestmentHolding[]> {
+    return await db.select().from(investmentHoldings)
+      .where(eq(investmentHoldings.userId, userId))
+      .orderBy(desc(investmentHoldings.createdAt));
+  }
+  async createInvestmentHolding(data: InsertInvestmentHolding): Promise<InvestmentHolding> {
+    const [row] = await db.insert(investmentHoldings).values(data).returning();
+    return row;
+  }
+  async updateInvestmentHolding(id: string, userId: string, data: Partial<InsertInvestmentHolding>): Promise<InvestmentHolding | undefined> {
+    const [row] = await db.update(investmentHoldings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(investmentHoldings.id, id), eq(investmentHoldings.userId, userId)))
+      .returning();
+    return row || undefined;
+  }
+  async deleteInvestmentHolding(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(investmentHoldings)
+      .where(and(eq(investmentHoldings.id, id), eq(investmentHoldings.userId, userId)))
+      .returning({ id: investmentHoldings.id });
+    return result.length > 0;
+  }
+
+  async getNetWorthSnapshots(userId: string, limit = 90): Promise<NetWorthSnapshot[]> {
+    return await db.select().from(netWorthSnapshots)
+      .where(eq(netWorthSnapshots.userId, userId))
+      .orderBy(desc(netWorthSnapshots.date))
+      .limit(limit);
+  }
+  async upsertNetWorthSnapshot(data: InsertNetWorthSnapshot): Promise<NetWorthSnapshot> {
+    const existing = await db.select().from(netWorthSnapshots)
+      .where(and(eq(netWorthSnapshots.userId, data.userId), eq(netWorthSnapshots.date, data.date)))
+      .limit(1);
+    if (existing.length > 0) {
+      const [row] = await db.update(netWorthSnapshots)
+        .set({ assets: data.assets, liabilities: data.liabilities, netWorth: data.netWorth })
+        .where(eq(netWorthSnapshots.id, existing[0].id))
+        .returning();
+      return row;
+    }
+    const [row] = await db.insert(netWorthSnapshots).values(data).returning();
+    return row;
+  }
+
+  async getPlaidItems(userId: string): Promise<PlaidItem[]> {
+    return await db.select().from(plaidItems).where(eq(plaidItems.userId, userId));
+  }
+  async getPlaidItem(itemId: string): Promise<PlaidItem | undefined> {
+    const [row] = await db.select().from(plaidItems).where(eq(plaidItems.itemId, itemId));
+    return row || undefined;
+  }
+  async createPlaidItem(data: InsertPlaidItem): Promise<PlaidItem> {
+    const [row] = await db.insert(plaidItems).values(data).returning();
+    return row;
+  }
+  async updatePlaidItemCursor(itemId: string, cursor: string): Promise<void> {
+    await db.update(plaidItems)
+      .set({ cursor, lastSyncAt: new Date() })
+      .where(eq(plaidItems.itemId, itemId));
+  }
+  async deletePlaidItem(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(plaidItems)
+      .where(and(eq(plaidItems.id, id), eq(plaidItems.userId, userId)))
+      .returning({ id: plaidItems.id });
+    return result.length > 0;
   }
 }
 
