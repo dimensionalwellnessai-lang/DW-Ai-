@@ -142,9 +142,20 @@ function mapLegacyGoalStatus(progress: number | null | undefined): "vision" | "a
 }
 
 /**
+ * Human-readable summary of what got carried over during a backfill, so the
+ * client can show a one-time "we set up your Life System" note.
+ */
+export interface LifeSystemBackfillSummary {
+  carried: string[];
+}
+
+/**
  * One-time seed for users still on the legacy data model. Idempotent and safe
  * to run repeatedly: it short-circuits as soon as the user has any pillars,
  * and only seeds projects when the user has none.
+ *
+ * Returns a summary describing what was carried over (so the UI can surface it
+ * once), or `null` if no backfill was needed.
  *
  * Strategy:
  *   1. If the user already has any life_system_pillars rows, do nothing.
@@ -153,9 +164,9 @@ function mapLegacyGoalStatus(progress: number | null | undefined): "vision" | "a
  *   4. If the user has no life_system_projects, map legacy goals → projects
  *      (and seed the Starter Template projects when no legacy goals exist).
  */
-export async function backfillLifeSystemForUser(userId: string): Promise<void> {
+export async function backfillLifeSystemForUser(userId: string): Promise<LifeSystemBackfillSummary | null> {
   const existingPillars = await storage.getLifeSystemPillars(userId);
-  if (existingPillars.length > 0) return;
+  if (existingPillars.length > 0) return null;
 
   const [profile, goals, habits, existingProjects] = await Promise.all([
     storage.getOnboardingProfile(userId),
@@ -165,6 +176,7 @@ export async function backfillLifeSystemForUser(userId: string): Promise<void> {
   ]);
 
   const overrides = buildLegacyOverrides(profile, habits);
+  const carried: string[] = [];
 
   for (const def of PILLARS) {
     const base = buildStarterPillarContent(def.id);
@@ -197,6 +209,7 @@ export async function backfillLifeSystemForUser(userId: string): Promise<void> {
           sortOrder: i,
         });
       }
+      carried.push(`${activeGoals.length} ${activeGoals.length === 1 ? "goal" : "goals"} → Creation projects`);
     } else {
       for (let i = 0; i < STARTER_TEMPLATE.projects.length; i++) {
         const p = STARTER_TEMPLATE.projects[i];
@@ -211,8 +224,32 @@ export async function backfillLifeSystemForUser(userId: string): Promise<void> {
           sortOrder: i,
         });
       }
+      carried.push("Starter Template projects to get you started");
     }
   }
+
+  if (overrides.daily_rhythm) {
+    const extras = overrides.daily_rhythm.extras ?? {};
+    const parts: string[] = [];
+    if (extras.wakeTarget) parts.push("wake");
+    if (extras.sleepTarget) parts.push("sleep");
+    if (extras.peakMotivationTime) parts.push("peak time");
+    if (parts.length) carried.push(`${parts.join(" + ")} → Daily Rhythm`);
+  }
+  if (overrides.responsibility) {
+    carried.push("Responsibilities → Responsibility pillar");
+  }
+  if (overrides.purpose) {
+    carried.push("Priorities & long-term goals → Purpose pillar");
+  }
+  if (overrides.physical_health) {
+    carried.push("Wellness focus → Physical Health pillar");
+  }
+  if (overrides.foundation) {
+    carried.push("Active habits → Foundation non-negotiables");
+  }
+
+  return { carried };
 }
 
 /**
@@ -333,9 +370,10 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
         storage.getLifeSystemPillars(userId),
         storage.getLifeSystemProjects(userId),
       ]);
+      let backfillSummary: LifeSystemBackfillSummary | null = null;
       if (pillars.length === 0) {
         try {
-          await backfillLifeSystemForUser(userId);
+          backfillSummary = await backfillLifeSystemForUser(userId);
           [pillars, projects] = await Promise.all([
             storage.getLifeSystemPillars(userId),
             storage.getLifeSystemProjects(userId),
@@ -344,7 +382,12 @@ export function registerLifeSystemPillarRoutes(app: Express): void {
           console.error("backfillLifeSystemForUser error:", backfillErr);
         }
       }
-      res.json({ pillars, projects });
+      res.json({
+        pillars,
+        projects,
+        wasBackfilled: backfillSummary !== null,
+        ...(backfillSummary ? { backfillSummary } : {}),
+      });
     } catch (err) {
       console.error("getLifeSystemPillars error:", err);
       res.status(500).json({ error: "Failed to load life system" });

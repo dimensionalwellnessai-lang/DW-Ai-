@@ -7,8 +7,9 @@
 //
 // Header: 3-ring orbit visualization of current state.
 // Empty state: "Adopt the Starter Template" CTA.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   PILLARS_BY_LEVEL,
   LEVEL_META,
@@ -32,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Loader2, FileText, Plus, Trash2, Sparkles, MessageCircle } from "lucide-react";
+import { Loader2, FileText, Plus, Trash2, Sparkles, MessageCircle, X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -80,17 +81,78 @@ function PillarIcon({ name, className, style }: { name: string; className?: stri
   return <Icon className={className} style={style} aria-hidden />;
 }
 
+function backfillStorageKey(userId: string): string {
+  return `life-system:backfill-note:${userId}`;
+}
+
+interface StoredBackfillNote {
+  carried: string[];
+  dismissed: boolean;
+}
+
+function readBackfillNote(userId: string | undefined): StoredBackfillNote | null {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(backfillStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredBackfillNote>;
+    if (!parsed || !Array.isArray(parsed.carried)) return null;
+    return { carried: parsed.carried.filter(x => typeof x === "string"), dismissed: !!parsed.dismissed };
+  } catch {
+    return null;
+  }
+}
+
+function writeBackfillNote(userId: string, note: StoredBackfillNote): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(backfillStorageKey(userId), JSON.stringify(note));
+  } catch {
+    // localStorage may be unavailable (private mode, quota); ignore.
+  }
+}
+
 export default function LifeSystemPage() {
   usePageMeta("My Life System", "Your personal three-level operating system: Core, Expression, Creation.");
   const { data, isLoading } = useLifeSystem();
+  const { user } = useAuth();
+  const userId = user?.id;
   const { toast } = useToast();
   const [adopting, setAdopting] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [savingProject, setSavingProject] = useState(false);
+  const [backfillNote, setBackfillNote] = useState<StoredBackfillNote | null>(null);
+
+  // Hydrate the persisted backfill note once we know who the user is.
+  useEffect(() => {
+    if (!userId) return;
+    setBackfillNote(readBackfillNote(userId));
+  }, [userId]);
+
+  // When the GET response signals a fresh backfill, persist the carried items
+  // so the note survives a reload until the user dismisses it.
+  useEffect(() => {
+    if (!userId) return;
+    if (!data?.wasBackfilled) return;
+    const carried = data.backfillSummary?.carried ?? [];
+    const existing = readBackfillNote(userId);
+    if (existing && existing.dismissed) return; // user already dismissed it earlier
+    const next: StoredBackfillNote = { carried, dismissed: false };
+    writeBackfillNote(userId, next);
+    setBackfillNote(next);
+  }, [userId, data?.wasBackfilled, data?.backfillSummary]);
+
+  function dismissBackfillNote() {
+    if (!userId) return;
+    const next: StoredBackfillNote = { carried: backfillNote?.carried ?? [], dismissed: true };
+    writeBackfillNote(userId, next);
+    setBackfillNote(next);
+  }
 
   const pillars = data?.pillars ?? [];
   const projects = data?.projects ?? [];
   const isEmpty = pillars.length === 0;
+  const showBackfillNote = !!backfillNote && !backfillNote.dismissed && !isEmpty;
 
   // Build lit set for orbit (enabled pillars + active projects)
   const litPillars = new Set<LifeSystemPillarId>();
@@ -184,6 +246,41 @@ export default function LifeSystemPage() {
           </Button>
         </div>
       </header>
+
+      {/* ── One-time backfill note ─────────────────────────────────────── */}
+      {showBackfillNote && (
+        <Card
+          className="p-4 flex items-start gap-3 bg-primary/5 border-primary/20"
+          data-testid="card-backfill-note"
+        >
+          <Sparkles className="w-5 h-5 mt-0.5 text-primary shrink-0" aria-hidden />
+          <div className="flex-1 space-y-1">
+            <div className="font-medium" data-testid="text-backfill-note-title">
+              We set up your Life System
+            </div>
+            <p className="text-sm text-muted-foreground">
+              We carried over what you'd already shared into your new three-level system —
+              review and edit anything to make it yours.
+            </p>
+            {backfillNote && backfillNote.carried.length > 0 && (
+              <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-0.5">
+                {backfillNote.carried.map((item, i) => (
+                  <li key={i} data-testid={`text-backfill-carried-${i}`}>{item}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={dismissBackfillNote}
+            aria-label="Dismiss"
+            data-testid="button-dismiss-backfill-note"
+          >
+            <X className="w-4 h-4 text-muted-foreground" />
+          </Button>
+        </Card>
+      )}
 
       {/* ── Empty hint ─────────────────────────────────────────────────── */}
       {isEmpty && (

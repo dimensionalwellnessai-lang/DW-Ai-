@@ -19,9 +19,17 @@ export {
   type PillarDefinition,
 };
 
+export interface LifeSystemBackfillSummary {
+  carried: string[];
+}
+
 export interface LifeSystemState {
   pillars: LifeSystemPillar[];
   projects: LifeSystemProject[];
+  /** True only on the GET response that triggered a one-time backfill. */
+  wasBackfilled?: boolean;
+  /** Human-readable summary of what was carried over from legacy data. */
+  backfillSummary?: LifeSystemBackfillSummary;
 }
 
 export function useLifeSystem() {
