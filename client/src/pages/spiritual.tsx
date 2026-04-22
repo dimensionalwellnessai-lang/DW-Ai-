@@ -349,7 +349,7 @@ function MeditateTab() {
   );
 }
 
-function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: () => void }) {
+export function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: () => void }) {
   const totalSec = item.durationMinutes * 60;
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
