@@ -27,6 +27,7 @@ import { registerTriggerRoutes } from "./routes/triggers";
 import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
+import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
@@ -2140,113 +2141,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, recentEntries, moodLogs, scheduleBlocks, routines, calendarEvents, lifeSystem, userProfile, systemPrefs, wellnessPrefs, yesterdayMetrics] = await Promise.all([
-        storage.getUser(userId),
-        storage.getGoals(userId),
-        storage.getHabits(userId),
-        storage.getCategoryEntries(userId),
-        storage.getMoodLogs(userId),
-        storage.getScheduleBlocks(userId),
-        storage.getRoutines(userId),
-        storage.getCalendarEvents(userId),
-        storage.getLifeSystem(userId),
-        storage.getUserProfile(userId),
-        storage.getUserSystemPreferences(userId),
-        storage.getWellnessPreferences(userId),
-        getYesterdayHeadlineMetrics(userId).catch(() => null),
-      ]);
-      
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const todayStr = today.toISOString().split('T')[0];
-      
-      const userContext = {
-        category: context,
-        systemName: user?.systemName || undefined,
-        activeGoals: goals.filter(g => g.isActive).map(g => ({ 
-          title: g.title, 
-          progress: g.progress || 0,
-          wellnessDimension: g.wellnessDimension || undefined
-        })),
-        habits: habits.filter(h => h.isActive).map(h => ({ 
-          title: h.title, 
-          streak: h.streak || 0,
-          frequency: h.frequency || 'daily'
-        })),
-        upcomingEvents: recentEntries
-          .filter(e => e.category === 'calendar' && e.date)
-          .slice(0, 5)
-          .map(e => ({ title: e.title, date: e.date! })),
-        recentMoods: moodLogs.slice(0, 5).map(m => ({
-          energy: m.energyLevel,
-          mood: m.moodLevel,
-          clarity: m.clarityLevel || undefined,
-          date: m.createdAt?.toISOString().split('T')[0] || ''
-        })),
-        categoryEntries: recentEntries.slice(0, 10).map(e => ({
-          category: e.category,
-          title: e.title,
-          content: e.content || '',
-          date: e.date || undefined
-        })),
-        todaySchedule: scheduleBlocks
-          .filter(b => b.dayOfWeek === dayOfWeek)
-          .map(b => ({
-            title: b.title,
-            startTime: b.startTime,
-            endTime: b.endTime,
-            category: b.category || undefined
-          })),
-        routines: routines.map(r => ({
-          title: r.name,
-          type: r.mode || 'routine',
-          isActive: r.isActive ?? true
-        })),
-        todayCalendarEvents: calendarEvents
-          .filter(e => e.startTime?.startsWith(todayStr))
-          .map(e => ({
-            title: e.title,
-            time: e.startTime?.split('T')[1]?.substring(0, 5) || undefined,
-            allDay: false
-          })),
-        lifeSystem: {
-          preferences: {
-            enabledSystems: systemPrefs?.enabledSystems || [],
-            preferredWakeTime: systemPrefs?.preferredWakeTime || undefined,
-            preferredSleepTime: systemPrefs?.preferredSleepTime || undefined,
-          },
-          scheduleEvents: scheduleBlocks
-            .filter(b => b.dayOfWeek === dayOfWeek)
-            .map(b => ({
-              title: b.title,
-              scheduledTime: b.startTime,
-              systemReference: b.category || undefined
-            })),
-        },
-        wellnessFocus: userProfile?.goals || [],
-        peakMotivationTime: systemPrefs?.preferredWakeTime || undefined,
-        // Yesterday's headline metrics from connected wearables / Screen Time.
-        // DW uses these to answer questions like "why am I tired?" with real data.
-        yesterdayMetrics: yesterdayMetrics || undefined,
-        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
-          ? (user!.coachingMode as CoachingMode)
-          : "gentle",
-        wellnessPreferences: wellnessPrefs ? {
-          beliefSystem: wellnessPrefs.beliefSystem,
-          traditions: wellnessPrefs.traditions,
-          otherTradition: wellnessPrefs.otherTradition,
-          meditationEnabled: wellnessPrefs.meditationEnabled,
-          journalEnabled: wellnessPrefs.journalEnabled,
-          astrologyEnabled: wellnessPrefs.astrologyEnabled,
-          tarotEnabled: wellnessPrefs.tarotEnabled,
-          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
-        } : undefined,
-      };
-      
+      const snapshot = await getUserContextSnapshot(userId);
+      const userContext = toUserLifeContext(snapshot, { category: context });
+
       const rawResponse = await generateChatResponse(
         message,
         conversationHistory || [],
-        userContext
+        userContext,
       );
       
       const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
@@ -2434,42 +2335,6 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         req.session.userId = userId;
       }
       
-      const [user, goals, habits, profile, wellnessPrefs, todayHabitLogs, moodLogs, scheduleBlocks, calendarEvents, recentJournal, pendingReminders, routines] = await Promise.all([
-        storage.getUser(userId),
-        storage.getGoals(userId),
-        storage.getHabits(userId),
-        storage.getUserProfile(userId),
-        storage.getWellnessPreferences(userId),
-        storage.getTodayHabitLogsByUser(userId),
-        storage.getMoodLogs(userId),
-        storage.getScheduleBlocks(userId),
-        storage.getCalendarEvents(userId),
-        storage.getDwJournalEntries(userId, 3),
-        storage.getReminders(userId, 'scheduled'),
-        storage.getRoutines(userId),
-      ]);
-      
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const dayOfWeek = today.getDay();
-
-      // Compute which active habits are done today
-      const completedHabitIds = new Set(todayHabitLogs.map((l: any) => l.habitId));
-      const activeHabits = habits.filter((h: any) => h.isActive);
-
-      // Today's schedule blocks (matching today's day of week)
-      const todayScheduleBlocks = scheduleBlocks.filter((b: any) => b.dayOfWeek === dayOfWeek);
-
-      // Today's calendar events
-      const todayCalEvents = calendarEvents.filter((e: any) => {
-        if (!e.startTime) return false;
-        const evDate = new Date(e.startTime).toISOString().split('T')[0];
-        return evDate === todayStr;
-      });
-
-      // Most recent mood log
-      const latestMood = moodLogs.length > 0 ? moodLogs[0] : null;
-      
       let documentContext = "";
       if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
         const docs = await Promise.all(
@@ -2477,86 +2342,32 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         );
         const validDocs = docs.filter(d => d && d.userId === userId);
         if (validDocs.length > 0) {
-          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d => 
+          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d =>
             `--- ${d!.fileName} ---\n${d!.rawText?.slice(0, 3000) || "(no content)"}\n---`
           ).join("\n");
         }
       }
-      
-      const enhancedMessage = documentContext 
+
+      const enhancedMessage = documentContext
         ? `${message}\n${documentContext}`
         : message;
-      
+
+      const snapshot = await getUserContextSnapshot(userId);
       const userContext = {
-        category: context,
-        systemName: user?.systemName || undefined,
-        activeGoals: goals.filter((g: any) => g.isActive).map((g: any) => ({ 
-          id: g.id,
-          title: g.title, 
-          progress: g.progress || 0 
-        })),
-        habits: activeHabits.map((h: any) => ({ 
-          id: h.id,
-          title: h.title, 
-          streak: h.streak || 0,
-          frequency: h.frequency,
-          completedToday: completedHabitIds.has(h.id),
-        })),
-        todaySchedule: todayScheduleBlocks.map((b: any) => ({
-          title: b.title,
-          startTime: b.startTime,
-          endTime: b.endTime,
-          category: b.category,
-        })),
-        todayCalendarEvents: todayCalEvents.map((e: any) => ({
-          title: e.title,
-          startTime: e.startTime,
-          description: e.description,
-        })),
-        currentMood: latestMood ? {
-          energyLevel: latestMood.energyLevel,
-          moodLevel: latestMood.moodLevel,
-          clarityLevel: latestMood.clarityLevel,
-          loggedAt: latestMood.createdAt,
-        } : null,
-        recentJournalEntries: recentJournal.map((j: any) => ({
-          content: j.content?.slice(0, 200),
-          mood: j.mood,
-          createdAt: j.createdAt,
-        })),
-        pendingReminders: pendingReminders.slice(0, 5).map((r: any) => ({
-          title: r.title,
-          reminderTime: r.reminderTime,
-        })),
-        activeRoutines: routines.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          mode: r.mode,
-        })),
-        profile: profile || clientProfile || null,
-        lifeSystem: lifeSystemContext || null,
-        energyContext: energyContext || null,
+        ...toUserLifeContext(snapshot, {
+          category: context,
+          energyContext: energyContext || undefined,
+          lifeSystem: lifeSystemContext || undefined,
+        }),
+        profile: clientProfile || null,
         cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
           ? {
               useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
               useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
             }
-          : undefined,
-        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
-          ? (user!.coachingMode as CoachingMode)
-          : "gentle",
-        wellnessPreferences: wellnessPrefs ? {
-          beliefSystem: wellnessPrefs.beliefSystem,
-          traditions: wellnessPrefs.traditions,
-          otherTradition: wellnessPrefs.otherTradition,
-          meditationEnabled: wellnessPrefs.meditationEnabled,
-          journalEnabled: wellnessPrefs.journalEnabled,
-          astrologyEnabled: wellnessPrefs.astrologyEnabled,
-          tarotEnabled: wellnessPrefs.tarotEnabled,
-          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
-        } : undefined,
+          : snapshot.spirit.cosmicConsent,
       };
-      
+
       // Strip any non-standard roles (e.g. 'insight') that OpenAI rejects
       const safeHistory = (conversationHistory || []).filter(
         (m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role)
@@ -2862,34 +2673,6 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // Fetch enriched user context (same as smart endpoint)
-      const [user, goals, habits, profile, wellnessPrefs, todayHabitLogsS, moodLogsS, scheduleBlocksS, calendarEventsS, recentJournalS, pendingRemindersS, routinesS] = await Promise.all([
-        storage.getUser(userId),
-        storage.getGoals(userId),
-        storage.getHabits(userId),
-        storage.getUserProfile(userId),
-        storage.getWellnessPreferences(userId),
-        storage.getTodayHabitLogsByUser(userId),
-        storage.getMoodLogs(userId),
-        storage.getScheduleBlocks(userId),
-        storage.getCalendarEvents(userId),
-        storage.getDwJournalEntries(userId, 3),
-        storage.getReminders(userId, 'scheduled'),
-        storage.getRoutines(userId),
-      ]);
-
-      const todayS = new Date();
-      const todayStrS = todayS.toISOString().split('T')[0];
-      const dayOfWeekS = todayS.getDay();
-      const completedHabitIdsS = new Set(todayHabitLogsS.map((l: any) => l.habitId));
-      const activeHabitsS = habits.filter((h: any) => h.isActive);
-      const todayScheduleBlocksS = scheduleBlocksS.filter((b: any) => b.dayOfWeek === dayOfWeekS);
-      const todayCalEventsS = calendarEventsS.filter((e: any) => {
-        if (!e.startTime) return false;
-        return new Date(e.startTime).toISOString().split('T')[0] === todayStrS;
-      });
-      const latestMoodS = moodLogsS.length > 0 ? moodLogsS[0] : null;
-      
       // Handle document attachments
       let documentContext = "";
       if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
@@ -2898,76 +2681,32 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         );
         const validDocs = docs.filter(d => d && d.userId === userId);
         if (validDocs.length > 0) {
-          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d => 
+          documentContext = "\n\n[ATTACHED DOCUMENTS]\n" + validDocs.map(d =>
             `--- ${d!.fileName} ---\n${d!.rawText?.slice(0, 3000) || "(no content)"}\n---`
           ).join("\n");
         }
       }
-      
-      const enhancedMessage = documentContext 
+
+      const enhancedMessage = documentContext
         ? `${message}\n${documentContext}`
         : message;
-      
+
+      const snapshot = await getUserContextSnapshot(userId);
       const userContext = {
-        category: context,
-        systemName: user?.systemName || undefined,
-        activeGoals: goals.filter((g: any) => g.isActive).map((g: any) => ({ 
-          id: g.id,
-          title: g.title, 
-          progress: g.progress || 0 
-        })),
-        habits: activeHabitsS.map((h: any) => ({ 
-          id: h.id,
-          title: h.title, 
-          streak: h.streak || 0,
-          frequency: h.frequency,
-          completedToday: completedHabitIdsS.has(h.id),
-        })),
-        todaySchedule: todayScheduleBlocksS.map((b: any) => ({
-          title: b.title, startTime: b.startTime, endTime: b.endTime, category: b.category,
-        })),
-        todayCalendarEvents: todayCalEventsS.map((e: any) => ({
-          title: e.title, startTime: e.startTime, description: e.description,
-        })),
-        currentMood: latestMoodS ? {
-          energyLevel: latestMoodS.energyLevel,
-          moodLevel: latestMoodS.moodLevel,
-          clarityLevel: latestMoodS.clarityLevel,
-          loggedAt: latestMoodS.createdAt,
-        } : null,
-        recentJournalEntries: recentJournalS.map((j: any) => ({
-          content: j.content?.slice(0, 200), mood: j.mood, createdAt: j.createdAt,
-        })),
-        pendingReminders: pendingRemindersS.slice(0, 5).map((r: any) => ({
-          title: r.title, reminderTime: r.reminderTime,
-        })),
-        activeRoutines: routinesS.map((r: any) => ({
-          id: r.id, name: r.name, mode: r.mode,
-        })),
-        profile: profile || clientProfile || null,
-        lifeSystem: lifeSystemContext || null,
-        energyContext: energyContext || null,
-        coachMode: (coachingModeEnum as readonly string[]).includes(user?.coachingMode ?? "")
-          ? (user!.coachingMode as CoachingMode)
-          : "gentle",
+        ...toUserLifeContext(snapshot, {
+          category: context,
+          energyContext: energyContext || undefined,
+          lifeSystem: lifeSystemContext || undefined,
+        }),
+        profile: clientProfile || null,
         cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
           ? {
               useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
               useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
             }
-          : undefined,
-        wellnessPreferences: wellnessPrefs ? {
-          beliefSystem: wellnessPrefs.beliefSystem,
-          traditions: wellnessPrefs.traditions,
-          otherTradition: wellnessPrefs.otherTradition,
-          meditationEnabled: wellnessPrefs.meditationEnabled,
-          journalEnabled: wellnessPrefs.journalEnabled,
-          astrologyEnabled: wellnessPrefs.astrologyEnabled,
-          tarotEnabled: wellnessPrefs.tarotEnabled,
-          energyWorkEnabled: wellnessPrefs.energyWorkEnabled,
-        } : undefined,
+          : snapshot.spirit.cosmicConsent,
       };
-      
+
       // Strip any non-standard roles (e.g. 'insight') that OpenAI rejects
       const safeStreamHistory = (conversationHistory || []).filter(
         (m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role)
@@ -4746,16 +4485,12 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       const userId = req.session?.userId;
       if (userId) {
         try {
-          const [userProfile, goals, habits] = await Promise.all([
-            storage.getUserProfile(userId),
-            storage.getGoals(userId),
-            storage.getHabits(userId),
-          ]);
+          const snap = await getUserContextSnapshot(userId);
           userContext = {
-            fitnessGoal: userProfile?.fitnessGoal || null,
-            energyLevel: userProfile?.energyLevel || null,
-            goals: goals.slice(0, 3).map((g: Goal) => g.title),
-            habits: habits.slice(0, 3).map((h: Habit) => h.title),
+            fitnessGoal: snap.identity.fitnessGoal || null,
+            energyLevel: snap.identity.energyLevel || null,
+            goals: snap.plans.activeGoals.slice(0, 3).map((g) => g.title),
+            habits: snap.plans.activeHabits.slice(0, 3).map((h) => h.title),
           };
         } catch {
           // Non-fatal — proceed without profile context

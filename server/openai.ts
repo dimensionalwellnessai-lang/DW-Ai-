@@ -238,7 +238,7 @@ interface ChatMessage {
 
 type EnergyLevel = "low" | "medium" | "high";
 
-interface EnergyContext {
+export interface EnergyContext {
   currentEnergy?: EnergyLevel;
   currentMood?: string | null;
   currentClarity?: EnergyLevel;
@@ -247,7 +247,7 @@ interface EnergyContext {
   energySource?: string;
 }
 
-interface UserLifeContext {
+export interface UserLifeContext {
   systemName?: string;
   wellnessFocus?: string[];
   peakMotivationTime?: string;
@@ -320,6 +320,16 @@ interface UserLifeContext {
     tarotEnabled?: boolean | null;
     energyWorkEnabled?: boolean | null;
   };
+  /**
+   * Pre-rendered, server-trusted natural-language snapshot of everything DW
+   * knows about the user (identity, body, money, people, spirit, plans,
+   * triggers, mood drivers). Produced by
+   * `server/lib/user-context.ts#toPromptString`. Appended verbatim to the
+   * system prompt so domain context that isn't covered by the structured
+   * fields above (wearables yesterday, finances, relationships, etc.) is
+   * still available to the model. Never accept this from client input.
+   */
+  contextSnapshot?: string;
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -955,6 +965,10 @@ RESET PROTOCOL (User's Recovery System):
 ${userContext.resetProtocol.redFlags?.length ? `• Red Flags: ${userContext.resetProtocol.redFlags.join(", ")}` : ""}
 ${userContext.resetProtocol.howIReset?.length ? `• How I Reset: ${userContext.resetProtocol.howIReset.join(", ")}` : ""}
 ${userContext.resetProtocol.whenThingsGetHard?.length ? `• When Things Get Hard: ${userContext.resetProtocol.whenThingsGetHard.join(", ")}` : ""}
+` : ""}
+${userContext?.contextSnapshot ? `
+UNIFIED USER CONTEXT SNAPSHOT (server-aggregated, fresh):
+${userContext.contextSnapshot}
 ` : ""}
 ${userContext?.patternHistory?.length ? `
 DETECTED PATTERNS (Cross-conversation tracking):
@@ -2640,6 +2654,7 @@ ${(userContext as any)?.todayCalendarEvents?.length ? `Today's Calendar Events:\
 ${(userContext as any)?.recentJournalEntries?.length ? `Recent Journal:\n${(userContext as any).recentJournalEntries.map((j: any) => `• "${j.content}" (${j.mood || 'no mood'})`).join('\n')}` : ""}
 ${(userContext as any)?.pendingReminders?.length ? `Upcoming Reminders:\n${(userContext as any).pendingReminders.map((r: any) => `• ${r.title} at ${r.reminderTime}`).join('\n')}` : ""}
 ${(userContext as any)?.activeRoutines?.length ? `Active Routines:\n${(userContext as any).activeRoutines.map((r: any) => `• ${r.name} (${r.mode})`).join('\n')}` : ""}
+${userContext?.contextSnapshot ? `\nUNIFIED USER CONTEXT SNAPSHOT (server-aggregated, fresh):\n${userContext.contextSnapshot}\n` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CORE INTELLIGENCE PROTOCOLS (execute before every response)

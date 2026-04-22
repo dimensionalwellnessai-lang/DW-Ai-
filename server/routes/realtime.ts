@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireAuth } from "./_shared";
 import { storage } from "../storage";
+import { getUserContextSnapshot, toPromptString } from "../lib/user-context";
 import {
   DW_REALTIME_MODEL,
   DW_REALTIME_VOICE,
@@ -12,6 +13,9 @@ import {
 
 const sessionBodySchema = z.object({
   mode: z.string().optional(),
+  // Optional client override. When provided we trust the caller and use it
+  // verbatim; otherwise we derive a fresh snapshot server-side so the
+  // realtime model never operates on stale data.
   userContextSummary: z.string().max(4000).optional(),
 });
 
@@ -40,17 +44,30 @@ export function registerRealtimeRoutes(app: Express): void {
     const mode = getDWMode(parsed.data.mode);
 
     let userName: string | null = null;
+    let contextSummary: string | null = parsed.data.userContextSummary ?? null;
     try {
-      const user = await storage.getUser(userId);
-      userName = (user?.firstName || user?.username || "").trim() || null;
+      // Always mint realtime sessions with a fresh snapshot — voice mode
+      // is the most context-sensitive surface and a 60s stale window is
+      // unacceptable when the user is mid-conversation.
+      const snap = await getUserContextSnapshot(userId, { forceFresh: true });
+      userName = snap.identity.firstName || null;
+      // Only derive the summary server-side when the client did not supply one.
+      if (!contextSummary) contextSummary = toPromptString(snap);
     } catch {
-      userName = null;
+      // Fall back to a minimal user lookup so the session still mints if
+      // the snapshot fetch fails for any reason.
+      try {
+        const user = await storage.getUser(userId);
+        userName = (user?.firstName || user?.username || "").trim() || null;
+      } catch {
+        userName = null;
+      }
     }
 
     const instructions = buildDWInstructions({
       mode,
       userName,
-      userContextSummary: parsed.data.userContextSummary || null,
+      userContextSummary: contextSummary,
     });
 
     try {
