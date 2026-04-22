@@ -27,6 +27,8 @@ import { VoiceModeButton } from "@/components/voice-mode-button";
 import { DWVoiceConversation } from "@/components/dw-voice-conversation";
 import { DW_MODES, type DWMode } from "@shared/dw-persona";
 import { MessageActions } from "@/components/message-actions";
+import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
+import { Heart } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +42,13 @@ interface ChatMessage {
   insightCategory?: string;
   insightTitle?: string;
   isError?: boolean;
+  suggestion?: ChatSuggestion;
+  triggeredByUserMessage?: string;
 }
+
+type ChatSuggestion =
+  | { kind: "trigger_protocol"; reason?: string }
+  | { kind: "spiritual_prompt"; reason?: string; mode?: "meditate" | "pray" };
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
 const TALK_HISTORY_KEY = "dw_talk_history";
@@ -306,6 +314,8 @@ export function TalkItOutPage() {
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
   const [savedPlanIds, setSavedPlanIds] = useState<Set<number>>(new Set());
   const [plansOpen, setPlansOpen] = useState(false);
+  const [triggerSheetOpen, setTriggerSheetOpen] = useState(false);
+  const [triggerSheetSeed, setTriggerSheetSeed] = useState<{ feeling: string; assumption: string }>({ feeling: "", assumption: "" });
   const [viewingPlan, setViewingPlan] = useState<{ id: string; content: string; savedAt: number } | null>(null);
   const [savedPlansList, setSavedPlansList] = useState<Array<{ id: string; preview: string; content: string; savedAt: number }>>(() => {
     try { return JSON.parse(localStorage.getItem("dw_saved_plans") || "[]"); } catch { return []; }
@@ -651,7 +661,18 @@ export function TalkItOutPage() {
             },
           };
         }
-        return [...prev, { role: "assistant", content: processedWithHistory.text }];
+        const suggestion: ChatSuggestion | undefined =
+          data?.suggestion && typeof data.suggestion === "object" && data.suggestion.kind
+            ? data.suggestion
+            : undefined;
+        return [
+          ...prev,
+          {
+            role: "assistant",
+            content: processedWithHistory.text,
+            ...(suggestion ? { suggestion, triggeredByUserMessage: variables } : {}),
+          },
+        ];
       });
       // Update the active DW lane from the picker (unless the user locked one).
       if (data?.dwMode && !chatModeLocked) {
@@ -1163,6 +1184,31 @@ export function TalkItOutPage() {
                         </Button>
                       </div>
                     )}
+                    {message.suggestion?.kind === "trigger_protocol" && (
+                      <div className="pt-1">
+                        {message.suggestion.reason && (
+                          <p className="text-xs text-muted-foreground mb-1.5 italic">
+                            {message.suggestion.reason}
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                          onClick={() => {
+                            setTriggerSheetSeed({
+                              feeling: message.triggeredByUserMessage ?? "",
+                              assumption: message.triggeredByUserMessage ?? "",
+                            });
+                            setTriggerSheetOpen(true);
+                          }}
+                          data-testid={`button-start-trigger-reset-${index}`}
+                        >
+                          <Heart className="h-3.5 w-3.5" />
+                          Start trigger reset
+                        </Button>
+                      </div>
+                    )}
                     {message.isError && lastFailedMessage && (
                       <div className="pt-1">
                         <Button
@@ -1480,6 +1526,13 @@ export function TalkItOutPage() {
           }}
         />
       )}
+
+      <TriggerProtocolSheet
+        open={triggerSheetOpen}
+        onOpenChange={setTriggerSheetOpen}
+        initialFeeling={triggerSheetSeed.feeling}
+        initialAssumption={triggerSheetSeed.assumption}
+      />
     </div>
   );
 }

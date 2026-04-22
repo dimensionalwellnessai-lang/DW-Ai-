@@ -82,16 +82,18 @@ const PAUSE_CHOICES = [5, 20, 30] as const;
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFeeling?: string;
+  initialAssumption?: string;
 }
 
-export function TriggerProtocolSheet({ open, onOpenChange }: Props) {
+export function TriggerProtocolSheet({ open, onOpenChange, initialFeeling, initialAssumption }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [step, setStep] = useState<Step>("identify");
 
   // Captured values
-  const [feeling, setFeeling] = useState("");
-  const [assumption, setAssumption] = useState("");
+  const [feeling, setFeeling] = useState(initialFeeling ?? "");
+  const [assumption, setAssumption] = useState(initialAssumption ?? "");
   const [hadProof, setHadProof] = useState<boolean | null>(null);
   const [pauseMinutes, setPauseMinutes] = useState<number | null>(null);
   const [rootNote, setRootNote] = useState("");
@@ -111,6 +113,14 @@ export function TriggerProtocolSheet({ open, onOpenChange }: Props) {
       qc.invalidateQueries({ queryKey: ["/api/trigger-events"] });
     },
   });
+
+  // Re-seed when opened with new initial values.
+  useEffect(() => {
+    if (open) {
+      if (initialFeeling !== undefined) setFeeling(initialFeeling);
+      if (initialAssumption !== undefined) setAssumption(initialAssumption);
+    }
+  }, [open, initialFeeling, initialAssumption]);
 
   // Reset everything when the sheet closes.
   useEffect(() => {

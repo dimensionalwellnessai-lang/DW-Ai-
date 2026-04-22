@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, Keyboard, Send, Settings, Volume2, VolumeX, ChevronLeft } from "lucide-react";
+import { Mic, MicOff, X, Keyboard, Send, Settings, Volume2, VolumeX, ChevronLeft, Heart } from "lucide-react";
+import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  suggestion?: { kind: "trigger_protocol"; reason?: string } | { kind: string; [k: string]: unknown };
+  triggeredByUserMessage?: string;
 }
 
 interface SpeechRecognitionEvent {
@@ -109,6 +112,8 @@ export default function VoiceModePage() {
   const [interim, setInterim] = useState("");
   const [speakAloud, setSpeakAloud] = useState(prefs.speakResponsesAloud);
   const [micSupported] = useState(() => !!getSpeechRecognition());
+  const [triggerSheetOpen, setTriggerSheetOpen] = useState(false);
+  const [triggerSheetSeed, setTriggerSheetSeed] = useState<{ feeling: string; assumption: string }>({ feeling: "", assumption: "" });
 
   const recRef = useRef<SpeechRecognitionInstance | null>(null);
   const transcriptRef = useRef("");
@@ -149,10 +154,18 @@ export default function VoiceModePage() {
         message: text.trim(),
         conversationHistory: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
       });
-      const json = await res.json() as { response?: string };
+      const json = await res.json() as { response?: string; suggestion?: { kind: string; reason?: string } };
       const reply = json.response ?? "I didn't get a response. Please try again.";
 
-      const assistantMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: reply };
+      const suggestion = json.suggestion && typeof json.suggestion === "object" && json.suggestion.kind
+        ? json.suggestion
+        : undefined;
+      const assistantMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: reply,
+        ...(suggestion ? { suggestion, triggeredByUserMessage: text.trim() } : {}),
+      };
       setMessages(prev => [...prev, assistantMsg]);
 
       if (speakAloud && ttsService.isAvailable()) {
@@ -333,6 +346,31 @@ export default function VoiceModePage() {
               )}>
                 {msg.content}
               </div>
+              {msg.role === "assistant" && msg.suggestion?.kind === "trigger_protocol" && (
+                <div className="mt-2">
+                  {typeof (msg.suggestion as { reason?: string }).reason === "string" && (
+                    <p className="text-xs text-muted-foreground mb-1.5 italic">
+                      {(msg.suggestion as { reason?: string }).reason}
+                    </p>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                    onClick={() => {
+                      setTriggerSheetSeed({
+                        feeling: msg.triggeredByUserMessage ?? "",
+                        assumption: msg.triggeredByUserMessage ?? "",
+                      });
+                      setTriggerSheetOpen(true);
+                    }}
+                    data-testid={`button-start-trigger-reset-${msg.id}`}
+                  >
+                    <Heart className="h-3.5 w-3.5" />
+                    Start trigger reset
+                  </Button>
+                </div>
+              )}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -414,6 +452,13 @@ export default function VoiceModePage() {
           </button>
         </div>
       )}
+
+      <TriggerProtocolSheet
+        open={triggerSheetOpen}
+        onOpenChange={setTriggerSheetOpen}
+        initialFeeling={triggerSheetSeed.feeling}
+        initialAssumption={triggerSheetSeed.assumption}
+      />
     </div>
   );
 }
