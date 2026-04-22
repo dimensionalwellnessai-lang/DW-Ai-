@@ -1,344 +1,318 @@
+import { useState } from "react";
+import { Link } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Plus, FileText, Archive, CheckCircle, Sparkles, Clock } from "lucide-react";
+
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, FileText, Archive, CheckCircle, Clock, MoreHorizontal, Play, Trash2, Sparkles } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useTutorialStart } from "@/contexts/tutorial-context";
-import { markPlanVisit, trackEvent, EVENTS } from "@/lib/analytics";
-import { consumeHighlightNext } from "@/lib/momentum";
-import { getCalendarEvents, getSavedRoutines, type CalendarEvent, type SavedRoutine } from "@/lib/guest-storage";
-import type { LifeSystem } from "@shared/schema";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, parseApiError, queryClient } from "@/lib/queryClient";
+import type { Project, ProjectStatus } from "@shared/schema";
 
-type PlanStatus = "draft" | "active" | "archived";
+type StatusFilter = "all" | ProjectStatus;
 
-interface Plan {
-  id: string;
-  name: string;
-  status: PlanStatus;
-  itemCount: number;
-  createdAt: string;
-  updatedAt?: string;
+const TEMPLATES: Array<{ id: string; label: string; description: string; tags: string[] }> = [
+  { id: "custom", label: "Blank plan", description: "", tags: [] },
+  { id: "workshop", label: "Workshop", description: "Plan a workshop or event end-to-end.", tags: ["purpose", "creation"] },
+  { id: "life-redesign", label: "Life redesign", description: "Reshape a season of your life.", tags: ["identity"] },
+  { id: "trip", label: "Trip", description: "Plan a trip, big or small.", tags: ["environment"] },
+  { id: "project", label: "Project", description: "Build something concrete.", tags: ["creation"] },
+  { id: "creative", label: "Creative work", description: "A piece of writing, art, or making.", tags: ["mind", "creation"] },
+];
+
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  active: "Active",
+  parked: "Parked",
+  done: "Done",
+};
+
+function statusOf(p: Project): ProjectStatus {
+  return (p.status as ProjectStatus | null) ?? "active";
 }
 
-const LOCAL_PLANS_KEY = "dw_local_plans";
-
-function getLocalPlans(): Plan[] {
-  try {
-    const stored = localStorage.getItem(LOCAL_PLANS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
+function relativeTime(date: Date | string | null | undefined): string {
+  if (!date) return "—";
+  const d = new Date(date);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "just now";
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days}d ago`;
+  return d.toLocaleDateString();
 }
 
-function saveLocalPlans(plans: Plan[]) {
-  localStorage.setItem(LOCAL_PLANS_KEY, JSON.stringify(plans));
+function daysSince(date: Date | string | null | undefined): number {
+  if (!date) return 0;
+  return Math.floor((Date.now() - new Date(date).getTime()) / (24 * 60 * 60 * 1000));
 }
 
 export default function PlansPage() {
-  usePageMeta("Plans", "Manage your active, draft, and archived life system plans.");
-  useTutorialStart("plans", 1000);
-  const [, setLocation] = useLocation();
-  const [localPlans, setLocalPlans] = useState<Plan[]>(getLocalPlans);
-  const [highlightedId, setHighlightedId] = useState<string | null>(null);
-  const highlightRef = useRef<HTMLDivElement>(null);
-  
-  const momentumEvents = getCalendarEvents().filter(e => e.tags?.includes("momentum"));
-  const momentumRoutines = getSavedRoutines().filter(r => r.tags?.includes("momentum"));
+  usePageMeta("Plans", "Your ongoing plans, each with its own DW conversation.");
+  const { toast } = useToast();
+  const [filter, setFilter] = useState<StatusFilter>("active");
+  const [showArchived, setShowArchived] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [template, setTemplate] = useState("custom");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
 
-  const { data: lifeSystemData } = useQuery<{ lifeSystem: LifeSystem | null }>({
-    queryKey: ["/api/life-system"],
+  const { data: plans = [], isLoading } = useQuery<Project[]>({
+    queryKey: ["/api/plans"],
   });
 
-  const allPlans: Plan[] = [
-    ...localPlans,
-    ...(lifeSystemData?.lifeSystem ? [{
-      id: lifeSystemData.lifeSystem.id,
-      name: lifeSystemData.lifeSystem.name,
-      status: "active" as PlanStatus,
-      itemCount: (lifeSystemData.lifeSystem.scheduleBlocks as any[])?.length || 0,
-      createdAt: lifeSystemData.lifeSystem.createdAt?.toString() || new Date().toISOString(),
-    }] : []),
-  ];
+  const createMutation = useMutation({
+    mutationFn: async (payload: { name: string; description?: string; dimensionTags?: string[] }) => {
+      const res = await apiRequest("POST", "/api/plans", payload);
+      return res.json() as Promise<Project>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      toast({ title: "Plan created", description: "Open it to start a conversation with DW." });
+      setCreateOpen(false);
+      setName("");
+      setDescription("");
+      setTemplate("custom");
+    },
+    onError: (err) => {
+      toast({ title: "Couldn't create plan", description: parseApiError(err), variant: "destructive" });
+    },
+  });
 
-  const draftPlans = allPlans.filter(p => p.status === "draft");
-  const activePlans = allPlans.filter(p => p.status === "active");
-  const archivedPlans = allPlans.filter(p => p.status === "archived");
-  
-  useEffect(() => {
-    markPlanVisit();
-    const highlight = consumeHighlightNext("/plans");
-    if (highlight) {
-      // Priority order: momentumEvents > momentumRoutines > draftPlans > activePlans
-      const foundInMomentumEvents = momentumEvents.some(e => e.id === highlight.id);
-      const foundInMomentumRoutines = momentumRoutines.some(r => r.id === highlight.id);
-      const foundInDraftPlans = draftPlans.some(p => p.id === highlight.id);
-      const foundInActivePlans = activePlans.some(p => p.id === highlight.id);
-      
-      if (foundInMomentumEvents || foundInMomentumRoutines || foundInDraftPlans || foundInActivePlans) {
-        setHighlightedId(highlight.id);
-        setTimeout(() => {
-          highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 100);
-        setTimeout(() => setHighlightedId(null), 3000);
-      }
+  const handleCreate = () => {
+    if (!name.trim()) {
+      toast({ title: "Give your plan a name", variant: "destructive" });
+      return;
     }
-  }, [momentumEvents, momentumRoutines, draftPlans, activePlans]);
-
-  const handleCreateNew = () => {
-    setLocation("/plan-builder");
+    const tpl = TEMPLATES.find((t) => t.id === template);
+    createMutation.mutate({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      dimensionTags: tpl && tpl.tags.length > 0 ? tpl.tags : undefined,
+    });
   };
 
-  const handleDeletePlan = (id: string) => {
-    const updated = localPlans.filter(p => p.id !== id);
-    setLocalPlans(updated);
-    saveLocalPlans(updated);
-  };
-  
-  const handleActivatePlan = (id: string) => {
-    const updated = localPlans.map(p => 
-      p.id === id ? { ...p, status: "active" as PlanStatus, updatedAt: new Date().toISOString() } : p
-    );
-    setLocalPlans(updated);
-    saveLocalPlans(updated);
-    trackEvent(EVENTS.PLAN_ACTIVATED, { planItemId: id, switchId: "local_plan" });
-  };
-  
-  const handleArchivePlan = (id: string) => {
-    const updated = localPlans.map(p => 
-      p.id === id ? { ...p, status: "archived" as PlanStatus, updatedAt: new Date().toISOString() } : p
-    );
-    setLocalPlans(updated);
-    saveLocalPlans(updated);
-  };
+  const visible = plans.filter((p) => {
+    const s = statusOf(p);
+    if (!showArchived && s === "done") return false;
+    if (filter === "all") return true;
+    return s === filter;
+  });
 
-  const renderPlanCard = (plan: Plan) => {
-    const isHighlighted = highlightedId === plan.id;
-    const isDraft = plan.status === "draft";
-    
-    return (
-      <div 
-        key={plan.id}
-        ref={isHighlighted ? highlightRef : undefined}
-      >
-        <Card 
-          data-testid={`card-plan-${plan.id}`}
-          className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
-                  <h3 className="font-medium text-foreground truncate">{plan.name}</h3>
-                  <Badge variant={plan.status === "active" ? "default" : "secondary"} className="shrink-0">
-                    {plan.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <FileText className="w-3 h-3" />
-                    {plan.itemCount} items
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(plan.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {/* Visible Activate button for drafts */}
-                {isDraft && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleActivatePlan(plan.id)}
-                    className="gap-1.5"
-                    data-testid={`button-activate-${plan.id}`}
-                  >
-                    <Play className="w-4 h-4" />
-                    Activate
-                  </Button>
-                )}
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" data-testid={`button-plan-menu-${plan.id}`}>
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {isDraft && (
-                      <DropdownMenuItem 
-                        className="gap-2"
-                        onClick={() => handleActivatePlan(plan.id)}
-                      >
-                        <Play className="w-4 h-4" />
-                        Activate
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem 
-                      className="gap-2"
-                      onClick={() => handleArchivePlan(plan.id)}
-                    >
-                      <Archive className="w-4 h-4" />
-                      Archive
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="gap-2 text-destructive"
-                      onClick={() => handleDeletePlan(plan.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
-  const renderEmptyState = (status: PlanStatus) => (
-    <div className="text-center py-12 text-muted-foreground">
-      <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-      <p className="mb-4">No {status} plans yet</p>
-      {status === "draft" && (
-        <Button onClick={handleCreateNew} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create New Plan
-        </Button>
-      )}
-    </div>
-  );
-
-  const renderMomentumEvent = (event: CalendarEvent) => {
-    const isHighlighted = highlightedId === event.id;
-    const eventDate = new Date(event.startTime);
-    
-    return (
-      <div 
-        key={event.id}
-        ref={isHighlighted ? highlightRef : undefined}
-        data-testid={`momentum-event-${event.id}`}
-      >
-        <Card className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-foreground truncate">{event.title}</h3>
-                <p className="text-sm text-muted-foreground">{event.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {eventDate.toLocaleDateString()} at {eventDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-              <Badge variant="secondary" className="shrink-0">
-                <Clock className="w-3 h-3 mr-1" />
-                30 min
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-  
-  const renderMomentumRoutine = (routine: SavedRoutine) => {
-    const isHighlighted = highlightedId === routine.id;
-    
-    return (
-      <div 
-        key={routine.id}
-        ref={isHighlighted ? highlightRef : undefined}
-        data-testid={`momentum-routine-${routine.id}`}
-      >
-        <Card className={`transition-all duration-500 ${isHighlighted ? "ring-2 ring-primary bg-primary/5" : ""}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              {isHighlighted && <Sparkles className="w-4 h-4 text-primary shrink-0" />}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-foreground truncate">{routine.title}</h3>
-                <p className="text-sm text-muted-foreground">{routine.description}</p>
-              </div>
-              <Badge variant="outline" className="shrink-0">Task</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  const counts = {
+    active: plans.filter((p) => statusOf(p) === "active").length,
+    parked: plans.filter((p) => statusOf(p) === "parked").length,
+    done: plans.filter((p) => statusOf(p) === "done").length,
   };
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader 
-        title="Plans" 
+      <PageHeader
+        title="Plans"
         rightContent={
-          <Button size="sm" onClick={handleCreateNew} className="gap-2" data-testid="button-new-plan">
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            className="gap-2"
+            data-testid="button-new-plan"
+          >
             <Plus className="w-4 h-4" />
-            New
+            New plan
           </Button>
         }
       />
-      
+
       <div className="flex-1 overflow-auto">
-        <div className="p-4 max-w-2xl mx-auto pb-8">
-          {(momentumEvents.length > 0 || momentumRoutines.length > 0) && (
-            <div className="mb-6">
-              <h2 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Momentum Items
-              </h2>
-              <div className="space-y-3">
-                {momentumEvents.map(renderMomentumEvent)}
-                {momentumRoutines.map(renderMomentumRoutine)}
-              </div>
+        <div className="p-4 max-w-3xl mx-auto pb-12 space-y-4">
+          {/* Filter chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            {(["active", "parked", "all"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                onClick={() => setFilter(f)}
+                data-testid={`filter-${f}`}
+              >
+                {f === "active" && <CheckCircle className="w-3.5 h-3.5 mr-1.5" />}
+                {f === "parked" && <Clock className="w-3.5 h-3.5 mr-1.5" />}
+                {f === "all" && <FileText className="w-3.5 h-3.5 mr-1.5" />}
+                {f === "all"
+                  ? `All (${plans.length})`
+                  : `${STATUS_LABEL[f]} (${counts[f]})`}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant={showArchived ? "default" : "outline"}
+              onClick={() => setShowArchived((v) => !v)}
+              data-testid="toggle-archived"
+            >
+              <Archive className="w-3.5 h-3.5 mr-1.5" />
+              {showArchived ? "Hiding done" : `Show done (${counts.done})`}
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <div className="text-center text-muted-foreground py-12">Loading your plans…</div>
+          ) : visible.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground space-y-3">
+              <FileText className="w-12 h-12 mx-auto opacity-50" />
+              <p>No plans here yet.</p>
+              <Button onClick={() => setCreateOpen(true)} className="gap-2" data-testid="button-empty-create">
+                <Plus className="w-4 h-4" /> Create your first plan
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visible.map((p) => {
+                const s = statusOf(p);
+                const stalled = s === "active" && daysSince(p.lastActivityAt) >= 6;
+                return (
+                  <Link key={p.id} href={`/plans/${p.id}`}>
+                    <Card
+                      className="cursor-pointer hover-elevate transition-all"
+                      data-testid={`card-plan-${p.id}`}
+                    >
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-foreground truncate" data-testid={`text-plan-name-${p.id}`}>
+                              {p.name}
+                            </h3>
+                            {p.summary ? (
+                              <p
+                                className="text-sm text-muted-foreground line-clamp-2 mt-0.5 italic"
+                                data-testid={`text-plan-summary-${p.id}`}
+                              >
+                                {p.summary}
+                              </p>
+                            ) : p.description ? (
+                              <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                                {p.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          <Badge
+                            variant={s === "active" ? "default" : s === "done" ? "outline" : "secondary"}
+                            className="shrink-0"
+                            data-testid={`status-plan-${p.id}`}
+                          >
+                            {STATUS_LABEL[s]}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>Last activity {relativeTime(p.lastActivityAt)}</span>
+                          {p.dimensionTags && p.dimensionTags.length > 0 && (
+                            <span className="flex gap-1">
+                              {p.dimensionTags.slice(0, 3).map((t) => (
+                                <span key={t} className="px-1.5 py-0.5 rounded bg-muted">
+                                  {t}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                        {stalled && (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                            <Sparkles className="w-3 h-3" />
+                            Hasn't moved in {daysSince(p.lastActivityAt)} days — pick it back up?
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           )}
-          
-          <Tabs defaultValue="drafts" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="drafts" className="gap-2" data-testid="tab-drafts">
-                <FileText className="w-4 h-4" />
-                Drafts ({draftPlans.length})
-              </TabsTrigger>
-              <TabsTrigger value="active" className="gap-2" data-testid="tab-active">
-                <CheckCircle className="w-4 h-4" />
-                Active ({activePlans.length})
-              </TabsTrigger>
-              <TabsTrigger value="archived" className="gap-2" data-testid="tab-archived">
-                <Archive className="w-4 h-4" />
-                Archived ({archivedPlans.length})
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="drafts" className="space-y-3 mt-4">
-              {draftPlans.length > 0 ? draftPlans.map(renderPlanCard) : renderEmptyState("draft")}
-            </TabsContent>
-            
-            <TabsContent value="active" className="space-y-3 mt-4">
-              {activePlans.length > 0 ? activePlans.map(renderPlanCard) : renderEmptyState("active")}
-            </TabsContent>
-            
-            <TabsContent value="archived" className="space-y-3 mt-4">
-              {archivedPlans.length > 0 ? archivedPlans.map(renderPlanCard) : renderEmptyState("archived")}
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New plan</DialogTitle>
+            <DialogDescription>
+              Each plan has its own DW conversation, milestones, and attached docs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="plan-template">Template</Label>
+              <Select value={template} onValueChange={setTemplate}>
+                <SelectTrigger id="plan-template" data-testid="select-template">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEMPLATES.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-name">Name</Label>
+              <Input
+                id="plan-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Flip the Switch workshop"
+                data-testid="input-plan-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-desc">Description (optional)</Label>
+              <Textarea
+                id="plan-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this plan about? What does success look like?"
+                rows={3}
+                data-testid="input-plan-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={createMutation.isPending}
+              data-testid="button-create-plan"
+            >
+              {createMutation.isPending ? "Creating…" : "Create plan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -89,6 +89,7 @@ const DIMENSION_SECTIONS: MenuSection[] = [
     dwContextLabel: "Purpose",
     items: [
       { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "purpose" },
+      { id: "plans", name: "🗂️ Plans", path: "/plans", icon: LayoutDashboard, dimension: "purpose" },
       { id: "goals", name: "🎯 Goals", path: "/goals", icon: Target, dimension: "purpose" },
       { id: "challenges", name: "🏆 Challenges", path: "/challenges", icon: Award, dimension: "purpose" },
       { id: "habits", name: "✅ Habits", path: "/habits", icon: CheckSquare, dimension: "purpose" },

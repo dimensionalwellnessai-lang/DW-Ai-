@@ -409,6 +409,45 @@ export function registerChatImportRoutes(app: Express): void {
         projectId: body.data.projectId,
       });
       if (!updated) return res.status(404).json({ error: "Import not found." });
+
+      // Mirror the attach into the new ProjectArtifacts table so the plan's
+      // artifacts panel shows the import. If detaching, remove any matching
+      // artifact row(s) for this import on this user's plans.
+      try {
+        // Always clean up artifact rows on the *previously* linked plan first
+        // so that re-attaching to a different plan never leaves stale rows.
+        if (existing.projectId && existing.projectId !== body.data.projectId) {
+          const prior = await storage.getProjectArtifacts(existing.projectId, req.session.userId!);
+          for (const a of prior) {
+            if (a.kind === "import" && a.refId === existing.id) {
+              await storage.deleteProjectArtifact(a.id, existing.projectId, req.session.userId!);
+            }
+          }
+        }
+        if (body.data.projectId) {
+          // Avoid creating duplicates if one already exists on the new plan.
+          const existingArtifacts = await storage.getProjectArtifacts(body.data.projectId, req.session.userId!);
+          const already = existingArtifacts.some(
+            (a) => a.kind === "import" && a.refId === existing.id,
+          );
+          if (!already) {
+            await storage.createProjectArtifact(
+              {
+                projectId: body.data.projectId,
+                kind: "import",
+                refId: existing.id,
+                url: null,
+                title: existing.originalTitle.slice(0, 200),
+              },
+              req.session.userId!,
+            );
+          }
+        }
+      } catch (err) {
+        // Non-fatal: the import is attached; artifact mirror is just best-effort.
+        console.error("[imports-chat] artifact mirror failed:", err);
+      }
+
       res.json(updated);
     } catch (err) {
       console.error("[imports-chat] attach project error:", err);

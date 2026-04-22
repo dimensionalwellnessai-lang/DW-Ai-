@@ -79,6 +79,7 @@ const SettingsPage = lazy(() =>
 const AppTourPage = lazy(() => import("@/pages/app-tour"));
 import { TasksPage } from "@/pages/tasks";
 import PlansPage from "@/pages/plans";
+import PlanDetailPage from "@/pages/plan-detail";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
 import PlanHistoryPage from "@/pages/plan-history";
@@ -313,6 +314,7 @@ function Router() {
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
+      {isRouteEnabled("/plans") && <Route path="/plans/:planId" component={PlanDetailPage} />}
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
       {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}

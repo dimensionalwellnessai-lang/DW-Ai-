@@ -29,6 +29,7 @@ import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
 import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
+import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
@@ -496,6 +497,9 @@ export async function registerRoutes(
 
   // ChatGPT export + raw paste import → seeded DW continuation chat
   registerChatImportRoutes(app);
+
+  // Plans Workspace — projects, milestones, artifacts, plan-scoped DW chat
+  registerPlansRoutes(app);
   // Idempotent seed for the meditation library — fire-and-forget on boot.
   void seedMeditationLibrary();
 

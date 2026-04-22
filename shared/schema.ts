@@ -469,6 +469,9 @@ export const recoveryReflectionsRelations = relations(recoveryReflections, ({ on
   }),
 }));
 
+export const projectStatusEnum = ["active", "parked", "done"] as const;
+export type ProjectStatus = typeof projectStatusEnum[number];
+
 export const projects = pgTable("projects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -476,6 +479,10 @@ export const projects = pgTable("projects", {
   description: text("description"),
   dimensionTags: text("dimension_tags").array(),
   isActive: boolean("is_active").default(true),
+  status: text("status").$type<ProjectStatus>().default("active"),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  /** Short DW-generated one-liner ("where you are") shown on plan cards. */
+  summary: text("summary"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -492,6 +499,44 @@ export const projectChats = pgTable("project_chats", {
   messages: jsonb("messages"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// ── Plans Workspace: milestones + artifacts ──────────────────────────────────
+export const projectMilestones = pgTable("project_milestones", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  dueDate: timestamp("due_date"),
+  doneAt: timestamp("done_at"),
+  order: integer("order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const projectArtifactKindEnum = ["import", "upload", "link"] as const;
+export type ProjectArtifactKind = typeof projectArtifactKindEnum[number];
+
+export const projectArtifacts = pgTable("project_artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().$type<ProjectArtifactKind>(),
+  refId: varchar("ref_id"),
+  url: text("url"),
+  title: text("title").notNull(),
+  addedAt: timestamp("added_at").defaultNow(),
+});
+
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({
+  id: true,
+  createdAt: true,
+});
+export type ProjectMilestone = typeof projectMilestones.$inferSelect;
+export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
+
+export const insertProjectArtifactSchema = createInsertSchema(projectArtifacts).omit({
+  id: true,
+  addedAt: true,
+});
+export type ProjectArtifact = typeof projectArtifacts.$inferSelect;
+export type InsertProjectArtifact = z.infer<typeof insertProjectArtifactSchema>;
 
 export const projectChatsRelations = relations(projectChats, ({ one }) => ({
   project: one(projects, {

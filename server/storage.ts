@@ -25,6 +25,8 @@ import {
   tasks,
   projects,
   projectChats,
+  projectMilestones,
+  projectArtifacts,
   calendarEvents,
   calendarEventTasks,
   userProfiles,
@@ -122,6 +124,10 @@ import {
   type InsertProject,
   type ProjectChat,
   type InsertProjectChat,
+  type ProjectMilestone,
+  type InsertProjectMilestone,
+  type ProjectArtifact,
+  type InsertProjectArtifact,
   type CalendarEvent,
   type InsertCalendarEvent,
   type CalendarEventTask,
@@ -449,6 +455,16 @@ export interface IStorage {
 
   getProjectChatsForUser(projectId: string, userId: string): Promise<ProjectChat[]>;
   createProjectChatForUser(chat: InsertProjectChat, userId: string): Promise<ProjectChat | undefined>;
+  touchProjectActivity(projectId: string, userId: string): Promise<void>;
+
+  getProjectMilestones(projectId: string, userId: string): Promise<ProjectMilestone[]>;
+  createProjectMilestone(milestone: InsertProjectMilestone, userId: string): Promise<ProjectMilestone | undefined>;
+  updateProjectMilestone(id: string, projectId: string, userId: string, data: Partial<InsertProjectMilestone> & { doneAt?: Date | null }): Promise<ProjectMilestone | undefined>;
+  deleteProjectMilestone(id: string, projectId: string, userId: string): Promise<boolean>;
+
+  getProjectArtifacts(projectId: string, userId: string): Promise<ProjectArtifact[]>;
+  createProjectArtifact(artifact: InsertProjectArtifact, userId: string): Promise<ProjectArtifact | undefined>;
+  deleteProjectArtifact(id: string, projectId: string, userId: string): Promise<boolean>;
 
   getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
   getCalendarEventForUser(id: string, userId: string): Promise<CalendarEvent | undefined>;
@@ -1573,7 +1589,93 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(projects.id, chat.projectId), eq(projects.userId, userId)));
     if (!project) return undefined;
     const [created] = await db.insert(projectChats).values(chat).returning();
+    await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, chat.projectId));
     return created;
+  }
+
+  async touchProjectActivity(projectId: string, userId: string): Promise<void> {
+    await db.update(projects).set({ lastActivityAt: new Date() })
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+  }
+
+  async getProjectMilestones(projectId: string, userId: string): Promise<ProjectMilestone[]> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return [];
+    return db.select().from(projectMilestones)
+      .where(eq(projectMilestones.projectId, projectId))
+      .orderBy(projectMilestones.order, projectMilestones.createdAt);
+  }
+
+  async createProjectMilestone(milestone: InsertProjectMilestone, userId: string): Promise<ProjectMilestone | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, milestone.projectId), eq(projects.userId, userId)));
+    if (!project) return undefined;
+    const [created] = await db.insert(projectMilestones).values(milestone).returning();
+    await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, milestone.projectId));
+    return created;
+  }
+
+  async updateProjectMilestone(
+    id: string,
+    projectId: string,
+    userId: string,
+    data: Partial<InsertProjectMilestone> & { doneAt?: Date | null },
+  ): Promise<ProjectMilestone | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return undefined;
+    const [updated] = await db.update(projectMilestones).set(data)
+      .where(and(eq(projectMilestones.id, id), eq(projectMilestones.projectId, projectId)))
+      .returning();
+    if (updated) {
+      await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, projectId));
+    }
+    return updated || undefined;
+  }
+
+  async deleteProjectMilestone(id: string, projectId: string, userId: string): Promise<boolean> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return false;
+    const result = await db.delete(projectMilestones)
+      .where(and(eq(projectMilestones.id, id), eq(projectMilestones.projectId, projectId)))
+      .returning();
+    if (result.length > 0) {
+      await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, projectId));
+    }
+    return result.length > 0;
+  }
+
+  async getProjectArtifacts(projectId: string, userId: string): Promise<ProjectArtifact[]> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return [];
+    return db.select().from(projectArtifacts)
+      .where(eq(projectArtifacts.projectId, projectId))
+      .orderBy(desc(projectArtifacts.addedAt));
+  }
+
+  async createProjectArtifact(artifact: InsertProjectArtifact, userId: string): Promise<ProjectArtifact | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, artifact.projectId), eq(projects.userId, userId)));
+    if (!project) return undefined;
+    const [created] = await db.insert(projectArtifacts).values(artifact).returning();
+    await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, artifact.projectId));
+    return created;
+  }
+
+  async deleteProjectArtifact(id: string, projectId: string, userId: string): Promise<boolean> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return false;
+    const result = await db.delete(projectArtifacts)
+      .where(and(eq(projectArtifacts.id, id), eq(projectArtifacts.projectId, projectId)))
+      .returning();
+    if (result.length > 0) {
+      await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, projectId));
+    }
+    return result.length > 0;
   }
 
   async getCalendarEvents(userId: string): Promise<CalendarEvent[]> {

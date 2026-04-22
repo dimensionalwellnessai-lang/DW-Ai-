@@ -485,13 +485,13 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     label: "Plans",
     icon: "layers",
     type: "page",
-    description: "Life System dashboard (Drafts/Active/Archived)",
+    description: "Plans workspace — each plan has its own DW chat, milestones, and artifacts",
     showInMenu: true,
     menuSection: "more",
     menuOrder: 60,
     enabled: true,
     actions: [
-      { id: "new-plan", label: "Create new plan", to: "/plan-builder", icon: "plus" },
+      { id: "new-plan", label: "Create new plan", to: "/plans", icon: "plus" },
     ],
   },
   {

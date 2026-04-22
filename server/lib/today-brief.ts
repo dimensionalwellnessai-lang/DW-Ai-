@@ -11,6 +11,38 @@
 
 import { openai } from "../openai";
 import { getUserContextSnapshot, toPromptString } from "./user-context";
+import { db } from "../db";
+import { projects } from "@shared/schema";
+import { and, eq, lt, isNotNull } from "drizzle-orm";
+
+/** Active plans untouched for 6+ days are flagged as "stalled" in the brief. */
+const STALLED_PLAN_DAYS = 6;
+const MAX_STALLED_PLAN_BULLETS = 2;
+
+type StalledPlan = { id: string; name: string; daysSince: number };
+
+async function getStalledPlansForUser(userId: string): Promise<StalledPlan[]> {
+  const cutoff = new Date(Date.now() - STALLED_PLAN_DAYS * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ id: projects.id, name: projects.name, lastActivityAt: projects.lastActivityAt })
+    .from(projects)
+    .where(
+      and(
+        eq(projects.userId, userId),
+        eq(projects.status, "active"),
+        isNotNull(projects.lastActivityAt),
+        lt(projects.lastActivityAt, cutoff),
+      ),
+    )
+    .limit(MAX_STALLED_PLAN_BULLETS);
+  return rows
+    .filter((r): r is { id: string; name: string; lastActivityAt: Date } => r.lastActivityAt != null)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      daysSince: Math.floor((Date.now() - r.lastActivityAt.getTime()) / (24 * 60 * 60 * 1000)),
+    }));
+}
 import {
   type BriefBullet,
   type DailyBriefBulletKind,
@@ -196,8 +228,22 @@ export async function generateBriefForUser(
       ? "Evening's here. Take a slow breath and notice what actually moved today — even the small things count."
       : "Today's open in front of you. Start with one small, kind thing for yourself and let the rest unfold.";
   }
+  // Surface stalled plans regardless of whether the LLM produced bullets — the
+  // user's plans deserve a gentle nudge even when other signals are present.
+  const stalled = await getStalledPlansForUser(userId);
+  const stalledBullets: BriefBullet[] = stalled.map((p) => ({
+    kind: "plan",
+    text: `"${p.name}" hasn't moved in ${p.daysSince} days — pick it back up?`,
+    route: `/plans/${p.id}`,
+    importance: 2,
+  }));
+
   if (bullets.length === 0) {
     bullets = buildFallbackBullets(snapshot, variant);
+  }
+  // Prepend stalled-plan nudges (capped) so they're visible near the top.
+  if (stalledBullets.length > 0) {
+    bullets = [...stalledBullets, ...bullets].slice(0, 6);
   }
 
   return { summaryText, bullets };
