@@ -31,6 +31,8 @@ import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
+import { pickDWRole, PICKER_APPLY_THRESHOLD } from "./lib/dw-role-picker";
+import { DW_MODES, getDWMode } from "@shared/dw-persona";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendPartnerInviteEmail, sendWelcomeEmail } from "./email";
@@ -2129,7 +2131,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
   app.post("/api/chat", chatLimiter, async (req, res) => {
     try {
-      const { message, conversationHistory, context } = req.body;
+      const { message, conversationHistory, context, modeLock } = req.body;
 
       // Validate message content
       if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -2156,10 +2158,21 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       const snapshot = await getUserContextSnapshot(userId);
       const userContext = toUserLifeContext(snapshot, { category: context });
 
+      // Adaptive role: pick the right DW lane unless the client locked one.
+      const lockedMode = typeof modeLock === "string" ? getDWMode(modeLock) : null;
+      const picked = lockedMode
+        ? null
+        : await pickDWRole(message, snapshot).catch(() => null);
+      const activeMode = lockedMode
+        ?? (picked && picked.confidence >= PICKER_APPLY_THRESHOLD ? picked.mode : "companion");
+      const modeDef = DW_MODES.find((m) => m.id === activeMode)!;
+      const modeAddendum = modeDef.systemAddendum;
+
       const rawResponse = await generateChatResponse(
         message,
         conversationHistory || [],
         userContext,
+        modeAddendum,
       );
       
       const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
@@ -2294,6 +2307,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         syncSessionId,
         actionsTaken,
         ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
+        dwMode: {
+          id: activeMode,
+          label: modeDef.label,
+          locked: Boolean(lockedMode),
+          reason: lockedMode ? "you picked this lane" : (picked?.reason ?? "default"),
+          confidence: lockedMode ? 1 : (picked?.confidence ?? 0),
+        },
       });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);
@@ -2316,7 +2336,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
   app.post("/api/chat/smart", chatLimiter, async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock } = req.body;
 
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
@@ -2385,13 +2405,29 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         (m: any) => m && typeof m.content === "string" && ["user", "assistant"].includes(m.role)
       );
 
+      // Adaptive role: pick the right DW lane unless the client locked one.
+      const lockedSmartMode = typeof modeLock === "string" ? getDWMode(modeLock) : null;
+      const pickedSmart = lockedSmartMode
+        ? null
+        : await pickDWRole(message, snapshot).catch(() => null);
+      const activeSmartMode = lockedSmartMode
+        ?? (pickedSmart && pickedSmart.confidence >= PICKER_APPLY_THRESHOLD
+          ? pickedSmart.mode
+          : "companion");
+      const smartModeDef = DW_MODES.find((m) => m.id === activeSmartMode)!;
+      const ctxOverride =
+        typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
+          ? CONTEXT_SYSTEM_OVERRIDES[context]
+          : undefined;
+      const composedOverride = [smartModeDef.systemAddendum, ctxOverride]
+        .filter(Boolean)
+        .join("\n\n");
+
       const result = await detectIntentAndRespond(
         enhancedMessage,
         safeHistory,
         userContext,
-        typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
-          ? CONTEXT_SYSTEM_OVERRIDES[context]
-          : undefined
+        composedOverride || undefined,
       );
       
       // Execute tool calls if any
@@ -2590,6 +2626,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         actionsTaken,
         navigation: navigationAction,
         ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
+        dwMode: {
+          id: activeSmartMode,
+          label: smartModeDef.label,
+          locked: Boolean(lockedSmartMode),
+          reason: lockedSmartMode ? "you picked this lane" : (pickedSmart?.reason ?? "default"),
+          confidence: lockedSmartMode ? 1 : (pickedSmart?.confidence ?? 0),
+        },
       });
     } catch (error: any) {
       const errMsg: string = error?.message || String(error);

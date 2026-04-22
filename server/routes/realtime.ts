@@ -4,7 +4,9 @@ import { z } from "zod";
 import { requireAuth } from "./_shared";
 import { storage } from "../storage";
 import { getUserContextSnapshot, toPromptString } from "../lib/user-context";
+import { pickDWRole, pickInitialRole, PICKER_APPLY_THRESHOLD } from "../lib/dw-role-picker";
 import {
+  DW_MODES,
   DW_REALTIME_MODEL,
   DW_REALTIME_VOICE,
   buildDWInstructions,
@@ -41,7 +43,10 @@ export function registerRealtimeRoutes(app: Express): void {
     }
 
     const userId = req.session.userId!;
-    const mode = getDWMode(parsed.data.mode);
+    // Initial mode: client may suggest one, but if they didn't, the picker
+    // chooses based on time-of-day + snapshot defaults.
+    let mode = getDWMode(parsed.data.mode);
+    let initialPick: { reason: string; confidence: number } | null = null;
 
     let userName: string | null = null;
     let contextSummary: string | null = parsed.data.userContextSummary ?? null;
@@ -53,6 +58,11 @@ export function registerRealtimeRoutes(app: Express): void {
       userName = snap.identity.firstName || null;
       // Only derive the summary server-side when the client did not supply one.
       if (!contextSummary) contextSummary = toPromptString(snap);
+      if (!parsed.data.mode) {
+        const opener = pickInitialRole(snap);
+        mode = opener.mode;
+        initialPick = { reason: opener.reason, confidence: opener.confidence };
+      }
     } catch {
       // Fall back to a minimal user lookup so the session still mints if
       // the snapshot fetch fails for any reason.
@@ -118,10 +128,58 @@ export function registerRealtimeRoutes(app: Express): void {
         model: DW_REALTIME_MODEL,
         voice: DW_REALTIME_VOICE,
         mode,
+        modeReason: initialPick?.reason ?? null,
       });
     } catch (err) {
       console.error("[realtime] session create exception", err);
       res.status(500).json({ error: "Could not start voice session." });
     }
+  });
+
+  // Per-turn role picker for the voice session. The client posts the latest
+  // user transcript here after every spoken turn; we return the picked mode
+  // + reason so the client can swap chips and inject a session.update.
+  // Honors a client-supplied lock — if the user manually pinned a mode, we
+  // echo it back unchanged.
+  app.post("/api/realtime/pick-mode", requireAuth, async (req, res) => {
+    const schema = z.object({
+      message: z.string().min(1).max(2_000),
+      lockedMode: z.string().optional(),
+    });
+    const parsed = schema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid pick-mode request." });
+    }
+    const userId = req.session.userId!;
+
+    if (parsed.data.lockedMode) {
+      const locked = getDWMode(parsed.data.lockedMode);
+      const def = DW_MODES.find((m) => m.id === locked)!;
+      return res.json({
+        mode: locked,
+        label: def.label,
+        reason: "you picked this lane",
+        confidence: 1,
+        applied: true,
+        locked: true,
+      });
+    }
+
+    let snap = null;
+    try {
+      snap = await getUserContextSnapshot(userId);
+    } catch {
+      // picker handles missing snapshot
+    }
+    const picked = await pickDWRole(parsed.data.message, snap);
+    const def = DW_MODES.find((m) => m.id === picked.mode)!;
+    res.json({
+      mode: picked.mode,
+      label: def.label,
+      reason: picked.reason,
+      confidence: picked.confidence,
+      applied: picked.confidence >= PICKER_APPLY_THRESHOLD,
+      locked: false,
+    });
   });
 }

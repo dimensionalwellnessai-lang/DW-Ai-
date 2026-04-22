@@ -46,6 +46,9 @@ export function DWVoiceConversation({
   const [convState, setConvState] = useState<ConvState>("connecting");
   const [statusText, setStatusText] = useState("Waking DW…");
   const [mode, setMode] = useState<DWMode>(initialMode);
+  const [modeReason, setModeReason] = useState<string>("default opener");
+  const [modeLocked, setModeLocked] = useState<boolean>(false);
+  const [reasonOpen, setReasonOpen] = useState<boolean>(false);
   const [muted, setMuted] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [lastDWText, setLastDWText] = useState<string>(() => {
@@ -63,6 +66,8 @@ export function DWVoiceConversation({
   const userBufferRef = useRef<string>("");
   const modeRef = useRef<DWMode>(initialMode);
   modeRef.current = mode;
+  const modeLockedRef = useRef<boolean>(false);
+  modeLockedRef.current = modeLocked;
 
   const setState = useCallback((s: ConvState) => {
     if (isMountedRef.current) setConvState(s);
@@ -135,9 +140,48 @@ export function DWVoiceConversation({
 
   const handleModeChange = useCallback(
     (next: DWMode) => {
+      // Manual tap → lock the lane for the rest of the session.
+      setModeLocked(true);
+      setModeReason("you picked this lane");
       if (next === modeRef.current) return;
       setMode(next);
       applyMode(next);
+    },
+    [applyMode]
+  );
+
+  // Per-turn role pick. Called after every completed user transcript.
+  const requestRolePick = useCallback(
+    async (transcript: string) => {
+      if (!transcript.trim()) return;
+      try {
+        const resp = await fetch("/api/realtime/pick-mode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            message: transcript,
+            lockedMode: modeLockedRef.current ? modeRef.current : undefined,
+          }),
+        });
+        if (!resp.ok) return;
+        const data = (await resp.json()) as {
+          mode: DWMode;
+          reason: string;
+          confidence: number;
+          applied: boolean;
+          locked: boolean;
+        };
+        if (!isMountedRef.current) return;
+        if (data.locked) return;
+        setModeReason(data.reason);
+        if (data.applied && data.mode !== modeRef.current) {
+          setMode(data.mode);
+          applyMode(data.mode);
+        }
+      } catch {
+        // picker is best-effort; never block the conversation
+      }
     },
     [applyMode]
   );
@@ -173,11 +217,18 @@ export function DWVoiceConversation({
           const j = await sessionResp.json().catch(() => ({}));
           throw new Error((j as any)?.error || "Voice mode unavailable");
         }
-        const { clientSecret, model } = (await sessionResp.json()) as {
-          clientSecret: string;
-          model: string;
-        };
+        const { clientSecret, model, mode: serverMode, modeReason: serverReason } =
+          (await sessionResp.json()) as {
+            clientSecret: string;
+            model: string;
+            mode?: DWMode;
+            modeReason?: string | null;
+          };
         if (cancelled) return;
+        if (serverMode && serverMode !== modeRef.current) {
+          setMode(serverMode);
+        }
+        if (serverReason) setModeReason(serverReason);
 
         // 2. Get mic
         const localStream = await navigator.mediaDevices.getUserMedia({
@@ -310,6 +361,8 @@ export function DWVoiceConversation({
           try {
             onSend(text);
           } catch {}
+          // Fire-and-forget: ask the server to pick the right lane for this turn.
+          requestRolePick(text);
         }
         break;
       }
@@ -358,7 +411,7 @@ export function DWVoiceConversation({
         // useful while iterating: console.debug("[dw-voice] evt", evt.type, evt);
         break;
     }
-  }, [convState, muted, onSend, onAssistantTranscript, setState]);
+  }, [convState, muted, onSend, onAssistantTranscript, setState, requestRolePick]);
 
   // ---------- UI ----------
   return (
@@ -390,6 +443,28 @@ export function DWVoiceConversation({
         </Button>
       </div>
 
+      {/* Active role label */}
+      <div className="px-3 pt-2 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => setReasonOpen((v) => !v)}
+          data-testid="button-voice-mode-label"
+          className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+          aria-label="Why this mode?"
+        >
+          DW · {DW_MODES.find((m) => m.id === mode)?.label ?? "Companion"}
+          {modeLocked ? " · locked" : ""}
+        </button>
+      </div>
+      {reasonOpen && (
+        <div
+          className="px-3 pb-2 text-center text-xs text-muted-foreground"
+          data-testid="text-voice-mode-reason"
+        >
+          {modeReason}
+        </div>
+      )}
+
       {/* Mode pills */}
       <div className="flex flex-wrap gap-2 px-3 py-2 border-b overflow-x-auto">
         {DW_MODES.map((m) => (
@@ -399,7 +474,7 @@ export function DWVoiceConversation({
             onClick={() => handleModeChange(m.id)}
             data-testid={`button-voice-mode-${m.id}`}
             className={cn(
-              "px-3 py-1.5 text-xs rounded-full border whitespace-nowrap transition-colors",
+              "px-3 py-1.5 text-xs rounded-full border whitespace-nowrap transition-colors duration-300",
               mode === m.id
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background text-foreground border-border hover:bg-accent"

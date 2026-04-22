@@ -25,6 +25,7 @@ import { Send, Loader2, Sparkles, ClipboardCheck, X, History, Plus, MessageSquar
 import { DWOrb } from "@/components/dw-orb";
 import { VoiceModeButton } from "@/components/voice-mode-button";
 import { DWVoiceConversation } from "@/components/dw-voice-conversation";
+import { DW_MODES, type DWMode } from "@shared/dw-persona";
 import { MessageActions } from "@/components/message-actions";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
@@ -195,6 +196,11 @@ export function TalkItOutPage() {
   const isLoggedIn = !!user;
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
+  const [chatMode, setChatMode] = useState<DWMode>("companion");
+  const [chatModeReason, setChatModeReason] = useState<string>("");
+  const [chatModeLocked, setChatModeLocked] = useState<boolean>(false);
+  const [chatModeReasonOpen, setChatModeReasonOpen] = useState<boolean>(false);
+  const [modePickerOpen, setModePickerOpen] = useState<boolean>(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
@@ -618,6 +624,7 @@ export function TalkItOutPage() {
         context: "talk-it-out",
         conversationHistory: messages.slice(-10),
         systemOverride: systemOverrideOverride || TALK_SYSTEM_PROMPT,
+        modeLock: chatModeLocked ? chatMode : undefined,
       });
       return response.json();
     },
@@ -646,6 +653,14 @@ export function TalkItOutPage() {
         }
         return [...prev, { role: "assistant", content: processedWithHistory.text }];
       });
+      // Update the active DW lane from the picker (unless the user locked one).
+      if (data?.dwMode && !chatModeLocked) {
+        const next = data.dwMode.id as DWMode;
+        if (DW_MODES.some((m) => m.id === next)) {
+          setChatMode(next);
+          setChatModeReason(typeof data.dwMode.reason === "string" ? data.dwMode.reason : "");
+        }
+      }
       // Handle DW navigation — take user to the relevant feature
       if (data.navigation?.path) {
         setTimeout(() => navigate(data.navigation.path), 1200);
@@ -1227,13 +1242,75 @@ export function TalkItOutPage() {
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between px-1 pb-1">
-            {voiceModeActive ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : isListening ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`} />
-                {isSpeaking ? "DW is speaking — tap mic to interrupt" : isListening ? "Recording — tap mic again to send" : "Voice mode on — tap mic to speak"}
-              </div>
-            ) : <div />}
+          {modePickerOpen && (
+            <div className="flex flex-wrap gap-1.5 px-1 pb-2" data-testid="chat-mode-picker">
+              {DW_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setChatMode(m.id);
+                    setChatModeLocked(true);
+                    setChatModeReason(`You picked ${m.label}.`);
+                    setModePickerOpen(false);
+                    setChatModeReasonOpen(false);
+                  }}
+                  data-testid={`button-chat-mode-${m.id}`}
+                  className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                    chatMode === m.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:bg-accent"
+                  }`}
+                  aria-label={`Lock to ${m.label} — ${m.short}`}
+                  title={m.short}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-between px-1 pb-1 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setChatModeReasonOpen((v) => !v)}
+                onDoubleClick={() => setModePickerOpen(true)}
+                data-testid="button-chat-mode-label"
+                className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
+                aria-label="Active DW mode — tap for why, double-tap to change"
+                title="Tap for why · Double-tap to change"
+              >
+                DW · {DW_MODES.find((m) => m.id === chatMode)?.label ?? "Companion"}
+                {chatModeLocked ? " · locked" : ""}
+              </button>
+              {chatModeReasonOpen && chatModeReason && (
+                <span
+                  className="text-[11px] text-muted-foreground italic truncate"
+                  data-testid="text-chat-mode-reason"
+                >
+                  {chatModeReason}
+                </span>
+              )}
+              {chatModeLocked && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatModeLocked(false);
+                    setChatModeReason("unlocked");
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="button-chat-mode-unlock"
+                >
+                  unlock
+                </button>
+              )}
+              {voiceModeActive && (
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`w-2 h-2 rounded-full ${isSpeaking ? "bg-primary animate-pulse" : isListening ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`} />
+                  {isSpeaking ? "Speaking — tap mic to interrupt" : isListening ? "Recording" : "Voice on"}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => setVoiceConvOpen(true)}
               className="flex items-center gap-1.5 text-xs text-primary font-medium hover:opacity-80 transition-opacity shrink-0"
