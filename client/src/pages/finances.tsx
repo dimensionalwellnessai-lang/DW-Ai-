@@ -189,6 +189,7 @@ export default function FinancesPage() {
   usePageMeta("Finances", "Track your budget, manage spending, and build financial wellness.");
   const [profileOpen, setProfileOpen] = useState(false);
   const [financeProfile, setFinanceProfile] = useState<FinanceProfile | null>(getFinanceProfile());
+  const [activeTab, setActiveTab] = useState("overview");
 
   return (
     <div className="container max-w-7xl py-6 space-y-6">
@@ -201,7 +202,7 @@ export default function FinancesPage() {
         }
       />
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5" data-testid="tabs-finance">
           <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions" data-testid="tab-transactions">Transactions</TabsTrigger>
@@ -210,7 +211,7 @@ export default function FinancesPage() {
           <TabsTrigger value="investments" data-testid="tab-investments">Investments</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6"><OverviewTab profile={financeProfile} /></TabsContent>
+        <TabsContent value="overview" className="mt-6"><OverviewTab profile={financeProfile} onViewAllGoals={() => setActiveTab("goals")} /></TabsContent>
         <TabsContent value="transactions" className="mt-6"><TransactionsTab /></TabsContent>
         <TabsContent value="budgets" className="mt-6"><BudgetsTab /></TabsContent>
         <TabsContent value="goals" className="mt-6"><GoalsTab /></TabsContent>
@@ -232,7 +233,7 @@ export default function FinancesPage() {
 // Overview tab
 // ══════════════════════════════════════════════════════════════════════
 
-function OverviewTab({ profile }: { profile: FinanceProfile | null }) {
+function OverviewTab({ profile, onViewAllGoals }: { profile: FinanceProfile | null; onViewAllGoals: () => void }) {
   const { data: summary, isLoading } = useQuery<Summary>({ queryKey: ["/api/finance/summary"] });
   const { data: netWorthSeries } = useQuery<NetWorthPoint[]>({ queryKey: ["/api/finance/net-worth"] });
 
@@ -246,6 +247,7 @@ function OverviewTab({ profile }: { profile: FinanceProfile | null }) {
     .map(([name, value]) => ({ name, value }));
 
   const overBudgets = summary.budgets.filter(b => b.spent > b.monthlyLimit);
+  const activeGoals = (summary.goals || []).filter(g => g.currentAmount < g.targetAmount).slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -262,6 +264,35 @@ function OverviewTab({ profile }: { profile: FinanceProfile | null }) {
             You're over on {overBudgets.map(b => `${b.category} by ${fmtMoney(b.spent - b.monthlyLimit)}`).join(", ")}.
           </AlertDescription>
         </Alert>
+      )}
+
+      {activeGoals.length > 0 && (
+        <Card data-testid="card-overview-top-goals">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base"><Target className="w-4 h-4" /> Top goals</CardTitle>
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-primary hover:bg-transparent hover:underline" onClick={onViewAllGoals} data-testid="link-view-all-goals">
+                View all
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activeGoals.map(g => {
+              const pct = g.targetAmount > 0 ? Math.min(100, (g.currentAmount / g.targetAmount) * 100) : 0;
+              return (
+                <div key={g.id} className="space-y-1" data-testid={`row-overview-goal-${g.id}`}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium truncate" data-testid={`text-overview-goal-name-${g.id}`}>{g.name}</span>
+                    <span className="text-muted-foreground tabular-nums" data-testid={`text-overview-goal-progress-${g.id}`}>
+                      {fmtMoney(g.currentAmount)} / {fmtMoney(g.targetAmount)} ({Math.round(pct)}%)
+                    </span>
+                  </div>
+                  <Progress value={pct} />
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
