@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { getTutorialForPage, NAVIGATION_TUTORIAL, type PageTutorial, type TutorialStep } from "@/config/tutorials";
+import { isE2ETestMode } from "@/lib/e2e-mode";
 
 const STORAGE_KEY = "dw_seen_tutorials";
 const NAV_TUTORIAL_KEY = "dw_seen_nav_tutorial";
@@ -75,6 +76,11 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startTutorial = useCallback((pageId: string, force = false) => {
+    // Suppress first-run tutorials during automated testing. The `force`
+    // path stays open so a real user who taps "show me again" still works.
+    if (!force && isE2ETestMode()) {
+      return;
+    }
     if (!force && hasSeenTutorial(pageId)) {
       return;
     }
@@ -95,6 +101,9 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   }, [hasSeenTutorial]);
 
   const startNavigationTutorial = useCallback((force = false, skipOpenMenuStep = false) => {
+    if (!force && isE2ETestMode()) {
+      return;
+    }
     if (!force && hasSeenNavTutorial()) {
       return;
     }
@@ -200,6 +209,9 @@ export function useTutorialStart(pageId: string, delay = 500) {
   const { startTutorial, hasSeenTutorial } = useTutorial();
 
   useEffect(() => {
+    // Skip the timer entirely in automated test runs so the test runner
+    // never has to race a delayed coach-mark popping in.
+    if (isE2ETestMode()) return;
     if (hasSeenTutorial(pageId)) return;
 
     const timer = setTimeout(() => {

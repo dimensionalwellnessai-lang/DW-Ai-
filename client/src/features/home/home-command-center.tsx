@@ -13,6 +13,7 @@ import { DWReadingCard } from "@/components/dw-reading-card";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
+import { isE2ETestMode } from "@/lib/e2e-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { ThreeRingOrbit } from "@/components/life-system/three-ring-orbit";
 import { TodayBriefCard } from "./components/TodayBriefCard";
@@ -186,7 +187,12 @@ export default function HomeCommandCenter() {
     if (editingName) nameInputRef.current?.focus();
   }, [editingName]);
 
-  const visibleProactiveCards = summary.proactiveCards.filter(c => !dismissedCards.has(c.type));
+  // Hide all proactive accountability cards in automated test runs so the
+  // test runner doesn't have to dismiss them mid-flow. Real users still
+  // see them as before.
+  const visibleProactiveCards = isE2ETestMode()
+    ? []
+    : summary.proactiveCards.filter(c => !dismissedCards.has(c.type));
 
   // ── Build orbit data from the user's actual Life System ────────────────
   // Lit set = Core/Expression pillars the user has enabled. Falls back to
