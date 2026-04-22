@@ -1,4 +1,6 @@
 import { storage } from "./storage";
+import { getYesterdayHeadlineMetrics } from "./routes/wearables";
+import { summarizeWearablesYesterday, isLowRecovery, isHighScreenTime } from "./openai";
 
 export interface ProactiveNudge {
   type:
@@ -37,6 +39,30 @@ export async function generateProactiveNudges(userId: string): Promise<Proactive
     const habits = await storage.getHabits(userId);
     const scheduleBlocks = await storage.getScheduleBlocks(userId);
     const moodLogs = await storage.getMoodLogs(userId);
+    const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+
+    // ── Wearable-driven nudges ────────────────────────────────────────────
+    if (wearablesYesterday && hour >= 5 && hour < 12 && isLowRecovery(wearablesYesterday)) {
+      const sum = summarizeWearablesYesterday(wearablesYesterday);
+      nudges.push({
+        type: "energy-suggestion",
+        title: "Recovery looks low today",
+        message: `Yesterday: ${sum}. Lean into something restorative — a walk, mobility, or a short body scan — instead of a hard session.`,
+        actionLabel: "Restorative options",
+        actionRoute: "/recovery",
+        priority: "high",
+      });
+    }
+    if (wearablesYesterday && hour >= 17 && hour < 23 && isHighScreenTime(wearablesYesterday)) {
+      nudges.push({
+        type: "wind-down",
+        title: "High screen time yesterday",
+        message: `Your screens were busy yesterday (${summarizeWearablesYesterday(wearablesYesterday)}). A 10-minute wind-down tonight will help you sleep deeper.`,
+        actionLabel: "Wind down",
+        actionRoute: "/meditation",
+        priority: "medium",
+      });
+    }
 
     const todaysBlocks = scheduleBlocks.filter(b => b.dayOfWeek === now.getDay());
     const activeGoals = goals.filter(g => g.isActive);
@@ -260,6 +286,7 @@ export async function generateMorningBriefing(userId: string): Promise<MorningBr
     const scheduleBlocks = await storage.getScheduleBlocks(userId);
     const habits = await storage.getHabits(userId);
     const user = await storage.getUser(userId);
+    const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
 
     const todaysBlocks = scheduleBlocks.filter(b => b.dayOfWeek === now.getDay());
     const activeGoals = goals.filter(g => g.isActive);
@@ -277,6 +304,12 @@ export async function generateMorningBriefing(userId: string): Promise<MorningBr
       } else {
         energySummary = "Your energy is low — be gentle with yourself";
       }
+    }
+
+    const wearableSummary = summarizeWearablesYesterday(wearablesYesterday);
+    if (wearableSummary) {
+      const prefix = energySummary ? `${energySummary}. ` : "";
+      energySummary = `${prefix}Yesterday: ${wearableSummary}`;
     }
 
     const todayFocus: string[] = [];
