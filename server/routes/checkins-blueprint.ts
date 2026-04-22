@@ -33,6 +33,8 @@ export function registerCheckinsBlueprintRoutes(app: Express): void {
       const habits = await storage.getHabits(userId);
       const goals = await storage.getGoals(userId);
       const profile = await storage.getOnboardingProfile(userId);
+      const { getYesterdayHeadlineMetrics } = await import("./wearables");
+      const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
 
       const insight = await generateDashboardInsight({
         moodLogs: moodLogs.slice(0, 7).map(m => ({
@@ -51,6 +53,7 @@ export function registerCheckinsBlueprintRoutes(app: Express): void {
         })),
         peakMotivationTime: profile?.peakMotivationTime || undefined,
         wellnessFocus: profile?.wellnessFocus || undefined,
+        wearablesYesterday,
       });
 
       res.json({ insight });

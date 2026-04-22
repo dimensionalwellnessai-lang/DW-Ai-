@@ -2221,12 +2221,52 @@ Respond with valid JSON only.`;
   }
 }
 
+export type WearablesYesterday = {
+  sleepMinutes?: number;
+  hrv?: number;
+  restingHr?: number;
+  steps?: number;
+  screenTimeMinutes?: number;
+};
+
+export function summarizeWearablesYesterday(w?: WearablesYesterday | null): string | null {
+  if (!w) return null;
+  const bits: string[] = [];
+  if (w.sleepMinutes != null) {
+    const h = Math.floor(w.sleepMinutes / 60);
+    const m = w.sleepMinutes % 60;
+    bits.push(`slept ${h}h${m ? ` ${m}m` : ""}`);
+  }
+  if (w.hrv != null) bits.push(`HRV ${w.hrv}`);
+  if (w.restingHr != null) bits.push(`resting HR ${w.restingHr}`);
+  if (w.steps != null) bits.push(`${w.steps.toLocaleString()} steps`);
+  if (w.screenTimeMinutes != null) {
+    const h = Math.floor(w.screenTimeMinutes / 60);
+    const m = w.screenTimeMinutes % 60;
+    bits.push(`screen time ${h ? `${h}h ` : ""}${m}m`);
+  }
+  return bits.length ? bits.join(", ") : null;
+}
+
+// Recovery is "low" when sleep < 6h or HRV is unusually low (< 30 is a rough floor for adults).
+export function isLowRecovery(w?: WearablesYesterday | null): boolean {
+  if (!w) return false;
+  if (w.sleepMinutes != null && w.sleepMinutes < 360) return true;
+  if (w.hrv != null && w.hrv < 30) return true;
+  return false;
+}
+
+export function isHighScreenTime(w?: WearablesYesterday | null): boolean {
+  return !!(w && w.screenTimeMinutes != null && w.screenTimeMinutes >= 360);
+}
+
 export async function generateDashboardInsight(userData: {
   moodLogs: { energyLevel: number; moodLevel: number; clarityLevel: number | null; createdAt: Date | null }[];
   habits: { title: string; streak: number }[];
   goals: { title: string; progress: number | null }[];
   peakMotivationTime?: string;
   wellnessFocus?: string[];
+  wearablesYesterday?: WearablesYesterday | null;
 }): Promise<string> {
   if (userData.moodLogs.length === 0 && userData.habits.length === 0) {
     return "You're here, and that's enough. We can explore your patterns together whenever you're ready.";
@@ -2255,6 +2295,14 @@ ${topStreakHabit ? `- Consistent with: "${topStreakHabit.title}"` : ''}
 - Intentions set: ${userData.goals.length}
 ${userData.peakMotivationTime ? `- Peak energy: ${userData.peakMotivationTime}` : ''}
 ${userData.wellnessFocus?.length ? `- Focus areas: ${userData.wellnessFocus.join(', ')}` : ''}
+${(() => {
+  const w = userData.wearablesYesterday;
+  const summary = summarizeWearablesYesterday(w);
+  if (!summary) return '';
+  let line = `- Yesterday's body data: ${summary}`;
+  if (isLowRecovery(w)) line += `\n- Recovery looks low — gently acknowledge it and suggest something restorative rather than ambitious.`;
+  return line;
+})()}
 
 Provide ONE brief, calming reflection (2 sentences max) that:
 1. Acknowledges their current state without judgment
@@ -2301,8 +2349,16 @@ export async function generateWorkoutPlan(
     equipment?: string[];
     injuries?: string[];
     preferredStyle?: string;
+    wearablesYesterday?: WearablesYesterday | null;
   }
 ): Promise<{ plan: WorkoutDay[]; summary: string }> {
+  const wearableSummary = summarizeWearablesYesterday(userPreferences.wearablesYesterday);
+  const recoveryNote = isLowRecovery(userPreferences.wearablesYesterday)
+    ? `\nIMPORTANT: Recovery markers are LOW (${wearableSummary}). Make today's session lighter — favor a walk, mobility, restorative yoga, or low-intensity cardio. Push intensity later in the week.`
+    : wearableSummary
+      ? `\nYesterday's body data: ${wearableSummary}. Calibrate today's intensity accordingly.`
+      : "";
+
   const prompt = `Generate a personalized weekly workout plan based on these preferences:
 
 FITNESS LEVEL: ${userPreferences.fitnessLevel || "beginner"}
@@ -2310,7 +2366,7 @@ GOALS: ${userPreferences.goals?.join(", ") || "general fitness"}
 AVAILABLE DAYS PER WEEK: ${userPreferences.availableDays || 4}
 EQUIPMENT: ${userPreferences.equipment?.join(", ") || "minimal/bodyweight"}
 INJURIES OR LIMITATIONS: ${userPreferences.injuries?.join(", ") || "none"}
-PREFERRED STYLE: ${userPreferences.preferredStyle || "balanced"}
+PREFERRED STYLE: ${userPreferences.preferredStyle || "balanced"}${recoveryNote}
 
 Create a 7-day plan (some can be rest days) with:
 - Specific exercises with sets, reps, or duration
@@ -2381,14 +2437,22 @@ export async function generateMeditationSuggestions(
     focus?: string;
     experience?: string;
     currentMood?: string;
+    wearablesYesterday?: WearablesYesterday | null;
   }
 ): Promise<MeditationSuggestion[]> {
+  const wearableSummary = summarizeWearablesYesterday(preferences.wearablesYesterday);
+  const recoveryNote = isLowRecovery(preferences.wearablesYesterday)
+    ? `\nRECOVERY NOTE: Yesterday's recovery was low (${wearableSummary}). Lean toward restorative, body-scan, sleep, or breathing practices over energizing ones.`
+    : isHighScreenTime(preferences.wearablesYesterday)
+      ? `\nRECOVERY NOTE: Screen time was high yesterday (${wearableSummary}). Include at least one eyes-closed grounding or body-scan practice.`
+      : "";
+
   const prompt = `Suggest 5 meditation or mindfulness practices based on:
 
 PREFERRED DURATION: ${preferences.duration || "5-10 minutes"}
 FOCUS AREA: ${preferences.focus || "stress relief"}
 EXPERIENCE LEVEL: ${preferences.experience || "beginner"}
-CURRENT MOOD: ${preferences.currentMood || "neutral"}
+CURRENT MOOD: ${preferences.currentMood || "neutral"}${recoveryNote}
 
 For each suggestion, include a real YouTube video link for guided meditation.
 Use popular channels like: Headspace, Calm, The Honest Guys, Michael Sealey, Jason Stephenson.
@@ -2433,7 +2497,8 @@ export async function detectIntentAndRespond(
   userMessage: string,
   conversationHistory: ChatMessage[],
   userContext?: UserLifeContext,
-  systemOverride?: string
+  systemOverride?: string,
+  wearablesYesterday?: WearablesYesterday | null
 ): Promise<{
   response: string;
   intent: "workout" | "meditation" | "learn" | "general";
@@ -2489,10 +2554,10 @@ export async function detectIntentAndRespond(
   
   if (shouldGenerateContent && isWorkoutIntent) {
     intent = "workout";
-    workoutPlan = await generateWorkoutPlan({});
+    workoutPlan = await generateWorkoutPlan({ wearablesYesterday });
   } else if (shouldGenerateContent && isMeditationIntent) {
     intent = "meditation";
-    meditationSuggestions = await generateMeditationSuggestions({});
+    meditationSuggestions = await generateMeditationSuggestions({ wearablesYesterday });
   } else if (isWorkoutIntent || isMeditationIntent) {
     // Tag the intent but don't generate content - let the AI ask questions first
     intent = isWorkoutIntent ? "workout" : "meditation";
@@ -4250,10 +4315,10 @@ export async function generateCheckInAnalysis(
   userNotes: string,
   energyScore: number,
   goals: string[],
-  ctx?: { timeContext?: string; hour?: number; missedTaskCount?: number }
+  ctx?: { timeContext?: string; hour?: number; missedTaskCount?: number; wearablesYesterday?: WearablesYesterday | null }
 ): Promise<string> {
   try {
-    const { timeContext = "prime_evening", hour = 21, missedTaskCount = 0 } = ctx || {};
+    const { timeContext = "prime_evening", hour = 21, missedTaskCount = 0, wearablesYesterday } = ctx || {};
 
     // Build a time-sensitive tone guide for DW
     let toneNote = "";
@@ -4267,16 +4332,28 @@ export async function generateCheckInAnalysis(
       toneNote = "The user is checking in at a good evening time. Give a warm 3-4 sentence reflection and one small, encouraging suggestion for tomorrow.";
     }
 
+    const wearableSummary = summarizeWearablesYesterday(wearablesYesterday);
+    let bodyContextNote = "";
+    if (wearableSummary) {
+      bodyContextNote = ` Yesterday's body data: ${wearableSummary}.`;
+      if (isHighScreenTime(wearablesYesterday)) {
+        bodyContextNote += " Screen time was high — ask one targeted question about what pulled their attention and gently suggest a small wind-down for tomorrow.";
+      }
+      if (isLowRecovery(wearablesYesterday)) {
+        bodyContextNote += " Recovery looks low — keep tomorrow's suggestion gentle (rest, walk, or restorative practice rather than anything ambitious).";
+      }
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are DW, a calm, supportive wellness AI. ${toneNote} Never be judgmental. Acknowledge effort over outcomes. Speak directly to the user by name.`
+          content: `You are DW, a calm, supportive wellness AI. ${toneNote}${bodyContextNote} Never be judgmental. Acknowledge effort over outcomes. Speak directly to the user by name.`
         },
         {
           role: "user",
-          content: `Name: ${name}. Energy today: ${energyScore}/10. Active goals: ${goals.length ? goals.join(", ") : "none listed"}. Notes: ${userNotes || "No notes shared"}. Current hour: ${hour}. Give a warm, personal check-in reflection.`
+          content: `Name: ${name}. Energy today: ${energyScore}/10. Active goals: ${goals.length ? goals.join(", ") : "none listed"}. Notes: ${userNotes || "No notes shared"}. Current hour: ${hour}.${wearableSummary ? ` Yesterday's body data: ${wearableSummary}.` : ""} Give a warm, personal check-in reflection.`
         },
       ],
       max_tokens: 220,

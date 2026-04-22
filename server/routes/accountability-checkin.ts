@@ -160,15 +160,17 @@ export function registerAccountabilityCheckinRoutes(app: Express): void {
       let dwAnalysis = "Thank you for checking in. Every day you show up for yourself counts — even the imperfect ones.";
       try {
         const { generateCheckInAnalysis } = await import("../openai");
+        const { getYesterdayHeadlineMetrics } = await import("./wearables");
         const user = await storage.getUser(userId);
         const name = (user as any)?.systemName || (user as any)?.firstName || "friend";
         const goals = await storage.getGoals(userId);
+        const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
         dwAnalysis = await generateCheckInAnalysis(
           name,
           userNotes || "",
           energyScore || 5,
           goals.map((g: any) => g.title),
-          { timeContext: timeContext || "prime_evening", hour, missedTaskCount: missedTaskCount || 0 }
+          { timeContext: timeContext || "prime_evening", hour, missedTaskCount: missedTaskCount || 0, wearablesYesterday }
         );
       } catch (_) {}
 

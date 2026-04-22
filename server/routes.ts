@@ -2436,11 +2436,14 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         .filter(Boolean)
         .join("\n\n");
 
+      const { getYesterdayHeadlineMetrics: _getYestForChat } = await import("./routes/wearables");
+      const wearablesYesterdayForChat = await _getYestForChat(req.session.userId!).catch(() => null);
       const result = await detectIntentAndRespond(
         enhancedMessage,
         safeHistory,
         userContext,
         composedOverride || undefined,
+        wearablesYesterdayForChat,
       );
       
       // Execute tool calls if any
@@ -2998,7 +3001,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   app.post("/api/workout/generate", async (req, res) => {
     try {
       const { preferences } = req.body;
-      const plan = await generateWorkoutPlan(preferences || {});
+      const userId = (req as any).session?.userId;
+      let wearablesYesterday = null;
+      if (userId) {
+        const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
+        wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+      }
+      const plan = await generateWorkoutPlan({ ...(preferences || {}), wearablesYesterday });
       res.json(plan);
     } catch (error) {
       console.error("Workout generation error:", error);
@@ -3009,7 +3018,13 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   app.post("/api/meditation/suggest", async (req, res) => {
     try {
       const { preferences } = req.body;
-      const suggestions = await generateMeditationSuggestions(preferences || {});
+      const userId = (req as any).session?.userId;
+      let wearablesYesterday = null;
+      if (userId) {
+        const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
+        wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+      }
+      const suggestions = await generateMeditationSuggestions({ ...(preferences || {}), wearablesYesterday });
       res.json(suggestions);
     } catch (error) {
       console.error("Meditation suggestion error:", error);
@@ -4164,6 +4179,8 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       const habits = await storage.getHabits(userId);
       const goals = await storage.getGoals(userId);
       const profile = await storage.getOnboardingProfile(userId);
+      const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
+      const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
 
       const insight = await generateDashboardInsight({
         moodLogs: moodLogs.slice(0, 7).map(m => ({
@@ -4182,6 +4199,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
         })),
         peakMotivationTime: profile?.peakMotivationTime || undefined,
         wellnessFocus: profile?.wellnessFocus || undefined,
+        wearablesYesterday,
       });
 
       res.json({ insight });
@@ -12711,15 +12729,17 @@ Return ONLY this JSON:
       let dwAnalysis = "Thank you for checking in. Every day you show up for yourself counts — even the imperfect ones.";
       try {
         const { generateCheckInAnalysis } = await import("./openai");
+        const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
         const user = await storage.getUser(userId);
         const name = (user as any)?.systemName || (user as any)?.firstName || "friend";
         const goals = await storage.getGoals(userId);
+        const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
         dwAnalysis = await generateCheckInAnalysis(
           name,
           userNotes || "",
           energyScore || 5,
           goals.map((g: any) => g.title),
-          { timeContext: timeContext || "prime_evening", hour, missedTaskCount: missedTaskCount || 0 }
+          { timeContext: timeContext || "prime_evening", hour, missedTaskCount: missedTaskCount || 0, wearablesYesterday }
         );
       } catch (_) {}
 
