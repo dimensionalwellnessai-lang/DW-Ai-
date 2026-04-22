@@ -8,6 +8,8 @@ import {
   plaidConfigured,
   getPlaidClient,
   syncPlaidItem,
+  maybeNotifyReconnect,
+  isReconnectCode,
 } from "../plaid-sync";
 
 function mapAccountType(t: string | null | undefined, sub: string | null | undefined): "checking" | "savings" | "credit" | "loan" | "investment" | "other" {
@@ -40,6 +42,13 @@ export function registerPlaidRoutes(app: Express) {
           id: i.id,
           institutionName: i.institutionName,
           lastSyncAt: i.lastSyncAt,
+          lastSuccessAt: i.lastSuccessAt,
+          status: i.status ?? "ok",
+          lastError: i.lastError,
+          lastErrorCode: i.lastErrorCode,
+          lastErrorAt: i.lastErrorAt,
+          needsReconnect:
+            (i.status ?? "ok") === "error" && isReconnectCode(i.lastErrorCode),
         })),
       });
     } catch (err) {
@@ -144,14 +153,20 @@ export function registerPlaidRoutes(app: Express) {
   app.post("/api/plaid/webhook", async (req, res) => {
     try {
       if (!plaidConfigured()) return res.status(204).end();
-      const body = (req.body ?? {}) as { item_id?: string; webhook_type?: string };
+      const body = (req.body ?? {}) as {
+        item_id?: string;
+        webhook_type?: string;
+        webhook_code?: string;
+        error?: { error_code?: string; error_message?: string; display_message?: string } | null;
+      };
       const itemId = body.item_id;
       const type = body.webhook_type;
+      const code = body.webhook_code;
       if (!itemId) return res.status(204).end();
       const item = await storage.getPlaidItem(itemId);
       if (!item) return res.status(204).end();
 
-      // Acknowledge fast; do the actual sync in the background so Plaid
+      // Acknowledge fast; do the actual work in the background so Plaid
       // doesn't time out and retry the webhook.
       res.status(200).json({ ok: true });
 
@@ -168,6 +183,40 @@ export function registerPlaidRoutes(app: Express) {
             `[plaid] webhook sync failed for item ${itemId}`,
             err?.response?.data || err?.message || err,
           );
+        }
+        return;
+      }
+
+      // ITEM webhooks: Plaid tells us the connection has gone bad and the
+      // user must take action (re-auth, etc). Mark the item, and for the
+      // hard error codes nudge the user to reconnect.
+      if (type === "ITEM") {
+        const errCode = body.error?.error_code ?? code ?? null;
+        const errMsg =
+          body.error?.error_message ||
+          body.error?.display_message ||
+          (code ? `Plaid item webhook: ${code}` : "Plaid item error");
+
+        // Action-required codes: mark error + notify.
+        const needsReconnect =
+          code === "ITEM_LOGIN_REQUIRED" ||
+          code === "PENDING_EXPIRATION" ||
+          code === "USER_PERMISSION_REVOKED" ||
+          code === "USER_ACCOUNT_REVOKED" ||
+          code === "ERROR";
+        if (needsReconnect) {
+          try {
+            await storage.markPlaidItemError(itemId, errCode, errMsg);
+            await maybeNotifyReconnect(item, errCode);
+            console.log(
+              `[plaid] webhook ITEM item=${itemId} code=${code} → marked error & notified`,
+            );
+          } catch (err) {
+            console.error(`[plaid] webhook ITEM handling failed for ${itemId}`, err);
+          }
+        } else {
+          // Informational ITEM codes (NEW_ACCOUNTS_AVAILABLE, WEBHOOK_UPDATE_ACKNOWLEDGED, etc.)
+          console.log(`[plaid] webhook ITEM item=${itemId} code=${code} (informational)`);
         }
       }
     } catch (err) {

@@ -77,6 +77,32 @@ export async function syncPlaidItem(
   item: PlaidItem,
   client: PlaidApi,
 ): Promise<SyncCounts> {
+  try {
+    const counts = await syncPlaidItemInner(item, client);
+    await storage.markPlaidItemSuccess(item.itemId);
+    return counts;
+  } catch (err: any) {
+    const data = err?.response?.data;
+    const code: string | null = data?.error_code ?? data?.error_type ?? null;
+    const message: string =
+      data?.error_message || data?.display_message || err?.message || String(err);
+    await storage.markPlaidItemError(item.itemId, code, message);
+    // Surface the user-visible nudge immediately for hard ITEM errors that
+    // the user must resolve themselves (re-auth). For transient errors we
+    // wait for the >24h stale check in the scheduler.
+    if (isReconnectCode(code)) {
+      await maybeNotifyReconnect(item, code).catch((e) =>
+        console.error("[plaid] notify reconnect failed", e),
+      );
+    }
+    throw err;
+  }
+}
+
+async function syncPlaidItemInner(
+  item: PlaidItem,
+  client: PlaidApi,
+): Promise<SyncCounts> {
   let cursor = item.cursor || undefined;
   let hasMore = true;
   let added = 0;
@@ -150,10 +176,82 @@ export async function syncPlaidItem(
   return { added, modified, removed };
 }
 
+const STALE_SYNC_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24h
+
+// Plaid error/webhook codes that mean the user must re-authenticate the
+// item. Used by the sync error handler, the ITEM webhook handler, and the
+// /api/plaid/status response so all three classifications stay in sync.
+const RECONNECT_CODES = new Set([
+  "ITEM_LOGIN_REQUIRED",
+  "PENDING_EXPIRATION",
+  "USER_PERMISSION_REVOKED",
+  "USER_ACCOUNT_REVOKED",
+  "ACCESS_NOT_GRANTED",
+  // Generic ITEM "ERROR" webhook code — Plaid uses this as the umbrella
+  // notice that an item has fallen into an error state and needs attention.
+  "ERROR",
+]);
+
+export function isReconnectCode(code: string | null | undefined): boolean {
+  return !!code && RECONNECT_CODES.has(code);
+}
+
+function reconnectMessageFor(code: string | null): { title: string; body: string } {
+  if (code === "ITEM_LOGIN_REQUIRED") {
+    return {
+      title: "Reconnect your bank",
+      body: "Your bank needs you to sign in again so we can keep your transactions in sync.",
+    };
+  }
+  if (code === "PENDING_EXPIRATION") {
+    return {
+      title: "Bank connection expiring soon",
+      body: "Update your bank connection in the next few days to avoid losing transaction sync.",
+    };
+  }
+  if (code === "USER_PERMISSION_REVOKED" || code === "ACCESS_NOT_GRANTED") {
+    return {
+      title: "Bank access revoked",
+      body: "Reconnect your bank to keep transactions syncing.",
+    };
+  }
+  return {
+    title: "Bank sync needs attention",
+    body: "We haven't been able to sync your bank for over a day. Reconnecting usually fixes it.",
+  };
+}
+
+/**
+ * Create an in-app notification asking the user to reconnect a broken
+ * Plaid item, but only if we haven't already notified them about this
+ * error (errorNotifiedAt is bumped to now after we create it).
+ */
+export async function maybeNotifyReconnect(
+  item: PlaidItem,
+  code: string | null,
+): Promise<void> {
+  // Re-fetch the item so we get the freshest errorNotifiedAt — the caller
+  // may be holding a stale snapshot from before markPlaidItemError ran.
+  const fresh = await storage.getPlaidItem(item.itemId);
+  if (!fresh) return;
+  if (fresh.errorNotifiedAt) return;
+  const { title, body } = reconnectMessageFor(code);
+  await storage.createNotification({
+    userId: item.userId,
+    type: "plaid_reconnect",
+    title,
+    body: `${item.institutionName || "Your bank"}: ${body}`,
+    actionUrl: "/finances",
+    metadata: { plaidItemId: item.itemId, code },
+  });
+  await storage.markPlaidItemErrorNotified(item.itemId);
+}
+
 /**
  * Sync every Plaid item in the database that belongs to a user owned by
  * this instance's shard. Logs (but does not throw) per-item errors so one
- * broken item doesn't block the rest.
+ * broken item doesn't block the rest. Items that have been failing to
+ * sync for >24h get a one-shot "reconnect bank" notification.
  */
 export async function runScheduledPlaidSync(): Promise<void> {
   if (!plaidConfigured()) return;
@@ -188,6 +286,23 @@ export async function runScheduledPlaidSync(): Promise<void> {
         `[plaid] scheduler: sync failed for item ${item.itemId}`,
         err?.response?.data || err?.message || err,
       );
+      // Stale-sync nudge: if we haven't had a successful sync for >24h
+      // and we haven't already notified the user about the current
+      // outage, send a one-shot reconnect notification.
+      try {
+        const fresh = await storage.getPlaidItem(item.itemId);
+        if (fresh && !fresh.errorNotifiedAt) {
+          const lastOk = fresh.lastSuccessAt ?? fresh.createdAt ?? null;
+          const ageMs = lastOk
+            ? Date.now() - new Date(lastOk).getTime()
+            : Number.POSITIVE_INFINITY;
+          if (ageMs > STALE_SYNC_THRESHOLD_MS) {
+            await maybeNotifyReconnect(fresh, fresh.lastErrorCode ?? null);
+          }
+        }
+      } catch (notifyErr) {
+        console.error("[plaid] scheduler: stale-notify failed", notifyErr);
+      }
     }
   }
   console.log(

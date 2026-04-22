@@ -150,7 +150,32 @@ interface Summary {
 }
 interface PlaidStatus {
   configured: boolean; env: string;
-  items: Array<{ id: string; institutionName: string | null; lastSyncAt: string | null }>;
+  items: Array<{
+    id: string;
+    institutionName: string | null;
+    lastSyncAt: string | null;
+    lastSuccessAt?: string | null;
+    status?: "ok" | "error";
+    lastError?: string | null;
+    lastErrorCode?: string | null;
+    lastErrorAt?: string | null;
+    needsReconnect?: boolean;
+  }>;
+}
+
+function formatTimeAgo(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "just now";
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return "just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 interface ChatMessage { role: "user" | "assistant"; content: string; }
 
@@ -496,17 +521,67 @@ function PlaidConnect() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {status.items.length > 0 && (
-        <Button variant="outline" size="sm" onClick={() => syncMut.mutate()} disabled={syncMut.isPending} data-testid="button-plaid-sync">
-          {syncMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-          Sync
+    <div className="flex flex-col items-end gap-2">
+      <div className="flex items-center gap-2">
+        {status.items.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => syncMut.mutate()} disabled={syncMut.isPending} data-testid="button-plaid-sync">
+            {syncMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Sync
+          </Button>
+        )}
+        <Button size="sm" onClick={() => tokenMut.mutate()} disabled={tokenMut.isPending} data-testid="button-plaid-connect">
+          {tokenMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
+          Connect bank
         </Button>
+      </div>
+      {status.items.length > 0 && (
+        <div className="flex flex-col items-end gap-1 w-full">
+          {status.items.map((item) => {
+            const isError = item.status === "error";
+            const lastSync = item.lastSuccessAt ?? item.lastSyncAt;
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col items-end gap-0.5 text-xs"
+                data-testid={`plaid-item-${item.id}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground" data-testid={`text-institution-${item.id}`}>
+                    {item.institutionName || "Bank"}
+                  </span>
+                  <span className="text-muted-foreground" data-testid={`text-last-synced-${item.id}`}>
+                    Last synced {formatTimeAgo(lastSync)}
+                  </span>
+                  {isError && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0" data-testid={`badge-plaid-status-${item.id}`}>
+                      Needs attention
+                    </Badge>
+                  )}
+                </div>
+                {isError && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-destructive max-w-[18rem] truncate" data-testid={`text-plaid-error-${item.id}`}>
+                      {item.lastError || "Sync failed"}
+                    </span>
+                    {item.needsReconnect && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-[11px] px-2"
+                        onClick={() => tokenMut.mutate()}
+                        disabled={tokenMut.isPending}
+                        data-testid={`button-plaid-reconnect-${item.id}`}
+                      >
+                        Reconnect bank
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
-      <Button size="sm" onClick={() => tokenMut.mutate()} disabled={tokenMut.isPending} data-testid="button-plaid-connect">
-        {tokenMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
-        Connect bank
-      </Button>
     </div>
   );
 }

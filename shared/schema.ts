@@ -3495,6 +3495,17 @@ export const plaidItems = pgTable("plaid_items", {
   institutionName: text("institution_name"),
   cursor: text("cursor"),
   lastSyncAt: timestamp("last_sync_at"),
+  // Per-item health: "ok" once we've synced successfully, "error" once a
+  // sync or ITEM webhook fails. Powers the "Reconnect bank" prompt and the
+  // stale-sync nudge.
+  status: text("status").default("ok"),
+  lastError: text("last_error"),
+  lastErrorCode: text("last_error_code"),
+  lastErrorAt: timestamp("last_error_at"),
+  lastSuccessAt: timestamp("last_success_at"),
+  // Set when we've already nudged the user about this current error so we
+  // don't keep re-notifying on every scheduler tick.
+  errorNotifiedAt: timestamp("error_notified_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

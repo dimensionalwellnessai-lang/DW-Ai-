@@ -4098,6 +4098,39 @@ export class DatabaseStorage implements IStorage {
       .set({ cursor, lastSyncAt: new Date() })
       .where(eq(plaidItems.itemId, itemId));
   }
+  async markPlaidItemSuccess(itemId: string): Promise<void> {
+    const now = new Date();
+    await db.update(plaidItems)
+      .set({
+        status: "ok",
+        lastError: null,
+        lastErrorCode: null,
+        lastErrorAt: null,
+        errorNotifiedAt: null,
+        lastSuccessAt: now,
+        lastSyncAt: now,
+      })
+      .where(eq(plaidItems.itemId, itemId));
+  }
+  async markPlaidItemError(
+    itemId: string,
+    code: string | null,
+    message: string,
+  ): Promise<void> {
+    await db.update(plaidItems)
+      .set({
+        status: "error",
+        lastError: message.slice(0, 1000),
+        lastErrorCode: code,
+        lastErrorAt: new Date(),
+      })
+      .where(eq(plaidItems.itemId, itemId));
+  }
+  async markPlaidItemErrorNotified(itemId: string): Promise<void> {
+    await db.update(plaidItems)
+      .set({ errorNotifiedAt: new Date() })
+      .where(eq(plaidItems.itemId, itemId));
+  }
   async deletePlaidItem(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(plaidItems)
       .where(and(eq(plaidItems.id, id), eq(plaidItems.userId, userId)))
