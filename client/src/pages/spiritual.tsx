@@ -27,7 +27,7 @@ import { ttsService } from "@/lib/tts-service";
 import { useMeditationVoicePref } from "@/lib/meditation-voice-pref";
 
 // ─── Types (mirror server schema) ─────────────────────────────────────────────
-type MeditationItem = {
+export type MeditationItem = {
   id: string;
   slug: string;
   title: string;
