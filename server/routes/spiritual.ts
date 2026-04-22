@@ -2,6 +2,8 @@
 // (with optional collective sharing), summary, and a cached collective
 // "energy of the day" endpoint backed by Perplexity.
 import type { Express, Request, Response, NextFunction } from "express";
+import { promises as fs } from "fs";
+import path from "path";
 import { z } from "zod";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "../db";
@@ -25,6 +27,176 @@ import { birthCharts } from "@shared/schema";
 // can't grow it without limit.
 const MEDITATION_AUDIO_CACHE = new Map<string, Buffer>();
 const MEDITATION_AUDIO_CACHE_MAX = 100;
+
+// On-disk persistence for generated MP3s so OpenAI TTS is paid at most
+// once per slug across the lifetime of the deployment, not once per
+// process restart. Files live in a writable cache directory and are
+// hydrated into memory on boot. Override with MEDITATION_AUDIO_DIR.
+const MEDITATION_AUDIO_DIR = path.resolve(
+  process.env.MEDITATION_AUDIO_DIR || ".cache/meditation-audio"
+);
+
+function audioFilePath(slug: string): string {
+  // Slug is already validated as [a-z0-9-]+; safe to use as filename.
+  return path.join(MEDITATION_AUDIO_DIR, `${slug}.mp3`);
+}
+
+async function ensureAudioDir(): Promise<void> {
+  await fs.mkdir(MEDITATION_AUDIO_DIR, { recursive: true });
+}
+
+async function readAudioFromDisk(slug: string): Promise<Buffer | null> {
+  try {
+    return await fs.readFile(audioFilePath(slug));
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+async function writeAudioToDisk(slug: string, buffer: Buffer): Promise<void> {
+  await ensureAudioDir();
+  // Atomic write: write to a temp file then rename so a crash mid-write
+  // never leaves a partial MP3 that would later be served as "cached".
+  const final = audioFilePath(slug);
+  const tmp = `${final}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, buffer);
+  await fs.rename(tmp, final);
+}
+
+function rememberInMemory(slug: string, buffer: Buffer): void {
+  if (MEDITATION_AUDIO_CACHE.size >= MEDITATION_AUDIO_CACHE_MAX) {
+    const firstKey = MEDITATION_AUDIO_CACHE.keys().next().value;
+    if (firstKey !== undefined) MEDITATION_AUDIO_CACHE.delete(firstKey);
+  }
+  MEDITATION_AUDIO_CACHE.set(slug, buffer);
+}
+
+// Generate (or fetch from cache) the TTS MP3 for a single library slug.
+// Lookup order: in-memory → on-disk → generate via OpenAI TTS. Centralised
+// so both the request handler and the pre-warm worker share the same code
+// path and persistence behaviour.
+async function loadOrGenerateMeditationAudio(slug: string): Promise<Buffer | null> {
+  const cached = MEDITATION_AUDIO_CACHE.get(slug);
+  if (cached) return cached;
+
+  const fromDisk = await readAudioFromDisk(slug);
+  if (fromDisk) {
+    rememberInMemory(slug, fromDisk);
+    return fromDisk;
+  }
+
+  const [row] = await db
+    .select()
+    .from(meditationLibrary)
+    .where(eq(meditationLibrary.slug, slug))
+    .limit(1);
+  if (!row) return null;
+
+  const text = row.scriptText.trim().slice(0, 4000);
+  const response = await openai.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: text,
+    // Slightly slower than default — matches the calm cadence of a
+    // guided meditation rather than a normal prose reading.
+    speed: 0.85,
+  });
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  // Persist to disk first so a crash before in-memory insert still
+  // benefits the next process. Disk-write failure is non-fatal — we
+  // still serve the in-memory buffer for this request.
+  try {
+    await writeAudioToDisk(slug, buffer);
+  } catch (err) {
+    console.warn(`[spiritual] failed to persist audio for ${slug}:`, (err as Error).message);
+  }
+  rememberInMemory(slug, buffer);
+  return buffer;
+}
+
+// Background pre-warm: ensures every library slug has an MP3 available
+// for sub-second playback. Hydrates the in-memory cache from disk first
+// (cheap, no OpenAI), then generates any still-missing slugs with bounded
+// concurrency and a small inter-call delay so a cold deploy can't spike
+// OpenAI TTS usage. Safe to call repeatedly — already-warm slugs are
+// skipped, and a single in-flight promise prevents duplicate runs.
+let preWarmInFlight: Promise<void> | null = null;
+export function preWarmMeditationAudio(
+  opts: { concurrency?: number; delayMs?: number } = {}
+): Promise<void> {
+  if (preWarmInFlight) return preWarmInFlight;
+  const concurrency = Math.max(1, opts.concurrency ?? 3);
+  const delayMs = Math.max(0, opts.delayMs ?? 200);
+  preWarmInFlight = (async () => {
+    try {
+      await ensureAudioDir();
+      const rows = await db
+        .select({ slug: meditationLibrary.slug })
+        .from(meditationLibrary);
+      const slugs = rows.map((r) => r.slug).filter((s): s is string => !!s);
+
+      // Phase 1: hydrate in-memory cache from disk for any slugs that
+      // already have a persisted MP3. This is what makes the very first
+      // user request after a restart serve in <1s.
+      let hydrated = 0;
+      for (const slug of slugs) {
+        if (MEDITATION_AUDIO_CACHE.has(slug)) continue;
+        const buf = await readAudioFromDisk(slug).catch(() => null);
+        if (buf) {
+          rememberInMemory(slug, buf);
+          hydrated++;
+        }
+      }
+
+      // Phase 2: generate MP3s for any slug still missing. Bounded
+      // concurrency + per-slot delay keeps OpenAI usage smooth.
+      const toGenerate = slugs.filter((s) => !MEDITATION_AUDIO_CACHE.has(s));
+      if (toGenerate.length === 0) {
+        console.log(
+          `[spiritual] meditation audio pre-warm: ${slugs.length} ready (hydrated ${hydrated} from disk, 0 generated)`
+        );
+        return;
+      }
+      console.log(
+        `[spiritual] meditation audio pre-warm: hydrated ${hydrated}/${slugs.length} from disk, generating ${toGenerate.length} via TTS (concurrency ${concurrency})`
+      );
+
+      let ok = 0;
+      let fail = 0;
+      const queue = [...toGenerate];
+      const workers: Promise<void>[] = [];
+      const runWorker = async () => {
+        while (queue.length > 0) {
+          const slug = queue.shift();
+          if (!slug) break;
+          try {
+            await loadOrGenerateMeditationAudio(slug);
+            ok++;
+          } catch (err) {
+            fail++;
+            console.warn(`[spiritual] pre-warm failed for ${slug}:`, (err as Error).message);
+          }
+          if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+        }
+      };
+      for (let i = 0; i < Math.min(concurrency, toGenerate.length); i++) {
+        workers.push(runWorker());
+      }
+      await Promise.all(workers);
+      console.log(
+        `[spiritual] meditation audio pre-warm done: ${ok} generated, ${fail} failed, ${hydrated} hydrated from disk`
+      );
+    } catch (err) {
+      console.warn("[spiritual] meditation audio pre-warm aborted:", (err as Error).message);
+    } finally {
+      preWarmInFlight = null;
+    }
+  })();
+  return preWarmInFlight;
+}
 
 // ─── Auth guard (mirrors the inline guard in server/routes.ts) ────────────────
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -169,34 +341,8 @@ export function registerSpiritualRoutes(app: Express): void {
         return res.status(400).json({ error: "Invalid slug" });
       }
 
-      let buffer = MEDITATION_AUDIO_CACHE.get(slug);
-      if (!buffer) {
-        const [row] = await db
-          .select()
-          .from(meditationLibrary)
-          .where(eq(meditationLibrary.slug, slug))
-          .limit(1);
-        if (!row) return res.status(404).json({ error: "Not found" });
-
-        const text = row.scriptText.trim().slice(0, 4000);
-        const response = await openai.audio.speech.create({
-          model: "tts-1",
-          voice: "alloy",
-          input: text,
-          // Slightly slower than default — matches the calm cadence of a
-          // guided meditation rather than a normal prose reading.
-          speed: 0.85,
-        });
-        buffer = Buffer.from(await response.arrayBuffer());
-
-        // Bound the cache so it can't grow without limit. Drop the oldest
-        // entry (Map insertion order) when we hit the cap.
-        if (MEDITATION_AUDIO_CACHE.size >= MEDITATION_AUDIO_CACHE_MAX) {
-          const firstKey = MEDITATION_AUDIO_CACHE.keys().next().value;
-          if (firstKey !== undefined) MEDITATION_AUDIO_CACHE.delete(firstKey);
-        }
-        MEDITATION_AUDIO_CACHE.set(slug, buffer);
-      }
+      const buffer = await loadOrGenerateMeditationAudio(slug);
+      if (!buffer) return res.status(404).json({ error: "Not found" });
 
       res.set({
         "Content-Type": "audio/mpeg",

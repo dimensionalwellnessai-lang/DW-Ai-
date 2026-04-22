@@ -37,6 +37,7 @@ import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { pickDWRole, PICKER_APPLY_THRESHOLD } from "./lib/dw-role-picker";
 import { DW_MODES, getDWMode } from "@shared/dw-persona";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
+import { preWarmMeditationAudio } from "./routes/spiritual";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
@@ -519,7 +520,13 @@ export async function registerRoutes(
   // Plans Workspace — projects, milestones, artifacts, plan-scoped DW chat
   registerPlansRoutes(app);
   // Idempotent seed for the meditation library — fire-and-forget on boot.
-  void seedMeditationLibrary();
+  // Once the seed finishes, kick off a throttled pre-warm of the TTS audio
+  // cache so the first user request after a deploy serves from memory
+  // (sub-second) instead of paying the OpenAI TTS round-trip.
+  void seedMeditationLibrary().then(() => {
+    if (process.env.MEDITATION_AUDIO_PREWARM === "0") return;
+    void preWarmMeditationAudio();
+  });
 
   // ─── PATCH guardrails ─────────────────────────────────────────────────────
   // Apply rate limiting, payload-size guard, and prompt-injection sanitisation
