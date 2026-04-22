@@ -2248,16 +2248,27 @@ export function summarizeWearablesYesterday(w?: WearablesYesterday | null): stri
   return bits.length ? bits.join(", ") : null;
 }
 
-// Recovery is "low" when sleep < 6h or HRV is unusually low (< 30 is a rough floor for adults).
+// Tunable thresholds for wearable-driven nudging. Centralised so prompt
+// builders, briefing copy, and proactive nudges all use the same cut-offs.
+export const WEARABLE_THRESHOLDS = {
+  /** Sleep below this (minutes) counts as "low recovery". 6 hours. */
+  lowSleepMinutes: 360,
+  /** HRV below this (ms) counts as "low recovery" for adults. */
+  lowHrv: 30,
+  /** Screen time at or above this (minutes) counts as "high". 6 hours. */
+  highScreenMinutes: 360,
+} as const;
+
+// Recovery is "low" when sleep is short or HRV is unusually low.
 export function isLowRecovery(w?: WearablesYesterday | null): boolean {
   if (!w) return false;
-  if (w.sleepMinutes != null && w.sleepMinutes < 360) return true;
-  if (w.hrv != null && w.hrv < 30) return true;
+  if (w.sleepMinutes != null && w.sleepMinutes < WEARABLE_THRESHOLDS.lowSleepMinutes) return true;
+  if (w.hrv != null && w.hrv < WEARABLE_THRESHOLDS.lowHrv) return true;
   return false;
 }
 
 export function isHighScreenTime(w?: WearablesYesterday | null): boolean {
-  return !!(w && w.screenTimeMinutes != null && w.screenTimeMinutes >= 360);
+  return !!(w && w.screenTimeMinutes != null && w.screenTimeMinutes >= WEARABLE_THRESHOLDS.highScreenMinutes);
 }
 
 export async function generateDashboardInsight(userData: {
