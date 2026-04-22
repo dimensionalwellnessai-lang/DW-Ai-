@@ -4056,15 +4056,29 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
   });
 
   app.post("/api/mood", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    let log;
     try {
-      const log = await storage.createMoodLog({
-        userId: req.session.userId!,
+      log = await storage.createMoodLog({
+        userId,
         ...req.body,
       });
-      res.json(log);
     } catch (error) {
-      res.status(500).json({ error: "Failed to log mood" });
+      return res.status(500).json({ error: "Failed to log mood" });
     }
+    // Best-effort: enqueue a background correlation recompute when enough
+    // new logs have accumulated. Isolated from the create above so a
+    // scheduler-side failure can't turn a successful insert into a 500
+    // and trigger client retries / duplicate logs.
+    try {
+      const { maybeRefreshAfterMoodLog } = await import(
+        "./mood-insights-scheduler"
+      );
+      maybeRefreshAfterMoodLog(userId);
+    } catch (err) {
+      console.error("[mood-insights] post-log trigger import failed:", err);
+    }
+    res.json(log);
   });
 
   // ── Mood Tracker v2: timeline + correlations + patterns ────────────────

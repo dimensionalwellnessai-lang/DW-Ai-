@@ -80,6 +80,18 @@ app.use((req, res, next) => {
     console.error("[push] Failed to start reminder scheduler:", err);
   }
 
+  // Start the background mood-insights refresh so the Correlations tab is
+  // pre-warmed for every active user instead of only refreshing when the
+  // user taps "Recompute". See server/mood-insights-scheduler.ts.
+  try {
+    const { startMoodInsightsScheduler } = await import(
+      "./mood-insights-scheduler"
+    );
+    startMoodInsightsScheduler();
+  } catch (err) {
+    console.error("[mood-insights] Failed to start scheduler:", err);
+  }
+
   // Start the background Plaid sync scheduler so connected bank
   // transactions are imported every few hours without the user having to
   // tap "Sync" on the Finances page. See server/plaid-sync.ts.
