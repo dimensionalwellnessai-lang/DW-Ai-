@@ -84,6 +84,14 @@ export default function LifeSystemPillarDetailPage() {
   useEffect(() => { setDescDraft(savedContent.description ?? ""); }, [savedContent.description]);
   const [savingDesc, setSavingDesc] = useState(false);
 
+  const [voiceDraft, setVoiceDraft] = useState<string>(savedContent.userVoice ?? "");
+  useEffect(() => { setVoiceDraft(savedContent.userVoice ?? ""); }, [savedContent.userVoice]);
+  const [savingVoice, setSavingVoice] = useState(false);
+
+  const [rhythmDraft, setRhythmDraft] = useState<string>(savedContent.weeklyRhythm ?? "");
+  useEffect(() => { setRhythmDraft(savedContent.weeklyRhythm ?? ""); }, [savedContent.weeklyRhythm]);
+  const [savingRhythm, setSavingRhythm] = useState(false);
+
   const [nnDraft, setNnDraft] = useState<string[]>(
     Array.isArray(savedContent.nonNegotiables) ? savedContent.nonNegotiables : [],
   );
@@ -195,6 +203,24 @@ export default function LifeSystemPillarDetailPage() {
         variant: "destructive",
       });
     }
+  }
+
+  async function onSaveUserVoice() {
+    if (savingVoice) return;
+    setSavingVoice(true);
+    const trimmed = voiceDraft.trim();
+    const ok = await saveContentPatch({ userVoice: trimmed || undefined });
+    setSavingVoice(false);
+    if (ok) toast({ title: "Your words saved" });
+  }
+
+  async function onSaveWeeklyRhythm() {
+    if (savingRhythm) return;
+    setSavingRhythm(true);
+    const trimmed = rhythmDraft.trim();
+    const ok = await saveContentPatch({ weeklyRhythm: trimmed || undefined });
+    setSavingRhythm(false);
+    if (ok) toast({ title: "Weekly rhythm saved" });
   }
 
   async function onSaveNonNegotiables(next: string[]) {
@@ -421,13 +447,28 @@ export default function LifeSystemPillarDetailPage() {
           </div>
         </SummarySection>
 
-        {content.userVoice && (
-          <SummarySection title="In your own words" testId="summary-user-voice">
-            <blockquote className="text-sm italic border-l-2 pl-3 border-primary/40 whitespace-pre-wrap">
-              {content.userVoice}
-            </blockquote>
-          </SummarySection>
-        )}
+        <SummarySection title="In your own words" testId="summary-user-voice">
+          <Textarea
+            value={voiceDraft}
+            onChange={e => setVoiceDraft(e.target.value)}
+            placeholder="Say it the way you'd say it to a friend…"
+            rows={4}
+            className="text-sm"
+            data-testid="textarea-user-voice"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSaveUserVoice}
+              disabled={savingVoice || (voiceDraft.trim() === (content.userVoice ?? ""))}
+              data-testid="button-save-user-voice"
+            >
+              {savingVoice ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+              Save your words
+            </Button>
+          </div>
+        </SummarySection>
 
         {Array.isArray(content.laws) && content.laws.length > 0 && (
           <SummarySection title="Laws & principles" testId="summary-laws">
@@ -496,11 +537,28 @@ export default function LifeSystemPillarDetailPage() {
           </div>
         </SummarySection>
 
-        {content.weeklyRhythm && (
-          <SummarySection title="Weekly rhythm" testId="summary-weekly-rhythm">
-            <p className="text-sm whitespace-pre-wrap">{content.weeklyRhythm}</p>
-          </SummarySection>
-        )}
+        <SummarySection title="Weekly rhythm" testId="summary-weekly-rhythm">
+          <Textarea
+            value={rhythmDraft}
+            onChange={e => setRhythmDraft(e.target.value)}
+            placeholder="What does a typical week look like for this pillar?"
+            rows={4}
+            className="text-sm"
+            data-testid="textarea-weekly-rhythm"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSaveWeeklyRhythm}
+              disabled={savingRhythm || (rhythmDraft.trim() === (content.weeklyRhythm ?? ""))}
+              data-testid="button-save-weekly-rhythm"
+            >
+              {savingRhythm ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+              Save weekly rhythm
+            </Button>
+          </div>
+        </SummarySection>
       </Card>
     </div>
   );
