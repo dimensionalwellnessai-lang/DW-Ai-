@@ -380,9 +380,15 @@ let cachedPublicKey: string | null = null;
 interface ReminderPayload {
   title: string;
   body: string;
-  notificationType: "pre_task" | "post_task";
+  // "relationship_nudge" reuses the same web-push transport as the task
+  // reminders but renders with the default open/dismiss actions in sw.js
+  // rather than the pre/post-task quick-reply buttons.
+  notificationType: "pre_task" | "post_task" | "relationship_nudge";
   url?: string;
-  taskData: {
+  // Required for pre/post-task reminders so the service worker can post the
+  // quick-reply back to the app; optional for other notification types that
+  // don't carry task context.
+  taskData?: {
     taskId: string | null;
     calendarEventId: string | null;
     taskName: string;

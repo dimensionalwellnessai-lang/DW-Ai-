@@ -92,6 +92,20 @@ app.use((req, res, next) => {
     console.error("[mood-insights] Failed to start scheduler:", err);
   }
 
+  // Daily relationship nudges — sends one push + inbox card per user per
+  // day for the most urgent overdue contact or open repair, deep-linked into
+  // the right person's sheet. Mute lives on
+  // notification_preferences.relationshipNudgesEnabled. See
+  // server/relationship-nudges.ts.
+  try {
+    const { startRelationshipNudgesScheduler } = await import(
+      "./relationship-nudges"
+    );
+    startRelationshipNudgesScheduler();
+  } catch (err) {
+    console.error("[relationship-nudges] Failed to start scheduler:", err);
+  }
+
   // Start the background Plaid sync scheduler so connected bank
   // transactions are imported every few hours without the user having to
   // tap "Sync" on the Finances page. See server/plaid-sync.ts.

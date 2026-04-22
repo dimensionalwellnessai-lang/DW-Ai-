@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -257,6 +257,24 @@ export default function RelationshipsPage() {
   const [alivenessDialog, setAlivenessDialog] = useState(false);
   const [groupDialog, setGroupDialog] = useState<{ mode: "new" | "edit"; group?: PeopleGroup } | null>(null);
   const [openPersonId, setOpenPersonId] = useState<string | null>(null);
+
+  // Deep-link support: when the daily relationship nudge (or anyone else)
+  // routes to /relationships?personId=… we open that person's sheet
+  // automatically and strip the param so a refresh doesn't re-open it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("personId");
+    if (!target) return;
+    setOpenPersonId(target);
+    setTab("crm");
+    params.delete("personId");
+    const next = `${window.location.pathname}${
+      params.toString() ? `?${params.toString()}` : ""
+    }${window.location.hash}`;
+    window.history.replaceState(null, "", next);
+  }, []);
+
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{
     kind: "person" | "interaction" | "aliveness" | "group";

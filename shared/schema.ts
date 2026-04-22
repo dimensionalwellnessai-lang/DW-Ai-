@@ -2494,6 +2494,12 @@ export const notificationPreferences = pgTable("notification_preferences", {
   // is used only as a startup hint until this value loads.
   previewDaysAhead: integer("preview_days_ahead").default(0),
 
+  // Daily relationships nudge: when true, the relationship-nudges scheduler
+  // sends a single push + inbox card per day for the most urgent overdue
+  // contact or open repair across the user's tracked people. Users can mute
+  // this from Accountability Settings without affecting other reminders.
+  relationshipNudgesEnabled: boolean("relationship_nudges_enabled").default(true),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

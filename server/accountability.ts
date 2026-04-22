@@ -315,7 +315,8 @@ export async function getNotificationPreferences(
         quietHoursEnabled: false,
         quietHoursStart: '22:00',
         quietHoursEnd: '08:00',
-        previewDaysAhead: 0
+        previewDaysAhead: 0,
+        relationshipNudgesEnabled: true
       })
       .returning();
     return newPrefs;

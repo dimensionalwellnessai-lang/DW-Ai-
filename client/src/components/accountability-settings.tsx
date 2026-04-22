@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Moon, Sun, CheckCircle2, Cloud } from "lucide-react";
+import { Bell, Moon, Sun, CheckCircle2, Cloud, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
 import { UpcomingReminders } from "@/components/upcoming-reminders";
@@ -244,6 +244,31 @@ export function AccountabilitySettings() {
               />
             </div>
             {fieldIndicator('postTaskEnabled', 'status-post-task-enabled')}
+          </div>
+
+          <Separator />
+
+          {/* Relationship Nudges */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="relationship-nudges-enabled" className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500" />
+                  Relationship Nudges
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  A daily gentle nudge when a tracked person feels overdue or has an open repair
+                </p>
+              </div>
+              <Switch
+                id="relationship-nudges-enabled"
+                checked={preferences.relationshipNudgesEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('relationshipNudgesEnabled', checked)}
+                disabled={!preferences.accountabilityEnabled}
+                data-testid="switch-relationship-nudges-enabled"
+              />
+            </div>
+            {fieldIndicator('relationshipNudgesEnabled', 'status-relationship-nudges-enabled')}
           </div>
 
           <Separator />
