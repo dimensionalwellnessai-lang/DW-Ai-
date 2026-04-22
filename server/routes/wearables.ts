@@ -23,7 +23,17 @@ import {
   wearableSourceEnum,
   type WearableSource,
 } from "@shared/schema";
-import { encryptSecret } from "./_encryption";
+import {
+  whoopExchangeCode,
+  whoopSyncRecent,
+  ouraExchangeCode,
+  ouraSyncRecent,
+  garminRequestToken,
+  garminExchangeVerifier,
+  garminSyncRecent,
+  saveTokens,
+  type ProviderRecord,
+} from "./wearable-providers";
 
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) return res.status(401).json({ error: "Unauthorized" });
@@ -339,6 +349,40 @@ async function upsertScreenTimeDays(userId: string, days: z.infer<typeof screenT
   return result.length;
 }
 
+// ── Provider record persistence ──────────────────────────────────────────────
+
+async function bulkUpsertProviderRecords(
+  userId: string,
+  deviceId: string,
+  source: WearableSource,
+  records: ProviderRecord[],
+): Promise<number> {
+  if (records.length === 0) return 0;
+  const BATCH = 500;
+  let inserted = 0;
+  for (let i = 0; i < records.length; i += BATCH) {
+    const slice = records.slice(i, i + BATCH);
+    const result = await db
+      .insert(wearableData)
+      .values(
+        slice.map((r) => ({
+          deviceId,
+          userId,
+          source,
+          sourceRecordId: r.sourceRecordId,
+          metricKind: r.metricKind,
+          metricValue: r.value,
+          recordedAt: r.recordedAt,
+          timestamp: r.recordedAt,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({ id: wearableData.id });
+    inserted += result.length;
+  }
+  return inserted;
+}
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 // Apple Health exports can be tens of MB. We bound to 50 MB to keep
@@ -509,9 +553,39 @@ export function registerWearablesRoutes(app: Express): void {
       await upsertSyncJob(userId, source, { status: "not_configured", errorText: `Missing env: ${meta.envKeys?.join(", ")}` });
       return res.status(400).json({ error: "not_configured", missing: meta.envKeys });
     }
-    // TODO (follow-up tasks): call provider data-pull functions per source.
-    await upsertSyncJob(userId, source, { status: "idle", lastSyncAt: new Date(), errorText: null });
-    res.json({ ok: true, note: `Provider pull for ${source} is stubbed; follow-up task wires the live API.` });
+    const device = await getOrCreateDevice(userId, source);
+    if (!device.accessTokenEnc) {
+      await upsertSyncJob(userId, source, {
+        status: "error",
+        errorText: `Not connected — finish the ${meta.label} sign-in first.`,
+      });
+      return res.status(400).json({ error: "not_connected" });
+    }
+    await upsertSyncJob(userId, source, { status: "running", errorText: null });
+    try {
+      const days = Math.max(1, Math.min(30, Number(req.body?.days) || 7));
+      let records: ProviderRecord[] = [];
+      if (source === "whoop") records = await whoopSyncRecent(device, days);
+      else if (source === "oura") records = await ouraSyncRecent(device, days);
+      else if (source === "garmin") records = await garminSyncRecent(device, days);
+      const inserted = await bulkUpsertProviderRecords(userId, device.id, source, records);
+      await db
+        .update(wearableDevices)
+        .set({ lastSyncedAt: new Date(), isActive: true })
+        .where(eq(wearableDevices.id, device.id));
+      await upsertSyncJob(userId, source, {
+        status: "success",
+        lastSyncAt: new Date(),
+        errorText: null,
+        recordsImported: inserted,
+      });
+      res.json({ ok: true, parsed: records.length, inserted });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`wearables/sync/${source}`, err);
+      await upsertSyncJob(userId, source, { status: "error", errorText: msg });
+      res.status(502).json({ error: "sync_failed", detail: msg });
+    }
   });
 
   // POST /api/wearables/apple-health/import — multipart upload of export.xml or .zip.
@@ -589,12 +663,10 @@ export function registerWearablesRoutes(app: Express): void {
     }
   });
 
-  // ── OAuth scaffold for Whoop / Oura / Garmin ──────────────────────────────
-  // These endpoints handle the auth-redirect side end-to-end (state persisted
-  // in the session, real provider URL constructed). The token exchange in
-  // /callback is left as a follow-up because each provider has its own
-  // request shape and response handling.
-  app.get("/api/wearables/:source/auth", requireAuth, (req, res) => {
+  // ── OAuth for Whoop / Oura / Garmin ───────────────────────────────────────
+  // Whoop & Oura: OAuth2 authorization-code flow.
+  // Garmin: OAuth 1.0a (request-token → user authorize → access-token).
+  app.get("/api/wearables/:source/auth", requireAuth, async (req, res) => {
     const source = req.params.source;
     if (!isWearableSource(source) || SOURCE_META[source].ingestKind !== "oauth") {
       return res.status(400).json({ error: "Unsupported OAuth source" });
@@ -602,37 +674,51 @@ export function registerWearablesRoutes(app: Express): void {
     if (!envConfigured(source)) {
       return res.status(400).json({ error: "not_configured", missing: SOURCE_META[source].envKeys });
     }
-    // Generate + persist a state nonce; verified back in the callback.
-    const state = randomBytes(16).toString("hex");
-    (req.session as unknown as Record<string, unknown>).wearableOauth = { source, state, ts: Date.now() };
-    const base = process.env.OAUTH_REDIRECT_BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const base = process.env.OAUTH_REDIRECT_BASE_URL || process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
     const redirectUri = `${base}/api/wearables/${source}/callback`;
-    let authUrl: string;
-    if (source === "whoop") {
-      const u = new URL("https://api.prod.whoop.com/oauth/oauth2/auth");
-      u.searchParams.set("response_type", "code");
-      u.searchParams.set("client_id", process.env.WHOOP_CLIENT_ID!);
-      u.searchParams.set("redirect_uri", redirectUri);
-      u.searchParams.set("scope", "read:recovery read:sleep read:workout read:profile offline");
-      u.searchParams.set("state", state);
-      authUrl = u.toString();
-    } else if (source === "oura") {
-      const u = new URL("https://cloud.ouraring.com/oauth/authorize");
-      u.searchParams.set("response_type", "code");
-      u.searchParams.set("client_id", process.env.OURA_CLIENT_ID!);
-      u.searchParams.set("redirect_uri", redirectUri);
-      u.searchParams.set("scope", "daily heartrate workout session");
-      u.searchParams.set("state", state);
-      authUrl = u.toString();
-    } else if (source === "garmin") {
-      // Garmin Connect uses OAuth 1.0a — full request-token dance is wired
-      // in the follow-up task. Send the user to the Garmin Connect sign-in
-      // landing page so they at least see the provider in flight.
-      authUrl = `https://connect.garmin.com/oauthConfirm?oauth_callback=${encodeURIComponent(redirectUri)}`;
-    } else {
-      return res.status(400).json({ error: "Unsupported OAuth source" });
+    try {
+      let authUrl: string;
+      if (source === "whoop") {
+        const state = randomBytes(16).toString("hex");
+        (req.session as unknown as Record<string, unknown>).wearableOauth = { source, state, ts: Date.now() };
+        const u = new URL("https://api.prod.whoop.com/oauth/oauth2/auth");
+        u.searchParams.set("response_type", "code");
+        u.searchParams.set("client_id", process.env.WHOOP_CLIENT_ID!);
+        u.searchParams.set("redirect_uri", redirectUri);
+        u.searchParams.set("scope", "read:recovery read:sleep read:workout read:profile offline");
+        u.searchParams.set("state", state);
+        authUrl = u.toString();
+      } else if (source === "oura") {
+        const state = randomBytes(16).toString("hex");
+        (req.session as unknown as Record<string, unknown>).wearableOauth = { source, state, ts: Date.now() };
+        const u = new URL("https://cloud.ouraring.com/oauth/authorize");
+        u.searchParams.set("response_type", "code");
+        u.searchParams.set("client_id", process.env.OURA_CLIENT_ID!);
+        u.searchParams.set("redirect_uri", redirectUri);
+        u.searchParams.set("scope", "daily heartrate workout session personal");
+        u.searchParams.set("state", state);
+        authUrl = u.toString();
+      } else if (source === "garmin") {
+        // OAuth 1.0a request-token dance — stash the secret in session so we
+        // can sign the access-token request once the user returns.
+        const { token, tokenSecret, authorizeUrl } = await garminRequestToken(redirectUri);
+        (req.session as unknown as Record<string, unknown>).wearableOauth = {
+          source,
+          state: token,
+          requestTokenSecret: tokenSecret,
+          ts: Date.now(),
+        };
+        authUrl = authorizeUrl;
+      } else {
+        return res.status(400).json({ error: "Unsupported OAuth source" });
+      }
+      res.redirect(authUrl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`wearables/${source}/auth`, err);
+      await upsertSyncJob(req.session.userId!, source, { status: "error", errorText: msg });
+      res.status(502).json({ error: "auth_failed", detail: msg });
     }
-    res.redirect(authUrl);
   });
 
   app.get("/api/wearables/:source/callback", requireAuth, async (req, res) => {
@@ -641,51 +727,76 @@ export function registerWearablesRoutes(app: Express): void {
     if (!isWearableSource(source) || SOURCE_META[source].ingestKind !== "oauth") {
       return res.status(400).json({ error: "Unsupported OAuth source" });
     }
-    const code = (req.query.code as string | undefined) ?? "";
-    const stateFromProvider = (req.query.state as string | undefined) ?? "";
     const sess = (req.session as unknown as Record<string, unknown>).wearableOauth as
-      | { source: WearableSource; state: string; ts: number }
+      | { source: WearableSource; state: string; requestTokenSecret?: string; ts: number }
       | undefined;
-
-    // CSRF: require the state nonce to round-trip and to match the source we
-    // started the flow for. Garmin (OAuth1) won't include `state`, so it's
-    // exempt from the equality check but we still wipe the session entry.
+    // Always wipe the session entry on the way out so a stale nonce can't be
+    // reused, even if validation below rejects.
+    const clearSession = () => {
+      delete (req.session as unknown as Record<string, unknown>).wearableOauth;
+    };
     if (!sess || sess.source !== source) {
+      clearSession();
       return res.status(400).json({ error: "Invalid OAuth state (no in-flight session)" });
     }
-    if (source !== "garmin" && sess.state !== stateFromProvider) {
-      return res.status(400).json({ error: "Invalid OAuth state (mismatch)" });
+    // Reject sessions older than 10 minutes — protects against very stale
+    // callbacks landing on a different request than the one that started.
+    const OAUTH_SESSION_TTL_MS = 10 * 60 * 1000;
+    if (typeof sess.ts !== "number" || Date.now() - sess.ts > OAUTH_SESSION_TTL_MS) {
+      clearSession();
+      return res.status(400).json({ error: "OAuth session expired — please reconnect." });
     }
-    delete (req.session as unknown as Record<string, unknown>).wearableOauth;
-
-    if (!code && source !== "garmin") return res.status(400).json({ error: "Missing code" });
     if (!envConfigured(source)) {
+      clearSession();
       return res.status(400).json({ error: "not_configured", missing: SOURCE_META[source].envKeys });
     }
 
-    // The provider-specific token-exchange request lives in the follow-up task
-    // (#82). Until then we persist a placeholder under encryption so the
-    // device row reflects an in-progress connection and we can prove the
-    // encryption + redirect handshake works end-to-end.
-    const device = await getOrCreateDevice(userId, source);
-    const placeholder = `pending:${source}:${randomBytes(8).toString("hex")}`;
-    await db
-      .update(wearableDevices)
-      .set({
-        isActive: true,
-        accessTokenEnc: encryptSecret(placeholder),
-        refreshTokenEnc: null,
-        tokenExpiresAt: null,
-        lastSyncedAt: new Date(),
-      })
-      .where(eq(wearableDevices.id, device.id));
-    await upsertSyncJob(userId, source, {
-      status: "idle",
-      errorText: "Token exchange pending — provider data pull is wired in follow-up task",
-    });
+    const base = process.env.OAUTH_REDIRECT_BASE_URL || process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    const redirectUri = `${base}/api/wearables/${source}/callback`;
 
-    // Send the user back to the manager UI so they see the new "Connected" badge.
-    res.redirect(`/wearable-manager?connected=${source}`);
+    try {
+      let tokens;
+      if (source === "whoop") {
+        const code = (req.query.code as string | undefined) ?? "";
+        const stateFromProvider = (req.query.state as string | undefined) ?? "";
+        if (sess.state !== stateFromProvider) throw new Error("Invalid OAuth state (mismatch)");
+        if (!code) throw new Error("Missing authorization code");
+        tokens = await whoopExchangeCode(code, redirectUri);
+      } else if (source === "oura") {
+        const code = (req.query.code as string | undefined) ?? "";
+        const stateFromProvider = (req.query.state as string | undefined) ?? "";
+        if (sess.state !== stateFromProvider) throw new Error("Invalid OAuth state (mismatch)");
+        if (!code) throw new Error("Missing authorization code");
+        tokens = await ouraExchangeCode(code, redirectUri);
+      } else if (source === "garmin") {
+        const oauthToken = (req.query.oauth_token as string | undefined) ?? "";
+        const verifier = (req.query.oauth_verifier as string | undefined) ?? "";
+        if (!sess.requestTokenSecret) throw new Error("Missing request token secret in session");
+        if (sess.state !== oauthToken) throw new Error("Invalid OAuth token (mismatch)");
+        if (!verifier) throw new Error("Missing oauth_verifier");
+        tokens = await garminExchangeVerifier(oauthToken, sess.requestTokenSecret, verifier);
+      } else {
+        throw new Error("Unsupported OAuth source");
+      }
+
+      clearSession();
+      const device = await getOrCreateDevice(userId, source);
+      await saveTokens(device.id, tokens);
+      await db
+        .update(wearableDevices)
+        .set({ lastSyncedAt: new Date() })
+        .where(eq(wearableDevices.id, device.id));
+      await upsertSyncJob(userId, source, { status: "idle", errorText: null });
+      res.redirect(`/wearable-manager?connected=${source}`);
+    } catch (err) {
+      // Verbose provider response goes to logs + the sync job; only a short,
+      // user-friendly summary is reflected back via the redirect URL.
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error(`wearables/${source}/callback`, err);
+      clearSession();
+      await upsertSyncJob(userId, source, { status: "error", errorText: detail });
+      res.redirect(`/wearable-manager?error=${encodeURIComponent(`${SOURCE_META[source].label} sign-in failed`)}`);
+    }
   });
 }
 

@@ -62,7 +62,7 @@ The underlying database schemas and unrelated code paths were left intact in cas
 - **PostgreSQL Database**
 - **OpenAI/AI Provider**: For AI chat, content generation, and recommendations.
 - **Google Cloud Vision API**: For OCR (Optical Character Recognition).
-- **Wearable Integration**: For health data (optional).
+- **Wearable Integration**: For health data (optional). Whoop/Oura/Garmin are wired through `server/routes/wearable-providers.ts` (Whoop & Oura OAuth2, Garmin OAuth1.0a). Required env vars: `WHOOP_CLIENT_ID`/`WHOOP_CLIENT_SECRET`, `OURA_CLIENT_ID`/`OURA_CLIENT_SECRET`, `GARMIN_CONSUMER_KEY`/`GARMIN_CONSUMER_SECRET`. Tokens are stored encrypted in `wearable_devices`; `/api/wearables/sync/:source` pulls the last 7 days into `wearable_data` deduped on `source_record_id` and updates `wearable_sync_jobs` on success/error.
 - **PDF Processing**: `pdf-parse`, `Tesseract.js`
 - **Document Parsing**: `mammoth`
 - **Charts**: `Recharts`
