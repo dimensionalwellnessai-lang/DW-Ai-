@@ -17,7 +17,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar,
 } from "recharts";
-import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp, Watch } from "lucide-react";
+import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp, Watch, Smartphone, Zap } from "lucide-react";
 import { DWLearnCard } from "@/components/dw-learn-card";
 import { Link } from "wouter";
 
@@ -80,6 +80,7 @@ export default function HealthDataPage() {
   const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
 
   // Wearable Manager — recent metrics from Apple Health / Whoop / Oura / Garmin.
+  const [trendWindow, setTrendWindow] = useState<7 | 30>(7);
   const { data: wearables } = useQuery<{
     data: Array<{ id: string; metricKind: string | null; metricValue: number | null; recordedAt: string | null; source: string | null }>;
     screenTime: Array<{ dateKey: string; totalMinutes: number }>;
@@ -92,7 +93,12 @@ export default function HealthDataPage() {
       };
     } | null;
   }>({
-    queryKey: ["/api/wearables/data"],
+    queryKey: ["/api/wearables/data", { days: 30 }],
+    queryFn: async () => {
+      const r = await fetch("/api/wearables/data?days=30", { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load wearables");
+      return r.json();
+    },
     staleTime: 60_000,
   });
 
@@ -137,6 +143,62 @@ export default function HealthDataPage() {
     mutationFn: (id: string) => apiRequest("DELETE", `/api/health-metrics/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/health-metrics"] }),
   });
+
+  // Build per-day wearable trend rows for the last `trendWindow` days.
+  const wearableTrends = (() => {
+    const rows = wearables?.data ?? [];
+    const screen = wearables?.screenTime ?? [];
+    const days = trendWindow;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateKeys: string[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dateKeys.push(d.toISOString().slice(0, 10));
+    }
+    const cutoff = new Date(today);
+    cutoff.setDate(cutoff.getDate() - (days - 1));
+    const recent = rows.filter((r) => r.recordedAt && new Date(r.recordedAt) >= cutoff);
+    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepMin: number; steps: number }> = {};
+    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepMin: 0, steps: 0 };
+    for (const r of recent) {
+      const k = new Date(r.recordedAt!).toISOString().slice(0, 10);
+      if (!byDay[k]) continue;
+      const v = r.metricValue ?? 0;
+      if (r.metricKind === "hrv" && v > 0) byDay[k].hrvVals.push(v);
+      else if (r.metricKind === "resting_hr" && v > 0) byDay[k].rhrVals.push(v);
+      else if (r.metricKind === "sleep_minutes") byDay[k].sleepMin += v;
+      else if (r.metricKind === "steps") byDay[k].steps += v;
+    }
+    const screenByDay: Record<string, number> = {};
+    for (const s of screen) screenByDay[s.dateKey] = s.totalMinutes;
+    const labelOf = (k: string) =>
+      new Date(k + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const series = dateKeys.map((k) => {
+      const d = byDay[k];
+      const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+      return {
+        date: labelOf(k),
+        hrv: avg(d.hrvVals),
+        restingHr: avg(d.rhrVals),
+        sleepHours: d.sleepMin > 0 ? +(d.sleepMin / 60).toFixed(2) : null,
+        steps: d.steps > 0 ? d.steps : null,
+        screenTime: screenByDay[k] ?? null,
+      };
+    });
+    const has = (key: keyof (typeof series)[number]) =>
+      series.some((p) => typeof p[key] === "number" && p[key] !== null);
+    return { series, hasAny: has("hrv") || has("restingHr") || has("sleepHours") || has("steps") || has("screenTime"), has };
+  })();
+
+  const TREND_CHARTS = [
+    { key: "hrv", label: "HRV", icon: Zap, color: "#10b981", unit: " ms", chart: "area" as const },
+    { key: "restingHr", label: "Resting HR", icon: Heart, color: "#ef4444", unit: " bpm", chart: "area" as const },
+    { key: "sleepHours", label: "Sleep", icon: Moon, color: "#8b5cf6", unit: "h", chart: "bar" as const },
+    { key: "steps", label: "Steps", icon: Activity, color: "#6366f1", unit: "", chart: "bar" as const },
+    { key: "screenTime", label: "Screen Time", icon: Smartphone, color: "#f59e0b", unit: "m", chart: "bar" as const },
+  ] as const;
 
   const sorted = [...metrics].sort((a, b) => a.loggedDate.localeCompare(b.loggedDate));
   const chartData = sorted.map(m => ({
@@ -209,6 +271,68 @@ export default function HealthDataPage() {
               </Link>
             </CardContent>
           </Card>
+        )}
+
+        {/* Wearable trends */}
+        {wearableSummary.hasAny && (
+          wearableTrends.hasAny ? (
+            <Card data-testid="card-wearable-trends">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" /> Wearable trends
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      onClick={() => setTrendWindow(7)}
+                      className={`text-[11px] px-2 py-0.5 rounded ${trendWindow === 7 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
+                      data-testid="button-trend-window-7"
+                    >7d</button>
+                    <button
+                      onClick={() => setTrendWindow(30)}
+                      className={`text-[11px] px-2 py-0.5 rounded ${trendWindow === 30 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
+                      data-testid="button-trend-window-30"
+                    >30d</button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                {TREND_CHARTS.filter(m => wearableTrends.has(m.key as any)).map(({ key, label, icon: Icon, color, unit, chart }) => (
+                  <div key={key} data-testid={`chart-wearable-${key}`}>
+                    <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                      <Icon className="w-3 h-3" style={{ color }} />
+                      <span className="font-medium text-foreground">{label}</span>
+                    </div>
+                    <ResponsiveContainer width="100%" height={90}>
+                      {chart === "bar" ? (
+                        <BarChart data={wearableTrends.series} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                          <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 9 }} width={32} />
+                          <Tooltip formatter={(v: number) => [`${typeof v === "number" ? v.toLocaleString() : v}${unit}`, label]} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                          <Bar dataKey={key} fill={color} radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      ) : (
+                        <AreaChart data={wearableTrends.series} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                          <XAxis dataKey="date" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 9 }} width={32} domain={["auto", "auto"]} />
+                          <Tooltip formatter={(v: number) => [`${typeof v === "number" ? Math.round(v) : v}${unit}`, label]} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                          <Area type="monotone" dataKey={key} stroke={color} fill={color} fillOpacity={0.18} strokeWidth={2} dot={false} connectNulls />
+                        </AreaChart>
+                      )}
+                    </ResponsiveContainer>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-dashed" data-testid="card-wearable-trends-empty">
+              <CardContent className="p-3 text-xs flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-muted-foreground shrink-0" />
+                <p className="flex-1 text-muted-foreground">Not enough wearable history yet to show trends. Import a few days from Apple Health, Whoop, Oura, or Garmin.</p>
+                <Link href="/wearable-manager">
+                  <Button size="sm" variant="outline" data-testid="button-trends-import">Import</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )
         )}
 
         {/* Goal impact panel */}
