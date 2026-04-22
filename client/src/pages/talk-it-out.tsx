@@ -14,7 +14,8 @@ import { useInsights } from "@/hooks/use-insights";
 import { useDailyCheckin } from "@/hooks/use-daily-checkin";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { analyzeCrisisRisk } from "@/lib/crisis-detection";
-import { saveChatFeedback } from "@/lib/guest-storage";
+import { saveChatFeedback, type PersonSuggestion } from "@/lib/guest-storage";
+import { PersonSuggestionCard } from "@/components/person-suggestion-card";
 import { DAILY_CHECKIN_MOOD_OPTIONS, DAILY_CHECKIN_CONSTRAINT_OPTIONS } from "@/lib/daily-checkin-constants";
 import { parseJumpToMessageIndex } from "@/lib/jumpToMoment";
 import { getDailyPrompt } from "@/lib/prompt-kit";
@@ -43,6 +44,7 @@ interface ChatMessage {
   insightTitle?: string;
   isError?: boolean;
   suggestion?: ChatSuggestion;
+  personSuggestion?: PersonSuggestion | null;
   triggeredByUserMessage?: string;
 }
 
@@ -665,12 +667,17 @@ export function TalkItOutPage() {
           data?.suggestion && typeof data.suggestion === "object" && data.suggestion.kind
             ? data.suggestion
             : undefined;
+        const personSuggestion: PersonSuggestion | undefined =
+          data?.personSuggestion && typeof data.personSuggestion === "object" && data.personSuggestion.personId
+            ? data.personSuggestion
+            : undefined;
         return [
           ...prev,
           {
             role: "assistant",
             content: processedWithHistory.text,
             ...(suggestion ? { suggestion, triggeredByUserMessage: variables } : {}),
+            ...(personSuggestion ? { personSuggestion } : {}),
           },
         ];
       });
@@ -1183,6 +1190,13 @@ export function TalkItOutPage() {
                           )}
                         </Button>
                       </div>
+                    )}
+                    {message.personSuggestion && (
+                      <PersonSuggestionCard
+                        suggestion={message.personSuggestion}
+                        onLog={() => navigate(`/relationships?personId=${encodeURIComponent(message.personSuggestion!.personId)}&log=1`)}
+                        onOpen={() => navigate(`/relationships?personId=${encodeURIComponent(message.personSuggestion!.personId)}`)}
+                      />
                     )}
                     {message.suggestion?.kind === "trigger_protocol" && (
                       <div className="pt-1">

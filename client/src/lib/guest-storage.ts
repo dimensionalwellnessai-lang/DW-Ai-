@@ -6,10 +6,19 @@ const SESSION_STARTED_KEY = "dw_session_started";
 const LAST_ACTIVITY_KEY = "dw_last_activity";
 const SESSION_GAP_MS = 5 * 60 * 1000; // 5 minutes - if gap is longer, treat as new session
 
+export interface PersonSuggestion {
+  personId: string;
+  name: string;
+  category: string | null;
+  healthScore: number | null;
+  daysSinceContact: number | null;
+}
+
 export interface ChatMessage {
   role: "assistant" | "user";
   content: string;
   timestamp: number;
+  personSuggestion?: PersonSuggestion | null;
 }
 
 export interface GuestConversation {

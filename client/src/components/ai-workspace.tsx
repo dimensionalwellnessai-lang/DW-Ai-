@@ -48,6 +48,7 @@ import {
   saveGuestConversation,
   type GuestConversation,
   type ChatMessage,
+  type PersonSuggestion,
   type SoftOnboardingMood,
   type FocusArea,
 } from "@/lib/guest-storage";
@@ -101,6 +102,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { VoiceModeButton } from "@/components/voice-mode-button";
+import { PersonSuggestionCard } from "@/components/person-suggestion-card";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -1033,7 +1035,7 @@ export function AIWorkspace() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamedResponse = "";
-      let metadata: { actionsTaken?: string[]; syncSessionId?: string; navigation?: { path: string; reason: string } | null } = {};
+      let metadata: { actionsTaken?: string[]; syncSessionId?: string; navigation?: { path: string; reason: string } | null; personSuggestion?: PersonSuggestion | null } = {};
       let updateCounter = 0;
       const UPDATE_FREQUENCY = 3; // Update UI every 3 chunks to reduce re-renders
 
@@ -1140,6 +1142,19 @@ export function AIWorkspace() {
                   }
                 } else if (parsed.metadata) {
                   metadata = parsed.metadata;
+                  // Attach personSuggestion immediately so guest conversations
+                  // (which mutate messages in-place during streaming) carry the
+                  // card alongside the response.
+                  if (!isUserAuthenticated && metadata.personSuggestion) {
+                    const conv = getActiveConversation();
+                    if (conv && conv.messages.length > 0) {
+                      const lastMsg = conv.messages[conv.messages.length - 1];
+                      if (lastMsg.role === "assistant") {
+                        lastMsg.personSuggestion = metadata.personSuggestion;
+                        setConversationVersion(v => v + 1);
+                      }
+                    }
+                  }
                 } else if (parsed.error) {
                   throw new Error(parsed.error);
                 }
@@ -1173,6 +1188,7 @@ export function AIWorkspace() {
           actionsTaken: metadata.actionsTaken || [],
           syncSessionId: metadata.syncSessionId,
           navigation: metadata.navigation || null,
+          personSuggestion: metadata.personSuggestion || null,
         }, 
         userMsg, 
         conversationId, 
@@ -1187,7 +1203,7 @@ export function AIWorkspace() {
         return;
       }
       
-      const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now() };
+      const assistantMsg: ChatMessage = { role: "assistant", content: data.response, timestamp: Date.now(), personSuggestion: data.personSuggestion };
       
       if (isUserAuthenticated) {
         // Use messagesOverride if provided (for regenerate), otherwise use activeDbConversation
@@ -2304,6 +2320,13 @@ export function AIWorkspace() {
                             {message.content}
                           </p>
                         </div>
+                        {message.personSuggestion && (
+                          <PersonSuggestionCard
+                            suggestion={message.personSuggestion}
+                            onLog={() => setLocation(`/relationships?personId=${encodeURIComponent(message.personSuggestion!.personId)}&log=1`)}
+                            onOpen={() => setLocation(`/relationships?personId=${encodeURIComponent(message.personSuggestion!.personId)}`)}
+                          />
+                        )}
                         {index > 0 && (
                           <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                             <ChatFeedbackBar 

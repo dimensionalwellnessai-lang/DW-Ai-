@@ -1238,6 +1238,81 @@ export function registerRelationshipsRoutes(app: Express): void {
   });
 }
 
+// Build a richer suggestion (name + category + health score) for a mentioned
+// person so chat surfaces can show an inline person card.
+export interface PersonChatSuggestion {
+  personId: string;
+  name: string;
+  category: string | null;
+  healthScore: number | null;
+  daysSinceContact: number | null;
+}
+
+export async function buildPersonSuggestion(
+  userId: string,
+  message: unknown,
+): Promise<PersonChatSuggestion | null> {
+  const mention = await detectPersonMention(userId, message);
+  if (!mention) return null;
+  try {
+    const person = await ownPerson(userId, mention.personId);
+    if (!person) {
+      return { personId: mention.personId, name: mention.name, category: null, healthScore: null, daysSinceContact: null };
+    }
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const [recentInter, openRepairsRows, recentAppr] = await Promise.all([
+      db
+        .select()
+        .from(peopleInteractions)
+        .where(
+          and(
+            eq(peopleInteractions.userId, userId),
+            eq(peopleInteractions.personId, person.id),
+            gte(peopleInteractions.occurredAt, since),
+          ),
+        )
+        .orderBy(desc(peopleInteractions.occurredAt)),
+      db
+        .select({ id: relationshipRepairs.id })
+        .from(relationshipRepairs)
+        .where(
+          and(
+            eq(relationshipRepairs.userId, userId),
+            eq(relationshipRepairs.personId, person.id),
+            eq(relationshipRepairs.status, "open"),
+          ),
+        ),
+      db
+        .select({ id: relationshipAppreciations.id })
+        .from(relationshipAppreciations)
+        .where(
+          and(
+            eq(relationshipAppreciations.userId, userId),
+            eq(relationshipAppreciations.personId, person.id),
+            gte(relationshipAppreciations.createdAt, since),
+          ),
+        ),
+    ]);
+    const health = computeHealthScore({
+      contactFrequencyDays: person.contactFrequencyDays,
+      lastInteractionAt: person.lastInteractionAt,
+      recentInteractions: recentInter,
+      openRepairs: openRepairsRows.length,
+      recentAppreciations: recentAppr.length,
+    });
+    return {
+      personId: person.id,
+      name: person.name,
+      category: person.category ?? null,
+      healthScore: health.score,
+      daysSinceContact: health.daysSinceContact,
+    };
+  } catch (err) {
+    console.warn("[relationships] buildPersonSuggestion failed", err);
+    return { personId: mention.personId, name: mention.name, category: null, healthScore: null, daysSinceContact: null };
+  }
+}
+
 // ── Person-name detection for chat hook ─────────────────────────────────────
 // Returns the person id whose name is mentioned in the message, if any.
 export async function detectPersonMention(

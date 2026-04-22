@@ -268,6 +268,12 @@ export default function RelationshipsPage() {
     if (!target) return;
     setOpenPersonId(target);
     setTab("crm");
+    // Optional ?log=1 deep-link from chat: also open the interaction dialog
+    // pre-filled to that person.
+    if (params.get("log") === "1") {
+      setInteractionDialog({ personId: target });
+      params.delete("log");
+    }
     params.delete("personId");
     const next = `${window.location.pathname}${
       params.toString() ? `?${params.toString()}` : ""

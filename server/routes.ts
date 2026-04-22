@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { parseLifeSystemRuleBased } from "./life-system-parser-rules";
 import { detectTriggerSuggestion } from "./routes/trigger-detection";
-import { detectPersonMention } from "./routes/relationships";
+import { detectPersonMention, buildPersonSuggestion } from "./routes/relationships";
 import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -2310,7 +2310,8 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       }
       
       const triggerSuggestion = detectTriggerSuggestion(message);
-      const personMention = req.session.userId ? await detectPersonMention(req.session.userId, message) : null;
+      const personSuggestion = req.session.userId ? await buildPersonSuggestion(req.session.userId, message) : null;
+      const personMention = personSuggestion ? { personId: personSuggestion.personId, name: personSuggestion.name } : null;
       const mergedSuggestion = triggerSuggestion
         ? (personMention ? { ...triggerSuggestion, person: personMention } : triggerSuggestion)
         : (personMention ? { type: "person" as const, person: personMention } : null);
@@ -2320,6 +2321,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         syncSessionId,
         actionsTaken,
         ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
+        ...(personSuggestion ? { personSuggestion } : {}),
         dwMode: {
           id: activeMode,
           label: modeDef.label,
@@ -2632,7 +2634,8 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       
       const safeResult = { ...result, response: enforceOneQuestion(result.response) };
       const triggerSuggestion = detectTriggerSuggestion(message);
-      const personMention = req.session.userId ? await detectPersonMention(req.session.userId, message) : null;
+      const personSuggestion = req.session.userId ? await buildPersonSuggestion(req.session.userId, message) : null;
+      const personMention = personSuggestion ? { personId: personSuggestion.personId, name: personSuggestion.name } : null;
       const mergedSuggestion = triggerSuggestion
         ? (personMention ? { ...triggerSuggestion, person: personMention } : triggerSuggestion)
         : (personMention ? { type: "person" as const, person: personMention } : null);
@@ -2642,6 +2645,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         actionsTaken,
         navigation: navigationAction,
         ...(mergedSuggestion ? { suggestion: mergedSuggestion } : {}),
+        ...(personSuggestion ? { personSuggestion } : {}),
         dwMode: {
           id: activeSmartMode,
           label: smartModeDef.label,
@@ -2975,14 +2979,19 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         }
       }
       
+      // Detect a tracked-person mention and build a suggestion payload so
+      // the chat UI can surface an inline person card.
+      const personSuggestion = await buildPersonSuggestion(userId, message);
+
       // Send actions taken and metadata at the end
-      if (actionsTaken.length > 0 || syncSessionId || navigationActionS) {
-        res.write(`data: ${JSON.stringify({ 
-          metadata: { 
-            actionsTaken, 
+      if (actionsTaken.length > 0 || syncSessionId || navigationActionS || personSuggestion) {
+        res.write(`data: ${JSON.stringify({
+          metadata: {
+            actionsTaken,
             syncSessionId,
             navigation: navigationActionS,
-          } 
+            personSuggestion,
+          }
         })}\n\n`);
       }
       
