@@ -303,7 +303,7 @@ export default function HealthDataPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
-                {TREND_CHARTS.filter(m => wearableTrends.has(m.key as any)).map(({ key, label, icon: Icon, color, unit, chart }) => (
+                {TREND_CHARTS.filter(m => wearableTrends.has(m.key)).map(({ key, label, icon: Icon, color, unit, chart }) => (
                   <div key={key} data-testid={`chart-wearable-${key}`}>
                     <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
                       <Icon className="w-3 h-3" style={{ color }} />
