@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
+import { SyncIndicator } from "@/components/sync-indicator";
+import {
+  useAccountabilityPrefsSync,
+  type PrefField,
+} from "@/hooks/use-accountability-prefs-sync";
 import { ensurePushSubscription, unsubscribePushSubscription } from "@/lib/push-subscription";
 import { cancelAllNativeReminders, isCapacitor, scheduleNativeTestReminder } from "@/lib/capacitor-notifications";
 import type { NotificationPreferences } from "@shared/schema";
@@ -63,6 +68,7 @@ import {
   Star,
   BookHeart,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useTutorialStart, useTutorial } from "@/contexts/tutorial-context";
@@ -894,22 +900,23 @@ function AccountabilityRemindersSection({
     queryKey: ["/api/accountability/preferences"],
   });
 
-  const updatePrefs = useMutation({
-    mutationFn: async (updates: Partial<NotificationPreferences>) => {
-      const res = await apiRequest("PUT", "/api/accountability/preferences", updates);
-      return res.json();
-    },
-    onSuccess: (next) => {
-      queryClient.setQueryData(["/api/accountability/preferences"], next);
-    },
-    onError: () => {
-      toast({
-        title: "Couldn't save reminder settings",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Shared mutation wrapper that drives a per-field SyncIndicator instead of
+  // a one-off error toast. Failures stay on screen until the next attempt.
+  const prefsSync = useAccountabilityPrefsSync();
+
+  const fieldIndicator = (field: PrefField, testIdPrefix: string) => {
+    const { status, error } = prefsSync.statusFor(field);
+    if (status === "idle") return null;
+    return (
+      <SyncIndicator
+        status={status}
+        error={error}
+        testIdPrefix={testIdPrefix}
+        showIdle={false}
+        className="mt-1"
+      />
+    );
+  };
 
   const accountabilityEnabled = prefs?.accountabilityEnabled ?? false;
   const preTaskEnabled = prefs?.preTaskEnabled ?? false;
@@ -935,7 +942,7 @@ function AccountabilityRemindersSection({
       return;
     }
     if (!accountabilityEnabled) {
-      updatePrefs.mutate({ accountabilityEnabled: true });
+      prefsSync.update({ accountabilityEnabled: true });
     }
     toast({
       title: "Reminders on",
@@ -976,12 +983,12 @@ function AccountabilityRemindersSection({
           return;
         }
       }
-      updatePrefs.mutate({ accountabilityEnabled: true });
+      prefsSync.update({ accountabilityEnabled: true });
     } else {
       // Going from on → off: persist the pref, drop the web-push subscription
       // for this browser, and cancel any pending native local notifications
       // so the OS won't fire them after the user has opted out.
-      updatePrefs.mutate({ accountabilityEnabled: false });
+      prefsSync.update({ accountabilityEnabled: false });
       if (!native) {
         void unsubscribePushSubscription();
       } else {
@@ -1077,7 +1084,7 @@ function AccountabilityRemindersSection({
     field: "preTaskEnabled" | "postTaskEnabled",
     checked: boolean,
   ) => {
-    updatePrefs.mutate({ [field]: checked });
+    prefsSync.update({ [field]: checked });
     if (!checked && native) {
       // On native, the in-OS schedule is rebuilt by the accountability
       // scheduler the next time it runs, but cancel proactively so the user
@@ -1089,14 +1096,23 @@ function AccountabilityRemindersSection({
   return (
     <Card data-testid="card-accountability-reminders">
       <CardHeader>
-        <div className="flex items-center gap-3">
-          <BellRing className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-base">Accountability Reminders</CardTitle>
-            <CardDescription>
-              Get nudges before and after scheduled tasks — even when the app is closed.
-            </CardDescription>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <BellRing className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Accountability Reminders</CardTitle>
+              <CardDescription>
+                Get nudges before and after scheduled tasks — even when the app is closed.
+              </CardDescription>
+            </div>
           </div>
+          <span
+            className="flex items-center gap-1 text-xs text-muted-foreground shrink-0"
+            data-testid="status-accountability-reminders-baseline"
+          >
+            <Check className="w-3 h-3" />
+            Synced across devices
+          </span>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -1132,77 +1148,86 @@ function AccountabilityRemindersSection({
         )}
 
         {/* Master toggle */}
-        <div className="flex items-center justify-between gap-3">
-          <Label
-            htmlFor="accountability-master-toggle"
-            className="flex flex-col gap-0.5 cursor-pointer"
-          >
-            <span>Reminders</span>
-            <span className="text-xs text-muted-foreground font-normal">
-              {accountabilityEnabled
-                ? "On — pre-task and post-task nudges"
-                : "Off — no accountability reminders"}
-            </span>
-          </Label>
-          <Switch
-            id="accountability-master-toggle"
-            checked={accountabilityEnabled}
-            disabled={
-              isLoading ||
-              updatePrefs.isPending ||
-              (!native && (!isSupported || permission === "denied"))
-            }
-            onCheckedChange={handleMasterToggle}
-            data-testid="switch-accountability-enabled"
-          />
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <Label
+              htmlFor="accountability-master-toggle"
+              className="flex flex-col gap-0.5 cursor-pointer"
+            >
+              <span>Reminders</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                {accountabilityEnabled
+                  ? "On — pre-task and post-task nudges"
+                  : "Off — no accountability reminders"}
+              </span>
+            </Label>
+            <Switch
+              id="accountability-master-toggle"
+              checked={accountabilityEnabled}
+              disabled={
+                isLoading ||
+                prefsSync.isPending ||
+                (!native && (!isSupported || permission === "denied"))
+              }
+              onCheckedChange={handleMasterToggle}
+              data-testid="switch-accountability-enabled"
+            />
+          </div>
+          {fieldIndicator("accountabilityEnabled", "status-settings-accountability-enabled")}
         </div>
 
         {/* Pre-task */}
-        <div className="flex items-center justify-between gap-3">
-          <Label
-            htmlFor="accountability-pre-toggle"
-            className="flex flex-col gap-0.5 cursor-pointer"
-          >
-            <span>Pre-task reminders</span>
-            <span className="text-xs text-muted-foreground font-normal">
-              "Will you be doing this?" before each scheduled item
-            </span>
-          </Label>
-          <Switch
-            id="accountability-pre-toggle"
-            checked={preTaskEnabled}
-            disabled={
-              isLoading ||
-              updatePrefs.isPending ||
-              !accountabilityEnabled
-            }
-            onCheckedChange={(c) => handleSubToggle("preTaskEnabled", c)}
-            data-testid="switch-accountability-pre-task"
-          />
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <Label
+              htmlFor="accountability-pre-toggle"
+              className="flex flex-col gap-0.5 cursor-pointer"
+            >
+              <span>Pre-task reminders</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                "Will you be doing this?" before each scheduled item
+              </span>
+            </Label>
+            <Switch
+              id="accountability-pre-toggle"
+              checked={preTaskEnabled}
+              disabled={
+                isLoading ||
+                prefsSync.isPending ||
+                !accountabilityEnabled
+              }
+              onCheckedChange={(c) => handleSubToggle("preTaskEnabled", c)}
+              data-testid="switch-accountability-pre-task"
+            />
+          </div>
+          {fieldIndicator("preTaskEnabled", "status-settings-pre-task-enabled")}
         </div>
 
         {/* Post-task */}
-        <div className="flex items-center justify-between gap-3">
-          <Label
-            htmlFor="accountability-post-toggle"
-            className="flex flex-col gap-0.5 cursor-pointer"
-          >
-            <span>Post-task reminders</span>
-            <span className="text-xs text-muted-foreground font-normal">
-              "Did you complete this?" after each scheduled item
-            </span>
-          </Label>
-          <Switch
-            id="accountability-post-toggle"
-            checked={postTaskEnabled}
-            disabled={
-              isLoading ||
-              updatePrefs.isPending ||
-              !accountabilityEnabled
-            }
-            onCheckedChange={(c) => handleSubToggle("postTaskEnabled", c)}
-            data-testid="switch-accountability-post-task"
-          />
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <Label
+              htmlFor="accountability-post-toggle"
+              className="flex flex-col gap-0.5 cursor-pointer"
+            >
+              <span>Post-task reminders</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                "Did you complete this?" after each scheduled item
+              </span>
+            </Label>
+            <Switch
+              id="accountability-post-toggle"
+              checked={postTaskEnabled}
+              disabled={
+                isLoading ||
+                prefsSync.isPending ||
+                !accountabilityEnabled
+              }
+              onCheckedChange={(c) => handleSubToggle("postTaskEnabled", c)}
+              data-testid="switch-accountability-post-task"
+            />
+          </div>
+          {fieldIndicator("postTaskEnabled", "status-settings-post-task-enabled")}
         </div>
 
         {/* Send a test reminder */}

@@ -1,21 +1,30 @@
 /**
  * Accountability Settings
- * Allows users to configure notification preferences for accountability tracking
+ * Allows users to configure notification preferences for accountability tracking.
+ *
+ * Each persisted preference control surfaces a subtle "Synced across devices"
+ * indicator after a successful change, and an inline error message when the
+ * server rejects the update. The pattern matches the upcoming-reminders
+ * horizon select so the UX is consistent across every preference.
  */
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Bell, Clock, Moon, Sun, CheckCircle2 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Bell, Moon, Sun, CheckCircle2, Cloud } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { requestNotificationPermission, getNotificationPermission } from "@/lib/notifications";
 import { UpcomingReminders } from "@/components/upcoming-reminders";
+import { SyncIndicator } from "@/components/sync-indicator";
+import {
+  useAccountabilityPrefsSync,
+  type PrefField,
+} from "@/hooks/use-accountability-prefs-sync";
 import type { NotificationPreferences } from "@shared/schema";
 
 export function AccountabilitySettings() {
@@ -27,27 +36,7 @@ export function AccountabilitySettings() {
     queryKey: ['/api/accountability/preferences'],
   });
 
-  // Update preferences mutation
-  const updatePreferences = useMutation({
-    mutationFn: async (updates: Partial<NotificationPreferences>) => {
-      const res = await apiRequest('PUT', '/api/accountability/preferences', updates);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/accountability/preferences'] });
-      toast({
-        title: "Settings saved",
-        description: "Your notification preferences have been updated.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to save settings. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
+  const prefsSync = useAccountabilityPrefsSync();
 
   const handleRequestPermission = async () => {
     const result = await requestNotificationPermission();
@@ -66,16 +55,34 @@ export function AccountabilitySettings() {
     }
   };
 
-  const handleToggle = (field: keyof NotificationPreferences, value: boolean) => {
-    updatePreferences.mutate({ [field]: value });
+  const handleToggle = (field: PrefField, value: boolean) => {
+    prefsSync.update({ [field]: value } as Partial<NotificationPreferences>);
   };
 
-  const handleTimeChange = (field: keyof NotificationPreferences, value: string) => {
-    updatePreferences.mutate({ [field]: value });
+  const handleTimeChange = (field: PrefField, value: string) => {
+    prefsSync.update({ [field]: value } as Partial<NotificationPreferences>);
   };
 
-  const handleNumberChange = (field: keyof NotificationPreferences, value: number) => {
-    updatePreferences.mutate({ [field]: value });
+  const handleNumberChange = (field: PrefField, value: number) => {
+    if (!Number.isFinite(value)) return;
+    prefsSync.update({ [field]: value } as Partial<NotificationPreferences>);
+  };
+
+  /** Renders the per-field sync indicator. We hide the static "Synced across
+   * devices" idle state at the field level and show it once per card via
+   * `<CardSyncBaseline />` to avoid a wall of redundant lines. */
+  const fieldIndicator = (field: PrefField, testIdPrefix: string) => {
+    const { status, error } = prefsSync.statusFor(field);
+    if (status === "idle") return null;
+    return (
+      <SyncIndicator
+        status={status}
+        error={error}
+        testIdPrefix={testIdPrefix}
+        showIdle={false}
+        className="mt-1"
+      />
+    );
   };
 
   if (isLoading || !preferences) {
@@ -137,49 +144,62 @@ export function AccountabilitySettings() {
       {/* Main Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Notification Types</CardTitle>
-          <CardDescription>
-            Choose which accountability notifications you want to receive
-          </CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Notification Types</CardTitle>
+              <CardDescription>
+                Choose which accountability notifications you want to receive
+              </CardDescription>
+            </div>
+            <CardSyncBaseline testId="status-notification-types-baseline" />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Master Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="accountability-enabled">
-                Accountability Notifications
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Enable all accountability tracking notifications
-              </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="accountability-enabled">
+                  Accountability Notifications
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable all accountability tracking notifications
+                </p>
+              </div>
+              <Switch
+                id="accountability-enabled"
+                checked={preferences.accountabilityEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('accountabilityEnabled', checked)}
+                disabled={notificationPermission !== 'granted'}
+                data-testid="switch-accountability-enabled"
+              />
             </div>
-            <Switch
-              id="accountability-enabled"
-              checked={preferences.accountabilityEnabled ?? false}
-              onCheckedChange={(checked) => handleToggle('accountabilityEnabled', checked)}
-              disabled={notificationPermission !== 'granted'}
-            />
+            {fieldIndicator('accountabilityEnabled', 'status-accountability-enabled')}
           </div>
 
           <Separator />
 
           {/* Pre-Task Notifications */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="pre-task-enabled">
-                  Pre-Task Reminders
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  "Will you be doing this?" notifications before tasks
-                </p>
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pre-task-enabled">
+                    Pre-Task Reminders
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    "Will you be doing this?" notifications before tasks
+                  </p>
+                </div>
+                <Switch
+                  id="pre-task-enabled"
+                  checked={preferences.preTaskEnabled ?? false}
+                  onCheckedChange={(checked) => handleToggle('preTaskEnabled', checked)}
+                  disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
+                  data-testid="switch-pre-task-enabled"
+                />
               </div>
-              <Switch
-                id="pre-task-enabled"
-                checked={preferences.preTaskEnabled ?? false}
-                onCheckedChange={(checked) => handleToggle('preTaskEnabled', checked)}
-                disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
-              />
+              {fieldIndicator('preTaskEnabled', 'status-pre-task-enabled')}
             </div>
 
             {preferences.preTaskEnabled && (
@@ -195,7 +215,9 @@ export function AccountabilitySettings() {
                   value={preferences.preTaskMinutes ?? 15}
                   onChange={(e) => handleNumberChange('preTaskMinutes', parseInt(e.target.value))}
                   className="w-32"
+                  data-testid="input-pre-task-minutes"
                 />
+                {fieldIndicator('preTaskMinutes', 'status-pre-task-minutes')}
               </div>
             )}
           </div>
@@ -203,42 +225,50 @@ export function AccountabilitySettings() {
           <Separator />
 
           {/* Post-Task Notifications */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="post-task-enabled">
-                Post-Task Check-ins
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                "Did you complete this?" notifications after tasks
-              </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="post-task-enabled">
+                  Post-Task Check-ins
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  "Did you complete this?" notifications after tasks
+                </p>
+              </div>
+              <Switch
+                id="post-task-enabled"
+                checked={preferences.postTaskEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('postTaskEnabled', checked)}
+                disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
+                data-testid="switch-post-task-enabled"
+              />
             </div>
-            <Switch
-              id="post-task-enabled"
-              checked={preferences.postTaskEnabled ?? false}
-              onCheckedChange={(checked) => handleToggle('postTaskEnabled', checked)}
-              disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
-            />
+            {fieldIndicator('postTaskEnabled', 'status-post-task-enabled')}
           </div>
 
           <Separator />
 
           {/* Morning Briefing */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="morning-briefing-enabled">
-                  Morning Briefing
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Daily overview of your scheduled tasks
-                </p>
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="morning-briefing-enabled">
+                    Morning Briefing
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Daily overview of your scheduled tasks
+                  </p>
+                </div>
+                <Switch
+                  id="morning-briefing-enabled"
+                  checked={preferences.morningBriefingEnabled ?? false}
+                  onCheckedChange={(checked) => handleToggle('morningBriefingEnabled', checked)}
+                  disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
+                  data-testid="switch-morning-briefing-enabled"
+                />
               </div>
-              <Switch
-                id="morning-briefing-enabled"
-                checked={preferences.morningBriefingEnabled ?? false}
-                onCheckedChange={(checked) => handleToggle('morningBriefingEnabled', checked)}
-                disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
-              />
+              {fieldIndicator('morningBriefingEnabled', 'status-morning-briefing-enabled')}
             </div>
 
             {preferences.morningBriefingEnabled && (
@@ -253,7 +283,9 @@ export function AccountabilitySettings() {
                   value={preferences.morningBriefingTime ?? "08:00"}
                   onChange={(e) => handleTimeChange('morningBriefingTime', e.target.value)}
                   className="w-32"
+                  data-testid="input-morning-briefing-time"
                 />
+                {fieldIndicator('morningBriefingTime', 'status-morning-briefing-time')}
               </div>
             )}
           </div>
@@ -262,21 +294,25 @@ export function AccountabilitySettings() {
 
           {/* Evening Summary */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="evening-summary-enabled">
-                  Evening Summary
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Daily recap of your accountability progress
-                </p>
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="evening-summary-enabled">
+                    Evening Summary
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Daily recap of your accountability progress
+                  </p>
+                </div>
+                <Switch
+                  id="evening-summary-enabled"
+                  checked={preferences.eveningSummaryEnabled ?? false}
+                  onCheckedChange={(checked) => handleToggle('eveningSummaryEnabled', checked)}
+                  disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
+                  data-testid="switch-evening-summary-enabled"
+                />
               </div>
-              <Switch
-                id="evening-summary-enabled"
-                checked={preferences.eveningSummaryEnabled ?? false}
-                onCheckedChange={(checked) => handleToggle('eveningSummaryEnabled', checked)}
-                disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
-              />
+              {fieldIndicator('eveningSummaryEnabled', 'status-evening-summary-enabled')}
             </div>
 
             {preferences.eveningSummaryEnabled && (
@@ -291,7 +327,9 @@ export function AccountabilitySettings() {
                   value={preferences.eveningSummaryTime ?? "21:00"}
                   onChange={(e) => handleTimeChange('eveningSummaryTime', e.target.value)}
                   className="w-32"
+                  data-testid="input-evening-summary-time"
                 />
+                {fieldIndicator('eveningSummaryTime', 'status-evening-summary-time')}
               </div>
             )}
           </div>
@@ -301,27 +339,36 @@ export function AccountabilitySettings() {
       {/* Quiet Hours */}
       <Card>
         <CardHeader>
-          <CardTitle>Quiet Hours</CardTitle>
-          <CardDescription>
-            Set times when you don't want to receive notifications
-          </CardDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle>Quiet Hours</CardTitle>
+              <CardDescription>
+                Set times when you don't want to receive notifications
+              </CardDescription>
+            </div>
+            <CardSyncBaseline testId="status-quiet-hours-baseline" />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="quiet-hours-enabled">
-                Enable Quiet Hours
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Pause notifications during specific hours
-              </p>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="quiet-hours-enabled">
+                  Enable Quiet Hours
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Pause notifications during specific hours
+                </p>
+              </div>
+              <Switch
+                id="quiet-hours-enabled"
+                checked={preferences.quietHoursEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('quietHoursEnabled', checked)}
+                disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
+                data-testid="switch-quiet-hours-enabled"
+              />
             </div>
-            <Switch
-              id="quiet-hours-enabled"
-              checked={preferences.quietHoursEnabled ?? false}
-              onCheckedChange={(checked) => handleToggle('quietHoursEnabled', checked)}
-              disabled={!preferences.accountabilityEnabled || notificationPermission !== 'granted'}
-            />
+            {fieldIndicator('quietHoursEnabled', 'status-quiet-hours-enabled')}
           </div>
 
           {preferences.quietHoursEnabled && (
@@ -336,7 +383,9 @@ export function AccountabilitySettings() {
                   type="time"
                   value={preferences.quietHoursStart ?? "22:00"}
                   onChange={(e) => handleTimeChange('quietHoursStart', e.target.value)}
+                  data-testid="input-quiet-hours-start"
                 />
+                {fieldIndicator('quietHoursStart', 'status-quiet-hours-start')}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quiet-hours-end">
@@ -348,12 +397,28 @@ export function AccountabilitySettings() {
                   type="time"
                   value={preferences.quietHoursEnd ?? "08:00"}
                   onChange={(e) => handleTimeChange('quietHoursEnd', e.target.value)}
+                  data-testid="input-quiet-hours-end"
                 />
+                {fieldIndicator('quietHoursEnd', 'status-quiet-hours-end')}
               </div>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Compact baseline label shown once per card so users always know these
+ * preferences are stored centrally, even when no save is in flight. */
+function CardSyncBaseline({ testId }: { testId: string }) {
+  return (
+    <span
+      className="flex items-center gap-1 text-xs text-muted-foreground shrink-0"
+      data-testid={testId}
+    >
+      <Cloud className="w-3 h-3" />
+      Synced across devices
+    </span>
   );
 }
