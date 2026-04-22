@@ -71,7 +71,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { WellnessContent, UserProfile, SavedContent } from "@shared/schema";
+import type { WellnessContent, UserProfile } from "@shared/schema";
 import { ExploreFeedCard } from "@/components/explore-feed-card";
 import { TopicSuggestionCard } from "@/components/topic-suggestion-card";
 import type { ExploreFeedContentType } from "@/components/explore-feed-card";
@@ -621,7 +621,7 @@ export default function Browse() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "video" | "articles" | "saved">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "video" | "articles">("for-you");
   const [exploreCategory, setExploreCategory] = useState<"all" | "videos" | "articles" | "shows" | "music" | "workouts" | "skills" | "events">("all");
 
   // ── Discover feed state ──
@@ -749,12 +749,6 @@ export default function Browse() {
     enabled: activeTab === "for-you" || activeTab === "explore",
   });
 
-  // Saved tab: Saved content
-  const { data: savedContent, isLoading: savedLoading } = useQuery<SavedContent[]>({
-    queryKey: ["/api/saved-content"],
-    enabled: activeTab === "saved",
-  });
-
   // Articles tab: AI-curated real articles — refreshes when time slot changes
   const { data: aiArticlesData, isLoading: aiArticlesLoading } = useQuery<{
     articles: Array<{
@@ -876,35 +870,6 @@ ${contentList}`,
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save content", variant: "destructive" });
-    },
-  });
-
-  // Mark as read mutation
-  const markAsReadMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest("PATCH", `/api/saved-content/${id}`, { isRead: true });
-      if (!response.ok) throw new Error("Failed to mark as read");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
-      toast({ title: "Marked as read" });
-    },
-  });
-
-  // Delete saved content mutation
-  const deleteSavedMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/saved-content/${id}`);
-      if (!response.ok) throw new Error("Failed to delete");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
-      toast({ title: "Removed from saved" });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to remove content", variant: "destructive" });
     },
   });
 
@@ -1171,7 +1136,7 @@ ${contentList}`,
             setLocation("/library");
             return;
           }
-          setActiveTab(v as "for-you" | "explore" | "video" | "articles" | "saved");
+          setActiveTab(v as "for-you" | "explore" | "video" | "articles");
           setTopicFilter("");
           setLengthFilter(null);
           if (v === "explore") setExploreCategory("all");
@@ -3314,50 +3279,6 @@ ${contentList}`,
                   Search Articles
                 </Button>
               </div>
-            </div>
-          )}
-        </main>
-      )}
-
-      {activeTab === "saved" && (
-        <main className="p-4">
-          {savedLoading ? (
-            <div className="text-center py-12">
-              <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading saved content...</p>
-            </div>
-          ) : savedContent && savedContent.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {savedContent.map((item) => (
-                <ExploreFeedCard
-                  key={item.id}
-                  id={item.id}
-                  type={item.contentType as ExploreFeedContentType}
-                  source={item.source || "Unknown"}
-                  title={item.title}
-                  description={item.description || ""}
-                  thumbnail={item.thumbnail || undefined}
-                  duration={item.duration || undefined}
-                  url={item.url}
-                  metadata={item.metadata as any}
-                  isSaved={true}
-                  onOpen={() => window.open(item.url, "_blank")}
-                  onSave={() => {
-                    if (!deleteSavedMutation.isPending) {
-                      deleteSavedMutation.mutate(item.id);
-                    }
-                  }}
-                  onSchedule={() => handleAddToSchedule({ title: item.title, url: item.url, type: item.contentType })}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Bookmark className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="font-medium mb-1">{COPY.emptyStates.saved.title}</p>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                {COPY.emptyStates.saved.body}
-              </p>
             </div>
           )}
         </main>
