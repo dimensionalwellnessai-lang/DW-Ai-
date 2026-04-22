@@ -99,6 +99,7 @@ const ITEM: MeditationItem = {
   durationMinutes: 5,
   scriptText: "Breathe in slowly.",
   audioUrl: "/api/meditations/audio/calm-breath",
+  description: null,
 };
 
 function renderDialog() {
