@@ -347,6 +347,8 @@ interface CosmicTodaySnapshot {
   sunSign: string;
   energyWord: string;
   events: CosmicCalendarEvent[];
+  hasChart?: boolean;
+  personalReading?: string | null;
 }
 
 function eventBadgeVariant(type: string): "secondary" | "destructive" | "outline" {
@@ -418,9 +420,15 @@ export function CalendarTab() {
           <CardContent className="p-4 flex items-start gap-3">
             <span className="text-2xl" aria-hidden="true">{todayData.moonPhaseEmoji}</span>
             <div className="flex-1">
-              <p className="font-semibold text-sm">{todayData.moonPhase} in {todayData.moonSign}</p>
+              <p className="font-semibold text-sm" data-testid="text-today-phase">{todayData.moonPhase} in {todayData.moonSign}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{MOON_PHASE_GUIDANCE[todayData.moonPhase] ?? ""}</p>
-              <p className="text-xs text-primary mt-1">✦ Today's energy: <span className="font-medium">{todayData.energyWord}</span></p>
+              {todayData.hasChart && todayData.personalReading ? (
+                <p className="text-xs text-foreground mt-1" data-testid="text-personal-reading">
+                  <span className="text-primary">✦</span> {todayData.personalReading}
+                </p>
+              ) : (
+                <p className="text-xs text-primary mt-1">✦ Today's energy: <span className="font-medium">{todayData.energyWord}</span></p>
+              )}
             </div>
           </CardContent>
         </Card>

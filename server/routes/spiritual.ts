@@ -264,6 +264,45 @@ async function generateEnergyBlurb(snapshot: ReturnType<typeof computeTodaySnaps
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// Build the short, faith-neutral "what today means for you" paragraph used by
+// both /api/cosmic/personal and /api/cosmic/today. Anchors on whichever of
+// Sun/Moon/Rising the user has stored; falls back to a generic snapshot
+// phrasing when no chart exists.
+type NatalPlacement = { planet: string; sign: string; degree?: number; house?: number };
+function buildPersonalReading(
+  snapshot: ReturnType<typeof computeTodaySnapshot>,
+  placements: NatalPlacement[] | null,
+): string {
+  const sun = placements?.find((p) => p.planet === "Sun")?.sign ?? null;
+  const moon = placements?.find((p) => p.planet === "Moon")?.sign ?? null;
+  const asc = placements?.find((p) => p.planet === "Ascendant")?.sign ?? null;
+
+  if (sun || moon || asc) {
+    const parts: string[] = [];
+    if (sun) parts.push(`${sun} Sun`);
+    if (moon) parts.push(`${moon} Moon`);
+    if (asc) parts.push(`${asc} Rising`);
+    return (
+      `For your ${parts.join(" / ")}, today's ${snapshot.moonPhase} in ${snapshot.moonSign} ` +
+      `highlights ${snapshot.energyWord.toLowerCase()} themes — pay attention to where the ` +
+      `transiting Moon meets your natal placements.`
+    );
+  }
+  return (
+    `Today's ${snapshot.moonPhase} in ${snapshot.moonSign} brings a ` +
+    `${snapshot.energyWord.toLowerCase()} undertone. Add your birth details to make this reading personal.`
+  );
+}
+
+async function loadUserPlacements(userId: string): Promise<NatalPlacement[] | null> {
+  const [chart] = await db
+    .select()
+    .from(birthCharts)
+    .where(eq(birthCharts.userId, userId))
+    .limit(1);
+  return (chart?.placements ?? null) as NatalPlacement[] | null;
+}
+
 function startOfTodayUtc(): Date {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -523,11 +562,7 @@ export function registerSpiritualRoutes(app: Express): void {
   app.get("/api/cosmic/personal", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const [chart] = await db
-        .select()
-        .from(birthCharts)
-        .where(eq(birthCharts.userId, userId))
-        .limit(1);
+      const placements = await loadUserPlacements(userId);
 
       const snapshot = computeTodaySnapshot("tropical");
       const transitsRaw = currentTransits(new Date());
@@ -538,27 +573,10 @@ export function registerSpiritualRoutes(app: Express): void {
         retrograde: t.retrograde,
       }));
 
-      // Pull personal placements from stored chart (already user-personalized).
-      const placements = (chart?.placements ?? null) as
-        | Array<{ planet: string; sign: string; degree?: number; house?: number }>
-        | null;
-
-      // Build a personalised daily reading: anchor it to the user's Sun/Moon/
-      // Rising signs when known, otherwise gracefully fall back to the global
-      // snapshot phrasing.
-      const sun = placements?.find((p) => p.planet === "Sun")?.sign ?? null;
-      const moon = placements?.find((p) => p.planet === "Moon")?.sign ?? null;
-      const asc = placements?.find((p) => p.planet === "Ascendant")?.sign ?? null;
-
-      const personal = sun || moon || asc
-        ? `For your ${sun ? `${sun} Sun` : ""}${moon ? `${sun ? " / " : ""}${moon} Moon` : ""}${asc ? `${(sun || moon) ? " / " : ""}${asc} Rising` : ""}, ` +
-          `today's ${snapshot.moonPhase} in ${snapshot.moonSign} highlights ${snapshot.energyWord.toLowerCase()} themes — ` +
-          `pay attention to where the transiting Moon meets your natal placements.`
-        : `Today's ${snapshot.moonPhase} in ${snapshot.moonSign} brings a ${snapshot.energyWord.toLowerCase()} undertone. ` +
-          `Add your birth details in the Cosmic workspace to personalise this reading.`;
+      const personal = buildPersonalReading(snapshot, placements);
 
       res.json({
-        hasChart: !!chart,
+        hasChart: !!placements && placements.length > 0,
         personalReading: personal,
         snapshot: {
           date: snapshot.date,
@@ -582,9 +600,40 @@ export function registerSpiritualRoutes(app: Express): void {
   });
 
   // ─── Cosmic personal: today's snapshot for embedded card on /spiritual ─────
-  app.get("/api/cosmic/today", async (_req, res) => {
+  // Public snapshot of the sky today. When the caller is signed in *and* has a
+  // stored birth chart, we additionally attach a short personalised reading
+  // anchored to their Sun/Moon/Rising so the Cosmic page can render something
+  // tailored instead of the same generic energy word for everyone.
+  app.get("/api/cosmic/today", async (req, res) => {
     try {
       const snapshot = computeTodaySnapshot("tropical");
+
+      let personalReading: string | null = null;
+      let hasChart = false;
+      const userId = req.session?.userId;
+      if (userId) {
+        try {
+          const placements = await loadUserPlacements(userId);
+          // Only treat the chart as "usable" for personalisation when we
+          // actually have at least one of Sun/Moon/Ascendant — otherwise
+          // buildPersonalReading would just return the generic fallback,
+          // and surfacing hasChart=true for that would be misleading.
+          const hasAnchor = !!placements?.some((p) =>
+            p.planet === "Sun" || p.planet === "Moon" || p.planet === "Ascendant"
+          );
+          if (placements && hasAnchor) {
+            hasChart = true;
+            personalReading = buildPersonalReading(snapshot, placements);
+          }
+        } catch (err) {
+          // Personalisation failure must not break the public snapshot.
+          console.warn(
+            "[spiritual] /api/cosmic/today personalisation failed:",
+            (err as Error).message,
+          );
+        }
+      }
+
       res.json({
         date: snapshot.date,
         moonPhase: snapshot.moonPhase,
@@ -598,6 +647,8 @@ export function registerSpiritualRoutes(app: Express): void {
           sign: p.sign,
           longitude: Number(p.longitude.toFixed(2)),
         })),
+        hasChart,
+        personalReading,
       });
     } catch (err) {
       console.error("[spiritual] /api/cosmic/today error:", err);
