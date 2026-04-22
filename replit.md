@@ -11,6 +11,8 @@ Preferred communication style: Simple, everyday language.
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack React Query for state, Radix UI and shadcn/ui for components, Tailwind CSS for styling, and Vite as the build tool.
 - **Backend**: Node.js with Express, TypeScript (ESM) for language, RESTful API endpoints, and Express sessions for cookie-based authentication.
 - **Data Layer**: PostgreSQL database managed by Drizzle ORM, with a shared schema and Drizzle Kit for migrations.
+  - In production, `server/migrate.ts` (`runMigrations`) replays SQL files from `migrations/` via drizzle-kit's official migrator on boot.
+  - In dev, `server/dev-db-bootstrap.ts` (`bootstrapDevDb`) replays the same SQL files but tolerates "already exists / already gone" errors so the dev DB self-heals on every `npm run dev`. It also drops a fixed set of orphan tables (`community_*`) that were removed from the schema so `drizzle-kit push --force` no longer prompts about renames. The same routine is invoked by `scripts/post-merge.sh` and is exposed as a one-shot script at `scripts/dev-db-bootstrap.ts`.
 - **Mobile Support**: Capacitor for iOS/Android integration, using the web build directory.
 
 ### UI/UX and Design Patterns
