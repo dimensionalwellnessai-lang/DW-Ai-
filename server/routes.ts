@@ -84,9 +84,20 @@ import {
   notificationPreferencesUpdateSchema,
   insertLifeDimensionAssessmentSchema,
   insertDimensionSystemSchema,
+  dimensionSystemUpdateSchema,
+  householdCleaningTaskUpdateSchema,
+  householdLaundryScheduleUpdateSchema,
   insertWellnessPreferencesSchema,
+  wellnessPreferencesUpdateSchema,
   insertUserValuesRulesSchema,
+  userValuesRulesUpdateSchema,
   insertFeatureSettingsSchema,
+  featureSettingsUpdateSchema,
+  userProfileUpdateSchema,
+  userSystemPreferencesUpdateSchema,
+  wellnessBlueprintUpdateSchema,
+  baselineProfileUpdateSchema,
+  stressSignalsUpdateSchema,
   insertHouseholdCleaningTaskSchema,
   insertHouseholdLaundryScheduleSchema,
   insertAiFeatureUsageSchema,
@@ -4247,11 +4258,18 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
   app.patch("/api/blueprint", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      const parsed = wellnessBlueprintUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid blueprint payload",
+          details: parsed.error.flatten(),
+        });
+      }
       const blueprint = await storage.getWellnessBlueprint(userId);
       if (!blueprint) {
         return res.status(404).json({ error: "Blueprint not found" });
       }
-      const updated = await storage.updateWellnessBlueprint(blueprint.id, req.body);
+      const updated = await storage.updateWellnessBlueprint(blueprint.id, parsed.data);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update blueprint" });
@@ -4268,7 +4286,14 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       
       const existing = await storage.getBaselineProfile(blueprint.id);
       if (existing) {
-        const updated = await storage.updateBaselineProfile(existing.id, req.body);
+        const parsedUpdate = baselineProfileUpdateSchema.safeParse(req.body);
+        if (!parsedUpdate.success) {
+          return res.status(400).json({
+            error: "Invalid baseline payload",
+            details: parsedUpdate.error.flatten(),
+          });
+        }
+        const updated = await storage.updateBaselineProfile(existing.id, parsedUpdate.data);
         return res.json(updated);
       }
       
@@ -4277,7 +4302,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ error: "Invalid baseline payload", details: error.flatten() });
       }
       res.status(500).json({ error: "Failed to save baseline profile" });
     }
@@ -4293,7 +4318,14 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       
       const existing = await storage.getStressSignals(blueprint.id);
       if (existing) {
-        const updated = await storage.updateStressSignals(existing.id, req.body);
+        const parsedUpdate = stressSignalsUpdateSchema.safeParse(req.body);
+        if (!parsedUpdate.success) {
+          return res.status(400).json({
+            error: "Invalid stress signals payload",
+            details: parsedUpdate.error.flatten(),
+          });
+        }
+        const updated = await storage.updateStressSignals(existing.id, parsedUpdate.data);
         return res.json(updated);
       }
       
@@ -4302,7 +4334,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       res.json(created);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ error: "Invalid stress signals payload", details: error.flatten() });
       }
       res.status(500).json({ error: "Failed to save stress signals" });
     }
@@ -5521,15 +5553,25 @@ Return only valid JSON, no markdown, no extra text.`;
 
   app.patch("/api/profile", requireAuth, async (req, res) => {
     try {
+      const parsed = userProfileUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid profile payload",
+          details: parsed.error.flatten(),
+        });
+      }
       const existing = await storage.getUserProfile(req.session.userId!);
       if (!existing) {
-        const data = insertUserProfileSchema.parse({ ...req.body, userId: req.session.userId! });
+        const data = insertUserProfileSchema.parse({ ...parsed.data, userId: req.session.userId! });
         const created = await storage.createUserProfile(data);
         return res.json(created);
       }
-      const updated = await storage.updateUserProfile(req.session.userId!, req.body);
+      const updated = await storage.updateUserProfile(req.session.userId!, parsed.data);
       res.json(updated);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid profile payload", details: error.flatten() });
+      }
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
@@ -6409,17 +6451,24 @@ Return only valid JSON, no other text.`;
 
   app.patch("/api/system-preferences", requireAuth, async (req, res) => {
     try {
+      const parsed = userSystemPreferencesUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid system preferences payload",
+          details: parsed.error.flatten(),
+        });
+      }
       const existing = await storage.getUserSystemPreferences(req.session.userId!);
       if (!existing) {
-        const data = insertUserSystemPreferencesSchema.parse({ ...req.body, userId: req.session.userId! });
+        const data = insertUserSystemPreferencesSchema.parse({ ...parsed.data, userId: req.session.userId! });
         const created = await storage.createUserSystemPreferences(data);
         return res.json(created);
       }
-      const updated = await storage.updateUserSystemPreferences(req.session.userId!, req.body);
+      const updated = await storage.updateUserSystemPreferences(req.session.userId!, parsed.data);
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ error: "Invalid system preferences payload", details: error.flatten() });
       }
       res.status(500).json({ error: "Failed to update system preferences" });
     }
@@ -9998,7 +10047,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const system = await storage.updateDimensionSystem(id, userId, req.body);
+      const parsed = dimensionSystemUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid dimension system payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const system = await storage.updateDimensionSystem(id, userId, parsed.data);
       if (!system) {
         return res.status(404).json({ error: "System not found" });
       }
@@ -10054,12 +10110,12 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const parsed = insertWellnessPreferencesSchema
-        .omit({ userId: true })
-        .partial()
-        .safeParse(req.body);
+      const parsed = wellnessPreferencesUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors });
+        return res.status(400).json({
+          error: "Invalid wellness preferences payload",
+          details: parsed.error.flatten(),
+        });
       }
       const preferences = await storage.updateWellnessPreferences(id, userId, parsed.data);
       if (!preferences) {
@@ -10091,10 +10147,21 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/cosmic/consent", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { useAstrologyInGuidance, useNumerologyInGuidance } = req.body as {
-        useAstrologyInGuidance?: boolean;
-        useNumerologyInGuidance?: boolean;
-      };
+      // Strict, narrow schema for this endpoint — only the two consent
+      // booleans are accepted; everything else is rejected so we don't pass
+      // unknown fields through to the wellness_preferences row.
+      const cosmicConsentSchema = z.object({
+        useAstrologyInGuidance: z.boolean().optional(),
+        useNumerologyInGuidance: z.boolean().optional(),
+      }).strict();
+      const parsed = cosmicConsentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid cosmic consent payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const { useAstrologyInGuidance, useNumerologyInGuidance } = parsed.data;
       const update: Record<string, boolean> = {};
       if (typeof useAstrologyInGuidance === "boolean") update.useAstrologyInGuidance = useAstrologyInGuidance;
       if (typeof useNumerologyInGuidance === "boolean") update.useNumerologyInGuidance = useNumerologyInGuidance;
@@ -10154,16 +10221,19 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const data = insertUserValuesRulesSchema.omit({ userId: true }).partial().parse(req.body);
-      const record = await storage.updateUserValuesRules(id, userId, data);
+      const parsed = userValuesRulesUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid values & rules payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const record = await storage.updateUserValuesRules(id, userId, parsed.data);
       if (!record) {
         return res.status(404).json({ error: "Values & rules not found" });
       }
       res.json(record);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
       console.error("Update user values rules error:", error);
       res.status(500).json({ error: "Failed to update values & rules" });
     }
@@ -10202,7 +10272,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const settings = await storage.updateFeatureSettings(id, userId, req.body);
+      const parsed = featureSettingsUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid feature settings payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const settings = await storage.updateFeatureSettings(id, userId, parsed.data);
       if (!settings) {
         return res.status(404).json({ error: "Feature settings not found" });
       }
@@ -10246,7 +10323,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const task = await storage.updateHouseholdCleaningTask(id, userId, req.body);
+      const parsed = householdCleaningTaskUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid cleaning task payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const task = await storage.updateHouseholdCleaningTask(id, userId, parsed.data);
       if (!task) {
         return res.status(404).json({ error: "Cleaning task not found" });
       }
@@ -10302,7 +10386,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const schedule = await storage.updateHouseholdLaundrySchedule(id, userId, req.body);
+      const parsed = householdLaundryScheduleUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid laundry schedule payload",
+          details: parsed.error.flatten(),
+        });
+      }
+      const schedule = await storage.updateHouseholdLaundrySchedule(id, userId, parsed.data);
       if (!schedule) {
         return res.status(404).json({ error: "Laundry schedule not found" });
       }

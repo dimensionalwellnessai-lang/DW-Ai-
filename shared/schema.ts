@@ -1432,13 +1432,34 @@ export const insertWellnessBlueprintSchema = createInsertSchema(wellnessBlueprin
   updatedAt: true,
 });
 
+// Strict, partial update schema for PATCH /api/blueprint. Omits userId (always
+// sourced from the session, never the body) and rejects unknown fields so a
+// caller cannot overwrite columns we don't intend to expose.
+export const wellnessBlueprintUpdateSchema = insertWellnessBlueprintSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 export const insertBaselineProfileSchema = createInsertSchema(baselineProfiles).omit({
   id: true,
 });
 
+// Strict, partial update schema for upsert on POST /api/blueprint/baseline.
+// Omits blueprintId (always derived server-side from the session's blueprint).
+export const baselineProfileUpdateSchema = insertBaselineProfileSchema
+  .omit({ blueprintId: true })
+  .partial()
+  .strict();
+
 export const insertStressSignalsSchema = createInsertSchema(stressSignals).omit({
   id: true,
 });
+
+// Strict, partial update schema for upsert on POST /api/blueprint/signals.
+export const stressSignalsUpdateSchema = insertStressSignalsSchema
+  .omit({ blueprintId: true })
+  .partial()
+  .strict();
 
 export const insertStabilizingActionSchema = createInsertSchema(stabilizingActions).omit({
   id: true,
@@ -1489,6 +1510,14 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
   lastUpdated: true,
 });
 
+// Strict, partial update schema for PATCH /api/profile. Drops userId (always
+// taken from session) and rejects unknown fields so the body cannot smuggle in
+// columns we don't intend to expose now or in the future.
+export const userProfileUpdateSchema = insertUserProfileSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 export const insertWellnessContentSchema = createInsertSchema(wellnessContent).omit({
   id: true,
   createdAt: true,
@@ -1530,6 +1559,12 @@ export const insertUserSystemPreferencesSchema = createInsertSchema(userSystemPr
   createdAt: true,
   updatedAt: true,
 });
+
+// Strict, partial update schema for PATCH /api/system-preferences.
+export const userSystemPreferencesUpdateSchema = insertUserSystemPreferencesSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
 
 export const insertMealPlanSchema = createInsertSchema(mealPlans).omit({
   id: true,
@@ -2098,6 +2133,12 @@ export const insertDimensionSystemSchema = createInsertSchema(dimensionSystems).
   updatedAt: true,
 });
 
+// Strict, partial update schema for PATCH /api/dimension-systems/:id.
+export const dimensionSystemUpdateSchema = insertDimensionSystemSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 // Wellness Preferences - user's spiritual/wellness preferences
 export const wellnessPreferences = pgTable("wellness_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2122,6 +2163,15 @@ export const insertWellnessPreferencesSchema = createInsertSchema(wellnessPrefer
   createdAt: true,
   updatedAt: true,
 });
+
+// Strict, partial update schema for PATCH /api/wellness-preferences/:id.
+// userId is enforced by the authenticated session, never the body.
+// (PATCH /api/cosmic/consent uses its own narrower inline schema since it
+// only ever accepts the two consent booleans.)
+export const wellnessPreferencesUpdateSchema = insertWellnessPreferencesSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
 
 // User Values & Rules - unified source of truth for dietary, movement, belief, and life constraints
 export const userValuesRules = pgTable("user_values_rules", {
@@ -2150,6 +2200,12 @@ export const insertUserValuesRulesSchema = createInsertSchema(userValuesRules).o
   updatedAt: true,
 });
 
+// Strict, partial update schema for PATCH /api/user-values-rules/:id.
+export const userValuesRulesUpdateSchema = insertUserValuesRulesSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 // Feature Settings - user's enabled/disabled features
 export const featureSettings = pgTable("feature_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2168,6 +2224,12 @@ export const insertFeatureSettingsSchema = createInsertSchema(featureSettings).o
   createdAt: true,
   updatedAt: true,
 });
+
+// Strict, partial update schema for PATCH /api/feature-settings/:id.
+export const featureSettingsUpdateSchema = insertFeatureSettingsSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
 
 // Household Cleaning Schedule
 export const householdCleaningTasks = pgTable("household_cleaning_tasks", {
@@ -2188,6 +2250,12 @@ export const insertHouseholdCleaningTaskSchema = createInsertSchema(householdCle
   createdAt: true,
 });
 
+// Strict, partial update schema for PATCH /api/household-cleaning-tasks/:id.
+export const householdCleaningTaskUpdateSchema = insertHouseholdCleaningTaskSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 // Household Laundry Schedule
 export const householdLaundrySchedule = pgTable("household_laundry_schedule", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -2205,6 +2273,12 @@ export const insertHouseholdLaundryScheduleSchema = createInsertSchema(household
   id: true,
   createdAt: true,
 });
+
+// Strict, partial update schema for PATCH /api/household-laundry-schedule/:id.
+export const householdLaundryScheduleUpdateSchema = insertHouseholdLaundryScheduleSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
 
 // AI Feature Usage Tracking - enhanced interaction tracking for AI learning
 export const aiFeatureUsage = pgTable("ai_feature_usage", {
@@ -3144,7 +3218,10 @@ export const insertUserLearningProfileSchema = createInsertSchema(userLearningPr
   updatedAt: true,
 });
 
-export const updateUserLearningProfileSchema = insertUserLearningProfileSchema.partial().omit({ userId: true });
+export const updateUserLearningProfileSchema = insertUserLearningProfileSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
 
 export type UserLearningProfile = typeof userLearningProfile.$inferSelect;
 export type InsertUserLearningProfile = z.infer<typeof insertUserLearningProfileSchema>;
