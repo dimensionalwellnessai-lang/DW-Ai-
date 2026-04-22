@@ -145,6 +145,7 @@ export default function HealthDataPage() {
   });
 
   // Build per-day wearable trend rows for the last `trendWindow` days.
+  type TrendMetricKey = "hrv" | "restingHr" | "sleepHours" | "steps" | "screenTime";
   const wearableTrends = (() => {
     const rows = wearables?.data ?? [];
     const screen = wearables?.screenTime ?? [];
@@ -187,18 +188,25 @@ export default function HealthDataPage() {
         screenTime: screenByDay[k] ?? null,
       };
     });
-    const has = (key: keyof (typeof series)[number]) =>
+    const has = (key: TrendMetricKey) =>
       series.some((p) => typeof p[key] === "number" && p[key] !== null);
     return { series, hasAny: has("hrv") || has("restingHr") || has("sleepHours") || has("steps") || has("screenTime"), has };
   })();
 
-  const TREND_CHARTS = [
-    { key: "hrv", label: "HRV", icon: Zap, color: "#10b981", unit: " ms", chart: "area" as const },
-    { key: "restingHr", label: "Resting HR", icon: Heart, color: "#ef4444", unit: " bpm", chart: "area" as const },
-    { key: "sleepHours", label: "Sleep", icon: Moon, color: "#8b5cf6", unit: "h", chart: "bar" as const },
-    { key: "steps", label: "Steps", icon: Activity, color: "#6366f1", unit: "", chart: "bar" as const },
-    { key: "screenTime", label: "Screen Time", icon: Smartphone, color: "#f59e0b", unit: "m", chart: "bar" as const },
-  ] as const;
+  const TREND_CHARTS: ReadonlyArray<{
+    key: TrendMetricKey;
+    label: string;
+    icon: typeof Activity;
+    color: string;
+    unit: string;
+    chart: "area" | "bar";
+  }> = [
+    { key: "hrv", label: "HRV", icon: Zap, color: "#10b981", unit: " ms", chart: "area" },
+    { key: "restingHr", label: "Resting HR", icon: Heart, color: "#ef4444", unit: " bpm", chart: "area" },
+    { key: "sleepHours", label: "Sleep", icon: Moon, color: "#8b5cf6", unit: "h", chart: "bar" },
+    { key: "steps", label: "Steps", icon: Activity, color: "#6366f1", unit: "", chart: "bar" },
+    { key: "screenTime", label: "Screen Time", icon: Smartphone, color: "#f59e0b", unit: "m", chart: "bar" },
+  ];
 
   const sorted = [...metrics].sort((a, b) => a.loggedDate.localeCompare(b.loggedDate));
   const chartData = sorted.map(m => ({
