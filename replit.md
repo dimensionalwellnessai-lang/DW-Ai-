@@ -52,6 +52,12 @@ The following advertised-but-unfinished features were hidden or removed to keep 
 
 The underlying database schemas and unrelated code paths were left intact in case these features come back.
 
+## ChatGPT Conversation Import
+
+- Schema: `imported_conversations` table (`shared/schema.ts`) stores user-imported chats from ChatGPT exports or raw paste, with summary, topics, and suggested actions generated via gpt-4o-mini.
+- Backend: `server/routes/imports-chat.ts` exposes `/api/imports/chatgpt-export` (multipart upload + preview, 100MB limit), `/api/imports/chatgpt-export/commit` (selected indexes), `/api/imports/raw-paste` (LLM-normalized), CRUD on `/api/imports/:id`, attach-to-project at `/api/imports/:id/project`, and `/api/imports/:id/continue` which seeds a new `conversations` row + returns recent messages so the client can prefill `dw_talk_messages` localStorage and jump to `/talk`.
+- Frontend: `/imports` lists all imports with continue buttons; `/imports/new` has an upload tab and a paste tab; the existing Smart Import page (`/import`) shows a "Chat from ChatGPT" card linking to `/imports/new`.
+
 ## External Dependencies
 - **PostgreSQL Database**
 - **OpenAI/AI Provider**: For AI chat, content generation, and recommendations.

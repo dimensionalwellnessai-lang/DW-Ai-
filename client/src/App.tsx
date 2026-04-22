@@ -85,6 +85,8 @@ import PlanHistoryPage from "@/pages/plan-history";
 import WeeklyReviewPage from "@/pages/weekly-review";
 import ScheduleReviewPage from "@/pages/schedule-review";
 import ImportPage from "@/pages/import";
+import ImportsPage from "@/pages/imports";
+import ImportsNewPage from "@/pages/imports-new";
 import LifeSystemImportPage from "@/pages/life-system-import";
 import ExportPage from "@/pages/export";
 import CalendarMonthPage from "@/pages/calendar-month";
@@ -318,6 +320,8 @@ function Router() {
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
       {isRouteEnabled("/import") && <Route path="/import" component={ImportPage} />}
+      <Route path="/imports/new" component={ImportsNewPage} />
+      <Route path="/imports" component={ImportsPage} />
       <Route path="/export/:planId" component={ExportPage} />
       
       {isRouteEnabled("/systems") && <Route path="/systems" component={SystemsHubPage} />}

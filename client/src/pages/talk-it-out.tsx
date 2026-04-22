@@ -43,6 +43,7 @@ interface ChatMessage {
 
 const TALK_MESSAGES_KEY = "dw_talk_messages";
 const TALK_HISTORY_KEY = "dw_talk_history";
+const TALK_SYSTEM_OVERRIDE_KEY = "dw_talk_system_override";
 const MAX_HISTORY = 30;
 
 interface SavedSession {
@@ -198,6 +199,17 @@ export function TalkItOutPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
   const sessionIdRef = useRef<string>(generateSessionId());
+  const [systemOverrideOverride, setSystemOverrideOverride] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("jumpToMessageIndex") !== null) {
+        return localStorage.getItem(TALK_SYSTEM_OVERRIDE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -429,6 +441,12 @@ export function TalkItOutPage() {
     sessionIdRef.current = generateSessionId();
     titleGenAttempted.current = false;
     setHistoryOpen(false);
+    setSystemOverrideOverride(null);
+    try {
+      localStorage.removeItem(TALK_SYSTEM_OVERRIDE_KEY);
+    } catch {
+      // ignore
+    }
   }, []);
 
   const handleRestoreSession = useCallback((session: SavedSession) => {
@@ -599,7 +617,7 @@ export function TalkItOutPage() {
         message,
         context: "talk-it-out",
         conversationHistory: messages.slice(-10),
-        systemOverride: TALK_SYSTEM_PROMPT,
+        systemOverride: systemOverrideOverride || TALK_SYSTEM_PROMPT,
       });
       return response.json();
     },

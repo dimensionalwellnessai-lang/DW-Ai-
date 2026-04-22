@@ -28,6 +28,7 @@ import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
 import { registerTodayRoutes } from "./routes/today";
+import { registerChatImportRoutes } from "./routes/imports-chat";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
@@ -492,6 +493,9 @@ export async function registerRoutes(
 
   // Unified daily brief — the "Today" / "Tonight" card on home.
   registerTodayRoutes(app);
+
+  // ChatGPT export + raw paste import → seeded DW continuation chat
+  registerChatImportRoutes(app);
   // Idempotent seed for the meditation library — fire-and-forget on boot.
   void seedMeditationLibrary();
 

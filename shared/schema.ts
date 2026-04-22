@@ -3724,3 +3724,37 @@ export const insertWearableSyncJobSchema = createInsertSchema(wearableSyncJobs).
 });
 export type WearableSyncJob = typeof wearableSyncJobs.$inferSelect;
 export type InsertWearableSyncJob = z.infer<typeof insertWearableSyncJobSchema>;
+
+// ── Imported Conversations (ChatGPT export, raw paste, etc.) ─────────────────
+export const importedConversationSourceEnum = ["chatgpt_export", "raw_paste", "other"] as const;
+export type ImportedConversationSource = typeof importedConversationSourceEnum[number];
+
+export const importedConversations = pgTable("imported_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  source: text("source").notNull().$type<ImportedConversationSource>(),
+  originalTitle: text("original_title").notNull(),
+  messages: jsonb("messages").notNull().default([]),
+  summary: text("summary"),
+  topics: text("topics").array(),
+  suggestedActions: jsonb("suggested_actions"),
+  sourceTimestamp: timestamp("source_timestamp"),
+  importedAt: timestamp("imported_at").defaultNow(),
+  projectId: varchar("project_id").references(() => projects.id),
+}, (t) => [
+  index("imported_conversations_user_idx").on(t.userId),
+]);
+
+export const insertImportedConversationSchema = createInsertSchema(importedConversations).omit({
+  id: true,
+  importedAt: true,
+});
+
+export type ImportedConversation = typeof importedConversations.$inferSelect;
+export type InsertImportedConversation = z.infer<typeof insertImportedConversationSchema>;
+
+export type ImportedConversationMessage = {
+  role: "user" | "assistant" | "unknown";
+  content: string;
+  timestamp?: number;
+};

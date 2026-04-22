@@ -39,6 +39,9 @@ import {
   passwordResetTokens,
   importedDocuments,
   importedDocumentItems,
+  importedConversations,
+  type ImportedConversation,
+  type InsertImportedConversation,
   mealPlans,
   meals,
   mealPrepPreferences,
@@ -4190,6 +4193,35 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(plaidItems)
       .where(and(eq(plaidItems.id, id), eq(plaidItems.userId, userId)))
       .returning({ id: plaidItems.id });
+    return result.length > 0;
+  }
+
+  // ── Imported Conversations ─────────────────────────────────────────────────
+  async listImportedConversations(userId: string): Promise<ImportedConversation[]> {
+    return await db.select().from(importedConversations)
+      .where(eq(importedConversations.userId, userId))
+      .orderBy(desc(importedConversations.importedAt));
+  }
+  async getImportedConversation(id: string, userId: string): Promise<ImportedConversation | undefined> {
+    const [row] = await db.select().from(importedConversations)
+      .where(and(eq(importedConversations.id, id), eq(importedConversations.userId, userId)));
+    return row;
+  }
+  async createImportedConversation(data: InsertImportedConversation): Promise<ImportedConversation> {
+    const [row] = await db.insert(importedConversations).values(data).returning();
+    return row;
+  }
+  async updateImportedConversation(id: string, userId: string, data: Partial<InsertImportedConversation>): Promise<ImportedConversation | undefined> {
+    const [row] = await db.update(importedConversations)
+      .set(data)
+      .where(and(eq(importedConversations.id, id), eq(importedConversations.userId, userId)))
+      .returning();
+    return row;
+  }
+  async deleteImportedConversation(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(importedConversations)
+      .where(and(eq(importedConversations.id, id), eq(importedConversations.userId, userId)))
+      .returning({ id: importedConversations.id });
     return result.length > 0;
   }
 }

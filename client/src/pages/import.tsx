@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { Upload, FileText, Calendar, Utensils, Clock, CheckCircle, Loader2, ArrowRight, AlertCircle, MessageSquare } from "lucide-react";
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -180,6 +180,26 @@ export default function ImportPage() {
               </div>
 
               <div className="space-y-3">
+                <Card
+                  className="cursor-pointer hover-elevate"
+                  onClick={() => setLocation("/imports/new")}
+                  data-testid="card-import-chatgpt"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-foreground">Chat from ChatGPT</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Bring in a ChatGPT export or paste a thread — keep going with DW
+                        </p>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
                 {IMPORT_OPTIONS.map(option => {
                   const Icon = option.icon;
                   return (
