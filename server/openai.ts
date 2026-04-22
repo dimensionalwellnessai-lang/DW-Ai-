@@ -2592,7 +2592,10 @@ export async function detectIntentAndRespondStreaming(
   userMessage: string,
   conversationHistory: ChatMessage[],
   userContext: UserLifeContext | undefined,
-  res: any
+  res: any,
+  // Reserved for future inline workout/meditation content generation;
+  // keeps signature parity with the non-streaming variant.
+  _wearablesYesterday?: WearablesYesterday | null
 ): Promise<{
   response: string;
   intent: "workout" | "meditation" | "learn" | "general";
