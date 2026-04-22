@@ -329,7 +329,7 @@ function formatEventDate(isoDate: string): string {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 // Types matching the /api/cosmic/* response shapes
-interface CosmicCalendarEvent {
+export interface CosmicCalendarEvent {
   date: string;
   type: string;
   label: string;
@@ -364,7 +364,7 @@ function eventBadgeLabel(type: string): string {
   return MAP[type] ?? type;
 }
 
-function CalendarTab() {
+export function CalendarTab() {
   const [view, setView] = useState<"day" | "week" | "month">("week");
 
   // Use local date parts to avoid UTC day-shift (same pattern as parseLocalDate)
