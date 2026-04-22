@@ -83,6 +83,7 @@ const transactionFormSchema = z.object({
   merchant: z.string().optional(),
   date: z.string().min(10, "Date required"),
   accountId: z.string().optional(),
+  goalId: z.string().optional(),
   note: z.string().optional(),
 });
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -124,6 +125,7 @@ interface Account {
 interface Transaction {
   id: string; accountId: string | null; amount: number; category: string;
   merchant: string | null; note: string | null; date: string; source: string; pending: boolean | null;
+  goalId: string | null;
 }
 interface Budget {
   id: string; category: string; monthlyLimit: number; spent: number;
@@ -614,7 +616,7 @@ function TransactionsTab() {
                   {SPEND_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <AddTransactionButton accounts={summary?.accounts || []} />
+              <AddTransactionButton accounts={summary?.accounts || []} goals={summary?.goals || []} />
             </div>
           </div>
         </CardHeader>
@@ -627,12 +629,20 @@ function TransactionsTab() {
 }
 
 function TransactionList({ txns }: { txns: Transaction[] }) {
+  const { data: goals } = useQuery<SavingsGoal[]>({ queryKey: ["/api/finance/goals"] });
+  const goalById = useMemo(() => {
+    const m = new Map<string, SavingsGoal>();
+    (goals || []).forEach(g => m.set(g.id, g));
+    return m;
+  }, [goals]);
+
   const deleteMut = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/finance/transactions/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/goals"] });
     },
   });
 
@@ -641,7 +651,9 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
   }
   return (
     <div className="space-y-1">
-      {txns.map(t => (
+      {txns.map(t => {
+        const linkedGoal = t.goalId ? goalById.get(t.goalId) : null;
+        return (
         <div key={t.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md" data-testid={`row-txn-${t.id}`}>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{t.merchant || t.category}</p>
@@ -649,6 +661,11 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
               {t.date} · {t.category}
               {t.source === "plaid" && <Badge variant="outline" className="ml-2 text-[10px]">Plaid</Badge>}
               {t.pending && <Badge variant="secondary" className="ml-1 text-[10px]">Pending</Badge>}
+              {linkedGoal && (
+                <Badge variant="outline" className="ml-2 text-[10px] gap-0.5" data-testid={`badge-goal-${t.id}`}>
+                  <Target className="w-2.5 h-2.5" /> {linkedGoal.name}
+                </Badge>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -662,12 +679,13 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function AddTransactionButton({ accounts }: { accounts: Account[] }) {
+function AddTransactionButton({ accounts, goals }: { accounts: Account[]; goals: SavingsGoal[] }) {
   const [open, setOpen] = useState(false);
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -678,9 +696,12 @@ function AddTransactionButton({ accounts }: { accounts: Account[] }) {
       merchant: "",
       note: "",
       accountId: "none",
+      goalId: "none",
       date: new Date().toISOString().slice(0, 10),
     },
   });
+
+  const sign = form.watch("sign");
 
   const createMut = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
@@ -692,6 +713,7 @@ function AddTransactionButton({ accounts }: { accounts: Account[] }) {
         note: values.note || null,
         date: values.date,
         accountId: values.accountId && values.accountId !== "none" ? values.accountId : null,
+        goalId: values.sign === "income" && values.goalId && values.goalId !== "none" ? values.goalId : null,
         currency: "USD",
       });
       return await res.json();
@@ -700,10 +722,11 @@ function AddTransactionButton({ accounts }: { accounts: Account[] }) {
       queryClient.invalidateQueries({ queryKey: ["/api/finance/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/summary"] });
       queryClient.invalidateQueries({ queryKey: ["/api/finance/budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/goals"] });
       setOpen(false);
       form.reset({
         sign: "expense", amount: 0, category: "Food",
-        merchant: "", note: "", accountId: "none",
+        merchant: "", note: "", accountId: "none", goalId: "none",
         date: new Date().toISOString().slice(0, 10),
       });
     },
@@ -777,6 +800,22 @@ function AddTransactionButton({ accounts }: { accounts: Account[] }) {
                       {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+            {sign === "income" && goals.length > 0 && (
+              <FormField control={form.control} name="goalId" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contributes to savings goal (optional)</FormLabel>
+                  <Select value={field.value || "none"} onValueChange={field.onChange}>
+                    <FormControl><SelectTrigger data-testid="select-txn-goal"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">— none —</SelectItem>
+                      {goals.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">We'll auto-credit this goal when the transaction saves.</p>
                   <FormMessage />
                 </FormItem>
               )} />

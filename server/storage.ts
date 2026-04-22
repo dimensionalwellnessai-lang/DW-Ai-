@@ -3957,7 +3957,21 @@ export class DatabaseStorage implements IStorage {
   }
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
     const [row] = await db.insert(transactions).values(data).returning();
+    if (row.goalId && row.amount > 0) {
+      await this.adjustSavingsGoalAmount(row.goalId, row.userId, row.amount);
+    }
     return row;
+  }
+  // Adjust a goal's currentAmount by `delta` (can be negative). Clamps at 0.
+  // Atomic: single UPDATE so concurrent contributions can't lose updates.
+  // Used for auto-credit when income transactions are linked/unlinked.
+  private async adjustSavingsGoalAmount(goalId: string, userId: string, delta: number): Promise<void> {
+    await db.execute(sql`
+      UPDATE savings_goals
+      SET current_amount = GREATEST(0, current_amount + ${delta}),
+          updated_at = NOW()
+      WHERE id = ${goalId} AND user_id = ${userId}
+    `);
   }
   async upsertTransactionByPlaidId(data: InsertTransaction): Promise<Transaction> {
     if (!data.plaidTransactionId) {
@@ -3978,7 +3992,11 @@ export class DatabaseStorage implements IStorage {
   async deleteTransaction(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(transactions)
       .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
-      .returning({ id: transactions.id });
+      .returning();
+    const row = result[0];
+    if (row?.goalId && row.amount > 0) {
+      await this.adjustSavingsGoalAmount(row.goalId, userId, -row.amount);
+    }
     return result.length > 0;
   }
   async deleteTransactionByPlaidId(plaidTransactionId: string, userId: string): Promise<void> {
@@ -4073,6 +4091,10 @@ export class DatabaseStorage implements IStorage {
     return row || undefined;
   }
   async deleteSavingsGoal(id: string, userId: string): Promise<boolean> {
+    // Unlink any transactions pointing at this goal first (no FK constraint).
+    await db.update(transactions)
+      .set({ goalId: null })
+      .where(and(eq(transactions.userId, userId), eq(transactions.goalId, id)));
     const result = await db.delete(savingsGoals)
       .where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId)))
       .returning({ id: savingsGoals.id });

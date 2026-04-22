@@ -17,6 +17,7 @@ const accountBody = insertFinancialAccountSchema.omit({ userId: true, plaidAccou
 
 const transactionBody = insertTransactionSchema.omit({ userId: true, source: true, plaidTransactionId: true, pending: true }).extend({
   accountId: z.string().optional().nullable(),
+  goalId: z.string().uuid().optional().nullable(),
 });
 
 const budgetBody = insertBudgetSchema.omit({ userId: true });
@@ -128,6 +129,12 @@ export function registerFinancesRoutes(app: Express) {
       const userId = req.session.userId!;
       const parsed = transactionBody.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid transaction", issues: parsed.error.issues });
+      if (parsed.data.goalId) {
+        const goals = await storage.getSavingsGoals(userId);
+        if (!goals.some(g => g.id === parsed.data.goalId)) {
+          return res.status(400).json({ error: "Linked savings goal not found" });
+        }
+      }
       const row = await storage.createTransaction({
         ...parsed.data,
         userId,

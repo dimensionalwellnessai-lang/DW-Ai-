@@ -3404,9 +3404,14 @@ export const transactions = pgTable("transactions", {
   source: text("source").notNull().default("manual").$type<TransactionSource>(),
   plaidTransactionId: text("plaid_transaction_id"),
   pending: boolean("pending").default(false),
+  // Optional link to a savings goal. When an income (positive-amount)
+  // transaction is created with goalId set, the goal's currentAmount is
+  // auto-incremented by the amount. Cleared if the goal is deleted.
+  goalId: varchar("goal_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => [
   uniqueIndex("transactions_plaid_txn_idx").on(t.plaidTransactionId),
+  index("transactions_goal_idx").on(t.goalId),
 ]);
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
