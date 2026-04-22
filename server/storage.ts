@@ -322,6 +322,7 @@ import { createHash } from "crypto";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  listAllUserIds(): Promise<string[]>;
   getUserByOAuthId(provider: string, oauthId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
@@ -980,6 +981,11 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
+  }
+
+  async listAllUserIds(): Promise<string[]> {
+    const rows = await db.select({ id: users.id }).from(users);
+    return rows.map(r => r.id);
   }
 
   async getUserByOAuthId(provider: string, oauthId: string): Promise<User | undefined> {
