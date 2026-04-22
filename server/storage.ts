@@ -1,5 +1,8 @@
 import {
   users,
+  usageMeters,
+  type UsageMeter,
+  type UsageMeterKind,
   pushSubscriptions,
   notificationPreferences,
   onboardingProfiles,
@@ -326,6 +329,10 @@ export interface IStorage {
   getUserByOAuthId(provider: string, oauthId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<User>): Promise<User | undefined>;
+  getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
+  getUsageMeter(userId: string, dateKey: string, kind: UsageMeterKind): Promise<UsageMeter | undefined>;
+  incrementUsageMeter(userId: string, dateKey: string, kind: UsageMeterKind): Promise<number>;
+  getTodayUsageSummary(userId: string): Promise<Record<UsageMeterKind, number>>;
   deleteUser(id: string): Promise<void>;
 
   getOnboardingProfile(userId: string): Promise<OnboardingProfile | undefined>;
@@ -1002,6 +1009,45 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user || undefined;
+  }
+
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId)).limit(1);
+    return user || undefined;
+  }
+
+  async getUsageMeter(userId: string, dateKey: string, kind: UsageMeterKind): Promise<UsageMeter | undefined> {
+    const [row] = await db
+      .select()
+      .from(usageMeters)
+      .where(and(eq(usageMeters.userId, userId), eq(usageMeters.dateKey, dateKey), eq(usageMeters.kind, kind)))
+      .limit(1);
+    return row || undefined;
+  }
+
+  async incrementUsageMeter(userId: string, dateKey: string, kind: UsageMeterKind): Promise<number> {
+    const [row] = await db
+      .insert(usageMeters)
+      .values({ userId, dateKey, kind, count: 1 })
+      .onConflictDoUpdate({
+        target: [usageMeters.userId, usageMeters.dateKey, usageMeters.kind],
+        set: { count: sql`${usageMeters.count} + 1`, updatedAt: new Date() },
+      })
+      .returning();
+    return row?.count ?? 1;
+  }
+
+  async getTodayUsageSummary(userId: string): Promise<Record<UsageMeterKind, number>> {
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const rows = await db
+      .select()
+      .from(usageMeters)
+      .where(and(eq(usageMeters.userId, userId), eq(usageMeters.dateKey, dateKey)));
+    const out = {
+      chat: 0, voice: 0, import: 0, coach_chat: 0, insights: 0, today: 0,
+    } as Record<UsageMeterKind, number>;
+    for (const r of rows) out[r.kind as UsageMeterKind] = r.count;
+    return out;
   }
 
   async deleteUser(id: string): Promise<void> {

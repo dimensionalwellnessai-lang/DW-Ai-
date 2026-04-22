@@ -29,10 +29,33 @@ export const users = pgTable("users", {
   coachingMode: text("coaching_mode").default("gentle").$type<CoachingMode>(),
   subscriptionTier: text("subscription_tier").default("free").$type<SubscriptionTier>(),
   subscriptionUpdatedAt: timestamp("subscription_updated_at"),
+  subscriptionPeriodEnd: timestamp("subscription_period_end"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePriceId: text("stripe_price_id"),
 }, (t) => [
   // Ensure each OAuth identity maps to exactly one user, and make lookups fast
   uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),
+  uniqueIndex("users_stripe_customer_id_idx").on(t.stripeCustomerId),
 ]);
+
+export const usageMeterKindEnum = ["chat", "voice", "import", "coach_chat", "insights", "today"] as const;
+export type UsageMeterKind = typeof usageMeterKindEnum[number];
+
+export const usageMeters = pgTable("usage_meters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dateKey: text("date_key").notNull(),
+  kind: text("kind").notNull().$type<UsageMeterKind>(),
+  count: integer("count").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("usage_meters_user_date_kind_idx").on(t.userId, t.dateKey, t.kind),
+]);
+
+export const insertUsageMeterSchema = createInsertSchema(usageMeters).omit({ id: true, updatedAt: true });
+export type InsertUsageMeter = z.infer<typeof insertUsageMeterSchema>;
+export type UsageMeter = typeof usageMeters.$inferSelect;
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   onboardingProfile: one(onboardingProfiles),

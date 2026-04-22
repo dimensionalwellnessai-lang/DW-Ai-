@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { storage } from "../storage";
 import { openai } from "../openai";
-import { requireAuth } from "./_shared";
+import { requireAuth, requirePaidOrQuota } from "./_shared";
 
 import type {
   ImportedConversation,
@@ -243,6 +243,7 @@ export function registerChatImportRoutes(app: Express): void {
   app.post(
     "/api/imports/chatgpt-export",
     requireAuth,
+    requirePaidOrQuota("import"),
     exportUpload.single("file"),
     async (req: Request, res: Response) => {
       try {
@@ -332,7 +333,7 @@ export function registerChatImportRoutes(app: Express): void {
   });
 
   // Raw paste: any wall of text, normalized via LLM into a transcript.
-  app.post("/api/imports/raw-paste", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/imports/raw-paste", requireAuth, requirePaidOrQuota("import"), async (req: Request, res: Response) => {
     const parsed = rawPasteSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: "Paste some text first." });
@@ -458,7 +459,7 @@ export function registerChatImportRoutes(app: Express): void {
   // Create a seeded chat conversation that picks up where the import left off.
   // Returns the new conversation row + a flat message list for the client to
   // hand to the Talk-It-Out page.
-  app.post("/api/imports/:id/continue", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/imports/:id/continue", requireAuth, requirePaidOrQuota("chat"), async (req: Request, res: Response) => {
     try {
       const record = await storage.getImportedConversation(req.params.id, req.session.userId!);
       if (!record) return res.status(404).json({ error: "Import not found." });

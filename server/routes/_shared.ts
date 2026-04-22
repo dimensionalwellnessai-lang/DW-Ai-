@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { ZodError } from "zod";
 import { storage } from "../storage";
+import type { UsageMeterKind } from "@shared/schema";
 
 export function zodError(error: ZodError) {
   return {
@@ -25,6 +26,84 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   }
   next();
 };
+
+/**
+ * Free-tier daily quotas keyed by usage meter kind. These numbers are
+ * intentionally conservative — generous enough to let a free user kick the
+ * tires, but not so loose that we burn meaningful OpenAI spend on them.
+ */
+export const FREE_DAILY_QUOTAS: Record<UsageMeterKind, number> = {
+  chat: 10,
+  voice: 2,
+  import: 3,
+  coach_chat: 5,
+  insights: 3,
+  today: 5,
+};
+
+function todayKeyUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Gates AI-heavy routes. Plus tier passes through unmetered. Free tier gets
+ * `freeQuota` calls per UTC day before being told to upgrade — quota-exceeded
+ * responses use HTTP 402 with a typed `quota_exceeded` error so the client can
+ * route the user to /upgrade with a friendly toast instead of a generic error.
+ *
+ * Usage is incremented BEFORE the route runs (so a free user can't burn their
+ * way past the cap by hammering a slow endpoint). On Plus we skip the meter
+ * write entirely.
+ */
+export function requirePaidOrQuota(kind: UsageMeterKind, freeQuota?: number) {
+  const limit = freeQuota ?? FREE_DAILY_QUOTAS[kind] ?? 5;
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Plus tier: unmetered. Treat an active subscriptionPeriodEnd in the
+      // future as a safety net so a stale "plus" tier from a cancelled sub
+      // can't permanently grant access without webhook events.
+      if (user.subscriptionTier === "plus") {
+        const periodEnd = user.subscriptionPeriodEnd;
+        if (!periodEnd || periodEnd.getTime() > Date.now()) {
+          return next();
+        }
+      }
+
+      const dateKey = todayKeyUtc();
+      const usage = await storage.incrementUsageMeter(user.id, dateKey, kind);
+      if (usage > limit) {
+        return res.status(402).json({
+          error: "quota_exceeded",
+          kind,
+          used: usage - 1,
+          limit,
+          upgradeUrl: "/upgrade",
+          message: `You've hit today's free ${kind === "voice" ? "voice session" : kind} limit. Upgrade to DW Plus for unlimited use.`,
+        });
+      }
+      next();
+    } catch (err) {
+      console.error(`[entitlement] ${kind} check failed`, err);
+      // Fail closed: if we can't verify entitlement, refuse the request
+      // rather than handing out free AI usage. Returns 503 so the client
+      // can show a "try again in a moment" toast instead of treating it
+      // as a permanent quota exhaustion.
+      return res.status(503).json({
+        error: "entitlement_check_failed",
+        kind,
+        message: "We couldn't verify your subscription status. Please try again in a moment.",
+      });
+    }
+  };
+}
 
 export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {

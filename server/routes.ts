@@ -30,6 +30,8 @@ import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
 import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
+import { registerBillingRoutes } from "./routes/billing";
+import { requirePaidOrQuota } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { pickDWRole, PICKER_APPLY_THRESHOLD } from "./lib/dw-role-picker";
@@ -512,6 +514,7 @@ export async function registerRoutes(
 
   // ChatGPT export + raw paste import → seeded DW continuation chat
   registerChatImportRoutes(app);
+  registerBillingRoutes(app);
 
   // Plans Workspace — projects, milestones, artifacts, plan-scoped DW chat
   registerPlansRoutes(app);
@@ -1096,110 +1099,10 @@ export async function registerRoutes(
     res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted } });
   });
 
-  // ─── Billing stub endpoints ───────────────────────────────────────────────
-  // These are MVP simulation endpoints. Replace the stub logic with real
-  // RevenueCat / Stripe webhook handling when billing infra is available.
-
-  /**
-   * GET /api/billing/status
-   * Returns the caller's current subscription tier.
-   * NOTE: Paywall is disabled until App Store in-app purchases are configured.
-   *       All authenticated users are treated as "plus" tier in the meantime.
-   *       Restore the original logic (user.subscriptionTier) once IAP is live.
-   */
-  app.get("/api/billing/status", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.json({ tier: "free", updatedAt: null });
-      }
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.json({ tier: "free", updatedAt: null });
-      }
-      // Paywall disabled — grant plus to all signed-in users until IAP is ready
-      return res.json({
-        tier: "plus",
-        updatedAt: user.subscriptionUpdatedAt ?? null,
-      });
-    } catch (err) {
-      console.error("[billing] status error", err);
-      return res.status(500).json({ error: "Failed to fetch subscription status" });
-    }
-  });
-
-  /**
-   * POST /api/billing/upgrade
-   * Simulates a successful purchase and sets the user's subscription tier to
-   * "plus". Accepts an optional `plan` body field for future plan variants.
-   * "free" is intentionally excluded — use a dedicated cancel/downgrade endpoint
-   * when that flow is needed.
-   * For unauthenticated users the upgrade is acknowledged but not persisted
-   * (the client handles entitlement via localStorage).
-   */
-  app.post("/api/billing/upgrade", async (req, res) => {
-    try {
-      const VALID_PLANS = ["plus", "premium", "lifetime"] as const;
-      const plan: string = req.body?.plan ?? "plus";
-      if (!VALID_PLANS.includes(plan as typeof VALID_PLANS[number])) {
-        return res.status(400).json({ error: `Invalid plan. Must be one of: ${VALID_PLANS.join(", ")}` });
-      }
-      // All paid plans map to the "plus" tier for MVP
-      const tier = "plus" as const;
-
-      if (req.session.userId) {
-        const updated = await storage.updateUser(req.session.userId, {
-          subscriptionTier: tier,
-          subscriptionUpdatedAt: new Date(),
-        });
-        if (!updated) {
-          // Session is stale — user row no longer exists; DB entitlement was not persisted.
-          return res.status(404).json({ error: "User not found; subscription not persisted to database" });
-        }
-      }
-
-      return res.json({
-        success: true,
-        tier,
-        message: "DW Plus activated",
-      });
-    } catch (err) {
-      console.error("[billing] upgrade error", err);
-      return res.status(500).json({ error: "Failed to process upgrade" });
-    }
-  });
-
-  /**
-   * POST /api/billing/restore
-   * Simulates a purchase restore. If the user already has a "plus" tier in the
-   * DB the restore succeeds; otherwise it returns a "not found" response so the
-   * client can surface the right message.
-   * For unauthenticated users the response always indicates nothing to restore.
-   */
-  app.post("/api/billing/restore", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.json({ success: false, tier: "free", message: "No active subscription found" });
-      }
-
-      const user = await storage.getUser(req.session.userId);
-      if (!user) {
-        return res.json({ success: false, tier: "free", message: "No active subscription found" });
-      }
-
-      if (user.subscriptionTier === "plus") {
-        return res.json({
-          success: true,
-          tier: "plus",
-          message: "DW Plus restored successfully",
-        });
-      }
-
-      return res.json({ success: false, tier: "free", message: "No active subscription found" });
-    } catch (err) {
-      console.error("[billing] restore error", err);
-      return res.status(500).json({ error: "Failed to restore subscription" });
-    }
-  });
+  // Billing endpoints (status, checkout, portal, restore, webhook) live in
+  // server/routes/billing.ts and are mounted via registerBillingRoutes above.
+  // The previous in-line stubs (simulated upgrade/restore) were removed when
+  // the real Stripe paywall shipped.
 
   app.post("/api/feedback", async (req, res) => {
     try {
@@ -1207,7 +1110,7 @@ export async function registerRoutes(
       if (!category || !message) {
         return res.status(400).json({ error: "Category and message are required" });
       }
-      
+
       const userId = req.session.userId || null;
       let userEmail: string | null = null;
       if (userId) {
@@ -2142,7 +2045,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
-  app.post("/api/chat", chatLimiter, async (req, res) => {
+  app.post("/api/chat", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
       const { message, conversationHistory, context, modeLock } = req.body;
 
@@ -2154,19 +2057,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
-      let userId = req.session.userId;
-      
-      if (!userId) {
-        let devUser = await storage.getUserByEmail("dev@wellness.local");
-        if (!devUser) {
-          devUser = await storage.createUser({
-            email: "dev@wellness.local",
-            password: "devpassword123",
-          });
-        }
-        userId = devUser.id;
-        req.session.userId = userId;
-      }
+      const userId = req.session.userId!;
       
       const snapshot = await getUserContextSnapshot(userId);
       const userContext = toUserLifeContext(snapshot, { category: context });
@@ -2349,7 +2240,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
-  app.post("/api/chat/smart", chatLimiter, async (req, res) => {
+  app.post("/api/chat/smart", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock } = req.body;
 
@@ -2368,20 +2259,8 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         });
       }
 
-      let userId = req.session.userId;
-      
-      if (!userId) {
-        let devUser = await storage.getUserByEmail("dev@wellness.local");
-        if (!devUser) {
-          devUser = await storage.createUser({
-            email: "dev@wellness.local",
-            password: "devpassword123",
-          });
-        }
-        userId = devUser.id;
-        req.session.userId = userId;
-      }
-      
+      const userId = req.session.userId!;
+
       let documentContext = "";
       if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
         const docs = await Promise.all(
@@ -2678,7 +2557,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   // ── DW Command endpoint ──────────────────────────────────────────────────────
   // Processes a short command/question from the floating widget.
   // Returns a text response plus an optional navigation action.
-  app.post("/api/chat/command", chatLimiter, async (req, res) => {
+  app.post("/api/chat/command", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
       const { message } = req.body as { message?: string };
       if (!message || typeof message !== "string" || !message.trim()) {
@@ -2718,7 +2597,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   });
 
   // Streaming chat endpoint for improved performance
-  app.post("/api/chat/stream", chatLimiter, async (req, res) => {
+  app.post("/api/chat/stream", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
       const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent } = req.body;
 
@@ -2729,20 +2608,8 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
         return res.status(400).json({ error: `Message is too long (max ${DW_MAX_MESSAGE_CONTENT_LENGTH} characters)` });
       }
 
-      let userId = req.session.userId;
-      
-      if (!userId) {
-        let devUser = await storage.getUserByEmail("dev@wellness.local");
-        if (!devUser) {
-          devUser = await storage.createUser({
-            email: "dev@wellness.local",
-            password: "devpassword123",
-          });
-        }
-        userId = devUser.id;
-        req.session.userId = userId;
-      }
-      
+      const userId = req.session.userId!;
+
       // Set headers for SSE
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -6865,7 +6732,7 @@ Return only valid JSON, no other text.`;
   });
 
   // Wave 4: Meal Plan Import Endpoints
-  app.post("/api/import/upload", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/import/upload", requireAuth, requirePaidOrQuota("import"), upload.single("file"), async (req, res) => {
     const startTime = Date.now();
     
     try {

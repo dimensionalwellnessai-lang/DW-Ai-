@@ -1,8 +1,32 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+/**
+ * Tracks the last redirect time so a burst of failing requests doesn't bounce
+ * the user repeatedly. We only redirect to /upgrade once every 5s.
+ */
+let lastQuotaRedirect = 0;
+function maybeRedirectToUpgrade(body: string) {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/upgrade") return;
+  const now = Date.now();
+  if (now - lastQuotaRedirect < 5000) return;
+  lastQuotaRedirect = now;
+  let reason = "quota";
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (typeof parsed?.kind === "string") reason = parsed.kind;
+  } catch {
+    /* ignore */
+  }
+  window.location.assign(`/upgrade?reason=${encodeURIComponent(reason)}`);
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    if (res.status === 402) {
+      maybeRedirectToUpgrade(text);
+    }
     throw new Error(`${res.status}: ${text}`);
   }
 }

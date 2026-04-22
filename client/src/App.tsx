@@ -177,7 +177,7 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const setupComplete = isOnboardingComplete();
   
   // /paywall is accessible after onboarding redirect — don't gate it (allow query params too)
-  if (location.startsWith("/paywall")) {
+  if (location.startsWith("/paywall") || location.startsWith("/upgrade")) {
     return <>{children}</>;
   }
   
@@ -237,6 +237,7 @@ function Router() {
       <Route path="/welcome"><Redirect to="/enhanced-onboarding" /></Route>
       <Route path="/voice-onboarding"><Redirect to="/enhanced-onboarding" /></Route>
       <Route path="/paywall" component={PaywallPage} />
+      <Route path="/upgrade" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/checkout" component={CheckoutPage} />
       <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />

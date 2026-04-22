@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from "./migrate";
+import { registerBillingWebhook } from "./routes/billing";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -13,6 +14,10 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// Stripe webhook needs the raw, unparsed request body to verify signatures.
+// Mount it BEFORE express.json so the body parser doesn't consume the stream.
+registerBillingWebhook(app);
 
 app.use(
   express.json({

@@ -54,5 +54,6 @@ export const AUTH_ONBOARDING_PAGES: readonly string[] = [
   "/account/delete",
   "/subscription",
   "/paywall",
+  "/upgrade",
   "/404",
 ];

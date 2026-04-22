@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { z } from "zod";
 
-import { requireAuth } from "./_shared";
+import { requireAuth, requirePaidOrQuota } from "./_shared";
 import { storage } from "../storage";
 import { getUserContextSnapshot, toPromptString } from "../lib/user-context";
 import { pickDWRole, pickInitialRole, PICKER_APPLY_THRESHOLD } from "../lib/dw-role-picker";
@@ -29,7 +29,7 @@ export function registerRealtimeRoutes(app: Express): void {
   // Mints an ephemeral OpenAI Realtime client_secret so the browser can
   // open a WebRTC session directly with OpenAI without our API key
   // ever touching the client.
-  app.post("/api/realtime/session", requireAuth, async (req, res) => {
+  app.post("/api/realtime/session", requireAuth, requirePaidOrQuota("voice"), async (req, res) => {
     const apiKey = getOpenAIKey();
     if (!apiKey) {
       return res

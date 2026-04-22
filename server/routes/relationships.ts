@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { eq, and, desc, sql, gte, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { requireAuth, zodError } from "./_shared";
+import { requireAuth, requirePaidOrQuota, zodError } from "./_shared";
 import { openai } from "../openai";
 import {
   people,
@@ -1044,7 +1044,7 @@ export function registerRelationshipsRoutes(app: Express): void {
   });
 
   // Refresh: walk graph, generate fresh insight messages, store them
-  app.post("/api/relationships/insights/refresh", requireAuth, async (req, res) => {
+  app.post("/api/relationships/insights/refresh", requireAuth, requirePaidOrQuota("insights"), async (req, res) => {
     try {
       const userId = req.session.userId!;
       const allPeople = await db.select().from(people).where(eq(people.userId, userId));

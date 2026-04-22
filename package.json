@@ -127,6 +127,7 @@
     "resend": "^4.0.0",
     "rollup": "^4.59.0",
     "sax": "^1.6.0",
+    "stripe": "^22.0.2",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tar": "^7.5.11",

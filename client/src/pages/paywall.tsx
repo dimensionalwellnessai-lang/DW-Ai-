@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateRestore } from "@/lib/billing";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
+
+interface BillingStatus {
+  tier: "free" | "plus";
+  periodEnd: string | null;
+  billingConfigured: boolean;
+}
 
 /**
  * DW Plus paywall — shown once after onboarding (soft paywall) and also when
@@ -20,7 +28,16 @@ export default function PaywallPage() {
   const [, setLocation] = useLocation();
   const [showOtherPlans, setShowOtherPlans] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [checkingOut, setCheckingOut] = useState<"monthly" | "annual" | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const { toast } = useToast();
+
+  const { data: status } = useQuery<BillingStatus>({
+    queryKey: ["/api/billing/status"],
+    staleTime: 30 * 1000,
+  });
+  const billingConfigured = status?.billingConfigured !== false;
+  const isPlus = status?.tier === "plus";
 
   // Determine upgrade context and post-payment destination from query params
   const searchParams = new URLSearchParams(
@@ -39,16 +56,55 @@ export default function PaywallPage() {
     ? ctx
     : "paywall";
 
-  const handleStartTrial = () => {
-    const params = new URLSearchParams({ plan: "plus-yearly", from: "/paywall" });
-    if (ctx) params.set("ctx", ctx);
-    setLocation(`/checkout?${params.toString()}`);
+  const startCheckout = async (plan: "monthly" | "annual") => {
+    if (!billingConfigured) {
+      toast({
+        title: "Billing not available",
+        description: "Subscriptions aren't configured on this server yet. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCheckingOut(plan);
+    try {
+      const res = await apiRequest("POST", "/api/billing/checkout", { plan });
+      const body = (await res.json()) as { url?: string };
+      if (body.url) {
+        window.location.assign(body.url);
+        return;
+      }
+      throw new Error("No checkout URL returned");
+    } catch (err) {
+      toast({
+        title: "Checkout failed",
+        description: parseApiError(err),
+        variant: "destructive",
+      });
+      setCheckingOut(null);
+    }
   };
 
-  const handleMonthly = () => {
-    const params = new URLSearchParams({ plan: "plus-monthly", from: "/paywall" });
-    if (ctx) params.set("ctx", ctx);
-    setLocation(`/checkout?${params.toString()}`);
+  const handleStartTrial = () => startCheckout("annual");
+  const handleMonthly = () => startCheckout("monthly");
+
+  const handleManageSubscription = async () => {
+    setOpeningPortal(true);
+    try {
+      const res = await apiRequest("POST", "/api/billing/portal");
+      const body = (await res.json()) as { url?: string };
+      if (body.url) {
+        window.location.assign(body.url);
+        return;
+      }
+      throw new Error("No portal URL returned");
+    } catch (err) {
+      toast({
+        title: "Couldn't open billing portal",
+        description: parseApiError(err),
+        variant: "destructive",
+      });
+      setOpeningPortal(false);
+    }
   };
 
   const handleContinueFree = () => {
@@ -120,21 +176,56 @@ export default function PaywallPage() {
           ))}
         </ul>
 
-        {/* Primary CTA — Yearly with free trial */}
-        <div className="space-y-3">
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={handleStartTrial}
-            disabled={restoring}
-            data-testid="button-start-trial"
-          >
-            Start 7-day free trial
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Then $79.99/year&nbsp;•&nbsp;Cancel anytime
-          </p>
-        </div>
+        {/* Plus members see a manage-subscription panel instead of pricing */}
+        {isPlus ? (
+          <div className="space-y-3" data-testid="panel-already-plus">
+            <div className="rounded-xl border border-border p-4 text-center space-y-1">
+              <p className="text-sm font-medium text-foreground">You're on DW Plus</p>
+              {status?.periodEnd && (
+                <p className="text-xs text-muted-foreground">
+                  Renews {new Date(status.periodEnd).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleManageSubscription}
+              disabled={openingPortal || !billingConfigured}
+              data-testid="button-manage-subscription"
+            >
+              {openingPortal ? (
+                <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Opening…</span>
+              ) : (
+                "Manage subscription"
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleStartTrial}
+              disabled={restoring || checkingOut !== null || !billingConfigured}
+              data-testid="button-start-trial"
+            >
+              {checkingOut === "annual" ? (
+                <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Redirecting…</span>
+              ) : (
+                "Start annual plan"
+              )}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Cancel anytime&nbsp;•&nbsp;Secure checkout via Stripe
+            </p>
+            {!billingConfigured && (
+              <p className="text-center text-xs text-destructive" data-testid="text-billing-unavailable">
+                Subscriptions aren't available on this server yet.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Other plans toggle */}
         <div className="space-y-2">
@@ -166,10 +257,14 @@ export default function PaywallPage() {
                 size="sm"
                 className="w-full"
                 onClick={handleMonthly}
-                disabled={restoring}
+                disabled={restoring || checkingOut !== null || !billingConfigured || isPlus}
                 data-testid="button-monthly"
               >
-                Subscribe monthly
+                {checkingOut === "monthly" ? (
+                  <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Redirecting…</span>
+                ) : (
+                  "Subscribe monthly"
+                )}
               </Button>
             </div>
           )}

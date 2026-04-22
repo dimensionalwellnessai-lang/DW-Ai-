@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
-import { requireAuth } from "./_shared";
+import { requireAuth, requirePaidOrQuota } from "./_shared";
 import { openai } from "../openai";
 import {
   insertFinancialAccountSchema,
@@ -383,7 +383,7 @@ export function registerFinancesRoutes(app: Express) {
   // Builds a compact context blob from the last 90 days of transactions,
   // current budgets, and current holdings, then routes the question through
   // the existing LLM.
-  app.post("/api/finance/chat", requireAuth, async (req, res) => {
+  app.post("/api/finance/chat", requireAuth, requirePaidOrQuota("coach_chat"), async (req, res) => {
     try {
       const userId = req.session.userId!;
       const schema = z.object({
