@@ -6,13 +6,15 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ttsService, type TTSSettings, type VoicePersonality, VOICE_PERSONALITIES } from "@/lib/tts-service";
-import { Mic, Volume2, Gauge, Play, Square, Sparkles, Zap } from "lucide-react";
+import { useMeditationVoicePref } from "@/lib/meditation-voice-pref";
+import { Mic, Volume2, Gauge, Play, Square, Sparkles, Zap, Wind } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function VoiceSettings() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<TTSSettings>(ttsService.getSettings());
   const [isTesting, setIsTesting] = useState(false);
+  const [meditationVoice, setMeditationVoice] = useMeditationVoicePref();
 
   useEffect(() => {
     return () => { ttsService.stop(); };
@@ -173,6 +175,35 @@ export function VoiceSettings() {
               </>
             )}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wind className="h-5 w-5" />
+            Guided Meditations
+          </CardTitle>
+          <CardDescription>
+            Play a soothing voice over the timer when you start a meditation session
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 pr-4">
+              <Label htmlFor="meditation-voice-guidance">Voice guidance</Label>
+              <p className="text-sm text-muted-foreground">
+                Auto-plays a guided narration when you open a meditation. You
+                can still pause or scrub from the session timer.
+              </p>
+            </div>
+            <Switch
+              id="meditation-voice-guidance"
+              checked={meditationVoice}
+              onCheckedChange={setMeditationVoice}
+              data-testid="switch-meditation-voice-guidance"
+            />
+          </div>
         </CardContent>
       </Card>
 

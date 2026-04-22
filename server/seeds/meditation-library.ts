@@ -244,11 +244,18 @@ const SEED: InsertMeditationLibraryItem[] = [
 
 export async function seedMeditationLibrary(): Promise<void> {
   try {
-    // Idempotent insert: ON CONFLICT DO NOTHING on slug.
+    // Idempotent insert: ON CONFLICT on slug. We DO update audioUrl so
+    // existing rows pick up the guided-audio endpoint added in this task
+    // without requiring a destructive reseed.
     for (const item of SEED) {
-      await db.insert(meditationLibrary).values(item).onConflictDoNothing({
-        target: meditationLibrary.slug,
-      });
+      const audioUrl = `/api/meditations/audio/${item.slug}`;
+      await db
+        .insert(meditationLibrary)
+        .values({ ...item, audioUrl })
+        .onConflictDoUpdate({
+          target: meditationLibrary.slug,
+          set: { audioUrl },
+        });
     }
     const result = await db.execute(
       sql`SELECT COUNT(*)::int AS count FROM meditation_library`

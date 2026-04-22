@@ -15,8 +15,16 @@ import {
   type MeditationTheme,
 } from "@shared/schema";
 import { aiCall } from "../ai-engine";
+import { openai } from "../openai";
 import { computeTodaySnapshot, currentTransits } from "../ephemeris";
 import { birthCharts } from "@shared/schema";
+
+// In-memory cache of TTS-generated meditation audio, keyed by slug.
+// Each library item is generated once on first request, then served from
+// memory for the lifetime of the process. Bounded so a runaway library
+// can't grow it without limit.
+const MEDITATION_AUDIO_CACHE = new Map<string, Buffer>();
+const MEDITATION_AUDIO_CACHE_MAX = 100;
 
 // ─── Auth guard (mirrors the inline guard in server/routes.ts) ────────────────
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -146,6 +154,60 @@ export function registerSpiritualRoutes(app: Express): void {
     } catch (err) {
       console.error("[spiritual] /api/meditations/:id error:", err);
       res.status(500).json({ error: "Failed to load meditation" });
+    }
+  });
+
+  // ─── Guided meditation audio (TTS, cached per slug) ─────────────────────────
+  // Generates an MP3 from the script via OpenAI TTS the first time a slug is
+  // requested, then serves the cached buffer for subsequent requests. The
+  // browser also caches via the long Cache-Control header. Public so the
+  // <audio> element can stream it without auth headers.
+  app.get("/api/meditations/audio/:slug", async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) {
+        return res.status(400).json({ error: "Invalid slug" });
+      }
+
+      let buffer = MEDITATION_AUDIO_CACHE.get(slug);
+      if (!buffer) {
+        const [row] = await db
+          .select()
+          .from(meditationLibrary)
+          .where(eq(meditationLibrary.slug, slug))
+          .limit(1);
+        if (!row) return res.status(404).json({ error: "Not found" });
+
+        const text = row.scriptText.trim().slice(0, 4000);
+        const response = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: "alloy",
+          input: text,
+          // Slightly slower than default — matches the calm cadence of a
+          // guided meditation rather than a normal prose reading.
+          speed: 0.85,
+        });
+        buffer = Buffer.from(await response.arrayBuffer());
+
+        // Bound the cache so it can't grow without limit. Drop the oldest
+        // entry (Map insertion order) when we hit the cap.
+        if (MEDITATION_AUDIO_CACHE.size >= MEDITATION_AUDIO_CACHE_MAX) {
+          const firstKey = MEDITATION_AUDIO_CACHE.keys().next().value;
+          if (firstKey !== undefined) MEDITATION_AUDIO_CACHE.delete(firstKey);
+        }
+        MEDITATION_AUDIO_CACHE.set(slug, buffer);
+      }
+
+      res.set({
+        "Content-Type": "audio/mpeg",
+        "Content-Length": buffer.length.toString(),
+        // Library content is stable per slug, so allow long browser caching.
+        "Cache-Control": "public, max-age=86400, immutable",
+      });
+      res.send(buffer);
+    } catch (err) {
+      console.error("[spiritual] /api/meditations/audio/:slug error:", err);
+      res.status(500).json({ error: "Failed to generate audio" });
     }
   });
 

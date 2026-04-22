@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ttsService } from "@/lib/tts-service";
+import { useMeditationVoicePref } from "@/lib/meditation-voice-pref";
 
 // ─── Types (mirror server schema) ─────────────────────────────────────────────
 type MeditationItem = {
@@ -356,10 +357,22 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
   const [moodAfter, setMoodAfter] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [phase, setPhase] = useState<"running" | "log">("running");
-  const [voiceOn, setVoiceOn] = useState(false);
   const [autoLogged, setAutoLogged] = useState(false);
   const [autoSessionId, setAutoSessionId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [voicePref] = useMeditationVoicePref();
+
+  // ─── Guided audio playback ──────────────────────────────────────────────────
+  // When the library item has an audioUrl, use a real <audio> element so we
+  // get true play/pause + seek + a progress bar driven by playback time.
+  // Otherwise fall back to the existing TTS service (one-shot, no scrubbing).
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioCurrent, setAudioCurrent] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioError, setAudioError] = useState(false);
+  const [voiceFallbackOn, setVoiceFallbackOn] = useState(false);
+  const hasGuidedAudio = !!item.audioUrl && !audioError;
 
   useEffect(() => {
     if (!running || phase !== "running") return;
@@ -372,14 +385,63 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
     return () => { try { ttsService.stop(); } catch { /* noop */ } };
   }, []);
 
-  // Toggle TTS playback of the script using the existing TTS service.
-  const toggleVoice = async () => {
-    if (voiceOn) {
+  // Auto-play guided audio on open if the user opted in.
+  useEffect(() => {
+    if (!hasGuidedAudio || !voicePref) return;
+    const el = audioRef.current;
+    if (!el) return;
+    el.play().catch((err) => {
+      // Autoplay may be blocked by the browser until first user gesture —
+      // that's fine, the play button is still available.
+      console.warn("[spiritual] meditation audio autoplay blocked:", err);
+    });
+    // Only run once per dialog open / item swap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasGuidedAudio, item.id]);
+
+  // Pause audio whenever the timer is paused, and resume it on un-pause if
+  // it was playing at the moment the timer paused. We remember that state
+  // in a ref so the post-pause `audioPlaying=false` doesn't make us forget.
+  const wasPlayingAtTimerPauseRef = useRef(false);
+  useEffect(() => {
+    if (!hasGuidedAudio) return;
+    const el = audioRef.current;
+    if (!el) return;
+    if (!running || phase !== "running") {
+      if (!el.paused) {
+        wasPlayingAtTimerPauseRef.current = true;
+        el.pause();
+      }
+    } else if (wasPlayingAtTimerPauseRef.current) {
+      wasPlayingAtTimerPauseRef.current = false;
+      el.play().catch(() => {/* noop */});
+    }
+  }, [running, phase, hasGuidedAudio]);
+
+  const toggleAudio = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) {
+      el.play().catch(() => {/* noop */});
+    } else {
+      el.pause();
+    }
+  };
+
+  const seekAudio = (sec: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Math.min(sec, audioDuration || sec));
+  };
+
+  // Fallback TTS (used only when audioUrl is missing or fails to load).
+  const toggleVoiceFallback = async () => {
+    if (voiceFallbackOn) {
       ttsService.stop();
-      setVoiceOn(false);
+      setVoiceFallbackOn(false);
       return;
     }
-    setVoiceOn(true);
+    setVoiceFallbackOn(true);
     try {
       await ttsService.speak(item.scriptText);
     } catch (err) {
@@ -390,7 +452,7 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
         variant: "destructive",
       });
     } finally {
-      setVoiceOn(false);
+      setVoiceFallbackOn(false);
     }
   };
 
@@ -461,7 +523,8 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
     if (phase === "running" && elapsed >= totalSec) {
       setRunning(false);
       ttsService.stop();
-      setVoiceOn(false);
+      setVoiceFallbackOn(false);
+      try { audioRef.current?.pause(); } catch { /* noop */ }
       if (!autoLogged) {
         setAutoLogged(true);
         log.mutate({ auto: true });
@@ -476,7 +539,13 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
   const pct = Math.round((elapsed / totalSec) * 100);
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) { ttsService.stop(); onClose(); } }}>
+    <Dialog open onOpenChange={(open) => {
+      if (!open) {
+        ttsService.stop();
+        try { audioRef.current?.pause(); } catch { /* noop */ }
+        onClose();
+      }
+    }}>
       <DialogContent className="max-w-lg" data-testid="dialog-session-timer">
         <DialogHeader>
           <DialogTitle>{item.title}</DialogTitle>
@@ -494,6 +563,78 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
             <div className="h-2 rounded-full bg-muted overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
+
+            {hasGuidedAudio && (
+              <div
+                className="rounded-md border bg-muted/30 p-3 space-y-2"
+                data-testid="meditation-audio-player"
+              >
+                <audio
+                  ref={audioRef}
+                  src={item.audioUrl ?? undefined}
+                  preload="auto"
+                  onPlay={() => setAudioPlaying(true)}
+                  onPause={() => setAudioPlaying(false)}
+                  onEnded={() => setAudioPlaying(false)}
+                  onTimeUpdate={(e) => setAudioCurrent(e.currentTarget.currentTime)}
+                  onLoadedMetadata={(e) => {
+                    const d = e.currentTarget.duration;
+                    if (Number.isFinite(d)) setAudioDuration(d);
+                  }}
+                  onError={() => setAudioError(true)}
+                  data-testid="audio-meditation"
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="default"
+                    className="h-9 w-9 shrink-0"
+                    onClick={toggleAudio}
+                    aria-label={audioPlaying ? "Pause guided audio" : "Play guided audio"}
+                    data-testid="button-audio-toggle"
+                  >
+                    {audioPlaying
+                      ? <Pause className="h-4 w-4" />
+                      : <Play className="h-4 w-4" />}
+                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="relative h-2 rounded-full bg-background overflow-hidden cursor-pointer"
+                      role="slider"
+                      aria-label="Audio progress"
+                      aria-valuemin={0}
+                      aria-valuemax={Math.max(1, Math.round(audioDuration))}
+                      aria-valuenow={Math.round(audioCurrent)}
+                      onClick={(e) => {
+                        if (!audioDuration) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const ratio = (e.clientX - rect.left) / rect.width;
+                        seekAudio(ratio * audioDuration);
+                      }}
+                      data-testid="audio-progress-bar"
+                    >
+                      <div
+                        className="absolute inset-y-0 left-0 bg-primary transition-[width]"
+                        style={{
+                          width: audioDuration
+                            ? `${Math.min(100, (audioCurrent / audioDuration) * 100)}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1 tabular-nums">
+                      <span data-testid="text-audio-current">{fmtAudioTime(audioCurrent)}</span>
+                      <span data-testid="text-audio-duration">{fmtAudioTime(audioDuration)}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 leading-tight">
+                  Guided narration. {voicePref ? "Auto-plays from settings." : "Voice guidance is off in settings — press play to listen."}
+                </p>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs">Mood right now (1–5)</Label>
               <MoodPicker value={moodBefore} onChange={setMoodBefore} testIdPrefix="mood-before" />
@@ -502,11 +643,13 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
               {item.scriptText}
             </ScrollArea>
             <div className="flex flex-wrap gap-2 justify-end">
-              <Button variant="outline" onClick={toggleVoice} data-testid="button-toggle-voice">
-                {voiceOn
-                  ? <><VolumeX className="h-3 w-3 mr-2" />Stop voice</>
-                  : <><Volume2 className="h-3 w-3 mr-2" />Voice guidance</>}
-              </Button>
+              {!hasGuidedAudio && (
+                <Button variant="outline" onClick={toggleVoiceFallback} data-testid="button-toggle-voice">
+                  {voiceFallbackOn
+                    ? <><VolumeX className="h-3 w-3 mr-2" />Stop voice</>
+                    : <><Volume2 className="h-3 w-3 mr-2" />Voice guidance</>}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setRunning(r => !r)} data-testid="button-toggle-timer">
                 {running ? <><Pause className="h-3 w-3 mr-2" />Pause</> : <><Play className="h-3 w-3 mr-2" />Resume</>}
               </Button>
@@ -514,7 +657,8 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
                 variant="outline"
                 onClick={() => {
                   ttsService.stop();
-                  setVoiceOn(false);
+                  setVoiceFallbackOn(false);
+                  try { audioRef.current?.pause(); } catch { /* noop */ }
                   setPhase("log");
                 }}
                 data-testid="button-end-early"
@@ -562,6 +706,13 @@ function SessionTimerDialog({ item, onClose }: { item: MeditationItem; onClose: 
       </DialogContent>
     </Dialog>
   );
+}
+
+function fmtAudioTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function MoodPicker({
