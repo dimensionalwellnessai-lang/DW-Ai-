@@ -16,7 +16,7 @@ import {
 } from "@shared/schema";
 import { aiCall } from "../ai-engine";
 import { openai } from "../openai";
-import { computeTodaySnapshot, currentTransits } from "../ephemeris";
+import { computeTodaySnapshot, computeCalendarEvents, currentTransits, withCache } from "../ephemeris";
 import { birthCharts } from "@shared/schema";
 
 // In-memory cache of TTS-generated meditation audio, keyed by slug.
@@ -456,6 +456,43 @@ export function registerSpiritualRoutes(app: Express): void {
     } catch (err) {
       console.error("[spiritual] /api/cosmic/today error:", err);
       res.status(500).json({ error: "Failed to load today" });
+    }
+  });
+
+  // ─── Cosmic personal: month of celestial events for the calendar tab ──────
+  // Returns lunations, retrograde stations, sign ingresses, and seasonal
+  // markers between `start` and `end` (ISO YYYY-MM-DD, inclusive). Range is
+  // capped at ~95 days to keep computation bounded.
+  app.get("/api/cosmic/calendar", async (req, res) => {
+    try {
+      const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+      const start = typeof req.query.start === "string" ? req.query.start : "";
+      const end = typeof req.query.end === "string" ? req.query.end : "";
+      if (!isoRe.test(start) || !isoRe.test(end)) {
+        return res.status(400).json({ error: "start and end must be YYYY-MM-DD" });
+      }
+      const startDate = new Date(start + "T00:00:00Z");
+      const endDate = new Date(end + "T00:00:00Z");
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return res.status(400).json({ error: "Invalid start or end date" });
+      }
+      if (endDate < startDate) {
+        return res.status(400).json({ error: "end must be on or after start" });
+      }
+      const spanDays = (endDate.getTime() - startDate.getTime()) / 86400000;
+      if (spanDays > 95) {
+        return res.status(400).json({ error: "Range too large (max 95 days)" });
+      }
+
+      const events = withCache(
+        `cosmic:calendar:${start}:${end}`,
+        60 * 60 * 1000,
+        () => computeCalendarEvents(start, end),
+      );
+      res.json({ start, end, events });
+    } catch (err) {
+      console.error("[spiritual] /api/cosmic/calendar error:", err);
+      res.status(500).json({ error: "Failed to load calendar" });
     }
   });
 
