@@ -15,6 +15,7 @@ import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { ThreeRingOrbit } from "@/components/life-system/three-ring-orbit";
+import { TodayBriefCard } from "./components/TodayBriefCard";
 import {
   useLifeSystem,
   findPillarRow,
@@ -304,6 +305,11 @@ export default function HomeCommandCenter() {
       </header>
 
       <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* ── Unified daily brief, pinned to the top ──────────────────── */}
+        <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-today-brief">
+          <TodayBriefCard />
+        </div>
+
         {/* ── Quick "How are you feeling?" chip row ─────────────────────── */}
         <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-feeling-chips">
           <div className="flex items-center justify-center gap-2 flex-wrap">

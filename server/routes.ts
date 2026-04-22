@@ -27,6 +27,7 @@ import { registerTriggerRoutes } from "./routes/triggers";
 import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
+import { registerTodayRoutes } from "./routes/today";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { registerPlaidRoutes } from "./routes/plaid";
@@ -488,6 +489,9 @@ export async function registerRoutes(
 
   // Wearable + Screen Time Manager (Apple Health + Screen Time end-to-end)
   registerWearablesRoutes(app);
+
+  // Unified daily brief — the "Today" / "Tonight" card on home.
+  registerTodayRoutes(app);
   // Idempotent seed for the meditation library — fire-and-forget on boot.
   void seedMeditationLibrary();
 

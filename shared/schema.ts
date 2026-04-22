@@ -2788,6 +2788,63 @@ export const insertDwJournalEntrySchema = createInsertSchema(dwJournalEntries).o
   updatedAt: true,
 });
 
+// ── Daily Briefs ─────────────────────────────────────────────────────────────
+// One row per (user, dateKey, variant). Stores the rendered DW summary +
+// typed bullets so the home Today card stays fast and consistent across loads.
+
+export const dailyBriefVariantEnum = ["morning", "tonight"] as const;
+export type DailyBriefVariant = typeof dailyBriefVariantEnum[number];
+
+export const dailyBriefBulletKindEnum = [
+  "mood",
+  "sleep",
+  "finance",
+  "relationship",
+  "spirit",
+  "plan",
+  "trigger",
+] as const;
+export type DailyBriefBulletKind = typeof dailyBriefBulletKindEnum[number];
+
+export interface BriefBullet {
+  kind: DailyBriefBulletKind;
+  text: string;
+  route: string;
+  importance: 1 | 2 | 3;
+}
+
+export const dailyBriefs = pgTable("daily_briefs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Local-day key in the user's timezone, "YYYY-MM-DD".
+  dateKey: text("date_key").notNull(),
+  variant: text("variant").notNull().$type<DailyBriefVariant>(),
+  summaryText: text("summary_text").notNull(),
+  bullets: jsonb("bullets").notNull().$type<BriefBullet[]>(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("daily_briefs_user_date_variant_idx").on(t.userId, t.dateKey, t.variant),
+]);
+
+export const dailyBriefsRelations = relations(dailyBriefs, ({ one }) => ({
+  user: one(users, { fields: [dailyBriefs.userId], references: [users.id] }),
+}));
+
+export const insertDailyBriefSchema = createInsertSchema(dailyBriefs, {
+  variant: z.enum(dailyBriefVariantEnum),
+  bullets: z.array(z.object({
+    kind: z.enum(dailyBriefBulletKindEnum),
+    text: z.string(),
+    route: z.string(),
+    importance: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  })),
+}).omit({
+  id: true,
+  generatedAt: true,
+});
+export type DailyBrief = typeof dailyBriefs.$inferSelect;
+export type InsertDailyBrief = z.infer<typeof insertDailyBriefSchema>;
+
 // DW Follow-ups – AI-generated follow-up questions/prompts from conversations
 export const dwFollowups = pgTable("dw_followups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -254,6 +254,10 @@ import {
   moodInsights,
   type MoodInsight,
   type InsertMoodInsight,
+  dailyBriefs,
+  type DailyBrief,
+  type InsertDailyBrief,
+  type DailyBriefVariant,
   dwFollowups,
   type DwFollowup,
   type InsertDwFollowup,
@@ -372,6 +376,8 @@ export interface IStorage {
   getMoodLog(id: string): Promise<MoodLog | undefined>;
   getMoodInsights(userId: string): Promise<MoodInsight[]>;
   replaceMoodInsights(userId: string, insights: InsertMoodInsight[]): Promise<MoodInsight[]>;
+  getDailyBrief(userId: string, dateKey: string, variant: DailyBriefVariant): Promise<DailyBrief | undefined>;
+  upsertDailyBrief(brief: InsertDailyBrief): Promise<DailyBrief>;
   getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]>;
 
   getCheckIns(userId: string): Promise<CheckIn[]>;
@@ -1236,6 +1242,33 @@ export class DatabaseStorage implements IStorage {
         .values(rows.map(r => ({ ...r, userId })))
         .returning();
     });
+  }
+
+  async getDailyBrief(userId: string, dateKey: string, variant: DailyBriefVariant): Promise<DailyBrief | undefined> {
+    const [row] = await db.select()
+      .from(dailyBriefs)
+      .where(and(
+        eq(dailyBriefs.userId, userId),
+        eq(dailyBriefs.dateKey, dateKey),
+        eq(dailyBriefs.variant, variant),
+      ))
+      .limit(1);
+    return row;
+  }
+
+  async upsertDailyBrief(brief: InsertDailyBrief): Promise<DailyBrief> {
+    const [row] = await db.insert(dailyBriefs)
+      .values({ ...brief, generatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [dailyBriefs.userId, dailyBriefs.dateKey, dailyBriefs.variant],
+        set: {
+          summaryText: brief.summaryText,
+          bullets: brief.bullets,
+          generatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
   }
 
   async getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]> {
