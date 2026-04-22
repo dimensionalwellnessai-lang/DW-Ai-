@@ -192,7 +192,7 @@ export default function FinancesPage() {
   const [activeTab, setActiveTab] = useState("overview");
 
   return (
-    <div className="container max-w-7xl py-6 space-y-6">
+    <div className="container max-w-7xl pt-6 pb-32 space-y-6">
       <PageHeader
         title={<span className="flex items-center gap-2"><Wallet className="w-6 h-6" /> Finances</span>}
         rightContent={
