@@ -91,6 +91,7 @@
     "flatted": "^3.4.2",
     "framer-motion": "^11.13.1",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
     "lodash": "^4.17.21",

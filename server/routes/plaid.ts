@@ -11,6 +11,7 @@ import {
   maybeNotifyReconnect,
   isReconnectCode,
 } from "../plaid-sync";
+import { verifyPlaidWebhook } from "../plaid-webhook-verify";
 
 function mapAccountType(t: string | null | undefined, sub: string | null | undefined): "checking" | "savings" | "credit" | "loan" | "investment" | "other" {
   const s = (sub || t || "").toLowerCase();
@@ -153,6 +154,27 @@ export function registerPlaidRoutes(app: Express) {
   app.post("/api/plaid/webhook", async (req, res) => {
     try {
       if (!plaidConfigured()) return res.status(204).end();
+      const client = getPlaidClient();
+      if (!client) return res.status(204).end();
+
+      // Confirm the request is actually from Plaid before doing any work.
+      // The body is parsed by express.json upstream; the verify hook there
+      // captures the raw bytes onto req.rawBody so we can hash them here.
+      const verifyHeader =
+        req.header("plaid-verification") ?? req.header("Plaid-Verification");
+      const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody;
+      const verification = await verifyPlaidWebhook(
+        verifyHeader,
+        rawBody,
+        client,
+      );
+      if (!verification.ok) {
+        console.warn(
+          `[plaid] webhook verification failed (${verification.reason}); rejecting`,
+        );
+        return res.status(401).json({ error: "invalid_signature" });
+      }
+
       const body = (req.body ?? {}) as {
         item_id?: string;
         webhook_type?: string;
@@ -171,8 +193,6 @@ export function registerPlaidRoutes(app: Express) {
       res.status(200).json({ ok: true });
 
       if (type === "TRANSACTIONS" || type === "SYNC_UPDATES_AVAILABLE") {
-        const client = getPlaidClient();
-        if (!client) return;
         try {
           const counts = await syncPlaidItem(item, client);
           console.log(
