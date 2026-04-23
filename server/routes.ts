@@ -2100,7 +2100,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
   app.post("/api/chat", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
-      const { message, conversationHistory, context, modeLock } = req.body;
+      const { message, conversationHistory, context, modeLock, previousMode } = req.body;
 
       // Validate message content
       if (!message || typeof message !== "string" || message.trim().length === 0) {
@@ -2117,9 +2117,12 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
       // Adaptive role: pick the right DW lane unless the client locked one.
       const lockedMode = typeof modeLock === "string" ? getDWMode(modeLock) : null;
+      // Hysteresis: if the client tells us what lane the user is currently
+      // in, the picker requires a clearly stronger signal to switch lanes.
+      const prevModeForPicker = typeof previousMode === "string" ? getDWMode(previousMode) : null;
       const picked = lockedMode
         ? null
-        : await pickDWRole(message, snapshot).catch(() => null);
+        : await pickDWRole(message, snapshot, { previousMode: prevModeForPicker }).catch(() => null);
       const activeMode = lockedMode
         ?? (picked && picked.confidence >= PICKER_APPLY_THRESHOLD ? picked.mode : "companion");
       const modeDef = DW_MODES.find((m) => m.id === activeMode)!;
@@ -2307,7 +2310,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
   app.post("/api/chat/smart", chatLimiter, requirePaidOrQuota("chat"), async (req, res) => {
     try {
-      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock } = req.body;
+      const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock, previousMode } = req.body;
 
       if (!message || typeof message !== "string" || message.trim().length === 0) {
         return res.status(400).json({ error: "Message is required" });
@@ -2366,9 +2369,10 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
       // Adaptive role: pick the right DW lane unless the client locked one.
       const lockedSmartMode = typeof modeLock === "string" ? getDWMode(modeLock) : null;
+      const prevSmartModeForPicker = typeof previousMode === "string" ? getDWMode(previousMode) : null;
       const pickedSmart = lockedSmartMode
         ? null
-        : await pickDWRole(message, snapshot).catch(() => null);
+        : await pickDWRole(message, snapshot, { previousMode: prevSmartModeForPicker }).catch(() => null);
       const activeSmartMode = lockedSmartMode
         ?? (pickedSmart && pickedSmart.confidence >= PICKER_APPLY_THRESHOLD
           ? pickedSmart.mode

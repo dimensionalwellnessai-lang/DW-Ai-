@@ -162,6 +162,9 @@ export function DWVoiceConversation({
           body: JSON.stringify({
             message: transcript,
             lockedMode: modeLockedRef.current ? modeRef.current : undefined,
+            // Hysteresis: tell the picker which lane we're already in so it
+            // requires a clearly stronger signal to switch lanes mid-call.
+            previousMode: modeRef.current,
           }),
         });
         if (!resp.ok) return;

@@ -637,6 +637,9 @@ export function TalkItOutPage() {
         conversationHistory: messages.slice(-10),
         systemOverride: systemOverrideOverride || TALK_SYSTEM_PROMPT,
         modeLock: chatModeLocked ? chatMode : undefined,
+        // Hysteresis: tell the picker which lane we're already in so it
+        // requires a clearly stronger signal to switch lanes mid-thread.
+        previousMode: chatMode,
       });
       return response.json();
     },

@@ -3617,7 +3617,7 @@ export type InsertTriggerEvent = z.infer<typeof insertTriggerEventSchema>;
 export const dwRolePickSurfaceEnum = ["chat", "smart", "realtime"] as const;
 export type DWRolePickSurface = typeof dwRolePickSurfaceEnum[number];
 
-export const dwRolePickSourceEnum = ["rules", "llm", "fallback", "locked"] as const;
+export const dwRolePickSourceEnum = ["rules", "llm", "fallback", "locked", "sticky"] as const;
 export type DWRolePickSource = typeof dwRolePickSourceEnum[number];
 
 export const dwRolePicks = pgTable("dw_role_picks", {

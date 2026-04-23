@@ -146,6 +146,9 @@ export function registerRealtimeRoutes(app: Express): void {
     const schema = z.object({
       message: z.string().min(1).max(2_000),
       lockedMode: z.string().optional(),
+      // Hysteresis: client tells us which lane the user is currently in so
+      // the picker requires a clearly stronger signal to switch lanes.
+      previousMode: z.string().optional(),
     });
     const parsed = schema.safeParse(req.body ?? {});
     if (!parsed.success) {
@@ -183,7 +186,10 @@ export function registerRealtimeRoutes(app: Express): void {
     } catch {
       // picker handles missing snapshot
     }
-    const picked = await pickDWRole(parsed.data.message, snap);
+    const prevModeForPicker = parsed.data.previousMode
+      ? getDWMode(parsed.data.previousMode)
+      : null;
+    const picked = await pickDWRole(parsed.data.message, snap, { previousMode: prevModeForPicker });
     const def = DW_MODES.find((m) => m.id === picked.mode)!;
     const applied = picked.confidence >= PICKER_APPLY_THRESHOLD;
     logDwRolePick({

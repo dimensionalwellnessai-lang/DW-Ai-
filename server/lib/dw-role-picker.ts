@@ -22,11 +22,20 @@ export interface PickedRole {
   mode: DWMode;
   confidence: number; // 0..1
   reason: string;
-  source: "rules" | "llm" | "fallback";
+  source: "rules" | "llm" | "fallback" | "sticky";
 }
 
 /** Confidence floor at which the picker's choice should override the current mode. */
 export const PICKER_APPLY_THRESHOLD = 0.6;
+
+/**
+ * Lane stickiness: when the user is already in a lane, switching to a
+ * different lane requires the new pick's confidence to clear
+ * `PICKER_APPLY_THRESHOLD + STICKINESS_MARGIN`. Stops the lane from flipping
+ * every turn on borderline LLM calls. Rules-pass hits (confidence ≥ 0.85)
+ * already clear this bar, so unambiguous keyword hits still switch.
+ */
+export const STICKINESS_MARGIN = 0.15;
 
 // ─── Rules pass ──────────────────────────────────────────────────────────────
 
@@ -144,6 +153,33 @@ async function llmPass(message: string, snap?: UserContextSnapshot | null): Prom
 export interface PickRoleOptions {
   /** Skip the LLM fallback (e.g. for synchronous prompt building). */
   rulesOnly?: boolean;
+  /**
+   * The mode the user is currently in (from the previous turn). When set,
+   * applies hysteresis: a different lane needs to clear
+   * `PICKER_APPLY_THRESHOLD + STICKINESS_MARGIN` to win. Manual locks bypass
+   * this entirely (callers short-circuit before calling the picker).
+   */
+  previousMode?: DWMode | null;
+}
+
+/**
+ * Apply lane stickiness. If the picker chose the same lane as the previous
+ * turn (or there's no previous), pass through. If it chose a different lane
+ * but didn't clear the stickiness bar, stay in the previous lane and emit a
+ * `sticky` source so we can measure how often hysteresis kicks in.
+ */
+function applyStickiness(picked: PickedRole, previousMode: DWMode | null | undefined): PickedRole {
+  if (!previousMode) return picked;
+  if (picked.mode === previousMode) return picked;
+  if (picked.confidence >= PICKER_APPLY_THRESHOLD + STICKINESS_MARGIN) return picked;
+  return {
+    mode: previousMode,
+    // Keep confidence at the apply threshold so the lane stays "applied"
+    // and the prompt addendum continues to use the previous mode.
+    confidence: PICKER_APPLY_THRESHOLD,
+    reason: `staying in ${previousMode} (new pick ${picked.mode} not decisive enough)`,
+    source: "sticky",
+  };
 }
 
 export async function pickDWRole(
@@ -153,28 +189,47 @@ export async function pickDWRole(
 ): Promise<PickedRole> {
   const text = (message || "").trim();
   if (!text) {
-    return { mode: "companion", confidence: 0.3, reason: "empty message", source: "fallback" };
+    return applyStickiness(
+      { mode: "companion", confidence: 0.3, reason: "empty message", source: "fallback" },
+      opts.previousMode,
+    );
   }
 
   const ruleHit = rulesPass(text);
-  // High-confidence rule hit → done.
+  // High-confidence rule hit → done. Rules pass with weight ≥ 0.85 always
+  // clears the stickiness margin, so unambiguous keyword hits still switch.
   if (ruleHit && ruleHit.weight >= 0.8) {
-    return { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" };
+    return applyStickiness(
+      { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" },
+      opts.previousMode,
+    );
   }
 
   if (opts.rulesOnly) {
     if (ruleHit) {
-      return { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" };
+      return applyStickiness(
+        { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" },
+        opts.previousMode,
+      );
     }
-    return { mode: "companion", confidence: 0.4, reason: "no clear lane (rules only)", source: "fallback" };
+    return applyStickiness(
+      { mode: "companion", confidence: 0.4, reason: "no clear lane (rules only)", source: "fallback" },
+      opts.previousMode,
+    );
   }
 
   const llm = await llmPass(text, snapshot);
-  if (llm) return llm;
+  if (llm) return applyStickiness(llm, opts.previousMode);
   if (ruleHit) {
-    return { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" };
+    return applyStickiness(
+      { mode: ruleHit.mode, confidence: ruleHit.weight, reason: ruleHit.reason, source: "rules" },
+      opts.previousMode,
+    );
   }
-  return { mode: "companion", confidence: 0.4, reason: "no clear lane", source: "fallback" };
+  return applyStickiness(
+    { mode: "companion", confidence: 0.4, reason: "no clear lane", source: "fallback" },
+    opts.previousMode,
+  );
 }
 
 /**
