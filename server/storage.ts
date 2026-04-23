@@ -327,8 +327,13 @@ import {
   type PlaidItem,
   type InsertPlaidItem,
 } from "@shared/schema";
+import {
+  dwRolePicks,
+  type DwRolePick,
+  type InsertDwRolePick,
+} from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, or, inArray, ne, count } from "drizzle-orm";
+import { eq, and, gte, lte, lt, desc, sql, or, inArray, ne, count, isNull } from "drizzle-orm";
 import { createHash } from "crypto";
 
 export interface IStorage {
@@ -363,6 +368,13 @@ export interface IStorage {
   createTriggerEvent(event: InsertTriggerEvent): Promise<TriggerEvent>;
   listTriggerEvents(userId: string, limit?: number): Promise<TriggerEvent[]>;
   countTriggerEventsSince(userId: string, since: Date): Promise<{ total: number; noProof: number }>;
+  recordDwRolePick(pick: InsertDwRolePick): Promise<DwRolePick>;
+  markPriorPickOverridden(userId: string, surface: string, insertedAt: Date, lockedMode: string): Promise<void>;
+  getDwRolePickStats(sinceDays: number): Promise<{
+    range: { sinceDays: number; since: string; until: string };
+    totalPicks: number;
+    perMode: Array<{ mode: string; total: number; applied: number; locked: number; overrides: number; sources: { rules: number; llm: number; fallback: number; locked: number } }>;
+  }>;
 
   // Life System Projects (sub-items inside the Creation pillar)
   getLifeSystemProjects(userId: string): Promise<LifeSystemProject[]>;
@@ -4116,6 +4128,72 @@ export class DatabaseStorage implements IStorage {
     return {
       total: rows.length,
       noProof: rows.filter(r => r.hadProof === false).length,
+    };
+  }
+
+  async recordDwRolePick(pick: InsertDwRolePick): Promise<DwRolePick> {
+    const [row] = await db.insert(dwRolePicks).values(pick).returning();
+    return row;
+  }
+
+  async markPriorPickOverridden(
+    userId: string,
+    surface: string,
+    insertedAt: Date,
+    lockedMode: string,
+  ): Promise<void> {
+    // Look back at the immediately previous pick on the SAME surface for the
+    // user, strictly before this pick's timestamp, and within 10 minutes. If
+    // it picked a different mode (and wasn't itself locked or already
+    // overridden), mark it overridden. Surface filtering keeps chat / smart
+    // / realtime override rates from cross-contaminating.
+    const cutoff = new Date(insertedAt.getTime() - 10 * 60 * 1000);
+    const [prev] = await db
+      .select()
+      .from(dwRolePicks)
+      .where(and(
+        eq(dwRolePicks.userId, userId),
+        eq(dwRolePicks.surface, surface as "chat" | "smart" | "realtime"),
+        gte(dwRolePicks.createdAt, cutoff),
+        lt(dwRolePicks.createdAt, insertedAt),
+        eq(dwRolePicks.locked, false),
+        isNull(dwRolePicks.overriddenAt),
+      ))
+      .orderBy(desc(dwRolePicks.createdAt))
+      .limit(1);
+    if (!prev || prev.mode === lockedMode) return;
+    await db.update(dwRolePicks)
+      .set({ overriddenByMode: lockedMode, overriddenAt: new Date() })
+      .where(eq(dwRolePicks.id, prev.id));
+  }
+
+  async getDwRolePickStats(sinceDays: number): Promise<{
+    range: { sinceDays: number; since: string; until: string };
+    totalPicks: number;
+    perMode: Array<{ mode: string; total: number; applied: number; locked: number; overrides: number; sources: { rules: number; llm: number; fallback: number; locked: number } }>;
+  }> {
+    const days = Math.max(1, Math.min(180, Math.floor(sinceDays || 30)));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const until = new Date();
+    const rows = await db.select().from(dwRolePicks).where(gte(dwRolePicks.createdAt, since));
+    const byMode = new Map<string, { mode: string; total: number; applied: number; locked: number; overrides: number; sources: { rules: number; llm: number; fallback: number; locked: number } }>();
+    for (const r of rows) {
+      let bucket = byMode.get(r.mode);
+      if (!bucket) {
+        bucket = { mode: r.mode, total: 0, applied: 0, locked: 0, overrides: 0, sources: { rules: 0, llm: 0, fallback: 0, locked: 0 } };
+        byMode.set(r.mode, bucket);
+      }
+      bucket.total++;
+      if (r.applied) bucket.applied++;
+      if (r.locked) bucket.locked++;
+      if (r.overriddenByMode) bucket.overrides++;
+      const src = r.source as keyof typeof bucket.sources;
+      if (src in bucket.sources) bucket.sources[src]++;
+    }
+    return {
+      range: { sinceDays: days, since: since.toISOString(), until: until.toISOString() },
+      totalPicks: rows.length,
+      perMode: Array.from(byMode.values()).sort((a, b) => b.total - a.total),
     };
   }
 

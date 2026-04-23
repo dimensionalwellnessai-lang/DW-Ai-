@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, numeric, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -3610,6 +3610,51 @@ export const insertTriggerEventSchema = createInsertSchema(triggerEvents).omit({
 });
 export type TriggerEvent = typeof triggerEvents.$inferSelect;
 export type InsertTriggerEvent = z.infer<typeof insertTriggerEventSchema>;
+
+// ─── DW Role Picker telemetry ────────────────────────────────────────────────
+// Logs every adaptive-role pick so we can measure lane usage and override
+// rate, then turn findings into rule updates in dw-role-picker.ts.
+export const dwRolePickSurfaceEnum = ["chat", "smart", "realtime"] as const;
+export type DWRolePickSurface = typeof dwRolePickSurfaceEnum[number];
+
+export const dwRolePickSourceEnum = ["rules", "llm", "fallback", "locked"] as const;
+export type DWRolePickSource = typeof dwRolePickSourceEnum[number];
+
+export const dwRolePicks = pgTable("dw_role_picks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Where the pick happened.
+  surface: text("surface").notNull().$type<DWRolePickSurface>(),
+  // Chosen DW mode id (companion / coach / planner / etc.)
+  mode: text("mode").notNull(),
+  // How the choice was made.
+  source: text("source").notNull().$type<DWRolePickSource>(),
+  // Picker confidence (0..1). 1 when locked.
+  confidence: numeric("confidence", { precision: 4, scale: 3 }).notNull(),
+  // Picker reason — short string for diagnostics.
+  reason: text("reason"),
+  // Was the user-supplied lock active for this turn?
+  locked: boolean("locked").notNull().default(false),
+  // Did we actually apply the picked mode to the prompt? (false = below threshold)
+  applied: boolean("applied").notNull().default(false),
+  // sha256 of the message, first 16 hex chars — privacy-preserving "same message?" key.
+  messageHash: text("message_hash"),
+  // Char length of the original message — helps separate one-liners from essays.
+  messageLength: integer("message_length"),
+  // If the user locked a different lane on the next turn, we point back at the pick that was overridden.
+  overriddenByMode: text("overridden_by_mode"),
+  overriddenAt: timestamp("overridden_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDwRolePickSchema = createInsertSchema(dwRolePicks).omit({
+  id: true,
+  createdAt: true,
+  overriddenByMode: true,
+  overriddenAt: true,
+});
+export type DwRolePick = typeof dwRolePicks.$inferSelect;
+export type InsertDwRolePick = z.infer<typeof insertDwRolePickSchema>;
 
 // ─── Finances ────────────────────────────────────────────────────────────────
 // Core tables for the Finances workspace: accounts, transactions, budgets,

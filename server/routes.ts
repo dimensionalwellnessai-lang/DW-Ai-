@@ -25,6 +25,7 @@ import { registerAccountabilityRoutes } from "./routes/accountability-routes";
 import { registerRealtimeRoutes } from "./routes/realtime";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
 import { registerTriggerRoutes } from "./routes/triggers";
+import { registerAdminProgressRoutes } from "./routes/admin-progress";
 import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
 import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
@@ -35,6 +36,7 @@ import { requirePaidOrQuota } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { pickDWRole, PICKER_APPLY_THRESHOLD } from "./lib/dw-role-picker";
+import { logDwRolePick } from "./lib/dw-role-pick-log";
 import { DW_MODES, getDWMode } from "@shared/dw-persona";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { preWarmMeditationAudio } from "./routes/spiritual";
@@ -499,6 +501,7 @@ export async function registerRoutes(
   // Life System pillars / projects / generated document
   registerLifeSystemPillarRoutes(app);
   registerTriggerRoutes(app);
+  registerAdminProgressRoutes(app);
 
   // Finances: accounts, transactions, budgets, investments, net-worth, AI chat
   registerFinancesRoutes(app);
@@ -2122,6 +2125,18 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
       const modeDef = DW_MODES.find((m) => m.id === activeMode)!;
       const modeAddendum = modeDef.systemAddendum;
 
+      logDwRolePick({
+        userId,
+        surface: "chat",
+        message,
+        mode: lockedMode ?? (picked?.mode ?? "companion"),
+        source: lockedMode ? "locked" : (picked?.source ?? "fallback"),
+        confidence: lockedMode ? 1 : (picked?.confidence ?? 0),
+        reason: lockedMode ? "user-locked lane" : (picked?.reason ?? null),
+        locked: Boolean(lockedMode),
+        applied: Boolean(lockedMode) || Boolean(picked && picked.confidence >= PICKER_APPLY_THRESHOLD),
+      });
+
       const rawResponse = await generateChatResponse(
         message,
         conversationHistory || [],
@@ -2359,6 +2374,18 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
           ? pickedSmart.mode
           : "companion");
       const smartModeDef = DW_MODES.find((m) => m.id === activeSmartMode)!;
+
+      logDwRolePick({
+        userId,
+        surface: "smart",
+        message,
+        mode: lockedSmartMode ?? (pickedSmart?.mode ?? "companion"),
+        source: lockedSmartMode ? "locked" : (pickedSmart?.source ?? "fallback"),
+        confidence: lockedSmartMode ? 1 : (pickedSmart?.confidence ?? 0),
+        reason: lockedSmartMode ? "user-locked lane" : (pickedSmart?.reason ?? null),
+        locked: Boolean(lockedSmartMode),
+        applied: Boolean(lockedSmartMode) || Boolean(pickedSmart && pickedSmart.confidence >= PICKER_APPLY_THRESHOLD),
+      });
       const ctxOverride =
         typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
           ? CONTEXT_SYSTEM_OVERRIDES[context]

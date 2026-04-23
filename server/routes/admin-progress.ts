@@ -6,6 +6,20 @@ import { storage } from "../storage";
 import { requireAuth, requireAdmin, detectMoodFromBiometrics } from "./_shared";
 import { insertAstrologyPredictionSchema, insertWearableDataSchema, insertWearableDeviceSchema } from "@shared/schema";
 export function registerAdminProgressRoutes(app: Express): void {
+// ── DW Role Picker telemetry ──────────────────────────────────────────────
+  // Lane usage + override rate per lane. Used to tune rules in
+  // server/lib/dw-role-picker.ts and detect drift over time.
+  app.get("/api/admin/dw-role-picks/summary", requireAdmin, async (req, res) => {
+    try {
+      const days = Math.max(1, Math.min(180, parseInt(String(req.query.days ?? "30"), 10) || 30));
+      const stats = await storage.getDwRolePickStats(days);
+      res.json(stats);
+    } catch (err) {
+      console.error("[admin] dw-role-picks summary failed", err);
+      res.status(500).json({ error: "Failed to load picker stats" });
+    }
+  });
+
   app.get("/api/auth/role", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

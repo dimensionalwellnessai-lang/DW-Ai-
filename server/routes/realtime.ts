@@ -5,6 +5,7 @@ import { requireAuth, requirePaidOrQuota } from "./_shared";
 import { storage } from "../storage";
 import { getUserContextSnapshot, toPromptString } from "../lib/user-context";
 import { pickDWRole, pickInitialRole, PICKER_APPLY_THRESHOLD } from "../lib/dw-role-picker";
+import { logDwRolePick } from "../lib/dw-role-pick-log";
 import {
   DW_MODES,
   DW_REALTIME_MODEL,
@@ -155,6 +156,17 @@ export function registerRealtimeRoutes(app: Express): void {
     if (parsed.data.lockedMode) {
       const locked = getDWMode(parsed.data.lockedMode);
       const def = DW_MODES.find((m) => m.id === locked)!;
+      logDwRolePick({
+        userId,
+        surface: "realtime",
+        message: parsed.data.message,
+        mode: locked,
+        source: "locked",
+        confidence: 1,
+        reason: "user-locked lane",
+        locked: true,
+        applied: true,
+      });
       return res.json({
         mode: locked,
         label: def.label,
@@ -173,12 +185,24 @@ export function registerRealtimeRoutes(app: Express): void {
     }
     const picked = await pickDWRole(parsed.data.message, snap);
     const def = DW_MODES.find((m) => m.id === picked.mode)!;
+    const applied = picked.confidence >= PICKER_APPLY_THRESHOLD;
+    logDwRolePick({
+      userId,
+      surface: "realtime",
+      message: parsed.data.message,
+      mode: picked.mode,
+      source: picked.source,
+      confidence: picked.confidence,
+      reason: picked.reason,
+      locked: false,
+      applied,
+    });
     res.json({
       mode: picked.mode,
       label: def.label,
       reason: picked.reason,
       confidence: picked.confidence,
-      applied: picked.confidence >= PICKER_APPLY_THRESHOLD,
+      applied,
       locked: false,
     });
   });
