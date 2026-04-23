@@ -268,10 +268,13 @@ import {
   type InsertMoodInsight,
   dailyBriefs,
   dailyBriefTaps,
+  dailyBriefPreferences,
   type DailyBrief,
   type InsertDailyBrief,
   type DailyBriefTap,
   type InsertDailyBriefTap,
+  type DailyBriefPreferences,
+  type InsertDailyBriefPreferences,
   type DailyBriefVariant,
   dwFollowups,
   type DwFollowup,
@@ -403,6 +406,9 @@ export interface IStorage {
   upsertDailyBrief(brief: InsertDailyBrief): Promise<DailyBrief>;
   recordDailyBriefTap(tap: InsertDailyBriefTap): Promise<DailyBriefTap>;
   getDailyBriefTapRollup(userId: string, sinceDays?: number): Promise<Array<{ kind: string; route: string; count: number }>>;
+  getDailyBriefPreferences(userId: string): Promise<DailyBriefPreferences | undefined>;
+  upsertDailyBriefPreferences(prefs: InsertDailyBriefPreferences): Promise<DailyBriefPreferences>;
+  deleteDailyBriefsForDay(userId: string, dateKey: string): Promise<void>;
   getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]>;
 
   getCheckIns(userId: string): Promise<CheckIn[]>;
@@ -1368,6 +1374,31 @@ export class DatabaseStorage implements IStorage {
       .groupBy(dailyBriefTaps.bulletKind, dailyBriefTaps.route)
       .orderBy(desc(sql`count(*)`));
     return rows;
+  }
+
+  async getDailyBriefPreferences(userId: string): Promise<DailyBriefPreferences | undefined> {
+    const [row] = await db.select()
+      .from(dailyBriefPreferences)
+      .where(eq(dailyBriefPreferences.userId, userId))
+      .limit(1);
+    return row;
+  }
+
+  async upsertDailyBriefPreferences(prefs: InsertDailyBriefPreferences): Promise<DailyBriefPreferences> {
+    const { userId, ...rest } = prefs;
+    const [row] = await db.insert(dailyBriefPreferences)
+      .values({ ...prefs, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: dailyBriefPreferences.userId,
+        set: { ...rest, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
+
+  async deleteDailyBriefsForDay(userId: string, dateKey: string): Promise<void> {
+    await db.delete(dailyBriefs)
+      .where(and(eq(dailyBriefs.userId, userId), eq(dailyBriefs.dateKey, dateKey)));
   }
 
   async getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]> {

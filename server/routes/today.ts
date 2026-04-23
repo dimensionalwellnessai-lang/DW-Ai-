@@ -11,10 +11,44 @@ import {
 import {
   dailyBriefBulletKindEnum,
   dailyBriefVariantEnum,
+  insertDailyBriefPreferencesSchema,
   type BriefBullet,
   type DailyBrief,
+  type DailyBriefPreferences,
   type DailyBriefVariant,
 } from "@shared/schema";
+
+const PREFERENCE_DEFAULTS = {
+  includeMood: true,
+  includeSleep: true,
+  includeFinance: true,
+  includeRelationship: true,
+  includeSpirit: true,
+  includePlan: true,
+  includeTrigger: true,
+  toneNote: null as string | null,
+};
+
+function preferencesPayload(prefs: DailyBriefPreferences | undefined) {
+  if (!prefs) return { ...PREFERENCE_DEFAULTS };
+  return {
+    includeMood: prefs.includeMood,
+    includeSleep: prefs.includeSleep,
+    includeFinance: prefs.includeFinance,
+    includeRelationship: prefs.includeRelationship,
+    includeSpirit: prefs.includeSpirit,
+    includePlan: prefs.includePlan,
+    includeTrigger: prefs.includeTrigger,
+    toneNote: prefs.toneNote ?? null,
+  };
+}
+
+const updatePreferencesSchema = insertDailyBriefPreferencesSchema
+  .omit({ userId: true })
+  .partial()
+  .extend({
+    toneNote: z.string().trim().max(280).nullable().optional(),
+  });
 
 const bulletTapSchema = z.object({
   dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -158,6 +192,55 @@ export function registerTodayRoutes(app: Express): void {
     } catch (err) {
       console.error("[today] GET /api/today/bullet-taps/rollup failed:", err);
       res.status(500).json({ error: "Failed to load bullet tap rollup" });
+    }
+  });
+
+  app.get("/api/today/preferences", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const prefs = await storage.getDailyBriefPreferences(userId);
+      res.json(preferencesPayload(prefs));
+    } catch (err) {
+      console.error("[today] GET /api/today/preferences failed:", err);
+      res.status(500).json({ error: "Failed to load brief preferences" });
+    }
+  });
+
+  app.put("/api/today/preferences", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = updatePreferencesSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid preferences", issues: parsed.error.issues });
+      }
+      const tzParsed = tzQuerySchema.safeParse({ tz: req.body?.tz ?? req.query?.tz });
+      const tz = tzParsed.success ? tzParsed.data.tz : undefined;
+
+      const existing = await storage.getDailyBriefPreferences(userId);
+      const base = preferencesPayload(existing);
+      const next = { ...base, ...parsed.data };
+      const toneNote = typeof next.toneNote === "string" ? next.toneNote.trim() : next.toneNote;
+
+      const saved = await storage.upsertDailyBriefPreferences({
+        userId,
+        includeMood: next.includeMood,
+        includeSleep: next.includeSleep,
+        includeFinance: next.includeFinance,
+        includeRelationship: next.includeRelationship,
+        includeSpirit: next.includeSpirit,
+        includePlan: next.includePlan,
+        includeTrigger: next.includeTrigger,
+        toneNote: toneNote ? toneNote : null,
+      });
+
+      // Invalidate today's cached briefs so the next view reflects the change.
+      const { dateKey } = resolveLocalDay(tz);
+      await storage.deleteDailyBriefsForDay(userId, dateKey);
+
+      res.json(preferencesPayload(saved));
+    } catch (err) {
+      console.error("[today] PUT /api/today/preferences failed:", err);
+      res.status(500).json({ error: "Failed to save brief preferences" });
     }
   });
 

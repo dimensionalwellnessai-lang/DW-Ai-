@@ -6,7 +6,7 @@
  * surface. A manual refresh button forces regeneration via POST /api/today/refresh.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -19,9 +19,22 @@ import {
   Compass,
   CalendarClock,
   LifeBuoy,
+  Settings2,
   type LucideIcon,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -99,6 +112,31 @@ function isSameLocalDay(generatedAt: string): boolean {
   }
 }
 
+interface BriefPreferences {
+  includeMood: boolean;
+  includeSleep: boolean;
+  includeFinance: boolean;
+  includeRelationship: boolean;
+  includeSpirit: boolean;
+  includePlan: boolean;
+  includeTrigger: boolean;
+  toneNote: string | null;
+}
+
+const PREF_KIND_LABELS: Array<{
+  key: keyof Omit<BriefPreferences, "toneNote">;
+  label: string;
+  description: string;
+}> = [
+  { key: "includeMood", label: "Mood", description: "How you're feeling, energy, clarity." },
+  { key: "includeSleep", label: "Sleep", description: "Last night's rest and recovery." },
+  { key: "includeFinance", label: "Finance", description: "Money signals and budget nudges." },
+  { key: "includeRelationship", label: "Relationships", description: "People, birthdays, check-ins." },
+  { key: "includeSpirit", label: "Spirit", description: "Gratitude, meditation, intention." },
+  { key: "includePlan", label: "Plans", description: "Today's schedule and active goals." },
+  { key: "includeTrigger", label: "Triggers", description: "Emotional regulation cues." },
+];
+
 interface TodayBriefCardProps {
   className?: string;
 }
@@ -107,6 +145,7 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const tz = useMemo(() => getTimezone(), []);
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const queryKey = useMemo(() => ["/api/today", tz ?? "utc"] as const, [tz]);
 
@@ -160,6 +199,51 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
     }
     navigate(b.route);
   };
+
+  const prefsQ = useQuery<BriefPreferences | null>({
+    queryKey: ["/api/today/preferences"],
+    queryFn: async () => {
+      const res = await fetch("/api/today/preferences", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return (await res.json()) as BriefPreferences;
+    },
+    enabled: prefsOpen,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const [prefsDraft, setPrefsDraft] = useState<BriefPreferences | null>(null);
+  useEffect(() => {
+    if (prefsOpen && prefsQ.data && !prefsDraft) {
+      setPrefsDraft(prefsQ.data);
+    }
+    if (!prefsOpen) setPrefsDraft(null);
+  }, [prefsOpen, prefsQ.data, prefsDraft]);
+
+  const savePrefsMutation = useMutation({
+    mutationFn: async (next: BriefPreferences) => {
+      const res = await apiRequest("PUT", "/api/today/preferences", { ...next, tz });
+      return (await res.json()) as BriefPreferences;
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData(["/api/today/preferences"], saved);
+      // Server cleared today's cached brief; refetch the home card immediately.
+      queryClient.invalidateQueries({ queryKey: ["/api/today"] });
+      toast({
+        title: "Brief preferences saved",
+        description: "DW will use these for your next brief.",
+      });
+      setPrefsOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't save preferences",
+        description: "Try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const refreshMutation = useMutation({
     mutationFn: async () => {
@@ -244,16 +328,27 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refreshMutation.mutate()}
-          disabled={refreshMutation.isPending}
-          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Regenerate today's brief"
-          data-testid="btn-today-brief-refresh"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setPrefsOpen(true)}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Customize today's brief"
+            data-testid="btn-today-brief-customize"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => refreshMutation.mutate()}
+            disabled={refreshMutation.isPending}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Regenerate today's brief"
+            data-testid="btn-today-brief-refresh"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
       <p
@@ -262,6 +357,22 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
       >
         {brief.summaryText}
       </p>
+
+      <CustomizeBriefSheet
+        open={prefsOpen}
+        onOpenChange={setPrefsOpen}
+        loading={prefsQ.isLoading && !prefsDraft}
+        draft={prefsDraft}
+        setDraft={setPrefsDraft}
+        saving={savePrefsMutation.isPending}
+        onSave={(p) => savePrefsMutation.mutate(p)}
+      />
+
+      {brief.bullets.length === 0 && (
+        <p className="text-xs text-muted-foreground" data-testid="text-today-brief-no-bullets">
+          No bullets to show right now — try the customize button to widen what DW surfaces.
+        </p>
+      )}
 
       {brief.bullets.length > 0 && (
         <ul className="space-y-1.5" data-testid="list-today-brief-bullets">
@@ -295,5 +406,135 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
         </ul>
       )}
     </div>
+  );
+}
+
+interface CustomizeBriefSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  loading: boolean;
+  draft: BriefPreferences | null;
+  setDraft: (next: BriefPreferences | null) => void;
+  saving: boolean;
+  onSave: (prefs: BriefPreferences) => void;
+}
+
+function CustomizeBriefSheet({
+  open,
+  onOpenChange,
+  loading,
+  draft,
+  setDraft,
+  saving,
+  onSave,
+}: CustomizeBriefSheetProps) {
+  const noneEnabled = draft
+    ? !PREF_KIND_LABELS.some((k) => draft[k.key])
+    : false;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-md overflow-y-auto"
+        data-testid="sheet-today-brief-customize"
+      >
+        <SheetHeader>
+          <SheetTitle>Customize today's brief</SheetTitle>
+          <SheetDescription>
+            Tell DW what to include and add a one-line tone note. Changes apply to your next brief.
+          </SheetDescription>
+        </SheetHeader>
+
+        {loading || !draft ? (
+          <div className="space-y-3 py-6">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-5 py-5">
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Bullet kinds
+              </p>
+              {PREF_KIND_LABELS.map((k) => (
+                <div
+                  key={k.key}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                >
+                  <div className="min-w-0">
+                    <Label
+                      htmlFor={`pref-${k.key}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {k.label}
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">{k.description}</p>
+                  </div>
+                  <Switch
+                    id={`pref-${k.key}`}
+                    checked={draft[k.key]}
+                    onCheckedChange={(v) => setDraft({ ...draft, [k.key]: v })}
+                    data-testid={`switch-brief-pref-${k.key}`}
+                  />
+                </div>
+              ))}
+              {noneEnabled && (
+                <p
+                  className="text-xs text-destructive"
+                  data-testid="text-brief-pref-none-warning"
+                >
+                  Turn on at least one kind so DW has something to share.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pref-tone-note" className="text-sm font-medium">
+                Tone note (optional)
+              </Label>
+              <Textarea
+                id="pref-tone-note"
+                value={draft.toneNote ?? ""}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    toneNote: e.target.value.length > 0 ? e.target.value : null,
+                  })
+                }
+                placeholder="e.g. Lean spiritual. Always mention sleep hours. Skip money."
+                maxLength={280}
+                rows={3}
+                data-testid="textarea-brief-pref-tone"
+              />
+              <p className="text-[11px] text-muted-foreground text-right">
+                {(draft.toneNote ?? "").length}/280
+              </p>
+            </div>
+          </div>
+        )}
+
+        <SheetFooter className="gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            data-testid="btn-brief-pref-cancel"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => draft && onSave(draft)}
+            disabled={!draft || saving || noneEnabled}
+            data-testid="btn-brief-pref-save"
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

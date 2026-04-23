@@ -12,8 +12,9 @@
 import { openai } from "../openai";
 import { getUserContextSnapshot, toPromptString } from "./user-context";
 import { db } from "../db";
-import { projects } from "@shared/schema";
+import { projects, type DailyBriefPreferences } from "@shared/schema";
 import { and, eq, lt, isNotNull } from "drizzle-orm";
+import { storage } from "../storage";
 
 /** Active plans untouched for 6+ days are flagged as "stalled" in the brief. */
 const STALLED_PLAN_DAYS = 6;
@@ -157,11 +158,34 @@ function extractJsonBlock(text: string): string {
   return trimmed;
 }
 
-function buildSystemPrompt(variant: DailyBriefVariant): string {
+function allowedKindsFromPrefs(
+  prefs: DailyBriefPreferences | undefined,
+): DailyBriefBulletKind[] {
+  if (!prefs) return [...dailyBriefBulletKindEnum];
+  const map: Record<DailyBriefBulletKind, boolean> = {
+    mood: prefs.includeMood,
+    sleep: prefs.includeSleep,
+    finance: prefs.includeFinance,
+    relationship: prefs.includeRelationship,
+    spirit: prefs.includeSpirit,
+    plan: prefs.includePlan,
+    trigger: prefs.includeTrigger,
+  };
+  return dailyBriefBulletKindEnum.filter((k) => map[k]);
+}
+
+function buildSystemPrompt(
+  variant: DailyBriefVariant,
+  allowedKinds: DailyBriefBulletKind[],
+  toneNote: string | null | undefined,
+): string {
   const tone = variant === "tonight"
     ? "It is evening — be reflective and warm. Surface gratitude prompts, ask how the day went, and invite a gentle wind-down."
     : "It is the start of the user's day — be present and forward-looking. Help them know what's true today.";
-  return [
+  const allowedList = allowedKinds.length > 0
+    ? allowedKinds.map((k) => `'${k}'`).join(", ")
+    : "(none — return an empty bullets array)";
+  const lines = [
     "You are DW, a warm, grounded wellness companion. Write the user's unified daily brief.",
     tone,
     "",
@@ -169,14 +193,23 @@ function buildSystemPrompt(variant: DailyBriefVariant): string {
     "- Return ONLY valid JSON, no prose before or after, no markdown fences.",
     "- Shape: { \"summaryText\": string, \"bullets\": Array<{ kind, text, route, importance }> }",
     "- summaryText: 2–3 sentences, ≤ 320 chars total, in DW's voice. No greeting (the UI handles greeting). Reference what's actually true from the context.",
-    "- bullets: 3–5 specific, actionable items. Skip a domain if there is no real signal.",
-    "- bullet.kind ∈ ['mood','sleep','finance','relationship','spirit','plan','trigger']",
+    "- bullets: up to 5 specific, actionable items. Skip a domain if there is no real signal.",
+    `- bullet.kind MUST be one of: [${allowedList}]. Do not produce bullets of any other kind — the user has turned those off.`,
     "- bullet.text: ≤ 140 chars, concrete (numbers, names, days), DW's voice. Never an empty platitude.",
     "- bullet.route: in-app path like '/mood', '/finances', '/relationships', '/spiritual', '/calendar', '/body', '/life-system/pillar/emotional_regulation'. Never an external URL.",
     "- bullet.importance: 1 (urgent), 2 (notable), 3 (nice-to-know).",
     "- If a domain has no data (e.g. no sleep recorded), either omit the bullet or invite the user to connect/log it.",
     "- Never invent data. If the context says nothing about money, do not write a money bullet.",
-  ].join("\n");
+  ];
+  const trimmedTone = (toneNote ?? "").trim();
+  if (trimmedTone) {
+    lines.push(
+      "",
+      "USER TONE PREFERENCE (treat as a soft instruction, never break the rules above):",
+      trimmedTone.slice(0, 280),
+    );
+  }
+  return lines.join("\n");
 }
 
 export async function generateBriefForUser(
@@ -184,8 +217,13 @@ export async function generateBriefForUser(
   variant: DailyBriefVariant,
   dateKey: string,
 ): Promise<GeneratedBrief> {
-  const snapshot = await getUserContextSnapshot(userId);
+  const [snapshot, prefs] = await Promise.all([
+    getUserContextSnapshot(userId),
+    storage.getDailyBriefPreferences(userId),
+  ]);
   const contextBlock = toPromptString(snapshot);
+  const allowedKinds = allowedKindsFromPrefs(prefs);
+  const allowedSet = new Set<DailyBriefBulletKind>(allowedKinds);
 
   const userPrompt = [
     `Local date: ${dateKey} (${variant} variant).`,
@@ -203,7 +241,7 @@ export async function generateBriefForUser(
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: buildSystemPrompt(variant) },
+        { role: "system", content: buildSystemPrompt(variant, allowedKinds, prefs?.toneNote ?? null) },
         { role: "user", content: userPrompt },
       ],
       max_tokens: 600,
@@ -218,7 +256,7 @@ export async function generateBriefForUser(
     summaryText = typeof parsed.summaryText === "string"
       ? parsed.summaryText.trim().slice(0, 600)
       : "";
-    bullets = sanitizeBullets(parsed.bullets);
+    bullets = sanitizeBullets(parsed.bullets).filter((b) => allowedSet.has(b.kind));
   } catch (err) {
     console.error("[today-brief] OpenAI call failed:", err);
   }
@@ -230,7 +268,8 @@ export async function generateBriefForUser(
   }
   // Surface stalled plans regardless of whether the LLM produced bullets — the
   // user's plans deserve a gentle nudge even when other signals are present.
-  const stalled = await getStalledPlansForUser(userId);
+  // Skip when the user has turned plan bullets off in preferences.
+  const stalled = allowedSet.has("plan") ? await getStalledPlansForUser(userId) : [];
   const stalledBullets: BriefBullet[] = stalled.map((p) => ({
     kind: "plan",
     text: `"${p.name}" hasn't moved in ${p.daysSince} days — pick it back up?`,
@@ -239,7 +278,7 @@ export async function generateBriefForUser(
   }));
 
   if (bullets.length === 0) {
-    bullets = buildFallbackBullets(snapshot, variant);
+    bullets = buildFallbackBullets(snapshot, variant).filter((b) => allowedSet.has(b.kind));
   }
   // Prepend stalled-plan nudges (capped) so they're visible near the top.
   if (stalledBullets.length > 0) {

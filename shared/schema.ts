@@ -3019,6 +3019,34 @@ export const insertDailyBriefTapSchema = createInsertSchema(dailyBriefTaps, {
 export type DailyBriefTap = typeof dailyBriefTaps.$inferSelect;
 export type InsertDailyBriefTap = z.infer<typeof insertDailyBriefTapSchema>;
 
+// User-tunable preferences for the daily brief. One row per user.
+// Toggles control which bullet kinds the brief is allowed to surface; the
+// optional `toneNote` is a free-text instruction (e.g. "lean spiritual",
+// "always include a sleep number, never include money").
+export const dailyBriefPreferences = pgTable("daily_brief_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  includeMood: boolean("include_mood").notNull().default(true),
+  includeSleep: boolean("include_sleep").notNull().default(true),
+  includeFinance: boolean("include_finance").notNull().default(true),
+  includeRelationship: boolean("include_relationship").notNull().default(true),
+  includeSpirit: boolean("include_spirit").notNull().default(true),
+  includePlan: boolean("include_plan").notNull().default(true),
+  includeTrigger: boolean("include_trigger").notNull().default(true),
+  toneNote: text("tone_note"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dailyBriefPreferencesRelations = relations(dailyBriefPreferences, ({ one }) => ({
+  user: one(users, { fields: [dailyBriefPreferences.userId], references: [users.id] }),
+}));
+
+export const insertDailyBriefPreferencesSchema = createInsertSchema(dailyBriefPreferences, {
+  toneNote: z.string().trim().max(280).optional().nullable(),
+}).omit({ id: true, updatedAt: true });
+export type DailyBriefPreferences = typeof dailyBriefPreferences.$inferSelect;
+export type InsertDailyBriefPreferences = z.infer<typeof insertDailyBriefPreferencesSchema>;
+
 // DW Follow-ups – AI-generated follow-up questions/prompts from conversations
 export const dwFollowups = pgTable("dw_followups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
