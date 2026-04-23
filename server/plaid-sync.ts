@@ -21,8 +21,10 @@ import {
 } from "plaid";
 import { storage } from "./storage";
 import { decryptSecret } from "./routes/_encryption";
-import { isUserInShard } from "./push";
-import type { PlaidItem } from "@shared/schema";
+import { isUserInShard, isInQuietHours, sendPushToUser } from "./push";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { notificationPreferences, type PlaidItem } from "@shared/schema";
 
 const PLAID_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // every 4 hours
 const STARTUP_DELAY_MS = 60 * 1000; // wait a minute after boot before first run
@@ -236,15 +238,37 @@ export async function maybeNotifyReconnect(
   if (!fresh) return;
   if (fresh.errorNotifiedAt) return;
   const { title, body } = reconnectMessageFor(code);
+  const fullBody = `${item.institutionName || "Your bank"}: ${body}`;
   await storage.createNotification({
     userId: item.userId,
     type: "plaid_reconnect",
     title,
-    body: `${item.institutionName || "Your bank"}: ${body}`,
+    body: fullBody,
     actionUrl: "/finances",
     metadata: { plaidItemId: item.itemId, code },
   });
   await storage.markPlaidItemErrorNotified(item.itemId);
+
+  // Best-effort push so users who aren't actively in the app still see the
+  // reconnect prompt on their device. The in-app notification above is the
+  // source of truth; any failure here is logged and swallowed.
+  try {
+    const [prefs] = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, item.userId))
+      .limit(1);
+    if (prefs && isInQuietHours(new Date(), prefs)) return;
+    await sendPushToUser(item.userId, {
+      title,
+      body: fullBody,
+      notificationType: "plaid_reconnect",
+      url: "/finances",
+      tag: `plaid-reconnect:${item.itemId}`,
+    });
+  } catch (err) {
+    console.error("[plaid] reconnect push failed", err);
+  }
 }
 
 /**

@@ -383,7 +383,11 @@ interface ReminderPayload {
   // "relationship_nudge" reuses the same web-push transport as the task
   // reminders but renders with the default open/dismiss actions in sw.js
   // rather than the pre/post-task quick-reply buttons.
-  notificationType: "pre_task" | "post_task" | "relationship_nudge";
+  notificationType:
+    | "pre_task"
+    | "post_task"
+    | "relationship_nudge"
+    | "plaid_reconnect";
   url?: string;
   // Required for pre/post-task reminders so the service worker can post the
   // quick-reply back to the app; optional for other notification types that
@@ -538,7 +542,7 @@ function parseTimeOfDay(value: string | null | undefined, fallback: string) {
   return { h: isFinite(h) ? h : 0, m: isFinite(m) ? m : 0 };
 }
 
-function isInQuietHours(when: Date, prefs: NotificationPreferences): boolean {
+export function isInQuietHours(when: Date, prefs: NotificationPreferences): boolean {
   if (!prefs.quietHoursEnabled) return false;
   const start = parseTimeOfDay(prefs.quietHoursStart, "22:00");
   const end = parseTimeOfDay(prefs.quietHoursEnd, "08:00");
