@@ -14,12 +14,14 @@ function setSearch(query: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   setSearch("");
   _resetE2EModeCache();
 });
 
 afterEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   setSearch(originalSearch);
   _resetE2EModeCache();
 });
@@ -29,13 +31,21 @@ describe("isE2ETestMode", () => {
     expect(isE2ETestMode()).toBe(false);
   });
 
-  it("returns true when the URL has ?e2e=1 and persists the flag for the rest of the session", () => {
+  it("returns true when the URL has ?e2e=1 and persists the flag in sessionStorage for the rest of the tab", () => {
     setSearch("?e2e=1");
     expect(isE2ETestMode()).toBe(true);
-    expect(window.localStorage.getItem("dw_e2e")).toBe("1");
+    expect(window.sessionStorage.getItem("dw_e2e")).toBe("1");
+    // We deliberately DO NOT leak the flag into localStorage so a real
+    // user who lands on a `?e2e=1` link doesn't get suppressed forever.
+    expect(window.localStorage.getItem("dw_e2e")).toBeNull();
   });
 
-  it("returns true when localStorage already has the flag (e.g. set by the runner once)", () => {
+  it("returns true when sessionStorage already has the flag (set on a previous page in the same tab)", () => {
+    window.sessionStorage.setItem("dw_e2e", "1");
+    expect(isE2ETestMode()).toBe(true);
+  });
+
+  it("also honours localStorage for runners that set it once across browser contexts", () => {
     window.localStorage.setItem("dw_e2e", "1");
     expect(isE2ETestMode()).toBe(true);
   });

@@ -10,8 +10,14 @@
  *   - `VITE_E2E === "1"` at build time (CI builds)
  *
  * Loading with `?e2e=1` once is enough for the rest of the session: we
- * persist the flag to localStorage so subsequent navigations inside the
- * same test keep tutorials suppressed without re-passing the query param.
+ * persist the flag to `sessionStorage` so subsequent navigations inside
+ * the same test keep tutorials suppressed without re-passing the query
+ * param. `sessionStorage` (not `localStorage`) is intentional — if a real
+ * user ever stumbles onto a `?e2e=1` link, the suppression dies the
+ * moment they close the tab instead of sticking around forever.
+ *
+ * `localStorage.dw_e2e === "1"` is also honoured for runners that prefer
+ * to set it once and reuse the same browser context across pages.
  */
 
 const E2E_STORAGE_KEY = "dw_e2e";
@@ -41,13 +47,19 @@ export function isE2ETestMode(): boolean {
     const params = new URLSearchParams(window.location.search);
     if (params.get("e2e") === "1") {
       try {
-        window.localStorage.setItem(E2E_STORAGE_KEY, "1");
+        // Tab-scoped on purpose: closing the tab clears it.
+        window.sessionStorage.setItem(E2E_STORAGE_KEY, "1");
       } catch {
         // Ignore quota / private-mode errors — the query param alone is fine.
       }
       cached = true;
       return true;
     }
+    if (window.sessionStorage.getItem(E2E_STORAGE_KEY) === "1") {
+      cached = true;
+      return true;
+    }
+    // Cross-context runners that set localStorage once still work.
     if (window.localStorage.getItem(E2E_STORAGE_KEY) === "1") {
       cached = true;
       return true;
