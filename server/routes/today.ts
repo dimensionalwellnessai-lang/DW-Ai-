@@ -113,10 +113,10 @@ export function registerTodayRoutes(app: Express): void {
         return res.status(404).json({ error: "No brief found for that day/variant" });
       }
       const bullets = (brief.bullets ?? []) as BriefBullet[];
-      const match = bullets.some(
+      const matched = bullets.find(
         (b) => b.kind === data.bulletKind && b.route === data.route,
       );
-      if (!match) {
+      if (!matched) {
         return res.status(400).json({ error: "Bullet does not match today's brief" });
       }
 
@@ -134,7 +134,14 @@ export function registerTodayRoutes(app: Express): void {
         }
       }
 
-      await storage.recordDailyBriefTap({ userId, ...data });
+      await storage.recordDailyBriefTap({
+        userId,
+        dateKey: data.dateKey,
+        variant: data.variant,
+        bulletKind: data.bulletKind,
+        route: data.route,
+        importance: matched.importance,
+      });
       res.status(204).end();
     } catch (err) {
       console.error("[today] POST /api/today/bullet-tap failed:", err);
