@@ -29,17 +29,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, parseApiError, queryClient } from "@/lib/queryClient";
 import type { Project, ProjectStatus } from "@shared/schema";
+import { PLAN_TEMPLATES } from "@shared/planTemplates";
 
 type StatusFilter = "all" | ProjectStatus;
 
-const TEMPLATES: Array<{ id: string; label: string; description: string; tags: string[] }> = [
-  { id: "custom", label: "Blank plan", description: "", tags: [] },
-  { id: "workshop", label: "Workshop", description: "Plan a workshop or event end-to-end.", tags: ["purpose", "creation"] },
-  { id: "life-redesign", label: "Life redesign", description: "Reshape a season of your life.", tags: ["identity"] },
-  { id: "trip", label: "Trip", description: "Plan a trip, big or small.", tags: ["environment"] },
-  { id: "project", label: "Project", description: "Build something concrete.", tags: ["creation"] },
-  { id: "creative", label: "Creative work", description: "A piece of writing, art, or making.", tags: ["mind", "creation"] },
-];
+const TEMPLATES = PLAN_TEMPLATES;
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: "Active",
@@ -86,7 +80,7 @@ export default function PlansPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (payload: { name: string; description?: string; dimensionTags?: string[] }) => {
+    mutationFn: async (payload: { name: string; description?: string; dimensionTags?: string[]; templateId?: string }) => {
       const res = await apiRequest("POST", "/api/plans", payload);
       return res.json() as Promise<Project>;
     },
@@ -113,6 +107,7 @@ export default function PlansPage() {
       name: name.trim(),
       description: description.trim() || undefined,
       dimensionTags: tpl && tpl.tags.length > 0 ? tpl.tags : undefined,
+      templateId: tpl && tpl.id !== "custom" ? tpl.id : undefined,
     });
   };
 

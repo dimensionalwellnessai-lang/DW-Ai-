@@ -23,6 +23,7 @@ import {
   type InsertProjectMilestone,
   type InsertProjectArtifact,
 } from "@shared/schema";
+import { getPlanTemplate, PLAN_TEMPLATES } from "@shared/planTemplates";
 import { requireAuth } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
 import { generateChatResponse, openai, getAiConfigStatus } from "../openai";
@@ -195,6 +196,7 @@ const createPlanSchema = z.object({
   name: z.string().min(1).max(160),
   description: z.string().max(2000).optional().nullable(),
   dimensionTags: z.array(z.string().min(1).max(40)).max(8).optional().nullable(),
+  templateId: z.enum(PLAN_TEMPLATES.map((t) => t.id) as [string, ...string[]]).optional(),
 });
 
 const updatePlanSchema = z
@@ -286,6 +288,32 @@ export function registerPlansRoutes(app: Express): void {
         summary: null,
       };
       const created = await storage.createProject(insert);
+
+      // If a non-blank template was chosen, seed its starter milestones and
+      // the opening DW chat message so the new plan isn't a blank page.
+      // Do these synchronously (before responding) so the user sees them
+      // immediately when they open the plan.
+      const tpl = getPlanTemplate(parsed.data.templateId);
+      if (created && tpl && tpl.id !== "custom") {
+        try {
+          for (let i = 0; i < tpl.milestones.length; i++) {
+            await storage.createProjectMilestone(
+              { projectId: created.id, title: tpl.milestones[i], order: i, dueDate: null },
+              req.session.userId!,
+            );
+          }
+          if (tpl.intro) {
+            const insertChat: InsertProjectChat = {
+              projectId: created.id,
+              messages: [{ role: "assistant", content: tpl.intro }],
+            };
+            await storage.createProjectChatForUser(insertChat, req.session.userId!);
+          }
+        } catch (err) {
+          console.error(`[plans] template seeding failed for project=${created.id} template=${tpl.id}:`, err);
+        }
+      }
+
       res.json(created);
       // Backfill the DW one-liner asynchronously so even brand-new plans get a
       // generated summary on the cards (instead of falling back to description).
