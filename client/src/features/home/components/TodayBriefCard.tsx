@@ -6,7 +6,7 @@
  * surface. A manual refresh button forces regeneration via POST /api/today/refresh.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -60,6 +60,35 @@ function getTimezone(): string | undefined {
   }
 }
 
+function msUntilNextBoundary(
+  tz: string | undefined,
+  variant: "morning" | "tonight",
+): number {
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    const parts = Object.fromEntries(
+      fmt.formatToParts(new Date()).map((p) => [p.type, p.value]),
+    );
+    const h = parseInt(parts.hour === "24" ? "0" : parts.hour, 10);
+    const m = parseInt(parts.minute, 10);
+    const s = parseInt(parts.second, 10);
+    if ([h, m, s].some(Number.isNaN)) return 60 * 60 * 1000;
+    const secsIntoDay = h * 3600 + m * 60 + s;
+    const targetSec = variant === "morning" ? 18 * 3600 : 24 * 3600;
+    const remainingSec = targetSec - secsIntoDay;
+    const ms = (Math.max(remainingSec, 0) + 5) * 1000;
+    return Math.min(ms, 25 * 60 * 60 * 1000);
+  } catch {
+    return 60 * 60 * 1000;
+  }
+}
+
 function isSameLocalDay(generatedAt: string): boolean {
   try {
     const gen = new Date(generatedAt);
@@ -93,6 +122,19 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
     staleTime: 15 * 60 * 1000,
     retry: false,
   });
+
+  // Auto-flip from "Today" to "Tonight" (and back at midnight) without
+  // requiring the user to pull-to-refresh. Schedules a single timer at the
+  // next variant boundary in the user's local timezone.
+  useEffect(() => {
+    const variant = briefQ.data?.variant;
+    if (!variant) return;
+    const ms = msUntilNextBoundary(tz, variant);
+    const id = window.setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey });
+    }, ms);
+    return () => window.clearTimeout(id);
+  }, [briefQ.data?.variant, briefQ.data?.dateKey, tz, queryKey]);
 
   const tapMutation = useMutation({
     mutationFn: async (input: {
