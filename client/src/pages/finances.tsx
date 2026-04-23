@@ -661,6 +661,7 @@ function TransactionsTab() {
 
 function TransactionList({ txns }: { txns: Transaction[] }) {
   const { data: goals } = useQuery<SavingsGoal[]>({ queryKey: ["/api/finance/goals"] });
+  const { toast } = useToast();
   const goalById = useMemo(() => {
     const m = new Map<string, SavingsGoal>();
     (goals || []).forEach(g => m.set(g.id, g));
@@ -677,13 +678,37 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
     },
   });
 
+  // Re-link a transaction to a different savings goal (or clear it).
+  // Send goalId: null to clear; goalById invalidation refreshes the totals.
+  const relinkMut = useMutation({
+    mutationFn: async (vars: { id: string; goalId: string | null }) => {
+      await apiRequest("PATCH", `/api/finance/transactions/${vars.id}`, { goalId: vars.goalId });
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/finance/summary"] });
+      const target = vars.goalId ? goalById.get(vars.goalId)?.name ?? "goal" : null;
+      toast({
+        title: target ? `Linked to ${target}` : "Goal link cleared",
+      });
+    },
+    onError: () => {
+      toast({ title: "Couldn't update goal link", variant: "destructive" });
+    },
+  });
+
   if (txns.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-8">No transactions yet.</p>;
   }
+  const NONE = "__none__";
   return (
     <div className="space-y-1">
       {txns.map(t => {
         const linkedGoal = t.goalId ? goalById.get(t.goalId) : null;
+        // Goal linkage is only meaningful for income (amount > 0) — savings
+        // are funded by money coming in. For expenses we just show the row.
+        const showGoalPicker = t.amount > 0 && (goals?.length ?? 0) > 0;
         return (
         <div key={t.id} className="flex items-center justify-between p-2 hover:bg-muted rounded-md" data-testid={`row-txn-${t.id}`}>
           <div className="flex-1 min-w-0">
@@ -700,6 +725,29 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {showGoalPicker && (
+              <Select
+                value={t.goalId ?? NONE}
+                onValueChange={(v) => relinkMut.mutate({ id: t.id, goalId: v === NONE ? null : v })}
+                disabled={relinkMut.isPending}
+              >
+                <SelectTrigger
+                  className="h-7 w-[130px] text-xs px-2 gap-1"
+                  data-testid={`select-goal-link-${t.id}`}
+                  aria-label="Link to savings goal"
+                >
+                  <SelectValue placeholder="No goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE} data-testid={`option-goal-none-${t.id}`}>No goal</SelectItem>
+                  {(goals || []).map(g => (
+                    <SelectItem key={g.id} value={g.id} data-testid={`option-goal-${g.id}-${t.id}`}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <span className={`font-medium ${t.amount < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`} data-testid={`text-amount-${t.id}`}>
               {t.amount < 0 ? "-" : "+"}{fmtMoney(Math.abs(t.amount))}
             </span>

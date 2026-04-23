@@ -147,6 +147,40 @@ export function registerFinancesRoutes(app: Express) {
     }
   });
 
+  app.patch("/api/finance/transactions/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      // Only let users patch fields that make sense from the UI; goalId is
+      // the primary one (re-link to a different savings goal or clear it).
+      const patchSchema = z.object({
+        goalId: z.string().uuid().nullable().optional(),
+        amount: z.number().optional(),
+        category: z.string().min(1).max(80).optional(),
+        merchant: z.string().max(160).nullable().optional(),
+        note: z.string().max(500).nullable().optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        accountId: z.string().nullable().optional(),
+      }).strict();
+      const parsed = patchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid patch", issues: parsed.error.issues });
+      }
+      // If they're setting a goal, make sure it belongs to them.
+      if (parsed.data.goalId) {
+        const goals = await storage.getSavingsGoals(userId);
+        if (!goals.some(g => g.id === parsed.data.goalId)) {
+          return res.status(400).json({ error: "Linked savings goal not found" });
+        }
+      }
+      const row = await storage.updateTransaction(req.params.id, userId, parsed.data);
+      if (!row) return res.status(404).json({ error: "Transaction not found" });
+      res.json(row);
+    } catch (err) {
+      console.error("[finance] patch transaction", err);
+      res.status(500).json({ error: "Failed to update transaction" });
+    }
+  });
+
   app.delete("/api/finance/transactions/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;

@@ -4189,6 +4189,50 @@ export class DatabaseStorage implements IStorage {
     }
     return result.length > 0;
   }
+
+  // Patch an existing transaction (manual or Plaid). When goalId or amount
+  // change, diff the credit each goal got: subtract the old credit from the
+  // old goal and add the new credit to the new goal so totals stay correct.
+  // A "credit" only counts when amount > 0 (income), matching create/delete.
+  async updateTransaction(
+    id: string,
+    userId: string,
+    patch: Partial<Pick<InsertTransaction, "goalId" | "amount" | "category" | "merchant" | "note" | "date" | "accountId">>,
+  ): Promise<Transaction | undefined> {
+    const existing = await db.select().from(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .limit(1);
+    const before = existing[0];
+    if (!before) return undefined;
+
+    // Only apply keys that were actually provided (allow null for goalId).
+    const set: Record<string, unknown> = {};
+    if ("goalId" in patch) set.goalId = patch.goalId ?? null;
+    if ("amount" in patch && typeof patch.amount === "number") set.amount = patch.amount;
+    if ("category" in patch && typeof patch.category === "string") set.category = patch.category;
+    if ("merchant" in patch) set.merchant = patch.merchant ?? null;
+    if ("note" in patch) set.note = patch.note ?? null;
+    if ("date" in patch && typeof patch.date === "string") set.date = patch.date;
+    if ("accountId" in patch) set.accountId = patch.accountId ?? null;
+    if (Object.keys(set).length === 0) return before;
+
+    const [after] = await db.update(transactions)
+      .set(set)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .returning();
+    if (!after) return undefined;
+
+    const oldCredit = before.goalId && before.amount > 0 ? before.amount : 0;
+    const newCredit = after.goalId && after.amount > 0 ? after.amount : 0;
+
+    if (before.goalId && oldCredit > 0 && (before.goalId !== after.goalId || oldCredit !== newCredit)) {
+      await this.adjustSavingsGoalAmount(before.goalId, userId, -oldCredit);
+    }
+    if (after.goalId && newCredit > 0 && (before.goalId !== after.goalId || oldCredit !== newCredit)) {
+      await this.adjustSavingsGoalAmount(after.goalId, userId, newCredit);
+    }
+    return after;
+  }
   async deleteTransactionByPlaidId(plaidTransactionId: string, userId: string): Promise<void> {
     await db.delete(transactions)
       .where(and(eq(transactions.plaidTransactionId, plaidTransactionId), eq(transactions.userId, userId)));
