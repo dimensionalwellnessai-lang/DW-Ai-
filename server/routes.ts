@@ -640,6 +640,49 @@ export async function registerRoutes(
     message: { error: "Too many chat requests. Please slow down and try again shortly." },
   });
 
+  // Throttle for unauthenticated auth endpoints (register / login). Tight
+  // enough to make credential-stuffing painful without blocking real users
+  // who mistype their password a couple of times.
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many authentication attempts. Please try again later." },
+  });
+
+  // Password reset endpoints both send email — clamp them tighter so we
+  // can't be turned into a spam relay against arbitrary inboxes.
+  const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many password reset requests. Please try again later." },
+  });
+
+  // Public feedback / support form endpoints. They both write to the DB
+  // and/or send email; without a session there's nothing to tie an abuser
+  // to, so per-IP throttling is our only defence.
+  const feedbackLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many submissions. Please try again later." },
+  });
+
+  // Generic AI generator endpoints exposed without auth (workout / meditation
+  // / learn-mode helpers, transcription). They each call OpenAI under the
+  // hood so unbounded requests cost real money.
+  const publicAiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many AI requests. Please slow down and try again shortly." },
+  });
+
   app.get("/api/auth/google/callback", (_req, res, next) => {
     if (!googleClientId || !googleClientSecret) {
       return res.redirect("/login?error=google_not_configured");
@@ -823,7 +866,7 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       // Log device/user-agent info for debugging (dev mode only)
       if (process.env.NODE_ENV === "development") {
@@ -974,7 +1017,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLimiter, async (req, res) => {
     try {
       const { email, password, rememberMe } = req.body;
       const normalizedEmail = email.toLowerCase().trim();
@@ -1111,7 +1154,7 @@ export async function registerRoutes(
   // The previous in-line stubs (simulated upgrade/restore) were removed when
   // the real Stripe paywall shipped.
 
-  app.post("/api/feedback", async (req, res) => {
+  app.post("/api/feedback", feedbackLimiter, async (req, res) => {
     try {
       const { category, message, pageContext, energyLevel, metadata } = req.body;
       if (!category || !message) {
@@ -1165,7 +1208,7 @@ export async function registerRoutes(
     }).nullable().optional(),
   });
 
-  app.post("/api/support/report", async (req, res) => {
+  app.post("/api/support/report", feedbackLimiter, async (req, res) => {
     const parse = supportReportSchema.safeParse(req.body);
     if (!parse.success) {
       return res.status(400).json({ error: "Invalid report data", details: parse.error.flatten() });
@@ -1669,7 +1712,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  app.post("/api/auth/forgot-password", passwordResetLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -1703,7 +1746,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/auth/reset-password", async (req, res) => {
+  app.post("/api/auth/reset-password", passwordResetLimiter, async (req, res) => {
     try {
       const { token, password } = req.body;
       if (!token || !password) {
@@ -1953,7 +1996,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   });
 
   // AI-powered ingredient substitutes endpoint
-  app.post("/api/ingredient-substitutes", async (req, res) => {
+  app.post("/api/ingredient-substitutes", publicAiLimiter, async (req, res) => {
     try {
       const { ingredient, context, excludedIngredients } = req.body;
       
@@ -1972,7 +2015,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   });
 
   // Generalized alternatives endpoint for all domains
-  app.post("/api/alternatives", async (req, res) => {
+  app.post("/api/alternatives", publicAiLimiter, async (req, res) => {
     try {
       const { domain, item, context, excludedItems, constraints } = req.body;
       
@@ -1999,7 +2042,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
   });
 
   // Guided CookSession recipe generation
-  app.post("/api/ai/cook-session", async (req, res) => {
+  app.post("/api/ai/cook-session", publicAiLimiter, async (req, res) => {
     try {
       const { query, preferences, mode } = req.body;
       if (!query || typeof query !== "string") {
@@ -2881,7 +2924,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
-  app.post("/api/workout/generate", async (req, res) => {
+  app.post("/api/workout/generate", publicAiLimiter, async (req, res) => {
     try {
       const { preferences } = req.body;
       const userId = (req as any).session?.userId;
@@ -2898,7 +2941,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
-  app.post("/api/meditation/suggest", async (req, res) => {
+  app.post("/api/meditation/suggest", publicAiLimiter, async (req, res) => {
     try {
       const { preferences } = req.body;
       const userId = (req as any).session?.userId;
@@ -2915,7 +2958,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     }
   });
 
-  app.post("/api/learn-mode/question", async (req, res) => {
+  app.post("/api/learn-mode/question", publicAiLimiter, async (req, res) => {
     try {
       const { previousAnswers, focusArea } = req.body;
       const result = await generateLearnModeQuestion(previousAnswers || [], focusArea);
@@ -3103,7 +3146,7 @@ Return ONLY this JSON:
   });
 
   // DW Explain — inline educational explanations personalized to the user's context
-  app.post("/api/ai/explain", async (req, res) => {
+  app.post("/api/ai/explain", publicAiLimiter, async (req, res) => {
     try {
       const { topic, userContext } = req.body as {
         topic: string;
@@ -3140,7 +3183,7 @@ Return ONLY this JSON:
   });
 
   // Context-aware transcript correction — fix Whisper misrecognitions using conversation history
-  app.post("/api/ai/fix-transcript", async (req, res) => {
+  app.post("/api/ai/fix-transcript", publicAiLimiter, async (req, res) => {
     try {
       const { transcript, context } = req.body as {
         transcript: string;
@@ -13354,7 +13397,7 @@ Return ONLY this JSON:
   });
 
   // ── Speech-to-text transcription (Whisper) ───────────────────────────────
-  app.post("/api/transcribe", async (req, res) => {
+  app.post("/api/transcribe", publicAiLimiter, async (req, res) => {
     const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } }).single("audio");
     transcribeUpload(req, res, async (err) => {
       if (err) return res.status(400).json({ error: "File upload failed" });
