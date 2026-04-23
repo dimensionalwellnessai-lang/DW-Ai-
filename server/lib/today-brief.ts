@@ -13,7 +13,7 @@ import { openai } from "../openai";
 import { getUserContextSnapshot, toPromptString } from "./user-context";
 import { db } from "../db";
 import { projects, type DailyBriefPreferences } from "@shared/schema";
-import { and, eq, lt, isNotNull } from "drizzle-orm";
+import { and, asc, eq, lt, isNotNull } from "drizzle-orm";
 import { storage } from "../storage";
 
 /** Active plans untouched for 6+ days are flagged as "stalled" in the brief. */
@@ -35,6 +35,7 @@ async function getStalledPlansForUser(userId: string): Promise<StalledPlan[]> {
         lt(projects.lastActivityAt, cutoff),
       ),
     )
+    .orderBy(asc(projects.lastActivityAt))
     .limit(MAX_STALLED_PLAN_BULLETS);
   return rows
     .filter((r): r is { id: string; name: string; lastActivityAt: Date } => r.lastActivityAt != null)
