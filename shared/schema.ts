@@ -2993,6 +2993,32 @@ export const insertDailyBriefSchema = createInsertSchema(dailyBriefs, {
 export type DailyBrief = typeof dailyBriefs.$inferSelect;
 export type InsertDailyBrief = z.infer<typeof insertDailyBriefSchema>;
 
+// Records each time a user actually taps a bullet on the Today brief.
+// Lets us see which kinds (mood/sleep/finance/...) and which routes get
+// the most engagement so DW can tune what it surfaces. Append-only;
+// no PII beyond userId + the bullet metadata that DW itself produced.
+export const dailyBriefTaps = pgTable("daily_brief_taps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dateKey: text("date_key").notNull(),
+  variant: text("variant").notNull().$type<DailyBriefVariant>(),
+  bulletKind: text("bullet_kind").notNull().$type<DailyBriefBulletKind>(),
+  route: text("route").notNull(),
+  importance: integer("importance"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("daily_brief_taps_user_date_idx").on(t.userId, t.dateKey),
+  index("daily_brief_taps_kind_idx").on(t.bulletKind),
+]);
+
+export const insertDailyBriefTapSchema = createInsertSchema(dailyBriefTaps, {
+  variant: z.enum(dailyBriefVariantEnum),
+  bulletKind: z.enum(dailyBriefBulletKindEnum),
+  importance: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional().nullable(),
+}).omit({ id: true, createdAt: true });
+export type DailyBriefTap = typeof dailyBriefTaps.$inferSelect;
+export type InsertDailyBriefTap = z.infer<typeof insertDailyBriefTapSchema>;
+
 // DW Follow-ups – AI-generated follow-up questions/prompts from conversations
 export const dwFollowups = pgTable("dw_followups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
