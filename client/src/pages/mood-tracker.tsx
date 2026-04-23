@@ -17,13 +17,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import {
-  Activity, BarChart3, Brain, Calendar, CalendarDays, Clock, Heart,
+  Activity, BarChart3, Brain, Calendar, CalendarDays, Clock, Heart, Info,
   Loader2, RefreshCw, Sparkles, TrendingUp, LifeBuoy, Moon,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   BarChart, Bar, Cell,
 } from "recharts";
+import {
+  Tooltip as UiTooltip,
+  TooltipContent as UiTooltipContent,
+  TooltipTrigger as UiTooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -346,6 +352,13 @@ function CorrelationsTab() {
 
   const insights = q.data ?? [];
 
+  const lastComputedAt = insights.reduce<Date | null>((latest, i) => {
+    if (!i.computedAt) return latest;
+    const d = new Date(i.computedAt);
+    if (isNaN(d.getTime())) return latest;
+    return latest && latest > d ? latest : d;
+  }, null);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -363,6 +376,32 @@ function CorrelationsTab() {
           Recompute
         </Button>
       </div>
+
+      {lastComputedAt && insights.length > 0 && (
+        <div
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          data-testid="text-insights-updated"
+        >
+          <span>
+            Updated {formatDistanceToNow(lastComputedAt, { addSuffix: true })}
+          </span>
+          <UiTooltip>
+            <UiTooltipTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                aria-label="About auto-refresh"
+                data-testid="button-insights-updated-info"
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </UiTooltipTrigger>
+            <UiTooltipContent side="top" className="max-w-xs">
+              We recompute these automatically as you log more moods.
+            </UiTooltipContent>
+          </UiTooltip>
+        </div>
+      )}
 
       {q.isLoading ? (
         <Skeleton className="h-32 w-full" />
