@@ -68,18 +68,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  if (process.env.NODE_ENV === "production") {
+  // The runner is idempotent and drift-tolerant — safe to run on every boot
+  // in both dev and prod. It self-heals databases that were originally
+  // bootstrapped via `drizzle-kit push` and stamps every new migration as
+  // applied. See server/migrate.ts.
+  try {
     await runMigrations();
-  } else {
-    // Dev: replay migrations with drift tolerance so any tables/columns
-    // missing from the local DB (most often `reminder_ledger`, `vapid_keys`,
-    // `budgets`, …) get created automatically on boot.
-    try {
-      const { bootstrapDevDb } = await import("./dev-db-bootstrap");
-      await bootstrapDevDb();
-    } catch (err) {
-      console.warn("[dev-db-bootstrap] skipped:", (err as any)?.message ?? err);
-    }
+  } catch (err) {
+    if (process.env.NODE_ENV === "production") throw err;
+    console.warn("[migrate] skipped (dev):", (err as any)?.message ?? err);
   }
 
   await registerRoutes(httpServer, app);
