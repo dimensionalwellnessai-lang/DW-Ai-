@@ -8,11 +8,21 @@ import {
   resolveLocalDay,
   type GeneratedBrief,
 } from "../lib/today-brief";
-import type {
-  BriefBullet,
-  DailyBrief,
-  DailyBriefVariant,
+import {
+  dailyBriefBulletKindEnum,
+  dailyBriefVariantEnum,
+  type BriefBullet,
+  type DailyBrief,
+  type DailyBriefVariant,
 } from "@shared/schema";
+
+const bulletTapSchema = z.object({
+  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  variant: z.enum(dailyBriefVariantEnum),
+  bulletKind: z.enum(dailyBriefBulletKindEnum),
+  route: z.string().min(1).max(200),
+  importance: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional().nullable(),
+});
 
 const tzQuerySchema = z.object({
   tz: z.string().min(1).max(80).optional(),
@@ -79,6 +89,68 @@ export function registerTodayRoutes(app: Express): void {
     } catch (err) {
       console.error("[today] GET /api/today failed:", err);
       res.status(500).json({ error: "Failed to load today's brief" });
+    }
+  });
+
+  // Lightweight in-memory dedupe so a double-tap (or quick double-render) on the
+  // same bullet doesn't create two rows. Per (userId, dateKey, variant, kind, route)
+  // ignored within DEDUPE_MS. Best-effort only; restarts clear it, which is fine.
+  const tapDedupe = new Map<string, number>();
+  const DEDUPE_MS = 3000;
+
+  app.post("/api/today/bullet-tap", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const parsed = bulletTapSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid bullet tap payload", issues: parsed.error.issues });
+    }
+    const data = parsed.data;
+    try {
+      // Integrity check: only accept taps that match a real bullet from THIS
+      // user's brief for that day/variant. Stops clients from forging analytics.
+      const brief = await storage.getDailyBrief(userId, data.dateKey, data.variant);
+      if (!brief) {
+        return res.status(404).json({ error: "No brief found for that day/variant" });
+      }
+      const bullets = (brief.bullets ?? []) as BriefBullet[];
+      const match = bullets.some(
+        (b) => b.kind === data.bulletKind && b.route === data.route,
+      );
+      if (!match) {
+        return res.status(400).json({ error: "Bullet does not match today's brief" });
+      }
+
+      const key = `${userId}|${data.dateKey}|${data.variant}|${data.bulletKind}|${data.route}`;
+      const now = Date.now();
+      const last = tapDedupe.get(key);
+      if (last && now - last < DEDUPE_MS) {
+        return res.status(204).end();
+      }
+      tapDedupe.set(key, now);
+      // Periodic cleanup so the map can't grow unbounded across long uptimes.
+      if (tapDedupe.size > 5000) {
+        for (const [k, t] of tapDedupe) {
+          if (now - t > DEDUPE_MS) tapDedupe.delete(k);
+        }
+      }
+
+      await storage.recordDailyBriefTap({ userId, ...data });
+      res.status(204).end();
+    } catch (err) {
+      console.error("[today] POST /api/today/bullet-tap failed:", err);
+      res.status(500).json({ error: "Failed to record bullet tap" });
+    }
+  });
+
+  app.get("/api/today/bullet-taps/rollup", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const sinceDays = Math.min(Math.max(parseInt(String(req.query.days ?? "30"), 10) || 30, 1), 365);
+      const rows = await storage.getDailyBriefTapRollup(userId, sinceDays);
+      res.json({ sinceDays, rows });
+    } catch (err) {
+      console.error("[today] GET /api/today/bullet-taps/rollup failed:", err);
+      res.status(500).json({ error: "Failed to load bullet tap rollup" });
     }
   });
 

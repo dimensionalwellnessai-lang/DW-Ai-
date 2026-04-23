@@ -94,6 +94,31 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
     retry: false,
   });
 
+  const tapMutation = useMutation({
+    mutationFn: async (input: {
+      dateKey: string;
+      variant: "morning" | "tonight";
+      bulletKind: BriefBullet["kind"];
+      route: string;
+      importance: BriefBullet["importance"];
+    }) => {
+      await apiRequest("POST", "/api/today/bullet-tap", input);
+    },
+  });
+
+  const handleBulletTap = (b: BriefBullet) => {
+    if (brief) {
+      tapMutation.mutate({
+        dateKey: brief.dateKey,
+        variant: brief.variant,
+        bulletKind: b.kind,
+        route: b.route,
+        importance: b.importance,
+      });
+    }
+    navigate(b.route);
+  };
+
   const refreshMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/today/refresh", { tz });
@@ -204,7 +229,7 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
               <li key={`${b.kind}-${i}`}>
                 <button
                   type="button"
-                  onClick={() => navigate(b.route)}
+                  onClick={() => handleBulletTap(b)}
                   className="w-full text-left flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-muted/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   data-testid={`btn-today-brief-bullet-${b.kind}-${i}`}
                 >

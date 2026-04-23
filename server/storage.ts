@@ -401,6 +401,8 @@ export interface IStorage {
   replaceMoodInsights(userId: string, insights: InsertMoodInsight[]): Promise<MoodInsight[]>;
   getDailyBrief(userId: string, dateKey: string, variant: DailyBriefVariant): Promise<DailyBrief | undefined>;
   upsertDailyBrief(brief: InsertDailyBrief): Promise<DailyBrief>;
+  recordDailyBriefTap(tap: InsertDailyBriefTap): Promise<DailyBriefTap>;
+  getDailyBriefTapRollup(userId: string, sinceDays?: number): Promise<Array<{ kind: string; route: string; count: number }>>;
   getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]>;
 
   getCheckIns(userId: string): Promise<CheckIn[]>;
@@ -1346,6 +1348,26 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return row;
+  }
+
+  async recordDailyBriefTap(tap: InsertDailyBriefTap): Promise<DailyBriefTap> {
+    const [row] = await db.insert(dailyBriefTaps).values(tap).returning();
+    return row;
+  }
+
+  async getDailyBriefTapRollup(userId: string, sinceDays: number = 30): Promise<Array<{ kind: string; route: string; count: number }>> {
+    const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        kind: dailyBriefTaps.bulletKind,
+        route: dailyBriefTaps.route,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(dailyBriefTaps)
+      .where(and(eq(dailyBriefTaps.userId, userId), gte(dailyBriefTaps.createdAt, since)))
+      .groupBy(dailyBriefTaps.bulletKind, dailyBriefTaps.route)
+      .orderBy(desc(sql`count(*)`));
+    return rows;
   }
 
   async getJournalEntriesByMood(userId: string, moodLogId: string): Promise<DwJournalEntry[]> {
