@@ -302,6 +302,7 @@ import {
   investmentHoldings,
   netWorthSnapshots,
   savingsGoals,
+  savingsGoalRules,
   plaidItems,
   type FinancialAccount,
   type InsertFinancialAccount,
@@ -315,6 +316,8 @@ import {
   type InsertNetWorthSnapshot,
   type SavingsGoal,
   type InsertSavingsGoal,
+  type SavingsGoalRule,
+  type InsertSavingsGoalRule,
   type PlaidItem,
   type InsertPlaidItem,
 } from "@shared/schema";
@@ -4146,11 +4149,42 @@ export class DatabaseStorage implements IStorage {
       .limit(opts?.limit ?? 500);
   }
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
-    const [row] = await db.insert(transactions).values(data).returning();
+    // If the user didn't tag a goal manually, see if any of their auto-credit
+    // rules match this transaction. If one does, stamp goalId + appliedRuleId
+    // so the existing credit-on-insert path below handles the goal balance.
+    let toInsert: InsertTransaction = data;
+    if (!data.goalId && data.amount > 0) {
+      const matched = await this.findMatchingSavingsRule(data.userId, data);
+      if (matched) {
+        toInsert = { ...data, goalId: matched.goalId, appliedRuleId: matched.id };
+      }
+    }
+    const [row] = await db.insert(transactions).values(toInsert).returning();
     if (row.goalId && row.amount > 0) {
       await this.adjustSavingsGoalAmount(row.goalId, row.userId, row.amount);
     }
     return row;
+  }
+
+  // Find the first enabled savings-goal rule that matches a transaction.
+  // Filters are AND-ed; any unset filter is treated as "no constraint".
+  // Comparisons are case-insensitive for category/merchant.
+  private async findMatchingSavingsRule(
+    userId: string,
+    tx: Pick<InsertTransaction, "category" | "merchant" | "accountId">,
+  ): Promise<SavingsGoalRule | null> {
+    const rules = await db.select().from(savingsGoalRules)
+      .where(and(eq(savingsGoalRules.userId, userId), eq(savingsGoalRules.enabled, true)))
+      .orderBy(desc(savingsGoalRules.createdAt));
+    const cat = (tx.category ?? "").toLowerCase();
+    const merch = (tx.merchant ?? "").toLowerCase();
+    for (const r of rules) {
+      if (r.accountId && r.accountId !== tx.accountId) continue;
+      if (r.category && r.category.toLowerCase() !== cat) continue;
+      if (r.merchantPattern && !merch.includes(r.merchantPattern.toLowerCase())) continue;
+      return r;
+    }
+    return null;
   }
   // Adjust a goal's currentAmount by `delta` (can be negative). Clamps at 0.
   // Atomic: single UPDATE so concurrent contributions can't lose updates.
@@ -4171,10 +4205,52 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.plaidTransactionId, data.plaidTransactionId))
       .limit(1);
     if (existing.length > 0) {
+      const before = existing[0];
+
+      // Re-evaluate auto-credit rules ONLY when there isn't a manual goal
+      // tag. If the user manually linked the txn (goalId set, no
+      // appliedRuleId) we leave their choice alone. If we previously
+      // auto-linked it (appliedRuleId set), we re-check whether the rule
+      // still matches the updated txn data; if not, we unlink it. If it
+      // was never linked, we try to apply a rule now.
+      let nextGoalId: string | null = before.goalId ?? null;
+      let nextAppliedRuleId: string | null = before.appliedRuleId ?? null;
+      const manualLink = before.goalId && !before.appliedRuleId;
+      if (!manualLink) {
+        const probe = {
+          category: data.category,
+          merchant: data.merchant ?? null,
+          accountId: data.accountId ?? null,
+        };
+        const matched = data.amount > 0
+          ? await this.findMatchingSavingsRule(before.userId, probe)
+          : null;
+        nextGoalId = matched ? matched.goalId : null;
+        nextAppliedRuleId = matched ? matched.id : null;
+      }
+
       const [row] = await db.update(transactions)
-        .set({ amount: data.amount, category: data.category, merchant: data.merchant, date: data.date, pending: data.pending })
+        .set({
+          amount: data.amount, category: data.category, merchant: data.merchant,
+          date: data.date, pending: data.pending,
+          accountId: data.accountId ?? before.accountId,
+          goalId: nextGoalId,
+          appliedRuleId: nextAppliedRuleId,
+        })
         .where(eq(transactions.plaidTransactionId, data.plaidTransactionId))
         .returning();
+
+      // Diff old vs new credit so the goal balance stays correct when the
+      // amount changes (pending → posted often corrects amount), the linked
+      // goal changes (rule rematch), or the txn gets unlinked.
+      const oldCredit = before.goalId && before.amount > 0 ? before.amount : 0;
+      const newCredit = row.goalId && row.amount > 0 ? row.amount : 0;
+      if (before.goalId && oldCredit > 0 && (before.goalId !== row.goalId || oldCredit !== newCredit)) {
+        await this.adjustSavingsGoalAmount(before.goalId, before.userId, -oldCredit);
+      }
+      if (row.goalId && newCredit > 0 && (before.goalId !== row.goalId || oldCredit !== newCredit)) {
+        await this.adjustSavingsGoalAmount(row.goalId, row.userId, newCredit);
+      }
       return row;
     }
     return this.createTransaction(data);
@@ -4207,7 +4283,13 @@ export class DatabaseStorage implements IStorage {
 
     // Only apply keys that were actually provided (allow null for goalId).
     const set: Record<string, unknown> = {};
-    if ("goalId" in patch) set.goalId = patch.goalId ?? null;
+    if ("goalId" in patch) {
+      set.goalId = patch.goalId ?? null;
+      // Any manual goal patch (re-link or clear) overrides a prior auto
+      // attribution — clear appliedRuleId so the "Auto" badge goes away
+      // and future Plaid syncs treat it as a manual link.
+      set.appliedRuleId = null;
+    }
     if ("amount" in patch && typeof patch.amount === "number") set.amount = patch.amount;
     if ("category" in patch && typeof patch.category === "string") set.category = patch.category;
     if ("merchant" in patch) set.merchant = patch.merchant ?? null;
@@ -4234,8 +4316,54 @@ export class DatabaseStorage implements IStorage {
     return after;
   }
   async deleteTransactionByPlaidId(plaidTransactionId: string, userId: string): Promise<void> {
-    await db.delete(transactions)
-      .where(and(eq(transactions.plaidTransactionId, plaidTransactionId), eq(transactions.userId, userId)));
+    // Reverse the goal credit (if any) so deleting a Plaid-removed income
+    // txn doesn't leave the savings goal balance inflated. Mirrors the
+    // logic in deleteTransaction for the manual path.
+    const result = await db.delete(transactions)
+      .where(and(eq(transactions.plaidTransactionId, plaidTransactionId), eq(transactions.userId, userId)))
+      .returning();
+    const row = result[0];
+    if (row?.goalId && row.amount > 0) {
+      await this.adjustSavingsGoalAmount(row.goalId, userId, -row.amount);
+    }
+  }
+
+  // ── Savings goal auto-credit rules ────────────────────────────────
+  async listSavingsGoalRules(userId: string, goalId?: string): Promise<SavingsGoalRule[]> {
+    const conds = [eq(savingsGoalRules.userId, userId)];
+    if (goalId) conds.push(eq(savingsGoalRules.goalId, goalId));
+    return await db.select().from(savingsGoalRules)
+      .where(and(...conds))
+      .orderBy(desc(savingsGoalRules.createdAt));
+  }
+  async createSavingsGoalRule(data: InsertSavingsGoalRule): Promise<SavingsGoalRule> {
+    const [row] = await db.insert(savingsGoalRules).values(data).returning();
+    return row;
+  }
+  async updateSavingsGoalRule(
+    id: string,
+    userId: string,
+    patch: Partial<Omit<InsertSavingsGoalRule, "userId" | "goalId">>,
+  ): Promise<SavingsGoalRule | undefined> {
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if ("label" in patch) set.label = patch.label ?? null;
+    if ("accountId" in patch) set.accountId = patch.accountId ?? null;
+    if ("category" in patch) set.category = patch.category ?? null;
+    if ("merchantPattern" in patch) set.merchantPattern = patch.merchantPattern ?? null;
+    if ("amountType" in patch && patch.amountType) set.amountType = patch.amountType;
+    if ("amountValue" in patch) set.amountValue = patch.amountValue ?? null;
+    if ("enabled" in patch && typeof patch.enabled === "boolean") set.enabled = patch.enabled;
+    const [row] = await db.update(savingsGoalRules)
+      .set(set)
+      .where(and(eq(savingsGoalRules.id, id), eq(savingsGoalRules.userId, userId)))
+      .returning();
+    return row;
+  }
+  async deleteSavingsGoalRule(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(savingsGoalRules)
+      .where(and(eq(savingsGoalRules.id, id), eq(savingsGoalRules.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   async getBudgets(userId: string): Promise<Budget[]> {

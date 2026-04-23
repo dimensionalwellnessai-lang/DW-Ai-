@@ -9,13 +9,18 @@ import {
   insertBudgetSchema,
   insertInvestmentHoldingSchema,
   insertSavingsGoalSchema,
+  insertSavingsGoalRuleSchema,
+  savingsGoalRuleAmountTypeEnum,
   financialAccountTypeEnum,
   holdingTypeEnum,
 } from "@shared/schema";
 
 const accountBody = insertFinancialAccountSchema.omit({ userId: true, plaidAccountId: true, plaidItemId: true, isManual: true });
 
-const transactionBody = insertTransactionSchema.omit({ userId: true, source: true, plaidTransactionId: true, pending: true }).extend({
+// appliedRuleId is server-set: it's stamped only when an auto-credit rule
+// matches inside createTransaction. Omit it from the request schema so a
+// client can't forge a rule attribution.
+const transactionBody = insertTransactionSchema.omit({ userId: true, source: true, plaidTransactionId: true, pending: true, appliedRuleId: true }).extend({
   accountId: z.string().optional().nullable(),
   goalId: z.string().uuid().optional().nullable(),
 });
@@ -25,6 +30,19 @@ const budgetBody = insertBudgetSchema.omit({ userId: true });
 const holdingBody = insertInvestmentHoldingSchema.omit({ userId: true, currentPrice: true, lastQuoteAt: true }).extend({
   type: z.enum(holdingTypeEnum).default("stock"),
 });
+
+const ruleBody = insertSavingsGoalRuleSchema.omit({ userId: true }).extend({
+  goalId: z.string().uuid(),
+  label: z.string().max(80).optional().nullable(),
+  accountId: z.string().optional().nullable(),
+  category: z.string().max(80).optional().nullable(),
+  merchantPattern: z.string().max(120).optional().nullable(),
+  amountType: z.enum(savingsGoalRuleAmountTypeEnum).default("all"),
+  amountValue: z.coerce.number().nonnegative().optional().nullable(),
+  enabled: z.boolean().optional(),
+});
+
+const ruleUpdateBody = ruleBody.omit({ goalId: true }).partial();
 
 const goalBody = insertSavingsGoalSchema.omit({ userId: true }).extend({
   name: z.string().min(1).max(120),
@@ -337,6 +355,65 @@ export function registerFinancesRoutes(app: Express) {
     } catch (err) {
       console.error("[finance] delete goal", err);
       res.status(500).json({ error: "Failed to delete goal" });
+    }
+  });
+
+  // ── Savings goal auto-credit rules ────────────────────────────────
+  // List all rules for this user, optionally filtered to a single goal.
+  app.get("/api/finance/goal-rules", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const goalId = typeof req.query.goalId === "string" ? req.query.goalId : undefined;
+      const rows = await storage.listSavingsGoalRules(userId, goalId);
+      res.json(rows);
+    } catch (err) {
+      console.error("[finance] list goal rules", err);
+      res.status(500).json({ error: "Failed to load goal rules" });
+    }
+  });
+
+  app.post("/api/finance/goal-rules", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = ruleBody.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid rule", issues: parsed.error.issues });
+      // Verify the goal belongs to this user before allowing the rule to
+      // attach. Without this a user could write a rule pointing at someone
+      // else's goal id and silently credit their savings.
+      const goals = await storage.getSavingsGoals(userId);
+      if (!goals.some((g) => g.id === parsed.data.goalId)) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      const row = await storage.createSavingsGoalRule({ ...parsed.data, userId });
+      res.json(row);
+    } catch (err) {
+      console.error("[finance] create goal rule", err);
+      res.status(500).json({ error: "Failed to create rule" });
+    }
+  });
+
+  app.patch("/api/finance/goal-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const parsed = ruleUpdateBody.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid rule", issues: parsed.error.issues });
+      const row = await storage.updateSavingsGoalRule(req.params.id, userId, parsed.data);
+      if (!row) return res.status(404).json({ error: "Not found" });
+      res.json(row);
+    } catch (err) {
+      console.error("[finance] update goal rule", err);
+      res.status(500).json({ error: "Failed to update rule" });
+    }
+  });
+
+  app.delete("/api/finance/goal-rules/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const ok = await storage.deleteSavingsGoalRule(req.params.id, userId);
+      res.json({ ok });
+    } catch (err) {
+      console.error("[finance] delete goal rule", err);
+      res.status(500).json({ error: "Failed to delete rule" });
     }
   });
 

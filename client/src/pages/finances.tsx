@@ -17,6 +17,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
 } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage
 } from "@/components/ui/form";
@@ -126,6 +127,7 @@ interface Transaction {
   id: string; accountId: string | null; amount: number; category: string;
   merchant: string | null; note: string | null; date: string; source: string; pending: boolean | null;
   goalId: string | null;
+  appliedRuleId: string | null;
 }
 interface Budget {
   id: string; category: string; monthlyLimit: number; spent: number;
@@ -138,6 +140,11 @@ interface Holding {
 interface SavingsGoal {
   id: string; name: string; targetAmount: number; currentAmount: number;
   targetDate: string | null; note: string | null;
+}
+interface SavingsGoalRule {
+  id: string; goalId: string; label: string | null;
+  accountId: string | null; category: string | null; merchantPattern: string | null;
+  amountType: "fixed" | "percent" | "all"; amountValue: number | null; enabled: boolean;
 }
 interface NetWorthPoint { date: string; assets: number; liabilities: number; netWorth: number; }
 interface Summary {
@@ -722,6 +729,11 @@ function TransactionList({ txns }: { txns: Transaction[] }) {
                   <Target className="w-2.5 h-2.5" /> {linkedGoal.name}
                 </Badge>
               )}
+              {t.appliedRuleId && (
+                <Badge variant="secondary" className="ml-1 text-[10px]" data-testid={`badge-auto-${t.id}`}>
+                  Auto
+                </Badge>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1046,8 +1058,180 @@ function BudgetsTab() {
 // Goals tab — personal savings goals with progress bars
 // ══════════════════════════════════════════════════════════════════════
 
+// Per-goal auto-credit rules. Lists existing rules, lets the user add new
+// ones, toggle enabled, or delete. Filters are AND-ed on the server; an
+// unset filter means "no constraint", so a rule with no filters at all
+// will match every income transaction (we warn the user accordingly).
+function GoalRulesManager({ goal, accounts }: { goal: SavingsGoal; accounts: Account[] }) {
+  const { toast } = useToast();
+  const { data: rules, isLoading } = useQuery<SavingsGoalRule[]>({
+    queryKey: ["/api/finance/goal-rules", { goalId: goal.id }],
+    queryFn: async () => {
+      const res = await fetch(`/api/finance/goal-rules?goalId=${goal.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load rules");
+      return await res.json();
+    },
+  });
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [label, setLabel] = useState("");
+  const [accountId, setAccountId] = useState<string>("any");
+  const [category, setCategory] = useState<string>("any");
+  const [merchantPattern, setMerchantPattern] = useState("");
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/finance/goal-rules", { goalId: goal.id }] });
+  };
+
+  const createMut = useMutation({
+    mutationFn: async () => {
+      const body = {
+        goalId: goal.id,
+        label: label.trim() || null,
+        accountId: accountId === "any" ? null : accountId,
+        category: category === "any" ? null : category,
+        merchantPattern: merchantPattern.trim() || null,
+        amountType: "all" as const,
+      };
+      const res = await apiRequest("POST", "/api/finance/goal-rules", body);
+      return await res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      setLabel(""); setAccountId("any"); setCategory("any"); setMerchantPattern("");
+      setShowAdd(false);
+      toast({ title: "Rule added" });
+    },
+    onError: () => toast({ title: "Couldn't add rule", variant: "destructive" }),
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: async (vars: { id: string; enabled: boolean }) => {
+      await apiRequest("PATCH", `/api/finance/goal-rules/${vars.id}`, { enabled: vars.enabled });
+    },
+    onSuccess: invalidate,
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/finance/goal-rules/${id}`); },
+    onSuccess: () => { invalidate(); toast({ title: "Rule deleted" }); },
+  });
+
+  const accountName = (id: string | null) =>
+    id ? (accounts.find(a => a.id === id)?.name ?? "Unknown account") : "Any account";
+
+  return (
+    <div className="pt-2 border-t mt-2 space-y-2" data-testid={`rules-section-${goal.id}`}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">Auto-credit rules</p>
+        <Button
+          variant="ghost" size="sm" className="h-6 px-2 text-xs"
+          onClick={() => setShowAdd(v => !v)}
+          data-testid={`button-toggle-add-rule-${goal.id}`}
+        >
+          {showAdd ? "Cancel" : <><Plus className="w-3 h-3 mr-1" /> Add rule</>}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <Skeleton className="h-10" />
+      ) : (rules && rules.length > 0) ? (
+        <div className="space-y-1">
+          {rules.map(r => {
+            const filters: string[] = [];
+            if (r.accountId) filters.push(accountName(r.accountId));
+            if (r.category) filters.push(`category “${r.category}”`);
+            if (r.merchantPattern) filters.push(`merchant ~ “${r.merchantPattern}”`);
+            const summary = filters.length === 0
+              ? "All income (no filters)"
+              : filters.join(" + ");
+            return (
+              <div key={r.id} className="flex items-center justify-between gap-2 text-xs p-2 rounded bg-muted/40" data-testid={`row-rule-${r.id}`}>
+                <div className="min-w-0 flex-1">
+                  {r.label && <p className="font-medium truncate">{r.label}</p>}
+                  <p className="text-muted-foreground truncate" data-testid={`text-rule-summary-${r.id}`}>{summary}</p>
+                </div>
+                <Switch
+                  checked={r.enabled}
+                  onCheckedChange={(v) => toggleMut.mutate({ id: r.id, enabled: v })}
+                  data-testid={`switch-rule-enabled-${r.id}`}
+                  aria-label="Enable rule"
+                />
+                <Button
+                  variant="ghost" size="icon" className="h-7 w-7"
+                  onClick={() => deleteMut.mutate(r.id)}
+                  data-testid={`button-delete-rule-${r.id}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">
+          No rules yet. Add one to auto-fund this goal from matching deposits.
+        </p>
+      )}
+
+      {showAdd && (
+        <div className="space-y-2 p-2 border rounded-md bg-card" data-testid={`form-add-rule-${goal.id}`}>
+          <Input
+            placeholder="Label (optional, e.g. Paycheck)"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="h-8 text-xs"
+            data-testid={`input-rule-label-${goal.id}`}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger className="h-8 text-xs" data-testid={`select-rule-account-${goal.id}`} aria-label="Account filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any account</SelectItem>
+                {accounts.map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-8 text-xs" data-testid={`select-rule-category-${goal.id}`} aria-label="Category filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any category</SelectItem>
+                {SPEND_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Input
+            placeholder="Merchant contains… (optional)"
+            value={merchantPattern}
+            onChange={(e) => setMerchantPattern(e.target.value)}
+            className="h-8 text-xs"
+            data-testid={`input-rule-merchant-${goal.id}`}
+          />
+          <Button
+            size="sm" className="w-full h-8 text-xs"
+            onClick={() => createMut.mutate()}
+            disabled={createMut.isPending}
+            data-testid={`button-save-rule-${goal.id}`}
+          >
+            {createMut.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+            Save rule
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GoalsTab() {
   const { data: goals, isLoading } = useQuery<SavingsGoal[]>({ queryKey: ["/api/finance/goals"] });
+  // Accounts are needed so the rule form can let users scope a rule to a
+  // specific account (e.g. "only my Chase checking deposits go here").
+  const { data: accounts } = useQuery<Account[]>({ queryKey: ["/api/finance/accounts"] });
   const [editing, setEditing] = useState<SavingsGoal | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -1182,6 +1366,7 @@ function GoalsTab() {
                       </div>
                       <Progress value={pct} className={complete ? "[&>div]:bg-emerald-500" : ""} />
                     </div>
+                    <GoalRulesManager goal={g} accounts={accounts || []} />
                   </div>
                 );
               })}
