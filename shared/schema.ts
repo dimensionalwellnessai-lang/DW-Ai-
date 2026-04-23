@@ -3616,6 +3616,11 @@ export const transactions = pgTable("transactions", {
   // transaction is created with goalId set, the goal's currentAmount is
   // auto-incremented by the amount. Cleared if the goal is deleted.
   goalId: varchar("goal_id"),
+  // If this transaction's goal link came from an auto-credit rule (vs. the
+  // user tagging it manually), this points at the rule that matched. The UI
+  // uses it to show an "auto" badge so users can tell rule-credited
+  // contributions apart from ones they tagged by hand.
+  appliedRuleId: varchar("applied_rule_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (t) => [
   uniqueIndex("transactions_plaid_txn_idx").on(t.plaidTransactionId),
@@ -3754,6 +3759,47 @@ export const insertSavingsGoalSchema = createInsertSchema(savingsGoals).omit({
 });
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type InsertSavingsGoal = z.infer<typeof insertSavingsGoalSchema>;
+
+// Auto-credit rules: when a Plaid-synced (or manual) income transaction
+// matches the rule's filters (category / merchant substring / account), it
+// is automatically linked to `goalId` so the goal's currentAmount goes up.
+//   - amountType=fixed   → credit `amountValue` (capped at the txn amount)
+//   - amountType=percent → credit `amountValue` percent of the txn amount
+//   - amountType=all     → credit the full txn amount; amountValue ignored
+export const savingsGoalRuleAmountTypeEnum = ["fixed", "percent", "all"] as const;
+export type SavingsGoalRuleAmountType = typeof savingsGoalRuleAmountTypeEnum[number];
+
+export const savingsGoalRules = pgTable("savings_goal_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: varchar("goal_id").notNull().references(() => savingsGoals.id, { onDelete: "cascade" }),
+  // Optional human label so users can tell rules apart in the UI.
+  label: text("label"),
+  // Optional account filter — when set, only matches transactions on that account.
+  accountId: varchar("account_id"),
+  // Optional category filter (e.g. "Income"). Case-insensitive equality.
+  category: text("category"),
+  // Optional merchant substring filter. Case-insensitive substring match.
+  merchantPattern: text("merchant_pattern"),
+  amountType: text("amount_type").notNull().default("all").$type<SavingsGoalRuleAmountType>(),
+  amountValue: real("amount_value"),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  index("savings_goal_rules_user_idx").on(t.userId),
+  index("savings_goal_rules_goal_idx").on(t.goalId),
+]);
+
+export const insertSavingsGoalRuleSchema = createInsertSchema(savingsGoalRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  amountType: z.enum(savingsGoalRuleAmountTypeEnum),
+});
+export type SavingsGoalRule = typeof savingsGoalRules.$inferSelect;
+export type InsertSavingsGoalRule = z.infer<typeof insertSavingsGoalRuleSchema>;
 
 // ─── Spiritual: Meditation library, sessions, prayer entries ──────────────────
 
