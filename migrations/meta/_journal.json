@@ -26,6 +26,7 @@
     { "idx": 21, "version": "7", "when": 1777900000000, "tag": "0021_imported_conversations",               "breakpoints": true },
     { "idx": 22, "version": "7", "when": 1778000000000, "tag": "0022_plans_workspace",                      "breakpoints": true },
     { "idx": 23, "version": "7", "when": 1778100000000, "tag": "0023_relationship_nudges",                  "breakpoints": true },
-    { "idx": 24, "version": "7", "when": 1778200000000, "tag": "0024_billing_usage_meters",                 "breakpoints": true }
+    { "idx": 24, "version": "7", "when": 1778200000000, "tag": "0024_billing_usage_meters",                 "breakpoints": true },
+    { "idx": 25, "version": "7", "when": 1778300000000, "tag": "0025_daily_brief_taps",                     "breakpoints": true }
   ]
 }
