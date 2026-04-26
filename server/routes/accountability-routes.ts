@@ -4,6 +4,11 @@ import { or } from "drizzle-orm";
 import { requireAuth } from "./_shared";
 import { sendPartnerInviteEmail } from "../email";
 import * as accountability from "../accountability";
+import { storage } from "../storage";
+import {
+  markSingleReminderCancelled,
+  clearSingleReminderCancellation,
+} from "../push";
 import { notificationPreferencesUpdateSchema } from "@shared/schema";
 
 export function registerAccountabilityRoutes(app: Express): void {
@@ -312,9 +317,313 @@ export function registerAccountabilityRoutes(app: Express): void {
     }
   });
 
-  // ========================================
-  // PR #3: NEW API ROUTES
-  // ========================================
+  // ── Reminder skip / restore ────────────────────────────────────────────────
+  // Skip a single upcoming reminder. Body: { itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }
+  app.post("/api/accountability/reminders/skip", requireAuth, async (req, res) => {
+    try {
+      const { itemId, kind } = req.body as { itemId?: string; kind?: string };
+      if (
+        typeof itemId !== "string" ||
+        (!itemId.startsWith("task:") && !itemId.startsWith("event:")) ||
+        (kind !== "pre" && kind !== "post")
+      ) {
+        return res.status(400).json({ error: "Invalid itemId or kind" });
+      }
+      const opts = itemId.startsWith("task:")
+        ? { taskId: itemId.slice(5) }
+        : { calendarEventId: itemId.slice(6) };
+      markSingleReminderCancelled(req.session.userId!, kind, opts);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Skip reminder error:", error);
+      res.status(500).json({ error: "Failed to skip reminder" });
+    }
+  });
 
-  // Life Dimension Assessments
+  // Skip multiple upcoming reminders in one round-trip.
+  // Body: { reminders: Array<{ itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }> }
+  app.post("/api/accountability/reminders/skip-batch", requireAuth, async (req, res) => {
+    try {
+      const { reminders } = req.body as {
+        reminders?: Array<{ itemId?: string; kind?: string }>;
+      };
+      if (!Array.isArray(reminders) || reminders.length === 0) {
+        return res.status(400).json({ error: "reminders[] is required" });
+      }
+      if (reminders.length > 200) {
+        return res.status(400).json({ error: "Too many reminders in batch" });
+      }
+      const valid: Array<{ itemId: string; kind: "pre" | "post" }> = [];
+      for (const r of reminders) {
+        if (
+          !r ||
+          typeof r.itemId !== "string" ||
+          (!r.itemId.startsWith("task:") && !r.itemId.startsWith("event:")) ||
+          (r.kind !== "pre" && r.kind !== "post")
+        ) {
+          return res.status(400).json({ error: "Invalid reminder entry" });
+        }
+        valid.push({ itemId: r.itemId, kind: r.kind });
+      }
+      for (const r of valid) {
+        const opts = r.itemId.startsWith("task:")
+          ? { taskId: r.itemId.slice(5) }
+          : { calendarEventId: r.itemId.slice(6) };
+        markSingleReminderCancelled(req.session.userId!, r.kind, opts);
+      }
+      res.json({ success: true, count: valid.length });
+    } catch (error) {
+      console.error("Batch skip reminders error:", error);
+      res.status(500).json({ error: "Failed to skip reminders" });
+    }
+  });
+
+  // Restore a single previously-skipped upcoming reminder.
+  // Body: { itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }
+  app.post("/api/accountability/reminders/restore", requireAuth, async (req, res) => {
+    try {
+      const { itemId, kind } = req.body as { itemId?: string; kind?: string };
+      if (
+        typeof itemId !== "string" ||
+        (!itemId.startsWith("task:") && !itemId.startsWith("event:")) ||
+        (kind !== "pre" && kind !== "post")
+      ) {
+        return res.status(400).json({ error: "Invalid itemId or kind" });
+      }
+      const opts = itemId.startsWith("task:")
+        ? { taskId: itemId.slice(5) }
+        : { calendarEventId: itemId.slice(6) };
+      clearSingleReminderCancellation(req.session.userId!, kind, opts);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Restore reminder error:", error);
+      res.status(500).json({ error: "Failed to restore reminder" });
+    }
+  });
+
+  // Restore multiple previously-skipped upcoming reminders in one round-trip.
+  // Mirrors /reminders/skip-batch and powers the Undo affordance on the
+  // "Skip this day" toast so undoing a whole-day skip is a single request,
+  // not one-per-reminder.
+  // Body: { reminders: Array<{ itemId: "task:<id>"|"event:<id>", kind: "pre"|"post" }> }
+  app.post("/api/accountability/reminders/restore-batch", requireAuth, async (req, res) => {
+    try {
+      const { reminders } = req.body as {
+        reminders?: Array<{ itemId?: string; kind?: string }>;
+      };
+      if (!Array.isArray(reminders) || reminders.length === 0) {
+        return res.status(400).json({ error: "reminders[] is required" });
+      }
+      if (reminders.length > 200) {
+        return res.status(400).json({ error: "Too many reminders in batch" });
+      }
+      const valid: Array<{ itemId: string; kind: "pre" | "post" }> = [];
+      for (const r of reminders) {
+        if (
+          !r ||
+          typeof r.itemId !== "string" ||
+          (!r.itemId.startsWith("task:") && !r.itemId.startsWith("event:")) ||
+          (r.kind !== "pre" && r.kind !== "post")
+        ) {
+          return res.status(400).json({ error: "Invalid reminder entry" });
+        }
+        valid.push({ itemId: r.itemId, kind: r.kind });
+      }
+      for (const r of valid) {
+        const opts = r.itemId.startsWith("task:")
+          ? { taskId: r.itemId.slice(5) }
+          : { calendarEventId: r.itemId.slice(6) };
+        clearSingleReminderCancellation(req.session.userId!, r.kind, opts);
+      }
+      res.json({ success: true, count: valid.length });
+    } catch (error) {
+      console.error("Batch restore reminders error:", error);
+      res.status(500).json({ error: "Failed to restore reminders" });
+    }
+  });
+
+  // ── Evening Check-In ───────────────────────────────────────────────────────
+  app.get("/api/accountability/check-in-status", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      const today = now.toISOString().split("T")[0];
+      const yesterday = new Date(now.getTime() - 86400000).toISOString().split("T")[0];
+
+      // Pull existing check-in for today
+      const existing = await storage.getTodayCheckIn(userId);
+      // Check if yesterday was missed
+      let yesterdayCheckIn: any = null;
+      try {
+        const ei = await (storage as any).getCheckInByDate?.(userId, yesterday);
+        yesterdayCheckIn = ei || null;
+      } catch (_) {}
+
+      // Compute optimal check-in time from user preferences
+      let optimalHour = 21; // default 9 PM
+      let optimalMinute = 30;
+      try {
+        const prefs = await storage.getUserSystemPreferences(userId);
+        if (prefs?.preferredSleepTime) {
+          // preferredSleepTime like "23:00" or "11:00 PM"
+          const match = prefs.preferredSleepTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+          if (match) {
+            let h = parseInt(match[1]);
+            const m = parseInt(match[2]);
+            const meridiem = match[3]?.toLowerCase();
+            if (meridiem === "pm" && h < 12) h += 12;
+            if (meridiem === "am" && h === 12) h = 0;
+            // Optimal check-in = 90 minutes before sleep
+            const optimalTotal = h * 60 + m - 90;
+            optimalHour = Math.floor(optimalTotal / 60);
+            optimalMinute = optimalTotal % 60;
+            if (optimalHour < 0) optimalHour = 21; // fallback
+          }
+        }
+      } catch (_) {}
+
+      // Count today's calendar events (planned tasks) as context
+      let todayTaskCount = 0;
+      try {
+        const events = await storage.getCalendarEvents(userId);
+        todayTaskCount = events.filter((e: any) => {
+          const st = e.startTime || "";
+          return st.startsWith(today);
+        }).length;
+      } catch (_) {}
+
+      // Time of day classification
+      const nowMinutes = hour * 60 + minute;
+      const optimalMinutes = optimalHour * 60 + optimalMinute;
+      const isEarlyMorning = hour >= 4 && hour < 10;
+      const isMorning = hour >= 10 && hour < 14;
+      const isAfternoon = hour >= 14 && hour < 18;
+      const isEvening = hour >= 18 && hour < 22;
+      const isNight = hour >= 22 || hour < 4;
+      const pastOptimalTime = nowMinutes >= optimalMinutes;
+      const completedToday = !!existing;
+
+      // Determine scenario
+      // "needsCheckIn" = should show the modal now
+      // "missedCheckIn" = they had a chance yesterday and didn't do it
+      const missedYesterday = !yesterdayCheckIn;
+
+      let needsCheckIn = false;
+      let timeContext = "none";
+      let contextTitle = "How did today go?";
+      let contextBody = "DW wants to help you reflect and set up tomorrow.";
+      let showMissedCount = false;
+
+      if (!completedToday) {
+        if (pastOptimalTime && isEvening) {
+          // Prime time — optimal evening window
+          needsCheckIn = true;
+          timeContext = "prime_evening";
+          contextTitle = "Time to check in";
+          contextBody = "DW is ready whenever you are — a quick reflection goes a long way.";
+        } else if (isNight && hour >= 22) {
+          // Late evening / night, still same day
+          needsCheckIn = true;
+          timeContext = "late_night";
+          contextTitle = "Still up?";
+          contextBody = "Before you wind down — a quick reflection so tomorrow starts clear.";
+        } else if (isNight && hour < 4) {
+          // Very late / early hours — brief and non-pressuring
+          needsCheckIn = true;
+          timeContext = "very_late";
+          contextTitle = "Late night…";
+          contextBody = "No pressure — just a quick word with DW before you sleep. Totally optional.";
+        } else if (isEarlyMorning && missedYesterday) {
+          // Woke up, missed yesterday
+          needsCheckIn = true;
+          timeContext = "missed_morning";
+          contextTitle = "Yesterday slipped by";
+          contextBody = todayTaskCount > 0
+            ? `You had ${todayTaskCount} things on the agenda — before today starts, want to close out yesterday?`
+            : "Before today begins, want to close out yesterday with DW?";
+          showMissedCount = true;
+        } else if (isMorning && missedYesterday) {
+          // Morning, missed yesterday
+          needsCheckIn = true;
+          timeContext = "missed_day_start";
+          contextTitle = "A quick close-out";
+          contextBody = todayTaskCount > 0
+            ? `Yesterday had ${todayTaskCount} things planned. Before this day gets going — want to reflect?`
+            : "Yesterday went uncaptured. Before this day gets going — a quick reflection?";
+          showMissedCount = true;
+        } else if (isAfternoon && missedYesterday) {
+          // Afternoon, missed yesterday — lighter nudge
+          needsCheckIn = true;
+          timeContext = "missed_afternoon";
+          contextTitle = "Yesterday's reflection";
+          contextBody = "DW noticed you didn't check in yesterday. Even a one-line recap helps you stay aligned.";
+          showMissedCount = true;
+        }
+        // else: before optimal window and no missed check-in → don't prompt yet
+      }
+
+      res.json({
+        needsCheckIn,
+        completed: completedToday,
+        timeContext,
+        contextTitle,
+        contextBody,
+        optimalHour,
+        optimalMinute,
+        missedYesterday,
+        todayTaskCount,
+        showMissedCount,
+        hour,
+        minute,
+        today,
+        yesterday,
+      });
+    } catch (err) {
+      res.json({ needsCheckIn: false, completed: false, timeContext: "none" });
+    }
+  });
+
+  app.post("/api/accountability/evening-check-in", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { userNotes, energyScore, completedSummary, timeContext, missedTaskCount } = req.body;
+      const now = new Date();
+      const today = now.toISOString().split("T")[0];
+      const hour = now.getHours();
+
+      let dwAnalysis = "Thank you for checking in. Every day you show up for yourself counts — even the imperfect ones.";
+      try {
+        const { generateCheckInAnalysis } = await import("../openai");
+        const { getYesterdayHeadlineMetrics } = await import("./wearables");
+        const user = await storage.getUser(userId);
+        const name = (user as any)?.systemName || (user as any)?.firstName || "friend";
+        const goals = await storage.getGoals(userId);
+        const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+        dwAnalysis = await generateCheckInAnalysis(
+          name,
+          userNotes || "",
+          energyScore || 5,
+          goals.map((g: any) => g.title),
+          { timeContext: timeContext || "prime_evening", hour, missedTaskCount: missedTaskCount || 0, wearablesYesterday }
+        );
+      } catch (_) {}
+
+      const checkIn = await storage.createEveningCheckIn({ userId, checkInDate: today, userNotes, completedSummary, dwAnalysis, energyScore });
+
+      await storage.createNotification({
+        userId,
+        type: "accountability",
+        title: "Check-in saved ✓",
+        body: dwAnalysis.slice(0, 120) + (dwAnalysis.length > 120 ? "…" : ""),
+        actionUrl: "/talk",
+      });
+
+      res.json({ checkIn, dwAnalysis });
+    } catch (err) {
+      console.error("Evening check-in error:", err);
+      res.status(500).json({ error: "Failed to save check-in" });
+    }
+  });
 }
