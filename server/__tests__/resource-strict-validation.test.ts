@@ -62,6 +62,8 @@ import {
   aiSuggestionUpdateSchema,
   conversationInsightUpdateSchema,
   dwFollowupUpdateSchema,
+  elevationPlanUpdateSchema,
+  elevationPlanActionUpdateSchema,
   reminderUpdateSchema,
 } from "@shared/schema";
 
@@ -113,6 +115,8 @@ const scenarios: SchemaScenario[] = [
   { label: "conversationInsightUpdateSchema", schema: conversationInsightUpdateSchema, routeNote: "PATCH /api/insights/:id (gatekeeper)", omittedOwnerKey: "userId" },
   { label: "dwFollowupUpdateSchema", schema: dwFollowupUpdateSchema, routeNote: "PATCH /api/dw/followups/:id (gatekeeper)", omittedOwnerKey: "userId" },
   { label: "reminderUpdateSchema", schema: reminderUpdateSchema, routeNote: "PATCH /api/reminders/:id", omittedOwnerKey: "userId" },
+  { label: "elevationPlanUpdateSchema", schema: elevationPlanUpdateSchema, routeNote: "PATCH /api/elevation-plans/:id", omittedOwnerKey: "userId" },
+  { label: "elevationPlanActionUpdateSchema", schema: elevationPlanActionUpdateSchema, routeNote: "PATCH /api/elevation-plan-actions/:id", omittedOwnerKey: "planDayId" },
 ];
 
 describe("resource update schemas reject unknown fields", () => {

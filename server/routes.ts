@@ -155,6 +155,8 @@ import {
   aiSuggestionUpdateSchema,
   conversationInsightUpdateSchema,
   dwFollowupUpdateSchema,
+  elevationPlanUpdateSchema,
+  elevationPlanActionUpdateSchema,
   reminderUpdateSchema,
   pushSubscribeSchema,
   pushUnsubscribeSchema,
@@ -10327,17 +10329,12 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     focusDimension: z.string().max(100).optional(),
   });
 
-  const elevationPlanUpdateSchema = z.object({
-    title: z.string().min(1).max(200).optional(),
-    goal: z.string().max(500).optional(),
-    status: z.enum(["draft", "active", "archived"]).optional(),
-  });
-
-  const elevationPlanActionUpdateSchema = z.object({
-    isCompleted: z.boolean().optional(),
-    title: z.string().min(1).max(200).optional(),
-    description: z.string().max(1000).optional(),
-  });
+  // NOTE: previously two local elevation*UpdateSchema objects shadowed
+  // the imports here. They were not `.strict()`, so unknown body keys
+  // were silently stripped instead of being rejected — the exact gap
+  // Task #124 is meant to close. The imported schemas at the top of the
+  // file are the strict, partial, insert-derived contracts now used
+  // below at the PATCH handlers.
 
   const elevationPlanAddToCalendarSchema = z.object({
     planDayIndex: z.number().int().min(1).max(7),

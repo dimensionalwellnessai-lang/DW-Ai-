@@ -4238,12 +4238,20 @@ export const dwFollowupUpdateSchema = insertDwFollowupSchema
   .partial()
   .strict();
 
-// NOTE: elevation plan + action update schemas live inside server/routes.ts
-// (and server/routes/support-detailed.ts for the dead-code variant). They
-// are intentionally narrower than what `insertElevationPlan*Schema` would
-// allow (only title/goal/status / isCompleted/title/description). Keeping
-// the contract local avoids drift between this file and the route's
-// hardened allow-list.
+export const elevationPlanUpdateSchema = insertElevationPlanSchema
+  // Owner key + immutable plan window are stripped — the route knows the
+  // plan's user from the session-scoped lookup, and start/end dates are
+  // set when the plan is created.
+  .omit({ userId: true, startDate: true, endDate: true, sourceConversationId: true })
+  .partial()
+  .strict();
+
+export const elevationPlanActionUpdateSchema = insertElevationPlanActionSchema
+  // planDayId is the FK that ties the action to its day; PATCH must not
+  // be able to move an action to a different day.
+  .omit({ planDayId: true })
+  .partial()
+  .strict();
 
 export const reminderUpdateSchema = insertReminderSchema
   .omit({ userId: true })
