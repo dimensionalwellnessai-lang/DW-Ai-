@@ -18,6 +18,8 @@ import {
 } from "@shared/dw-persona";
 import type { UserContextSnapshot } from "./user-context";
 
+type DWModeDef = (typeof DW_MODES)[number];
+
 export interface PickedRole {
   mode: DWMode;
   confidence: number; // 0..1
@@ -232,12 +234,124 @@ export async function pickDWRole(
   );
 }
 
+// ─── Adaptive DW mode resolver (shared by /api/chat & /api/chat/smart) ───────
+
+export interface ResolveAdaptiveDWModeInput {
+  message: string;
+  snapshot?: UserContextSnapshot | null;
+  /** Raw client-supplied mode lock string. Validated via `getDWMode`. */
+  modeLock?: string | null;
+  /** Raw client-supplied previous lane string. Validated via `getDWMode`. */
+  previousMode?: string | null;
+}
+
+export interface AdaptiveDWModeResult {
+  /** The mode the route should run the chat completion in. */
+  mode: DWMode;
+  modeDef: DWModeDef;
+  modeAddendum: string;
+  /** The validated lock (if any), or null when the picker decided. */
+  lockedMode: DWMode | null;
+  /** Raw picker output, or null when the route short-circuited on a lock. */
+  picked: PickedRole | null;
+  /** True when either the lock fired or the picker cleared the apply threshold. */
+  applied: boolean;
+  /**
+   * Pre-built `dwMode` object the chat routes echo back to the client.
+   * Centralizing the shape here keeps /api/chat and /api/chat/smart in lockstep
+   * and gives tests a single contract to assert against.
+   */
+  dwMode: {
+    id: DWMode;
+    label: string;
+    locked: boolean;
+    reason: string;
+    confidence: number;
+  };
+  /** Pre-built fields for `logDwRolePick` so both surfaces log identically. */
+  logFields: {
+    mode: DWMode;
+    source: PickedRole["source"] | "locked";
+    confidence: number;
+    reason: string | null;
+    locked: boolean;
+    applied: boolean;
+  };
+}
+
+/**
+ * Decide which DW mode the next chat turn should run in.
+ *
+ * Encapsulates the three-step contract used by both `/api/chat` and
+ * `/api/chat/smart`:
+ *   1. If the client locked a mode, honour it verbatim — the picker is
+ *      not invoked at all (saves a round-trip to the LLM fallback).
+ *   2. Otherwise run `pickDWRole` with hysteresis against `previousMode`.
+ *   3. Apply the lane only if the pick clears `PICKER_APPLY_THRESHOLD`;
+ *      otherwise the route falls back to `companion`.
+ *
+ * Returns everything the call site needs (active mode, addendum, response
+ * payload, log fields) so the routes stay thin and the contract has a
+ * single source of truth.
+ */
+export async function resolveAdaptiveDWMode(
+  input: ResolveAdaptiveDWModeInput,
+): Promise<AdaptiveDWModeResult> {
+  const lockedMode = typeof input.modeLock === "string" ? getDWMode(input.modeLock) : null;
+  const prevModeForPicker = typeof input.previousMode === "string"
+    ? getDWMode(input.previousMode)
+    : null;
+
+  const picked = lockedMode
+    ? null
+    : await pickDWRole(input.message, input.snapshot ?? null, {
+        previousMode: prevModeForPicker,
+      }).catch(() => null);
+
+  const pickerCleared = Boolean(picked && picked.confidence >= PICKER_APPLY_THRESHOLD);
+  const mode: DWMode = lockedMode ?? (pickerCleared ? picked!.mode : "companion");
+  const modeDef = DW_MODES.find((m) => m.id === mode)!;
+  const applied = Boolean(lockedMode) || pickerCleared;
+
+  return {
+    mode,
+    modeDef,
+    modeAddendum: modeDef.systemAddendum,
+    lockedMode,
+    picked,
+    applied,
+    dwMode: {
+      id: mode,
+      label: modeDef.label,
+      locked: Boolean(lockedMode),
+      reason: lockedMode ? "you picked this lane" : (picked?.reason ?? "default"),
+      confidence: lockedMode ? 1 : (picked?.confidence ?? 0),
+    },
+    logFields: {
+      mode: lockedMode ?? (picked?.mode ?? "companion"),
+      source: lockedMode ? "locked" : (picked?.source ?? "fallback"),
+      confidence: lockedMode ? 1 : (picked?.confidence ?? 0),
+      reason: lockedMode ? "user-locked lane" : (picked?.reason ?? null),
+      locked: Boolean(lockedMode),
+      applied,
+    },
+  };
+}
+
+/**
+ * Subset of `UserContextSnapshot` actually consumed by `pickInitialRole`.
+ * Declaring the narrower shape lets callers (and tests) hand in tiny
+ * fixtures without casting away the whole snapshot type — and keeps the
+ * symbol explicit about what it depends on.
+ */
+export type InitialRoleSnapshot = Pick<UserContextSnapshot, "today">;
+
 /**
  * Pick an opening role for a brand-new session — used by the realtime
  * route which doesn't have a user message yet. Considers time of day +
  * loose snapshot signals to start in a sensible lane.
  */
-export function pickInitialRole(snap?: UserContextSnapshot | null): PickedRole {
+export function pickInitialRole(snap?: InitialRoleSnapshot | null): PickedRole {
   const tod = snap?.today.timeOfDay ?? "morning";
   if (tod === "morning") {
     return { mode: "coach", confidence: 0.6, reason: "morning — set the day", source: "rules" };
