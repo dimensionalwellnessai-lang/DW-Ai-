@@ -6,7 +6,14 @@
  */
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
+import multer from "multer";
 import { storage } from "../storage";
+import {
+  savePlanArtifactFile,
+  readPlanArtifactFile,
+  deletePlanArtifactFile,
+} from "../lib/plan-artifact-files";
+import { extractTextFromBuffer } from "../document-parser";
 import { db } from "../db";
 import { eq, and, inArray } from "drizzle-orm";
 import {
@@ -132,7 +139,12 @@ async function buildPlanChatContext(
       } else if (a.kind === "link") {
         lines.push(`- (link) ${a.title}${a.url ? ` — ${a.url}` : ""}`);
       } else {
-        lines.push(`- (upload) ${a.title}`);
+        const meta: string[] = [];
+        if (a.mimeType) meta.push(a.mimeType);
+        if (typeof a.fileSize === "number") meta.push(`${Math.max(1, Math.round(a.fileSize / 1024))} KB`);
+        const metaStr = meta.length > 0 ? ` [${meta.join(", ")}]` : "";
+        const excerpt = a.excerpt ? ` — ${a.excerpt.slice(0, 600)}` : "";
+        lines.push(`- (upload) ${a.title}${metaStr}${excerpt}`);
       }
     }
   }
@@ -244,12 +256,13 @@ const artifactCreateSchema = z.discriminatedUnion("kind", [
     url: httpUrlSchema,
     title: z.string().min(1).max(200),
   }),
-  z.object({
-    kind: z.literal("upload"),
-    refId: z.string().min(1).optional(),
-    title: z.string().min(1).max(200),
-  }),
 ]);
+
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
+const planFileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
+});
 
 const chatPostSchema = z.object({
   message: z.string().min(1).max(8000),
@@ -522,8 +535,6 @@ export function registerPlansRoutes(app: Express): void {
         }
       } else if (parsed.data.kind === "link") {
         url = parsed.data.url;
-      } else {
-        refId = parsed.data.refId ?? null;
       }
       const insert: InsertProjectArtifact = {
         projectId: req.params.id,
@@ -541,6 +552,120 @@ export function registerPlansRoutes(app: Express): void {
     }
   });
 
+  // Upload a file (PDF, image, text, doc) and attach it as an "upload" artifact.
+  // Multipart only — the JSON POST above does not accept upload kinds.
+  // Wrap multer.single so its size-limit / file-type errors surface as JSON
+  // 4xx responses instead of being swallowed by Express's default handler.
+  const planFileUploadMw = (req: Request, res: Response, next: (err?: unknown) => void) => {
+    planFileUpload.single("file")(req, res, (err: unknown) => {
+      if (err) {
+        if ((err as { code?: string })?.code === "LIMIT_FILE_SIZE") {
+          return res.status(413).json({ error: "File is too large (25 MB max)." });
+        }
+        console.error("[plans] upload middleware error:", err);
+        return res.status(400).json({ error: "Failed to read uploaded file." });
+      }
+      next();
+    });
+  };
+
+  app.post(
+    "/api/plans/:id/artifacts/upload",
+    requireAuth,
+    planFileUploadMw,
+    async (req, res) => {
+      try {
+        const userId = req.session.userId!;
+        const ownerCheck = await storage.getProjectForUser(req.params.id, userId);
+        if (!ownerCheck) return res.status(404).json({ error: "Plan not found." });
+        const file = req.file;
+        if (!file) return res.status(400).json({ error: "No file uploaded." });
+        const rawTitle = typeof req.body?.title === "string" && req.body.title.trim()
+          ? req.body.title.trim()
+          : file.originalname || "Untitled file";
+        const title = rawTitle.slice(0, 200);
+
+        // Best-effort text extraction so DW can ground replies in the file.
+        // Failures (binary file, encrypted PDF, OCR not configured) are
+        // non-fatal — we just skip the excerpt.
+        let excerpt: string | null = null;
+        try {
+          const result = await extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
+          if (result.text) {
+            excerpt = result.text.replace(/\s+/g, " ").trim().slice(0, 1500);
+          }
+        } catch (err) {
+          console.warn("[plans] artifact text extraction skipped:", err instanceof Error ? err.message : err);
+        }
+
+        // Create the row first so we can use its id as the storage key.
+        const created = await storage.createProjectArtifact(
+          {
+            projectId: req.params.id,
+            kind: "upload",
+            refId: null,
+            url: null,
+            title,
+            mimeType: file.mimetype || null,
+            fileSize: file.size,
+            excerpt,
+          },
+          userId,
+        );
+        if (!created) return res.status(404).json({ error: "Plan not found." });
+
+        try {
+          const saved = await savePlanArtifactFile(userId, created.id, file.buffer, file.mimetype);
+          const updated = await storage.updateProjectArtifact(created.id, req.params.id, userId, {
+            refId: saved.storageKey,
+          });
+          res.json(updated ?? { ...created, refId: saved.storageKey });
+        } catch (err) {
+          // Roll back the row if writing the file fails so we don't leave
+          // dangling artifact records pointing at nothing.
+          try {
+            await storage.deleteProjectArtifact(created.id, req.params.id, userId);
+          } catch {
+            /* non-fatal */
+          }
+          throw err;
+        }
+      } catch (err) {
+        console.error("[plans] artifact upload error:", err);
+        res.status(500).json({ error: "Failed to upload file." });
+      }
+    },
+  );
+
+  // Stream a previously-uploaded artifact back to the user.
+  app.get("/api/plans/:id/artifacts/:artifactId/file", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const artifacts = await storage.getProjectArtifacts(req.params.id, userId);
+      const target = artifacts.find((a) => a.id === req.params.artifactId);
+      if (!target || target.kind !== "upload" || !target.refId) {
+        return res.status(404).json({ error: "File not found." });
+      }
+      let buffer: Buffer;
+      try {
+        buffer = await readPlanArtifactFile(target.refId);
+      } catch (err) {
+        console.error("[plans] artifact file read error:", err);
+        return res.status(404).json({ error: "File not found." });
+      }
+      res.setHeader("Content-Type", target.mimeType || "application/octet-stream");
+      res.setHeader("Content-Length", String(buffer.byteLength));
+      // Use attachment so browsers download the file with its original name
+      // rather than rendering arbitrary HTML/SVG inline.
+      const safeName = (target.title || "download").replace(/[\r\n"]/g, "_").slice(0, 200);
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      res.send(buffer);
+    } catch (err) {
+      console.error("[plans] artifact file error:", err);
+      res.status(500).json({ error: "Failed to download file." });
+    }
+  });
+
   app.delete("/api/plans/:id/artifacts/:artifactId", requireAuth, async (req, res) => {
     try {
       // If it's an import-kind artifact, also clear the back-reference on the import row.
@@ -553,6 +678,15 @@ export function registerPlansRoutes(app: Express): void {
           });
         } catch {
           /* non-fatal */
+        }
+      }
+      // Best-effort cleanup of the on-disk file for upload artifacts so we
+      // don't leak storage when the user detaches.
+      if (target?.kind === "upload" && target.refId) {
+        try {
+          await deletePlanArtifactFile(target.refId);
+        } catch (err) {
+          console.warn("[plans] artifact file delete failed:", err instanceof Error ? err.message : err);
         }
       }
       const ok = await storage.deleteProjectArtifact(

@@ -54,6 +54,13 @@ The following advertised-but-unfinished features were hidden or removed to keep 
 
 The underlying database schemas and unrelated code paths were left intact in case these features come back.
 
+## Plan File Uploads
+
+- Plans (`/plans/:id`) accept three artifact kinds: imported chats, links, and now uploaded files (PDFs, notes, images). Uploads use multipart `POST /api/plans/:id/artifacts/upload` (`server/routes/plans.ts`) with a 25 MB cap; files persist in Replit Object Storage under `<PRIVATE_OBJECT_DIR>/plan-uploads/<userId>/<artifactId>` via `server/lib/plan-artifact-files.ts`, with the relative `<userId>/<artifactId>` storage key kept on the artifact row's `refId`.
+- The `project_artifacts` table (migration `0026_plan_artifact_uploads.sql`) carries `mime_type`, `file_size`, and `excerpt` columns. The excerpt is a best-effort extracted text snippet (via `extractTextFromBuffer`) and is included in DW's plan chat context so replies can reference uploaded source material.
+- Files can be re-downloaded at `GET /api/plans/:id/artifacts/:artifactId/file` (always sent as `attachment`) and are removed from object storage when the artifact is detached.
+- Frontend: `client/src/pages/plan-detail.tsx` `ArtifactsPanel` adds an Upload button + dialog (`button-attach-upload`, `input-upload-file`, `button-confirm-upload`) and renders upload artifacts with a file-size badge and download link.
+
 ## ChatGPT Conversation Import
 
 - Schema: `imported_conversations` table (`shared/schema.ts`) stores user-imported chats from ChatGPT exports or raw paste, with summary, topics, and suggested actions generated via gpt-4o-mini.

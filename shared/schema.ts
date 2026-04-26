@@ -544,6 +544,9 @@ export const projectArtifacts = pgTable("project_artifacts", {
   refId: varchar("ref_id"),
   url: text("url"),
   title: text("title").notNull(),
+  mimeType: text("mime_type"),
+  fileSize: integer("file_size"),
+  excerpt: text("excerpt"),
   addedAt: timestamp("added_at").defaultNow(),
 });
 

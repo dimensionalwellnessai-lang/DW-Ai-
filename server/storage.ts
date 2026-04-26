@@ -498,6 +498,7 @@ export interface IStorage {
 
   getProjectArtifacts(projectId: string, userId: string): Promise<ProjectArtifact[]>;
   createProjectArtifact(artifact: InsertProjectArtifact, userId: string): Promise<ProjectArtifact | undefined>;
+  updateProjectArtifact(id: string, projectId: string, userId: string, data: Partial<InsertProjectArtifact>): Promise<ProjectArtifact | undefined>;
   deleteProjectArtifact(id: string, projectId: string, userId: string): Promise<boolean>;
 
   getCalendarEvents(userId: string): Promise<CalendarEvent[]>;
@@ -1786,6 +1787,25 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(projectArtifacts).values(artifact).returning();
     await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, artifact.projectId));
     return created;
+  }
+
+  async updateProjectArtifact(
+    id: string,
+    projectId: string,
+    userId: string,
+    data: Partial<InsertProjectArtifact>,
+  ): Promise<ProjectArtifact | undefined> {
+    const [project] = await db.select().from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    if (!project) return undefined;
+    const [updated] = await db.update(projectArtifacts)
+      .set(data)
+      .where(and(eq(projectArtifacts.id, id), eq(projectArtifacts.projectId, projectId)))
+      .returning();
+    if (updated) {
+      await db.update(projects).set({ lastActivityAt: new Date() }).where(eq(projects.id, projectId));
+    }
+    return updated;
   }
 
   async deleteProjectArtifact(id: string, projectId: string, userId: string): Promise<boolean> {

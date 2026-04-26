@@ -13,6 +13,8 @@ import {
   Link2,
   FileDown,
   Edit2,
+  Upload,
+  Download,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -372,13 +374,23 @@ function MilestonesPanel({ planId }: { planId: string }) {
   );
 }
 
+function formatFileSize(bytes: number | null | undefined): string {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function ArtifactsPanel({ planId }: { planId: string }) {
   const { toast } = useToast();
   const [attachOpen, setAttachOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [pickedImportId, setPickedImportId] = useState<string>("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
 
   const { data: artifacts = [] } = useQuery<ProjectArtifact[]>({
     queryKey: ["/api/plans", planId, "artifacts"],
@@ -411,6 +423,34 @@ function ArtifactsPanel({ planId }: { planId: string }) {
     onError: (err) => toast({ title: "Couldn't attach", description: parseApiError(err), variant: "destructive" }),
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, title }: { file: File; title: string }) => {
+      const form = new FormData();
+      form.append("file", file);
+      if (title) form.append("title", title);
+      const res = await fetch(`/api/plans/${planId}/artifacts/upload`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error || `Upload failed (${res.status})`);
+      }
+      return (await res.json()) as ProjectArtifact;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans", planId, "artifacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      setUploadOpen(false);
+      setUploadFile(null);
+      setUploadTitle("");
+      toast({ title: "File uploaded" });
+    },
+    onError: (err) =>
+      toast({ title: "Couldn't upload", description: parseApiError(err), variant: "destructive" }),
+  });
+
   const detachMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/plans/${planId}/artifacts/${id}`);
@@ -433,12 +473,15 @@ function ArtifactsPanel({ planId }: { planId: string }) {
           <Button size="sm" variant="outline" onClick={() => setLinkOpen(true)} data-testid="button-attach-link">
             <Link2 className="w-3 h-3 mr-1.5" /> Link
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)} data-testid="button-attach-upload">
+            <Upload className="w-3 h-3 mr-1.5" /> Upload
+          </Button>
         </div>
       </div>
 
       {artifacts.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">
-          Attach an imported chat or a link to ground DW in source material.
+          Attach an imported chat, a link, or upload a file to ground DW in source material.
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -460,13 +503,39 @@ function ArtifactsPanel({ planId }: { planId: string }) {
                   <a href={a.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                     {a.title}
                   </a>
+                ) : a.kind === "upload" ? (
+                  <a
+                    href={`/api/plans/${planId}/artifacts/${a.id}/file`}
+                    className="hover:underline"
+                    data-testid={`link-download-${a.id}`}
+                  >
+                    {a.title}
+                  </a>
                 ) : (
                   a.title
                 )}
+                {a.kind === "upload" && a.fileSize ? (
+                  <span className="ml-2 text-[11px] text-muted-foreground">
+                    {formatFileSize(a.fileSize)}
+                  </span>
+                ) : null}
               </span>
               <Badge variant="outline" className="text-[10px]">
                 {a.kind}
               </Badge>
+              {a.kind === "upload" ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="opacity-0 group-hover:opacity-100"
+                  asChild
+                  data-testid={`button-download-${a.id}`}
+                >
+                  <a href={`/api/plans/${planId}/artifacts/${a.id}/file`}>
+                    <Download className="w-3.5 h-3.5" />
+                  </a>
+                </Button>
+              ) : null}
               <Button
                 size="icon"
                 variant="ghost"
@@ -563,6 +632,65 @@ function ArtifactsPanel({ planId }: { planId: string }) {
               data-testid="button-confirm-attach-link"
             >
               Attach
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload a file</DialogTitle>
+            <DialogDescription>
+              Drop in a PDF, image, or notes file (≤ 25 MB). DW will use it as
+              source material for this plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-file">File</Label>
+              <Input
+                id="upload-file"
+                type="file"
+                accept=".pdf,.txt,.md,.csv,.doc,.docx,image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setUploadFile(f);
+                  if (f && !uploadTitle) setUploadTitle(f.name);
+                }}
+                data-testid="input-upload-file"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-title">Title (optional)</Label>
+              <Input
+                id="upload-title"
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+                placeholder={uploadFile?.name ?? "What is it?"}
+                data-testid="input-upload-title"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() =>
+                uploadFile &&
+                uploadMutation.mutate({ file: uploadFile, title: uploadTitle.trim() })
+              }
+              disabled={!uploadFile || uploadMutation.isPending}
+              data-testid="button-confirm-upload"
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Uploading…
+                </>
+              ) : (
+                "Upload"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
