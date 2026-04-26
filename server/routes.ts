@@ -1493,7 +1493,7 @@ export async function registerRoutes(
   app.patch("/api/sync/sessions/:id", requireAuth, async (req, res) => {
     const parsed = aiSyncSessionUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      return res.status(400).json(zodError(parsed.error));
+      return res.status(400).json({ error: "Invalid sync session payload", details: parsed.error.flatten() });
     }
     try {
       const updated = await storage.updateSyncSession(req.params.id, parsed.data);
@@ -1537,7 +1537,7 @@ export async function registerRoutes(
   app.patch("/api/sync/items/:id", requireAuth, async (req, res) => {
     const parsed = aiSyncItemUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      return res.status(400).json(zodError(parsed.error));
+      return res.status(400).json({ error: "Invalid sync item payload", details: parsed.error.flatten() });
     }
     try {
       const updated = await storage.updateSyncItem(req.params.id, {
