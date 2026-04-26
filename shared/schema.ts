@@ -4177,7 +4177,9 @@ export const workoutPlanUpdateSchema = insertWorkoutPlanSchema
   .strict();
 
 export const exerciseUpdateSchema = insertExerciseSchema
-  .omit({ workoutPlanId: true })
+  // exercises has BOTH userId and workoutPlanId as ownership keys; both
+  // must be stripped so a PATCH body can never reassign ownership.
+  .omit({ userId: true, workoutPlanId: true })
   .partial()
   .strict();
 

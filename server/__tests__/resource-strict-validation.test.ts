@@ -69,8 +69,13 @@ interface SchemaScenario {
   label: string;
   schema: z.ZodTypeAny;
   routeNote: string;
-  /** The owner-ish key the route strips and reads from session/params instead. */
-  omittedOwnerKey: string;
+  /**
+   * The owner-ish key(s) the route strips and reads from session/params
+   * instead. Tables with multiple ownership/FK keys (for example
+   * `exercises` which has BOTH `userId` and `workoutPlanId`) must list
+   * every one so each is asserted to be unwritable from the body.
+   */
+  omittedOwnerKey: string | string[];
 }
 
 const scenarios: SchemaScenario[] = [
@@ -101,7 +106,7 @@ const scenarios: SchemaScenario[] = [
   { label: "universalPlanUpdateSchema", schema: universalPlanUpdateSchema, routeNote: "PATCH /api/universal-plans/:id", omittedOwnerKey: "userId" },
   { label: "streakUpdateSchema", schema: streakUpdateSchema, routeNote: "PATCH /api/streaks/:id", omittedOwnerKey: "userId" },
   { label: "mealUpdateSchema", schema: mealUpdateSchema, routeNote: "PATCH /api/meals/:id", omittedOwnerKey: "userId" },
-  { label: "exerciseUpdateSchema", schema: exerciseUpdateSchema, routeNote: "PATCH /api/exercises/:id", omittedOwnerKey: "workoutPlanId" },
+  { label: "exerciseUpdateSchema", schema: exerciseUpdateSchema, routeNote: "PATCH /api/exercises/:id", omittedOwnerKey: ["userId", "workoutPlanId"] },
   { label: "workoutSessionUpdateSchema", schema: workoutSessionUpdateSchema, routeNote: "PATCH /api/workout-sessions/:id", omittedOwnerKey: "userId" },
   { label: "workoutSessionStepUpdateSchema", schema: workoutSessionStepUpdateSchema, routeNote: "PUT /api/workout-sessions/:id/steps/:stepIndex", omittedOwnerKey: "sessionId" },
   { label: "aiSuggestionUpdateSchema", schema: aiSuggestionUpdateSchema, routeNote: "PATCH /api/ai-suggestions/:id", omittedOwnerKey: "userId" },
@@ -112,6 +117,7 @@ const scenarios: SchemaScenario[] = [
 
 describe("resource update schemas reject unknown fields", () => {
   for (const { label, schema, routeNote, omittedOwnerKey } of scenarios) {
+    const ownerKeys = Array.isArray(omittedOwnerKey) ? omittedOwnerKey : [omittedOwnerKey];
     describe(`${label} (used by ${routeNote})`, () => {
       it("rejects a body containing a totally unknown field", () => {
         const result = schema.safeParse({ hackerColumn: "should be rejected" });
@@ -122,15 +128,17 @@ describe("resource update schemas reject unknown fields", () => {
         }
       });
 
-      it(`rejects ${omittedOwnerKey} so it can't be mass-assigned from the body`, () => {
-        const result = schema.safeParse({ [omittedOwnerKey]: "spoofed-owner-id" });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          const flat = result.error.flatten();
-          const all = JSON.stringify(flat);
-          expect(all).toContain(omittedOwnerKey);
-        }
-      });
+      for (const key of ownerKeys) {
+        it(`rejects ${key} so it can't be mass-assigned from the body`, () => {
+          const result = schema.safeParse({ [key]: "spoofed-owner-id" });
+          expect(result.success).toBe(false);
+          if (!result.success) {
+            const flat = result.error.flatten();
+            const all = JSON.stringify(flat);
+            expect(all).toContain(key);
+          }
+        });
+      }
 
       it("accepts an empty partial body", () => {
         const result = schema.safeParse({});
