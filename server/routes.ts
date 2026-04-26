@@ -155,8 +155,6 @@ import {
   aiSuggestionUpdateSchema,
   conversationInsightUpdateSchema,
   dwFollowupUpdateSchema,
-  elevationPlanUpdateSchema,
-  elevationPlanActionUpdateSchema,
   reminderUpdateSchema,
   pushSubscribeSchema,
   pushUnsubscribeSchema,

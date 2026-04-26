@@ -4236,15 +4236,12 @@ export const dwFollowupUpdateSchema = insertDwFollowupSchema
   .partial()
   .strict();
 
-export const elevationPlanUpdateSchema = insertElevationPlanSchema
-  .omit({ userId: true })
-  .partial()
-  .strict();
-
-export const elevationPlanActionUpdateSchema = insertElevationPlanActionSchema
-  .omit({ planDayId: true })
-  .partial()
-  .strict();
+// NOTE: elevation plan + action update schemas live inside server/routes.ts
+// (and server/routes/support-detailed.ts for the dead-code variant). They
+// are intentionally narrower than what `insertElevationPlan*Schema` would
+// allow (only title/goal/status / isCompleted/title/description). Keeping
+// the contract local avoids drift between this file and the route's
+// hardened allow-list.
 
 export const reminderUpdateSchema = insertReminderSchema
   .omit({ userId: true })
