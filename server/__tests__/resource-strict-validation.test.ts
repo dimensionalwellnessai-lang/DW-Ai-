@@ -82,8 +82,8 @@ interface SchemaScenario {
 
 const scenarios: SchemaScenario[] = [
   { label: "conversationUpdateSchema", schema: conversationUpdateSchema, routeNote: "PATCH /api/conversations/:id", omittedOwnerKey: "userId" },
-  { label: "aiSyncSessionUpdateSchema", schema: aiSyncSessionUpdateSchema, routeNote: "PATCH /api/ai-sync/sessions/:id", omittedOwnerKey: "userId" },
-  { label: "aiSyncItemUpdateSchema", schema: aiSyncItemUpdateSchema, routeNote: "PATCH /api/ai-sync/items/:id", omittedOwnerKey: "sessionId" },
+  { label: "aiSyncSessionUpdateSchema", schema: aiSyncSessionUpdateSchema, routeNote: "PATCH /api/sync/sessions/:id", omittedOwnerKey: "userId" },
+  { label: "aiSyncItemUpdateSchema", schema: aiSyncItemUpdateSchema, routeNote: "PATCH /api/sync/items/:id", omittedOwnerKey: "sessionId" },
   { label: "goalUpdateSchema", schema: goalUpdateSchema, routeNote: "PATCH /api/goals/:id", omittedOwnerKey: "userId" },
   { label: "habitUpdateSchema", schema: habitUpdateSchema, routeNote: "PATCH /api/habits/:id", omittedOwnerKey: "userId" },
   { label: "scheduleBlockUpdateSchema", schema: scheduleBlockUpdateSchema, routeNote: "PATCH /api/schedule/:id", omittedOwnerKey: "userId" },
