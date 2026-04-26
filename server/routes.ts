@@ -1387,8 +1387,12 @@ export async function registerRoutes(
       if (!conversation || conversation.userId !== req.session.userId) {
         return res.status(404).json({ error: "Conversation not found" });
       }
+      const parsed = conversationUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid conversation payload", details: parsed.error.flatten() });
+      }
       const updated = await storage.updateConversation(req.params.id, {
-        ...req.body,
+        ...parsed.data,
         lastMessageAt: new Date(),
       });
       res.json(updated);
@@ -1487,10 +1491,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/sync/sessions/:id", requireAuth, async (req, res) => {
-    // Strip userId from client input — sessions belong to the authenticated user
-    // and re-assignment must never be possible from the request body.
-    const { userId: _ignoredUserId, ...rest } = (req.body ?? {}) as Record<string, unknown>;
-    const parsed = insertAiSyncSessionSchema.partial().safeParse(rest);
+    const parsed = aiSyncSessionUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json(zodError(parsed.error));
     }
@@ -1534,7 +1535,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/sync/items/:id", requireAuth, async (req, res) => {
-    const parsed = insertAiSyncItemSchema.partial().safeParse(req.body ?? {});
+    const parsed = aiSyncItemUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json(zodError(parsed.error));
     }
@@ -3159,10 +3160,11 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Goal not found" });
       }
-      // Only allow updates to permitted goal fields; disallow changing ownership.
-      const updateGoalSchema = insertGoalSchema.omit({ userId: true }).partial();
-      const updateData = updateGoalSchema.parse(req.body);
-      const goal = await storage.updateGoal(req.params.id, updateData);
+      const parsed = goalUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid goal payload", details: parsed.error.flatten() });
+      }
+      const goal = await storage.updateGoal(req.params.id, parsed.data);
       res.json(goal);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3235,36 +3237,25 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
         return res.status(404).json({ error: "Habit not found" });
       }
 
-      // Strip sensitive/system-managed fields from the update payload
-      const { userId: _userId, id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...updateData } = req.body ?? {};
+      const parsed = habitUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid habit payload", details: parsed.error.flatten() });
+      }
+      const updateData = { ...parsed.data };
 
-      // Optionally validate title/description if they are being updated
-      if (typeof updateData.title !== "undefined") {
-        if (
-          typeof updateData.title !== "string" ||
-          updateData.title.trim().length === 0
-        ) {
+      // Trim/length-check user-facing strings beyond the base schema's rules
+      if (typeof updateData.title === "string") {
+        const trimmed = updateData.title.trim();
+        if (trimmed.length === 0) {
           return res.status(400).json({ error: "Habit title must be a non-empty string" });
         }
-        if (updateData.title.trim().length > 200) {
+        if (trimmed.length > 200) {
           return res.status(400).json({ error: "Habit title is too long (max 200 characters)" });
         }
-        updateData.title = updateData.title.trim();
+        updateData.title = trimmed;
       }
-
-      if (typeof updateData.description !== "undefined") {
-        if (
-          updateData.description !== null &&
-          typeof updateData.description !== "string"
-        ) {
-          return res.status(400).json({ error: "Habit description must be a string or null" });
-        }
-        if (
-          typeof updateData.description === "string" &&
-          updateData.description.length > 1000
-        ) {
-          return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
-        }
+      if (typeof updateData.description === "string" && updateData.description.length > 1000) {
+        return res.status(400).json({ error: "Habit description is too long (max 1000 characters)" });
       }
 
       const habit = await storage.updateHabit(req.params.id, updateData);
@@ -3594,10 +3585,11 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!existing || existing.userId !== req.session.userId) {
         return res.status(404).json({ error: "Schedule block not found" });
       }
-      // Only allow updates to permitted schedule block fields; disallow changing ownership.
-      const updateScheduleSchema = insertScheduleBlockSchema.omit({ userId: true }).partial();
-      const updateData = updateScheduleSchema.parse(req.body);
-      const block = await storage.updateScheduleBlock(req.params.id, updateData);
+      const parsed = scheduleBlockUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid schedule block payload", details: parsed.error.flatten() });
+      }
+      const block = await storage.updateScheduleBlock(req.params.id, parsed.data);
       res.json(block);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3871,7 +3863,11 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!blueprint || action.blueprintId !== blueprint.id) {
         return res.status(404).json({ error: "Action not found" });
       }
-      const updated = await storage.updateStabilizingAction(req.params.id, req.body);
+      const parsed = stabilizingActionUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid action payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateStabilizingAction(req.params.id, parsed.data);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update action" });
@@ -3956,7 +3952,11 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!blueprint || reflection.blueprintId !== blueprint.id) {
         return res.status(404).json({ error: "Reflection not found" });
       }
-      const updated = await storage.updateRecoveryReflection(req.params.id, req.body);
+      const parsed = recoveryReflectionUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid reflection payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateRecoveryReflection(req.params.id, parsed.data);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update reflection" });
@@ -4001,7 +4001,11 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!routine || routine.userId !== userId) {
         return res.status(404).json({ error: "Routine not found" });
       }
-      const updated = await storage.updateRoutine(req.params.id, req.body);
+      const parsed = routineUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid routine payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateRoutine(req.params.id, parsed.data);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update routine" });
@@ -4481,9 +4485,11 @@ Return ONLY this exact JSON structure, no other text:
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Task not found" });
       }
-      // Only allow updates to permitted task fields; disallow changing ownership.
-      const updateTaskSchema = insertTaskSchema.omit({ userId: true }).partial();
-      const updateData = updateTaskSchema.parse(req.body);
+      const parsed = taskUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid task payload", details: parsed.error.flatten() });
+      }
+      const updateData = parsed.data;
       const updated = await storage.updateTaskForUser(req.params.id, userId, updateData);
 
       // Bidirectional sync: propagate completion to a linked elevation plan action
@@ -4594,7 +4600,11 @@ Return ONLY this exact JSON structure, no other text:
 
   app.patch("/api/projects/:id", requireAuth, async (req, res) => {
     try {
-      const updated = await storage.updateProjectForUser(req.params.id, req.session.userId!, req.body);
+      const parsed = projectUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid project payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateProjectForUser(req.params.id, req.session.userId!, parsed.data);
       if (!updated) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -4769,13 +4779,17 @@ Return ONLY this exact JSON structure, no other text:
   app.patch("/api/calendar/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const updated = await storage.updateCalendarEventForUser(req.params.id, userId, req.body);
+      const parsed = calendarEventUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid calendar event payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateCalendarEventForUser(req.params.id, userId, parsed.data);
       if (!updated) {
         return res.status(404).json({ error: "Event not found" });
       }
       // If the event's start/end was edited, drop any existing reminder
       // cancellations so the rescheduled instance can fire fresh reminders.
-      if (req.body && (req.body.startTime !== undefined || req.body.endTime !== undefined)) {
+      if (parsed.data.startTime !== undefined || parsed.data.endTime !== undefined) {
         try {
           const { clearReminderCancellations } = await import("./push");
           clearReminderCancellations(userId, { calendarEventId: req.params.id });
@@ -4834,7 +4848,11 @@ Return ONLY this exact JSON structure, no other text:
 
   app.patch("/api/calendar/tasks/:taskId", requireAuth, async (req, res) => {
     try {
-      const updated = await storage.updateEventTask(req.params.taskId, req.session.userId!, req.body);
+      const parsed = calendarEventTaskUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid task payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateEventTask(req.params.taskId, req.session.userId!, parsed.data);
       if (!updated) return res.status(404).json({ error: "Task not found" });
       res.json(updated);
     } catch (error) {
@@ -5099,7 +5117,11 @@ Return only valid JSON, no markdown, no extra text.`;
 
   app.patch("/api/challenges/:id", requireAuth, async (req, res) => {
     try {
-      const updated = await storage.updateChallenge(req.params.id, req.session.userId!, req.body);
+      const parsed = challengeUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid challenge payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateChallenge(req.params.id, req.session.userId!, parsed.data);
       if (!updated) {
         return res.status(404).json({ error: "Challenge not found" });
       }
@@ -5283,10 +5305,14 @@ Return ONLY valid JSON in this exact shape:
 
   app.patch("/api/saved-content/:id", requireAuth, async (req, res) => {
     try {
+      const parsed = savedContentUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid saved content payload", details: parsed.error.flatten() });
+      }
       const updated = await storage.updateSavedContent(
         req.params.id,
         req.session.userId!,
-        req.body
+        parsed.data
       );
       if (!updated) {
         return res.status(404).json({ error: "Saved content not found" });
@@ -5836,7 +5862,11 @@ Return only valid JSON, no other text.`;
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "System module not found" });
       }
-      const updated = await storage.updateSystemModule(req.params.id, req.body);
+      const parsed = systemModuleUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid system module payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateSystemModule(req.params.id, parsed.data);
       if (!updated) {
         return res.status(404).json({ error: "System module not found" });
       }
@@ -5890,7 +5920,11 @@ Return only valid JSON, no other text.`;
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Schedule event not found" });
       }
-      const updated = await storage.updateScheduleEvent(req.params.id, req.body);
+      const parsed = dailyScheduleEventUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid schedule event payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateScheduleEvent(req.params.id, parsed.data);
       if (!updated) {
         return res.status(404).json({ error: "Schedule event not found" });
       }
@@ -6151,19 +6185,24 @@ Return only valid JSON, no other text.`;
 
   app.patch("/api/documents/:id/items", requireAuth, async (req, res) => {
     try {
-      const { items } = req.body as { items: Array<{ id: string; title?: string; isSelected?: boolean; destinationSystem?: string }> };
-      
+      const bodySchema = z.object({
+        items: z.array(
+          importedDocumentItemUpdateSchema.extend({ id: z.string().min(1) })
+        ).min(1),
+      }).strict();
+      const parsed = bodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid items payload", details: parsed.error.flatten() });
+      }
+
       const doc = await storage.getImportedDocument(req.params.id);
       if (!doc || doc.userId !== req.session.userId) {
         return res.status(404).json({ error: "Document not found" });
       }
 
-      for (const item of items) {
-        await storage.updateImportedDocumentItem(item.id, {
-          title: item.title,
-          isSelected: item.isSelected,
-          destinationSystem: item.destinationSystem,
-        });
+      for (const item of parsed.data.items) {
+        const { id, ...fields } = item;
+        await storage.updateImportedDocumentItem(id, fields);
       }
 
       res.json({ success: true });
@@ -6625,8 +6664,13 @@ Return only valid JSON, no other text.`;
         return res.status(404).json({ error: "Meal plan not found" });
       }
       
+      const parsed = mealPlanUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid meal plan payload", details: parsed.error.flatten() });
+      }
+
       // If activating this plan, deactivate others first
-      if (req.body.isActive === true) {
+      if (parsed.data.isActive === true) {
         const allPlans = await storage.getMealPlans(req.session.userId!);
         for (const p of allPlans) {
           if (p.id !== req.params.id && p.isActive) {
@@ -6635,7 +6679,7 @@ Return only valid JSON, no other text.`;
         }
       }
       
-      const updated = await storage.updateMealPlan(req.params.id, req.body);
+      const updated = await storage.updateMealPlan(req.params.id, parsed.data);
       res.json(updated);
     } catch (error) {
       console.error("Update meal plan error:", error);
@@ -6673,9 +6717,9 @@ Return only valid JSON, no other text.`;
         ingredients: z.array(z.string()).optional(),
         instructions: z.array(z.string()).optional(),
         tags: z.array(z.string()).optional(),
-      });
+      }).strict();
       
-      const parsed = updateSchema.safeParse(req.body);
+      const parsed = updateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
@@ -6746,14 +6790,13 @@ Return only valid JSON, no other text.`;
         return res.status(404).json({ error: "Workout plan not found" });
       }
       
-      const updateData: Partial<typeof plan> = {};
-      if (req.body.title !== undefined) updateData.title = req.body.title;
-      if (req.body.summary !== undefined) updateData.summary = req.body.summary;
-      if (req.body.isActive !== undefined) {
-        updateData.isActive = req.body.isActive;
-        if (req.body.isActive) {
-          updateData.activatedAt = new Date();
-        }
+      const parsed = workoutPlanUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid workout plan payload", details: parsed.error.flatten() });
+      }
+      const updateData: Partial<typeof plan> = { ...parsed.data };
+      if (parsed.data.isActive === true) {
+        updateData.activatedAt = new Date();
       }
       
       const updated = await storage.updateWorkoutPlan(req.params.id, updateData);
@@ -6817,9 +6860,9 @@ Return only valid JSON, no other text.`;
         equipment: z.array(z.string()).optional(),
         instructions: z.array(z.string()).optional(),
         tags: z.array(z.string()).optional(),
-      });
+      }).strict();
       
-      const parsed = updateSchema.safeParse(req.body);
+      const parsed = updateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
@@ -6894,8 +6937,8 @@ Return only valid JSON, no other text.`;
         durationSeconds: z.number().int().optional().nullable(),
         completedAt: z.string().optional().nullable(),
         metadata: z.record(z.unknown()).optional().nullable(),
-      });
-      const parsed = schema.safeParse(req.body);
+      }).strict();
+      const parsed = schema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
@@ -6959,8 +7002,8 @@ Return only valid JSON, no other text.`;
         durationSeconds: z.number().int().optional().nullable(),
         distanceMeters: z.number().optional().nullable(),
         notes: z.string().optional().nullable(),
-      });
-      const parsed = schema.safeParse(req.body);
+      }).strict();
+      const parsed = schema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
@@ -7071,7 +7114,11 @@ Return only valid JSON, no other text.`;
       if (!list || list.userId !== req.session.userId) {
         return res.status(404).json({ error: "Shopping list not found" });
       }
-      const updated = await storage.updateShoppingList(req.params.id, req.body);
+      const parsed = shoppingListUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid shopping list payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateShoppingList(req.params.id, parsed.data);
       res.json(updated);
     } catch (error) {
       console.error("Update shopping list error:", error);
@@ -7143,7 +7190,11 @@ Return only valid JSON, no other text.`;
       if (!list || list.userId !== req.session.userId) {
         return res.status(404).json({ error: "Shopping list not found" });
       }
-      const updated = await storage.updateShoppingListItem(req.params.itemId, req.body);
+      const parsed = shoppingListItemUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid shopping list item payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateShoppingListItem(req.params.itemId, parsed.data);
       res.json(updated);
     } catch (error) {
       console.error("Update shopping list item error:", error);
@@ -8679,7 +8730,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Dimension blueprint not found" });
       }
-      const blueprint = await storage.updateDimensionBlueprint(id, req.body);
+      const parsed = dimensionBlueprintUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid dimension blueprint payload", details: parsed.error.flatten() });
+      }
+      const blueprint = await storage.updateDimensionBlueprint(id, parsed.data);
       if (!blueprint) {
         return res.status(404).json({ error: "Dimension blueprint not found" });
       }
@@ -8727,7 +8782,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Reset protocol not found" });
       }
-      const protocol = await storage.updateResetProtocol(id, req.body);
+      const parsed = resetProtocolUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid reset protocol payload", details: parsed.error.flatten() });
+      }
+      const protocol = await storage.updateResetProtocol(id, parsed.data);
       if (!protocol) {
         return res.status(404).json({ error: "Reset protocol not found" });
       }
@@ -8897,7 +8956,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Universal plan not found" });
       }
-      const plan = await storage.updateUniversalPlan(id, req.body);
+      const parsed = universalPlanUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid universal plan payload", details: parsed.error.flatten() });
+      }
+      const plan = await storage.updateUniversalPlan(id, parsed.data);
       if (!plan) {
         return res.status(404).json({ error: "Universal plan not found" });
       }
@@ -9020,7 +9083,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       if (!existing || existing.userId !== userId) {
         return res.status(404).json({ error: "Streak not found" });
       }
-      const streak = await storage.updateStreak(id, req.body);
+      const parsed = streakUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid streak payload", details: parsed.error.flatten() });
+      }
+      const streak = await storage.updateStreak(id, parsed.data);
       
       if (!streak) {
         return res.status(404).json({ error: "Streak not found" });
@@ -9681,7 +9748,11 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { status } = req.body;
+      const parsed = aiSuggestionUpdateSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid suggestion payload", details: parsed.error.flatten() });
+      }
+      const { status } = parsed.data;
       const suggestion = await storage.updateAiSuggestion(id, userId, { status, respondedAt: new Date() });
       if (!suggestion) {
         return res.status(404).json({ error: "Suggestion not found" });
@@ -9709,7 +9780,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       .optional()
       .transform((v) => (v != null ? new Date(v) : null)),
     hidden: z.boolean().optional(),
-  });
+  }).strict();
 
   app.get("/api/insights", requireAuth, async (req, res) => {
     try {
@@ -9766,16 +9837,16 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const patch = patchInsightSchema.parse(req.body);
-      const updated = await storage.updateConversationInsight(id, userId, patch as Parameters<typeof storage.updateConversationInsight>[2]);
+      const parsed = patchInsightSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid insight payload", details: parsed.error.flatten() });
+      }
+      const updated = await storage.updateConversationInsight(id, userId, parsed.data as Parameters<typeof storage.updateConversationInsight>[2]);
       if (!updated) {
         return res.status(404).json({ error: "Insight not found" });
       }
       res.json(updated);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
       console.error("Update insight error:", error);
       res.status(500).json({ error: "Failed to update insight" });
     }
@@ -9968,11 +10039,15 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const { status, snoozedUntil } = req.body as { status?: string; snoozedUntil?: string };
-      const validStatuses = ["pending", "accepted", "snoozed", "answered", "dismissed"];
-      if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ error: `status must be one of: ${validStatuses.join(", ")}` });
+      const followupPatchSchema = z.object({
+        status: z.enum(["pending", "accepted", "snoozed", "answered", "dismissed"]),
+        snoozedUntil: z.string().optional(),
+      }).strict();
+      const parsed = followupPatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid follow-up payload", details: parsed.error.flatten() });
       }
+      const { status, snoozedUntil } = parsed.data;
 
       const now = new Date();
       const fields: Parameters<typeof storage.updateDwFollowup>[2] = { status };
@@ -10539,9 +10614,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/elevation-plans/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const parsed = elevationPlanUpdateSchema.safeParse(req.body);
+      const parsed = elevationPlanUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.flatten() });
+        return res.status(400).json({ error: "Invalid elevation plan payload", details: parsed.error.flatten() });
       }
       // PR #17: when activating a plan, first verify the target plan exists/belongs to user
       // so we don't accidentally archive the current active plan for a non-existent target.
@@ -10615,9 +10690,9 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
   app.patch("/api/elevation-plan-actions/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const parsed = elevationPlanActionUpdateSchema.safeParse(req.body);
+      const parsed = elevationPlanActionUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.flatten() });
+        return res.status(400).json({ error: "Invalid elevation plan action payload", details: parsed.error.flatten() });
       }
       const updated = await storage.updateElevationPlanAction(req.params.id, userId, parsed.data);
       if (!updated) return res.status(404).json({ error: "Action not found" });
@@ -10933,12 +11008,17 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const userId = req.session.userId!;
       const { id } = req.params;
-      const { status, scheduledAt, title, body } = req.body as {
-        status?: string;
-        scheduledAt?: string;
-        title?: string;
-        body?: string;
-      };
+      const reminderPatchSchema = z.object({
+        status: z.string().optional(),
+        scheduledAt: z.string().optional(),
+        title: z.string().optional(),
+        body: z.string().optional(),
+      }).strict();
+      const parsed = reminderPatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid reminder payload", details: parsed.error.flatten() });
+      }
+      const { status, scheduledAt, title, body } = parsed.data;
       const fields: Record<string, unknown> = {};
       if (status !== undefined) fields.status = status;
       if (scheduledAt !== undefined) fields.scheduledAt = new Date(scheduledAt);
@@ -12257,11 +12337,18 @@ Return ONLY this JSON:
 
   app.patch("/api/users/me", requireAuth, async (req, res) => {
     try {
-      const { firstName } = req.body;
-      if (typeof firstName !== "string" || !firstName.trim()) {
+      const userMePatchSchema = z.object({
+        firstName: z.string().min(1),
+      }).strict();
+      const parsed = userMePatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid name", details: parsed.error.flatten() });
+      }
+      const firstName = parsed.data.firstName.trim();
+      if (!firstName) {
         return res.status(400).json({ error: "Invalid name" });
       }
-      const updated = await storage.updateUser(req.session.userId!, { firstName: firstName.trim().slice(0, 50) });
+      const updated = await storage.updateUser(req.session.userId!, { firstName: firstName.slice(0, 50) });
       res.json({ ok: true, firstName: updated?.firstName });
     } catch (err) {
       console.error("Update user name error:", err);
