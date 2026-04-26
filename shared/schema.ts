@@ -4057,3 +4057,196 @@ export type ImportedConversationMessage = {
   content: string;
   timestamp?: number;
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// Strict, partial PATCH/PUT update schemas for Task #124.
+//
+// Pattern: take the corresponding insert schema, omit any owner key (userId
+// or parent foreign key — those are sourced from the session or URL, never
+// the request body), call .partial() so every field becomes optional, then
+// .strict() so unknown fields are rejected with a 400 instead of silently
+// written to the database.
+//
+// All schemas live here together so contributors can audit "what fields can
+// a client patch?" in one place.
+// ────────────────────────────────────────────────────────────────────────────
+
+export const conversationUpdateSchema = insertConversationSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const aiSyncSessionUpdateSchema = insertAiSyncSessionSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const aiSyncItemUpdateSchema = insertAiSyncItemSchema
+  .omit({ sessionId: true })
+  .partial()
+  .strict();
+
+export const goalUpdateSchema = insertGoalSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const habitUpdateSchema = insertHabitSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const scheduleBlockUpdateSchema = insertScheduleBlockSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const stabilizingActionUpdateSchema = insertStabilizingActionSchema
+  .omit({ blueprintId: true })
+  .partial()
+  .strict();
+
+export const recoveryReflectionUpdateSchema = insertRecoveryReflectionSchema
+  .omit({ blueprintId: true })
+  .partial()
+  .strict();
+
+export const routineUpdateSchema = insertRoutineSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const taskUpdateSchema = insertTaskSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const projectUpdateSchema = insertProjectSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const calendarEventUpdateSchema = insertCalendarEventSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const calendarEventTaskUpdateSchema = insertCalendarEventTaskSchema
+  .omit({ calendarEventId: true, userId: true })
+  .partial()
+  .strict();
+
+export const challengeUpdateSchema = insertChallengeSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const savedContentUpdateSchema = insertSavedContentSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const systemModuleUpdateSchema = insertSystemModuleSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const dailyScheduleEventUpdateSchema = insertDailyScheduleEventSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const importedDocumentItemUpdateSchema = insertImportedDocumentItemSchema
+  .omit({ documentId: true })
+  .partial()
+  .strict();
+
+export const mealPlanUpdateSchema = insertMealPlanSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const mealUpdateSchema = insertMealSchema
+  .omit({ userId: true, mealPlanId: true })
+  .partial()
+  .strict();
+
+export const workoutPlanUpdateSchema = insertWorkoutPlanSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const exerciseUpdateSchema = insertExerciseSchema
+  .omit({ workoutPlanId: true })
+  .partial()
+  .strict();
+
+export const workoutSessionUpdateSchema = insertWorkoutSessionSchema
+  .omit({ userId: true, workoutPlanId: true })
+  .partial()
+  .strict();
+
+export const workoutSessionStepUpdateSchema = insertWorkoutSessionStepSchema
+  .omit({ sessionId: true, userId: true, stepIndex: true })
+  .partial()
+  .strict();
+
+export const shoppingListUpdateSchema = insertShoppingListSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const shoppingListItemUpdateSchema = insertShoppingListItemSchema
+  .omit({ shoppingListId: true })
+  .partial()
+  .strict();
+
+export const dimensionBlueprintUpdateSchema = insertDimensionBlueprintSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const resetProtocolUpdateSchema = insertResetProtocolSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const universalPlanUpdateSchema = insertUniversalPlanSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const streakUpdateSchema = insertStreakSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const aiSuggestionUpdateSchema = insertAiSuggestionSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const conversationInsightUpdateSchema = insertConversationInsightSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const dwFollowupUpdateSchema = insertDwFollowupSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const elevationPlanUpdateSchema = insertElevationPlanSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
+export const elevationPlanActionUpdateSchema = insertElevationPlanActionSchema
+  .omit({ planDayId: true })
+  .partial()
+  .strict();
+
+export const reminderUpdateSchema = insertReminderSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
