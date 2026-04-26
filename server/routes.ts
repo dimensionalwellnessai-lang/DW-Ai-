@@ -10021,7 +10021,7 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
       const followupPatchSchema = z.object({
         status: z.enum(["pending", "accepted", "snoozed", "answered", "dismissed"]),
         snoozedUntil: z.union([z.string(), z.date()]).optional(),
-      });
+      }).strict();
       const parsed = followupPatchSchema.safeParse(baseParsed.data);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid follow-up payload", details: parsed.error.flatten() });
