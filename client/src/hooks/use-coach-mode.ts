@@ -91,6 +91,9 @@ export function useCoachMode() {
   return {
     coachMode,
     setCoachMode: mutation.mutate,
+    /** Promise-returning variant — useful when callers want to chain a save
+     * indicator (e.g. `usePrefSync`) onto the mutation. */
+    setCoachModeAsync: mutation.mutateAsync,
     isUpdating: mutation.isPending,
   };
 }

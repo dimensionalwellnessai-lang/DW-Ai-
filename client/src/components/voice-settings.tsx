@@ -9,12 +9,31 @@ import { ttsService, type TTSSettings, type VoicePersonality, VOICE_PERSONALITIE
 import { useMeditationVoicePref } from "@/lib/meditation-voice-pref";
 import { Mic, Volume2, Gauge, Play, Square, Sparkles, Zap, Wind } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SyncIndicator } from "@/components/sync-indicator";
+import { usePrefSync } from "@/hooks/use-pref-sync";
 
 export function VoiceSettings() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<TTSSettings>(ttsService.getSettings());
   const [isTesting, setIsTesting] = useState(false);
   const [meditationVoice, setMeditationVoice] = useMeditationVoicePref();
+
+  // Per-field save status — same `<SyncIndicator />` UX as accountability
+  // preferences so voice changes don't save silently.
+  const voiceSync = usePrefSync({ logTag: "voice-prefs" });
+  const fieldIndicator = (field: string, testIdPrefix: string) => {
+    const { status, error } = voiceSync.statusFor(field);
+    if (status === "idle") return null;
+    return (
+      <SyncIndicator
+        status={status}
+        error={error}
+        testIdPrefix={testIdPrefix}
+        showIdle={false}
+        className="mt-1"
+      />
+    );
+  };
 
   useEffect(() => {
     return () => { ttsService.stop(); };
@@ -23,12 +42,18 @@ export function VoiceSettings() {
   const handleSettingChange = (key: keyof TTSSettings, value: unknown) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
-    ttsService.updateSettings({ [key]: value });
+    void voiceSync.run(key, () => ttsService.updateSettings({ [key]: value }));
   };
 
   const handlePersonalityChange = (personality: VoicePersonality) => {
-    ttsService.applyPersonality(personality);
-    setSettings(ttsService.getSettings());
+    void voiceSync.run("voicePersonality", () => {
+      ttsService.applyPersonality(personality);
+      setSettings(ttsService.getSettings());
+    });
+  };
+
+  const handleMeditationVoiceChange = (checked: boolean) => {
+    void voiceSync.run("meditationVoice", () => setMeditationVoice(checked));
   };
 
   const handleTestVoice = async () => {
@@ -72,35 +97,41 @@ export function VoiceSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="tts-enabled">Enable Voice Responses</Label>
-              <p className="text-sm text-muted-foreground">
-                DW will speak aloud when you use voice features
-              </p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="tts-enabled">Enable Voice Responses</Label>
+                <p className="text-sm text-muted-foreground">
+                  DW will speak aloud when you use voice features
+                </p>
+              </div>
+              <Switch
+                id="tts-enabled"
+                checked={settings.enabled}
+                onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
+                data-testid="switch-tts-enabled"
+              />
             </div>
-            <Switch
-              id="tts-enabled"
-              checked={settings.enabled}
-              onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
-              data-testid="switch-tts-enabled"
-            />
+            {fieldIndicator("enabled", "status-tts-enabled")}
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="auto-speak">Auto-Speak AI Responses</Label>
-              <p className="text-sm text-muted-foreground">
-                DW automatically reads responses without needing a tap
-              </p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-speak">Auto-Speak AI Responses</Label>
+                <p className="text-sm text-muted-foreground">
+                  DW automatically reads responses without needing a tap
+                </p>
+              </div>
+              <Switch
+                id="auto-speak"
+                checked={settings.autoSpeak}
+                onCheckedChange={(checked) => handleSettingChange('autoSpeak', checked)}
+                disabled={!settings.enabled}
+                data-testid="switch-auto-speak"
+              />
             </div>
-            <Switch
-              id="auto-speak"
-              checked={settings.autoSpeak}
-              onCheckedChange={(checked) => handleSettingChange('autoSpeak', checked)}
-              disabled={!settings.enabled}
-              data-testid="switch-auto-speak"
-            />
+            {fieldIndicator("autoSpeak", "status-auto-speak")}
           </div>
 
           <div className="space-y-3">
@@ -130,6 +161,7 @@ export function VoiceSettings() {
                 </button>
               ))}
             </div>
+            {fieldIndicator("voicePersonality", "status-voice-personality")}
           </div>
 
           <div className="space-y-2">
@@ -154,6 +186,7 @@ export function VoiceSettings() {
               <span>Normal</span>
               <span>Faster</span>
             </div>
+            {fieldIndicator("rate", "status-speaking-rate")}
           </div>
 
           <Button
@@ -189,20 +222,23 @@ export function VoiceSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5 pr-4">
-              <Label htmlFor="meditation-voice-guidance">Voice guidance</Label>
-              <p className="text-sm text-muted-foreground">
-                Auto-plays a guided narration when you open a meditation. You
-                can still pause or scrub from the session timer.
-              </p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5 pr-4">
+                <Label htmlFor="meditation-voice-guidance">Voice guidance</Label>
+                <p className="text-sm text-muted-foreground">
+                  Auto-plays a guided narration when you open a meditation. You
+                  can still pause or scrub from the session timer.
+                </p>
+              </div>
+              <Switch
+                id="meditation-voice-guidance"
+                checked={meditationVoice}
+                onCheckedChange={handleMeditationVoiceChange}
+                data-testid="switch-meditation-voice-guidance"
+              />
             </div>
-            <Switch
-              id="meditation-voice-guidance"
-              checked={meditationVoice}
-              onCheckedChange={setMeditationVoice}
-              data-testid="switch-meditation-voice-guidance"
-            />
+            {fieldIndicator("meditationVoice", "status-meditation-voice")}
           </div>
         </CardContent>
       </Card>

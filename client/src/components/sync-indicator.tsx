@@ -1,17 +1,18 @@
 /**
  * SyncIndicator
  *
- * Subtle "Synced across devices" cue used next to user preference controls
- * that persist server-side. Mirrors the pattern introduced for the upcoming-
- * reminders horizon select so the UX is consistent across every preference.
+ * Subtle save-state cue used next to user preference controls. Mirrors the
+ * pattern introduced for the accountability preferences so the UX is
+ * consistent across every preference surface.
  *
  * - "saving"  → spinner + "Saving…"
- * - "saved"   → check + "Synced across devices" (consumers auto-clear after a
- *               few seconds; we just render whatever the parent passes).
+ * - "saved"   → check + savedLabel (defaults to "Synced across devices";
+ *               consumers persisting only to this device should pass a more
+ *               truthful label like "Saved on this device").
  * - "error"   → inline destructive message (failures should not stay silent).
- * - "idle"    → reassuring "Synced across devices" baseline; can be hidden
- *               via showIdle={false} when the surrounding layout would feel
- *               too noisy with one indicator per row.
+ * - "idle"    → reassuring baseline copy; hide via showIdle={false} when
+ *               the surrounding layout would feel too noisy with one
+ *               indicator per row.
  */
 
 import { Loader2, Check, AlertCircle } from "lucide-react";
@@ -25,7 +26,13 @@ interface SyncIndicatorProps {
   testIdPrefix: string;
   showIdle?: boolean;
   className?: string;
+  /** Copy shown alongside the green check after a successful save. */
+  savedLabel?: string;
+  /** Copy shown in the idle baseline. Defaults to `savedLabel`. */
+  idleLabel?: string;
 }
+
+const DEFAULT_SAVED_LABEL = "Synced across devices";
 
 export function SyncIndicator({
   status,
@@ -33,7 +40,10 @@ export function SyncIndicator({
   testIdPrefix,
   showIdle = true,
   className,
+  savedLabel = DEFAULT_SAVED_LABEL,
+  idleLabel,
 }: SyncIndicatorProps) {
+  const baseline = idleLabel ?? savedLabel;
   return (
     <div
       className={cn(
@@ -58,7 +68,7 @@ export function SyncIndicator({
           data-testid={`${testIdPrefix}-saved`}
         >
           <Check className="w-3 h-3" />
-          Synced across devices
+          {savedLabel}
         </span>
       )}
       {status === "error" && error && (
@@ -75,7 +85,7 @@ export function SyncIndicator({
           className="text-muted-foreground"
           data-testid={`${testIdPrefix}-idle`}
         >
-          Synced across devices
+          {baseline}
         </span>
       )}
     </div>

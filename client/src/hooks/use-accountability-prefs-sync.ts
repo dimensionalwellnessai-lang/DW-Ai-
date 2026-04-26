@@ -13,13 +13,16 @@
  * accountability scheduler) pick up the change. On failure, the indicator
  * surfaces an inline message instead of silently logging — failures should
  * never disappear into the console.
+ *
+ * Implemented on top of the generic `usePrefSync` so other settings
+ * surfaces (theme, voice, analytics opt-out, etc.) can reuse the same
+ * status-tracking logic without reinventing per-page state.
  */
 
-import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { NotificationPreferences } from "@shared/schema";
 import type { SyncStatus } from "@/components/sync-indicator";
+import { usePrefSync } from "@/hooks/use-pref-sync";
 
 export type PrefField = keyof NotificationPreferences;
 
@@ -27,64 +30,34 @@ export interface PrefsSync {
   /** Persist a partial update. The first field key in `updates` is treated
    * as the "active" field for indicator placement. */
   update: (updates: Partial<NotificationPreferences>) => void;
-  /** Look up the current sync status for a specific field. Only the field
-   * whose update is currently in flight (or just completed/failed) reports
-   * a non-idle status. */
   statusFor: (field: PrefField) => { status: SyncStatus; error: string | null };
   isPending: boolean;
 }
 
 export function useAccountabilityPrefsSync(): PrefsSync {
-  const [activeField, setActiveField] = useState<PrefField | null>(null);
-  const [status, setStatus] = useState<SyncStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const sync = usePrefSync<PrefField>({
+    errorMessage:
+      "Couldn't save to the server. Check your connection and try again.",
+    logTag: "accountability-prefs",
+  });
 
-  const mutation = useMutation({
-    mutationFn: async (updates: Partial<NotificationPreferences>) => {
+  const update = (updates: Partial<NotificationPreferences>) => {
+    const keys = Object.keys(updates) as PrefField[];
+    const field = keys[0];
+    if (!field) return;
+    void sync.run(field, async () => {
       const res = await apiRequest(
         "PUT",
         "/api/accountability/preferences",
         updates,
       );
-      return res.json();
-    },
-    onSuccess: (next) => {
+      const next = await res.json();
       queryClient.setQueryData(["/api/accountability/preferences"], next);
       queryClient.invalidateQueries({
         queryKey: ["/api/accountability/preferences"],
       });
-      setStatus("saved");
-      setError(null);
-    },
-    onError: (err: unknown) => {
-      console.error("[accountability-prefs] save failed:", err);
-      setStatus("error");
-      setError(
-        "Couldn't save to the server. Check your connection and try again.",
-      );
-    },
-  });
-
-  // Auto-clear the transient "Synced" indicator a few seconds after a
-  // successful save so it doesn't linger forever.
-  useEffect(() => {
-    if (status !== "saved") return;
-    const id = setTimeout(() => setStatus("idle"), 3000);
-    return () => clearTimeout(id);
-  }, [status]);
-
-  const update = (updates: Partial<NotificationPreferences>) => {
-    const keys = Object.keys(updates) as PrefField[];
-    setActiveField(keys[0] ?? null);
-    setError(null);
-    setStatus("saving");
-    mutation.mutate(updates);
+    });
   };
 
-  const statusFor = (field: PrefField) => {
-    if (activeField !== field) return { status: "idle" as SyncStatus, error: null };
-    return { status, error };
-  };
-
-  return { update, statusFor, isPending: mutation.isPending };
+  return { update, statusFor: sync.statusFor, isPending: sync.isPending };
 }

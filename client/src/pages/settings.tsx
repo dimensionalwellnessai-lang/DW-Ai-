@@ -7,6 +7,7 @@ import {
   useAccountabilityPrefsSync,
   type PrefField,
 } from "@/hooks/use-accountability-prefs-sync";
+import { usePrefSync } from "@/hooks/use-pref-sync";
 import { ensurePushSubscription, unsubscribePushSubscription } from "@/lib/push-subscription";
 import { cancelAllNativeReminders, isCapacitor, scheduleNativeTestReminder } from "@/lib/capacitor-notifications";
 import type { NotificationPreferences } from "@shared/schema";
@@ -99,8 +100,27 @@ export function SettingsPage() {
   const dwLearnsEnabled = isFeatureEnabled("DW_LEARNS");
   const coachModesEnabled = isFeatureEnabled("COACH_MODES");
   const { isEnabled: learningEnabled, updateProfile: updateLearningProfile } = useLearningProfile();
-  const { coachMode, setCoachMode, isUpdating: isCoachModeUpdating } = useCoachMode();
+  const { coachMode, setCoachModeAsync, isUpdating: isCoachModeUpdating } = useCoachMode();
   const { consent: cosmicConsent, update: updateCosmicConsent } = useCosmicConsent();
+
+  // Per-field save status driving the inline `<SyncIndicator />`s on this
+  // page. Mirrors the pattern used by accountability preferences so users get
+  // the same reassurance ("Synced across devices") for every preference they
+  // change here.
+  const settingsSync = usePrefSync({ logTag: "settings-prefs" });
+  const fieldIndicator = (field: string, testIdPrefix: string) => {
+    const { status, error } = settingsSync.statusFor(field);
+    if (status === "idle") return null;
+    return (
+      <SyncIndicator
+        status={status}
+        error={error}
+        testIdPrefix={testIdPrefix}
+        showIdle={false}
+        className="mt-1"
+      />
+    );
+  };
 
   // ── Full account reset ───────────────────────────────────────────────────
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -132,7 +152,10 @@ export function SettingsPage() {
   });
   const handleCheckinTimeChange = (val: string) => {
     setCheckinReminderTime(val);
-    try { localStorage.setItem(CHECKIN_REMINDER_TIME_KEY, val); } catch { /* blocked */ }
+    void settingsSync.run("checkinReminderTime", () => {
+      // Throws if storage is blocked — surfaced inline by the sync indicator.
+      localStorage.setItem(CHECKIN_REMINDER_TIME_KEY, val);
+    });
   };
   // App-level browser notification preference (separate from OS/browser permission)
   const [browserNotifEnabled, setBrowserNotifEnabled] = useState<boolean>(() => {
@@ -141,8 +164,10 @@ export function SettingsPage() {
   // Analytics opt-out preference — "enabled" = not opted-out
   const [analyticsEnabled, setAnalyticsEnabledState] = useState<boolean>(() => !isAnalyticsOptedOut());
   const handleAnalyticsToggle = (checked: boolean) => {
-    setAnalyticsOptOut(!checked); // checked=true → opt-out=false (tracking ON)
     setAnalyticsEnabledState(checked);
+    void settingsSync.run("analyticsEnabled", () => {
+      setAnalyticsOptOut(!checked); // checked=true → opt-out=false (tracking ON)
+    });
   };
   const handleBrowserNotifToggle = async (checked: boolean) => {
     if (checked && permission !== "granted") {
@@ -150,7 +175,23 @@ export function SettingsPage() {
       if (!granted) return; // permission denied by browser – don't update pref
     }
     setBrowserNotifEnabled(checked);
-    try { localStorage.setItem(BROWSER_NOTIF_ENABLED_KEY, String(checked)); } catch { /* blocked */ }
+    void settingsSync.run("browserNotifEnabled", () => {
+      localStorage.setItem(BROWSER_NOTIF_ENABLED_KEY, String(checked));
+    });
+  };
+  const handleCosmicConsentToggle = (
+    key: "useAstrologyInGuidance" | "useNumerologyInGuidance",
+    value: boolean,
+  ) => {
+    void settingsSync.run(key, () => updateCosmicConsent(key, value));
+  };
+  const handleLearningEnabledToggle = (checked: boolean) => {
+    void settingsSync.run("learningEnabled", () =>
+      updateLearningProfile({ learningEnabled: checked }),
+    );
+  };
+  const handleCoachModeChange = (mode: CoachingMode) => {
+    void settingsSync.run("coachMode", () => setCoachModeAsync(mode));
   };
   
   const handleReplayMenuTour = () => {
@@ -284,35 +325,41 @@ export function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
-                <span>Cosmic insights</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  Include your birth chart in personalized DW guidance
-                </span>
-              </Label>
-              <Switch
-                id="cosmic-astrology-toggle"
-                checked={cosmicConsent.useAstrologyInGuidance}
-                onCheckedChange={v => updateCosmicConsent("useAstrologyInGuidance", v)}
-                aria-label="Use cosmic insights in guidance"
-                data-testid="switch-cosmic-astrology"
-              />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="cosmic-astrology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                  <span>Cosmic insights</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Include your birth chart in personalized DW guidance
+                  </span>
+                </Label>
+                <Switch
+                  id="cosmic-astrology-toggle"
+                  checked={cosmicConsent.useAstrologyInGuidance}
+                  onCheckedChange={v => handleCosmicConsentToggle("useAstrologyInGuidance", v)}
+                  aria-label="Use cosmic insights in guidance"
+                  data-testid="switch-cosmic-astrology"
+                />
+              </div>
+              {fieldIndicator("useAstrologyInGuidance", "status-cosmic-astrology")}
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="cosmic-numerology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
-                <span>Numerology insights</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  Include your numbers in personalized DW guidance
-                </span>
-              </Label>
-              <Switch
-                id="cosmic-numerology-toggle"
-                checked={cosmicConsent.useNumerologyInGuidance}
-                onCheckedChange={v => updateCosmicConsent("useNumerologyInGuidance", v)}
-                aria-label="Use numerology in guidance"
-                data-testid="switch-cosmic-numerology"
-              />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="cosmic-numerology-toggle" className="flex flex-col gap-0.5 cursor-pointer">
+                  <span>Numerology insights</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Include your numbers in personalized DW guidance
+                  </span>
+                </Label>
+                <Switch
+                  id="cosmic-numerology-toggle"
+                  checked={cosmicConsent.useNumerologyInGuidance}
+                  onCheckedChange={v => handleCosmicConsentToggle("useNumerologyInGuidance", v)}
+                  aria-label="Use numerology in guidance"
+                  data-testid="switch-cosmic-numerology"
+                />
+              </div>
+              {fieldIndicator("useNumerologyInGuidance", "status-cosmic-numerology")}
             </div>
             <p className="text-xs text-muted-foreground">
               When enabled, DW may reference your chart or numbers where relevant — always alongside practical guidance, never as a replacement.
@@ -459,6 +506,7 @@ export function SettingsPage() {
                     Browser notifications active. Only fires while the app is open.
                   </div>
                 )}
+                {fieldIndicator("browserNotifEnabled", "status-browser-notifications")}
               </div>
 
               {/* Daily check-in reminder time */}
@@ -477,6 +525,7 @@ export function SettingsPage() {
                   className="w-36"
                   data-testid="input-checkin-reminder-time"
                 />
+                {fieldIndicator("checkinReminderTime", "status-checkin-reminder-time")}
               </div>
 
               {/* Scheduled reminders list */}
@@ -602,22 +651,24 @@ export function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="dw-learns-toggle" className="flex flex-col gap-0.5">
-                  <span>Personalization</span>
-                  <span className="text-xs text-muted-foreground font-normal">
-                    {learningEnabled
-                      ? "DW is learning from your activity"
-                      : "Personalization is off"}
-                  </span>
-                </Label>
-                <Switch
-                  id="dw-learns-toggle"
-                  checked={learningEnabled}
-                  onCheckedChange={(checked) =>
-                    updateLearningProfile({ learningEnabled: checked })
-                  }
-                />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="dw-learns-toggle" className="flex flex-col gap-0.5">
+                    <span>Personalization</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {learningEnabled
+                        ? "DW is learning from your activity"
+                        : "Personalization is off"}
+                    </span>
+                  </Label>
+                  <Switch
+                    id="dw-learns-toggle"
+                    checked={learningEnabled}
+                    onCheckedChange={handleLearningEnabledToggle}
+                    data-testid="switch-dw-learns-enabled"
+                  />
+                </div>
+                {fieldIndicator("learningEnabled", "status-dw-learns")}
               </div>
               <Link href="/dw-learns">
                 <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-dw-learns">
@@ -660,7 +711,7 @@ export function SettingsPage() {
                     role="radio"
                     aria-checked={coachMode === mode}
                     disabled={isCoachModeUpdating}
-                    onClick={() => setCoachMode(mode)}
+                    onClick={() => handleCoachModeChange(mode as CoachingMode)}
                     data-testid={`coach-mode-${mode}`}
                     className={cn(
                       "flex flex-col gap-0.5 rounded-md border px-4 py-3 text-left transition-colors",
@@ -676,6 +727,7 @@ export function SettingsPage() {
                   </button>
                 ))}
               </div>
+              {fieldIndicator("coachMode", "status-coach-mode")}
               <p className="text-xs text-muted-foreground">
                 Default is Gentle. You can change this at any time.
               </p>
@@ -697,21 +749,24 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">
               Your data is stored securely. You can delete your account and all associated data at any time.
             </p>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="analytics-toggle" className="flex flex-col gap-0.5">
-                <span>Usage analytics</span>
-                <span className="text-xs text-muted-foreground font-normal">
-                  {analyticsEnabled
-                    ? "Anonymous usage events are tracked to improve DW"
-                    : "Analytics tracking is off"}
-                </span>
-              </Label>
-              <Switch
-                id="analytics-toggle"
-                checked={analyticsEnabled}
-                onCheckedChange={handleAnalyticsToggle}
-                data-testid="switch-analytics-enabled"
-              />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="analytics-toggle" className="flex flex-col gap-0.5">
+                  <span>Usage analytics</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {analyticsEnabled
+                      ? "Anonymous usage events are tracked to improve DW"
+                      : "Analytics tracking is off"}
+                  </span>
+                </Label>
+                <Switch
+                  id="analytics-toggle"
+                  checked={analyticsEnabled}
+                  onCheckedChange={handleAnalyticsToggle}
+                  data-testid="switch-analytics-enabled"
+                />
+              </div>
+              {fieldIndicator("analyticsEnabled", "status-analytics-enabled")}
             </div>
             <Link href="/privacy-terms">
               <div className="flex items-center justify-between p-3 -mx-3 rounded-md hover-elevate cursor-pointer" data-testid="link-privacy-terms">

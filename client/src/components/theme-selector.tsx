@@ -12,6 +12,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Palette, Heart, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { SyncIndicator } from "@/components/sync-indicator";
+import { usePrefSync } from "@/hooks/use-pref-sync";
 
 const THEME_OPTIONS: { value: ThemeName; label: string; description: string }[] = [
   { value: "light", label: "Light", description: "Clean and bright" },
@@ -34,6 +36,23 @@ const MOOD_OPTIONS: { value: MoodTheme; label: string; emoji: string }[] = [
 
 export function ThemeSelector() {
   const { extendedTheme, setExtendedTheme, mood, setMood, moodAdaptiveEnabled, setMoodAdaptiveEnabled } = useTheme();
+
+  // Per-field save status — shares the same `<SyncIndicator />` UX as
+  // accountability preferences so theme changes don't save silently.
+  const themeSync = usePrefSync({ logTag: "theme-prefs" });
+  const fieldIndicator = (field: string, testIdPrefix: string) => {
+    const { status, error } = themeSync.statusFor(field);
+    if (status === "idle") return null;
+    return (
+      <SyncIndicator
+        status={status}
+        error={error}
+        testIdPrefix={testIdPrefix}
+        showIdle={false}
+        className="mt-1"
+      />
+    );
+  };
 
   return (
     <motion.div
@@ -58,8 +77,13 @@ export function ThemeSelector() {
               <Sparkles className="h-4 w-4" />
               App Theme
             </Label>
-            <Select value={extendedTheme} onValueChange={(value) => setExtendedTheme(value as ThemeName)}>
-              <SelectTrigger id="theme-select">
+            <Select
+              value={extendedTheme}
+              onValueChange={(value) =>
+                themeSync.run("extendedTheme", () => setExtendedTheme(value as ThemeName))
+              }
+            >
+              <SelectTrigger id="theme-select" data-testid="select-app-theme">
                 <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent>
@@ -73,26 +97,33 @@ export function ThemeSelector() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldIndicator("extendedTheme", "status-app-theme")}
           </div>
 
           {/* Mood-Adaptive Toggle */}
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-accent" />
-              <Label htmlFor="mood-adaptive" className="cursor-pointer">
-                <div>
-                  <div className="font-medium">Mood-Adaptive Themes</div>
-                  <div className="text-xs text-muted-foreground">
-                    Automatically adjust colors based on your mood
+          <div className="space-y-1">
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex items-center gap-2">
+                <Heart className="h-4 w-4 text-accent" />
+                <Label htmlFor="mood-adaptive" className="cursor-pointer">
+                  <div>
+                    <div className="font-medium">Mood-Adaptive Themes</div>
+                    <div className="text-xs text-muted-foreground">
+                      Automatically adjust colors based on your mood
+                    </div>
                   </div>
-                </div>
-              </Label>
+                </Label>
+              </div>
+              <Switch
+                id="mood-adaptive"
+                checked={moodAdaptiveEnabled}
+                onCheckedChange={(checked) =>
+                  themeSync.run("moodAdaptiveEnabled", () => setMoodAdaptiveEnabled(checked))
+                }
+                data-testid="switch-mood-adaptive"
+              />
             </div>
-            <Switch
-              id="mood-adaptive"
-              checked={moodAdaptiveEnabled}
-              onCheckedChange={setMoodAdaptiveEnabled}
-            />
+            {fieldIndicator("moodAdaptiveEnabled", "status-mood-adaptive")}
           </div>
 
           {/* Current Mood Selection */}
@@ -110,13 +141,17 @@ export function ThemeSelector() {
                     key={option.value}
                     variant={mood === option.value ? "default" : "outline"}
                     className="flex flex-col h-auto py-3"
-                    onClick={() => setMood(option.value as MoodTheme)}
+                    onClick={() =>
+                      themeSync.run("mood", () => setMood(option.value as MoodTheme))
+                    }
+                    data-testid={`button-mood-${option.value}`}
                   >
                     <span className="text-2xl mb-1">{option.emoji}</span>
                     <span className="text-xs">{option.label}</span>
                   </Button>
                 ))}
               </div>
+              {fieldIndicator("mood", "status-mood-selection")}
             </motion.div>
           )}
 
