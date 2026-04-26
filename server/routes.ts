@@ -6709,19 +6709,9 @@ Return only valid JSON, no other text.`;
         return res.status(404).json({ error: "Meal not found" });
       }
       
-      const updateSchema = z.object({
-        title: z.string().min(1).max(200).optional(),
-        mealType: z.string().optional(),
-        weekLabel: z.string().optional().nullable(),
-        notes: z.string().optional().nullable(),
-        ingredients: z.array(z.string()).optional(),
-        instructions: z.array(z.string()).optional(),
-        tags: z.array(z.string()).optional(),
-      }).strict();
-      
-      const parsed = updateSchema.safeParse(req.body ?? {});
+      const parsed = mealUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
+        return res.status(400).json({ error: "Invalid meal payload", details: parsed.error.flatten() });
       }
       
       const updated = await storage.updateMeal(req.params.id, parsed.data);
@@ -6849,22 +6839,9 @@ Return only valid JSON, no other text.`;
         return res.status(404).json({ error: "Exercise not found" });
       }
       
-      const updateSchema = z.object({
-        title: z.string().min(1).max(200).optional(),
-        exerciseType: z.string().optional(),
-        dayLabel: z.string().optional().nullable(),
-        notes: z.string().optional().nullable(),
-        sets: z.string().optional().nullable(),
-        reps: z.string().optional().nullable(),
-        duration: z.string().optional().nullable(),
-        equipment: z.array(z.string()).optional(),
-        instructions: z.array(z.string()).optional(),
-        tags: z.array(z.string()).optional(),
-      }).strict();
-      
-      const parsed = updateSchema.safeParse(req.body ?? {});
+      const parsed = exerciseUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
+        return res.status(400).json({ error: "Invalid exercise payload", details: parsed.error.flatten() });
       }
       
       const updated = await storage.updateExercise(req.params.id, parsed.data);
@@ -6930,17 +6907,9 @@ Return only valid JSON, no other text.`;
       if (!session || session.userId !== req.session.userId) {
         return res.status(404).json({ error: "Workout session not found" });
       }
-      const schema = z.object({
-        status: z.enum(["in_progress", "completed", "cancelled"]).optional(),
-        voiceCoachEnabled: z.boolean().optional(),
-        notes: z.string().optional().nullable(),
-        durationSeconds: z.number().int().optional().nullable(),
-        completedAt: z.string().optional().nullable(),
-        metadata: z.record(z.unknown()).optional().nullable(),
-      }).strict();
-      const parsed = schema.safeParse(req.body ?? {});
+      const parsed = workoutSessionUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
+        return res.status(400).json({ error: "Invalid workout session payload", details: parsed.error.flatten() });
       }
       const updateData: {
         status?: string;
@@ -6992,20 +6961,15 @@ Return only valid JSON, no other text.`;
       if (isNaN(stepIndex) || stepIndex < 0) {
         return res.status(400).json({ error: "Invalid step index" });
       }
-      const schema = z.object({
+      // PUT-style upsert: title and stepType are required for the create path,
+      // so wrap the strict update schema with the upsert-required fields.
+      const upsertSchema = workoutSessionStepUpdateSchema.extend({
         title: z.string().min(1).max(200),
         stepType: z.enum(["strength", "timed", "distance", "breathwork", "mobility", "custom"]),
-        completed: z.boolean().optional(),
-        setsCompleted: z.number().int().optional().nullable(),
-        repsPerSet: z.string().optional().nullable(),
-        weightPerSet: z.string().optional().nullable(),
-        durationSeconds: z.number().int().optional().nullable(),
-        distanceMeters: z.number().optional().nullable(),
-        notes: z.string().optional().nullable(),
-      }).strict();
-      const parsed = schema.safeParse(req.body ?? {});
+      });
+      const parsed = upsertSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
+        return res.status(400).json({ error: "Invalid workout step payload", details: parsed.error.flatten() });
       }
       const step = await storage.upsertWorkoutSessionStep({
         sessionId: req.params.id,
@@ -9837,7 +9801,14 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
-      const parsed = patchInsightSchema.safeParse(req.body ?? {});
+      // Use exported strict update schema as the gatekeeper (rejects unknown
+      // fields and the userId owner key), then run the local pinnedAt
+      // transform schema on the surviving keys to coerce Date.
+      const baseParsed = conversationInsightUpdateSchema.safeParse(req.body ?? {});
+      if (!baseParsed.success) {
+        return res.status(400).json({ error: "Invalid insight payload", details: baseParsed.error.flatten() });
+      }
+      const parsed = patchInsightSchema.safeParse(baseParsed.data);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid insight payload", details: parsed.error.flatten() });
       }
@@ -10039,15 +10010,26 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const { id } = req.params;
       const userId = req.session.userId!;
+      // Strict gatekeeper from the exported insert-derived schema rejects
+      // unknown fields and the userId owner key. Then a narrow inner schema
+      // enforces the route-specific contract (status enum required,
+      // snoozedUntil string-coerced to a Date below).
+      const baseParsed = dwFollowupUpdateSchema.safeParse(req.body ?? {});
+      if (!baseParsed.success) {
+        return res.status(400).json({ error: "Invalid follow-up payload", details: baseParsed.error.flatten() });
+      }
       const followupPatchSchema = z.object({
         status: z.enum(["pending", "accepted", "snoozed", "answered", "dismissed"]),
-        snoozedUntil: z.string().optional(),
-      }).strict();
-      const parsed = followupPatchSchema.safeParse(req.body ?? {});
+        snoozedUntil: z.union([z.string(), z.date()]).optional(),
+      });
+      const parsed = followupPatchSchema.safeParse(baseParsed.data);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid follow-up payload", details: parsed.error.flatten() });
       }
-      const { status, snoozedUntil } = parsed.data;
+      const { status } = parsed.data;
+      const snoozedUntil = typeof parsed.data.snoozedUntil === "string"
+        ? parsed.data.snoozedUntil
+        : parsed.data.snoozedUntil?.toISOString();
 
       const now = new Date();
       const fields: Parameters<typeof storage.updateDwFollowup>[2] = { status };
@@ -11008,20 +10990,20 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     try {
       const userId = req.session.userId!;
       const { id } = req.params;
-      const reminderPatchSchema = z.object({
-        status: z.string().optional(),
-        scheduledAt: z.string().optional(),
-        title: z.string().optional(),
-        body: z.string().optional(),
-      }).strict();
-      const parsed = reminderPatchSchema.safeParse(req.body ?? {});
+      // Strict gatekeeper from the exported insert-derived schema rejects
+      // unknown fields and the userId owner key.
+      const parsed = reminderUpdateSchema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid reminder payload", details: parsed.error.flatten() });
       }
       const { status, scheduledAt, title, body } = parsed.data;
       const fields: Record<string, unknown> = {};
       if (status !== undefined) fields.status = status;
-      if (scheduledAt !== undefined) fields.scheduledAt = new Date(scheduledAt);
+      if (scheduledAt !== undefined) {
+        // scheduledAt comes through as a Date from createInsertSchema's
+        // timestamp coercion; storage.updateReminder expects a Date.
+        fields.scheduledAt = scheduledAt instanceof Date ? scheduledAt : new Date(scheduledAt as string);
+      }
       if (title !== undefined) fields.title = title;
       if (body !== undefined) fields.body = body;
       const updated = await storage.updateReminder(id, userId, fields as Parameters<typeof storage.updateReminder>[2]);

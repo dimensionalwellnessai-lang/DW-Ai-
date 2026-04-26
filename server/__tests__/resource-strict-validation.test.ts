@@ -23,11 +23,11 @@
 
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-// Only schemas wired to a real route handler are tested here. Routes that
-// use inline z.object schemas (meals, exercises, workout sessions/steps,
-// insights patch, dw/followups patch, reminders patch, users/me patch,
-// documents/items body) get covered by their own handler-level tests
-// rather than by importing an exported schema that the runtime ignores.
+// Every schema imported here is wired to a real PATCH/PUT handler in
+// server/routes.ts (either as the sole validator or as the strict
+// gatekeeper that runs before any route-specific transform). Adding a
+// schema to this suite without wiring it to a route would create false
+// confidence in unused validation.
 import {
   conversationUpdateSchema,
   aiSyncSessionUpdateSchema,
@@ -48,7 +48,11 @@ import {
   dailyScheduleEventUpdateSchema,
   importedDocumentItemUpdateSchema,
   mealPlanUpdateSchema,
+  mealUpdateSchema,
   workoutPlanUpdateSchema,
+  exerciseUpdateSchema,
+  workoutSessionUpdateSchema,
+  workoutSessionStepUpdateSchema,
   shoppingListUpdateSchema,
   shoppingListItemUpdateSchema,
   dimensionBlueprintUpdateSchema,
@@ -56,6 +60,9 @@ import {
   universalPlanUpdateSchema,
   streakUpdateSchema,
   aiSuggestionUpdateSchema,
+  conversationInsightUpdateSchema,
+  dwFollowupUpdateSchema,
+  reminderUpdateSchema,
 } from "@shared/schema";
 
 interface SchemaScenario {
@@ -93,7 +100,14 @@ const scenarios: SchemaScenario[] = [
   { label: "resetProtocolUpdateSchema", schema: resetProtocolUpdateSchema, routeNote: "PATCH /api/reset-protocol/:id", omittedOwnerKey: "userId" },
   { label: "universalPlanUpdateSchema", schema: universalPlanUpdateSchema, routeNote: "PATCH /api/universal-plans/:id", omittedOwnerKey: "userId" },
   { label: "streakUpdateSchema", schema: streakUpdateSchema, routeNote: "PATCH /api/streaks/:id", omittedOwnerKey: "userId" },
+  { label: "mealUpdateSchema", schema: mealUpdateSchema, routeNote: "PATCH /api/meals/:id", omittedOwnerKey: "userId" },
+  { label: "exerciseUpdateSchema", schema: exerciseUpdateSchema, routeNote: "PATCH /api/exercises/:id", omittedOwnerKey: "workoutPlanId" },
+  { label: "workoutSessionUpdateSchema", schema: workoutSessionUpdateSchema, routeNote: "PATCH /api/workout-sessions/:id", omittedOwnerKey: "userId" },
+  { label: "workoutSessionStepUpdateSchema", schema: workoutSessionStepUpdateSchema, routeNote: "PUT /api/workout-sessions/:id/steps/:stepIndex", omittedOwnerKey: "sessionId" },
   { label: "aiSuggestionUpdateSchema", schema: aiSuggestionUpdateSchema, routeNote: "PATCH /api/ai-suggestions/:id", omittedOwnerKey: "userId" },
+  { label: "conversationInsightUpdateSchema", schema: conversationInsightUpdateSchema, routeNote: "PATCH /api/insights/:id (gatekeeper)", omittedOwnerKey: "userId" },
+  { label: "dwFollowupUpdateSchema", schema: dwFollowupUpdateSchema, routeNote: "PATCH /api/dw/followups/:id (gatekeeper)", omittedOwnerKey: "userId" },
+  { label: "reminderUpdateSchema", schema: reminderUpdateSchema, routeNote: "PATCH /api/reminders/:id", omittedOwnerKey: "userId" },
 ];
 
 describe("resource update schemas reject unknown fields", () => {
