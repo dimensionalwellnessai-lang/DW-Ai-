@@ -209,17 +209,11 @@ export default function HealthDataPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/health-metrics"] }),
   });
 
-  // 7d-vs-prior-7d delta per metric, computed off the raw 14 *completed* days
-  // (yesterday backwards). Deliberately independent of `trendWindow` so
-  // toggling 7d/30d on the chart does NOT change the badge — the badge is
-  // always "last week vs the week before". Returns null for any metric
-  // without a full 14 days of history (all 7 days present in BOTH the
-  // current and prior weeks). This matches the task acceptance criterion
-  // "hide the badge when fewer than 14 days of history exist".
-  // Note: day-key derivation uses toISOString().slice(0,10) (UTC date) to
-  // stay consistent with the adjacent `wearableTrends` chart bucketing —
-  // moving to local-calendar dates is tracked as a separate follow-up so
-  // the chart and the badge change together and never disagree.
+  // 7d-vs-prior-7d delta per metric over the last 14 *completed* days.
+  // Always "last week vs the week before", independent of `trendWindow`.
+  // Returns null unless both windows have a full 7 days of data.
+  // (UTC day-keys match the adjacent `wearableTrends` bucketing — moving
+  // to local dates is tracked as a separate follow-up.)
   const MIN_DAYS_PER_WINDOW = 7;
   const wearableDeltas: Record<TrendMetricKey, { pct: number; favorable: boolean } | null> = (() => {
     const rows = wearables?.data ?? [];
