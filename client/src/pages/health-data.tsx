@@ -216,6 +216,10 @@ export default function HealthDataPage() {
   // without a full 14 days of history (all 7 days present in BOTH the
   // current and prior weeks). This matches the task acceptance criterion
   // "hide the badge when fewer than 14 days of history exist".
+  // Note: day-key derivation uses toISOString().slice(0,10) (UTC date) to
+  // stay consistent with the adjacent `wearableTrends` chart bucketing —
+  // moving to local-calendar dates is tracked as a separate follow-up so
+  // the chart and the badge change together and never disagree.
   const MIN_DAYS_PER_WINDOW = 7;
   const wearableDeltas: Record<TrendMetricKey, { pct: number; favorable: boolean } | null> = (() => {
     const rows = wearables?.data ?? [];
