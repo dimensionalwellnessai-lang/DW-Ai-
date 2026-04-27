@@ -132,6 +132,21 @@ async function main(): Promise<void> {
           .join(", ")}. Add an ALTER TABLE migration under migrations/.`,
       );
     }
+    // Also flag extra columns the DB carries that aren't declared in
+    // the schema — usually a sign of a removed column that wasn't
+    // dropped, or a migration that added a column without a matching
+    // schema update.
+    const extraCols: string[] = [];
+    for (const col of dbCols) {
+      if (!t.columns.has(col)) extraCols.push(col);
+    }
+    if (extraCols.length > 0) {
+      errors.push(
+        `Table "${t.name}" has columns in the database that are NOT declared in shared/schema.ts: ${extraCols
+          .map((c) => `"${c}"`)
+          .join(", ")}. Either re-declare them on the schema, or add an ALTER TABLE … DROP COLUMN migration.`,
+      );
+    }
   }
 
   // 4b. Tables in DB that are neither in schema nor on the allow-list.
