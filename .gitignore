@@ -16,3 +16,8 @@ client/coverage/
 
 # Apple Sign In private keys
 *.p8
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
