@@ -115,6 +115,34 @@ function renderCalendar() {
   );
 }
 
+// Render `CalendarTab` with a custom apiRequest impl. Used by the error /
+// empty-window tests so each scenario can wire its own mock without
+// disturbing the happy-path helper above.
+function renderCalendarWith(
+  apiRequestImpl: (method: string, url: string) => Promise<unknown>,
+  // The component sets `retry: 2` on its calendar query. For tests we
+  // squash the retry delay to 0ms so the error branch resolves near
+  // instantly instead of waiting for default exponential backoff.
+  queryClientOptions: { retryDelay?: number } = {},
+) {
+  hoisted.apiRequest.mockImplementation(apiRequestImpl);
+  const qc = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+        staleTime: 0,
+        retryDelay: queryClientOptions.retryDelay ?? 0,
+      },
+    },
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <CalendarTab />
+    </QueryClientProvider>,
+  );
+}
+
 describe("CalendarTab", () => {
   it("renders calendar events from /api/cosmic/calendar without falling back to a placeholder", async () => {
     renderCalendar();
@@ -157,5 +185,65 @@ describe("CalendarTab", () => {
         (u) => u.startsWith("/api/cosmic/calendar?start=") && u.includes("&end="),
       ),
     ).toBe(true);
+  });
+
+  it("shows the error fallback when /api/cosmic/calendar fails", async () => {
+    renderCalendarWith(async (_method, url) => {
+      if (url.startsWith("/api/cosmic/calendar")) {
+        throw new Error("network down");
+      }
+      return { json: async () => ({}) };
+    });
+
+    // The error copy + Try-again button should appear once the query
+    // (plus its 2 retries, with delay squashed to 0ms) settles.
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/Could not load celestial events\./i),
+        ).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+    expect(
+      screen.getByRole("button", { name: /Try again/i }),
+    ).toBeInTheDocument();
+
+    // The events list and the empty-window copy must NOT also render.
+    expect(
+      screen.queryByRole("list", { name: /planetary events/i }),
+    ).toBeNull();
+    expect(
+      screen.queryByText(/No major events in this window/i),
+    ).toBeNull();
+  });
+
+  it("shows the empty-state copy when the chosen window has no events", async () => {
+    renderCalendarWith(async (_method, url) => {
+      if (url.startsWith("/api/cosmic/calendar")) {
+        return {
+          json: async () => ({
+            start: "2026-05-01",
+            end: "2026-06-30",
+            events: [],
+          }),
+        };
+      }
+      return { json: async () => ({}) };
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/No major events in this window\./i),
+      ).toBeInTheDocument();
+    });
+
+    // The error copy and the events list must NOT also render.
+    expect(
+      screen.queryByText(/Could not load celestial events/i),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("list", { name: /planetary events/i }),
+    ).toBeNull();
   });
 });
