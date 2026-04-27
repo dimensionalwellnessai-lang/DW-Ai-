@@ -209,6 +209,103 @@ export default function HealthDataPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/health-metrics"] }),
   });
 
+  // 7d-vs-prior-7d delta per metric, computed off the raw 14 *completed* days
+  // (yesterday backwards). Deliberately independent of `trendWindow` so
+  // toggling 7d/30d on the chart does NOT change the badge — the badge is
+  // always "last week vs the week before". Returns null for any metric
+  // without enough history; we require at least 4 days of real data in BOTH
+  // windows so a single noisy point can't swing the comparison.
+  const MIN_DAYS_PER_WINDOW = 4;
+  const wearableDeltas: Record<TrendMetricKey, { pct: number; favorable: boolean } | null> = (() => {
+    const rows = wearables?.data ?? [];
+    const screen = wearables?.screenTime ?? [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // 14 ordered date keys for COMPLETED days: yesterday back 14 days.
+    // Index [0..6] = prior week, [7..13] = current week (i.e. last 7 full days).
+    const dateKeys: string[] = [];
+    for (let i = 14; i >= 1; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      dateKeys.push(d.toISOString().slice(0, 10));
+    }
+    const earliest = new Date(today);
+    earliest.setDate(earliest.getDate() - 14);
+    const recent = rows.filter((r) => {
+      if (!r.recordedAt) return false;
+      const ts = new Date(r.recordedAt);
+      return ts >= earliest && ts < today;
+    });
+    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepMin: number; steps: number }> = {};
+    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepMin: 0, steps: 0 };
+    for (const r of recent) {
+      const k = new Date(r.recordedAt!).toISOString().slice(0, 10);
+      if (!byDay[k]) continue;
+      const v = r.metricValue ?? 0;
+      if (r.metricKind === "hrv" && v > 0) byDay[k].hrvVals.push(v);
+      else if (r.metricKind === "resting_hr" && v > 0) byDay[k].rhrVals.push(v);
+      else if (r.metricKind === "sleep_minutes") byDay[k].sleepMin += v;
+      else if (r.metricKind === "steps") byDay[k].steps += v;
+    }
+    const screenByDay: Record<string, number> = {};
+    for (const s of screen) screenByDay[s.dateKey] = s.totalMinutes;
+
+    const valuesFor = (key: TrendMetricKey, keys: string[]): number[] => {
+      const out: number[] = [];
+      for (const k of keys) {
+        const d = byDay[k];
+        if (key === "hrv" && d.hrvVals.length) {
+          out.push(d.hrvVals.reduce((a, b) => a + b, 0) / d.hrvVals.length);
+        } else if (key === "restingHr" && d.rhrVals.length) {
+          out.push(d.rhrVals.reduce((a, b) => a + b, 0) / d.rhrVals.length);
+        } else if (key === "sleepHours" && d.sleepMin > 0) {
+          out.push(d.sleepMin / 60);
+        } else if (key === "steps" && d.steps > 0) {
+          out.push(d.steps);
+        } else if (key === "screenTime") {
+          // 0 minutes IS a valid datapoint for screen time (a phone-free day).
+          // Use Object.prototype.hasOwnProperty.call to detect "we have a row
+          // for this date" vs "no row at all".
+          if (Object.prototype.hasOwnProperty.call(screenByDay, k)) {
+            out.push(screenByDay[k]);
+          }
+        }
+      }
+      return out;
+    };
+
+    // For these metrics LOWER values are better; for everything else HIGHER is better.
+    const lowerIsBetter: Record<TrendMetricKey, boolean> = {
+      hrv: false,
+      restingHr: true,
+      sleepHours: false,
+      steps: false,
+      screenTime: true,
+    };
+    const priorKeys = dateKeys.slice(0, 7);
+    const currentKeys = dateKeys.slice(7, 14);
+    const compute = (key: TrendMetricKey) => {
+      const prior = valuesFor(key, priorKeys);
+      const curr = valuesFor(key, currentKeys);
+      if (prior.length < MIN_DAYS_PER_WINDOW || curr.length < MIN_DAYS_PER_WINDOW) {
+        return null; // not enough history for a meaningful comparison
+      }
+      const priorAvg = prior.reduce((a, b) => a + b, 0) / prior.length;
+      const currAvg = curr.reduce((a, b) => a + b, 0) / curr.length;
+      if (priorAvg === 0) return null; // can't compute % change off zero
+      const pct = ((currAvg - priorAvg) / priorAvg) * 100;
+      const favorable = lowerIsBetter[key] ? currAvg < priorAvg : currAvg > priorAvg;
+      return { pct, favorable };
+    };
+    return {
+      hrv: compute("hrv"),
+      restingHr: compute("restingHr"),
+      sleepHours: compute("sleepHours"),
+      steps: compute("steps"),
+      screenTime: compute("screenTime"),
+    };
+  })();
+
   // Build per-day wearable trend rows for the last `trendWindow` days.
   const wearableTrends = (() => {
     const rows = wearables?.data ?? [];
@@ -411,11 +508,31 @@ export default function HealthDataPage() {
                     All trends hidden — use the filter to pick what to show.
                   </p>
                 )}
-                {TREND_CHARTS.filter(m => wearableTrends.has(m.key) && trendVisibility[m.key]).map(({ key, label, icon: Icon, color, unit, chart }) => (
+                {TREND_CHARTS.filter(m => wearableTrends.has(m.key) && trendVisibility[m.key]).map(({ key, label, icon: Icon, color, unit, chart }) => {
+                  const delta = wearableDeltas[key];
+                  return (
                   <div key={key} data-testid={`chart-wearable-${key}`}>
                     <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
                       <Icon className="w-3 h-3" style={{ color }} />
                       <span className="font-medium text-foreground">{label}</span>
+                      {delta && (
+                        <span
+                          className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            delta.favorable
+                              ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                              : "bg-amber-500/15 text-amber-700 dark:text-amber-500"
+                          }`}
+                          title="Last 7 days vs the 7 days before that"
+                          aria-label={
+                            Math.round(delta.pct) === 0
+                              ? "No change versus the previous 7 days"
+                              : `${delta.pct > 0 ? "Up" : "Down"} ${Math.abs(Math.round(delta.pct))} percent versus the previous 7 days`
+                          }
+                          data-testid={`badge-trend-delta-${key}`}
+                        >
+                          {delta.pct > 0 ? "+" : ""}{Math.round(delta.pct)}%
+                        </span>
+                      )}
                     </div>
                     <ResponsiveContainer width="100%" height={90}>
                       {chart === "bar" ? (
@@ -435,7 +552,8 @@ export default function HealthDataPage() {
                       )}
                     </ResponsiveContainer>
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           ) : (
