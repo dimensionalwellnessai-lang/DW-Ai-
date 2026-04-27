@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { WearableInfluenceBadge } from "@/components/wearable-influence-badge";
 
 const DISMISSED_KEY_PREFIX = "dw_checkin_dismissed_";
 
@@ -145,12 +146,13 @@ export function AccountabilityCheckIn() {
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm font-medium">DW heard you</span>
               </div>
-              <div className="bg-primary/5 border border-primary/15 rounded-xl p-4">
-                <div className="flex items-start gap-2 mb-2">
+              <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-2">
                   <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   <span className="text-xs font-medium text-primary">DW's reflection</span>
                 </div>
                 <p className="text-sm leading-relaxed">{dwResponse}</p>
+                <WearableInfluenceBadge testIdSuffix="evening-checkin" />
               </div>
               <Button className="w-full" onClick={handleClose} data-testid="button-checkin-done">
                 Done

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/sheet";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { WearableInfluenceBadge } from "@/components/wearable-influence-badge";
 
 interface BriefBullet {
   kind: "mood" | "sleep" | "finance" | "relationship" | "spirit" | "plan" | "trigger";
@@ -357,6 +358,8 @@ export function TodayBriefCard({ className = "" }: TodayBriefCardProps) {
       >
         {brief.summaryText}
       </p>
+
+      <WearableInfluenceBadge testIdSuffix="today-brief" />
 
       <CustomizeBriefSheet
         open={prefsOpen}

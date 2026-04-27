@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ttsService } from "@/lib/tts-service";
 import { useMeditationVoicePref } from "@/lib/meditation-voice-pref";
+import { WearableInfluenceBadge } from "@/components/wearable-influence-badge";
 
 // ─── Types (mirror server schema) ─────────────────────────────────────────────
 export type MeditationItem = {
@@ -238,6 +239,10 @@ function MeditateTab() {
 
   return (
     <div className="space-y-6">
+      <WearableInfluenceBadge
+        onlyWhenInfluential
+        testIdSuffix="meditate"
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Find a practice</CardTitle>

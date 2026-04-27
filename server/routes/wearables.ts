@@ -396,6 +396,42 @@ const upload = multer({
 });
 
 export function registerWearablesRoutes(app: Express): void {
+  // GET /api/wearables/yesterday-headline — small JSON payload the client uses
+  // to render the "based on your sleep + HRV from yesterday" badge wherever DW
+  // weaves wearable data into its responses (briefing, evening reflection,
+  // workout/meditation suggestions). Returns null when the user has no
+  // wearable connected or no metrics yet, so the UI can render nothing.
+  app.get("/api/wearables/yesterday-headline", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+
+      // Spec: "If no wearable is connected, no badge appears."
+      // We treat "connected" as having at least one wearable_devices row with
+      // isActive = true (the same definition /api/wearables/sources uses to
+      // surface `connected: !!device?.isActive`). If the user disconnected
+      // their device, historical metric rows may still exist but the badge
+      // must hide, so we gate on the device row, not on metric presence.
+      const activeDevices = await db
+        .select({ id: wearableDevices.id })
+        .from(wearableDevices)
+        .where(and(eq(wearableDevices.userId, userId), eq(wearableDevices.isActive, true)))
+        .limit(1);
+      if (activeDevices.length === 0) return res.json(null);
+
+      const metrics = await getYesterdayHeadlineMetrics(userId);
+      if (!metrics) return res.json(null);
+      const { isLowRecovery, isHighScreenTime } = await import("../openai");
+      res.json({
+        metrics,
+        isLowRecovery: isLowRecovery(metrics),
+        isHighScreenTime: isHighScreenTime(metrics),
+      });
+    } catch (err) {
+      console.error("/api/wearables/yesterday-headline", err);
+      res.status(500).json({ error: "Failed to load yesterday's wearable headline" });
+    }
+  });
+
   // GET /api/wearables/sources — list of supported sources + connection state.
   app.get("/api/wearables/sources", requireAuth, async (req, res) => {
     try {

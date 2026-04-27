@@ -74,6 +74,7 @@ import { InAppSearch, type SearchResult } from "@/components/in-app-search";
 import { AlternativesDialog } from "@/components/alternatives-dialog";
 import { ExclusionsButton } from "@/components/exclusions-manager";
 import { getDomainExclusions } from "@/lib/guest-storage";
+import { WearableInfluenceBadge } from "@/components/wearable-influence-badge";
 import { ArrowRightLeft } from "lucide-react";
 import { useTutorialStart } from "@/contexts/tutorial-context";
 import { ExerciseAnimation } from "@/components/exercise-animation";
@@ -952,6 +953,10 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
                     {aiWorkoutSuggestion}
                   </p>
+                  <WearableInfluenceBadge
+                    onlyWhenInfluential
+                    testIdSuffix="workout-ai"
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1388,6 +1393,11 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
             )}
             {pickStep === "results" && (
               <div className="space-y-3 py-4">
+                <WearableInfluenceBadge
+                  onlyWhenInfluential
+                  testIdSuffix="workout-pick"
+                  className="self-start"
+                />
                 {getAISuggestions().map((workout, idx) => (
                   <Card
                     key={idx}
