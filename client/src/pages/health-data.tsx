@@ -251,6 +251,13 @@ export default function HealthDataPage() {
     const screenByDay: Record<string, number> = {};
     for (const s of screen) screenByDay[s.dateKey] = s.totalMinutes;
 
+    // Zero-handling rationale (kept consistent across all wearable bucketing
+    // in this file): wearables (Apple Watch, Whoop, Oura, Garmin) do NOT
+    // emit explicit zero-valued rows for HRV / resting HR / sleep_minutes /
+    // steps — a zero in those buckets always means "no reading captured /
+    // device not worn", so we exclude them from the average. Screen time is
+    // different: the phone reports 0 minutes for genuine phone-free days,
+    // so a present row with value 0 is a real, meaningful datapoint.
     const valuesFor = (key: TrendMetricKey, keys: string[]): number[] => {
       const out: number[] = [];
       for (const k of keys) {
@@ -264,9 +271,7 @@ export default function HealthDataPage() {
         } else if (key === "steps" && d.steps > 0) {
           out.push(d.steps);
         } else if (key === "screenTime") {
-          // 0 minutes IS a valid datapoint for screen time (a phone-free day).
-          // Use Object.prototype.hasOwnProperty.call to detect "we have a row
-          // for this date" vs "no row at all".
+          // Use hasOwnProperty so a present row with value 0 is counted.
           if (Object.prototype.hasOwnProperty.call(screenByDay, k)) {
             out.push(screenByDay[k]);
           }
