@@ -82,18 +82,26 @@ async function main(): Promise<void> {
 
   const dbColumnsByTable = new Map<string, Set<string>>();
   try {
+    // Restrict to BASE TABLEs so views and other relations don't
+    // accidentally show up as "extra" tables the schema doesn't declare.
+    // Left-join columns so a base table with zero columns (shouldn't
+    // happen, but) still registers as present.
     const result = await pool.query<{
       table_name: string;
-      column_name: string;
+      column_name: string | null;
     }>(
-      `SELECT table_name, column_name
-         FROM information_schema.columns
-        WHERE table_schema = 'public'`,
+      `SELECT t.table_name, c.column_name
+         FROM information_schema.tables AS t
+         LEFT JOIN information_schema.columns AS c
+           ON c.table_schema = t.table_schema
+          AND c.table_name = t.table_name
+        WHERE t.table_schema = 'public'
+          AND t.table_type = 'BASE TABLE'`,
     );
     for (const row of result.rows) {
       const cols =
         dbColumnsByTable.get(row.table_name) ?? new Set<string>();
-      cols.add(row.column_name);
+      if (row.column_name) cols.add(row.column_name);
       dbColumnsByTable.set(row.table_name, cols);
     }
   } finally {
