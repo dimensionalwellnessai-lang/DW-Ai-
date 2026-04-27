@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { PageHeader } from "@/components/page-header";
@@ -11,13 +11,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar,
 } from "recharts";
-import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp, Watch, Smartphone, Zap } from "lucide-react";
+import { Activity, Moon, Heart, Scale, Plus, Trash2, Target, TrendingDown, TrendingUp, Watch, Smartphone, Zap, SlidersHorizontal } from "lucide-react";
 import { DWLearnCard } from "@/components/dw-learn-card";
 import { Link } from "wouter";
 
@@ -60,10 +63,72 @@ const METRIC_CONFIG = [
   { key: "weightKg", label: "Weight", icon: Scale, color: "#f59e0b", unit: "kg", chart: "area" },
 ] as const;
 
+type TrendMetricKey = "hrv" | "restingHr" | "sleepHours" | "steps" | "screenTime";
+type TrendVisibility = Record<TrendMetricKey, boolean>;
+const DEFAULT_TREND_VISIBILITY: TrendVisibility = {
+  hrv: true,
+  restingHr: true,
+  sleepHours: true,
+  steps: true,
+  screenTime: true,
+};
+
+function trendVisibilityStorageKey(userId: string | null | undefined): string {
+  return `dw:wearable-trend-visibility:${userId || "guest"}`;
+}
+
+function loadTrendVisibility(userId: string | null | undefined): TrendVisibility {
+  if (typeof window === "undefined") return DEFAULT_TREND_VISIBILITY;
+  try {
+    const raw = window.localStorage.getItem(trendVisibilityStorageKey(userId));
+    if (!raw) return DEFAULT_TREND_VISIBILITY;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return DEFAULT_TREND_VISIBILITY;
+    // Only accept boolean values for known keys; ignore anything else so a
+    // malformed localStorage entry can't poison the visibility state.
+    const sanitized: TrendVisibility = { ...DEFAULT_TREND_VISIBILITY };
+    for (const key of Object.keys(DEFAULT_TREND_VISIBILITY) as TrendMetricKey[]) {
+      const v = (parsed as Record<string, unknown>)[key];
+      if (typeof v === "boolean") sanitized[key] = v;
+    }
+    return sanitized;
+  } catch {
+    return DEFAULT_TREND_VISIBILITY;
+  }
+}
+
 export default function HealthDataPage() {
   usePageMeta({ title: "Health Data | DW Wellness AI" });
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
+
+  // Per-user visibility for the wearable trend charts. Persisted to
+  // localStorage so the choice carries across sessions on this device.
+  const userId = (user as any)?.id ?? null;
+  const [trendVisibility, setTrendVisibility] = useState<TrendVisibility>(() =>
+    loadTrendVisibility(userId),
+  );
+  // Reload prefs whenever the signed-in user changes (e.g. logout/login on
+  // the same device): otherwise the previous user's selections persist.
+  useEffect(() => {
+    setTrendVisibility(loadTrendVisibility(userId));
+  }, [userId]);
+  const setTrendVisible = (key: TrendMetricKey, visible: boolean) => {
+    setTrendVisibility((prev) => {
+      const next = { ...prev, [key]: visible };
+      try {
+        window.localStorage.setItem(
+          trendVisibilityStorageKey(userId),
+          JSON.stringify(next),
+        );
+      } catch {
+        // localStorage may be unavailable (private browsing) — silently keep
+        // the in-memory state and continue.
+      }
+      return next;
+    });
+  };
 
   const form = useForm<LogForm>({
     defaultValues: {
@@ -145,7 +210,6 @@ export default function HealthDataPage() {
   });
 
   // Build per-day wearable trend rows for the last `trendWindow` days.
-  type TrendMetricKey = "hrv" | "restingHr" | "sleepHours" | "steps" | "screenTime";
   const wearableTrends = (() => {
     const rows = wearables?.data ?? [];
     const screen = wearables?.screenTime ?? [];
@@ -289,6 +353,45 @@ export default function HealthDataPage() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-primary" /> Wearable trends
                   <div className="ml-auto flex items-center gap-1">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover-elevate rounded p-1 mr-1"
+                          aria-label="Choose which trends to show"
+                          data-testid="button-trend-visibility"
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-56 p-3" data-testid="popover-trend-visibility">
+                        <p className="text-xs font-semibold mb-2">Show trends for</p>
+                        <div className="space-y-2">
+                          {TREND_CHARTS.map(({ key, label, icon: Icon, color }) => {
+                            const hasData = wearableTrends.has(key);
+                            return (
+                              <label
+                                key={key}
+                                className={`flex items-center gap-2 text-xs ${hasData ? "" : "opacity-50"}`}
+                                data-testid={`option-trend-${key}`}
+                              >
+                                <Checkbox
+                                  checked={trendVisibility[key]}
+                                  onCheckedChange={(v) => setTrendVisible(key, v === true)}
+                                  disabled={!hasData}
+                                  data-testid={`checkbox-trend-${key}`}
+                                />
+                                <Icon className="w-3 h-3" style={{ color }} />
+                                <span className="flex-1">{label}</span>
+                                {!hasData && (
+                                  <span className="text-[10px] text-muted-foreground">no data</span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     <button
                       onClick={() => setTrendWindow(7)}
                       className={`text-[11px] px-2 py-0.5 rounded ${trendWindow === 7 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
@@ -303,7 +406,12 @@ export default function HealthDataPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
-                {TREND_CHARTS.filter(m => wearableTrends.has(m.key)).map(({ key, label, icon: Icon, color, unit, chart }) => (
+                {TREND_CHARTS.filter(m => wearableTrends.has(m.key) && trendVisibility[m.key]).length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2 text-center" data-testid="text-trends-all-hidden">
+                    All trends hidden — use the filter to pick what to show.
+                  </p>
+                )}
+                {TREND_CHARTS.filter(m => wearableTrends.has(m.key) && trendVisibility[m.key]).map(({ key, label, icon: Icon, color, unit, chart }) => (
                   <div key={key} data-testid={`chart-wearable-${key}`}>
                     <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
                       <Icon className="w-3 h-3" style={{ color }} />
