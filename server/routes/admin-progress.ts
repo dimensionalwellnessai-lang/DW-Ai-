@@ -446,18 +446,6 @@ export function registerAdminProgressRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/wearables/data", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-      const data = await storage.getWearableData(userId, limit);
-      res.json(data);
-    } catch (error) {
-      console.error("Wearable data error:", error);
-      res.status(500).json({ error: "Failed to get wearable data" });
-    }
-  });
-
   app.get("/api/wearables/latest-mood", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;

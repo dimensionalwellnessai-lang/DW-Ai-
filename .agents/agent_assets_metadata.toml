@@ -6,3 +6,9 @@ id = "Ussw77eKihw4XSXFU9g71"
 uri = "file://audit/APP_AUDIT_2026-04-20.md"
 type = "text"
 title = "DW Wellness AI — Full App Audit"
+
+[[outputs]]
+id = "WKOZQillVtpOvnvczboR4"
+uri = "file://test-results/wearable-trends-Body-dashb-c5b2c-d-links-to-wearable-manager-chromium/test-failed-1.png"
+type = "image"
+title = "Empty test failure screenshot"

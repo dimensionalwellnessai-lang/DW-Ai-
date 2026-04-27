@@ -77,13 +77,14 @@ export function WearableManager() {
     },
   });
 
-  const { data: recentData = [], isLoading: dataLoading } = useQuery({
+  const { data: wearablesResponse, isLoading: dataLoading } = useQuery<{ data: WearableData[] }>({
     queryKey: ["wearable-data"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/wearables/data?limit=10");
+      const res = await apiRequest("GET", "/api/wearables/data?days=7");
       return res.json();
     },
   });
+  const recentData: WearableData[] = (wearablesResponse?.data ?? []).slice(0, 10);
 
   const addDeviceMutation = useMutation({
     mutationFn: async (deviceData: { deviceType: string; deviceName: string; manufacturer?: string }) => {

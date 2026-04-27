@@ -8578,18 +8578,6 @@ Return ONLY the JSON array, no other text. Return 3-5 relevant results.`
     }
   });
 
-  app.get("/api/wearables/data", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-      const data = await storage.getWearableData(userId, limit);
-      res.json(data);
-    } catch (error) {
-      console.error("Wearable data error:", error);
-      res.status(500).json({ error: "Failed to get wearable data" });
-    }
-  });
-
   app.get("/api/wearables/latest-mood", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
@@ -12870,7 +12858,7 @@ Return ONLY this JSON:
 
   // ─── Health Metrics ──────────────────────────────────────────────────────────
   app.get("/api/health-metrics", requireAuth, async (req: any, res) => {
-    const userId = req.user!.id;
+    const userId = req.session.userId!;
     const days = Number(req.query.days) || 60;
     try {
       const result = await db.execute(sql`
@@ -12898,7 +12886,7 @@ Return ONLY this JSON:
   });
 
   app.post("/api/health-metrics", requireAuth, async (req: any, res) => {
-    const userId = req.user!.id;
+    const userId = req.session.userId!;
     const { loggedDate, steps, sleepHours, heartRate, weight, notes } = req.body;
     const date = loggedDate || new Date().toISOString().slice(0, 10);
     try {
@@ -12930,7 +12918,7 @@ Return ONLY this JSON:
   });
 
   app.delete("/api/health-metrics/:id", requireAuth, async (req: any, res) => {
-    const userId = req.user!.id;
+    const userId = req.session.userId!;
     const { id } = req.params;
     try {
       await db.execute(sql`
