@@ -213,9 +213,10 @@ export default function HealthDataPage() {
   // (yesterday backwards). Deliberately independent of `trendWindow` so
   // toggling 7d/30d on the chart does NOT change the badge — the badge is
   // always "last week vs the week before". Returns null for any metric
-  // without enough history; we require at least 4 days of real data in BOTH
-  // windows so a single noisy point can't swing the comparison.
-  const MIN_DAYS_PER_WINDOW = 4;
+  // without a full 14 days of history (all 7 days present in BOTH the
+  // current and prior weeks). This matches the task acceptance criterion
+  // "hide the badge when fewer than 14 days of history exist".
+  const MIN_DAYS_PER_WINDOW = 7;
   const wearableDeltas: Record<TrendMetricKey, { pct: number; favorable: boolean } | null> = (() => {
     const rows = wearables?.data ?? [];
     const screen = wearables?.screenTime ?? [];
