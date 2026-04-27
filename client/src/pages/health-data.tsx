@@ -105,7 +105,7 @@ export default function HealthDataPage() {
 
   // Per-user visibility for the wearable trend charts. Persisted to
   // localStorage so the choice carries across sessions on this device.
-  const userId = (user as any)?.id ?? null;
+  const userId = user?.id ?? null;
   const [trendVisibility, setTrendVisibility] = useState<TrendVisibility>(() =>
     loadTrendVisibility(userId),
   );
