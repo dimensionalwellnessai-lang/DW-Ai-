@@ -121,6 +121,7 @@ vi.mock("../routes/relationships", () => ({
 
 vi.mock("../routes/wearables", () => ({
   getYesterdayHeadlineMetrics: vi.fn(async () => null),
+  safeGetWearablesYesterday: vi.fn(async () => null),
 }));
 
 // `_shared` is heavy (imports z, drizzle types, etc) but we only need the

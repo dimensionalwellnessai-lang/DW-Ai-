@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { requireAuth } from "./_shared";
 
 import { generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions } from "../openai";
-import { getYesterdayHeadlineMetrics } from "./wearables";
+import { safeGetWearablesYesterday } from "./wearables";
 
 
 
@@ -14,9 +14,7 @@ export function registerWorkoutSuggestRoutes(app: Express): void {
     try {
       const { preferences } = req.body;
       const userId = req.session.userId;
-      const wearablesYesterday = userId
-        ? await getYesterdayHeadlineMetrics(userId).catch(() => null)
-        : null;
+      const wearablesYesterday = userId ? await safeGetWearablesYesterday(userId) : null;
       const plan = await generateWorkoutPlan({ ...(preferences || {}), wearablesYesterday });
       res.json(plan);
     } catch (error) {
@@ -29,9 +27,7 @@ export function registerWorkoutSuggestRoutes(app: Express): void {
     try {
       const { preferences } = req.body;
       const userId = req.session.userId;
-      const wearablesYesterday = userId
-        ? await getYesterdayHeadlineMetrics(userId).catch(() => null)
-        : null;
+      const wearablesYesterday = userId ? await safeGetWearablesYesterday(userId) : null;
       const suggestions = await generateMeditationSuggestions({ ...(preferences || {}), wearablesYesterday });
       res.json(suggestions);
     } catch (error) {

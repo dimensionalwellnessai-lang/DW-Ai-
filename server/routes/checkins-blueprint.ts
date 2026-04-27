@@ -5,6 +5,7 @@ import { storage } from "../storage";
 
 import { requireAuth } from "./_shared";
 import { generateDashboardInsight, generateFullAnalysis } from "../openai";
+import { safeGetWearablesYesterday } from "./wearables";
 import { insertBaselineProfileSchema, insertRecoveryReflectionSchema, insertRoutineSchema, insertStabilizingActionSchema, insertStressSignalsSchema, insertSupportPreferencesSchema } from "@shared/schema";
 export function registerCheckinsBlueprintRoutes(app: Express): void {
   app.get("/api/checkins", requireAuth, async (req, res) => {
@@ -33,8 +34,7 @@ export function registerCheckinsBlueprintRoutes(app: Express): void {
       const habits = await storage.getHabits(userId);
       const goals = await storage.getGoals(userId);
       const profile = await storage.getOnboardingProfile(userId);
-      const { getYesterdayHeadlineMetrics } = await import("./wearables");
-      const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+      const wearablesYesterday = await safeGetWearablesYesterday(userId);
 
       const insight = await generateDashboardInsight({
         moodLogs: moodLogs.slice(0, 7).map(m => ({

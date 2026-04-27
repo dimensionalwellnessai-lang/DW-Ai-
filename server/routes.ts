@@ -28,7 +28,7 @@ import { registerTriggerRoutes } from "./routes/triggers";
 import { registerAdminProgressRoutes } from "./routes/admin-progress";
 import { registerFinancesRoutes } from "./routes/finances";
 import { registerSpiritualRoutes } from "./routes/spiritual";
-import { registerWearablesRoutes, getYesterdayHeadlineMetrics, getMoodCorrelationFactors } from "./routes/wearables";
+import { registerWearablesRoutes, getMoodCorrelationFactors, safeGetWearablesYesterday } from "./routes/wearables";
 import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
 import { registerBillingRoutes } from "./routes/billing";
@@ -2470,11 +2470,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     try {
       const { preferences } = req.body;
       const userId = (req as any).session?.userId;
-      let wearablesYesterday = null;
-      if (userId) {
-        const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
-        wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
-      }
+      const wearablesYesterday = userId ? await safeGetWearablesYesterday(userId) : null;
       const plan = await generateWorkoutPlan({ ...(preferences || {}), wearablesYesterday });
       res.json(plan);
     } catch (error) {
@@ -2487,11 +2483,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
     try {
       const { preferences } = req.body;
       const userId = (req as any).session?.userId;
-      let wearablesYesterday = null;
-      if (userId) {
-        const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
-        wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
-      }
+      const wearablesYesterday = userId ? await safeGetWearablesYesterday(userId) : null;
       const suggestions = await generateMeditationSuggestions({ ...(preferences || {}), wearablesYesterday });
       res.json(suggestions);
     } catch (error) {
@@ -3638,8 +3630,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       const habits = await storage.getHabits(userId);
       const goals = await storage.getGoals(userId);
       const profile = await storage.getOnboardingProfile(userId);
-      const { getYesterdayHeadlineMetrics } = await import("./routes/wearables");
-      const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+      const wearablesYesterday = await safeGetWearablesYesterday(userId);
 
       const insight = await generateDashboardInsight({
         moodLogs: moodLogs.slice(0, 7).map(m => ({

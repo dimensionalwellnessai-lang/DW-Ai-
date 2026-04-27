@@ -923,14 +923,26 @@ export async function getMoodCorrelationFactors(
   return { factors, sampleSize: recentMoods.length };
 }
 
-// Used by the chat-context builder to surface yesterday's headline metrics.
-export async function getYesterdayHeadlineMetrics(userId: string): Promise<{
+export type YesterdayHeadlineMetrics = {
   sleepMinutes?: number;
   hrv?: number;
   restingHr?: number;
   steps?: number;
   screenTimeMinutes?: number;
-} | null> {
+};
+
+// Wrapper around getYesterdayHeadlineMetrics that swallows errors and returns
+// null. Use this from request handlers / nudge generators where missing
+// wearable data should never surface as a 500. Centralized so every caller
+// uses the same fallback semantics.
+export function safeGetWearablesYesterday(
+  userId: string,
+): Promise<YesterdayHeadlineMetrics | null> {
+  return getYesterdayHeadlineMetrics(userId).catch(() => null);
+}
+
+// Used by the chat-context builder to surface yesterday's headline metrics.
+export async function getYesterdayHeadlineMetrics(userId: string): Promise<YesterdayHeadlineMetrics | null> {
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since = new Date(yesterday);
   since.setHours(0, 0, 0, 0);

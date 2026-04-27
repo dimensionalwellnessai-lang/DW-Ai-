@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { getYesterdayHeadlineMetrics } from "./routes/wearables";
+import { safeGetWearablesYesterday } from "./routes/wearables";
 import { summarizeWearablesYesterday, isLowRecovery, isHighScreenTime } from "./openai";
 
 export interface ProactiveNudge {
@@ -39,7 +39,7 @@ export async function generateProactiveNudges(userId: string): Promise<Proactive
     const habits = await storage.getHabits(userId);
     const scheduleBlocks = await storage.getScheduleBlocks(userId);
     const moodLogs = await storage.getMoodLogs(userId);
-    const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+    const wearablesYesterday = await safeGetWearablesYesterday(userId);
 
     // ── Wearable-driven nudges ────────────────────────────────────────────
     if (wearablesYesterday && hour >= 5 && hour < 12 && isLowRecovery(wearablesYesterday)) {
@@ -286,7 +286,7 @@ export async function generateMorningBriefing(userId: string): Promise<MorningBr
     const scheduleBlocks = await storage.getScheduleBlocks(userId);
     const habits = await storage.getHabits(userId);
     const user = await storage.getUser(userId);
-    const wearablesYesterday = await getYesterdayHeadlineMetrics(userId).catch(() => null);
+    const wearablesYesterday = await safeGetWearablesYesterday(userId);
 
     const todaysBlocks = scheduleBlocks.filter(b => b.dayOfWeek === now.getDay());
     const activeGoals = goals.filter(g => g.isActive);

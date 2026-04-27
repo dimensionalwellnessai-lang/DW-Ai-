@@ -25,7 +25,7 @@ import {
 } from "../openai";
 import { detectTriggerSuggestion } from "./trigger-detection";
 import { buildPersonSuggestion } from "./relationships";
-import { getYesterdayHeadlineMetrics } from "./wearables";
+import { safeGetWearablesYesterday } from "./wearables";
 import {
   CONTEXT_SYSTEM_OVERRIDES,
   DW_MAX_MESSAGE_CONTENT_LENGTH,
@@ -314,7 +314,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       .filter(Boolean)
       .join("\n\n");
 
-    const wearablesYesterdayForChat = await getYesterdayHeadlineMetrics(req.session.userId!).catch(() => null);
+    const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
     const result = await detectIntentAndRespond(
       enhancedMessage,
       safeHistory,
