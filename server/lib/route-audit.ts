@@ -36,6 +36,15 @@ type Verb = (typeof VERBS)[number];
  *     just make it loud so the next pair of eyes notices.
  */
 export function installRouteDuplicateAudit(app: Express): void {
+  // Allow ops to silence the warning without a code change. Default is
+  // "warn" so prod still surfaces the signal at startup (each dupe is
+  // already deduped by the Set below — exactly one log line per pair,
+  // not per request).
+  const mode = (process.env.DW_ROUTE_AUDIT ?? "warn").toLowerCase();
+  if (mode === "off" || mode === "silent" || mode === "0") {
+    return;
+  }
+
   const seen = new Set<string>();
   for (const verb of VERBS) {
     const original = (app as unknown as Record<Verb, Function>)[verb].bind(app);
