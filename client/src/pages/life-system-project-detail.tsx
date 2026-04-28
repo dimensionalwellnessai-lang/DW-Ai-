@@ -157,8 +157,8 @@ export default function LifeSystemProjectDetailPage() {
         </p>
         <div className="flex justify-center gap-2">
           <Button asChild variant="outline" data-testid="link-back-life-system">
-            <Link href="/life-system">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Life System
+            <Link href="/life-blueprint">
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Life Blueprint
             </Link>
           </Button>
           <Button asChild data-testid="link-back-home">
@@ -188,8 +188,8 @@ export default function LifeSystemProjectDetailPage() {
       {/* ── Top bar ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm" data-testid="link-back">
-          <Link href="/life-system">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Life System
+          <Link href="/life-blueprint">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Life Blueprint
           </Link>
         </Button>
         <div className="flex items-center gap-2">

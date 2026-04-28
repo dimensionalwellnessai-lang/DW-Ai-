@@ -59,7 +59,7 @@ export function ProjectsListSheet({ open, onOpenChange }: ProjectsListSheetProps
           <Button
             variant="outline"
             className="w-full mt-3"
-            onClick={() => go("/life-system")}
+            onClick={() => go("/life-blueprint")}
             data-testid="btn-manage-projects"
           >
             <Plus className="h-4 w-4 mr-2" />

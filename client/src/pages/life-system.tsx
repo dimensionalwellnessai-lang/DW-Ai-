@@ -1,12 +1,21 @@
-// /life-system — the user's three-level system at a glance.
+// /life-blueprint — the user's three-level system at a glance.
 //
-// Three sections in order: Core / Expression / Creation.
+// This page is mounted at /life-blueprint (and /life-system redirects here
+// for back-compat). It is the canonical "Life Blueprint" surface.
+//
+// Layout (top → bottom):
+// 1. Compact title strip (no oversized hero).
+// 2. Snapshot card: small orbit + counts (Core / Expression / Creation)
+//    + the two primary actions (View Document, Adopt/Refresh).
+// 3. One-time backfill banner (when applicable).
+// 4. Three sections — Core / Expression / Creation — each with a clean
+//    divider, a short tagline, and a "X of Y" status pill.
+//
 // - Core pillars (9)         → always shown, status dot, edit affordance.
 // - Expression pillars (5)   → toggleable (only "on" ones light the orbit).
 // - Creation                 → list of user-defined Projects + "Add Project".
 //
-// Header: 3-ring orbit visualization of current state.
-// Empty state: "Adopt the Starter Template" CTA.
+// Empty state: "Adopt the Starter Template" CTA inside the snapshot card.
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -134,7 +143,10 @@ function writeBackfillNote(userId: string, note: StoredBackfillNote): void {
 }
 
 export default function LifeSystemPage() {
-  usePageMeta("My Life System", "Your personal three-level operating system: Core, Expression, Creation.");
+  usePageMeta(
+    "Life Blueprint",
+    "Your three-layer operating system at a glance — Core, Expression, and Creation in one place.",
+  );
   const { data, isLoading } = useLifeSystem();
   const { user } = useAuth();
   const userId = user?.id;
@@ -185,6 +197,21 @@ export default function LifeSystemPage() {
     if (enabled) litPillars.add(def.id);
   }
   const litProjects = new Set(projects.filter(p => p.status === "active").map(p => p.id));
+
+  // Snapshot counts powering the status pills + summary stats. Core
+  // counts as "set up" when its pillar row exists and isn't disabled
+  // (so a fresh user with no rows reads as 0, not 9). Expression counts
+  // as "on" only when the row is explicitly enabled. Projects count
+  // only the active ones.
+  const coreEnabledCount = PILLARS_BY_LEVEL.core.filter(def => {
+    const row = findPillarRow(data, def.id);
+    return !!row && row.enabled !== false;
+  }).length;
+  const expressionOnCount = PILLARS_BY_LEVEL.expression.filter(def => {
+    const row = findPillarRow(data, def.id);
+    return !!row && row.enabled !== false;
+  }).length;
+  const activeProjectsCount = projects.filter(p => p.status === "active").length;
 
   async function onAdopt() {
     setAdopting(true);
@@ -241,34 +268,83 @@ export default function LifeSystemPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-10" data-testid="page-life-system">
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className="flex flex-col items-center text-center space-y-4">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="text-page-title">
-          My Life System
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-8" data-testid="page-life-system">
+      {/* ── Title strip ─────────────────────────────────────────────────
+          Compact, left-aligned. The big centered hero from the previous
+          layout was pushing the actual pillar list below the fold; the
+          snapshot card immediately below carries the visual weight. */}
+      <header className="space-y-1">
+        <h1
+          className="text-2xl md:text-3xl font-bold tracking-tight font-display"
+          data-testid="text-page-title"
+        >
+          Life Blueprint
         </h1>
-        <p className="text-muted-foreground max-w-xl">
-          Three layers. The Core that holds your life together, the Expression that makes it yours,
-          and the Creation that puts you into the world.
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Three layers — Core holds your life together, Expression makes it
+          yours, and Creation puts you into the world.
         </p>
-        <ThreeRingOrbit
-          litPillars={litPillars}
-          projects={projects.filter(p => p.status === "active").map(p => ({ id: p.id, name: p.name }))}
-          litProjects={litProjects}
-          size={320}
-        />
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Button asChild variant="outline" data-testid="link-life-system-document">
-            <Link href="/life-system/document">
-              <FileText className="w-4 h-4 mr-2" /> View Life System Document
-            </Link>
-          </Button>
-          <Button onClick={onAdopt} disabled={adopting} data-testid="button-adopt-starter">
-            <Sparkles className="w-4 h-4 mr-2" />
-            {adopting ? "Adopting…" : isEmpty ? "Adopt Starter Template" : "Refresh from Template"}
-          </Button>
-        </div>
       </header>
+
+      {/* ── Snapshot card ───────────────────────────────────────────────
+          Side-by-side on tablet+ (orbit ⇆ stats + actions); stacks on
+          mobile. Replaces the old centered hero with a single dense
+          summary so the rest of the page can be the actual content. */}
+      <Card className="p-5 md:p-6" data-testid="card-blueprint-snapshot">
+        <div className="flex flex-col md:flex-row md:items-center md:gap-8">
+          <div className="flex justify-center md:shrink-0">
+            <ThreeRingOrbit
+              litPillars={litPillars}
+              projects={projects.filter(p => p.status === "active").map(p => ({ id: p.id, name: p.name }))}
+              litProjects={litProjects}
+              size={240}
+            />
+          </div>
+          <div className="flex-1 mt-5 md:mt-0 space-y-4 min-w-0">
+            <div className="grid grid-cols-3 gap-3">
+              <SnapshotStat
+                label="Core"
+                value={`${coreEnabledCount}/${PILLARS_BY_LEVEL.core.length}`}
+                hint="set up"
+                testId="stat-core"
+              />
+              <SnapshotStat
+                label="Expression"
+                value={`${expressionOnCount}/${PILLARS_BY_LEVEL.expression.length}`}
+                hint="active"
+                testId="stat-expression"
+              />
+              <SnapshotStat
+                label="Creation"
+                value={`${activeProjectsCount}`}
+                hint={activeProjectsCount === 1 ? "project" : "projects"}
+                testId="stat-creation"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                data-testid="link-life-system-document"
+              >
+                <Link href="/life-system/document">
+                  <FileText className="w-4 h-4 mr-2" /> View document
+                </Link>
+              </Button>
+              <Button
+                onClick={onAdopt}
+                disabled={adopting}
+                size="sm"
+                data-testid="button-adopt-starter"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {adopting ? "Adopting…" : isEmpty ? "Adopt Starter Template" : "Refresh from template"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* ── One-time backfill note ─────────────────────────────────────── */}
       {showBackfillNote && (
@@ -316,7 +392,10 @@ export default function LifeSystemPage() {
       )}
 
       {/* ── Core ───────────────────────────────────────────────────────── */}
-      <SectionHeader level="core" />
+      <SectionHeader
+        level="core"
+        pill={`${coreEnabledCount} of ${PILLARS_BY_LEVEL.core.length}`}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         {PILLARS_BY_LEVEL.core.map(def => {
           const row = findPillarRow(data, def.id);
@@ -352,7 +431,10 @@ export default function LifeSystemPage() {
       </div>
 
       {/* ── Expression ─────────────────────────────────────────────────── */}
-      <SectionHeader level="expression" />
+      <SectionHeader
+        level="expression"
+        pill={`${expressionOnCount} of ${PILLARS_BY_LEVEL.expression.length} on`}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         {PILLARS_BY_LEVEL.expression.map(def => {
           const row = findPillarRow(data, def.id);
@@ -388,7 +470,14 @@ export default function LifeSystemPage() {
       </div>
 
       {/* ── Creation ───────────────────────────────────────────────────── */}
-      <SectionHeader level="creation" />
+      <SectionHeader
+        level="creation"
+        pill={
+          activeProjectsCount === 0
+            ? undefined
+            : `${activeProjectsCount} active`
+        }
+      />
       <div className="space-y-3">
         {projects.map(p => (
           <Card key={p.id} className="p-4 flex items-start gap-3" data-testid={`card-project-${p.id}`}>
@@ -444,19 +533,73 @@ export default function LifeSystemPage() {
   );
 }
 
-function SectionHeader({ level }: { level: "core" | "expression" | "creation" }) {
+function SectionHeader({
+  level,
+  pill,
+}: {
+  level: "core" | "expression" | "creation";
+  // Optional "X of Y" / "X active" status pill rendered to the right of
+  // the section title. Pass `undefined` to hide the pill (e.g. Creation
+  // with zero active projects, where the surface already invites the
+  // user to add their first one).
+  pill?: string;
+}) {
   const meta = LEVEL_META[level];
   return (
-    <div className="space-y-1" data-testid={`section-header-${level}`}>
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="w-3 h-3 rounded-full"
-          style={{ background: meta.ringColor }}
-        />
-        <h2 className="text-xl font-semibold">{meta.label}</h2>
+    <div
+      className="flex items-end justify-between gap-3 border-b border-border/60 pb-2"
+      data-testid={`section-header-${level}`}
+    >
+      <div className="space-y-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="w-3 h-3 rounded-full shrink-0"
+            style={{ background: meta.ringColor }}
+          />
+          <h2 className="text-lg md:text-xl font-semibold">{meta.label}</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">{meta.tagline}</p>
       </div>
-      <p className="text-sm text-muted-foreground">{meta.tagline}</p>
+      {pill && (
+        <span
+          className="text-xs font-medium text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 whitespace-nowrap shrink-0"
+          data-testid={`section-pill-${level}`}
+        >
+          {pill}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Compact stat tile used inside the snapshot card. Shows a big value
+// (e.g. "7/9") above a small label + hint. Three of these live in a
+// 3-column grid so the snapshot card reads at a glance without needing
+// to scan the orbit.
+function SnapshotStat({
+  label,
+  value,
+  hint,
+  testId,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  testId: string;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 text-center"
+      data-testid={testId}
+    >
+      <div className="text-xl md:text-2xl font-bold tracking-tight tabular-nums">
+        {value}
+      </div>
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5">
+        {label}
+      </div>
+      <div className="text-[11px] text-muted-foreground/80">{hint}</div>
     </div>
   );
 }

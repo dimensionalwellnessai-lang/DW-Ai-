@@ -134,8 +134,8 @@ export default function LifeSystemDocumentPage() {
         </p>
         <div className="flex gap-2 justify-center pt-2">
           <Button asChild variant="outline" data-testid="link-back-to-life-system-empty">
-            <Link href="/life-system">
-              <ArrowLeft className="w-4 h-4 mr-1" /> My Life System
+            <Link href="/life-blueprint">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Life Blueprint
             </Link>
           </Button>
           <Button onClick={onGenerate} disabled={generating} data-testid="button-generate-empty">
@@ -154,8 +154,8 @@ export default function LifeSystemDocumentPage() {
       {/* ── Toolbar (hidden when printing) ─────────────────────────────── */}
       <div className="flex flex-wrap gap-2 items-center justify-between mb-6 print:hidden">
         <Button asChild variant="ghost" size="sm" data-testid="link-back-to-life-system">
-          <Link href="/life-system">
-            <ArrowLeft className="w-4 h-4 mr-1" /> My Life System
+          <Link href="/life-blueprint">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Life Blueprint
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">

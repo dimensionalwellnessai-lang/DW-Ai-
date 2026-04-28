@@ -112,8 +112,8 @@ export default function LifeSystemPillarDetailPage() {
       <div className="max-w-3xl mx-auto px-4 py-12 text-center" data-testid="page-pillar-not-found">
         <h1 className="text-2xl font-semibold mb-3">Unknown pillar</h1>
         <p className="text-muted-foreground mb-6">We couldn't find that pillar in your Life System.</p>
-        <Button onClick={() => navigate("/life-system")} data-testid="button-back-life-system">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to My Life System
+        <Button onClick={() => navigate("/life-blueprint")} data-testid="button-back-life-system">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Life Blueprint
         </Button>
       </div>
     );
@@ -292,8 +292,8 @@ export default function LifeSystemPillarDetailPage() {
       {/* ── Top bar ───────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" data-testid="link-back-life-system">
-          <Link href="/life-system">
-            <ArrowLeft className="w-4 h-4 mr-1" /> My Life System
+          <Link href="/life-blueprint">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Life Blueprint
           </Link>
         </Button>
       </div>

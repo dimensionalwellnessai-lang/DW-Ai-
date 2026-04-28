@@ -246,7 +246,10 @@ function Router() {
       <Route path="/life-system/document" component={LifeSystemDocumentPage} />
       <Route path="/life-system/pillar/:id" component={LifeSystemPillarDetailPage} />
       <Route path="/life-system/project/:id" component={LifeSystemProjectDetailPage} />
-      <Route path="/life-system" component={LifeSystemPage} />
+      {/* The life-system overview page is now the canonical "Life Blueprint".
+          Keep /life-system as a redirect so existing bookmarks, lastRoute
+          values, and inbound links keep working. */}
+      <Route path="/life-system"><Redirect to="/life-blueprint" /></Route>
 
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
       <Route path="/life-dimensions" component={LifeDimensionsPage} />
@@ -258,8 +261,15 @@ function Router() {
       <Route path="/home"><Redirect to="/command-center" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
-      <Route path="/life-blueprint" component={LifeBlueprintV2Page} />
-      <Route path="/life-blueprint-v2"><Redirect to="/life-blueprint" /></Route>
+      {/* /life-blueprint is now the Life System overview (Core / Expression /
+          Creation pillars + the orbit). The previous life-blueprint-v2
+          content (life-dimensions assessments) lives at the dimensions
+          subroute so its functionality isn't lost. NOTE for wouter: the
+          more-specific path MUST come first or it would be shadowed by
+          the parent. */}
+      <Route path="/life-blueprint/dimensions" component={LifeBlueprintV2Page} />
+      <Route path="/life-blueprint" component={LifeSystemPage} />
+      <Route path="/life-blueprint-v2"><Redirect to="/life-blueprint/dimensions" /></Route>
       <Route path="/insights" component={InsightsDashboard} />
       <Route path="/wellness-preferences" component={WellnessPreferencesPage} />
       <Route path="/values-rules-profile" component={ValuesRulesProfilePage} />
